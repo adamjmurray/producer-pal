@@ -232,9 +232,9 @@ symbols reads back as literal notes.
 
 Notation says _what the notes are_. Transforms say _how to reshape them_ — a
 small expression language for changing notes and audio properties with math.
-Pass a `transforms` string to [Create Clip](/features#ppal-create-clip),
-[Update Clip](/features#ppal-update-clip), or
-[Duplicate](/features#ppal-duplicate).
+Pass a `transforms` string to [Create Clip](/features/tools#ppal-create-clip),
+[Update Clip](/features/tools#ppal-update-clip), or
+[Duplicate](/features/tools#ppal-duplicate).
 
 Each line is `[selector:] parameter operator expression`:
 
@@ -268,8 +268,9 @@ pitch += clipseq(0, 5, 7)             // per-copy transposition
 A transform string **broadcasts across every clip or copy** in a batch, so one
 string can vary many clips at once — `clip.index` arithmetic or `clipseq(...)`
 gives each one a different result. That's what makes
-[Duplicate](/features#ppal-duplicate) able to generate a set of variations in a
-single call, and it pairs naturally with [take lanes](/features#take-lanes).
+[Duplicate](/features/tools#ppal-duplicate) able to generate a set of variations
+in a single call, and it pairs naturally with
+[take lanes](/features#take-lanes).
 
 `preTransforms` is the same language, applied to a clip's _existing_ notes
 before any new `notes` merge in. It's the general editing path — and for
@@ -289,9 +290,9 @@ regardless. Even on MIDI JSON or Stark, you still write `1|1-2|1: delete` and
 ## The instructions the AI actually gets
 
 Producer Pal teaches the AI its notation at the start of every conversation, by
-returning a skill set from the [Connect tool](/features#ppal-connect). The full
-text of those skills — including the notation guide for whichever notation is
-active — isn't reproduced here; see the [features page](/features#skills) for
+returning a skill set from the [Connect tool](/features/tools#ppal-connect). The
+full text of those skills — including the notation guide for whichever notation
+is active — isn't reproduced here; see the [features page](/features#skills) for
 where to read it: the Chat UI's Skills tab previews the assembled document for
 any notation and model size, and the source is browsable on GitHub. You can
 [customize or replace them](/guide/customizing-skills), including swapping in

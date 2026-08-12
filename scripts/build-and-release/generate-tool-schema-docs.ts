@@ -283,8 +283,8 @@ async function main(): Promise<void> {
 
   let count = 0;
 
-  // Standard tools plus the opt-in ppal-live-api tool, which is documented on
-  // the features page even though it isn't part of the default toolset.
+  // Standard tools plus the opt-in ppal-live-api tool, which is documented in
+  // the tool reference even though it isn't part of the default toolset.
   const allToolDefs: ToolDefFunction[] = [
     ...STANDARD_TOOL_DEFS,
     toolDefLiveApi,

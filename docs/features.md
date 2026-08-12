@@ -23,339 +23,50 @@ the loop.
 
 [Get started →](/installation)
 
-## Core Tools
-
-### 🔧 Connect (`ppal-connect`) {#ppal-connect}
-
-- Establish the connection with Ableton Live (required before using other tools)
-- Summarizes the state of the current Live Set
-- Returns a [skill set](#skills) that teaches the AI how to use Producer Pal
-  effectively. Standard skills cover the full feature set.
-  [Small model mode](#small-model-mode) provides simplified skills and schemas
-  for less capable models.
-
-<!--@include: ./_generated/ppal-connect-schema.md-->
-
-### 🔧 Context (`ppal-context`) {#ppal-context}
-
-- Read and write the three [context layers](/guide/context): project context
-  (notes about this Live Set), global context (preferences that apply to every
-  project), and memory (facts AI records about you as you work)
-
-<!--@include: ./_generated/ppal-context-schema.md-->
-
-## Session Tools
-
-### 🔧 Playback (`ppal-playback`) {#ppal-playback}
-
-- Start/stop playback in Session or Arrangement view
-- Play specific scenes or clips
-- Set loop points and playback position
-- Jump to arrangement locators by ID or name
-- Set loop start/end using locators
-- Playback always follows the Arrangement (no per-track override)
-- Stop all clips or specific clips
-
-<!--@include: ./_generated/ppal-playback-schema.md-->
-
-### 🔧 Library (`ppal-library`) {#ppal-library}
-
-::: warning Requires Live 12.4+
-
-The library tools require Ableton Live 12.4 or later. On older versions they
-return an error explaining the requirement. Use the version of Max bundled with
-Live, or make sure your standalone Max is up to date. See
-[Troubleshooting](/support/troubleshooting) for details.
-
-:::
-
-- Search Live's browser library by name, tags, content kind, device kind, or
-  source category (User Library, Pack, Built-in, Cloud, Plugin, or your sample
-  folder)
-- Also includes the user-configured sample folder when set, with results merged
-  and de-duplicated against Live's library
-- Sort by `use_count` (Live's persistent usage counter — surfaces what you
-  actually use most), `mod_date`, or `name`
-- Enumerate available tags with `action: "listTags"` so the AI can discover the
-  tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
-  Drums, Genres, …) with `action: "listCategories"`
-- Run many filtered searches in one call with `action: "searchBatch"` — results
-  grouped per query, so the AI can assemble a whole drum kit in one round trip
-- List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
-  (filter by query, vendor, format, device kind, or subcategory)
-- Find samples that _sound_ like a seed sample with `action: "findSimilar"`, or
-  group library samples with identical audio (re-shipped duplicates) with
-  `action: "findDuplicates"` — both can be narrowed with the search filters
-
-<!--@include: ./_generated/ppal-library-schema.md-->
-
-### 🔧 Select (`ppal-select`) {#ppal-select}
-
-- Read current selection and view state (when no arguments)
-  - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and return only relevant fields
-  - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
-  - Switch between Session and Arrangement views
-  - Auto-switches to session view for scene/clipSlot selection
-  - Detail views auto-managed: clip detail opens on clip selection, device
-    detail on device selection
-
-<!--@include: ./_generated/ppal-select-schema.md-->
-
-## Action Tools
-
-### 🔧 Delete (`ppal-delete`) {#ppal-delete}
-
-- Remove tracks, return tracks, scenes, clips, devices, or drum pads
-- Bulk delete multiple objects
-
-<!--@include: ./_generated/ppal-delete-schema.md-->
-
-### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
-
-- Copy tracks, scenes, clips, or devices
-- Create multiple copies at once
-- Copy clips anywhere in the Session, Arrangement, or from Session to
-  Arrangement
-  - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
-- Apply [transforms](#transforms) to each duplicated clip (e.g. transpose
-  copies, vary velocities) without a separate update step
-- Stack MIDI variations on [take lanes](#take-lanes) with `takeLane: "new"` +
-  transforms — audition alternates at the same arrangement position
-- Copy devices to any track, return track, or rack chain
-- Route duplicated tracks to source instrument for MIDI layering
-
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
-
-<!--@include: ./_generated/ppal-duplicate-schema.md-->
-
-## Live Set Tools
-
-### 🔧 Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
-
-- Get complete Live project overview
-- View all tracks, scenes, and clips at once
-- See tempo, time signature, and scale settings
-- View arrangement locators with times and names
-- Check what's playing and track states
-
-<!--@include: ./_generated/ppal-read-live-set-schema.md-->
-
-### 🔧 Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
-
-- Change tempo, time signature, scale
-- Create, rename, or delete arrangement locators
-
-<!--@include: ./_generated/ppal-update-live-set-schema.md-->
-
-## Track Tools
-
-### 🔧 Create Track (`ppal-create-track`) {#ppal-create-track}
-
-- Add MIDI, audio, or return tracks
-- Position tracks exactly where you want
-- Set initial mute/solo/arm states
-
-<!--@include: ./_generated/ppal-create-track-schema.md-->
-
-### 🔧 Read Track (`ppal-read-track`) {#ppal-read-track}
-
-- Get detailed track information
-- View all clips in Session and Arrangement
-- List [take lanes](#take-lanes) and their clips (with the `arrangement-clips`
-  include)
-- See devices, routing options, and drum pad mappings
-- Check track states (muted, soloed, armed)
-- View mixer properties: gain, pan, panning mode, and send levels
-
-<!--@include: ./_generated/ppal-read-track-schema.md-->
-
-### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
-
-- Change track gain (volume), panning, and send levels
-- Change mute, solo, arm, I/O routings, and monitoring state
-- Change track name and color
-- Update multiple tracks at once
-
-<!--@include: ./_generated/ppal-update-track-schema.md-->
-
-## Scene Tools
-
-### 🔧 Create Scene (`ppal-create-scene`) {#ppal-create-scene}
-
-- Add new scenes at any position
-- Set scene name, color, tempo, and time signature
-- Scenes can follow song tempo or have their own
-- Ability to capture currently playing clips into a new scene
-
-<!--@include: ./_generated/ppal-create-scene-schema.md-->
-
-### 🔧 Read Scene (`ppal-read-scene`) {#ppal-read-scene}
-
-- View scene details and all its clips
-- Check which clips are playing/triggered
-- See scene tempo and time signature
-
-<!--@include: ./_generated/ppal-read-scene-schema.md-->
-
-### 🔧 Update Scene (`ppal-update-scene`) {#ppal-update-scene}
-
-- Change scene name, color, tempo, and time signature
-- Update multiple scenes at once
-
-<!--@include: ./_generated/ppal-update-scene-schema.md-->
-
-## Clip Tools
-
-::: info Parameters shown use the default notation
-
-The `notes` parameter on Create Clip and Update Clip is rewritten to match the
-active [notation](/features/midi-notation). The tables below show it in
-`bar|beat`, the default — see [MIDI Notation](/features/midi-notation#bar-beat)
-for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
-[Stark](/features/midi-notation#stark).
-
-:::
-
-### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
-
-- Generate MIDI clips with notes, velocities, and timing using
-  [custom notation](#custom-music-notation)
-- Place clips in Session slots or Arrangement timeline
-- Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
-- Support for probability, velocity ranges, and complex rhythms
-- Apply [transforms](#transforms) to shape notes with math expressions
-- Create audio clips from a sample file with `sampleFile`, and choose whether
-  Live warps it with `warping` (see [Audio Clips](#audio-clips))
-- Auto-create scenes as needed
-
-<!--@include: ./_generated/ppal-create-clip-schema.md-->
-
-### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
-
-- Get detailed info about any clip in Session or Arrangement
-- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
-- Get audio clip gain, pitch, warp settings, and sample info
-
-<!--@include: ./_generated/ppal-read-clip-schema.md-->
-
-### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
-
-- Change clip name, color, and loop settings
-- Add/remove MIDI notes using [custom notation](#custom-music-notation)
-- Apply [transforms](#transforms) to modify existing notes and audio properties
-  (use `clip.index`/`clipseq()` for per-clip variation when updating multiple)
-- Change audio clip gain, pitch shift, and warp settings (see
-  [Audio Clips](#audio-clips))
-- Move clips and change their length in the Arrangement
-- Split arrangement clips at specified positions
-- Update multiple clips at once
-
-<!--@include: ./_generated/ppal-update-clip-schema.md-->
-
-### Audio Clips {#audio-clips}
-
-A new audio clip's region comes from its sample, so `start`, `length`,
-`firstStart`, and `looping` are MIDI-only on Create Clip and are ignored (with a
-warning) alongside a `sampleFile`. `timeSignature` and the audio properties —
-`gainDb`, `pitchShift`, `warpMode`, `warping` — do apply. On Update Clip,
-`start` and `length` reshape an existing audio clip's region normally.
-
-**Warping.** When you create an audio clip, Live decides for itself whether to
-warp the sample, following your **Loop/Warp Short Samples** preference — which
-no API can read, so the same call can land differently on two machines. Pass
-`warping: false` to play the file exactly as recorded or rendered. Omit it and
-Live still decides, but the result reports which way it went.
-
-`warping: false` means the same thing on Create Clip and Update Clip: reset the
-region to the whole file and turn looping off, which is what Live does
-underneath. Two consequences on Update Clip:
-
-- It erases a `start`/`length` sent in the same call. Reshape the region in a
-  follow-up call.
-- `looping: true` forces warping back on, so it vetoes a `warping: false` sent
-  alongside it, and warns that it did.
-
-**Unwarped clips are measured against the sample.** Live switches a clip's
-markers from beats to seconds when warping is off, and reports an unwarped
-session clip's `length` as though it were still warped. Producer Pal measures
-the region from the markers instead, so a 1.2-second one-shot reads as the beats
-it really occupies at your tempo rather than as 1.2 beats — which is also what
-keeps [Duplicate](#ppal-duplicate) from tiling copies over audio that's still
-sounding.
-
-## Device Tools
-
-### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
-
-- Add native Live devices (instruments, MIDI effects, audio effects)
-- Place devices on any track type: MIDI, audio, return, or master
-- Position devices at a specific index in the device chain
-- Create devices inside rack chains or drum pads using path notation
-- List the native Live devices
-- Load a sample into a Simpler instrument via
-  `params: [{name: "sample", value: "<path>"}]`, and set its level with
-  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
-
-<!--@include: ./_generated/ppal-create-device-schema.md-->
-
-### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
-
-- Get detailed info about any device, including inside rack chains and drum pad
-  chains
-- List device parameter names and values (the state of knobs, dials, etc)
-
-<!--@include: ./_generated/ppal-read-device-schema.md-->
-
-### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
-
-- Change device name
-- Change device parameter values (control knobs, dials, etc)
-- Update multiple devices at once
-- Move devices anywhere else in the Live Set, including into racks / wrapping in
-  a new rack
-- Create, load, delete, revert, and randomize rack macro variations
-- A/B Compare with supported devices
-- Control chain and drum pad mute and solo state
-- Change the choke group and output MIDI note of drum chains
-- Load a sample into a Simpler instrument (see
-  [Create Device](#ppal-create-device) above)
-
-<!--@include: ./_generated/ppal-update-device-schema.md-->
-
-## Advanced Tools
-
-### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
-
-Direct access to the
-[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-scripting and debugging.
-
-**Off by default.** Producer Pal's specialized tools are tuned for reliable
-results across most models; the raw Live API is low-level and can give weaker
-results out of the box, so it's hidden rather than competing with them. It's a
-powerful escape hatch for scripting and advanced workflows, especially with
-capable coding agents. Enable it on the **Setup** tab of the Producer Pal Max
-for Live device, or programmatically via `POST /config` (the `npx producer-pal`
-MCP server also accepts a `--live-api` flag). See the REST API's
-[Live API section](/guide/rest-api#live-api) for the full operation reference
-and examples.
-
-<!--@include: ./_generated/ppal-live-api-schema.md-->
+## What It Can Do
+
+- **Tracks and mixing** — add MIDI, audio, and return tracks; set gain, pan,
+  sends, routing, monitoring, mute/solo/arm, names, and colors.
+  [Track tools →](/features/tools#track-tools)
+- **MIDI clips** — write and edit notes in a
+  [text notation](#custom-music-notation) built for language models, with
+  velocity ranges, probability, and complex rhythms, then reshape them with
+  [transforms](#transforms). [Clip tools →](/features/tools#clip-tools)
+- **Audio clips** — place samples, set gain, pitch shift, and warp settings,
+  reshape the region, and arrange them on the timeline. Producer Pal manages
+  audio but can't listen to it — see [Limitations](#limitations).
+  [Clip tools →](/features/tools#clip-tools)
+- **Arrangement** — place, move, split, and tile clips along the timeline, work
+  with locators, and stack alternates on [take lanes](#take-lanes).
+  [Duplicate →](/features/tools#ppal-duplicate)
+- **Session view** — create scenes, capture what's playing into a new one, give
+  a scene its own tempo and time signature, and launch clips and scenes.
+  [Scene tools →](/features/tools#scene-tools)
+- **Devices and instruments** — add native Live instruments and effects, set
+  their parameters, build Drum Racks and Simpler instruments from samples, move
+  devices into racks, and drive macro variations.
+  [Device tools →](/features/tools#device-tools)
+- **Library** — search Live's browser and your own sample folder by name, tag,
+  or category, find samples that sound like a seed sample, and list installed
+  plug-ins. [Library →](/features/tools#ppal-library)
+- **Playback** — start and stop Session or Arrangement playback, set loop
+  points, and jump to locators. [Playback →](/features/tools#ppal-playback)
+- **The whole Set** — read every track, scene, and clip at once; change tempo,
+  time signature, and scale. [Live Set tools →](/features/tools#live-set-tools)
+- **What the AI knows about you** — project notes, global preferences, and
+  memory it builds as you work. [Context & Memory →](/guide/context)
+
+Every tool, with its full parameter list:
+**[Tool Reference →](/features/tools)**
 
 ## MIDI Notation {#custom-music-notation}
 
 Producer Pal gives the AI a text-based music notation to compose in, rather than
-raw MIDI note data. Used by [Create Clip](#ppal-create-clip),
-[Update Clip](#ppal-update-clip), and [Read Clip](#ppal-read-clip). It helps
-LLMs translate natural language expressions of time to the correct time
-positions in Ableton Live clips and the arrangement timeline.
+raw MIDI note data. Used by [Create Clip](/features/tools#ppal-create-clip),
+[Update Clip](/features/tools#ppal-update-clip), and
+[Read Clip](/features/tools#ppal-read-clip). It helps LLMs translate natural
+language expressions of time to the correct time positions in Ableton Live clips
+and the arrangement timeline.
 
 Three notations are available. The device setting picks the default, and a
 client can [override it per request](/guide/rest-api#per-request-notation):
@@ -376,11 +87,12 @@ client can [override it per request](/guide/rest-api#per-request-notation):
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
-[Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
-[Duplicate](#ppal-duplicate). Transforms work the same way in every notation.
-When updating or duplicating multiple clips at once, one transform string
-broadcasts across every clip/copy — use `clip.index` arithmetic or `clipseq()`
-inside the string for per-clip variation:
+[Create Clip](/features/tools#ppal-create-clip),
+[Update Clip](/features/tools#ppal-update-clip), and
+[Duplicate](/features/tools#ppal-duplicate). Transforms work the same way in
+every notation. When updating or duplicating multiple clips at once, one
+transform string broadcasts across every clip/copy — use `clip.index` arithmetic
+or `clipseq()` inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -401,14 +113,16 @@ Live's take lanes stack alternate versions of an arrangement clip at the same
 position — only the active take plays. They're the natural way to audition
 variations side by side without cluttering the timeline.
 
-- Target a lane with `takeLane` on [Create Clip](#ppal-create-clip) and
-  [Duplicate](#ppal-duplicate): `0` (or omit) = main lane, `1+` = that lane
-  (auto-created up to it), `"new"` = append a fresh lane.
-- Generate variations with a few [Duplicate](#ppal-duplicate) calls using
-  `takeLane: "new"` plus [transforms](#transforms) to vary each copy.
+- Target a lane with `takeLane` on
+  [Create Clip](/features/tools#ppal-create-clip) and
+  [Duplicate](/features/tools#ppal-duplicate): `0` (or omit) = main lane, `1+` =
+  that lane (auto-created up to it), `"new"` = append a fresh lane.
+- Generate variations with a few [Duplicate](/features/tools#ppal-duplicate)
+  calls using `takeLane: "new"` plus [transforms](#transforms) to vary each
+  copy.
 - Name a newly created lane with `takeLaneName`.
-- [Read Track](#ppal-read-track) lists take lanes (with the `arrangement-clips`
-  include).
+- [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
+  `arrangement-clips` include).
 - Limits: 8 take lanes per track. Duplicating to a take lane is MIDI-only and
   recreates the clip from notes, so envelope automation isn't preserved. Once
   placed, take-lane clips are append-only — they can't be split, moved, resized,
@@ -475,10 +189,10 @@ levers.
 ::: info Counting the tools
 
 There are **21 tools on by default**. Two more are experimental and opt-in:
-[Direct Live API](#ppal-live-api) and [Subagent](#subagents). The Chat UI counts
-all 23, so it reads `21/23` out of the box. An MCP client sees 21 — Subagent is
-client-side and never appears in `listTools`, and Direct Live API is only
-registered when the device flag is on (which makes it 22).
+[Direct Live API](/features/tools#ppal-live-api) and [Subagent](#subagents). The
+Chat UI counts all 23, so it reads `21/23` out of the box. An MCP client sees 21
+— Subagent is client-side and never appears in `listTools`, and Direct Live API
+is only registered when the device flag is on (which makes it 22).
 
 :::
 
@@ -520,8 +234,8 @@ run as. This is experimental and off by default.
 
 ## Skills {#skills}
 
-The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to
-use Producer Pal's [notation](/features/midi-notation),
+The [Connect tool](/features/tools#ppal-connect) returns a skill set that
+teaches the AI how to use Producer Pal's [notation](/features/midi-notation),
 [transforms](/features/midi-notation#transforms), device paths, and other
 conventions. It's sent to external MCP clients in the `ppal-connect` result and
 used by the built-in [Chat UI](/guide/chat-ui) on every conversation.
@@ -549,10 +263,10 @@ share. Producer Pal ships one — a drop-in folder that drives the
 MCP client at all.
 
 It stays a thin bootstrap rather than a copy of the guidance: it tells the agent
-to call [`ppal-connect`](#ppal-connect) first, which returns the same skill set
-described above. So the two fit together — the Agent Skill is _how_ a coding
-agent reaches Producer Pal, and the skills it loads on connect are _what_ it
-learns. New tools and skill updates land in that response automatically, and the
-`SKILL.md` never needs to change.
+to call [`ppal-connect`](/features/tools#ppal-connect) first, which returns the
+same skill set described above. So the two fit together — the Agent Skill is
+_how_ a coding agent reaches Producer Pal, and the skills it loads on connect
+are _what_ it learns. New tools and skill updates land in that response
+automatically, and the `SKILL.md` never needs to change.
 
 [Set up the Agent Skill →](/guide/skills)

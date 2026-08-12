@@ -102,7 +102,7 @@ defaults are recommended.
   models. May improve results with **Claude Haiku**; not recommended otherwise,
   since Claude Sonnet, Opus, and Fable handle the full toolset.
 - **Direct Live API** — enables the advanced
-  [`ppal-live-api`](/features#ppal-live-api) tool for direct access to the
+  [`ppal-live-api`](/features/tools#ppal-live-api) tool for direct access to the
   [Live Object Model](https://docs.cycling74.com/apiref/lom/). An escape hatch
   for custom control and debugging when the standard tools aren't enough — not
   recommended as a default.

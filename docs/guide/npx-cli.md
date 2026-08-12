@@ -43,7 +43,7 @@ npx -y producer-pal [flags]
 | `--notation <name>`      | `-n`  | `barbeat`, `midi-json`, `stark` | Set the [MIDI notation](/features/midi-notation) (default `barbeat`) |
 | `--format <name>`        | `-f`  | `compact`, `json`               | Set the tool response format (default `compact`)                     |
 | `--small-model-mode`     | `-s`  |                                 | Turn on [small model mode](/features#small-model-mode)               |
-| `--live-api`             | `-l`  |                                 | Turn on the [Direct Live API](/features#ppal-live-api) tool          |
+| `--live-api`             | `-l`  |                                 | Turn on the [Direct Live API](/features/tools#ppal-live-api) tool    |
 
 Values take either form: `--notation stark` or `--notation=stark`.
 

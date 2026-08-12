@@ -28,7 +28,7 @@ back them up directly.
 
 You write project and global context by hand. Memory is AI's own notebook: it
 records facts as you work, and you can edit them. AI can edit all three with the
-[Context tool](/features#ppal-context).
+[Context tool](/features/tools#ppal-context).
 
 All three reach every client — the built-in [Chat UI](/guide/chat-ui), external
 MCP clients like Claude Desktop, and the [REST API](/guide/rest-api) — because

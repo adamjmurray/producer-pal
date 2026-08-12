@@ -70,7 +70,7 @@ ones you don't:
 ::: details Advanced: enabling the Direct Live API
 
 Add the `--live-api` flag to turn on the opt-in
-[Direct Live API](/features#ppal-live-api) tool (`ppal-live-api`) when the
+[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) when the
 server connects — the same setting as the device's **Setup** tab, so it's global
 to the device:
 

@@ -97,8 +97,9 @@ read your existing notes in the new notation but will keep writing the old one.
 ### Sample Folder
 
 Configure a folder of audio samples to expose to the
-[Library](/features#ppal-library) tool. Items from this folder appear before
-Live's library results in searches. Shows `(none)` when no folder is configured.
+[Library](/features/tools#ppal-library) tool. Items from this folder appear
+before Live's library results in searches. Shows `(none)` when no folder is
+configured.
 
 - **Choose** - Select your sample folder
 - **Clear** - Remove the configured folder
@@ -109,8 +110,8 @@ For development and diagnostic purposes. Generally not needed for day-to-day
 use.
 
 - **Direct Live API** - Enables the opt-in
-  [Direct Live API](/features#ppal-live-api) tool, giving AI direct access to
-  the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+  [Direct Live API](/features/tools#ppal-live-api) tool, giving AI direct access
+  to the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
   scripting, debugging, and covering gaps in Producer Pal's specialized tools
 - **JSON Output** - Display raw JSON in tool responses
 - **Verbose Logs** - Enable detailed logging in the Max console

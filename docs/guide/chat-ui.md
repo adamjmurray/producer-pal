@@ -487,9 +487,9 @@ toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
 also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see
-[Direct Live API](/features#ppal-live-api) for why. It is still pinned to the
-conversation like the rest of the toolset, so flipping the device flag doesn't
-add or remove the tool mid-chat.
+[Direct Live API](/features/tools#ppal-live-api) for why. It is still pinned to
+the conversation like the rest of the toolset, so flipping the device flag
+doesn't add or remove the tool mid-chat.
 
 The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
 clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),

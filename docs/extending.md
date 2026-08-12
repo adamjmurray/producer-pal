@@ -39,10 +39,10 @@ You can:
 - **Put your own AI in front of it.** The API doesn't care which model. Use an
   agent framework, a local model, a notebook, whatever fits.
 
-The [`ppal-live-api`](/features#ppal-live-api) tool goes lower, with direct
-access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-reads and writes the specialized tools don't cover. It's off by default — see
-[Live API](/guide/rest-api#live-api).
+The [`ppal-live-api`](/features/tools#ppal-live-api) tool goes lower, with
+direct access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/)
+for reads and writes the specialized tools don't cover. It's off by default —
+see [Live API](/guide/rest-api#live-api).
 
 Zero-dependency [Node and Python sample scripts](/guide/rest-api#sample-scripts)
 are included to get you started.
@@ -58,8 +58,8 @@ A coding agent can write and run code against the API, iterate on a generative
 script while you listen, and change device settings mid-session:
 [notation](/features/midi-notation),
 [small model mode](/features#small-model-mode),
-[Direct Live API](/features#ppal-live-api). MCP clients can only change those by
-changing settings on the device and starting a new conversation.
+[Direct Live API](/features/tools#ppal-live-api). MCP clients can only change
+those by changing settings on the device and starting a new conversation.
 
 Two [companion skills](/guide/skills#companion-skills) build on that connection.
 **`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
