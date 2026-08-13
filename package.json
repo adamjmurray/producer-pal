@@ -160,7 +160,7 @@
     "fake-indexeddb": "6.2.5",
     "happy-dom": "20.11.1",
     "jscpd": "5.0.14",
-    "oxfmt": "0.61.0",
+    "oxfmt": "0.62.0",
     "oxlint": "1.77.0",
     "oxlint-tsgolint": "7.0.2001",
     "peggy": "5.1.0",
