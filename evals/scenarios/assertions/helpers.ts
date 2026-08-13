@@ -7,6 +7,7 @@
  * Shared utilities for assertion evaluation
  */
 
+import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type EvalTurnResult, type ToolCall } from "../types.ts";
 
 /**
@@ -39,6 +40,62 @@ export function getToolCalls(
   turn?: number | "any",
 ): ToolCall[] {
   return getTargetTurns(turns, turn).flatMap((t) => t.toolCalls);
+}
+
+/**
+ * A tool call's result parsed into an object, or null when it has none — which
+ * is what a tool ERROR looks like. Errors come back as prose ("Error executing
+ * tool 'ppal-create-clip': …", "ERROR: user cancelled MCP tool call"), and
+ * every success is a JSON/compact-literal payload, so parsing to an object is
+ * what separates the two. Structural on purpose: matching error prose would
+ * break the moment a message is reworded.
+ *
+ * @param call - The tool call to read
+ * @returns The parsed result object, or null when absent/unparseable
+ */
+export function parsedToolResult(
+  call: ToolCall,
+): Record<string, unknown> | null {
+  if (call.result == null) return null;
+
+  try {
+    const parsed = parseToolResult(call.result);
+
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The LAST call to `toolName` that actually succeeded.
+ *
+ * Grading must not read the first call by name. A model that hits a tool error
+ * is told to fix the arguments and call again, so the first call is often a
+ * discarded failed attempt — reading it grades args that never took effect, or
+ * an id that was never created, and fails a model for recovering correctly.
+ *
+ * Falls back to the last call by name when none succeeded, so a scenario that
+ * never got a good call still fails on the payload it was grading rather than
+ * on a "not found" message that hides why.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn filter (index, "any", or undefined for all)
+ * @param toolName - Tool name to match
+ * @returns The last successful call, the last call by name, or undefined
+ */
+export function lastSuccessfulToolCall(
+  turns: EvalTurnResult[],
+  turn: number | "any" | undefined,
+  toolName: string,
+): ToolCall | undefined {
+  const calls = getToolCalls(turns, turn).filter((c) => c.name === toolName);
+
+  return (
+    calls.toReversed().find((c) => parsedToolResult(c) != null) ?? calls.at(-1)
+  );
 }
 
 /**

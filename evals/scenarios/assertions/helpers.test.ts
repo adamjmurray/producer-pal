@@ -5,13 +5,15 @@
 import { describe, it, expect } from "vitest";
 import {
   getTargetTurns,
+  lastSuccessfulToolCall,
+  parsedToolResult,
   partialMatch,
   exactMatch,
   normalizeCount,
   formatExpectedCount,
   stringifyArgs,
 } from "./helpers.ts";
-import { type EvalTurnResult } from "../types.ts";
+import { type EvalTurnResult, type ToolCall } from "../types.ts";
 
 describe("getTargetTurns", () => {
   const mockTurns: EvalTurnResult[] = [
@@ -418,5 +420,112 @@ describe("stringifyArgs", () => {
 
   it("renders expect.anything()", () => {
     expect(stringifyArgs({ x: expect.anything() })).toBe("{x: Anything}");
+  });
+});
+
+describe("parsedToolResult", () => {
+  const call = (result?: string): ToolCall => ({
+    name: "ppal-create-clip",
+    args: {},
+    result,
+  });
+
+  it("parses a compact-literal success payload", () => {
+    expect(
+      parsedToolResult(call('{id:"84",slot:"3/0",noteCount:8}')),
+    ).toStrictEqual({
+      id: "84",
+      slot: "3/0",
+      noteCount: 8,
+    });
+  });
+
+  it("returns null for a tool error", () => {
+    expect(
+      parsedToolResult(
+        call(
+          "Error executing tool 'ppal-create-clip': createClip failed: slot or arrangementStart is required",
+        ),
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null for a cancelled call", () => {
+    expect(parsedToolResult(call("ERROR: user cancelled MCP tool call"))).toBe(
+      null,
+    );
+  });
+
+  it("returns null when there is no result", () => {
+    expect(parsedToolResult(call())).toBeNull();
+  });
+
+  it("returns null for a payload that isn't an object", () => {
+    expect(parsedToolResult(call("42"))).toBeNull();
+  });
+});
+
+describe("lastSuccessfulToolCall", () => {
+  const turn = (...toolCalls: ToolCall[]): EvalTurnResult => ({
+    turnIndex: 0,
+    userMessage: "u",
+    assistantResponse: "a",
+    toolCalls,
+    durationMs: 1,
+  });
+
+  const errored: ToolCall = {
+    name: "ppal-create-clip",
+    args: { trackIndex: 3, sceneIndex: "0" },
+    result:
+      "Error executing tool 'ppal-create-clip': createClip failed: slot or arrangementStart is required",
+  };
+
+  const succeeded: ToolCall = {
+    name: "ppal-create-clip",
+    args: { slot: "3/0" },
+    result: '{id:"84",slot:"3/0",noteCount:8}',
+  };
+
+  it("skips a failed first attempt for the retry that worked", () => {
+    const turns = [turn(errored, succeeded)];
+
+    expect(lastSuccessfulToolCall(turns, 0, "ppal-create-clip")).toBe(
+      succeeded,
+    );
+  });
+
+  it("takes the most recent success when several calls worked", () => {
+    const first: ToolCall = { ...succeeded, result: '{id:"1"}' };
+    const turns = [turn(first, succeeded)];
+
+    expect(lastSuccessfulToolCall(turns, 0, "ppal-create-clip")).toBe(
+      succeeded,
+    );
+  });
+
+  it("ignores calls to other tools", () => {
+    const other: ToolCall = {
+      name: "ppal-update-clip",
+      args: {},
+      result: '{id:"99"}',
+    };
+    const turns = [turn(succeeded, other)];
+
+    expect(lastSuccessfulToolCall(turns, 0, "ppal-create-clip")).toBe(
+      succeeded,
+    );
+  });
+
+  it("falls back to the last call when every attempt failed", () => {
+    const turns = [turn(errored, errored)];
+
+    expect(lastSuccessfulToolCall(turns, 0, "ppal-create-clip")).toBe(errored);
+  });
+
+  it("returns undefined when the tool was never called", () => {
+    expect(
+      lastSuccessfulToolCall([turn()], 0, "ppal-create-clip"),
+    ).toBeUndefined();
   });
 });

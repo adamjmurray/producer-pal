@@ -18,6 +18,8 @@ export { assertWithLlmJudge, type CheckSummary } from "./llm-judge.ts";
 export { assertResponseContains } from "./response.ts";
 export {
   getToolCalls,
+  lastSuccessfulToolCall,
+  parsedToolResult,
   partialMatch,
   normalizeCount,
   formatExpectedCount,

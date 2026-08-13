@@ -13,7 +13,11 @@ import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { hasPerfectMatching } from "#evals/shared/bipartite-matching.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { getToolCalls } from "../../../assertions/index.ts";
+import {
+  getToolCalls,
+  lastSuccessfulToolCall,
+  parsedToolResult,
+} from "../../../assertions/index.ts";
 import { CONNECT_MESSAGE } from "../../../helpers/seed-connect/seed-connect.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../../types.ts";
 
@@ -336,8 +340,7 @@ export function getTransforms(
   turn: number,
   toolName: string,
 ): string {
-  const calls = getToolCalls(turns, turn);
-  const updateCall = calls.find((c) => c.name === toolName);
+  const updateCall = lastSuccessfulToolCall(turns, turn, toolName);
 
   if (!updateCall) throw new Error(`${toolName} not found in turn ${turn}`);
 
@@ -363,9 +366,7 @@ export function getTransforms(
  * @returns The raw notes string passed to ppal-create-clip
  */
 export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
-  const call = getToolCalls(turns, turn).find(
-    (c) => c.name === TOOL_CREATE_CLIP,
-  );
+  const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
   if (!call) throw new Error(`ppal-create-clip not found in turn ${turn}`);
 
@@ -384,6 +385,11 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
  * placed it — small models often misjudge 0-based scene indexing) while a
  * separate assertion checks whether it landed in the intended slot.
  *
+ * Reads the last SUCCESSFUL create call: a model that hits a param error is
+ * told to fix the args and retry, and grading the discarded first attempt got
+ * an empty id, so the read-back died with `id "" does not exist` and failed a
+ * model for recovering correctly.
+ *
  * @param turns - All turn results
  * @param turn - Turn index containing the create-clip call (default 1)
  * @returns The created clip's id and slot (either may be undefined if absent)
@@ -392,26 +398,13 @@ export function getCreatedClip(
   turns: EvalTurnResult[],
   turn = 1,
 ): { id?: string; slot?: string } {
-  const call = getToolCalls(turns, turn).find(
-    (c) => c.name === TOOL_CREATE_CLIP,
-  );
+  const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
   if (!call) return {};
 
   const slot = typeof call.args.slot === "string" ? call.args.slot : undefined;
-  let id: string | undefined;
-
-  if (call.result != null) {
-    try {
-      const parsed = parseToolResult(call.result) as {
-        id?: unknown;
-      } | null;
-
-      if (parsed?.id != null) id = argText(parsed.id);
-    } catch {
-      // unparseable create result — leave id undefined
-    }
-  }
+  const parsed = parsedToolResult(call);
+  const id = parsed?.id == null ? undefined : argText(parsed.id);
 
   return { id, slot };
 }
