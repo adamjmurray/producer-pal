@@ -142,24 +142,6 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  typecheck:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - run: npm ci
-
-      - name: Type check
-        run: npm run typecheck
-
   code-hygiene:
     runs-on: ubuntu-latest
 
@@ -188,6 +170,12 @@ jobs:
       # seconds, so a dedicated job spent longer on `npm ci` than on linting.
       - name: Lint
         run: npm run lint
+
+      # Folded in for the same reason, once TypeScript 7 made it cheap enough:
+      # the Go compiler took this from ~20s to ~7s, well under the `npm ci` a
+      # separate job would pay.
+      - name: Type check
+        run: npm run typecheck
 
       - name: Check code duplication
         id: summary
@@ -336,7 +324,6 @@ jobs:
     needs:
       [
         build-verification,
-        typecheck,
         unit-tests,
         playwright-tests,
         code-hygiene,
@@ -377,7 +364,6 @@ jobs:
 
             // Check job statuses
             const jobs = {
-              'Typecheck': '${{ needs.typecheck.result }}',
               'Code Hygiene': '${{ needs.code-hygiene.result }}',
               'Unit Tests': '${{ needs.unit-tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
@@ -406,8 +392,7 @@ jobs:
               '|-----|--------|',
               `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
               `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
-              `| Typecheck | ${icon(jobs['Typecheck'])} ${jobs['Typecheck']} |`,
-              `| Lint & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
+              `| Lint, Typecheck & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
               `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');
