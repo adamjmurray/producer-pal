@@ -39,8 +39,8 @@ features:
   - title: Bring Your Own AI — or None
     details: >
       Use cloud AI (Claude, Gemini, ChatGPT), run free and private with local
-      models (Ollama, LM Studio), or skip AI entirely and script Live through
-      the open REST API. No lock-in.
+      models (Ollama, Bionic), or skip AI entirely and script Live through the
+      open REST API. No lock-in.
     link: /installation
     linkText: Setup guide
 
@@ -100,7 +100,7 @@ features:
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
-          <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/bionic">Bionic (LM Studio)</a> <span class="tag">offline</span></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -217,12 +217,12 @@ tracks, writing MIDI and audio clips, tweaking instruments and effects, and
 building arrangements.
 
 It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
-and local models via Ollama or LM Studio. And the AI is optional: the same
-device exposes an open [REST API](/guide/rest-api), so anything that can make an
-HTTP request — scripts, coding agents, your own tools — can read and edit a Live
-Set with no AI in the loop. A portable [Agent Skill](/guide/skills) that drops
-into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime
-rounds out three integration paths from one Max for Live device.
+and local models via Ollama or LM Studio Bionic. And the AI is optional: the
+same device exposes an open [REST API](/guide/rest-api), so anything that can
+make an HTTP request — scripts, coding agents, your own tools — can read and
+edit a Live Set with no AI in the loop. A portable [Agent Skill](/guide/skills)
+that drops into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible
+runtime rounds out three integration paths from one Max for Live device.
 
 Producer Pal is free, open-source (GPL-3.0), and actively developed in the open
 with regular updates for the latest Ableton Live features.

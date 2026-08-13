@@ -24,7 +24,8 @@ export default defineConfig({
       items.filter(
         (item) =>
           !item.url.startsWith("guide/examples") &&
-          item.url !== "installation/codex-app",
+          item.url !== "installation/codex-app" &&
+          item.url !== "installation/lm-studio",
       ),
   },
 
@@ -220,7 +221,7 @@ export default defineConfig({
                 link: "/installation/claude-desktop",
               },
               { text: "ChatGPT App", link: "/installation/chatgpt-app" },
-              { text: "LM Studio", link: "/installation/lm-studio" },
+              { text: "Bionic (LM Studio)", link: "/installation/bionic" },
             ],
           },
           {

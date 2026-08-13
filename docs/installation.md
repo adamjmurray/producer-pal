@@ -50,8 +50,8 @@ Dedicated AI apps — the easiest setup for most people:
   (subscription required)
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
   Codex built in (macOS and Windows)
-- **[LM Studio](./installation/lm-studio)** — runs models fully offline, no
-  account needed
+- **[Bionic (LM Studio)](./installation/bionic)** — runs models fully offline,
+  no account needed
 
 ### Built-in Chat UI
 

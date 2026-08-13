@@ -83,7 +83,7 @@ built-in [Chat UI](/guide/chat-ui), external MCP clients, and the
 [REST API](/guide/rest-api) alike.
 
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
-  Ollama and LM Studio
+  Ollama and Bionic
 - **Notation** - How AI reads and writes clip notes:
   [`barbeat`](/features/midi-notation#bar-beat) (the default),
   [`midi-json`](/features/midi-notation#midi-json), or

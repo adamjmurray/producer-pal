@@ -22,13 +22,15 @@ with an OpenAI account.
 
 [Get started with the ChatGPT App →](./chatgpt-app)
 
-## LM Studio (Advanced)
+## Bionic (Advanced)
+
+LM Studio's agent app for open models, running entirely on your machine.
 
 ::: warning For Power Users
 
-LM Studio requires significant hardware (Apple Silicon with lots of RAM or
-Nvidia 4080+ GPU) and technical comfort with local models. Expect
-experimentation. Online options work better and faster at this time.
+Bionic requires significant hardware (Apple Silicon with lots of RAM or Nvidia
+4080+ GPU) and technical comfort with local models. Expect experimentation.
+Online options work better and faster at this time.
 
 :::
 
@@ -36,4 +38,4 @@ experimentation. Online options work better and faster at this time.
 - **Cost:** Free (uses your hardware)
 - **Best for:** Privacy-focused users with capable hardware
 
-[LM Studio setup guide →](./lm-studio)
+[Bionic setup guide →](./bionic)

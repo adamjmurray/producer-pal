@@ -72,12 +72,12 @@ Simple local model server with many model options.
 - **Setup:** Install Ollama, download a model
 - **[Get started with Ollama →](./ollama)**
 
-### LM Studio
+### LM Studio Bionic
 
 Desktop app for running local models with a visual interface.
 
 - **Cost:** Free (uses your hardware)
-- **Setup:** Install LM Studio, download a model, enable CORS
+- **Setup:** Install Bionic, download a model, enable CORS
 - **[Setup instructions →](./chat-ui-other-providers#lm-studio-api)**
 
 ## Quick Comparison
@@ -90,7 +90,7 @@ Desktop app for running local models with a visual interface.
 | OpenRouter | Pay-as-you-go      | Yes               | Access to many models  |
 | Mistral    | Free tier          | Yes               | Alternative to Gemini  |
 | OpenAI     | Pay-as-you-go      | Yes               | GPT models             |
-| LM Studio  | Free               | No                | Visual local model UI  |
+| Bionic     | Free               | No                | Visual local model UI  |
 
 ## Troubleshooting
 

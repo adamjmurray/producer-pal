@@ -38,9 +38,9 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 ::: details Using a small/local model?
 
 Add the `--small-model-mode` flag to enable
-[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
-which simplifies the tool interface for smaller LLMs and automatically enables
-it on the device when connected:
+[Small Model Mode](./bionic#_4-tune-it-for-your-model-recommended), which
+simplifies the tool interface for smaller LLMs and automatically enables it on
+the device when connected:
 
 ```json
 {
