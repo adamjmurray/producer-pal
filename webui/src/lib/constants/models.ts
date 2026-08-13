@@ -125,7 +125,7 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
-  { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { value: "claude-opus-5", label: "Claude Opus 5" },
   { value: "claude-fable-5", label: "Claude Fable 5" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
@@ -181,8 +181,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Sonnet 5",
   },
   {
-    value: "anthropic/claude-opus-4.8",
-    label: "[Paid] Anthropic Claude Opus 4.8",
+    value: "anthropic/claude-opus-5",
+    label: "[Paid] Anthropic Claude Opus 5",
   },
   {
     value: "anthropic/claude-fable-5",

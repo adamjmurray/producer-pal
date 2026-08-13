@@ -52,7 +52,7 @@ describe("config", () => {
     it("returns display name for Anthropic models", () => {
       // ANTHROPIC_MODELS was missing from ALL_MODELS, so Anthropic ids rendered
       // as the raw id (e.g. in the chat header and LockedSettingsNotice).
-      expect(getModelName("claude-opus-4-8")).toBe("Claude Opus 4.8");
+      expect(getModelName("claude-opus-5")).toBe("Claude Opus 5");
       expect(getModelName("claude-sonnet-5")).toBe("Claude Sonnet 5");
     });
 
