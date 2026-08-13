@@ -80,6 +80,23 @@ bar|beat.
 relaunch it, or go to Settings → Extensions → Producer Pal → Configure and
 toggle the "Enabled" switch off and on.
 
+## `npx` Fails Inside the Source Repository
+
+This one only affects people working from a clone of the
+[source repository](https://github.com/adamjmurray/producer-pal). A normal
+install is unaffected.
+
+If your AI tool runs `npx -y producer-pal` with its working directory set to the
+repository, `npx` finds the local `package.json` — also named `producer-pal`,
+but with no command for `npx` to run — and stops there instead of fetching the
+published package. It exits right away with
+`could not determine executable to run`, so the AI reports that the MCP server
+closed the connection during startup.
+
+**Workaround:** run your AI tool from a folder outside the repository, or point
+the MCP server's working directory somewhere else. Every tool configures that
+differently, so consult your AI tool's MCP documentation.
+
 ---
 
 If you encounter additional issues, check the
