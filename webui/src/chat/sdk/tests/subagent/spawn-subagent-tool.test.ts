@@ -430,6 +430,25 @@ describe("createSpawnSubagentTool", () => {
     expect(runWorker).not.toHaveBeenCalled();
   });
 
+  it("counts a REFUSED attempt against the cap", async () => {
+    // Nothing else bounds a model that keeps re-sending a call this tool
+    // rejects, so it would otherwise burn the orchestrator's whole step budget.
+    const { tool, spawnState } = setup({
+      count: MAX_SPAWNS - 1,
+      getSession: () => undefined,
+    });
+
+    await expect(
+      tool.execute!({ task: "more", resumeFrom: 4 }, options()),
+    ).rejects.toThrow("no subagent 4");
+    expect(spawnState.count).toBe(MAX_SPAWNS);
+
+    // ...and the next attempt hits the cap rather than repeating forever.
+    await expect(tool.execute!({ task: "x" }, options())).rejects.toThrow(
+      `${MAX_SPAWNS}`,
+    );
+  });
+
   describe("resuming a worker", () => {
     const session: ChatMessage[] = [
       { role: "user", content: "write a bassline" },
@@ -483,13 +502,26 @@ describe("createSpawnSubagentTool", () => {
       expect(firstCall(runWorker).subagentIndex).toBe(2);
     });
 
-    it("refuses a worker this conversation never had", async () => {
-      const { tool, runWorker } = setup({ getSession: () => {} });
+    it("refuses a worker this conversation never had, naming the real ones", async () => {
+      // A model that guessed wrong has nothing to guess better from unless the
+      // error says which numbers exist.
+      const { tool, runWorker } = setup({
+        nextIndex: 3,
+        getSession: (index) => (index === 9 ? undefined : session),
+      });
 
       await expect(
         tool.execute!({ task: "more", resumeFrom: 9 }, options()),
-      ).rejects.toThrow("no subagent 9");
+      ).rejects.toThrow("Existing subagents: 1, 2, 3.");
       expect(runWorker).not.toHaveBeenCalled();
+    });
+
+    it("says so plainly when there are no subagents to resume", async () => {
+      const { tool } = setup({ getSession: () => undefined });
+
+      await expect(
+        tool.execute!({ task: "more", resumeFrom: 2 }, options()),
+      ).rejects.toThrow("It has no subagents yet.");
     });
 
     it("refuses a resumeFrom that isn't a worker number", async () => {
@@ -497,7 +529,7 @@ describe("createSpawnSubagentTool", () => {
       // the context the caller was reusing.
       const { tool, runWorker } = setup({ getSession: () => session });
 
-      for (const bad of [0, -1, 1.5, "first"]) {
+      for (const bad of [-1, 1.5, "first"]) {
         await expect(
           tool.execute!({ task: "more", resumeFrom: bad }, options()),
         ).rejects.toThrow("resumeFrom must be");
@@ -506,11 +538,17 @@ describe("createSpawnSubagentTool", () => {
       expect(runWorker).not.toHaveBeenCalled();
     });
 
-    it("treats null and empty resumeFrom as a fresh spawn", async () => {
+    it("treats null, empty, and 0 resumeFrom as a fresh spawn", async () => {
+      // 0 names no worker (indices are 1-based) but is what models send for an
+      // optional number they mean to leave empty — see parseResumeFrom.
       const { tool, runWorker } = setup({ getSession: () => session });
 
       await tool.execute!({ task: "fresh", resumeFrom: null }, options());
       await tool.execute!({ task: "fresh", resumeFrom: "" }, options());
+      await tool.execute!({ task: "fresh", resumeFrom: 0 }, options());
+      await tool.execute!({ task: "fresh", resumeFrom: "0" }, options());
+
+      expect(runWorker).toHaveBeenCalledTimes(4);
 
       for (const call of runWorker.mock.calls) {
         const workerConfig = await call[0].resolveConfig();
