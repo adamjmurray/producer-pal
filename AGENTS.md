@@ -162,6 +162,30 @@ return types on exported functions. Every exported function declaration needs a
 JSDoc block with `@param`/`@returns` descriptions — no types, since TypeScript
 already has them.
 
+**TypeScript 6 and 7 are installed side-by-side.** TypeScript 7 ships no
+programmatic API (it's the Go port; a new API is expected in 7.1), but oxlint's
+`jsPlugins` bridge needs one, so `package.json` follows the upstream-recommended
+aliasing:
+
+```json
+"@typescript/native": "npm:typescript@7.0.2",
+"typescript": "npm:@typescript/typescript6@6.0.2"
+```
+
+The practical consequences:
+
+- `tsc` is **TypeScript 7** — this is what `npm run typecheck` runs. `tsc6` is
+  the 6.0.3 compiler, kept only so the bridge resolves; don't typecheck with it.
+- `import ts from "typescript"` gets the **6.0.3 API**, which is why
+  `scripts/stats/loc.ts` and `src/test/helpers/vi-mock-scan-test-helpers.ts`
+  still use the compiler API normally.
+- TS 7 reports overload-mismatch errors on the **failing argument**, not the
+  call expression, so a `@ts-expect-error` for one goes directly above the
+  offending argument (see `duplicate-mocks-test-helpers.ts`). That placement is
+  TS-7-only — `tsc6` will call it unused.
+- Version pins may be npm aliases; `src/test/package-json-versions.test.ts`
+  accepts `npm:<name>@<exact>` but still rejects ranges.
+
 ## Testing
 
 - Run `npm run check` after any code change. **Before claiming done**:
