@@ -53,7 +53,7 @@ describe("groupTools", () => {
 
     expect(groups).toStrictEqual([
       { label: "Core", tools: [tools[0]] },
-      { label: "Clip", tools: [tools[2], tools[1]] },
+      { label: "Clip", tools: [tools[1], tools[2]] },
     ]);
   });
 
@@ -90,8 +90,8 @@ describe("groupTools", () => {
     const groups = groupTools(tools);
 
     expect(groups[0]?.tools.map((t) => t.id)).toStrictEqual([
-      "ppal-create-track",
       "ppal-read-track",
+      "ppal-create-track",
       "ppal-update-track",
     ]);
   });

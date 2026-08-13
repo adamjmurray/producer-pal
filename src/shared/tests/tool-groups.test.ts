@@ -75,8 +75,8 @@ describe("TOOL_GROUPS", () => {
 describe("resolveToolNames", () => {
   it("resolves a group alias to its tools", () => {
     expect(resolve("clip").names).toStrictEqual([
-      "ppal-create-clip",
       "ppal-read-clip",
+      "ppal-create-clip",
       "ppal-update-clip",
     ]);
   });
@@ -112,8 +112,8 @@ describe("resolveToolNames", () => {
 
   it("dedupes across overlapping items and returns catalog order", () => {
     expect(resolve("update-clip,clip,read-clip").names).toStrictEqual([
-      "ppal-create-clip",
       "ppal-read-clip",
+      "ppal-create-clip",
       "ppal-update-clip",
     ]);
   });
@@ -127,8 +127,8 @@ describe("resolveToolNames", () => {
     const { names, unknown } = resolve("clip,nonesuch,ppal-bogus");
 
     expect(names).toStrictEqual([
-      "ppal-create-clip",
       "ppal-read-clip",
+      "ppal-create-clip",
       "ppal-update-clip",
     ]);
     expect(unknown).toStrictEqual(["nonesuch", "ppal-bogus"]);

@@ -58,22 +58,22 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     alias: "track",
     label: "Track",
-    toolIds: ["ppal-create-track", "ppal-read-track", "ppal-update-track"],
+    toolIds: ["ppal-read-track", "ppal-create-track", "ppal-update-track"],
   },
   {
     alias: "scene",
     label: "Scene",
-    toolIds: ["ppal-create-scene", "ppal-read-scene", "ppal-update-scene"],
+    toolIds: ["ppal-read-scene", "ppal-create-scene", "ppal-update-scene"],
   },
   {
     alias: "clip",
     label: "Clip",
-    toolIds: ["ppal-create-clip", "ppal-read-clip", "ppal-update-clip"],
+    toolIds: ["ppal-read-clip", "ppal-create-clip", "ppal-update-clip"],
   },
   {
     alias: "device",
     label: "Device",
-    toolIds: ["ppal-create-device", "ppal-read-device", "ppal-update-device"],
+    toolIds: ["ppal-read-device", "ppal-create-device", "ppal-update-device"],
   },
   {
     alias: "advanced",

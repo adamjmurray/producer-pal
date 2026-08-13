@@ -47,8 +47,8 @@ describe("--disable-tools", () => {
 
   it("expands a group alias", () => {
     expect(disabledFor(["--disable-tools=device"])).toStrictEqual([
-      "ppal-create-device",
       "ppal-read-device",
+      "ppal-create-device",
       "ppal-update-device",
     ]);
   });
@@ -93,11 +93,11 @@ describe("--tools", () => {
   it("withholds the complement of the requested set", () => {
     expect(disabledFor(["--tools", "clip,track"])).toStrictEqual(
       complementOf([
-        "ppal-create-clip",
         "ppal-read-clip",
+        "ppal-create-clip",
         "ppal-update-clip",
-        "ppal-create-track",
         "ppal-read-track",
+        "ppal-create-track",
         "ppal-update-track",
       ]),
     );
@@ -160,8 +160,8 @@ describe("TOOLS / DISABLE_TOOLS env vars", () => {
     expect(
       disabledFor([], { ...GATE_ON, DISABLE_TOOLS: "device" }),
     ).toStrictEqual([
-      "ppal-create-device",
       "ppal-read-device",
+      "ppal-create-device",
       "ppal-update-device",
     ]);
   });
