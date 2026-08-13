@@ -21,7 +21,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 async function withConsoleSpy(
   fn: (spy: ReturnType<typeof vi.spyOn>) => void,
 ): Promise<void> {
-  const consoleModule = await import("#src/shared/v8-max-console.ts");
+  const consoleModule = await import("#src/shared/max/v8-max-console.ts");
   const consoleSpy = vi.spyOn(consoleModule, "warn");
 
   try {

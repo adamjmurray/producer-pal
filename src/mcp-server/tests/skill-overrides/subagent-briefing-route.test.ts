@@ -26,6 +26,7 @@ import {
   type SubagentBriefingConfig,
 } from "#src/mcp-server/routes/subagent-briefing-route.ts";
 import {
+  BRIEFING_REQUEST_HEADER,
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config.ts";
@@ -73,6 +74,19 @@ afterAll(async () => {
 });
 
 /**
+ * GET the briefing endpoint carrying the client header the route requires.
+ * @param headers - Extra headers to send
+ * @returns The raw response
+ */
+function briefingFetch(
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return fetch(base, {
+    headers: { [BRIEFING_REQUEST_HEADER]: "1", ...headers },
+  });
+}
+
+/**
  * GET a briefing with the given per-request headers.
  * @param headers - Headers to send (the caller's profile)
  * @returns The briefing text
@@ -80,7 +94,7 @@ afterAll(async () => {
 async function getBriefing(
   headers: Record<string, string> = {},
 ): Promise<string> {
-  const res = await fetch(base, { headers });
+  const res = await briefingFetch(headers);
 
   expect(res.status).toBe(200);
 
@@ -166,7 +180,7 @@ describe("subagent-briefing route", () => {
     });
 
     expect(briefing).not.toContain("## Devices & Instruments");
-    expect(briefing).toContain("## Delete / clear notes");
+    expect(briefing).toContain("## Editing a clip that already has notes");
   });
 
   it("drops the fragments for tools the header withholds", async () => {
@@ -201,7 +215,7 @@ describe("subagent-briefing route", () => {
       isError: true,
     };
 
-    const res = await fetch(base);
+    const res = await briefingFetch();
 
     expect(res.status).toBe(502);
     expect((await res.json()) as { error: string }).toStrictEqual({
@@ -212,7 +226,7 @@ describe("subagent-briefing route", () => {
   it("answers 502 when Live returns nothing at all", async () => {
     liveSet = { content: [] };
 
-    const res = await fetch(base);
+    const res = await briefingFetch();
 
     expect(res.status).toBe(502);
   });
@@ -238,8 +252,37 @@ describe("subagent-briefing route", () => {
 
   it("is never cached", async () => {
     // Overrides, context, and the Live Set all change between spawns.
-    const res = await fetch(base);
+    const res = await briefingFetch();
 
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("blocks a foreign origin with 403 before reaching Live", async () => {
+    // A GET, but it drives the Live Set — so any page the user has open could
+    // loop it and hold a socket per request until the tool timeout.
+    const res = await briefingFetch({ Origin: "https://evil.example.com" });
+
+    expect(res.status).toBe(403);
+    expect(callLiveApi).not.toHaveBeenCalled();
+  });
+
+  it("blocks a request with no client header, whatever its origin", async () => {
+    // The origin gate lets an Origin-less request through, and a browser sends
+    // no Origin for `<img src>` / `<script src>` — which also cannot set a
+    // header. That combination is the only trivially cross-site-reachable path
+    // to a Live API dispatch.
+    const res = await fetch(base);
+
+    expect(res.status).toBe(403);
+    expect(callLiveApi).not.toHaveBeenCalled();
+  });
+
+  it("still serves a browser on the same server", async () => {
+    // The remote same-origin case (LAN/tunnel) can't be staged here — Node's
+    // fetch won't let a test forge a Host header — and is covered in
+    // request-origin.test.ts.
+    const res = await briefingFetch({ Origin: server.baseUrl });
+
+    expect(res.status).toBe(200);
   });
 });

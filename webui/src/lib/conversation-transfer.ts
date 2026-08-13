@@ -247,8 +247,13 @@ function normalizeRecord(
     // be persisted and crash searchConversations for the whole list.
     title: typeof record.title === "string" ? record.title : null,
     createdAt: record.createdAt as number,
+    // Fall back to createdAt (validated above) for anything that isn't a
+    // number: the sidebar sorts on `b.updatedAt - a.updatedAt`, and one NaN
+    // there scrambles the whole list's order and the eviction that follows it.
     updatedAt:
-      (record.updatedAt as number | undefined) ?? (record.createdAt as number),
+      typeof record.updatedAt === "number"
+        ? record.updatedAt
+        : (record.createdAt as number),
     bookmarked: (record.bookmarked as boolean | undefined) ?? false,
     provider: (record.provider as string | null | undefined) ?? null,
     model: (record.model as string | null | undefined) ?? null,
@@ -265,9 +270,9 @@ function normalizeRecord(
     // Drop any individually malformed messages (validateRecord already ensured
     // at least one survives, or the array was intentionally empty) so one bad
     // entry can't strand the rest of the conversation.
-    messages: (record.messages as unknown[]).filter(
-      isValidImportedMessage,
-    ) as ConversationRecord["messages"],
+    messages: (record.messages as unknown[])
+      .filter(isValidImportedMessage)
+      .map(sanitizeImportedMessage) as ConversationRecord["messages"],
     voiceHistory:
       (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
       null,
@@ -300,5 +305,104 @@ function normalizeRecord(
       typeof record.forkedAtIndex === "number" && {
         forkedAtIndex: record.forkedAtIndex,
       }),
+  };
+}
+
+/**
+ * Strip a message's unusable subagent fields. Nothing downstream re-checks them,
+ * and both fail far from the import that carried them: a transcript is spliced
+ * straight into a resumed worker's chat history, and an index is the worker's
+ * durable identity, so a bad one shows up as an opaque spawn error or a worker
+ * `resumeFrom` can never address.
+ * @param message - A message that passed {@link isValidImportedMessage}
+ * @returns The message, with any unusable subagent fields dropped
+ */
+function sanitizeImportedMessage(message: unknown): unknown {
+  return sanitizeToolField(
+    sanitizeToolField(message, "toolResults", sanitizeToolResult),
+    "toolCalls",
+    sanitizeToolCall,
+  );
+}
+
+/**
+ * Run one of a message's tool arrays through a per-entry sanitizer, or drop the
+ * field when it isn't an array at all: every reader treats it as one (`.find`,
+ * `for…of`) and would throw on the first render, OUTSIDE the per-message error
+ * boundary — leaving a conversation that can never be opened again. Dropping it
+ * costs one message's tool calls or results and keeps the rest readable.
+ * @param message - A message that passed {@link isValidImportedMessage}
+ * @param field - Which tool array to normalize
+ * @param sanitizeEntry - Per-entry sanitizer
+ * @returns The message with that field normalized, or without it
+ */
+function sanitizeToolField(
+  message: unknown,
+  field: "toolCalls" | "toolResults",
+  sanitizeEntry: (entry: unknown) => unknown,
+): unknown {
+  const value = (message as Record<string, unknown>)[field];
+
+  if (value == null) return message;
+
+  if (!Array.isArray(value)) {
+    const { [field]: _dropped, ...rest } = message as Record<string, unknown>;
+
+    return rest;
+  }
+
+  return { ...(message as object), [field]: value.map(sanitizeEntry) };
+}
+
+/**
+ * Give a tool call the `args` object its renderers read fields straight off.
+ * The subagent card reaches for `args.task` with no guard, and the type says
+ * `args` is always there — true for anything we produced, not for what an
+ * import hands us.
+ * @param entry - Raw parsed toolCalls element
+ * @returns The entry, with `args` an object
+ */
+function sanitizeToolCall(entry: unknown): unknown {
+  if (typeof entry !== "object" || entry === null) return entry;
+
+  const { args } = entry as { args?: unknown };
+
+  if (typeof args === "object" && args !== null && !Array.isArray(args)) {
+    return entry;
+  }
+
+  return { ...entry, args: {} };
+}
+
+/**
+ * Drop the subagent fields of one tool result unless they hold up: a transcript
+ * must be messages of the same shape the importer demands everywhere else, and
+ * an index must be a whole number from 1 (`highestSubagentIndex` compares it with
+ * `>` and would happily seed the allocator from a numeric string that
+ * `collectSubagentTranscript`'s `===` then never matches).
+ *
+ * A transcript loses only its malformed messages, the same way the record's own
+ * message list does — dropping the whole array over one bad entry leaves the
+ * index behind, so the subagent card renders empty and resuming it throws.
+ * @param entry - Raw parsed toolResults element
+ * @returns The entry with unusable subagent fields removed
+ */
+function sanitizeToolResult(entry: unknown): unknown {
+  if (typeof entry !== "object" || entry === null) return entry;
+
+  const { subagentTranscript, subagentIndex, ...rest } = entry as {
+    subagentTranscript?: unknown;
+    subagentIndex?: unknown;
+  };
+
+  return {
+    ...rest,
+    ...(Array.isArray(subagentTranscript) && {
+      subagentTranscript: (subagentTranscript as unknown[])
+        .filter(isValidImportedMessage)
+        .map(sanitizeImportedMessage),
+    }),
+    ...(Number.isInteger(subagentIndex) &&
+      (subagentIndex as number) >= 1 && { subagentIndex }),
   };
 }

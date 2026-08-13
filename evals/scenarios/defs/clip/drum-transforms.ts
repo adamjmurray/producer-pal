@@ -9,7 +9,10 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
+import {
+  assertNotesRead,
+  getTransforms,
+} from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 

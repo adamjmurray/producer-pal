@@ -15,12 +15,14 @@
 import { act } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  deferredFirstSave,
   deferredSave,
   deferredSaveQueue,
   drainMicrotasks,
   flushDebounceWindow,
   renderReadyEditor,
   startBlockedClear,
+  startClear,
   stubConfirm,
   typeDraft,
 } from "./use-context-editor-state-test-helpers";
@@ -128,16 +130,7 @@ describe("useContextEditorState write ordering", () => {
     });
 
     it("handleImport awaits an in-flight save before importing", async () => {
-      let resolveSave: (saved: boolean) => void = () => {};
-      const save = vi
-        .fn()
-        .mockImplementationOnce(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveSave = resolve;
-            }),
-        )
-        .mockResolvedValue(true);
+      const { save, resolveFirstSave } = deferredFirstSave();
       const { result } = renderReadyEditor({ save });
 
       stubConfirm(true);
@@ -157,7 +150,7 @@ describe("useContextEditorState write ordering", () => {
       expect(save).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        resolveSave(true);
+        resolveFirstSave(true);
         await importPromise;
       });
 
@@ -234,12 +227,9 @@ describe("useContextEditorState write ordering", () => {
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
       let importPromise: Promise<void> | undefined;
+      const { pending: clearPromise } = await startClear(result);
 
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
       expect(clear).toHaveBeenCalledTimes(1);
 
       await act(() => {
@@ -337,26 +327,87 @@ describe("useContextEditorState write ordering", () => {
     });
   });
 
-  describe("autosave vs in-flight manual write ordering", () => {
+  describe("out-of-band writes via dispatchWrite", () => {
+    // The Skills "Include" toggle PUTs the same slot file the editor autosaves
+    // but isn't part of the editor's save lifecycle, so it has to borrow the
+    // ordering — in both directions, like every other write here.
+    it("holds an out-of-band write until the in-flight autosave lands", async () => {
+      // Left unordered, the smaller toggle PUT wins the race, echoes the
+      // PRE-edit body, and claims the newer sequence number — so the stale body
+      // is what the merge commits and what Reload then offers over the user's
+      // own text.
+      const { save, resolveSave } = deferredSave();
+      const toggle = vi.fn().mockResolvedValue(true);
+      const { result } = renderReadyEditor({ save });
+
+      await typeDraft(result, "edited body");
+      await flushDebounceWindow();
+      expect(save).toHaveBeenCalledTimes(1);
+
+      let togglePromise: Promise<boolean> | undefined;
+
+      await act(() => {
+        togglePromise = result.current.dispatchWrite(toggle);
+      });
+      await drainMicrotasks();
+      expect(toggle).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveSave(true);
+        await togglePromise;
+      });
+      expect(toggle).toHaveBeenCalledTimes(1);
+    });
+
+    it("holds a blur flush until an in-flight out-of-band write lands", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { save: toggle, resolveSave: resolveToggle } = deferredSave();
+      const { result } = renderReadyEditor({ save });
+
+      let togglePromise: Promise<boolean> | undefined;
+
+      await act(() => {
+        // deferredSave's spy is typed loosely (it also stands in for the doc
+        // hook's save/clear), so the write thunk needs the narrower signature.
+        togglePromise = result.current.dispatchWrite(
+          toggle as () => Promise<boolean>,
+        );
+      });
+      expect(toggle).toHaveBeenCalledTimes(1);
+
+      await typeDraft(result, "typed during toggle");
+      await act(() => {
+        result.current.handleBlur();
+      });
+      await drainMicrotasks();
+      expect(save).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveToggle(true);
+        await togglePromise;
+      });
+      await drainMicrotasks();
+      expect(save).toHaveBeenCalledWith("typed during toggle");
+    });
+  });
+
+  describe("autosave vs in-flight manual write", () => {
     // The remaining direction: the editor stays live through a Clear/Import
     // round trip (it only remounts once the echo lands), so the user can type
-    // into it while that PUT is on the wire. An autosave that dispatched
-    // immediately would race it — and the damaging outcome is the quiet one:
-    // the autosave handled first, the clear landing last, the draft gone from
-    // disk while the editor still shows it saved, until a poll surfaces the
-    // emptiness as an "updated outside the editor" banner.
-    it("holds a debounced autosave until an in-flight Clear's POST lands", async () => {
+    // into it while that PUT is on the wire. Ordering that draft behind the
+    // replace only guarantees it lands LAST — writing text to disk that the
+    // remount then hides, with no banner until the next poll offers it back as
+    // an external edit. The replace is what the user ends up looking at, so the
+    // draft is dropped instead.
+    it("drops a draft typed during an in-flight Clear", async () => {
       const save = vi.fn().mockResolvedValue(true);
       const { save: clear, resolveSave: resolveClear } = deferredSave();
       const { result } = renderReadyEditor({ save, clear });
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
+      const { pending: clearPromise } = await startClear(result);
 
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
       expect(clear).toHaveBeenCalledTimes(1);
 
       await typeDraft(result, "typed during clear");
@@ -368,22 +419,14 @@ describe("useContextEditorState write ordering", () => {
         await clearPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledWith("typed during clear");
+      expect(save).not.toHaveBeenCalled();
+      expect(result.current.getContent()).toBe("");
     });
 
-    it("holds a blur flush until an in-flight Import's POST lands", async () => {
+    it("drops a blur flush typed during an in-flight Import", async () => {
       // Blur flushes with no debounce, so the window is the bare round trip —
       // the race is not only the 800ms one.
-      let resolveImport: (saved: boolean) => void = () => {};
-      const save = vi
-        .fn()
-        .mockImplementationOnce(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveImport = resolve;
-            }),
-        )
-        .mockResolvedValue(true);
+      const { save, resolveFirstSave: resolveImport } = deferredFirstSave();
       const { result } = renderReadyEditor({ save });
 
       stubConfirm(true);
@@ -407,44 +450,31 @@ describe("useContextEditorState write ordering", () => {
         await importPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(save).toHaveBeenLastCalledWith("typed during import");
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(result.current.getContent()).toBe("# imported");
     });
 
-    it("still rolls back and schedules the retry when a held-back autosave fails", async () => {
-      // Deferring the dispatch must not cost the flush its failure handling:
-      // the rollback and the SAVE_RETRY_MS timer hang off the settled promise,
-      // not off when the PUT left.
-      const save = vi.fn().mockResolvedValue(false);
+    it("autosaves again normally once the Clear has landed", async () => {
+      // The drop lasts only as long as the replace is on the wire.
+      const save = vi.fn().mockResolvedValue(true);
       const { save: clear, resolveSave: resolveClear } = deferredSave();
       const { result } = renderReadyEditor({ save, clear });
 
       stubConfirm(true);
 
-      let clearPromise: Promise<boolean> | undefined;
-
-      await act(() => {
-        clearPromise = result.current.handleClear();
-      });
-
-      await typeDraft(result, "typed during clear");
-      await flushDebounceWindow();
-      expect(save).not.toHaveBeenCalled();
+      const { pending: clearPromise } = await startClear(result);
 
       await act(async () => {
         resolveClear(true);
         await clearPromise;
       });
       await drainMicrotasks();
-      expect(save).toHaveBeenCalledTimes(1);
 
-      // The failed save armed the unattended retry, which re-POSTs the draft.
-      await act(async () => {
-        vi.advanceTimersByTime(5000);
-        await Promise.resolve();
-      });
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(save).toHaveBeenLastCalledWith("typed during clear");
+      await typeDraft(result, "typed after clear");
+      await flushDebounceWindow();
+      await drainMicrotasks();
+
+      expect(save).toHaveBeenCalledWith("typed after clear");
     });
   });
 });

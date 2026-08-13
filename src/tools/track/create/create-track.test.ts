@@ -10,11 +10,11 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { createTrack } from "./create-track.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),
   warn: vi.fn(),
 }));
@@ -64,6 +64,22 @@ describe("createTrack", () => {
       id: "midi_track_1",
       trackIndex: 1,
     });
+  });
+
+  it("should stringify the numeric id Live returns from create_midi_track", () => {
+    // Live 12.4.3 returns ["id", 36] — the second element is a number, not the
+    // string the mocks above use. Every other tool reports `api.id`, which is
+    // always a string, so create-track must not hand back a number.
+    registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { tracks: children("existing1", "existing2") },
+      methods: { create_midi_track: () => ["id", 36] },
+    });
+    registerMockObject("36", {});
+
+    const result = createTrack({ trackIndex: 0 });
+
+    expect(result).toStrictEqual({ id: "36", trackIndex: 0 });
   });
 
   it("should create a single audio track when type is audio", () => {

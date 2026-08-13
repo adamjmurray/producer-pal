@@ -22,24 +22,17 @@
 // V8 for the Live Set. Same buildSkills underneath, different questions.
 
 import { type Express, type Request, type Response } from "express";
-import {
-  DISABLED_TOOLS_HEADER,
-  SMALL_MODEL_MODE_HEADER,
-  resolveEnabledTools,
-  resolveSmallModelMode,
-} from "#src/shared/config.ts";
+import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import {
-  NOTATION_HEADER,
-  resolveNotation,
-  type Notation,
-} from "#src/shared/notation.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
 import {
   globalContextBlock,
   projectContextBlock,
 } from "../helpers/global-context/global-context-inject.ts";
+import { rejectForeignOriginWrite } from "../helpers/http/request-origin.ts";
+import { resolveRequestProfile } from "../helpers/http/request-profile.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 import { type McpResponse } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
@@ -62,13 +55,14 @@ export interface SubagentBriefingConfig {
  * under, with no second vocabulary to keep in sync. Absent headers fall back to
  * the device globals, the same contract POST /mcp has.
  *
- * Read-only, so it is not origin-gated (matching /skills-preview and POST /mcp:
- * the chat reaches it same-origin, which over a LAN/tunnel is a non-localhost
- * origin). Safe to leave open because it DISCLOSES nothing a ppal-connect call on
- * the same profile wouldn't: every block carrying user or Live Set data is one
- * connect already returns, and what the briefing adds on top is static worker
- * marching orders. It is not the same text — see composeBriefing for what it drops
- * and what it adds — just never a wider surface.
+ * Gated like the content writes (see rejectForeignOriginWrite), not like the
+ * other read endpoints, and additionally requires {@link BRIEFING_REQUEST_HEADER}.
+ * Disclosure isn't the reason — it reveals nothing a ppal-connect call on the
+ * same profile wouldn't. The reason is the side effect: this is the only read
+ * endpoint that dispatches a real Live API call, so ungated, any page the user
+ * has open could drive their Live Set in a loop and hold an Express socket per
+ * request until the tool timeout. Same-origin still passes, so the chat reaches
+ * it over a LAN/tunnel as before.
  *
  * Responds 502 when Live can't be reached — the caller then falls back to
  * letting the worker connect for itself, so a briefing failure degrades to the
@@ -89,23 +83,37 @@ export function registerSubagentBriefingRoute(
   app.get(
     "/subagent-briefing",
     async (req: Request, res: Response): Promise<void> => {
+      // The load-bearing half of the CSRF guard: the origin gate below passes an
+      // Origin-less request, and a markup-driven GET (`<img>`, `<script>`) sends
+      // no Origin and cannot set a header. See BRIEFING_REQUEST_HEADER.
+      if (req.get(BRIEFING_REQUEST_HEADER) == null) {
+        res
+          .status(403)
+          .json({ error: "/subagent-briefing requires its client header" });
+
+        return;
+      }
+
+      // Gated like a write, because it acts like one: this GET reaches Live.
+      if (
+        rejectForeignOriginWrite(
+          req,
+          res,
+          "cross-site /subagent-briefing requests are not allowed",
+        )
+      ) {
+        return;
+      }
+
       // Overrides, context, and the Live Set all change between calls — never
       // cache. (Cache stability across spawns is the MODEL's prompt cache, which
       // keys on the assembled text, not on an HTTP cache.)
       res.set("Cache-Control", "no-store");
 
       const config = getConfig();
-      const notation = resolveNotation(
-        req.get(NOTATION_HEADER),
-        config.notation,
-      );
-      const smallModelMode = resolveSmallModelMode(
-        req.get(SMALL_MODEL_MODE_HEADER),
-        config.smallModelMode,
-      );
-      const tools = resolveEnabledTools(
-        req.get(DISABLED_TOOLS_HEADER),
-        config.tools,
+      const { notation, smallModelMode, tools } = resolveRequestProfile(
+        req,
+        config,
       );
 
       let liveSet: string;

@@ -105,14 +105,41 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
  */
 async function openAbletonLiveProject(projectPath: string): Promise<void> {
   return await new Promise((resolve, reject) => {
-    exec(`open -g -a "${ABLETON_APP}" "${projectPath}"`, (error) => {
-      if (error) {
-        reject(new Error(`Failed to open project: ${error.message}`));
-      } else {
-        resolve();
-      }
-    });
+    exec(
+      `open -g -a "${ABLETON_APP}" "${projectPath}"`,
+      { env: envWithoutTestMarkers() },
+      (error) => {
+        if (error) {
+          reject(new Error(`Failed to open project: ${error.message}`));
+        } else {
+          resolve();
+        }
+      },
+    );
   });
+}
+
+/**
+ * The current environment minus vitest's markers. macOS `open` hands the
+ * caller's environment to an app it COLD-STARTS, so a Live launched from the
+ * e2e suite would inherit VITEST=true — which makes the server treat
+ * ~/.producer-pal as inert (see config-markdown-store.ts), silently emptying
+ * global context, memory, and skill overrides. An already-running Live keeps
+ * whatever environment it started with, so without this the suite tests a
+ * different server depending on whether Live happened to be open.
+ *
+ * @returns A copy of process.env with the vitest markers removed
+ */
+function envWithoutTestMarkers(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("VITEST")) delete env[key];
+  }
+
+  delete env.NODE_ENV;
+
+  return env;
 }
 
 /**

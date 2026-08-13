@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   setupReturnTrackNames,
   setupTrackMixerMocks,
-} from "../helpers/read-track-registry-test-helpers.ts";
+} from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function expectSendsWithReverbAndSecond(
@@ -218,6 +218,20 @@ describe("readTrack - mixer properties", () => {
     expect(result).toHaveProperty("leftPan", 0.25);
     expect(result).toHaveProperty("rightPan", -0.5);
     expect(result).not.toHaveProperty("pan");
+  });
+
+  it("omits the split pans Live doesn't expose", () => {
+    setupTrackMixerMocks({
+      panningMode: 1,
+      leftSplitExists: false,
+      rightSplitExists: false,
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).not.toHaveProperty("leftPan");
+    expect(result).not.toHaveProperty("rightPan");
   });
 
   it("includes sends with return track names when requested", () => {

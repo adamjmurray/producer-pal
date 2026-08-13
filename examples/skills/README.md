@@ -2,8 +2,24 @@
 
 Agent skills that pair with [Producer Pal](https://producer-pal.org) to compose
 music in Ableton Live. Each is a self-contained folder with a `SKILL.md` and,
-where relevant, zero-dependency Node.js scripts. Copy the folders you want into
-your agent's skills directory.
+where relevant, zero-dependency Node.js scripts.
+
+## Install
+
+Download a zip and unzip it into your agent's skills directory —
+[`producer-pal-skill.zip`](https://producer-pal.org/downloads/producer-pal-skill.zip)
+for just the main skill,
+[`producer-pal-all-skills.zip`](https://producer-pal.org/downloads/producer-pal-all-skills.zip)
+for all of them:
+
+```bash
+curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
+unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
+# or ~/.codex/skills/, or ~/.gemini/skills/
+```
+
+The zips are built from `main`. From a checkout, copy the folders you want into
+that same directory instead.
 
 ## Connect first
 
@@ -22,7 +38,7 @@ made (via `producer-pal`'s `ppal.mjs` or any connected MCP client).
   algorithm for what was actually asked for; a shared `lib/` handles WAV
   encoding, normalization, and declicking, so custom DSP costs nothing extra.
 
-A `cookbook.md` alongside them translates the words people actually use —
+The audio generator's `cookbook.md` translates the words people actually use —
 "gritty", "boomy", "808", "dusty", "sounds cheap" — into concrete parameters
 with starting numbers, so a described sound doesn't become a guessed one.
 
@@ -50,9 +66,10 @@ a draggable Session clip); only the final drop is manual.
 
 - **[`ableton-analyze-audio`](ableton-analyze-audio/)** — get audio _out_ of
   Live. Two halves that also work on their own:
-  - **Render** the Main mix or a single track to a file (whole arrangement).
-    **macOS only** — AppleScript UI automation. No API key needed, so this is
-    also the way to get a plain bounce or stem on disk.
+  - **Render** the Main mix, a single track, or one Session clip to a file (a
+    render always spans the whole arrangement). **macOS only** — AppleScript UI
+    automation. No API key needed, so this is also the way to get a plain bounce
+    or stem on disk.
   - **Analyze** any audio file with Google's Gemini API for feedback on timbre,
     mix, and arrangement. Needs `GEMINI_KEY` (or `GEMINI_API_KEY`); works on
     files from anywhere, no Ableton involved.

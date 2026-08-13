@@ -25,6 +25,7 @@
  * "clear", or "preTransforms".
  */
 
+import { argText } from "../../arg-text.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
@@ -37,7 +38,7 @@ import {
   READ_DRUM_NOTES,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -79,7 +80,7 @@ function classifyFallback(
   const reachCall = calls.find(
     (c) =>
       c.args.preTransforms != null &&
-      String(c.args.preTransforms).trim() !== "",
+      argText(c.args.preTransforms).trim() !== "",
   );
 
   if (reachCall) {
@@ -101,7 +102,7 @@ function classifyFallback(
   }
 
   const onlyCall = calls[0] as (typeof calls)[number];
-  const notes = String(onlyCall.args.notes ?? "");
+  const notes = argText(onlyCall.args.notes);
 
   if (/(^|\s)v0(\s|$)/.test(notes)) {
     return {

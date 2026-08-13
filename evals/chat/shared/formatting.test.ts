@@ -292,8 +292,8 @@ describe("describeStreamError", () => {
     expect(describeStreamError("raw string error")).toBe("raw string error");
   });
 
-  it("stringifies an object with no usable message", () => {
-    expect(describeStreamError({})).toBe("[object Object]");
+  it("names the failure for an object with no usable message", () => {
+    expect(describeStreamError({})).toBe("unknown error");
   });
 });
 

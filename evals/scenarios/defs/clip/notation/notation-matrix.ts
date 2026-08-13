@@ -41,7 +41,7 @@ import {
   notesMatch,
   TOOL_CONNECT,
   TOOL_READ_CLIP,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 /** create-clip tool name (turn-1 create assertion). */
 const TOOL_CREATE_CLIP = "ppal-create-clip";

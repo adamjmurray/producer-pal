@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 // Interpret `notation` and assert the resulting [pitch, start_time] pairs.
 // Returns the notes so callers can make further assertions on the same result.

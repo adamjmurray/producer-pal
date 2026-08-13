@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.1.0-rc1";
+export const VERSION = "2.1.1-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -183,3 +183,19 @@ export function resolveEnabledTools(
 
   return configuredTools.filter((name) => !disabled.has(name));
 }
+
+// --- Subagent briefing ---
+
+/**
+ * Header GET /subagent-briefing requires, as a CSRF guard.
+ *
+ * The origin gate alone isn't enough for this one: it passes Origin-less
+ * requests (non-browser clients need that), and a browser sends no Origin for
+ * `<img>`, `<script>`, or a navigation — so any page the user has open could
+ * reach the one read endpoint that dispatches a Live API call. A custom header
+ * closes that: markup can't set one, and a cross-origin `fetch` that does forces
+ * a preflight the gate then answers.
+ *
+ * Any value passes; presence is the whole signal.
+ */
+export const BRIEFING_REQUEST_HEADER = "x-producer-pal-briefing";

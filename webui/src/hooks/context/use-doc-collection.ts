@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
+import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   deleteEntryRequest,
   fetchEntries,
@@ -22,8 +23,6 @@ import {
   type SaveStatus,
   useRefreshOnFocusAndPoll,
 } from "./use-doc";
-
-const AUTOSAVE_DEBOUNCE_MS = 800;
 
 type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
@@ -107,9 +106,10 @@ export interface DocCollectionConfig {
  * @param config - The collection's endpoints and error label
  * @returns Collection state plus save/delete and refresh actions
  */
-export function useDocCollection<TView extends DocCollectionEntry, TInput>(
-  config: DocCollectionConfig,
-): UseDocCollectionReturn<TView, TInput> {
+export function useDocCollection<
+  TView extends DocCollectionEntry,
+  TInput extends object,
+>(config: DocCollectionConfig): UseDocCollectionReturn<TView, TInput> {
   const { label, collectionUrl, entryUrl } = config;
   const [status, setStatus] = useState<DocCollectionStatus<TView>>({
     kind: "loading",
@@ -133,7 +133,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
   const saveEntry = useCallback(
     (name: string, input: TInput, createOnly = false): Promise<TView | null> =>
       mutate(
-        () => putEntry<TView, TInput>(entryUrl(name), input, createOnly, label),
+        () => putEntry<TView>(entryUrl(name), input, createOnly, label),
         (entry) => setStatus((prev) => mergeEntry(prev, entry)),
         [name],
       ),
@@ -144,7 +144,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     (oldName: string, newName: string, input: TInput): Promise<TView | null> =>
       mutate(
         () =>
-          putRename<TView, TInput>(
+          putRename<TView>(
             `${entryUrl(oldName)}/rename`,
             newName,
             input,
@@ -192,8 +192,14 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
 /** Params for {@link useCollectionEntryAutosave}. */
 export interface CollectionEntryAutosaveParams {
   /**
-   * Whether the current draft is valid to persist (name + body present and no
-   * save in flight). A non-savable draft is never flushed.
+   * Whether the current draft is valid to persist (its required fields are
+   * present). A non-savable draft is never flushed.
+   *
+   * Must NOT fold in "a save is already in flight": flush chains behind an
+   * in-flight write itself (see flush), so gating here would silently drop the
+   * unmount and tab-close flushes for exactly the edits typed during a save's
+   * round trip — type, wait for the debounce to dispatch, type once more, close
+   * the overlay, and that last edit is gone with no notice.
    */
   canSave: boolean;
   /**
@@ -254,7 +260,8 @@ export interface CollectionEntryAutosaveReturn {
    * was open) AND the draft is clean (`draftKey` === baseline). A dirty draft
    * suppresses this — typing is an implicit last-write-wins choice, and the
    * debounced autosave would clobber the external change within
-   * `AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to solve there.
+   * `DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to
+   * solve there.
    * Always false in new-entry mode (no `externalKey`).
    */
   externalUpdate: boolean;
@@ -303,9 +310,11 @@ export function useCollectionEntryAutosave(
   params: CollectionEntryAutosaveParams,
 ): CollectionEntryAutosaveReturn {
   const { canSave, draftKey, autosaveOnIdle, persist, externalKey } = params;
-  // Constant per mount (isNew is fixed per editor key), so the leave effects can
-  // gate on it directly without a ref.
+  // NOT constant per mount: a rename renders once with no entry, which flips
+  // this false and back without remounting the editor. The unmount effect reads
+  // it through a ref (see below) so that blip can't re-run its cleanup.
   const flushOnLeave = params.flushOnLeave ?? true;
+  const flushOnLeaveRef = useRef(flushOnLeave);
   const canSaveRef = useRef(canSave);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
@@ -331,6 +340,7 @@ export function useCollectionEntryAutosave(
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
+    flushOnLeaveRef.current = flushOnLeave;
   });
 
   // Deletion detection is synced in a LAYOUT effect — it runs synchronously at
@@ -395,15 +405,25 @@ export function useCollectionEntryAutosave(
     // pre-registration inFlightRef and putting two writes on the wire anyway.
     // Only the DISPATCH defers — the same split as useContextEditorState's
     // dispatchOrderedWrite.
+    //
+    // Registered as a promise that SETTLES, like dispatchOrderedWrite's: a
+    // rejection left in `inFlightRef` would never be nulled, so every later
+    // flush would `prior.then(dispatch)` without ever dispatching (autosave
+    // stops for the rest of the mount) and settlePendingSave would throw into
+    // commitRename's un-awaited call. `persist` resolves null rather than
+    // throwing today — this keeps that from being load-bearing, and a null takes
+    // the same baseline-rollback path a failed save does.
     const prior = inFlightRef.current;
     const pending: Promise<void> = (
       prior == null ? dispatch() : prior.then(dispatch)
-    ).then((echoKey) => {
-      if (inFlightRef.current === pending) inFlightRef.current = null;
-      if (!mountedRef.current || lastSavedRef.current !== key) return;
+    )
+      .catch(() => null)
+      .then((echoKey) => {
+        if (inFlightRef.current === pending) inFlightRef.current = null;
+        if (!mountedRef.current || lastSavedRef.current !== key) return;
 
-      lastSavedRef.current = echoKey ?? previous;
-    });
+        lastSavedRef.current = echoKey ?? previous;
+      });
 
     inFlightRef.current = pending;
   }, []);
@@ -419,14 +439,14 @@ export function useCollectionEntryAutosave(
       seededRef.current = true;
       lastSavedRef.current = canSave ? draftKey : null;
 
-      return;
+      return undefined;
     }
 
     if (!autosaveOnIdle || !canSave || draftKey === lastSavedRef.current) {
-      return;
+      return undefined;
     }
 
-    timerRef.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
+    timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimer(timerRef);
   }, [canSave, draftKey, autosaveOnIdle, flush]);
@@ -456,7 +476,7 @@ export function useCollectionEntryAutosave(
   // flushOnLeave (existing entries). A new draft is created explicitly (Create),
   // so its editor prompts a discard confirm on close instead of silently saving.
   useEffect(() => {
-    if (!flushOnLeave) return;
+    if (!flushOnLeave) return undefined;
 
     const onBeforeUnload = (): void => flush();
 
@@ -469,12 +489,17 @@ export function useCollectionEntryAutosave(
   // afterward), then flush the pending draft — overlay close, tab switch, and
   // entry-selection change all unmount this editor. A new draft skips the flush
   // (flushOnLeave false); its discard is confirmed by the nav guard instead.
+  //
+  // Depends on `flush` alone (stable), so this cleanup runs ONLY on a real
+  // unmount. Gating on `flushOnLeave` directly would re-run it on the
+  // no-entry render a rename passes through, latching `mountedRef` false for
+  // the rest of the mount and killing every later flush's rollback.
   useEffect(
     () => () => {
       mountedRef.current = false;
-      if (flushOnLeave) flush();
+      if (flushOnLeaveRef.current) flush();
     },
-    [flush, flushOnLeave],
+    [flush],
   );
 
   const noteSaved = useCallback((echoKey: string): void => {

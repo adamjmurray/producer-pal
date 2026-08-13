@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
@@ -14,7 +20,7 @@ import {
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
-  loadDefaultSubagentPresetId,
+  loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadSmallModelMode,
@@ -22,7 +28,7 @@ import {
   type ProviderSettingsApplier,
   type ProviderStateSetters,
   saveCurrentSettings,
-  saveDefaultSubagentPresetId,
+  saveSubagentPresetId,
   saveSmallModelMode,
 } from "./settings-helpers";
 import { useProviderSlices } from "./use-provider-connections";
@@ -99,9 +105,9 @@ export function useSettings(): UseSettingsReturn {
   // Which preset a spawned subagent runs under (null = inherit the orchestrator
   // config). A modal-local buffer like smallModelMode: persisted on Save,
   // reverted on Cancel.
-  const [defaultSubagentPresetId, setDefaultSubagentPresetId] = useState<
-    string | null
-  >(loadDefaultSubagentPresetId);
+  const [subagentPresetId, setSubagentPresetId] = useState<string | null>(
+    loadSubagentPresetId,
+  );
   // False until the post-mount async decrypt has applied the real apiKeys.
   // saveSettings gates on this — saving the placeholder blanks would wipe
   // every stored encrypted key.
@@ -188,17 +194,23 @@ export function useSettings(): UseSettingsReturn {
     [providerStateSetters],
   );
 
+  // Cancels whichever decrypt-and-apply is still in flight. Every start replaces
+  // it, so a second load (cancel, then cancel again) can't have the earlier one
+  // apply on top of the later, and unmount can't apply into a dead component.
+  const cancelPendingLoadRef = useRef<(() => void) | null>(null);
+
   // Post-mount: replace the synchronous placeholder settings (apiKey blanked)
   // with the real values, decrypting each provider's apiKey from its at-rest
   // envelope. Runs once; the synchronous useState initializers above already
   // populated everything except the (async-decrypted) apiKey.
-  useEffect(
-    () =>
-      applyDecryptedSettings(applyLoadedSettings, () =>
-        setSettingsLoaded(true),
-      ),
-    [applyLoadedSettings],
-  );
+  useEffect(() => {
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
+
+    return () => cancelPendingLoadRef.current?.();
+  }, [applyLoadedSettings]);
 
   const saveSettings = useCallback(async (): Promise<boolean> => {
     if (!warnIfNotLoaded(settingsLoaded)) return false;
@@ -217,7 +229,7 @@ export function useSettings(): UseSettingsReturn {
         enabledTools,
         providerSettings,
         smallModelMode,
-        defaultSubagentPresetId,
+        subagentPresetId,
       );
     } catch (err) {
       console.error("Failed to save provider settings", err);
@@ -240,7 +252,7 @@ export function useSettings(): UseSettingsReturn {
     provider,
     enabledTools,
     smallModelMode,
-    defaultSubagentPresetId,
+    subagentPresetId,
     voiceModeSettings,
     providerSettings,
   ]);
@@ -249,14 +261,18 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
-    setDefaultSubagentPresetId(loadDefaultSubagentPresetId());
+    setSubagentPresetId(loadSubagentPresetId());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
     // tick later, mirroring the post-mount load). Pass the same onLoaded as the
     // post-mount effect so a cancel-during-initial-load (StrictMode remount,
     // fast cancel-then-reopen) still settles settingsLoaded → true — otherwise
     // the next Save would silently no-op via warnIfNotLoaded.
-    applyDecryptedSettings(applyLoadedSettings, () => setSettingsLoaded(true));
+    cancelPendingLoadRef.current?.();
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
@@ -279,10 +295,6 @@ export function useSettings(): UseSettingsReturn {
     provider === "lmstudio" || provider === "ollama"
       ? checkHasApiKey(provider)
       : Boolean(currentSettings.apiKey);
-  const isToolEnabled = useCallback(
-    (toolId: string) => enabledTools[toolId] ?? true,
-    [enabledTools],
-  );
   const resetBehaviorToDefaults = useCallback(() => {
     setThinking(DEFAULT_SETTINGS[provider].thinking);
   }, [provider, setThinking]);
@@ -320,11 +332,10 @@ export function useSettings(): UseSettingsReturn {
     enabledTools,
     setEnabledTools: setEnabledToolsState,
     resetBehaviorToDefaults,
-    isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
-    defaultSubagentPresetId,
-    setDefaultSubagentPresetId,
+    subagentPresetId,
+    setSubagentPresetId,
     saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
@@ -373,22 +384,27 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * when the encrypted write fails so saveSettings can keep the modal open and
  * surface the error instead of committing the in-memory saved* snapshots
  * against an empty at-rest envelope.
+ *
+ * The encrypted write goes first because it's the one that can fail. The two
+ * localStorage flags after it are what cancelSettings reads back, so writing
+ * them first would leave a failed Save already applied — and Cancel would then
+ * restore the values the user was trying to abandon.
  * @param {Provider} provider - Currently selected provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - Settings for every provider
  * @param {boolean} smallModelMode - Small-model-mode flag
- * @param {string | null} defaultSubagentPresetId - Default subagent preset id (null = inherit)
+ * @param {string | null} subagentPresetId - Subagent preset id (null = inherit)
  */
 async function persistAllSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
   smallModelMode: boolean,
-  defaultSubagentPresetId: string | null,
+  subagentPresetId: string | null,
 ): Promise<void> {
-  saveSmallModelMode(smallModelMode);
-  saveDefaultSubagentPresetId(defaultSubagentPresetId);
   await saveCurrentSettings(provider, enabledTools, allSettings);
+  saveSmallModelMode(smallModelMode);
+  saveSubagentPresetId(subagentPresetId);
 }
 
 /**

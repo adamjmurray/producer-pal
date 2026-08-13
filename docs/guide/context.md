@@ -8,8 +8,9 @@ description:
 
 # Context & Memory
 
-Producer Pal remembers things about your music in three layers. Each one is
-included in every conversation, and each answers a different question:
+Producer Pal remembers things about your music and about you, in three layers.
+Each one is available in every conversation, and each answers a different
+question:
 
 | Layer               | Answers                        | Stored                                                           |
 | ------------------- | ------------------------------ | ---------------------------------------------------------------- |
@@ -27,11 +28,11 @@ back them up directly.
 
 You write project and global context by hand. Memory is AI's own notebook: it
 records facts as you work, and you can edit them. AI can edit all three with the
-[Context tool](/features#ppal-context).
+[Context tool](/features/tools#ppal-context).
 
 All three reach every client — the built-in [Chat UI](/guide/chat-ui), external
 MCP clients like Claude Desktop, and the [REST API](/guide/rest-api) — because
-they are attached to the result when AI connects.
+they ride along with the `ppal-connect` result, no matter which route called it.
 
 ## The context editor
 
@@ -63,12 +64,13 @@ the device's [Context tab](/guide/device#context-tab) — the device shows it in
 small box, the editor gives it room.
 
 Because a device upgrade starts you on a fresh, empty device, Producer Pal also
-mirrors this context to a `Producer Pal Project Context.md` file saved next to
-your Set's `.als`, and restores it the first time you use Producer Pal after
-upgrading. It's a backup, not the source of truth — you normally never touch it,
-and it's safe to delete. (Unlike the two layers below, this is the one context
-file that lives with your project rather than under `~/.producer-pal`.) See
-[a rare case where the newest context isn't captured](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare).
+mirrors this context to a `Producer Pal Project Context.md` file saved in your
+Live Project folder — one file, shared by every Set in it — and restores it the
+first time the AI uses a tool after upgrading. It's a backup, not the source of
+truth — you normally never touch it, and it's safe to delete. (Unlike the two
+layers below, this is the one context file that lives with your project rather
+than under `~/.producer-pal`.) See
+[when an upgrade can still lose it](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices).
 
 Keep it about the project, not about you. "Kick stays four-on-the-floor" belongs
 here; "I always work in A minor" belongs in Global.
@@ -83,6 +85,18 @@ it to do.
 
 Global context is stored on your computer, so it follows you from project to
 project — a new Live Set starts with your preferences already in place.
+
+::: tip AI can't replace either layer with just its own edit
+
+When AI edits Project or Global context it rewrites the whole document, so a
+model that sends only its new fact would replace everything else with it.
+Producer Pal skips a write that keeps none of what's already there and tells AI
+to re-send the existing content along with its addition. It's a backstop against
+wholesale replacement rather than a merge check — a write that keeps some of
+your notes and drops the rest still goes through. Emptying a layer on purpose
+still works — from the editor, or by asking AI to clear it.
+
+:::
 
 ## Instructions
 
@@ -134,15 +148,18 @@ your override so you can see what you changed:
   **Hide** to collapse back to one column
 - The trash button beside "Your override" resets the fragment, deleting it
 
-**Preview** shows what AI actually receives — the whole assembled document for a
-given notation and model size, with your overrides applied. The customized
-library fragment above appears here in place, right where it gets pulled in:
+The eye button at the end of the controls row shows what AI actually receives —
+the whole assembled document for a given notation and model size, with your
+overrides applied. The customized library fragment above appears here in place,
+right where it gets pulled in:
 
 <img src="/img/producer-pal-context-skills-preview.png" alt="Skills preview" width="700"/>
 
 The ★ badge marks the combination your current settings use, and the size
 readout is why trimming matters: everything here is sent on every conversation.
-**Source** switches back to editing.
+**Enabled tools only** leaves out the sections no tool you've switched on would
+use, which is what a new conversation gets; clear it to read a section whose
+tools are currently off. The `< >` button switches back to editing.
 
 See [Customizing Skills](/guide/customizing-skills) for how the fragments fit
 together, and how to drop whole areas you never use.

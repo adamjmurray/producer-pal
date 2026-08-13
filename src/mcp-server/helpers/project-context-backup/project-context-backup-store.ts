@@ -38,6 +38,13 @@
 // song file_path), NOT ~/.producer-pal, so it deliberately does NOT go through
 // the config-markdown store — there is no configurable dir and no Vitest-inert
 // guard here; tests point file_path at a temp dir instead.
+//
+// Nothing here throws. The folder belongs to the user, so every call can fail
+// for reasons we don't control (read-only volume, a locked cloud-sync folder) —
+// and a throw would surface as a failed RPC, which V8 declines to memoize and
+// so retries, warning into every tool result. Each function logs and reports
+// what it managed to do, keeping "nothing to do" apart from "it failed" so the
+// route can report the failure as its own action.
 
 import {
   existsSync,
@@ -67,26 +74,35 @@ export function projectContextSidecarPath(liveSetPath: string): string {
 }
 
 /**
- * Read the backup sidecar beside the given Live Set, verbatim. A missing or
- * unreadable file yields null so the caller can distinguish "no backup" from an
- * empty backup.
+ * What a sidecar read found. "absent" and "unreadable" are kept apart because
+ * they call for opposite behavior: nothing on disk means a backup is safe to
+ * create, while a file we can't read may hold the folder's shared notes and
+ * must not be written over.
+ */
+export type SidecarRead =
+  | { status: "found"; content: string }
+  | { status: "absent" }
+  | { status: "unreadable" };
+
+/**
+ * Read the backup sidecar beside the given Live Set, verbatim.
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
- * @returns Sidecar contents verbatim, or null when absent/unreadable
+ * @returns The contents, or which kind of nothing came back
  */
-export function readProjectContextSidecar(liveSetPath: string): string | null {
+export function readProjectContextSidecar(liveSetPath: string): SidecarRead {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return null;
+  if (!existsSync(path)) return { status: "absent" };
 
   try {
-    return readFileSync(path, "utf8");
+    return { status: "found", content: readFileSync(path, "utf8") };
   } catch (error) {
     console.error(
       `Failed to read project context backup: ${errorMessage(error)}`,
     );
 
-    return null;
+    return { status: "unreadable" };
   }
 }
 
@@ -97,17 +113,45 @@ export function readProjectContextSidecar(liveSetPath: string): string | null {
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
  * @param content - Project-context blob to persist
+ * @returns true when the sidecar now holds the content, false on failure
  */
 export function writeProjectContextSidecar(
   liveSetPath: string,
   content: string,
-): void {
+): boolean {
   const path = projectContextSidecarPath(liveSetPath);
   const tmpPath = `${path}.tmp`;
 
-  writeFileSync(tmpPath, content, "utf8");
-  renameSync(tmpPath, path);
+  try {
+    writeFileSync(tmpPath, content, "utf8");
+    renameSync(tmpPath, path);
+
+    return true;
+  } catch (error) {
+    console.error(
+      `Failed to write project context backup: ${errorMessage(error)}`,
+    );
+
+    // A half-finished write leaves the temp file sitting in the user's Ableton
+    // project folder next to their Sets. Clear it, and swallow whatever stopped
+    // us — the failure is already logged and there's nothing further to try.
+    try {
+      rmSync(tmpPath, { force: true });
+    } catch {
+      // Nothing more to do.
+    }
+
+    return false;
+  }
 }
+
+/**
+ * What a delete attempt did. "absent" and "failed" are kept apart because the
+ * user only needs telling about one of them: nothing to delete means the clear
+ * already holds, while a delete that threw leaves a sidecar that will restore
+ * over the clear on the next device load.
+ */
+export type SidecarDelete = "deleted" | "absent" | "failed";
 
 /**
  * Delete the backup sidecar beside the given Live Set, if present. Used when the
@@ -116,14 +160,24 @@ export function writeProjectContextSidecar(
  * no-op.
  *
  * @param liveSetPath - Absolute path to the Live Set (.als) file
- * @returns true when a sidecar was deleted, false when there was none
+ * @returns What happened: deleted, nothing there, or the delete threw
  */
-export function deleteProjectContextSidecar(liveSetPath: string): boolean {
+export function deleteProjectContextSidecar(
+  liveSetPath: string,
+): SidecarDelete {
   const path = projectContextSidecarPath(liveSetPath);
 
-  if (!existsSync(path)) return false;
+  if (!existsSync(path)) return "absent";
 
-  rmSync(path, { force: true });
+  try {
+    rmSync(path, { force: true });
 
-  return true;
+    return "deleted";
+  } catch (error) {
+    console.error(
+      `Failed to delete project context backup: ${errorMessage(error)}`,
+    );
+
+    return "failed";
+  }
 }

@@ -22,10 +22,15 @@
 // because a gate is a runtime concern while a slot is an authoring one, and the
 // two sets differ: `code-transforms` is a real fragment with no override slot.
 // A test asserts every fragment has an entry, so adding one forces the decision.
+// `fragment-requires.ts` is keyed the same way, for the same reason.
 
-// The two clip writers, named because three separate gates reach for them.
+// The clip writers, named because several separate gates reach for them.
 const CREATE_CLIP = "ppal-create-clip";
 const UPDATE_CLIP = "ppal-update-clip";
+const DUPLICATE = "ppal-duplicate";
+
+/** The gate for guidance whose whole point is to be said out loud to a person. */
+const CONVERSATION_ONLY = "conversation-only";
 
 /**
  * Tools that carry clip `notes` in either direction — the three read tools all
@@ -33,11 +38,10 @@ const UPDATE_CLIP = "ppal-update-clip";
  * them makes the notation head load-bearing.
  *
  * Spanning both directions is deliberate and can't be narrowed to the writers: a
- * read-only caller still needs the grammar to parse what read-clip RETURNS. The
- * cost is that it also receives the authoring half it can't use (~680-1160 tokens
- * of `barbeat-standard`), which is a known, measured floor rather than an
- * oversight — splitting the head is blocked on override migration, not on this
- * table. See ADR-0016.
+ * read-only caller still needs the grammar to parse what read-clip RETURNS. What
+ * a read-only caller does NOT need is the authoring syntax, and that is a
+ * separate `-write` fragment rather than a narrower gate here — see
+ * {@link NOTE_WRITE_TOOLS} and ADR-0019.
  */
 const NOTE_TOOLS = [
   "ppal-read-clip",
@@ -47,15 +51,71 @@ const NOTE_TOOLS = [
   "ppal-read-scene",
 ] as const;
 
-/** The tools whose schemas accept `transforms` / `preTransforms`. */
-const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, "ppal-duplicate"] as const;
+/**
+ * The two tools that take `notes` as INPUT — the gate on a notation head's
+ * `-write` sibling. A strict subset of {@link NOTE_TOOLS}, so the requires-subset
+ * invariant holds: any toolset keeping the authoring half also keeps the base
+ * head whose grammar it builds on.
+ */
+const NOTE_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP] as const;
 
-/** The three device tools; the path grammar and build recipes serve all of them. */
+/** The tools whose schemas accept `transforms` / `preTransforms`. */
+const TRANSFORM_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
+
+/** The three device tools. */
 const DEVICE_TOOLS = [
   "ppal-read-device",
   "ppal-create-device",
   "ppal-update-device",
 ] as const;
+
+/**
+ * Everything that addresses a device by path — the gate on `devices`, which is
+ * the only place the path grammar (`t`/`rt`/`mt`/`d`/`c`/`rc`/`p`) is written
+ * down. Three non-device tools take one: `devicePath` on select (plus
+ * `openPluginWindow`, which the same fragment's VST/AU half qualifies), `path`
+ * on delete, `toPath` on duplicate. Gating this on {@link DEVICE_TOOLS} alone
+ * left them addressing returns and the master track with no vocabulary for
+ * either.
+ */
+const DEVICE_PATH_TOOLS = [
+  ...DEVICE_TOOLS,
+  "ppal-select",
+  "ppal-delete",
+  DUPLICATE,
+] as const;
+
+/**
+ * The two device tools that can BUILD — the gate on `devices-write`. A strict
+ * subset of {@link DEVICE_PATH_TOOLS}, so the requires-subset invariant holds.
+ */
+const DEVICE_WRITE_TOOLS = [
+  "ppal-create-device",
+  "ppal-update-device",
+] as const;
+
+/**
+ * Every tool that reports or sets an arrangement position: three put clips
+ * there, and two report an `arrangementStart` back — read-clip directly,
+ * read-track in the `arrangementClips` entries it returns. A reader needs the
+ * dual-meter rule to make sense of the number either way. read-scene is absent
+ * because it reads session slots only, so no arrangement position ever reaches
+ * it.
+ */
+const ARRANGEMENT_TOOLS = [
+  CREATE_CLIP,
+  "ppal-read-clip",
+  UPDATE_CLIP,
+  DUPLICATE,
+  "ppal-read-track",
+] as const;
+
+/**
+ * The three that can PUT a clip on the timeline — the gate on
+ * `arrangement-write`. A strict subset of {@link ARRANGEMENT_TOOLS}, so the
+ * requires-subset invariant holds.
+ */
+const ARRANGEMENT_WRITE_TOOLS = [CREATE_CLIP, UPDATE_CLIP, DUPLICATE] as const;
 
 /**
  * A fragment's condition for shipping: the tools it teaches (any-of), or one of
@@ -91,27 +151,32 @@ export type SkillsAudience = "chat" | "subagent";
 export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "time-and-values": "always",
   "working-with-live": "always",
-  "getting-help": "conversation-only",
+  "getting-help": CONVERSATION_ONLY,
+  "getting-help-basic": CONVERSATION_ONLY,
 
   "transforms-core": TRANSFORM_TOOLS,
   "transforms-expressions": TRANSFORM_TOOLS,
   "transforms-generative": TRANSFORM_TOOLS,
   "code-transforms": TRANSFORM_TOOLS,
-  // Narrower than the standard tiers on purpose: they teach `transforms`, which
-  // create-clip and duplicate also take, while the small-model fragment teaches
-  // only `preTransforms` — an update-clip parameter and nothing else's.
+  // Narrower than the tiers above on purpose: those teach `transforms`, which
+  // create-clip and duplicate also take, while these two teach `preTransforms`
+  // and `quantizeGrid` — update-clip parameters and nothing else's. Same subject
+  // at the two depths, so the same gate.
+  "transforms-editing": [UPDATE_CLIP],
   "transforms-basic": [UPDATE_CLIP],
 
   library: ["ppal-library"],
-  devices: DEVICE_TOOLS,
+  devices: DEVICE_PATH_TOOLS,
+  // The build recipes: only create-device and update-device can run any of them.
+  "devices-write": DEVICE_WRITE_TOOLS,
   // Reading a Drift or an EQ Eight benefits from the pseudo-param names as much
-  // as building or editing one does, so all three device tools carry it — same
-  // gate as `devices`, which also satisfies the requires-subset test.
+  // as building or editing one does, so all three device tools carry it. Not
+  // DEVICE_PATH_TOOLS: select/delete/duplicate address a device, they never
+  // touch its parameters. A subset of the `devices` gate it requires.
   "specialized-devices": DEVICE_TOOLS,
-  // Every clip tool that can put a clip on the timeline or report where one
-  // already sits: moving clips is update-clip, take lanes are create-clip and
-  // duplicate, and read-clip is how arrangement positions come back.
-  arrangement: [CREATE_CLIP, "ppal-read-clip", UPDATE_CLIP, "ppal-duplicate"],
+  arrangement: ARRANGEMENT_TOOLS,
+  // Moving, splitting, and take lanes: read-clip has no tool to run any of it.
+  "arrangement-write": ARRANGEMENT_WRITE_TOOLS,
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],
@@ -121,12 +186,43 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   "stark-standard": NOTE_TOOLS,
   "stark-basic": NOTE_TOOLS,
   "midi-json": NOTE_TOOLS,
+
+  // The authoring halves. The two midi-json ones are empty placeholders for a
+  // head that isn't split (see builtin-fragments.ts); gating them the same way
+  // keeps the rule uniform, and an empty body costs a caller nothing either way.
+  "barbeat-standard-write": NOTE_WRITE_TOOLS,
+  "barbeat-basic-write": NOTE_WRITE_TOOLS,
+  "stark-standard-write": NOTE_WRITE_TOOLS,
+  "stark-basic-write": NOTE_WRITE_TOOLS,
+  "midi-json-standard-write": NOTE_WRITE_TOOLS,
+  "midi-json-basic-write": NOTE_WRITE_TOOLS,
 };
+
+/**
+ * The condition one fragment ships under, for a surface that has to SHOW the
+ * rule rather than apply it (the webui fragment editor). Null for the driver
+ * roots, which have no entry — they are the document being assembled, not a
+ * section of it.
+ *
+ * Names reach this from user text (an override filename, a route param), so the
+ * `hasOwn` guard is load-bearing for the same reason it is in
+ * `resolveFragmentAlias`: a bare index would hand back
+ * `Object.prototype.toString` for a fragment named `toString`.
+ *
+ * @param name - Fragment name
+ * @returns The fragment's gate, or null when it has none
+ */
+export function fragmentGate(name: string): FragmentGate | null {
+  // hasOwn doesn't narrow an index signature; the key is present by the check.
+  return Object.hasOwn(FRAGMENT_GATES, name)
+    ? (FRAGMENT_GATES[name] as FragmentGate)
+    : null;
+}
 
 /**
  * The fragments to drop for a given toolset: those whose every tool is off.
  *
- * No transitive close over {@link SkillSlotDef.requires} happens here, and none
+ * No transitive close over {@link FRAGMENT_REQUIRES} happens here, and none
  * is needed — a dependent's gate is required to be a SUBSET of the gate of what
  * it requires (enforced by test), so a kept fragment's prerequisites are kept
  * too. That is what keeps gating from reintroducing the vocabulary-without-
@@ -184,7 +280,7 @@ export function audienceGatedFragments(
   if (audience !== "subagent") return dropped;
 
   for (const [name, gate] of Object.entries(FRAGMENT_GATES)) {
-    if (gate === "conversation-only") dropped.add(name);
+    if (gate === CONVERSATION_ONLY) dropped.add(name);
   }
 
   return dropped;

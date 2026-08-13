@@ -51,7 +51,7 @@ import {
   readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** 4-track Live Set used by the split scenarios (Lead + Bass tracks). */
@@ -72,7 +72,7 @@ function updateNoteCount(turns: EvalTurnResult[], turn: number): number | null {
 
   if (call?.result == null) return null;
 
-  const parsed = parseToolResult(String(call.result)) as { noteCount?: number };
+  const parsed = parseToolResult(call.result) as { noteCount?: number };
 
   return parsed.noteCount ?? null;
 }
@@ -198,7 +198,7 @@ function createdNoteCount(
 
   if (call?.result == null) return null;
 
-  const parsed = parseToolResult(String(call.result)) as { noteCount?: number };
+  const parsed = parseToolResult(call.result) as { noteCount?: number };
 
   return parsed.noteCount ?? null;
 }

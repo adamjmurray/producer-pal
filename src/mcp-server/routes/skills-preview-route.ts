@@ -13,8 +13,9 @@
 // skills-inject.ts assembles the live blob rather than the V8 connect() handler.
 
 import { type Express, type Request, type Response } from "express";
+import { resolveEnabledTools } from "#src/shared/config.ts";
 import { DEFAULT_NOTATION, isNotation } from "#src/shared/notation.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
+import { assembleSkills } from "#src/skills/build-skills.ts";
 import { resolveFragmentAlias } from "#src/skills/builtin-fragments.ts";
 import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
 
@@ -24,16 +25,17 @@ import { readSkillOverrides } from "../helpers/skill-overrides-store.ts";
  * (`"true"` enables basic/small-model skills) select the combination. The
  * response carries the assembled blob, the two slot names the COMBINATION picks
  * (the driver and the notation head — every other fragment is named by the
- * driver's own manifest, which the user can read in the editor), and any
- * assembly `warnings` (unknown fragments, refused nesting, unsafe refs in a user
- * override) so the editor can flag a broken override instead of showing a
- * truncated blob. Read-only, so it is not origin-gated (unlike the override
- * writes) — it exposes nothing a GET /skill-overrides didn't already.
+ * driver's own manifest, which the user can read in the editor), the fragments
+ * the toolset `dropped`, and any assembly `warnings` (unknown fragments, refused
+ * nesting, unsafe refs in a user override) so the editor can flag a broken
+ * override instead of showing a truncated blob. Read-only, so it is not
+ * origin-gated (unlike the override writes) — it exposes nothing a GET
+ * /skill-overrides didn't already.
  *
- * The preview reflects the DEVICE's tool whitelist, so a fragment whose tools
- * are all switched off shows as gone here too — this is the blob an external MCP
- * client receives. It cannot reflect the chat's per-preset tool toggles: those
- * are client-side, ride a per-request header, and differ per conversation.
+ * Tool gating follows the same two-step the real request path uses: the device's
+ * whitelist, minus whatever the caller lists in `disabledTools` (the query-param
+ * twin of the chat's disabled-tools header). `allTools=true` skips gating
+ * altogether, for previewing every fragment regardless of toolset.
  *
  * @param app - Express application
  * @param getTools - Reads the device's tool whitelist; omit for no tool gating
@@ -63,12 +65,48 @@ export function registerSkillsPreviewRoute(
     // refs) so the editor can surface a broken override instead of showing a
     // silently truncated blob.
     const warnings: string[] = [];
-    const skills = buildSkills(
-      { notation, smallModelMode, tools: getTools?.() },
+    const { skills, dropped } = assembleSkills(
+      { notation, smallModelMode, tools: previewTools(req, getTools) },
       readSkillOverrides(),
       (message) => warnings.push(message),
     );
 
-    res.json({ notation, smallModelMode, head, driver, skills, warnings });
+    res.json({
+      notation,
+      smallModelMode,
+      head,
+      driver,
+      skills,
+      dropped,
+      warnings,
+    });
   });
+}
+
+// --- Helpers below main export ---
+
+/**
+ * The toolset to gate this preview on: the device whitelist minus the caller's
+ * `disabledTools`, or undefined (no gating) when it asked for `allTools` — or
+ * when there is no whitelist to subtract from.
+ * @param req - The preview request
+ * @param getTools - Reads the device's tool whitelist
+ * @returns The tools to assemble for, or undefined for no gating
+ */
+function previewTools(
+  req: Request,
+  getTools?: () => readonly string[],
+): string[] | undefined {
+  if (req.query.allTools === "true") return undefined;
+
+  const configured = getTools?.();
+
+  if (configured == null) return undefined;
+
+  const disabled = req.query.disabledTools;
+
+  return resolveEnabledTools(
+    typeof disabled === "string" ? disabled : undefined,
+    configured,
+  );
 }

@@ -10,7 +10,7 @@ import * as console from "../../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
   "https://api.openai.com/v1/realtime/client_secrets";
-const DEFAULT_REALTIME_MODEL = "gpt-realtime-2";
+const DEFAULT_REALTIME_MODEL = "gpt-realtime-2.1";
 const OPENAI_KEY_HEADER = "x-openai-key";
 // Bound the upstream token mint so a stalled OpenAI connection can't hang the
 // request forever and leak the Express socket. Minting is fast; 15s is generous.

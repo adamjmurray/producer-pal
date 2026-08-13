@@ -1,6 +1,15 @@
 # Known Issues
 
-This page documents known bugs and limitations in Producer Pal.
+This page documents known bugs and rough edges in Producer Pal.
+
+::: tip Looking for what Producer Pal can't do?
+
+Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
+synthesis, drum pitch maps, and lengthening looped arrangement clips are
+**[Limitations](/features/limitations)** — design boundaries rather than bugs,
+so they aren't listed here.
+
+:::
 
 ## Undo/Redo Behavior
 
@@ -16,29 +25,22 @@ for Live limitation specific to Producer Pal.
 **Workaround:** Save your Live Set before big changes. Click somewhere in Live's
 UI between requests if you want separate undo steps.
 
-## Lengthening Looped Arrangement Clips
-
-Looped arrangement clips cannot be directly lengthened. Instead, they are
-duplicated and tiled, which can create a lot of clips. Unlooped clips (MIDI and
-audio) are extended in place without creating additional clips.
-
-## Automation and Envelopes Not Supported
-
-Producer Pal cannot read, create, or edit arrangement automation or clip
-envelopes (parameter values that change over time). See
-[Limitations](/features#limitations) on the Features page for details.
-
-## Recent Project Context Can Be Lost on a Device Upgrade (Rare)
+## Recent Project Context Can Be Lost on a Device Upgrade (Pre-2.1.0 Devices)
 
 Your **project context** lives inside the Producer Pal device, so it travels
-with your Live Set. To survive a device upgrade — a newer `.amxd` starts as a
-fresh, empty device — Producer Pal also keeps a backup:
-`Producer Pal Project Context.md`, saved next to your Set's `.als`. It restores
-this automatically the first time you use Producer Pal after upgrading.
+with your Live Set. A newer `.amxd` starts as a fresh, empty device, so an
+upgrade used to lose it. Version 2.1.0 fixes that with a backup:
+`Producer Pal Project Context.md`, saved in your Live Project folder — one file,
+shared by every Set in it. It restores automatically the first time the AI uses
+a tool after upgrading.
+
+**Upgrading from a device older than 2.1.0 has nothing to restore from** — those
+devices never wrote the backup. Copy the context out of the old device before
+you replace it.
 
 The backup is (re)written whenever the context changes through a Producer Pal
-tool call, a chat, or an edit in the device or Chat UI. One narrow sequence can
-leave the newest context un-backed-up:
+tool call, a chat, or an edit in the device or Chat UI. From 2.1.0 on, one
+narrow sequence can still leave the newest context un-backed-up:
 
 1. Change the project context,
 2. save the Set for the **first time**, or **Save As** to a new project folder,
@@ -54,6 +56,12 @@ the context after that first save, no backup has been written there yet.
 
 **To be safe:** after saving and before upgrading, use Producer Pal once — any
 chat, tool call, or context edit writes the backup.
+
+**Right after an upgrade, the context box looks empty.** The restore runs the
+first time the AI uses a tool, so until you start a chat there's nothing in it
+yet. Start the chat and your notes come back. Typing into the empty box before
+then keeps what you type, but leaves the backup alone until the next time you
+load the device.
 
 **If context does go missing after an upgrade:** copy it out of the old device
 before removing it, or open one of Live's automatic project backups (Live keeps
@@ -72,6 +80,23 @@ bar|beat.
 **Workaround:** Either fully quit Claude Desktop (not just close the window) and
 relaunch it, or go to Settings → Extensions → Producer Pal → Configure and
 toggle the "Enabled" switch off and on.
+
+## `npx` Fails Inside the Source Repository
+
+This one only affects people working from a clone of the
+[source repository](https://github.com/adamjmurray/producer-pal). A normal
+install is unaffected.
+
+If your AI tool runs `npx -y producer-pal` with its working directory set to the
+repository, `npx` finds the local `package.json` — also named `producer-pal`,
+but with no command for `npx` to run — and stops there instead of fetching the
+published package. It exits right away with
+`could not determine executable to run`, so the AI reports that the MCP server
+closed the connection during startup.
+
+**Workaround:** run your AI tool from a folder outside the repository, or point
+the MCP server's working directory somewhere else. Every tool configures that
+differently, so consult your AI tool's MCP documentation.
 
 ---
 

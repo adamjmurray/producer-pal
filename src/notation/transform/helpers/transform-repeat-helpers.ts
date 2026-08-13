@@ -6,7 +6,7 @@
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ExpressionNode,
   type NoteOp,

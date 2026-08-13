@@ -11,7 +11,15 @@
 // directive in their own file (it must be file-level).
 
 import { act, renderHook, waitFor } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 /** Per-hook inputs for the shared transport suite. */
@@ -57,6 +65,29 @@ export function installFetchMock(): ReturnType<typeof vi.fn> {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  return fetchMock;
+}
+
+/**
+ * Stub `fetch` so every request gets the same JSON body. For suites that mount
+ * a component which fetches on render but don't assert on the traffic — under
+ * happy-dom an unstubbed same-origin fetch really hits the network and surfaces
+ * as an unhandled socket error. Register at module or describe scope.
+ * @param body - The JSON body every response carries
+ * @returns The stable fetch mock
+ */
+export function installJsonFetchMock(body: unknown): ReturnType<typeof vi.fn> {
+  const fetchMock = installFetchMock();
+
+  beforeEach(() => {
+    // Cast because installFetchMock returns the untyped vi.fn(), whose
+    // implementations are void-returning. A fresh Response per call — a body
+    // can only be read once.
+    (fetchMock as unknown as Mock<() => Promise<Response>>).mockImplementation(
+      () => Promise.resolve(jsonResponse(body)),
+    );
   });
 
   return fetchMock;

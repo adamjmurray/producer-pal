@@ -23,6 +23,20 @@
 //                               Small-model mode means FEWER fragments, not
 //                               basic variants of all of them.
 //
+// A fragment may also carry a `-write` SIBLING holding what only the writers can
+// act on, so a read-only caller stops paying for it (ADR-0019). The base name
+// keeps its meaning — that is what lets the drivers' `{notation}-{level}` ref
+// stay put — so splitting one costs no rename. Each candidate opts in
+// separately: bar|beat (both depths), stark (both depths), devices, and
+// arrangement are split; midi-json is symmetric enough that splitting it would
+// buy nothing, so its `-write` refs resolve to an empty body (below).
+//
+// Subjects that grew past a file or two get a fragments/ subfolder — transforms
+// and devices so far. Filenames keep their full fragment name inside it
+// (`transforms/transforms-core.ts`), stutter and all: the name is the include
+// ref and the user's override slot, so shortening it to match the folder would
+// hide the one thing a reader needs to match up.
+//
 // Two entries are not quite leaves-as-written:
 //   code-transforms ........... build-gated. It is always PRESENT here and empty
 //                               when disabled, rather than absent: the resolver
@@ -35,28 +49,49 @@
 //                               wrapper fragment that would need nesting.
 
 import { basicDriver, standardDriver } from "#src/skills/drivers.ts";
-import { arrangement } from "#src/skills/fragments/arrangement.ts";
-import { codeTransforms } from "#src/skills/fragments/code-transforms.ts";
+import {
+  arrangement,
+  arrangementWrite,
+} from "#src/skills/fragments/arrangement.ts";
+import { codeTransforms } from "#src/skills/fragments/transforms/code-transforms.ts";
 import {
   contextBasic,
   contextStandard,
 } from "#src/skills/fragments/context.ts";
-import { devices } from "#src/skills/fragments/devices.ts";
-import { gettingHelp } from "#src/skills/fragments/getting-help.ts";
+import {
+  devices,
+  devicesWrite,
+} from "#src/skills/fragments/devices/devices.ts";
+import {
+  gettingHelp,
+  gettingHelpBasic,
+} from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
-import { specializedDevices } from "#src/skills/fragments/specialized-devices.ts";
+import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
   transformsBasic,
   transformsCore,
-} from "#src/skills/fragments/transforms-core.ts";
-import { transformsExpressions } from "#src/skills/fragments/transforms-expressions.ts";
-import { transformsGenerative } from "#src/skills/fragments/transforms-generative.ts";
+  transformsEditing,
+} from "#src/skills/fragments/transforms/transforms-core.ts";
+import { transformsExpressions } from "#src/skills/fragments/transforms/transforms-expressions.ts";
+import { transformsGenerative } from "#src/skills/fragments/transforms/transforms-generative.ts";
 import { workingWithLive } from "#src/skills/fragments/working-with-live.ts";
-import { barbeatBasic } from "#src/skills/notation/barbeat-basic.ts";
-import { barbeatStandard } from "#src/skills/notation/barbeat-standard.ts";
+import {
+  barbeatBasic,
+  barbeatBasicWrite,
+} from "#src/skills/notation/barbeat-basic.ts";
+import {
+  barbeatStandard,
+  barbeatStandardWrite,
+} from "#src/skills/notation/barbeat-standard.ts";
 import { midiJson } from "#src/skills/notation/midi-json.ts";
-import { starkBasic, starkStandard } from "#src/skills/notation/stark.ts";
+import {
+  starkBasic,
+  starkBasicWrite,
+  starkStandard,
+  starkStandardWrite,
+} from "#src/skills/notation/stark.ts";
 
 // Include names that resolve to another fragment's body. midi-json has one head
 // for both depths; aliasing keeps the drivers' uniform `{notation}-{level}` ref
@@ -84,24 +119,40 @@ export function builtinFragments(
 
     "time-and-values": timeAndValues,
     "transforms-core": transformsCore,
+    "transforms-editing": transformsEditing,
     "transforms-expressions": transformsExpressions,
     "transforms-generative": transformsGenerative,
     "transforms-basic": transformsBasic,
     "code-transforms": enableCodeExec ? codeTransforms : "",
     library,
     devices,
+    "devices-write": devicesWrite,
     "specialized-devices": specializedDevices,
     arrangement,
+    "arrangement-write": arrangementWrite,
     "working-with-live": workingWithLive,
     "context-standard": contextStandard,
     "context-basic": contextBasic,
     "getting-help": gettingHelp,
+    "getting-help-basic": gettingHelpBasic,
 
     "barbeat-standard": barbeatStandard,
+    "barbeat-standard-write": barbeatStandardWrite,
     "barbeat-basic": barbeatBasic,
+    "barbeat-basic-write": barbeatBasicWrite,
     "stark-standard": starkStandard,
+    "stark-standard-write": starkStandardWrite,
     "stark-basic": starkBasic,
+    "stark-basic-write": starkBasicWrite,
     "midi-json": midiJson,
+
+    // Present-but-empty, the code-transforms precedent: both drivers' `-write`
+    // ref is notation-templated, and midi-json isn't split, so registering the
+    // names keeps an unknown fragment a real error rather than a shrug. The
+    // alias map above can't do this job — it folds the two DEPTH refs onto one
+    // body, and there is no body here to fold onto.
+    "midi-json-standard-write": "",
+    "midi-json-basic-write": "",
   };
 }
 

@@ -78,6 +78,8 @@ export interface NoteItem {
   letter: string;
   /** "#" sharp, "b" flat, or null (natural) */
   accidental: "#" | "b" | null;
+  /** Absolute octave number (`C3` = MIDI 60), or null (use the line register) */
+  octave: number | null;
   /** Net octave displacement: positive = up, negative = down */
   octaveShift: number;
   /** Explicit /N duration, or null (use line default) */
@@ -93,6 +95,8 @@ export interface ChordNoteItem {
   letter: string;
   /** "#" sharp, "b" flat, or null (natural) */
   accidental: "#" | "b" | null;
+  /** Absolute octave number (`C3` = MIDI 60), or null (use the line register) */
+  octave: number | null;
   /** Net octave displacement */
   octaveShift: number;
 }
@@ -109,7 +113,10 @@ export interface ChordItem {
 }
 
 export type PitchedContentItem =
-  BarMarkerItem | NoteItem | RestItem | ChordItem;
+  | BarMarkerItem
+  | NoteItem
+  | RestItem
+  | ChordItem;
 
 // --- Chord-symbol items (symbolic: chords lines only) ---
 
@@ -150,7 +157,10 @@ export interface ChordSymbolItem {
  * notes — a bare token is always a symbol.
  */
 export type ChordsContentItem =
-  BarMarkerItem | RestItem | ChordSymbolItem | ChordItem;
+  | BarMarkerItem
+  | RestItem
+  | ChordSymbolItem
+  | ChordItem;
 
 // --- Sections ---
 

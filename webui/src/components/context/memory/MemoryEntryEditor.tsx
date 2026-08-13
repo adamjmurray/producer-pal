@@ -26,11 +26,11 @@ interface MemoryEntryEditorProps {
   /** Called after a successful save with the stored entry's slug. */
   onSaved: (name: string) => void;
   /**
-   * Called after a successful rename with the stored entry's new slug. Distinct
-   * from `onSaved` because it must NOT remount this editor — the live draft is
-   * only here (see {@link CollectionEditorRenderArgs.onRenamed}).
+   * Called after a successful rename with the old and new slugs. Distinct from
+   * `onSaved` because it must NOT remount this editor — the live draft is only
+   * here (see {@link CollectionEditorRenderArgs.onRenamed}).
    */
-  onRenamed: (name: string) => void;
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
@@ -64,7 +64,9 @@ export function MemoryEntryEditor(
   const validation = useMemoryValidation(isNew, name, description, body);
   // Autosave/create only when name (new only), description, and body are all
   // non-empty — clearing a required field blocks the write and shows its error.
-  const canSave = validation.isValid && collection.saveStatus !== "saving";
+  // Deliberately not gated on an in-flight save: the autosave hook chains
+  // overlapping writes, and gating here would drop its unmount flush mid-save.
+  const canSave = validation.isValid;
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
@@ -218,7 +220,7 @@ interface MemoryRenameParams {
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
   /** Follow the entry to its new slug, keeping this editor mounted. */
-  onRenamed: (name: string) => void;
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
@@ -284,7 +286,7 @@ function useMemoryRename(params: MemoryRenameParams): {
     setRenameFailed(false);
     setName(renamed.name);
     noteSaved(memoryEntryKey(renamed));
-    onRenamed(renamed.name);
+    onRenamed(oldName, renamed.name);
   };
 
   const onRename = (raw: string): void => {

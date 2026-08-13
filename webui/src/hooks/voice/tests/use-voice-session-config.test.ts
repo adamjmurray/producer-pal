@@ -144,7 +144,7 @@ describe("useVoiceSession turn-detection config", () => {
 
     expect(audio.input?.turnDetection).toBeUndefined();
     expect(audio.input?.transcription).toStrictEqual({
-      model: "gpt-realtime-whisper",
+      model: "gpt-transcribe",
       language: "en",
     });
   });
@@ -158,7 +158,7 @@ describe("useVoiceSession turn-detection config", () => {
     const audio = await connectAndReadAudio({ ...PARAMS, turnDetection });
 
     expect(audio.input?.transcription).toStrictEqual({
-      model: "gpt-realtime-whisper",
+      model: "gpt-transcribe",
       language: "en",
     });
     expect(audio.input?.turnDetection).toBeDefined();
@@ -168,7 +168,7 @@ describe("useVoiceSession turn-detection config", () => {
     const audio = await connectAndReadAudio({ ...PARAMS, language: "es" });
 
     expect(audio.input?.transcription).toStrictEqual({
-      model: "gpt-realtime-whisper",
+      model: "gpt-transcribe",
       language: "es",
     });
     const agentOptions = realtime.agents[0]!.options as {

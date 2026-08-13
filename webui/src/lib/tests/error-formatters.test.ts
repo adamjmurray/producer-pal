@@ -60,12 +60,14 @@ describe("normalizeErrorMessage", () => {
     expect(normalizeErrorMessage({ code: 42 })).toBe('Error: {"code":42}');
   });
 
-  it("falls back to String() for payloads JSON cannot serialize", () => {
+  it("names the failure for payloads JSON cannot serialize", () => {
     const circular: Record<string, unknown> = { code: 500 };
 
     circular.self = circular;
 
-    expect(normalizeErrorMessage(circular)).toBe("Error: [object Object]");
+    expect(normalizeErrorMessage(circular)).toBe(
+      "Error: [unserializable error payload]",
+    );
   });
 
   it("prefixes 'Error: ' to other non-string values", () => {

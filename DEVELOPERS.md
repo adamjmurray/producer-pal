@@ -96,7 +96,7 @@ All checks run via `npm run check` and must pass before merging:
 | ------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | **Linting**         | oxlint        | 200+ rules including complexity limits, TypeScript strictness (type-aware, via tsgolint), code quality (SonarJS), and style consistency |
 | **Type checking**   | TypeScript    | Strict mode across all source trees (`src/`, `webui/`, `scripts/`, `evals/`, `e2e/`)                                                    |
-| **Formatting**      | Prettier      | Consistent code formatting                                                                                                              |
+| **Formatting**      | oxfmt         | Consistent code formatting                                                                                                              |
 | **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                                        |
 | **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                                  |
 | **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                                    |

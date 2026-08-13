@@ -51,13 +51,12 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
   return { ...actual, calculateRetryDelay: vi.fn(() => 10) };
 });
 
-import { streamText } from "ai";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import {
   MAX_SPAWNS,
-  SPAWN_SUBAGENT_TOOL_NAME,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   getSubagentRateLimit,
   resetSubagentRateLimits,
@@ -66,22 +65,19 @@ import {
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
+import {
+  type SpawnExecute,
+  exhaustSpawnBudget,
+  findSpawnEntry,
+  lastStreamTools,
+  orchestratorWithSpawnTool,
+  runTurn,
+  spawnToolExecute,
+  streamTextMock,
+  until,
+} from "#webui/chat/sdk/tests/client/subagent-test-helpers";
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { calculateRetryDelay } from "#webui/lib/rate-limit";
-
-const streamTextMock = streamText as ReturnType<typeof vi.fn>;
-
-/**
- * The `tools` object passed to the most recent streamText call.
- * @returns The tool map streamText last received (empty if none)
- */
-function lastStreamTools(): Record<string, { execute?: unknown }> {
-  const calls = streamTextMock.mock.calls;
-  const call = calls.at(-1)?.[0] as
-    { tools?: Record<string, { execute?: unknown }> } | undefined;
-
-  return call?.tools ?? {};
-}
 
 /**
  * A stream that rejects the way a provider 429 does, for the worker retry path.
@@ -112,107 +108,6 @@ function partsStream(parts: Record<string, unknown>[]): {
   }
 
   return { stream: iterate() };
-}
-
-/**
- * A stream that emits `parts` and then fails — how a provider stream ends when
- * the turn is aborted partway through.
- * @param parts - Stream parts to emit before failing
- * @param error - The error to throw after the last part
- * @returns A streamText-shaped result
- */
-function failingAfterStream(
-  parts: Record<string, unknown>[],
-  error: unknown,
-): { stream: AsyncIterable<Record<string, unknown>> } {
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    for (const p of parts) yield p;
-
-    throw error;
-  }
-
-  return { stream: iterate() };
-}
-
-/**
- * The error an aborted fetch/stream rejects with.
- * @returns An AbortError
- */
-function abortError(): Error {
-  return Object.assign(new Error("The operation was aborted."), {
-    name: "AbortError",
-  });
-}
-
-/**
- * Grab the spawn tool the orchestrator injected into its last streamText call.
- * @returns The spawn tool's execute function
- */
-function spawnToolExecute(): (
-  args: Record<string, unknown>,
-  opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
-) => Promise<string> {
-  const tool = lastStreamTools()[SPAWN_SUBAGENT_TOOL_NAME] as {
-    execute: (
-      args: Record<string, unknown>,
-      opts: { toolCallId: string; messages: []; abortSignal?: AbortSignal },
-    ) => Promise<string>;
-  };
-
-  return tool.execute;
-}
-
-/**
- * Poll until `condition` holds. Real timers (not fake ones) because the code
- * under test interleaves timer waits with many awaits, and advancing fake timers
- * doesn't reliably flush those. Waiting on an observable condition rather than a
- * fixed delay matters here: a fixed wait that proved too short would make the
- * shared-gate assertions fail as though the gate were per-worker.
- * @param condition - Checked after each tick
- * @param timeoutMs - Give up (and let the assertion report the real state) after this
- */
-async function until(
-  condition: () => boolean,
-  timeoutMs = 2000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-
-  while (!condition() && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-}
-
-/**
- * Boot an orchestrator with spawn_subagent enabled and run one turn, so the
- * injected tool is captured in the streamText args.
- * @returns The client and the injected spawn tool's execute function
- */
-async function orchestratorWithSpawnTool(): Promise<{
-  client: ChatSdkClient;
-  execute: ReturnType<typeof spawnToolExecute>;
-}> {
-  const client = new ChatSdkClient(
-    "key",
-    createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
-  );
-
-  await client.initialize();
-  await runTurn(client);
-
-  return { client, execute: spawnToolExecute() };
-}
-
-/**
- * Run one orchestrator turn to completion with a trivial stop stream.
- * @param client - The client to drive
- * @param message - User message to send
- */
-async function runTurn(client: ChatSdkClient, message = "hi"): Promise<void> {
-  mockStreamParts([{ type: "finish", finishReason: "stop" }]);
-
-  for await (const _ of client.sendMessage(message)) {
-    /* consume */
-  }
 }
 
 /**
@@ -259,7 +154,7 @@ function persistedSpawn(
  */
 async function restoredOrchestrator(
   chatHistory: ChatMessage[],
-): Promise<ReturnType<typeof spawnToolExecute>> {
+): Promise<SpawnExecute> {
   const client = new ChatSdkClient(
     "key",
     createConfig({
@@ -424,68 +319,60 @@ describe("ChatSdkClient runSubagent (delegation)", () => {
       /* consume */
     }
 
-    const entry = client.chatHistory
-      .flatMap((m) => m.toolResults ?? [])
-      .find((tr) => tr.id === "tc-x");
+    const entry = findSpawnEntry(client, "tc-x");
 
     expect(entry?.subagentTranscript).toBeDefined();
     expect(entry?.subagentTranscript?.at(-1)?.content).toBe("Worker done.");
   });
 
-  it("keeps a stopped worker's partial transcript on the canceled result", async () => {
-    // Stop mid-worker: the spawn rejects, so no tool-result part ever streams and
-    // reconcileDanglingToolCalls synthesizes a "canceled" one. The partial log —
-    // which may describe edits already made to the Live Set — has to survive onto
-    // that synthetic entry, or the worker's work vanishes from the conversation.
+  it("attaches a FAILED spawn's transcript the moment its error streams", async () => {
+    // A spawn that throws arrives as tool-error, not tool-result. The worker
+    // still ran, and its log is the only record of what it did before it died —
+    // the card must not sit empty for the rest of the orchestrator's turn.
     const { client, execute } = await orchestratorWithSpawnTool();
-    const controller = new AbortController();
 
-    // The worker got one message out before the Stop killed its stream.
-    streamTextMock.mockReturnValueOnce(
-      failingAfterStream(
-        [{ type: "text-delta", text: "Renamed the Bass track." }],
-        abortError(),
-      ),
+    mockStreamParts([
+      { type: "text-delta", text: "Renamed the Bass track." },
+      { type: "finish", finishReason: "stop" },
+    ]);
+    await execute(
+      { task: "x" },
+      { toolCallId: "tc-err", messages: [], abortSignal: undefined },
     );
 
-    controller.abort();
-    await expect(
-      execute(
-        { task: "rename tracks" },
-        { toolCallId: "tc-stop", messages: [], abortSignal: controller.signal },
-      ),
-    ).rejects.toThrow("aborted");
+    mockStreamParts([
+      {
+        type: "tool-call",
+        toolCallId: "tc-err",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: { task: "x" },
+      },
+      {
+        type: "tool-error",
+        toolCallId: "tc-err",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+        input: { task: "x" },
+        error: new Error("Subagent limit reached"),
+      },
+      { type: "text-delta", text: "I will finish it myself." },
+      { type: "finish", finishReason: "stop" },
+    ]);
 
-    // The orchestrator turn that issued the spawn is aborted too, so its stream
-    // dies after the tool-call part with no matching result.
-    streamTextMock.mockReturnValueOnce(
-      failingAfterStream(
-        [
-          {
-            type: "tool-call",
-            toolCallId: "tc-stop",
-            toolName: SPAWN_SUBAGENT_TOOL_NAME,
-            input: { task: "rename tracks" },
-          },
-        ],
-        abortError(),
-      ),
-    );
+    // Read the FIRST yield that carries the failed entry: the transcript has to
+    // already be on it, not arrive with the stream's closing pass.
+    let attachedWhenErrorLanded: boolean | null = null;
 
-    await expect(async () => {
-      for await (const _ of client.sendMessage("rename tracks")) {
-        /* consume */
+    for await (const history of client.sendMessage("go")) {
+      const entry = history
+        .flatMap((m) => m.toolResults ?? [])
+        .find((tr) => tr.id === "tc-err");
+
+      if (entry && attachedWhenErrorLanded == null) {
+        attachedWhenErrorLanded = entry.subagentTranscript != null;
       }
-    }).rejects.toThrow("aborted");
+    }
 
-    const entry = client.chatHistory
-      .flatMap((m) => m.toolResults ?? [])
-      .find((tr) => tr.id === "tc-stop");
-
-    expect(entry?.result).toContain("Canceled");
-    expect(entry?.subagentTranscript?.at(-1)?.content).toBe(
-      "Renamed the Bass track.",
-    );
+    expect(attachedWhenErrorLanded).toBe(true);
   });
 });
 
@@ -552,7 +439,8 @@ describe("ChatSdkClient resuming a worker", () => {
    */
   function lastStreamMessages(): { role: string; content: unknown }[] {
     const call = streamTextMock.mock.calls.at(-1)?.[0] as
-      { messages?: { role: string; content: unknown }[] } | undefined;
+      | { messages?: { role: string; content: unknown }[] }
+      | undefined;
 
     return call?.messages ?? [];
   }
@@ -581,9 +469,8 @@ describe("ChatSdkClient resuming a worker", () => {
     // The worker keeps its number, so the orchestrator can resume it again.
     expect(resumed).toBe(labelWorkerResult(1, "Swung it."));
 
-    const entries = client.chatHistory.flatMap((m) => m.toolResults ?? []);
-    const first = entries.find((tr) => tr.id === "tc-1");
-    const second = entries.find((tr) => tr.id === "tc-2");
+    const first = findSpawnEntry(client, "tc-1");
+    const second = findSpawnEntry(client, "tc-2");
 
     expect(first?.subagentIndex).toBe(1);
     expect(second?.subagentIndex).toBe(1);
@@ -606,6 +493,32 @@ describe("ChatSdkClient resuming a worker", () => {
       "now make it swing",
       "Swung it.",
     ]);
+  });
+
+  it("reports no final message rather than the previous run's answer", async () => {
+    const { client, execute } = await orchestratorWithSpawnTool();
+
+    await recordSpawn(
+      client,
+      execute,
+      { task: "add a bassline" },
+      "tc-1",
+      "Added the bassline.",
+    );
+
+    // The resumed run ends with no assistant text of its own. Scanning the
+    // worker's whole history would reach back into run 1 and report "Added the
+    // bassline." as the answer to a task it never did.
+    mockStreamParts([{ type: "finish", finishReason: "stop" }]);
+
+    const resumed = await execute(
+      { task: "now make it swing", resumeFrom: 1 },
+      { toolCallId: "tc-2", messages: [], abortSignal: undefined },
+    );
+
+    expect(resumed).toBe(
+      labelWorkerResult(1, "The subagent finished without a final message."),
+    );
   });
 
   it("sends the resumed worker's prior turns to the provider", async () => {
@@ -657,9 +570,7 @@ describe("ChatSdkClient resuming a worker", () => {
       "Did more.",
     );
 
-    const first = client.chatHistory
-      .flatMap((m) => m.toolResults ?? [])
-      .find((tr) => tr.id === "tc-1");
+    const first = findSpawnEntry(client, "tc-1");
 
     expect(first?.subagentTranscript?.map((m) => m.content)).toStrictEqual([
       "add a bassline",
@@ -694,16 +605,7 @@ describe("ChatSdkClient resuming a worker", () => {
     // turn able to delegate again.
     const { client, execute } = await orchestratorWithSpawnTool();
 
-    for (let i = 0; i < MAX_SPAWNS; i++) {
-      mockStreamParts([
-        { type: "text-delta", text: `Worker ${i + 1}.` },
-        { type: "finish", finishReason: "stop" },
-      ]);
-      await execute(
-        { task: `piece ${i + 1}` },
-        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
-      );
-    }
+    await exhaustSpawnBudget(execute);
 
     await expect(
       execute(
@@ -736,16 +638,7 @@ describe("ChatSdkClient resuming a worker", () => {
     // per-turn cap would become per-attempt.
     const { client, execute } = await orchestratorWithSpawnTool();
 
-    for (let i = 0; i < MAX_SPAWNS; i++) {
-      mockStreamParts([
-        { type: "text-delta", text: `Worker ${i + 1}.` },
-        { type: "finish", finishReason: "stop" },
-      ]);
-      await execute(
-        { task: `piece ${i + 1}` },
-        { toolCallId: `tc-${i}`, messages: [], abortSignal: undefined },
-      );
-    }
+    await exhaustSpawnBudget(execute);
 
     mockStreamParts([{ type: "finish", finishReason: "stop" }]);
 

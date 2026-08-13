@@ -84,6 +84,13 @@ const h = vi.hoisted(() => {
 
     flush = vi.fn();
     enqueueBase64 = vi.fn();
+    // Nothing queued, so the half-duplex unmute is never deferred here; the
+    // deferral itself is covered in gemini-half-duplex.test.ts.
+    hasQueued = vi.fn(() => false);
+    onDrained = vi.fn((callback: () => void) => callback());
+    // Reached by any `interrupted` message; without it the handler throws
+    // where the `as never` cast at the mock site would have hidden it.
+    hasPendingDrain = vi.fn(() => false);
     close = vi.fn(async () => {});
     constructor() {
       FakePlayer.last = this;
@@ -735,6 +742,35 @@ describe("useGeminiVoiceSession", () => {
     // Both calls should be `true`: auto-mute (true), then restore-to-manual (true).
     expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
+  });
+
+  it("half-duplex: unmuting mid-turn lets the rest of the turn re-mute", async () => {
+    // Manual intent clears the auto-mute flag. Left set, every later chunk of
+    // the same turn finds beginGeminiHalfDuplexMute already "armed" and no-ops,
+    // so the assistant plays on into an open mic.
+    const { result } = await renderConnected({
+      turnDetection: HALF_DUPLEX_VAD,
+    });
+    const mic = h.FakeMic.last!;
+
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("A"));
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+
+    // The user overrides the auto-mute from the Mute/Unmute button, ending
+    // unmuted — no turnComplete in between, so nothing else clears the flag.
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("B"));
+
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
   });
 
   it("bails after MCP tools resolve if torn down first", async () => {

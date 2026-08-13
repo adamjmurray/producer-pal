@@ -90,6 +90,45 @@ describe("select edge cases", () => {
     });
   });
 
+  describe("selections Live makes but the response can't describe", () => {
+    // Each object exists (selection succeeds) but sits at a path the response
+    // builders can't read an index or category out of, so the field is omitted
+    // rather than reported half-built.
+    beforeEach(() => {
+      setupSongViewMock();
+      setupAppViewMock();
+    });
+
+    it("omits selectedTrack for a track outside every track category", () => {
+      registerMockObject("odd_track", {
+        path: "live_set odd_tracks 0",
+        type: "Track",
+      });
+
+      expect(select({ trackId: "id odd_track" }).selectedTrack).toBeUndefined();
+    });
+
+    it("omits selectedScene for a scene with no index in its path", () => {
+      registerMockObject("odd_scene", {
+        path: "live_set odd_scenes",
+        type: "Scene",
+      });
+
+      expect(select({ sceneId: "id odd_scene" }).selectedScene).toBeUndefined();
+    });
+
+    it("omits selectedDevice for a device at an unreadable path", () => {
+      registerMockObject("odd_device", {
+        path: "live_set odd_devices 0",
+        type: "Device",
+      });
+
+      expect(
+        select({ deviceId: "id odd_device" }).selectedDevice,
+      ).toBeUndefined();
+    });
+  });
+
   describe("device path selection with non-existent device at path", () => {
     it("skips device selection when device at path doesn't exist", () => {
       setupSongViewMock();

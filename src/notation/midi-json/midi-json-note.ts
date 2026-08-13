@@ -12,6 +12,8 @@
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { isValidMidi } from "#src/shared/pitch.ts";
 
 /**
  * Note format exposed to user code and the MIDI JSON notation. Uses camelCase
@@ -23,7 +25,7 @@ export interface CodeNote {
   pitch: number; // MIDI pitch 0-127
   start: number; // musical beats from clip start
   duration: number; // musical beats
-  velocity: number; // 1-127
+  velocity: number; // 1-127 (0 only as MIDI JSON's delete marker, see validateAndSanitizeNote)
   velocityDeviation: number; // 0-127
   probability: number; // 0.0-1.0
 }
@@ -84,7 +86,8 @@ export function codeNoteToNoteEvent(
  * or an error message describing why the value was rejected.
  */
 export type ValidateCodeNotesResult =
-  { success: true; notes: CodeNote[] } | { success: false; error: string };
+  | { success: true; notes: CodeNote[] }
+  | { success: false; error: string };
 
 /**
  * Validate a raw value (parsed user code result or MIDI JSON) as a notes array.
@@ -115,15 +118,28 @@ export function validateCodeNotes(result: unknown): ValidateCodeNotesResult {
   return { success: true, notes: validatedNotes };
 }
 
+/** Options for {@link validateAndSanitizeNote}. */
+export interface ValidateNoteOptions {
+  /**
+   * Treat a velocity of 0 or less as a delete marker (MIDI JSON's `v:0`) and
+   * keep it at 0 instead of clamping it up to 1, matching the transform rule
+   * that `velocity <= 0` deletes. Off by default: user code returns notes to
+   * play, and Live rejects velocity 0.
+   */
+  allowVelocityZero?: boolean;
+}
+
 /**
  * Validate and sanitize a single note.
  * Returns a valid note with clamped values, or invalid if note is malformed.
  *
  * @param note - The note object to validate
+ * @param options - Validation options
  * @returns Valid note with sanitized values, or invalid marker
  */
 export function validateAndSanitizeNote(
   note: unknown,
+  options: ValidateNoteOptions = {},
 ): { valid: true; note: CodeNote } | { valid: false } {
   if (typeof note !== "object" || note == null) {
     return { valid: false };
@@ -164,12 +180,29 @@ export function validateAndSanitizeNote(
     return { valid: false };
   }
 
+  // Tested on the RAW velocity, before rounding: a quiet fractional velocity
+  // (v:0.4, or a v:1/3 ratio) must stay a note, not round down into a deletion.
+  const isDeleteMarker = options.allowVelocityZero === true && velocity <= 0;
+
+  // A marker names a note that already exists, so an out-of-range pitch names
+  // nothing — clamping it into 0-127 would delete a note the caller never
+  // mentioned. Rounding is still fine: p:127.4 means 127.
+  if (isDeleteMarker && !isValidMidi(Math.round(n.pitch))) {
+    console.warn(
+      `ignoring MIDI JSON delete marker: pitch ${n.pitch} is outside 0-127`,
+    );
+
+    return { valid: false };
+  }
+
   // Sanitize by clamping values
   const sanitized: CodeNote = {
     pitch: Math.max(0, Math.min(127, Math.round(n.pitch))),
     start: n.start,
     duration: Math.max(0.001, duration),
-    velocity: Math.max(1, Math.min(127, Math.round(velocity))),
+    velocity: isDeleteMarker
+      ? 0
+      : Math.max(1, Math.min(127, Math.round(velocity))),
     velocityDeviation: Math.max(
       0,
       Math.min(127, Math.round(Number(n.velocityDeviation) || 0)),

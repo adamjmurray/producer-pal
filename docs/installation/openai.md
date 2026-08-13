@@ -7,7 +7,7 @@ Use Producer Pal with OpenAI's GPT models through the built-in chat interface.
 The OpenAI API uses pay-as-you-go pricing which can add up with long
 conversations. Monitor your usage at
 [platform.openai.com](https://platform.openai.com/usage). For flat-rate pricing,
-use the [Codex App](./codex-app) or [ChatGPT web app](./chatgpt-web) with an
+use the [ChatGPT App](./chatgpt-app) or [ChatGPT web app](./chatgpt-web) with an
 OpenAI subscription instead.
 
 :::

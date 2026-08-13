@@ -39,8 +39,8 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-3.6-flash", () => {
-      expect(getModelName("gemini-3.6-flash")).toBe("Gemini 3.6 Flash");
+    it("returns display name for gemini-3.7-flash", () => {
+      expect(getModelName("gemini-3.7-flash")).toBe("Gemini 3.7 Flash");
     });
 
     it("returns display name for gemini-3.5-flash-lite", () => {
@@ -52,13 +52,13 @@ describe("config", () => {
     it("returns display name for Anthropic models", () => {
       // ANTHROPIC_MODELS was missing from ALL_MODELS, so Anthropic ids rendered
       // as the raw id (e.g. in the chat header and LockedSettingsNotice).
-      expect(getModelName("claude-opus-4-8")).toBe("Claude Opus 4.8");
+      expect(getModelName("claude-opus-5")).toBe("Claude Opus 5");
       expect(getModelName("claude-sonnet-5")).toBe("Claude Sonnet 5");
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3.6-flash")).toBe(
-        "Google Gemini 3.6 Flash",
+      expect(getModelName("google/gemini-3.7-flash")).toBe(
+        "Google Gemini 3.7 Flash",
       );
     });
 

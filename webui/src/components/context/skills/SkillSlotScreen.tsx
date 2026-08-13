@@ -24,7 +24,9 @@ import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
+import { SkillGateNote } from "./SkillGateNote";
 import { SkillSlotSelect } from "./SkillSlotSelect";
+import { SplitOverrideNote } from "./SplitOverrideNote";
 
 const RESET_CONFIRM =
   "Reset this skill fragment to Producer Pal's default? This deletes your override.";
@@ -69,12 +71,13 @@ export function SkillSlotScreen(
   const doc = useSlotDoc(overrides, slot);
   const editor = useContextEditorState(doc, RESET_CONFIRM);
   const importNotice = useImportNotice();
-  const io = makeContextIoHandlers(
+  const io = makeContextIoHandlers({
     editor,
-    `producer-pal-skill-${slot.name}`,
-    importNotice.showNotice,
-    importNotice.clearNotice,
-  );
+    exportBasename: `producer-pal-skill-${slot.name}`,
+    builtIn: slot.builtIn,
+    onImportError: importNotice.showNotice,
+    onImportSuccess: importNotice.clearNotice,
+  });
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
   // built-in reference is revealed. Resetting collapses the reveal (see
@@ -98,15 +101,26 @@ export function SkillSlotScreen(
         onSelectSlot={onSelectSlot}
         slot={slot}
         widthClass={widthClass}
+        viewSlot={viewSlot}
         onImport={io.onImport}
         onExport={io.onExport}
+        // Routed through the editor's ordered-write dispatcher: the toggle PUTs
+        // the same slot file the editor autosaves, so an unordered one can land
+        // ahead of an in-flight body save and echo the pre-edit body.
         onSetEnabled={(enabled) =>
-          void overrides.setSlotEnabled(slot.name, enabled)
+          void editor.dispatchWrite(() =>
+            overrides.setSlotEnabled(slot.name, enabled),
+          )
         }
       />
       <div
         className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
       >
+        <SplitOverrideNote
+          slots={slots}
+          slot={slot}
+          onSelectSlot={onSelectSlot}
+        />
         {editor.externalUpdate && (
           <ExternalUpdateBanner
             message={EXTERNAL_UPDATE_MESSAGE}
@@ -125,7 +139,6 @@ export function SkillSlotScreen(
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"
-            centerControl={viewSlot}
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={editor.handleClear}
@@ -184,6 +197,8 @@ interface SkillControlsProps {
   slot: SkillSlotView;
   /** Content width — tracks the editor below so the strip stays aligned. */
   widthClass: string;
+  /** The Preview/Source view toggle, at the end of the strip. */
+  viewSlot: preact.JSX.Element;
   onImport: () => void;
   onExport: () => void;
   /** Switch the selected fragment on or off. */
@@ -192,43 +207,47 @@ interface SkillControlsProps {
 
 /**
  * Controls strip: the slot dropdown, the include toggle, the selected slot's
- * human title and one-line explainer, and a drift note. The title lives here
- * rather than in the dropdown, which lists fragments by filename so it reads the
- * way an `@include` line does (see {@link SkillSlotSelect}).
+ * human title and one-line explainer, a drift note, and the Import/Export +
+ * view-toggle icons, over a second line naming the tools that gate the fragment
+ * ({@link SkillGateNote}). The title lives here rather than in the dropdown,
+ * which lists fragments by filename so it reads the way an `@include` line does
+ * (see {@link SkillSlotSelect}).
  *
  * The border spans full width while the content is centered to match the editor
- * below. The Preview/Source view toggle
- * sits in the editor's pane header (see OverridePanes), and resetting an
- * override to the built-in lives in the revealed built-in header there — neither
- * belongs here.
+ * below. Resetting an override to the built-in lives in the revealed built-in
+ * header (see OverridePanes), not here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot } = props;
+  const { slots, selected, onSelectSlot, slot, viewSlot } = props;
   const { widthClass, onImport, onExport, onSetEnabled } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
-        <SkillSlotSelect
-          slots={slots}
-          selected={selected}
-          onSelect={onSelectSlot}
-        />
-        <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
-        <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
-            {slot.title}
+      <div className={`mx-auto w-full ${widthClass} flex flex-col gap-1`}>
+        <div className="flex items-center gap-3">
+          <SkillSlotSelect
+            slots={slots}
+            selected={selected}
+            onSelect={onSelectSlot}
+          />
+          <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
+          <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              {slot.title}
+            </span>
+            {" — "}
+            {slot.description}
           </span>
-          {" — "}
-          {slot.description}
-        </span>
-        <DriftNote
-          drifted={slot.drifted}
-          forkedFromVersion={slot.forkedFromVersion}
-        />
-        <ContextIoButtons onImport={onImport} onExport={onExport} />
+          <DriftNote
+            drifted={slot.drifted}
+            forkedFromVersion={slot.forkedFromVersion}
+          />
+          <ContextIoButtons onImport={onImport} onExport={onExport} />
+          {viewSlot}
+        </div>
+        <SkillGateNote gate={slot.gate} />
       </div>
     </div>
   );

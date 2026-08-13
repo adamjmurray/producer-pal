@@ -13,7 +13,7 @@ import {
   readConfigMarkdown,
   resolveConfigPath,
   writeConfigMarkdown,
-} from "../markdown-store/config-markdown-store.ts";
+} from "../config-store/config-markdown-store.ts";
 
 // Re-exported so callers working with the global context can resolve the
 // config dir (and its Vitest-inert guard) from here rather than reaching into
@@ -21,7 +21,7 @@ import {
 export {
   configDir,
   isConfigDirInert,
-} from "../markdown-store/config-markdown-store.ts";
+} from "../config-store/config-markdown-store.ts";
 
 const CONTEXT_FILENAME = "context.md";
 

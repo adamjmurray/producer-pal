@@ -51,7 +51,7 @@ interface EditorProps {
   /** The onSaved callback (default: a spy). */
   onSaved?: (name: string) => void;
   /** The onRenamed callback (default: a spy). */
-  onRenamed?: (name: string) => void;
+  onRenamed?: (from: string, to: string) => void;
 }
 
 /**
@@ -345,7 +345,7 @@ describe("MemoryEntryEditor — rename", () => {
     // remounting this editor, whose draft is the only copy of anything typed
     // during the rename's round trip.
     await waitFor(() => {
-      expect(onRenamed).toHaveBeenCalledWith("new-slug");
+      expect(onRenamed).toHaveBeenCalledWith("prefers-c-minor", "new-slug");
     });
     expect(onSaved).not.toHaveBeenCalled();
     expect(renameEntry).toHaveBeenCalledWith("prefers-c-minor", "New Slug", {

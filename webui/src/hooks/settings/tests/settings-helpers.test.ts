@@ -13,14 +13,14 @@ import {
   checkHasApiKey,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
-  loadDefaultSubagentPresetId,
+  loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
   loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
-  saveDefaultSubagentPresetId,
+  saveSubagentPresetId,
   saveProviderSettings,
   saveVoiceLanguage,
   saveVoiceSpeed,
@@ -185,6 +185,12 @@ describe("settings-helpers", () => {
     it("returns false when no apiKey is stored", () => {
       expect(checkHasApiKey("anthropic")).toBe(false);
     });
+
+    it("detects the legacy standalone gemini_api_key", () => {
+      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
+
+      expect(checkHasApiKey("gemini")).toBe(true);
+    });
   });
 
   describe("loadProviderSettings", () => {
@@ -269,24 +275,22 @@ describe("settings-helpers", () => {
     });
   });
 
-  describe("default subagent preset persistence", () => {
+  describe("subagent preset persistence", () => {
     it("returns null when nothing is stored (inherit)", () => {
-      expect(loadDefaultSubagentPresetId()).toBeNull();
+      expect(loadSubagentPresetId()).toBeNull();
     });
 
     it("round-trips a preset id through localStorage", () => {
-      saveDefaultSubagentPresetId("preset-abc");
-      expect(loadDefaultSubagentPresetId()).toBe("preset-abc");
+      saveSubagentPresetId("preset-abc");
+      expect(loadSubagentPresetId()).toBe("preset-abc");
     });
 
     it("clears the stored id when saving null (back to inherit)", () => {
-      saveDefaultSubagentPresetId("preset-abc");
-      saveDefaultSubagentPresetId(null);
+      saveSubagentPresetId("preset-abc");
+      saveSubagentPresetId(null);
 
-      expect(loadDefaultSubagentPresetId()).toBeNull();
-      expect(
-        localStorage.getItem("producer_pal_default_subagent_preset"),
-      ).toBeNull();
+      expect(loadSubagentPresetId()).toBeNull();
+      expect(localStorage.getItem("producer_pal_subagent_preset")).toBeNull();
     });
   });
 

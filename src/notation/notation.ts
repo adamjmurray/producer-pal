@@ -36,6 +36,13 @@ export interface InterpretNotationOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
   timeSigDenominator?: number;
+  /**
+   * Keep velocity-0 delete markers in the result instead of resolving them
+   * within this string's own notes. Only MIDI JSON produces them (bar|beat
+   * resolves its inline `v0` while parsing, stark has no delete syntax), and the
+   * caller MUST run `applyV0Deletions` before writing — Live rejects velocity 0.
+   */
+  keepV0Deletes?: boolean;
 }
 
 /** Options for {@link formatNotation}; `notation` selects the serializer. */

@@ -3,7 +3,48 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+
+/**
+ * Client-side delegation tool name. Not an MCP tool: it runs a nested chat
+ * session in the browser (needs the decrypted API key + chat client, both
+ * unreachable from the server), so it has no `ppal-` prefix and never appears in
+ * the MCP /tools response. The Tools tab surfaces it as an opt-in "Subagent"
+ * toggle keyed by this exact string.
+ *
+ * Lives here, with the other tool ids the toolset map special-cases, rather than
+ * in the tool module: preset, transfer, and settings code needs the id to read a
+ * toolset map, and importing it from the tool would drag the `ai` SDK along.
+ */
+export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
+
+/**
+ * Write the Direct Live API tool's effective state into a toolset map, unless
+ * the map already has an opinion.
+ *
+ * Its Tools-tab checkbox is the odd one out: it doesn't write a map entry, it
+ * flips the device-global `liveApiEnabled`, which adds or removes the tool from
+ * the server's catalog. So without this the tool escapes the conversation's pin
+ * — a chat locked while it was off would pick it up on reconnect once the flag
+ * went on, because "absent" reads as enabled.
+ *
+ * Only filling a GAP is what keeps the pin honest both ways. A conversation
+ * pinned before this shipped has no entry, and no entry is exactly what it
+ * reconnects on: it follows the flag, so stamping the current flag in describes
+ * it correctly instead of flagging a divergence that isn't there.
+ *
+ * @param enabledTools - Tool-enablement map (absent = default for that tool)
+ * @param liveApiEnabled - The device's current Direct Live API flag
+ * @returns The map, with the Live API entry filled in when it was missing
+ */
+export function withLiveApiTool(
+  enabledTools: Record<string, boolean>,
+  liveApiEnabled: boolean,
+): Record<string, boolean> {
+  if (LIVE_API_TOOL_ID in enabledTools) return enabledTools;
+
+  return { ...enabledTools, [LIVE_API_TOOL_ID]: liveApiEnabled };
+}
 
 /**
  * Whether a tool is effectively enabled by a toolset map. Absent means enabled
@@ -22,6 +63,28 @@ export function isToolEnabled(
   return toolId === SPAWN_SUBAGENT_TOOL_NAME
     ? enabledTools[toolId] === true
     : enabledTools[toolId] !== false;
+}
+
+/**
+ * The comma-separated tool names to withhold, from the sparse enabled map.
+ * Only explicit `false` entries count — an absent tool is enabled, which is what
+ * keeps a tool added in a later release on by default.
+ *
+ * This is the wire form of a toolset: the chat sends it as the disabled-tools
+ * header, and the skills preview sends the same list so it can show the blob
+ * that toolset would actually receive.
+ *
+ * @param enabledTools - Map of tool name to enabled state
+ * @returns Comma-separated disabled tool names, or "" when none are disabled
+ */
+export function disabledToolNames(
+  enabledTools?: Record<string, boolean>,
+): string {
+  if (!enabledTools) return "";
+
+  return Object.keys(enabledTools)
+    .filter((name) => enabledTools[name] === false)
+    .join(",");
 }
 
 /**

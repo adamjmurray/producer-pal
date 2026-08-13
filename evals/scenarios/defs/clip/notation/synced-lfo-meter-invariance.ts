@@ -40,14 +40,17 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
 const WAVE = "(?:sin|cos|tri|saw|square)";
 
 type LfoReach =
-  "note-value-sync" | "removed-t-syntax" | "no-sync" | "unrecognized";
+  | "note-value-sync"
+  | "removed-t-syntax"
+  | "no-sync"
+  | "unrecognized";
 
 /**
  * Classify the synced-LFO expression in the update-clip transforms at `turn`.

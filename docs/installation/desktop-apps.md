@@ -10,23 +10,38 @@ Anthropic's desktop app. The easiest way to use Producer Pal.
 
 [Get started with Claude Desktop →](./claude-desktop)
 
-## Codex App
+## ChatGPT App
 
-OpenAI's desktop app. Easy setup with an OpenAI subscription.
+OpenAI's desktop app, with Codex built in (formerly the Codex app). Easy setup
+with an OpenAI account.
 
 - **Difficulty:** Easy
-- **Cost:** Subscription required (ChatGPT Plus, Pro, Business, or Enterprise)
-- **Best for:** OpenAI users on macOS
+- **Cost:** A paid plan (ChatGPT Plus, Pro, Business, or Enterprise) is
+  recommended
+- **Best for:** OpenAI users on macOS or Windows
 
-[Get started with Codex App →](./codex-app)
+[Get started with the ChatGPT App →](./chatgpt-app)
 
-## LM Studio (Advanced)
+## Antigravity
+
+Google's agent app for Gemini models. Adding Producer Pal means editing a JSON
+config file — one extra step, but everything else is the same.
+
+- **Difficulty:** Easy — one config file to edit
+- **Cost:** Free; a Google AI subscription raises the rate limits
+- **Best for:** Gemini users who want a desktop app instead of the CLI
+
+[Get started with Antigravity →](./antigravity)
+
+## Bionic (Advanced)
+
+LM Studio's agent app for open models, running entirely on your machine.
 
 ::: warning For Power Users
 
-LM Studio requires significant hardware (Apple Silicon with lots of RAM or
-Nvidia 4080+ GPU) and technical comfort with local models. Expect
-experimentation. Online options work better and faster at this time.
+Bionic requires significant hardware (Apple Silicon with lots of RAM or Nvidia
+4080+ GPU) and technical comfort with local models. Expect experimentation.
+Online options work better and faster at this time.
 
 :::
 
@@ -34,4 +49,4 @@ experimentation. Online options work better and faster at this time.
 - **Cost:** Free (uses your hardware)
 - **Best for:** Privacy-focused users with capable hardware
 
-[LM Studio setup guide →](./lm-studio)
+[Bionic setup guide →](./bionic)

@@ -10,8 +10,9 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
 
 /**
  * Defer a chat send while any value the first turn will LOCK is still loading.
- * useChat's initializeChat locks the system instruction and the notation from
- * whatever is current at the first send, and both are fetched on mount:
+ * useChat's initializeChat locks the system instruction, the notation, and the
+ * toolset from whatever is current at the first send, and all are fetched on
+ * mount:
  *
  * - the custom system prompt (`/system-prompt`) — provisionally "" (built-in),
  *   so a turn fired inside the fetch window locks the built-in prompt and keeps
@@ -21,9 +22,16 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  *   grammar for its entire life, teaching the model one notation while their
  *   clips are written in another. Nothing else catches this: the provisional
  *   value is itself a perfectly valid notation, and no error surfaces.
+ * - the Direct Live API flag (`/config`) — provisionally false, and stamped into
+ *   the locked toolset (withLiveApiTool), so a turn fired in that window pins the
+ *   tool off for the conversation's life on a device that has it on. Invisible
+ *   the same way: an off tool raises no error.
  *
- * Waiting out the load closes both races — mirroring how initializeChat already
- * awaits validateMcpConnection before locking.
+ * Waiting out the load closes all three races — mirroring how initializeChat
+ * already awaits validateMcpConnection before locking. The third rides the
+ * SECOND: both come from the one `/config` GET, so the notation wait covers the
+ * flag and callers pass no separate known-flag for it. Relaxing the notation
+ * wait would silently reopen the Live API race.
  *
  * Once nothing is loading the gate is transparent: it returns immediately and
  * never delays a later send. "Loaded" deliberately includes failure (an
@@ -38,6 +46,10 @@ type SendFn = (message: string, options?: MessageOverrides) => Promise<void>;
  * it guards (see `notationKnown` in useSettings): a flag that flips a render
  * early would release the send before the value it was waiting for arrived.
  *
+ * A send still parked at unmount is abandoned, not delivered: its caller settles
+ * so nothing hangs, but the message is dropped rather than pushed through a chat
+ * the user has already left.
+ *
  * @param isLoading - Whether any first-send-locked value is still resolving
  * @param send - The underlying send handler to gate
  * @returns A send handler that waits out the initial load before sending
@@ -48,6 +60,7 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   const isLoadingRef = useRef(isLoading);
   const sendRef = useRef(send);
   const waitersRef = useRef<Array<() => void>>([]);
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
     sendRef.current = send;
@@ -68,9 +81,12 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   }, [isLoading]);
 
   // On unmount, release any still-parked sends so a caller awaiting the gate
-  // can't hang forever when the load never resolves before teardown.
+  // can't hang forever when the load never resolves before teardown. They settle
+  // without sending — see the unmounted check below.
   useEffect(
     () => () => {
+      unmountedRef.current = true;
+
       const waiters = waitersRef.current;
 
       waitersRef.current = [];
@@ -82,6 +98,11 @@ export function useFirstSendGate(isLoading: boolean, send: SendFn): SendFn {
   return useCallback(async (message: string, options?: MessageOverrides) => {
     if (isLoadingRef.current) {
       await new Promise<void>((resolve) => waitersRef.current.push(resolve));
+
+      // Released by teardown rather than by the load finishing (the user left
+      // chat mode mid-park). Sending now would fire an invisible request through
+      // the abandoned chat and autosave it into the conversation it left.
+      if (unmountedRef.current) return;
     }
 
     await sendRef.current(message, options);

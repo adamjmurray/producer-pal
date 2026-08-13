@@ -21,7 +21,7 @@ import {
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "./clip-scenario-helpers.ts";
+} from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 
@@ -164,11 +164,11 @@ function assertDoubledInPlace(): EvalAssertion {
         throw new Error("update-clip result missing in turn 2");
       }
 
-      const before = parseToolResult(String(createCall.result)) as {
+      const before = parseToolResult(createCall.result) as {
         id?: unknown;
         noteCount?: number;
       };
-      const after = parseToolResult(String(updateCall.result)) as {
+      const after = parseToolResult(updateCall.result) as {
         id?: unknown;
         noteCount?: number;
       };

@@ -15,7 +15,7 @@ import {
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   readAllClipNotes,
   rawNotesToNoteEvents,

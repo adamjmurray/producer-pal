@@ -24,6 +24,7 @@ import {
   setupLiveRecordWithDeletionSpy,
   userTextItem,
   userTranscriptItem,
+  waitForAutosave,
   waitForEffects,
 } from "./voice-persistence-test-helpers";
 
@@ -55,7 +56,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([userTextItem("hi pal")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     expect(result.current.activeConversationId).not.toBeNull();
 
@@ -75,7 +76,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([userTextItem("hey")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(
       result.current.activeConversationId as string,
@@ -112,7 +113,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([userTextItem("hey")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(
       result.current.activeConversationId as string,
@@ -210,7 +211,7 @@ describe("useVoicePersistence", () => {
     // otherwise the second mints a fresh UUID and creates a duplicate record.
     rerender([userTextItem("first")]);
     rerender([userTextItem("first"), userTextItem("second")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     expect(result.current.conversations).toHaveLength(1);
     expect(result.current.conversations[0]?.id).toBe(
@@ -223,7 +224,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([userTranscriptItem("make me a clip")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(
       result.current.activeConversationId as string,
@@ -253,7 +254,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([assistantOnly]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(
       result.current.activeConversationId as string,
@@ -361,6 +362,19 @@ describe("useVoicePersistence", () => {
     );
   });
 
+  it("switchConversation clears the active id for a text record with no handler", async () => {
+    const textRecord = createTestRecord({ id: "chat-2", sessionType: "text" });
+
+    await saveConversation(textRecord);
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    await act(() => result.current.switchConversation(textRecord.id));
+
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
   it("switchConversation updates the URL hash before onForeignRecord runs", async () => {
     const textRecord = createTestRecord({ id: "chat-1", sessionType: "text" });
 
@@ -411,7 +425,7 @@ describe("useVoicePersistence", () => {
     // ...then the user deletes the active conversation before it fires.
     await act(() => result.current.deleteConversation(record.id));
     // Let the debounce fire; the in-flight save must bail, not re-create it.
-    await waitForEffects(800);
+    await waitForAutosave();
 
     expect(await loadConversation(record.id)).toBeUndefined();
     expect(result.current.conversations).toHaveLength(0);
@@ -613,7 +627,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender([emptyUserItem]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(
       result.current.activeConversationId as string,
@@ -664,7 +678,7 @@ describe("useVoicePersistence", () => {
 
     await waitForEffects();
     rerender(continuation);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(priorRecord.id);
 
@@ -701,7 +715,7 @@ describe("useVoicePersistence", () => {
     await waitForEffects();
     // Sub-session 1: a transcript with a tool call is autosaved to a fresh record.
     rerender([userMsg, functionCall]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const id = result.current.activeConversationId as string;
     const initial = await loadConversation(id);
@@ -724,7 +738,7 @@ describe("useVoicePersistence", () => {
         content: [{ type: "input_audio", transcript: "follow-up" }],
       } as unknown as RealtimeItem,
     ]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     const loaded = await loadConversation(id);
 

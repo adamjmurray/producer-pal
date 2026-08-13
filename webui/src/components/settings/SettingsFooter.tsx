@@ -13,6 +13,10 @@ interface SettingsFooterProps {
    * modal stayed open after Save because durable persistence failed; render
    * it above the buttons so the user sees what went wrong. */
   saveError: string | null;
+  /** Why Save is unavailable right now, or null. Set while a sub-form owns the
+   * dialog (the Presets tab's create form), where saving would close the modal
+   * and discard the draft. Disables Save and explains it. */
+  blockedMessage?: string | null;
 }
 
 /**
@@ -24,6 +28,7 @@ interface SettingsFooterProps {
  * @param {boolean} props.pulse - Whether to pulse buttons to draw attention
  * @param {boolean} props.hasUnsavedChanges - Whether there are unsaved changes
  * @param {string | null} props.saveError - Error from the last failed save
+ * @param {string | null} props.blockedMessage - Why Save is disabled, or null
  * @returns {JSX.Element} Settings footer component
  */
 export function SettingsFooter({
@@ -33,8 +38,11 @@ export function SettingsFooter({
   pulse,
   hasUnsavedChanges,
   saveError,
+  blockedMessage = null,
 }: SettingsFooterProps) {
   const pulseClass = pulse ? " settings-button-pulse" : "";
+  const showNotice =
+    hasUnsavedChanges || saveError != null || blockedMessage != null;
 
   return (
     <>
@@ -44,7 +52,10 @@ export function SettingsFooter({
         </p>
       )}
 
-      {hasUnsavedChanges && !saveError && (
+      {/* The blocked notice replaces the unsaved-changes nag — both say "you
+          can't leave yet", and only this one is actionable. A saveError is a
+          separate failure and still shows. */}
+      {hasUnsavedChanges && !saveError && !blockedMessage && (
         <p className="text-xs text-red-600 dark:text-red-400 mt-4">
           You have unsaved changes. Save or cancel to dismiss.
         </p>
@@ -56,9 +67,16 @@ export function SettingsFooter({
         </p>
       )}
 
-      <div
-        className={`flex gap-2 ${hasUnsavedChanges || saveError ? "mt-2" : "mt-4"}`}
-      >
+      {blockedMessage && (
+        <p
+          className="text-xs text-amber-600 dark:text-amber-400 mt-4"
+          data-testid="settings-save-blocked"
+        >
+          {blockedMessage}
+        </p>
+      )}
+
+      <div className={`flex gap-2 ${showNotice ? "mt-2" : "mt-4"}`}>
         {settingsConfigured && (
           <button
             onClick={cancelSettings}
@@ -69,7 +87,8 @@ export function SettingsFooter({
         )}
         <button
           onClick={saveSettings}
-          className={`flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50${pulseClass}`}
+          disabled={blockedMessage != null}
+          className={`flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed${pulseClass}`}
         >
           Save
         </button>

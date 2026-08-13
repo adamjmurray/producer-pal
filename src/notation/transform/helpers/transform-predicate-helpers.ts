@@ -82,6 +82,14 @@ export function evaluatePredicate(
 
       return compareValues(node.op, left, right);
     }
+
+    // Unreachable: every node type is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = node;
+
+      return exhaustive;
+    }
   }
 }
 
@@ -118,5 +126,13 @@ function compareValues(
       return Math.abs(left - right) <= SELECTOR_EPSILON;
     case "!=":
       return Math.abs(left - right) > SELECTOR_EPSILON;
+
+    // Unreachable: every operator is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = op;
+
+      return exhaustive;
+    }
   }
 }

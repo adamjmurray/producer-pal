@@ -1,22 +1,32 @@
 import { defineConfig } from "vitepress";
 import { VERSION } from "../../src/shared/config.ts";
 
+const SITE_URL = "https://producer-pal.org";
+const SITE_TITLE = "Producer Pal — Ableton MCP for AI music production";
+const SITE_DESCRIPTION =
+  "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.";
+const SOCIAL_IMAGE = `${SITE_URL}/producer-pal-social-card.png`;
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Producer Pal",
   titleTemplate: ":title | Producer Pal — Ableton MCP for AI music production",
-  description:
-    "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
+  description: SITE_DESCRIPTION,
 
   // GitHub Pages base URL
   base: "/",
 
   sitemap: {
     hostname: "https://producer-pal.org",
-    // Keep the /guide/examples redirect stub (moved to /features/examples) out
-    // of the sitemap so crawlers index the destination, not the redirect.
+    // Keep redirect stubs out of the sitemap so crawlers index the
+    // destination, not the redirect.
     transformItems: (items) =>
-      items.filter((item) => !item.url.startsWith("guide/examples")),
+      items.filter(
+        (item) =>
+          !item.url.startsWith("guide/examples") &&
+          item.url !== "installation/codex-app" &&
+          item.url !== "installation/lm-studio",
+      ),
   },
 
   cleanUrls: true,
@@ -30,16 +40,43 @@ export default defineConfig({
       .replace(/^index$/, "");
 
     pageData.frontmatter.head ??= [];
-    // Respect a page's own canonical (e.g. the /guide/examples redirect stub
-    // points at /features/examples); otherwise default to a self-canonical.
-    const hasCanonical = pageData.frontmatter.head.some(
-      ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
-    );
+    const head = pageData.frontmatter.head;
+    const hasMeta = (property: string) =>
+      head.some(
+        ([tag, attrs]) => tag === "meta" && attrs?.property === property,
+      );
 
-    if (!hasCanonical) {
-      pageData.frontmatter.head.push([
-        "link",
-        { rel: "canonical", href: `https://producer-pal.org/${path}` },
+    // Respect a page's own canonical (redirect stubs point at their
+    // replacement); two canonicals would make search engines ignore both.
+    const ownCanonical = head.find(
+      ([tag, attrs]) => tag === "link" && attrs?.rel === "canonical",
+    )?.[1]?.href;
+    const canonical = ownCanonical ?? `${SITE_URL}/${path}`;
+
+    if (ownCanonical == null) {
+      head.push(["link", { rel: "canonical", href: canonical }]);
+    }
+
+    // Per-page social tags. Without these every page inherits the site-wide
+    // values from `head` below, so a shared deep link previews as the
+    // homepage. og:url tracks the canonical because that's the URL Facebook
+    // and Discord resolve the share to.
+    head.push(["meta", { property: "og:url", content: canonical }]);
+
+    if (!hasMeta("og:title")) {
+      head.push([
+        "meta",
+        { property: "og:title", content: socialTitle(pageData.title) },
+      ]);
+    }
+
+    if (!hasMeta("og:description")) {
+      head.push([
+        "meta",
+        {
+          property: "og:description",
+          content: pageData.description || SITE_DESCRIPTION,
+        },
       ]);
     }
 
@@ -56,54 +93,20 @@ export default defineConfig({
           "Ableton MCP, AI for Ableton, Ableton Live MCP, Ableton AI, AI music production, Max for Live MCP server, Claude Ableton, Gemini Ableton, ChatGPT Ableton, Ableton REST API, Ableton Live REST API, Ableton HTTP API, Ableton Live API, Agent Skills, Claude Skills, Codex Skills, Gemini Skills, Coding Agent Skills, Ableton Live Agent Skill, SKILL.md",
       },
     ],
+    // Fallbacks for pages transformPageData doesn't reach (404). Every real
+    // page overrides og:title/og:description/og:url with its own.
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Producer Pal" }],
-    [
-      "meta",
-      {
-        property: "og:title",
-        content: "Producer Pal — Ableton MCP for AI music production",
-      },
-    ],
-    [
-      "meta",
-      {
-        property: "og:description",
-        content:
-          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
-      },
-    ],
-    ["meta", { property: "og:url", content: "https://producer-pal.org" }],
-    [
-      "meta",
-      {
-        property: "og:image",
-        content: "https://producer-pal.org/producer-pal-logo.png",
-      },
-    ],
+    ["meta", { property: "og:title", content: SITE_TITLE }],
+    ["meta", { property: "og:description", content: SITE_DESCRIPTION }],
+    ["meta", { property: "og:url", content: SITE_URL }],
+    ["meta", { property: "og:image", content: SOCIAL_IMAGE }],
+    ["meta", { property: "og:image:width", content: "1200" }],
+    ["meta", { property: "og:image:height", content: "630" }],
+    ["meta", { property: "og:image:alt", content: SITE_TITLE }],
+    // X reads og:* when the twitter:* equivalents are absent, so twitter:card
+    // is the only tag worth duplicating — it picks the large card layout.
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    [
-      "meta",
-      {
-        name: "twitter:title",
-        content: "Producer Pal — Ableton MCP for AI music production",
-      },
-    ],
-    [
-      "meta",
-      {
-        name: "twitter:description",
-        content:
-          "The most actively developed Ableton MCP server — AI for Ableton Live, updated for the latest Live features. Works with Claude, Gemini, ChatGPT, and local models.",
-      },
-    ],
-    [
-      "meta",
-      {
-        name: "twitter:image",
-        content: "https://producer-pal.org/producer-pal-logo.png",
-      },
-    ],
   ],
 
   themeConfig: {
@@ -115,6 +118,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide" },
       { text: "Features", link: "/features" },
       { text: "How It Works", link: "/how-it-works" },
+      { text: "Vision", link: "/vision" },
       { text: "Support", link: "/support" },
       {
         text: "GitHub",
@@ -131,17 +135,28 @@ export default defineConfig({
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Context & Memory", link: "/guide/context" },
           { text: "Customizing Skills", link: "/guide/customizing-skills" },
+          { text: "Optimizing Cost & Context", link: "/guide/optimizing" },
+        ],
+      },
+      {
+        // The three ways into the device. Keep them together and out of the
+        // Guide list, or MCP reads as the only real path.
+        text: "Integrations",
+        items: [
+          { text: "MCP (npx producer-pal)", link: "/guide/npx-cli" },
           { text: "REST API", link: "/guide/rest-api" },
           { text: "Agent Skills", link: "/guide/skills" },
+          { text: "Extending", link: "/extending" },
         ],
       },
       {
         text: "Features",
         link: "/features",
         items: [
+          { text: "Tool Reference", link: "/features/tools" },
           { text: "Usage Examples", link: "/features/examples" },
           { text: "MIDI Notation", link: "/features/midi-notation" },
-          { text: "Extending", link: "/extending" },
+          { text: "Limitations", link: "/features/limitations" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },
@@ -166,6 +181,10 @@ export default defineConfig({
             link: "/how-it-works/why-not-an-extension",
           },
         ],
+      },
+      {
+        text: "Vision",
+        link: "/vision",
       },
       {
         text: "Support",
@@ -201,8 +220,9 @@ export default defineConfig({
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
               },
-              { text: "Codex App", link: "/installation/codex-app" },
-              { text: "LM Studio", link: "/installation/lm-studio" },
+              { text: "ChatGPT App", link: "/installation/chatgpt-app" },
+              { text: "Antigravity", link: "/installation/antigravity" },
+              { text: "Bionic (LM Studio)", link: "/installation/bionic" },
             ],
           },
           {
@@ -220,7 +240,7 @@ export default defineConfig({
             link: "/installation/web-apps",
             items: [
               { text: "claude.ai", link: "/installation/claude-web" },
-              { text: "ChatGPT", link: "/installation/chatgpt-web" },
+              { text: "ChatGPT Web", link: "/installation/chatgpt-web" },
               { text: "Le Chat", link: "/installation/mistral-le-chat" },
             ],
           },
@@ -279,3 +299,15 @@ export default defineConfig({
     },
   },
 });
+
+/**
+ * Build a page's og:title. Social cards get a shorter suffix than the browser
+ * title, since preview cards truncate around 60 characters.
+ * @param title the page's resolved title
+ * @returns the title, brand-suffixed unless it already names the brand
+ */
+function socialTitle(title: string | undefined): string {
+  if (!title) return SITE_TITLE;
+
+  return title.includes("Producer Pal") ? title : `${title} — Producer Pal`;
+}

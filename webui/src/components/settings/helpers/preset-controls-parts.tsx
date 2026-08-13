@@ -22,8 +22,17 @@ interface PresetPickerRowProps {
 }
 
 /**
- * The preset dropdown plus the Save-as / Update / Delete action buttons.
+ * The preset dropdown plus the New / Update / Delete action buttons.
  * Update/Delete appear only when a preset is selected.
+ *
+ * None of these say "Save": all three write to storage on click, unlike the
+ * modal's footer Save, and identical labels a few hundred pixels apart had
+ * users clicking the footer expecting their preset to be created.
+ *
+ * The dropdown is disabled while the New-preset form is open. Selecting one
+ * loads its whole bundle into the same settings buffer the form is about to
+ * capture, so a stray pick mid-naming would silently save a copy of the picked
+ * preset under the new name.
  * @param {PresetPickerRowProps} props - Picker row props
  * @returns {JSX.Element} The picker + action row
  */
@@ -36,7 +45,8 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
         id="preset-select"
         value={selectedId}
         onChange={(e) => props.onSelect((e.target as HTMLSelectElement).value)}
-        className={`flex-1 min-w-40 ${INPUT_CLASS}`}
+        disabled={naming}
+        className={`flex-1 min-w-40 ${INPUT_CLASS} disabled:opacity-50`}
         data-testid="preset-select"
       >
         <option value="">— Select a preset —</option>
@@ -51,9 +61,9 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
           type="button"
           onClick={props.onStartNaming}
           className={BUTTON_CLASS}
-          data-testid="preset-save-as"
+          data-testid="preset-new"
         >
-          Save as…
+          New…
         </button>
       )}
       {selected && (
@@ -80,9 +90,54 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
   );
 }
 
-interface SubagentDefaultRowProps {
+interface PresetNoticesProps {
+  /** Name of the selected preset when the settings have drifted from it, else
+   * null — the cue to offer Update vs New…. */
+  driftedFrom: string | null;
+  /** Rejected-input or failed-write message to show, or null. */
+  error: string | null;
+}
+
+/**
+ * The three lines under the preset picker: the always-on reminder that these
+ * buttons write immediately, the drift warning, and any error.
+ *
+ * The reminder is permanent on purpose. Presets are the only controls in this
+ * dialog that persist on click; everything else waits for the footer Save, and
+ * nothing else on screen distinguishes them.
+ * @param {PresetNoticesProps} props - Notice props
+ * @returns {JSX.Element} The notice block
+ */
+export function PresetNotices({ driftedFrom, error }: PresetNoticesProps) {
+  return (
+    <>
+      <p className="text-xs text-zinc-500 dark:text-zinc-300">
+        Presets save as soon as you click — the Save button below doesn’t apply
+        to them.
+      </p>
+
+      {driftedFrom != null && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          These settings no longer match “{driftedFrom}” — “Update” overwrites
+          it, or “New…” keeps a separate preset.
+        </p>
+      )}
+
+      {error != null && (
+        <p
+          className="text-xs text-red-600 dark:text-red-400"
+          data-testid="preset-error"
+        >
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+interface SubagentPresetRowProps {
   presets: ChatPreset[];
-  /** Saved default-subagent preset id, or null to inherit. */
+  /** Saved subagent preset id, or null to inherit. */
   value: string | null;
   onChange: (id: string | null) => void;
   /** Preset ids whose provider has no usable API key, annotated in the options
@@ -91,33 +146,33 @@ interface SubagentDefaultRowProps {
 }
 
 /**
- * The "Default subagent" selector: which preset a spawned subagent runs under.
+ * The "Subagent preset" selector: which preset a spawned subagent runs under.
  * "Inherit current settings" (the empty value) clones the orchestrator's config;
  * a preset runs each worker on that preset's model/inference and toolset. Shown
  * below the preset controls on the Presets tab. Options whose provider has no
  * API key are annotated. Falls back to "Inherit" when the saved id no longer
  * matches a preset (deleted), matching the runtime's graceful inherit.
- * @param {SubagentDefaultRowProps} props - Selector props
- * @returns {JSX.Element} The default-subagent selector
+ * @param {SubagentPresetRowProps} props - Selector props
+ * @returns {JSX.Element} The Subagent preset selector
  */
-export function SubagentDefaultRow(props: SubagentDefaultRowProps) {
+export function SubagentPresetRow(props: SubagentPresetRowProps) {
   const { presets, value, missingKeyIds } = props;
   const selectValue =
     value != null && presets.some((p) => p.id === value) ? value : "";
 
   return (
     <div className="pt-3 border-t border-zinc-300 dark:border-zinc-600">
-      <label className="block text-sm mb-1" htmlFor="subagent-default-select">
-        Default subagent
+      <label className="block text-sm mb-1" htmlFor="subagent-preset-select">
+        Subagent preset
       </label>
       <select
-        id="subagent-default-select"
+        id="subagent-preset-select"
         value={selectValue}
         onChange={(e) =>
           props.onChange((e.target as HTMLSelectElement).value || null)
         }
         className={`w-full ${INPUT_CLASS}`}
-        data-testid="subagent-default-select"
+        data-testid="subagent-preset-select"
       >
         <option value="">Inherit current settings</option>
         {presets.map((p) => (
@@ -148,15 +203,26 @@ interface PresetCreateFormProps {
 }
 
 /**
- * The inline "name this preset" form shown after Save-as: a name field, an
- * optional description, and Save/Cancel. Enter in the name field confirms,
- * Escape cancels; the description is a textarea so Enter inserts a newline.
+ * The "name this preset" form shown after New…: a name field, an optional
+ * description, and Create/Cancel. Enter in the name field confirms, Escape
+ * cancels; the description is a textarea so Enter inserts a newline.
+ *
+ * Rendered as an inset card so it reads as its own sub-form — otherwise its
+ * fields blend into the tab and its Description looks like the selected
+ * preset's Description, which sits in the same spot.
  * @param {PresetCreateFormProps} props - Create form props
  * @returns {JSX.Element} The create-preset form
  */
 export function PresetCreateForm(props: PresetCreateFormProps) {
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2 p-3 rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-200/50 dark:bg-zinc-700/40"
+      data-testid="preset-create-form"
+    >
+      <p className="text-sm font-medium">New preset</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-300">
+        Captures the settings currently in this dialog.
+      </p>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -176,9 +242,9 @@ export function PresetCreateForm(props: PresetCreateFormProps) {
           type="button"
           onClick={props.onConfirm}
           className={BUTTON_CLASS}
-          data-testid="preset-name-save"
+          data-testid="preset-create-confirm"
         >
-          Save
+          Create preset
         </button>
         <button type="button" onClick={props.onCancel} className={BUTTON_CLASS}>
           Cancel

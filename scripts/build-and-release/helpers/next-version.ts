@@ -63,6 +63,14 @@ export function nextVersion(current: string, type: BumpType): string {
       }
 
       return `${major}.${minor}.${patch}`;
+
+    // Unreachable: every BumpType is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = type;
+
+      return exhaustive;
+    }
   }
 }
 

@@ -75,12 +75,10 @@ export function registerTakeLaneTrack(
       const start = typeof startBeats === "number" ? startBeats : 0;
 
       registerMockObject(clipId, {
-        path: String(
-          livePath
-            .track(trackIndex)
-            .takeLane(laneIndex)
-            .arrangementClip(laneClips.length),
-        ),
+        path: livePath
+          .track(trackIndex)
+          .takeLane(laneIndex)
+          .arrangementClip(laneClips.length),
         type: "Clip",
         properties: {
           is_arrangement_clip: 1,
@@ -161,12 +159,10 @@ function seedLaneClips(
     const clipId = `tl_seed_clip_${uid++}`;
 
     registerMockObject(clipId, {
-      path: String(
-        livePath
-          .track(trackIndex)
-          .takeLane(laneIndex)
-          .arrangementClip(laneClips.length),
-      ),
+      path: livePath
+        .track(trackIndex)
+        .takeLane(laneIndex)
+        .arrangementClip(laneClips.length),
       type: "Clip",
       properties: { is_arrangement_clip: 1, start_time: start, end_time: end },
     });

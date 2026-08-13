@@ -6,10 +6,10 @@ with a capable Nvidia GPU (8GB VRAM minimum, 4080+ recommended).
 
 ## Options
 
-| Option                   | Best For             | Trade-offs                                   |
-| ------------------------ | -------------------- | -------------------------------------------- |
-| [Ollama](./ollama)       | Easiest local setup  | Uses Built-in Chat UI. Model quality varies. |
-| [LM Studio](./lm-studio) | GUI model management | Standalone app, more configuration options.  |
+| Option             | Best For             | Trade-offs                                   |
+| ------------------ | -------------------- | -------------------------------------------- |
+| [Ollama](./ollama) | Easiest local setup  | Uses Built-in Chat UI. Model quality varies. |
+| [Bionic](./bionic) | GUI model management | Standalone app, more configuration options.  |
 
 ## Recommendation
 

@@ -7,8 +7,10 @@ description:
 
 # Getting Started
 
-Welcome to Producer Pal™! This guide will help you get started with using AI for
-music production in Ableton Live via the Producer Pal Ableton MCP server.
+Welcome to Producer Pal™! This guide will help you get started controlling
+Ableton Live with words. Producer Pal is an Ableton MCP server, a
+[REST API](/guide/rest-api), and a portable [Agent Skill](/guide/skills) — three
+ways into the same Max for Live device.
 
 ## Installation
 
@@ -24,10 +26,13 @@ Quick options:
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
   Claude Code, and other MCP-compatible coding agents
 - **[Local Models](/installation/choose-local)** - Run completely offline with
-  Ollama, LM Studio, and other MCP-compatible platforms
+  Ollama, Bionic (LM Studio), and other MCP-compatible platforms
+- **[Agent Skill](/guide/skills)** - Drop a folder into Claude Code, Codex CLI,
+  or Gemini CLI — no MCP config
+- **[REST API](/guide/rest-api)** - Script Live over plain HTTP, no AI required
 
 Already have an MCP-compatible client? Connect with `npx producer-pal`
-([details](/installation/other-mcp))
+([setup](/installation/other-mcp), [CLI reference](/guide/npx-cli))
 
 ## Quick Start
 
@@ -43,6 +48,12 @@ After installation:
    - "Create a new MIDI track called Bass"
    - "Change the tempo to 108 BPM"
 
+Using the [Agent Skill](/guide/skills) instead? Steps 3 and 4 are handled by its
+bootstrap. Using the [REST API](/guide/rest-api) directly? Nothing connects for
+you — call `ppal-connect` first when a model is in the loop, since that's what
+returns the skills and [context](/guide/context). A plain script can call the
+other tools straight away.
+
 ## User Interface
 
 - [Device Interface](/guide/device) - The Max for Live device tabs and settings
@@ -55,6 +66,8 @@ After installation:
 - Check out the [usage examples](/features/examples) for detailed examples and
   tips
 - Explore the [feature list](/features) to see everything Producer Pal can do
+- Cut what each conversation costs with
+  [Optimizing Cost & Context](/guide/optimizing)
 - Watch the [demo videos](/#demos) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - See what's coming in the [roadmap](/roadmap)

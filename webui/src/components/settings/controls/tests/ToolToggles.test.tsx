@@ -276,6 +276,28 @@ describe("ToolToggles", () => {
       expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
     });
 
+    it("disables a default-enabled tool on the FIRST click", () => {
+      // The map is sparse — an absent tool is enabled — so inverting the raw
+      // entry re-wrote "enabled": the checkbox snapped back and only a second
+      // click disabled the tool.
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{}}
+          setEnabledTools={setEnabledTools}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Read Live Set"));
+
+      expect(setEnabledTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools.mock.calls[0]?.[0]?.["ppal-read-live-set"]).toBe(
+        false,
+      );
+    });
+
     it("connect tool checkbox is always checked and disabled", () => {
       render(
         <ToolToggles
@@ -464,12 +486,30 @@ describe("ToolToggles", () => {
   });
 
   describe("notation selector", () => {
-    it("renders the Notation dropdown (in the Advanced group)", () => {
+    it("renders the Notation dropdown", () => {
       render(<ToolToggles {...defaultProps} notation="midi-json" />);
 
       const select = screen.getByTestId("notation-select") as HTMLSelectElement;
 
       expect(select.value).toBe("midi-json");
+    });
+
+    it("puts the Notation dropdown in the Clip group", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          tools={[
+            ...TEST_TOOLS,
+            { id: "ppal-create-clip", name: "Create Clip" },
+          ]}
+        />,
+      );
+
+      const clipGroup = screen.getByText("Clip").parentElement;
+
+      expect(
+        clipGroup?.querySelector("[data-testid=notation-select]"),
+      ).not.toBeNull();
     });
 
     it("calls setNotation when a new notation is picked", () => {

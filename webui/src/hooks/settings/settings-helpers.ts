@@ -509,30 +509,30 @@ export function saveSmallModelMode(enabled: boolean): void {
   localStorage.setItem("producer_pal_small_model_mode", String(enabled));
 }
 
-const DEFAULT_SUBAGENT_PRESET_KEY = "producer_pal_default_subagent_preset";
+const SUBAGENT_PRESET_KEY = "producer_pal_subagent_preset";
 
 /**
- * Loads the "Default subagent" preset id from localStorage — the preset a
+ * Loads the "Subagent preset" id from localStorage — the preset a
  * spawned subagent runs under. Null (missing/blank) means "inherit current
  * settings", the shipped phase-1 behavior.
  * @returns {string | null} The saved preset id, or null to inherit
  */
-export function loadDefaultSubagentPresetId(): string | null {
-  // getItem already returns null when unset; saveDefaultSubagentPresetId never
+export function loadSubagentPresetId(): string | null {
+  // getItem already returns null when unset; saveSubagentPresetId never
   // stores an empty string, and the resolver/selector treat "" as inherit too.
-  return localStorage.getItem(DEFAULT_SUBAGENT_PRESET_KEY);
+  return localStorage.getItem(SUBAGENT_PRESET_KEY);
 }
 
 /**
- * Saves the "Default subagent" preset id to localStorage. Null clears it back
+ * Saves the "Subagent preset" id to localStorage. Null clears it back
  * to "inherit current settings".
  * @param {string | null} presetId - The preset id, or null to inherit
  */
-export function saveDefaultSubagentPresetId(presetId: string | null): void {
+export function saveSubagentPresetId(presetId: string | null): void {
   if (presetId) {
-    localStorage.setItem(DEFAULT_SUBAGENT_PRESET_KEY, presetId);
+    localStorage.setItem(SUBAGENT_PRESET_KEY, presetId);
   } else {
-    localStorage.removeItem(DEFAULT_SUBAGENT_PRESET_KEY);
+    localStorage.removeItem(SUBAGENT_PRESET_KEY);
   }
 }
 

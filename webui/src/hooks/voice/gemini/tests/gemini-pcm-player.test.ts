@@ -190,6 +190,83 @@ describe("GeminiPcmPlayer", () => {
     expect(player.hasQueued()).toBe(false);
   });
 
+  it("onDrained runs immediately when nothing is queued", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("onDrained waits for the last scheduled source to end", async () => {
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    const ctx = FakeAudioContext.instances[0]!;
+
+    player.enqueueBase64(pcmBase64(10));
+    player.enqueueBase64(pcmBase64(10));
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    ctx.sources[0]!.onended!();
+    expect(callback).not.toHaveBeenCalled();
+
+    ctx.sources[1]!.onended!();
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    // One-shot: a later drain does not re-run it.
+    player.enqueueBase64(pcmBase64(10));
+    ctx.sources[2]!.onended!();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a parked drain callback until it runs or is flushed", async () => {
+    // How an interrupt tells "still streaming" from "turnComplete already ran
+    // and only the tail is left" — the second has nobody left to lift the mute.
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    expect(player.hasPendingDrain()).toBe(false);
+
+    player.enqueueBase64(pcmBase64(10));
+    player.onDrained(vi.fn());
+    expect(player.hasPendingDrain()).toBe(true);
+
+    player.flush();
+    expect(player.hasPendingDrain()).toBe(false);
+  });
+
+  it("flush drops a pending onDrained instead of firing it", async () => {
+    // The half-duplex mute gate defers its unmute to onDrained. A barge-in
+    // interrupt flushes, and firing the callback there lifted the mute behind
+    // the caller's back — mid-stream, so the next chunk re-muted and the Muted
+    // indicator flickered. The flush() call sites handle the unmute themselves.
+    const player = new GeminiPcmPlayer();
+
+    await player.resume();
+    player.enqueueBase64(pcmBase64(10));
+
+    const callback = vi.fn();
+
+    player.onDrained(callback);
+    expect(callback).not.toHaveBeenCalled();
+
+    player.flush();
+    expect(callback).not.toHaveBeenCalled();
+
+    // And it stays dropped: a later drain does not resurrect it.
+    const ctx = FakeAudioContext.instances[0]!;
+
+    player.enqueueBase64(pcmBase64(10));
+    ctx.sources[1]!.onended!();
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it("close flushes and closes the context (idempotent)", async () => {
     const player = new GeminiPcmPlayer();
 

@@ -144,7 +144,9 @@ function readJson<T>(filePath: string, producer: string): T {
       `Error: could not read ${path.relative(PROJECT_ROOT, filePath)}.\n` +
         `Run \`${producer}\` first.`,
     );
-    process.exit(1);
+
+    // process.exit is typed `never`; returning it says so to the reader too.
+    return process.exit(1);
   }
 }
 

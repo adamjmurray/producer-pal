@@ -170,6 +170,72 @@ describe("stark interpreter — pitched lines", () => {
   });
 });
 
+// Absolute octaves are accepted but not taught in the Skills (ADR-0018).
+describe("stark interpreter — absolute octaves on note tokens", () => {
+  it("pins the pitch, ignoring the line register", () => {
+    const melody = interpretNotation("melody: C3 C4 C1");
+    const bass = interpretNotation("bass: C3");
+
+    expect(melody.map((n) => n.pitch)).toStrictEqual([60, 72, 36]);
+    expect(bass[0]?.pitch).toBe(60);
+  });
+
+  it("takes accidentals and negative octaves", () => {
+    const notes = interpretNotation("melody: F#1 Gb-1 Cb3");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([42, 18, 59]);
+  });
+
+  it("coexists with durations, dynamics, and repeats", () => {
+    const notes = interpretNotation("melody: C3/8! D#4/2*2");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([60, 75, 75]);
+    expect(notes.map((n) => n.duration)).toStrictEqual([0.5, 2, 2]);
+    expect(bucket(notes[0]?.velocity as number)).toBe("accent");
+  });
+
+  it("octave marks shift from the absolute octave", () => {
+    const notes = interpretNotation("melody: C3' C3,");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([72, 48]);
+  });
+
+  it("works inside a bracket voicing, on melody and chords lines", () => {
+    const melody = interpretNotation("melody: [C3 E3 G3]/2");
+    const chords = interpretNotation("chords: [C3 E3 G3]");
+
+    expect(melody.map((n) => n.pitch)).toStrictEqual([60, 64, 67]);
+    expect(chords.map((n) => n.pitch)).toStrictEqual([60, 64, 67]);
+  });
+
+  it("warn-skips an out-of-range octave but still advances time", () => {
+    const notes = interpretNotation("melody: C9 D3");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([62]);
+    expect(notes[0]?.start_time).toBe(1);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('note "C9" is out of MIDI range'),
+    );
+  });
+
+  it("warn-skips only the offending note of a bracket voicing", () => {
+    const notes = interpretNotation("melody: [C3 E-3 G3]");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([60, 67]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('note "E-3" is out of MIDI range'),
+    );
+  });
+
+  it("does not apply to chord symbols — the digits stay qualities", () => {
+    const notes = interpretNotation("chords: C7");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([48, 52, 55, 58]);
+  });
+});
+
 describe("stark interpreter — chord symbols (chords line)", () => {
   it("a bare root is a major triad at the chord register (C2=48), /1 default", () => {
     const notes = interpretNotation("chords: C");

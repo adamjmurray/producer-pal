@@ -49,6 +49,7 @@ import {
   type ConversationRecord,
   listAllConversationSummaries,
 } from "#webui/lib/conversation-db";
+import { withLiveApiTool } from "#webui/lib/utils/enabled-tools";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
@@ -64,6 +65,8 @@ export interface UseChatModeStateParams {
   remoteConfig: UseRemoteConfigReturn;
   totalToolsCount: number;
   enabledToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -90,6 +93,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     remoteConfig,
     totalToolsCount,
     enabledToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     onForeignRecord,
     clearViewingMode,
     setModeContext,
@@ -140,7 +145,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [getProviderConnection],
   );
 
-  // Resolve the chosen "Default subagent" preset. Read the presets blob fresh
+  // Resolve the chosen "Subagent preset". Read the presets blob fresh
   // each render (a usePresets snapshot would go stale — presets are edited in a
   // separate hook instance), but key the actual parse/validate/resolve off that
   // blob so it only recomputes when the presets or the selection change:
@@ -151,11 +156,21 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const subagentPreset = useMemo(
     () =>
       resolveSubagentPreset(
-        settings.defaultSubagentPresetId,
+        settings.subagentPresetId,
         presetsBlob ? loadPresets() : [],
         resolveConnection,
       ),
-    [presetsBlob, settings.defaultSubagentPresetId, resolveConnection],
+    [presetsBlob, settings.subagentPresetId, resolveConnection],
+  );
+
+  // The Direct Live API tool has no entry in the Tools-tab map — its checkbox
+  // drives the device-global flag instead — so stamp the flag in before the
+  // toolset is pinned, or it would be the one tool that follows the device
+  // rather than the conversation. See withLiveApiTool.
+  const enabledTools = useMemo(
+    () =>
+      withLiveApiTool(settings.enabledTools, remoteConfig.serverLiveApiEnabled),
+    [settings.enabledTools, remoteConfig.serverLiveApiEnabled],
   );
 
   const aiSdkChat = useChat({
@@ -163,8 +178,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     apiKey: resolvedApiKey,
     model: settings.model,
     thinking: settings.thinking,
-    enabledTools: settings.enabledTools,
-    smallModelMode: settings.smallModelMode,
+    enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -172,6 +186,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
+      // What a NEW conversation locks; a restored one keeps its own snapshot,
+      // so flipping the toggle can't change the tool schemas and skills variant
+      // an open conversation is already running under.
       smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,
@@ -197,7 +214,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // custom system prompt (else a turn fired during the fetch locks the built-in
   // instruction when the user has an override) and the notation (else it locks
   // the provisional default and teaches the wrong grammar for the whole
-  // conversation). Transparent once both have resolved.
+  // conversation). The notation wait covers serverLiveApiEnabled too — same
+  // /config GET, and the stamp above pins it just as permanently. Transparent
+  // once they have resolved.
   const gatedHandleSend = useFirstSendGate(
     systemPromptDoc.status.kind === "loading" || !settings.notationKnown,
     wrappedHandleSend,
@@ -275,6 +294,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     display,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     handleDeleteAll: conversationHandlers.handleDeleteAll,
     handleDeleteUnbookmarked: conversationHandlers.handleDeleteUnbookmarked,
     setModeContext,
@@ -330,7 +351,7 @@ export function useBranchNav(
     if (activeConversationId == null) {
       setPoints([]);
 
-      return;
+      return undefined;
     }
 
     let cancelled = false;

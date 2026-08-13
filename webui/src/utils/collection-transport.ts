@@ -5,9 +5,9 @@
 
 // REST transport for the ~/.producer-pal doc collections (memory, custom
 // skills): the list GET, per-entry PUT/rename/DELETE, and the shared write-error
-// formatter. Generic over the entry view (`TView`) and save input (`TInput`)
-// shapes, with no dependency on the collection hook's state types, so it lives
-// beside the other fetch utilities rather than inside the hook module (see
+// formatter. Generic over the entry view (`TView`) shape, with no dependency on
+// the collection hook's state types, so it lives beside the other fetch
+// utilities rather than inside the hook module (see
 // #webui/hooks/context/use-doc-collection).
 
 /**
@@ -50,9 +50,9 @@ export async function fetchEntries<TView>(
  * @param label - Error-message label (e.g. "Memory")
  * @returns The server's echo of the stored entry
  */
-export async function putEntry<TView, TInput>(
+export async function putEntry<TView>(
   url: string,
-  input: TInput,
+  input: object,
   createOnly: boolean,
   label: string,
 ): Promise<TView> {
@@ -71,10 +71,10 @@ export async function putEntry<TView, TInput>(
  * @param label - Error-message label (e.g. "Memory")
  * @returns The server's echo of the renamed entry
  */
-export async function putRename<TView, TInput>(
+export async function putRename<TView>(
   url: string,
   newName: string,
-  input: TInput,
+  input: object,
   label: string,
 ): Promise<TView> {
   return await putJson<TView>(url, { ...input, newName }, label);

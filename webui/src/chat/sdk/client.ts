@@ -18,9 +18,10 @@ import { handleStreamPart } from "./streaming/stream-part-handlers";
 import { createStreamErrorSignal } from "./streaming/stream-with-error-signal";
 import {
   type RunWorkerOptions,
-  SPAWN_SUBAGENT_TOOL_NAME,
+  type WorkerRunResult,
   createSpawnSubagentTool,
 } from "./subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { fetchSubagentBriefing } from "./subagent/subagent-briefing";
 import {
   RateLimitGate,
@@ -90,10 +91,17 @@ export class ChatSdkClient {
   /**
    * Worker transcripts recorded by runSubagent, keyed by tool-call id. Read in
    * processStream to attach each transcript to its tool-result (UI-only; the
-   * model never sees it). A restored conversation reads the transcript straight
-   * off the persisted tool-result, so this stays empty then.
+   * model never sees it), and emptied as it goes — see
+   * attachStashedTranscripts. A restored conversation reads the transcript
+   * straight off the persisted tool-result, so this stays empty then.
    */
   private spawnTranscripts: SubagentTranscriptStash = new Map();
+  /**
+   * Worker runs still in flight, so a Stop can wait for them. Each one writes
+   * its transcript to the stash in a finally, and that write is what the turn's
+   * teardown has to see — see processStream's finally.
+   */
+  private spawnRuns = new Set<Promise<WorkerRunResult>>();
   /**
    * Backoff window shared by every worker this client spawns. Parallel workers
    * stream on separate connections, so without it a provider-wide 429 hits each
@@ -143,7 +151,7 @@ export class ChatSdkClient {
         ...tools,
         [SPAWN_SUBAGENT_TOOL_NAME]: createSpawnSubagentTool({
           config: this.config,
-          runWorker: (options) => this.runSubagent(options),
+          runWorker: (options) => this.trackSpawnRun(this.runSubagent(options)),
           spawnState: this.spawnState,
           getSession: (index) =>
             collectSubagentTranscript(this.chatHistory, index),
@@ -159,8 +167,8 @@ export class ChatSdkClient {
   }
 
   /**
-   * Run a nested subagent session to completion and return its final chat
-   * history. The worker gets its OWN ChatSdkClient — own MCP client, own tools,
+   * Run a nested subagent session to completion and return what that run
+   * produced. The worker gets its OWN ChatSdkClient — own MCP client, own tools,
    * own abort — so aborting or disposing it never touches the orchestrator's
    * long-lived client. Injected into the spawn tool as runWorker.
    *
@@ -190,16 +198,26 @@ export class ChatSdkClient {
    * persisted on the earlier run's tool-result, and re-storing it per resume
    * would duplicate the worker's whole history (its connect result included)
    * every time.
-   * @param options - Worker config, instruction, tool-call id, index, and signal
-   * @returns The worker's complete chat history, seeded prefix included
+   * @param options - Config thunk, instruction, tool-call id, index, and signal
+   * @returns What this run added, and whether it ran out of tool steps
    */
-  private async runSubagent(options: RunWorkerOptions): Promise<ChatMessage[]> {
-    const { workerConfig, task, toolCallId, subagentIndex, abortSignal } =
+  private async runSubagent(
+    options: RunWorkerOptions,
+  ): Promise<WorkerRunResult> {
+    const { resolveConfig, task, toolCallId, subagentIndex, abortSignal } =
       options;
+    // Resolved HERE, not by the caller: this promise is already registered with
+    // the turn's teardown, so a stream that dies while the briefing is in flight
+    // still waits for the worker instead of leaving it running.
+    const workerConfig = await resolveConfig();
+
+    // A Stop during the briefing fetch shouldn't then open an MCP connection.
+    abortSignal?.throwIfAborted();
+
     const worker = new ChatSdkClient("", workerConfig);
-    // Where this run's own messages begin, so only what it ADDS gets stashed —
-    // a resumed worker's seeded prefix is already persisted on the earlier run's
-    // tool-result.
+    // Where this run's own messages begin. Only what it ADDS is stashed and
+    // reported — a resumed worker's seeded prefix is already persisted on the
+    // earlier run's tool-result, and it answers the earlier task, not this one.
     const seedLength = workerConfig.chatHistory?.length ?? 0;
 
     await worker.initialize();
@@ -213,7 +231,12 @@ export class ChatSdkClient {
         onStatus: (status) => setSubagentRateLimit(toolCallId, status),
       });
 
-      return worker.chatHistory;
+      // This run's own messages only: what the seeded prefix already said is
+      // not an answer to the task just given (see extractWorkerResult).
+      return {
+        messages: worker.chatHistory.slice(seedLength),
+        toolLimitReached: worker.toolLimitReached,
+      };
     } finally {
       this.spawnTranscripts.set(toolCallId, {
         index: subagentIndex,
@@ -222,6 +245,26 @@ export class ChatSdkClient {
       setSubagentRateLimit(toolCallId, null);
       worker.dispose();
     }
+  }
+
+  /**
+   * Register a worker run so the turn's teardown can wait for its transcript,
+   * and drop it again once it settles. Registration happens here rather than
+   * inside runSubagent because a method can't hold the promise it is still
+   * returning.
+   *
+   * The `catch` is only to mark the tracking chain handled — the run's own
+   * rejection still reaches the spawn tool, which reports it to the model.
+   * @param run - The worker run to track
+   * @returns The same promise, so the caller awaits the run itself
+   */
+  private trackSpawnRun(
+    run: Promise<WorkerRunResult>,
+  ): Promise<WorkerRunResult> {
+    this.spawnRuns.add(run);
+    void run.catch(() => {}).finally(() => this.spawnRuns.delete(run));
+
+    return run;
   }
 
   /**
@@ -236,6 +279,9 @@ export class ChatSdkClient {
 
     this.mcpClient = null;
     this.tools = {};
+    // Anything still stashed was never attached to a tool-result, so nothing
+    // reads it again; holding it would pin every worker log the client ever ran.
+    this.spawnTranscripts.clear();
     void client?.close().catch(() => {});
   }
 
@@ -463,6 +509,14 @@ export class ChatSdkClient {
       // history stays valid (providers reject an unmatched tool-call) and the UI
       // doesn't render the tool as perpetually running. No-op on clean finishes.
       reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
+      // Wait for any worker still unwinding. On a Stop with parallel spawns this
+      // stream can close while a sibling's abort is still in flight — its
+      // transcript reaches the stash in its own finally, which may not have run
+      // yet — and a partial log that "may describe edits already made to the Live
+      // Set" is the only thing left to resume from. The turn therefore ends when
+      // the workers have actually stopped, not when the orchestrator's socket
+      // does.
+      await Promise.allSettled(this.spawnRuns);
       // A stopped subagent's tool-result is one of those synthetic "canceled"
       // entries, so it never passed through the mid-stream attach above. Hang the
       // worker's partial transcript off it here so its work log survives the Stop.
@@ -520,7 +574,8 @@ function isAnthropicThinkingEnabled(
   providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
 ): boolean {
   const anthropic = providerOptions?.anthropic as
-    { thinking?: unknown } | undefined;
+    | { thinking?: unknown }
+    | undefined;
 
   return anthropic?.thinking != null;
 }

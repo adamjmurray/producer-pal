@@ -151,6 +151,52 @@ describe("spawnAgentCli", () => {
     }
   });
 
+  it("stops a turn that runs past its step budget", async () => {
+    const { dir, cleanup } = await makeFixtureDir();
+
+    // Three completed MCP calls against a budget of two, then a hang: without
+    // the budget only the wall-clock timeout would end this.
+    useFixture({
+      PPAL_FIXTURE_MODE: "hang",
+      PPAL_FIXTURE_STDOUT: toJsonl(
+        ["call-1", "call-2", "call-3"].map((id) => ({
+          type: "item.completed",
+          item: { id, type: "mcp_tool_call", tool: "ppal-read-song" },
+        })),
+      ),
+    });
+
+    try {
+      await expect(
+        spawnAgentCli(CODEX_CLI_TRANSPORT, [], "hi", {
+          cwd: dir,
+          stepBudget: 2,
+        }),
+      ).rejects.toThrow("codex CLI hit the step budget of 2 steps");
+    } finally {
+      await cleanup();
+    }
+  }, 15_000);
+
+  it("lets a turn that spends its budget exactly finish", async () => {
+    const { dir, cleanup } = await makeFixtureDir();
+    // One MCP call plus one reply — two steps against a budget of two.
+    const stdout = codexTurnStdout("thread-1", "Done.");
+
+    useFixture({ PPAL_FIXTURE_STDOUT: stdout });
+
+    try {
+      await expect(
+        spawnAgentCli(CODEX_CLI_TRANSPORT, [], "hi", {
+          cwd: dir,
+          stepBudget: 2,
+        }),
+      ).resolves.toBe(stdout);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("times out and escalates past a swallowed SIGTERM", async () => {
     const { dir, cleanup } = await makeFixtureDir();
 

@@ -75,12 +75,14 @@ function errorTypeOf(payload: Record<string, unknown>): string | null {
 /**
  * Renders an error payload as JSON, for payloads carrying no message field.
  * @param {Record<string, unknown>} payload - The error payload
- * @returns {string} JSON text, or String(payload) if it isn't serializable
+ * @returns {string} JSON text, or a placeholder if it isn't serializable
  */
 function stringifyPayload(payload: Record<string, unknown>): string {
   try {
     return JSON.stringify(payload);
   } catch {
-    return String(payload);
+    // Circular or otherwise unserializable. String() would only say
+    // "[object Object]", which tells the reader less than this does.
+    return "[unserializable error payload]";
   }
 }

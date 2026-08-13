@@ -18,6 +18,26 @@ scripts/chat --list-models openai     # list one provider's models
 scripts/chat -m claude-sonnet-4-5     # start a chat
 ```
 
+## Skills Snapshots
+
+`npm run skills:snapshot` writes the assembled skills blob for every (toolset
+profile × depth × notation) to `dev/skills-snapshots/` (gitignored) and prints a
+report: the size of every combination, and which tools keep each fragment.
+
+To see what a fragment reorganization actually did to each caller's
+instructions:
+
+```bash
+npm run skills:snapshot -- --out /tmp/skills-before   # before your edits
+npm run skills:snapshot -- --diff /tmp/skills-before  # after
+```
+
+`--diff` prints per-blob size deltas, then the line-level diff.
+
+Profiles live in `scripts/skills/toolset-profiles.ts` — add one when a new use
+case matters. The point is to check a carve cheaply, before spending an eval
+run.
+
 ## CLI Tool
 
 **Purpose:** Direct MCP server interaction for end-to-end testing. Claude Code
@@ -105,27 +125,36 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 ### Operation Types
 
-**Core operations:**
+**Live Object Model:**
 
-- `get_property` - Get property value using Live API convention
-- `set_property` - Set property value
-- `call_method` - Call a method
-
-**Convenience shortcuts:**
-
-- `get` - Alias for get_property
-- `set` - Alias for set_property
-- `call` - Alias for call_method
+- `get` - Get a property's raw value (an array)
+- `set` - Set a property value; returns Live's status code
+- `set_property` - The same write as `set`, but returns the value you sent
+- `call` - Call a method on the Live object
 - `goto` - Navigate to a new path
 - `info` - Get object information
 
-**Extension methods:**
+**Extension methods** (normalized values):
 
-- `getProperty` - Get property with cleaner interface
+- `getProperty` - Get a property, unwrapped to a scalar
 - `getChildIds` - Get child object IDs
 - `exists` - Check if object exists
 - `getColor` - Get color as hex string
 - `setColor` - Set color from hex string
+
+**The LiveAPI object itself,** not the Live object it points at:
+
+- `get_property` - Read a JavaScript field (`path`, `id`, `type`, `mode`,
+  `valid`, `children`, ...). Not the same as `get`.
+- `call_method` - Call a JavaScript method (`getProperty`, `getChildIds`,
+  `child`, ...). Not the same as `call`:
+  `call_method get_current_beats_song_time` fails, because that method lives on
+  the Live object.
+- `set_path` - Assign `path`, retargeting the object. `""` clears it.
+- `set_mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
+  coerces anything else to 0 or 1.
+- `getcount` - Count children in a collection
+- `getstring` - Read a property as a string
 
 ### Important Limitations
 
@@ -136,6 +165,11 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 - **Max operations**: 50 operations per tool call to prevent performance issues
 - **Full access**: This tool provides unrestricted Live API access - use with
   caution
+- **Object lifetime**: the tool builds one LiveAPI object per call and clears
+  its path when the call ends, success or failure. Live arms a path listener on
+  every collection along a path-based object's path and never takes them down,
+  so an unreleased object costs ~4,900 bytes of Ableton log on every later
+  structural change to the Live Set. Don't add `set_path ""` yourself.
 
 ## MCP Inspector
 
@@ -185,6 +219,15 @@ but those are gated behind `ALLOW_CONFIGURATION_OVERRIDES=true` — and, unlike
 the enable-only flags, a boolean env can send `false` to force a setting off.
 This env path is what the Claude Desktop extension's toggles use. Handy for
 exercising a specific config against a release build through the inspector.
+
+`--tools <list>` / `--disable-tools <list>` (env: `TOOLS`, `DISABLE_TOOLS`) are
+the exception: they are per client, sent as the disabled-tools header rather
+than pushed via `POST /config`, since `config.tools` is device-global. Both
+accept tool names and the group aliases in `src/shared/tool-groups.ts`;
+`--tools` becomes a local complement over the full catalog so both feed one
+header. `--list-tools` prints the group aliases plus a live `tools/list` from
+the device (falling back to the portal's own catalog when it's unreachable, like
+the bridge does), then exits.
 
 ## Build Warnings
 

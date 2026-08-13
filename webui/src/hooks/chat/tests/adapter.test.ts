@@ -95,6 +95,22 @@ describe("chatAdapter", () => {
       expect(off.smallModelMode).toBe(false);
     });
 
+    it("uses a locked smallModelMode over the current setting", () => {
+      const config = chatAdapter.buildConfig(
+        "gpt-4o",
+        "default",
+        {},
+        undefined,
+        {
+          ...extraParams,
+          lockedSmallModelMode: true,
+          smallModelMode: false,
+        },
+      );
+
+      expect(config.smallModelMode).toBe(true);
+    });
+
     it("carries the current notation onto the config for a new conversation", () => {
       // Without this the chat sent no notation header at all and every request
       // fell through to the device global, so flipping the dropdown re-taught an
@@ -405,6 +421,44 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
+    it("omits legacy thinking for a haiku model with Off thinking", () => {
+      const config = buildForProvider("anthropic", "Off", "claude-haiku-4-5");
+
+      expect(config.providerOptions).toBeUndefined();
+    });
+
+    it("gives a haiku model a concrete budget for Default thinking", () => {
+      // The legacy `enabled` payload has no adaptive equivalent of "let the API
+      // decide" (-1), so Default has to name a budget.
+      const config = buildForProvider(
+        "anthropic",
+        "Default",
+        "claude-haiku-4-5",
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: { thinking: { type: "enabled", budgetTokens: 10240 } },
+      });
+    });
+
+    it("asks for a reasoning summary without an effort on a pre-5.1 gpt-5", () => {
+      // gpt-5.0 reasons but predates reasoning_effort.
+      const config = buildForProvider("openai", "Default", "gpt-5");
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningSummary: "auto" },
+      });
+    });
+
+    it("builds without extraParams at all", () => {
+      // External callers may pass none; the locked-snapshot lookups must not
+      // dereference undefined.
+      const config = chatAdapter.buildConfig("gpt-4o", "Off", {}, undefined);
+
+      expect(config.smallModelMode).toBe(false);
+      expect(config.notation).toBeUndefined();
+    });
+
     it("returns undefined provider options for mistral provider", () => {
       const config = buildForProvider("mistral", "Max", "mistral-large");
 
@@ -425,7 +479,7 @@ describe("chatAdapter", () => {
       expect(overridden).toBeUndefined();
     });
 
-    describe("subagentConfig from a default-subagent preset", () => {
+    describe("subagentConfig from a subagent preset", () => {
       const subagentPreset = {
         provider: "openai" as const,
         apiKey: "worker-key",

@@ -16,12 +16,13 @@ import {
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
+import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -49,6 +50,7 @@ import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
+  noteProjectContextLoaded,
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
@@ -238,8 +240,7 @@ let expectLoadEcho = true;
  * @param content - Project context content
  */
 export function projectContext(content: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = content === "bang" ? "" : String(content ?? "");
+  const value = textEditParamToString(content);
   const isLoadEcho = expectLoadEcho;
 
   expectLoadEcho = false;
@@ -250,6 +251,8 @@ export function projectContext(content: unknown): void {
   const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
 
   sessionState.projectContext.content = value;
+
+  if (isLoadEcho) noteProjectContextLoaded(value);
 
   // Device-UI and webui edits reach us only through this setter (never an MCP
   // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
@@ -263,10 +266,30 @@ export function projectContext(content: unknown): void {
  * session state and re-persist it into the Max device param via the same outlet
  * ppal-context uses. A null (no restore happened) is a no-op.
  *
+ * Skips the apply when the param changed while the restore was in flight. A
+ * `ppal-context` write landing in that window (two connected clients, or the
+ * parallel tool calls a turn with subagents makes routine) is NEWER than the
+ * sidecar blob this restore is carrying, so overwriting would silently revert
+ * it in both memory and the device UI — after the tool already reported
+ * success.
+ *
  * @param restored - The restored blob, or null when nothing was restored
+ * @param snapshot - The param's content when the restore was requested
  */
-function applyRestoredProjectContext(restored: string | null): void {
+function applyRestoredProjectContext(
+  restored: string | null,
+  snapshot: string,
+): void {
   if (restored == null) return;
+
+  if (sessionState.projectContext.content !== snapshot) {
+    console.warn(
+      "Project context changed while the backup restore was in flight; " +
+        "keeping the newer content.",
+    );
+
+    return;
+  }
 
   sessionState.projectContext.content = restored;
   outlet(0, "update_project_context", restored);
@@ -278,8 +301,7 @@ function applyRestoredProjectContext(restored: string | null): void {
  * @param path - Sample folder path
  */
 export function sampleFolder(path: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = path === "bang" ? "" : String(path ?? "");
+  const value = textEditParamToString(path);
 
   sessionState.sampleFolder = value;
 }
@@ -395,8 +417,11 @@ export async function mcp_request(
     // for ppal-connect, to the Node-side injected project-context block. The
     // post-await write to sessionState lives in a helper so concurrent requests
     // don't trip require-atomic-updates.
+    const contextBeforeSync = sessionState.projectContext.content;
+
     applyRestoredProjectContext(
-      await syncProjectContextBackup(sessionState.projectContext.content),
+      await syncProjectContextBackup(contextBeforeSync),
+      contextBeforeSync,
     );
 
     try {

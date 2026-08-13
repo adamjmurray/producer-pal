@@ -138,6 +138,16 @@ function readDeviceTarget(
         devicePath,
         options,
       );
+
+    // Unreachable: every TargetType is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    /* v8 ignore start -- exhaustive switch: all TargetType values handled above */
+    default: {
+      const exhaustive: never = resolved.targetType;
+
+      return exhaustive;
+    }
+    /* v8 ignore stop */
   }
 }
 

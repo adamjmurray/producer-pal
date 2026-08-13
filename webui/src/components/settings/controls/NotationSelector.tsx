@@ -36,7 +36,15 @@ export function NotationSelector({
         className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-300"
       >
         Notation
-        <Tooltip text="How the AI reads and writes clip notes (bar|beat, MIDI JSON, or Stark). Global setting that mirrors the Notation control on the Max for Live device's Setup pane." />
+        <Tooltip
+          text={
+            "How the AI reads and writes clip notes. " +
+            "bar|beat (default): most expressive, best with capable models. " +
+            "Stark: literal and compact, better for small or local models. " +
+            "MIDI JSON: exact note data, best for coding agents and scripting. " +
+            "Mirrors the device's Setup pane; applies to new conversations."
+          }
+        />
       </label>
       <select
         id="notation-select"

@@ -491,7 +491,7 @@ describe("transformOpenRouterRequest", () => {
 
   it("caches Gemini models (google/gemini prefix)", async () => {
     const parsed = await transform({
-      model: "google/gemini-3.6-flash",
+      model: "google/gemini-3.7-flash",
       messages: [{ role: "user", content: "hi" }],
     });
 
@@ -502,7 +502,7 @@ describe("transformOpenRouterRequest", () => {
 
   it("marks the last block of an array-form last message", async () => {
     const parsed = await transform({
-      model: "anthropic/claude-opus-4.8",
+      model: "anthropic/claude-opus-5",
       messages: [
         { role: "system", content: "sys" },
         {

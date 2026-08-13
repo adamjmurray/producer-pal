@@ -333,13 +333,23 @@ export function useCollectionMutator(): CollectionMutator {
         if (isUnmounted()) return result;
         if (!superseded()) commit(result);
 
-        if (saveGenerationRef.current === generation) setSaveStatus("saved");
+        // A superseded write is discarded, so it must not paint "Saved" either:
+        // the newer write for this entry is still on the wire, and the indicator
+        // has to keep reading "Saving…" until IT lands. Whichever write finishes
+        // last owns the file, and only its outcome describes what is on disk.
+        if (!superseded() && saveGenerationRef.current === generation) {
+          setSaveStatus("saved");
+        }
 
         return result;
       } catch (error: unknown) {
         if (isUnmounted()) return null;
 
-        if (saveGenerationRef.current === generation) {
+        // Same superseded check as the success path, for the same reason: a
+        // newer write for this entry owns the file, so a stale failure must not
+        // paint "error" over its result — or over the "Saving…" it is still
+        // showing. Whichever write finishes last is the one that describes disk.
+        if (!superseded() && saveGenerationRef.current === generation) {
           setSaveError(errorMessage(error));
           setSaveStatus("error");
         }

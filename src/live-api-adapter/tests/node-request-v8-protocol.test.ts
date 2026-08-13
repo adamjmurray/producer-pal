@@ -20,7 +20,7 @@ import {
   latestOutletRequestId,
 } from "./v8-protocol-test-helpers.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   log: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
@@ -168,7 +168,7 @@ describe("node-request-v8-protocol", () => {
   });
 
   it("logs error and ignores response for unknown requestId", async () => {
-    const consoleMock = await import("#src/shared/v8-max-console.ts");
+    const consoleMock = await import("#src/shared/max/v8-max-console.ts");
 
     handleNodeResponse(
       "unknown-id",

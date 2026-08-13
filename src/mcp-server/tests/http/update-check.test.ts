@@ -7,13 +7,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
 import { type UpdateInfo } from "#src/shared/version-check.ts";
 
-const { mockCheckForUpdate } = vi.hoisted(() => ({
+const { mockCheckForUpdate, mockReadGlobalSettings } = vi.hoisted(() => ({
   mockCheckForUpdate: vi.fn(),
+  mockReadGlobalSettings: vi.fn(),
 }));
 
 vi.mock(import("#src/shared/version-check.ts"), () => ({
   checkForUpdate: mockCheckForUpdate,
   isNewerVersion: vi.fn(),
+}));
+
+vi.mock(import("../../helpers/config-store/global-settings-store.ts"), () => ({
+  readGlobalSettings: mockReadGlobalSettings,
+  updateGlobalSettings: vi.fn(),
+  DEFAULT_GLOBAL_SETTINGS: {
+    autoUpdateCheck: true,
+    dismissedUpdateVersion: null,
+  },
 }));
 
 /**
@@ -31,6 +41,10 @@ async function freshGetUpdate(): Promise<() => Promise<UpdateInfo | null>> {
 describe("getUpdate", () => {
   beforeEach(() => {
     mockCheckForUpdate.mockReset();
+    mockReadGlobalSettings.mockReturnValue({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: null,
+    });
   });
 
   it("checks GitHub for the running version", async () => {
@@ -87,6 +101,50 @@ describe("getUpdate", () => {
 
     expect(await getUpdate()).toBeNull();
     expect(await getUpdate()).toBeNull();
+    expect(mockCheckForUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves null when the check rejects", async () => {
+    // checkForUpdate swallows its own failures today, so this is insurance: the
+    // rejected promise would be cached, and every `GET /update` for the rest of
+    // the session would hang on a route with no catch of its own.
+    mockCheckForUpdate.mockRejectedValue(new Error("network down"));
+    const getUpdate = await freshGetUpdate();
+
+    expect(await getUpdate()).toBeNull();
+    expect(await getUpdate()).toBeNull();
+  });
+
+  it("never reaches GitHub when auto update checking is off", async () => {
+    // The point of the opt-out: no request at all, not a suppressed answer.
+    mockReadGlobalSettings.mockReturnValue({
+      autoUpdateCheck: false,
+      dismissedUpdateVersion: null,
+    });
+    mockCheckForUpdate.mockResolvedValue({ version: "9.9.9" });
+    const getUpdate = await freshGetUpdate();
+
+    expect(await getUpdate()).toBeNull();
+    expect(mockCheckForUpdate).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the dismissed version but not a newer one", async () => {
+    mockReadGlobalSettings.mockReturnValue({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: "9.9.9",
+    });
+    mockCheckForUpdate.mockResolvedValue({ version: "9.9.9" });
+    const getUpdate = await freshGetUpdate();
+
+    expect(await getUpdate()).toBeNull();
+
+    // Same process, same memoized check — only the dismissal changed.
+    mockReadGlobalSettings.mockReturnValue({
+      autoUpdateCheck: true,
+      dismissedUpdateVersion: "9.9.8",
+    });
+
+    expect(await getUpdate()).toStrictEqual({ version: "9.9.9" });
     expect(mockCheckForUpdate).toHaveBeenCalledTimes(1);
   });
 });

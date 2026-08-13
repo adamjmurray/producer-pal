@@ -25,8 +25,9 @@ What is different is that the voices are heard **against each other**:
 
 ## Pad mapping
 
-Pad names are note names, Ableton's `C1` = MIDI 36. General MIDI convention for
-the bottom rows of a default Drum Rack:
+Pad names are note names, Ableton's `C1` = MIDI 36. The conventional bottom rows
+of a default Drum Rack — mostly General MIDI, with the toms simplified to a
+low/high pair:
 
 | Pad   | MIDI | Conventional voice |
 | ----- | ---- | ------------------ |

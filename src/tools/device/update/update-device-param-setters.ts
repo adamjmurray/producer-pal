@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   extractMaxPanValue,
@@ -36,7 +36,7 @@ export function setParamValues(
 ): void {
   for (const entry of params) {
     const key = entry.name.trim();
-    const rawValue = String(entry.value).trim();
+    const rawValue = entry.value.trim();
 
     if (key === "") {
       console.warn(`${toolName}: skipping param with empty name`);

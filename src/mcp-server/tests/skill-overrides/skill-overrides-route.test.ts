@@ -35,6 +35,7 @@ interface SlotState {
   override: string;
   enabled: boolean;
   canDisable: boolean;
+  gate: readonly string[] | string | null;
   drifted: boolean;
   provenance: { producerPalVersion: string; builtInHash: string } | null;
 }
@@ -54,6 +55,24 @@ describe("skill-overrides route", () => {
       expect(slot.enabled).toBe(true);
       expect(slot.provenance).toBeNull();
     }
+  });
+
+  it("GET carries each slot's tool gate, so the editor can state the rule", async () => {
+    // The editor renders this verbatim; a field-name or shape change here would
+    // otherwise only surface as the gate note quietly vanishing.
+    const res = await fetch(base);
+    const { slots } = (await res.json()) as { slots: SlotState[] };
+    // Read through the slot, not a defaulted lookup: a driver's gate is
+    // legitimately null, so a `?? fallback` would hide a missing slot AND a
+    // correct null behind the same value.
+    const gateOf = (name: string): SlotState["gate"] | undefined =>
+      slots.find((slot) => slot.name === name)?.gate;
+
+    expect(gateOf("library")).toStrictEqual(["ppal-library"]);
+    expect(gateOf("time-and-values")).toBe("always");
+    expect(gateOf("getting-help")).toBe("conversation-only");
+    // The drivers are the document, not a section of it.
+    expect(gateOf("standard")).toBeNull();
   });
 
   it("PUT saves an override with provenance; GET reflects it", async () => {

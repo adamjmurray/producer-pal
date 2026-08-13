@@ -201,6 +201,33 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("resolves a midi-json v:0 before writing (nothing to delete on create)", async () => {
+    setupLiveSet();
+    setupTrack(0);
+    const { clip } = setupSessionClip(0, 0, {
+      clipId: "clip_0_0",
+      clipProperties: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    // The v:0 deletes the C3 written earlier in the same array (last wins) and
+    // never reaches Live, which rejects velocity 0.
+    await createClip(
+      {
+        slot: "0/0",
+        notes: "[{p:60,t:0,d:1,v:100},{p:64,t:1,d:1,v:100},{p:60,t:0,d:1,v:0}]",
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [createNote({ pitch: 64, start_time: 1 })],
+    });
+  });
+
   it("should fire the scene when auto=play-scene", async () => {
     setupLiveSet();
     setupTrack(0);

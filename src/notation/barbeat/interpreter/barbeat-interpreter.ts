@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
+import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import {
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
@@ -19,7 +19,7 @@ import {
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   clearCarriedStreams,

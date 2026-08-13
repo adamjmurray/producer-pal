@@ -4,11 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyAudioTransform } from "../transform-audio-evaluator.ts";
 
 // Mock console.warn to capture warnings
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
   log: vi.fn(),
   error: vi.fn(),

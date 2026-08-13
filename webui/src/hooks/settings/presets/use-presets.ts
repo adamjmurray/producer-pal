@@ -10,7 +10,8 @@ import { createPresetId, loadPresets, savePresets } from "./preset-storage";
 
 /** Result of a create attempt: the new preset, or a reason it was rejected. */
 export type CreatePresetResult =
-  { ok: true; preset: ChatPreset } | { ok: false; error: string };
+  | { ok: true; preset: ChatPreset }
+  | { ok: false; error: string };
 
 /** Browser-local preset collection: list + create/update/delete. */
 export interface UsePresetsReturn {
@@ -27,7 +28,10 @@ export interface UsePresetsReturn {
     fields: PresetFields,
     description?: string,
   ) => void;
-  deletePreset: (id: string) => void;
+  /** Rewrite only the description, leaving the captured settings alone. */
+  updatePresetDescription: (id: string, description: string) => void;
+  /** Returns null once it's gone, or the message if the write failed. */
+  deletePreset: (id: string) => string | null;
 }
 
 /**
@@ -46,7 +50,7 @@ export function usePresets(): UsePresetsReturn {
    *
    * Write-first matters twice over. localStorage is the source of truth for
    * readers outside this hook (use-chat-mode-state parses the raw blob every
-   * render to resolve the default subagent preset), so adopting a list that
+   * render to resolve the subagent preset), so adopting a list that
    * never reached storage would show a preset the subagent resolver can't find.
    * And a `setItem` throw (quota, or storage blocked/full) used to escape all
    * the way into the click handler: the list state was already committed, so
@@ -114,14 +118,30 @@ export function usePresets(): UsePresetsReturn {
     [presets, persist],
   );
 
-  const deletePreset = useCallback(
-    (id: string) => {
-      persist(presets.filter((p) => p.id !== id));
+  const updatePresetDescription = useCallback(
+    (id: string, description: string) => {
+      persist(
+        presets.map((p) =>
+          p.id === id ? withDescription({ ...p }, description) : p,
+        ),
+      );
     },
     [presets, persist],
   );
 
-  return { presets, saveError, createPreset, updatePreset, deletePreset };
+  const deletePreset = useCallback(
+    (id: string): string | null => persist(presets.filter((p) => p.id !== id)),
+    [presets, persist],
+  );
+
+  return {
+    presets,
+    saveError,
+    createPreset,
+    updatePreset,
+    updatePresetDescription,
+    deletePreset,
+  };
 }
 
 /**

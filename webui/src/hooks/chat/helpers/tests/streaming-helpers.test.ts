@@ -10,6 +10,7 @@ import {
   handleMessageStream,
   resolveInitConnection,
   resolveLockedNotation,
+  resolveLockedSmallModelMode,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
@@ -165,14 +166,46 @@ describe("streaming-helpers", () => {
     });
   });
 
+  describe("resolveLockedSmallModelMode", () => {
+    it("prefers the conversation's locked mode over the current setting", () => {
+      // A restored conversation keeps the tool schemas and skills variant it
+      // started with, whatever the Settings toggle says now.
+      expect(
+        resolveLockedSmallModelMode({
+          lockedSmallModelMode: true,
+          smallModelMode: false,
+        }),
+      ).toBe(true);
+    });
+
+    it("falls back to the current setting for a brand-new conversation", () => {
+      expect(
+        resolveLockedSmallModelMode({
+          lockedSmallModelMode: null,
+          smallModelMode: true,
+        }),
+      ).toBe(true);
+    });
+
+    it("defaults to off when neither is present", () => {
+      expect(resolveLockedSmallModelMode({})).toBe(false);
+    });
+  });
+
   describe("resolveInitConnection", () => {
     const locked = {
       activeProvider: null,
       activeModel: null,
       activeSystemInstruction: null,
       activeNotation: null,
+      activeSmallModelMode: null,
+      activeEnabledTools: null,
     };
-    const fallback = { provider: "openai" as const, model: "gpt-4o" };
+    const fallback = {
+      provider: "openai" as const,
+      model: "gpt-4o",
+      enabledTools: { "ppal-library": false },
+    };
     const resolveConnection = () => ({ apiKey: "sk-test" });
 
     it("passes the locked notation through to the adapter and back out", () => {
@@ -194,6 +227,43 @@ describe("streaming-helpers", () => {
 
       expect(init.extraParams.lockedNotation).toBeNull();
       expect(init.notation).toBe("barbeat");
+    });
+
+    it("passes the locked small-model mode through to the adapter and back out", () => {
+      const init = resolveInitConnection(
+        { ...locked, activeSmallModelMode: true },
+        fallback,
+        resolveConnection,
+        { smallModelMode: false },
+      );
+
+      expect(init.extraParams.lockedSmallModelMode).toBe(true);
+      expect(init.smallModelMode).toBe(true);
+    });
+
+    it("locks the current small-model mode for a conversation that has none yet", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection, {
+        smallModelMode: true,
+      });
+
+      expect(init.extraParams.lockedSmallModelMode).toBeNull();
+      expect(init.smallModelMode).toBe(true);
+    });
+
+    it("reconnects a restored conversation on the toolset it ran with", () => {
+      const init = resolveInitConnection(
+        { ...locked, activeEnabledTools: { "ppal-duplicate": false } },
+        fallback,
+        resolveConnection,
+      );
+
+      expect(init.enabledTools).toStrictEqual({ "ppal-duplicate": false });
+    });
+
+    it("locks the current toolset for a conversation that has none yet", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection);
+
+      expect(init.enabledTools).toStrictEqual({ "ppal-library": false });
     });
   });
 

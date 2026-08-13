@@ -20,6 +20,62 @@ const VALID_RESPONSE = {
 
 const VALID_JSON = JSON.stringify(VALID_RESPONSE);
 
+/**
+ * Build a judge response from per-dimension scores
+ *
+ * @param accuracy - accuracy dimension score
+ * @param reasoning - reasoning dimension score
+ * @param efficiency - efficiency dimension score
+ * @param naturalness - naturalness dimension score
+ * @returns Judge response object with placeholder reasoning text
+ */
+function withScores(
+  accuracy: unknown,
+  reasoning: unknown,
+  efficiency: unknown,
+  naturalness: unknown,
+): Record<string, unknown> {
+  return {
+    accuracy: { score: accuracy, reasoning: "a" },
+    reasoning: { score: reasoning, reasoning: "b" },
+    efficiency: { score: efficiency, reasoning: "c" },
+    naturalness: { score: naturalness, reasoning: "d" },
+  };
+}
+
+/**
+ * Build a valid response with one dimension removed
+ *
+ * @param dimension - Name of the dimension to drop
+ * @returns Judge response object missing that dimension
+ */
+function without(dimension: string): Record<string, unknown> {
+  const input = withScores(1.0, 0.8, 0.8, 0.8);
+
+  delete input[dimension];
+
+  return input;
+}
+
+/**
+ * Parse a judge response given as an object
+ *
+ * @param input - The response object to serialize and parse
+ * @returns The parsed judge result
+ */
+function parse(input: Record<string, unknown>) {
+  return parseJudgeResponse(JSON.stringify(input));
+}
+
+/**
+ * Assert that parsing `input` is rejected as malformed
+ *
+ * @param input - The response object expected to be invalid
+ */
+function expectInvalidFormat(input: Record<string, unknown>): void {
+  expect(() => parse(input)).toThrow("Invalid judge response format");
+}
+
 describe("parseJudgeResponse", () => {
   describe("valid JSON parsing", () => {
     it("parses valid JSON with all dimensions", () => {
@@ -45,25 +101,13 @@ describe("parseJudgeResponse", () => {
     });
 
     it("computes overall as average of 4 dimensions", () => {
-      const input = {
-        accuracy: { score: 1.0, reasoning: "a" },
-        reasoning: { score: 1.0, reasoning: "b" },
-        efficiency: { score: 0.6, reasoning: "c" },
-        naturalness: { score: 0.6, reasoning: "d" },
-      };
-      const result = parseJudgeResponse(JSON.stringify(input));
+      const result = parse(withScores(1.0, 1.0, 0.6, 0.6));
 
       expect(result.overall).toBe(0.8);
     });
 
     it("handles decimal average", () => {
-      const input = {
-        accuracy: { score: 1.0, reasoning: "a" },
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-      const result = parseJudgeResponse(JSON.stringify(input));
+      const result = parse(withScores(1.0, 0.8, 0.8, 0.8));
 
       expect(result.overall).toBeCloseTo(0.85);
     });
@@ -102,77 +146,30 @@ describe("parseJudgeResponse", () => {
 
   describe("invalid format handling", () => {
     it("throws error for missing accuracy dimension", () => {
-      const input = {
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      expectInvalidFormat(without("accuracy"));
     });
 
     it("throws error for missing reasoning dimension", () => {
-      const input = {
-        accuracy: { score: 1.0, reasoning: "a" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      expectInvalidFormat(without("reasoning"));
     });
 
     it("throws error for missing efficiency dimension", () => {
-      const input = {
-        accuracy: { score: 1.0, reasoning: "a" },
-        reasoning: { score: 0.8, reasoning: "b" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      expectInvalidFormat(without("efficiency"));
     });
 
     it("throws error for missing naturalness dimension", () => {
-      const input = {
-        accuracy: { score: 1.0, reasoning: "a" },
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      expectInvalidFormat(without("naturalness"));
     });
 
     it("throws error for non-number score", () => {
-      const input = {
-        accuracy: { score: "high", reasoning: "a" },
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      expectInvalidFormat(withScores("high", 0.8, 0.8, 0.8));
     });
 
     it("throws error for non-string reasoning", () => {
-      const input = {
+      expectInvalidFormat({
+        ...withScores(1.0, 0.8, 0.8, 0.8),
         accuracy: { score: 1.0, reasoning: 123 },
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-
-      expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
-        "Invalid judge response format",
-      );
+      });
     });
 
     it("throws error for plain text without JSON", () => {
@@ -200,40 +197,30 @@ describe("parseJudgeResponse", () => {
 
   describe("edge cases", () => {
     it("handles reasoning with special characters", () => {
-      const input = {
+      const result = parse({
+        ...withScores(1.0, 0.8, 0.8, 0.8),
         accuracy: {
           score: 1.0,
           reasoning: 'Contains "quotes" and \n newlines',
         },
-        reasoning: { score: 0.8, reasoning: "b" },
-        efficiency: { score: 0.8, reasoning: "c" },
-        naturalness: { score: 0.8, reasoning: "d" },
-      };
-      const result = parseJudgeResponse(JSON.stringify(input));
+      });
 
       expect(result.accuracy.score).toBe(1.0);
       expect(result.accuracy.reasoning).toContain("quotes");
     });
 
     it("handles decimal scores", () => {
-      const input = {
-        accuracy: { score: 0.9, reasoning: "a" },
-        reasoning: { score: 0.9, reasoning: "b" },
-        efficiency: { score: 0.9, reasoning: "c" },
-        naturalness: { score: 0.9, reasoning: "d" },
-      };
-      const result = parseJudgeResponse(JSON.stringify(input));
+      const result = parse(withScores(0.9, 0.9, 0.9, 0.9));
 
       expect(result.overall).toBe(0.9);
     });
 
     it("ignores extra fields in JSON", () => {
-      const input = {
+      const result = parse({
         ...VALID_RESPONSE,
         extra: "ignored",
         another: 123,
-      };
-      const result = parseJudgeResponse(JSON.stringify(input));
+      });
 
       expect(result.accuracy.score).toBe(1.0);
       expect(result.overall).toBe(0.8);

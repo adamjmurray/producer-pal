@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
-  audioClipPlayedSeconds,
   audioClipSampleSeconds,
   audioClipTiming,
 } from "./audio-clip-timing.ts";
@@ -193,50 +192,6 @@ describe("audioClipTiming", () => {
       expect(timing.sampleSeconds).toBe(0);
       expect(timing.endBeats).toBeCloseTo(3, 10);
     });
-  });
-});
-
-describe("audioClipPlayedSeconds", () => {
-  it("equals the sample duration when the warp is 1:1", () => {
-    // 8s of audio over 16 beats at 120bpm is exactly native speed
-    const clip = setupAudioClip({
-      warping: true,
-      sampleSeconds: 8,
-      start: 0,
-      end: 16,
-    });
-
-    const timing = audioClipTiming(clip);
-
-    expect(audioClipPlayedSeconds(timing)).toBeCloseTo(8, 10);
-  });
-
-  it("reveals the stretch when Live guessed a bar count", () => {
-    // Live maps a transient-free 2.7s render onto 4 beats, so it plays over 2s
-    const clip = setupAudioClip({
-      warping: true,
-      sampleSeconds: 2.7,
-      start: 0,
-      end: 4,
-    });
-
-    const timing = audioClipTiming(clip);
-
-    expect(audioClipPlayedSeconds(timing)).toBeCloseTo(2, 10);
-  });
-
-  it("tracks tempo, so the same warped clip stretches more when slower", () => {
-    const clip = setupAudioClip({
-      tempo: 60,
-      warping: true,
-      sampleSeconds: 8,
-      start: 0,
-      end: 16,
-    });
-
-    const timing = audioClipTiming(clip);
-
-    expect(audioClipPlayedSeconds(timing)).toBeCloseTo(16, 10);
   });
 });
 

@@ -134,12 +134,21 @@ export async function handleGeminiMessage(
 
     if (sc.turnComplete) {
       deps.builder.completeTurn();
-      deps.setAssistantSpeaking(false);
-      endGeminiHalfDuplexMute(
-        deps.getMic(),
-        deps.autoMutedRef,
-        deps.isMutedRef,
-      );
+      // turnComplete means the server is done sending, not that the assistant
+      // has stopped talking — the tail of the turn is still scheduled in the
+      // player. Unmuting now would open the mic under the assistant's own
+      // voice, which is exactly when a user talks over it, so wait for the
+      // queue to drain. The speaking flag waits with it: it drives the "go
+      // ahead" indicator, and showing that while the mic is still muted invites
+      // the user to say something nothing will hear.
+      deps.player.onDrained(() => {
+        deps.setAssistantSpeaking(false);
+        endGeminiHalfDuplexMute(
+          deps.getMic(),
+          deps.autoMutedRef,
+          deps.isMutedRef,
+        );
+      });
       deps.publishHistory();
     }
   }
@@ -156,18 +165,24 @@ export async function handleGeminiMessage(
  * audio, so lifting the auto-mute while audio is still queued would let the next
  * chunk re-mute and flicker the Muted indicator. There, defer the lift to
  * turnComplete; lift now only when the queue has drained (the turn really ended
- * here). hasQueued() is read before flush() clears the queue.
+ * here).
+ *
+ * Unless turnComplete ALREADY ran and parked its own deferred lift — then this
+ * interrupt is discarding the turn's tail, and flush() drops that callback, so
+ * nothing later would ever lift the mute. Both reads happen before flush()
+ * clears the queue and the registration.
  *
  * @param deps - Builder, player, mic accessor, and UI setters
  */
 function handleGeminiInterrupt(deps: GeminiMessageDeps): void {
   const audioStillQueued = deps.player.hasQueued();
+  const turnAlreadyComplete = deps.player.hasPendingDrain();
 
   deps.player.flush();
   deps.builder.completeTurn();
   deps.setAssistantSpeaking(false);
 
-  if (!(deps.halfDuplex && audioStillQueued)) {
+  if (turnAlreadyComplete || !(deps.halfDuplex && audioStillQueued)) {
     endGeminiHalfDuplexMute(deps.getMic(), deps.autoMutedRef, deps.isMutedRef);
   }
 

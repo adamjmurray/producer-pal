@@ -4,13 +4,17 @@ Use Producer Pal with OpenAI's command line coding assistant.
 
 ::: tip Prefer a Desktop App?
 
-The [Codex App](./codex-app) offers an easier setup with a graphical interface.
-The CLI is best for developers who prefer the terminal.
+The [ChatGPT App](./chatgpt-app), which now includes Codex, offers an easier
+setup with a graphical interface. The CLI is best for developers who prefer the
+terminal. Both share the same MCP configuration (`~/.codex/config.toml`), so
+setting up Producer Pal in one makes it available in the other.
 
 :::
 
 If you feel comfortable with the command line and have an OpenAI subscription,
 this is a good option.
+
+<!--@include: ../_partials/agent-skill-callout.md-->
 
 ## Requirements
 
@@ -29,7 +33,7 @@ this is a good option.
 
 Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
-**Option A: With npx (recommended)** - Allows flexible startup order and
+**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
 
 ```toml
@@ -40,9 +44,10 @@ args = ["-y", "producer-pal"]
 
 ::: tip Scripting or building against Producer Pal?
 
-If you'll have the agent **write code that generates or parses** Producer Pal
-data — building MIDI programmatically, or piping tool output through JSON
-tooling — add `--format json` and `--notation midi-json` to the args:
+If you're using MCP and will have the agent **write code that generates or
+parses** Producer Pal data — building MIDI programmatically, or piping tool
+output through JSON tooling — add `--format json` and `--notation midi-json` to
+the args:
 
 ```toml
 [mcp_servers.producer-pal]
@@ -51,6 +56,20 @@ args = ["-y", "producer-pal", "--format", "json", "--notation", "midi-json"]
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
+
+:::
+
+::: tip Only need some of the tools?
+
+Narrow the toolset and every conversation gets smaller:
+
+```toml
+[mcp_servers.producer-pal]
+command = "npx"
+args = ["-y", "producer-pal", "--tools", "core,clip,track"]
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
 
 :::
 

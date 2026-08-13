@@ -41,6 +41,18 @@ interface ExecuteWithRetryArgs<TMessage> {
    */
   resumeStream: () => AsyncIterable<TMessage[]>;
   getHistory: () => TMessage[];
+  /**
+   * Whether the turn that started this still holds the current ticket —
+   * runChatTurn dispenses it and hands it down through the turn's setup.
+   *
+   * Stop re-enables the composer while the stopped turn is still unwinding, so a
+   * newer turn can take the shared refs below — the abort controller AND
+   * retryAbortRef — out from under this one. Once that happens the
+   * aborted-signal checks are reading the NEW turn's controllers and stop
+   * protecting anything, so everything that paints or persists checks the ticket
+   * instead.
+   */
+  stillCurrent: () => boolean;
 }
 
 /**
@@ -74,6 +86,7 @@ export function useExecuteWithRetry<
       executeStream,
       resumeStream,
       getHistory,
+      stillCurrent,
     }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
@@ -84,8 +97,10 @@ export function useExecuteWithRetry<
       retryAbortRef.current = new AbortController();
 
       const onMessageUpdate = (msgs: UIMessage[]) => {
-        // Skip updates after abort (e.g. user switched conversations)
-        if (abortControllerRef.current?.signal.aborted) return;
+        // Skip updates after abort (e.g. user switched conversations), and once
+        // a newer turn owns the transcript.
+        if (!stillCurrent() || abortControllerRef.current?.signal.aborted)
+          return;
 
         const hadAssistant = contentState.hasAssistantContent;
 
@@ -121,6 +136,12 @@ export function useExecuteWithRetry<
 
           return true;
         } catch (error) {
+          // Checked before the abort signal, which by now may belong to the
+          // newer turn: a superseded turn's failure is stale, and rendering it
+          // would drop an error into the turn currently streaming (and autosave
+          // it there).
+          if (!stillCurrent()) return false;
+
           if (retryAbortRef.current.signal.aborted) return false;
 
           const rateLimitInfo = detectRateLimit(error);

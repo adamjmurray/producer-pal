@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   mockNonExistentObjects,
@@ -23,6 +23,7 @@ import {
   setupMultiAudioArrangementClipMocks,
   setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
+  setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
@@ -456,7 +457,7 @@ describe("createClip - audio clips", () => {
       expect(clip.set).not.toHaveBeenCalledWith("looping", expect.anything());
     });
 
-    it("should not set time signature on audio clips", async () => {
+    it("sets an explicit time signature on audio clips, like update-clip", async () => {
       const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
@@ -465,7 +466,15 @@ describe("createClip - audio clips", () => {
         timeSignature: "3/4",
       });
 
-      // Verify time signature is NOT set for audio clips
+      expect(clip.set).toHaveBeenCalledWith("signature_numerator", 3);
+      expect(clip.set).toHaveBeenCalledWith("signature_denominator", 4);
+    });
+
+    it("leaves the time signature alone on audio clips when not asked", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
       expect(clip.set).not.toHaveBeenCalledWith(
         "signature_numerator",
         expect.anything(),
@@ -562,6 +571,24 @@ describe("createClip - audio clip warping", () => {
     expect(clip.set).toHaveBeenCalledWith("end_marker", 2.4);
   });
 
+  it("leaves an already-unwarped clip's region alone", async () => {
+    // Restating only makes sense on the beats-to-seconds switch. On a clip Live
+    // imported unwarped, end_marker is already seconds, so writing the sample
+    // duration over it would blow a shorter region out to the whole file.
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 4 });
+
+    clip.properties.warping = 0;
+    clip.properties.end_marker = 0.5;
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+  });
+
   it("turns warping on when asked", async () => {
     const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
 
@@ -574,46 +601,26 @@ describe("createClip - audio clip warping", () => {
     expect(clip.set).toHaveBeenCalledWith("warping", 1);
   });
 
-  it("warns when Live's warp grid time-stretches the file", async () => {
+  it("reports the warp state Live settled on without warning about it", async () => {
     const warnSpy = vi.spyOn(v8Console, "warn");
 
-    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm
+    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm — a stretch,
+    // but warping to tempo is usually what the user wants, so it is reported
+    // on the result rather than warned about
     setupStretchedAudioClip(2.7, 4);
 
-    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("2.70s sample over 2.00s"),
-    );
-  });
-
-  it("stays quiet when the warp is 1:1", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
-
-    // 8s over 16 beats at 120bpm is native speed
-    setupStretchedAudioClip(8, 16);
-
-    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("time-stretching"),
-    );
-  });
-
-  it("does not warn about stretching when warping is turned off", async () => {
-    const warnSpy = vi.spyOn(v8Console, "warn");
-
-    setupStretchedAudioClip(2.7, 4);
-
-    await createClip({
+    const result = await createClip({
       slot: "0/0",
       sampleFile: "/path/to/audio.wav",
-      warping: false,
     });
 
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("time-stretching"),
-    );
+    expect(result).toStrictEqual({
+      id: "audio_clip_0_0",
+      slot: "0/0",
+      length: "1bar", // 4 beats in 4/4
+      warping: true,
+    });
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it("warns that MIDI-only timing params are ignored for audio", async () => {
@@ -630,6 +637,20 @@ describe("createClip - audio clip warping", () => {
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("length, looping ignored for audio clips"),
+    );
+  });
+
+  it("warns that warping is ignored on a MIDI clip", async () => {
+    // The inverse of the audio warning: warping is documented audio-only, and
+    // the MIDI path has nowhere to put it.
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupSessionMocks();
+
+    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("warping ignored for MIDI clips"),
     );
   });
 });

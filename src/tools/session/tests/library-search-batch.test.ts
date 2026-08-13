@@ -225,7 +225,7 @@ describe("library tool — searchBatch action", () => {
   });
 
   it("truncates to the first 20 queries and warns", async () => {
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi
       .spyOn(consoleModule, "warn")
       .mockImplementation(() => {});
@@ -252,7 +252,7 @@ describe("library tool — searchBatch action", () => {
 
   it("does not warn when the batch is exactly at the cap of 20", async () => {
     // Boundary of the > cap guard: 20 queries is allowed in full, so no warn.
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi
       .spyOn(consoleModule, "warn")
       .mockImplementation(() => {});

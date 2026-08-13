@@ -310,6 +310,9 @@ export function setupAudioClipMock(
       is_arrangement_clip: 0,
       is_midi_clip: 0,
       is_audio_clip: 1,
+      // Warped by default: markers are beats, like every other clip type.
+      // Override to 0 for the seconds-valued markers of an unwarped clip.
+      warping: 1,
       signature_numerator: 4,
       signature_denominator: 4,
       ...opts,

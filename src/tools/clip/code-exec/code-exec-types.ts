@@ -71,14 +71,16 @@ export interface CodeExecutionContext {
  * Either transformed notes or an error message.
  */
 export type CodeExecutionResult =
-  { success: true; notes: CodeNote[] } | { success: false; error: string };
+  | { success: true; notes: CodeNote[] }
+  | { success: false; error: string };
 
 /**
  * Result of sandboxed code execution (general-purpose).
  * Returns raw result from the sandbox without note-specific validation.
  */
 export type SandboxResult =
-  { success: true; result: unknown } | { success: false; error: string };
+  | { success: true; result: unknown }
+  | { success: false; error: string };
 
 /** Timeout for code execution per clip (milliseconds) */
 export const CODE_EXEC_TIMEOUT_MS = 2000;

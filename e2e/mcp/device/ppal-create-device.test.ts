@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractToolResultText,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -145,8 +146,8 @@ describe("ppal-create-device", () => {
     expect(midiBeforeInstrument.id).toBeDefined();
     expect(midiBeforeInstrument.deviceIndex).toBe(0);
 
-    // Test 10: Inserting at position 1 on empty track succeeds
-    // Live API allows this - the device ends up at index 1 (sparse indices allowed)
+    // Test 10: Position past the end of the chain appends and warns
+    // (Live rejects an out-of-range insert position)
     const emptyTrack2Result = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
@@ -163,10 +164,13 @@ describe("ppal-create-device", () => {
       arguments: { deviceName: "Compressor", path: position1Path },
     });
     const position1Device =
-      parseToolResult<CreateDeviceResult>(position1Result);
+      parseToolResultWithWarnings<CreateDeviceResult>(position1Result);
 
-    expect(position1Device.id).toBeDefined();
-    expect(position1Device.deviceIndex).toBe(1);
+    expect(position1Device.data.id).toBeDefined();
+    expect(position1Device.data.deviceIndex).toBe(0);
+    expect(position1Device.warnings.join("\n")).toContain(
+      "past the end of the device chain",
+    );
 
     // Test 11: Create device at position 0 on empty chain inside rack
     // Creates a rack, then inserts device at d0/c0/d0 (position 0 in first chain)

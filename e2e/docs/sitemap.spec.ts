@@ -16,6 +16,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "adammurray.link",
   "ai.google.dev",
   "anthropic.com",
+  "antigravity.google",
   "chatgpt.com",
   "claude.ai",
   "cline.bot",

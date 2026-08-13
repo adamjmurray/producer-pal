@@ -33,13 +33,14 @@ import {
   type EvalTurnResult,
 } from "../../../../types.ts";
 import {
-  clearSessionSlots,
   clipStateAssertion,
   getCreateClipNotes,
+} from "../../helpers/clip-scenario-helpers.ts";
+import {
+  createClipScenario,
+  LEAD_SLOT_1,
   leadClipNotationScenario,
-  MSG_CONNECT,
-  TOOL_CONNECT,
-} from "../../clip-scenario-helpers.ts";
+} from "../../helpers/clip-scenario-builders.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;
@@ -115,10 +116,6 @@ export const barBeatGallop: EvalScenario = leadClipNotationScenario({
 
 // ───────────────────────── stream zip (duration × pitch) ─────────────────────
 
-const TOOL_CREATE_CLIP = "ppal-create-clip";
-const LIVE_SET = "basic-midi-4-track";
-/** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
-const LEAD_TRACK = 3;
 /** Pitch cycle: C3, E3, G3 ascending (Ableton MIDI, C3 = 60). */
 const TRIAD = [60, 64, 67];
 /** Duration cycle in Ableton quarter beats: a quarter then an eighth (gallop). */
@@ -224,23 +221,18 @@ const zipUsesRepeatNotation: EvalAssertion = {
  * the PATH (a genuine duration×pitch zip on one repeat), so a model that
  * hand-lists the 16 notes fails even if they land right.
  */
-export const barBeatZipStreams: EvalScenario = {
+export const barBeatZipStreams: EvalScenario = createClipScenario({
   id: "bar-beat-zip-streams",
   description:
     "Duration stream zipped against a pitch stream (gallop melodic run) — multi-stream bracket idiom, not 16 hand-listed notes",
-  kind: "capability",
   requires: { brackets: true },
-  liveSet: LIVE_SET,
-  judgeAdvisory: true,
-  messages: [MSG_CONNECT, ZIP_MESSAGE],
-  setup: (mcpClient) => clearSessionSlots(mcpClient, [`${LEAD_TRACK}/0`]),
+  messages: [ZIP_MESSAGE],
+  clearSlots: [LEAD_SLOT_1],
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    clipStateAssertion(`${LEAD_TRACK}/0`, "4/4", checkZip),
+    clipStateAssertion(LEAD_SLOT_1, "4/4", checkZip),
     usesStreamZip,
     zipUsesRepeatNotation,
     { type: "llm_judge", prompt: ZIP_JUDGE },
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
-};
+});

@@ -15,16 +15,16 @@
 // (ADR-0010): entries are purely additive user content with nothing upstream to
 // drift from, so frontmatter here is plain structure (name/description). A
 // legacy file with a `type:` line (the now-removed grouping axis) still reads
-// fine — parseFrontmatter tolerates unknown keys, and this store simply never
-// looks at `type`. The filesystem lives on the Node-for-Max side; V8's
+// fine — `type` stays in the recognized key set (an unrecognized key would make
+// the parser treat the whole file as body), and this store never looks at it. The filesystem lives on the Node-for-Max side; V8's
 // ppal-context round-trips through the memory.* RPC routes.
 
-import { parseFrontmatter } from "../markdown-store/frontmatter.ts";
+import { parseFrontmatter } from "../config-store/frontmatter.ts";
 import {
   type BuildStoredArgs,
   collectionIndexLine,
   makeMarkdownCollectionStore,
-} from "../markdown-store/markdown-collection-store.ts";
+} from "../config-store/markdown-collection-store.ts";
 
 /** One stored memory: its slug, one-line hook, and body. */
 export interface MemoryEntry {
@@ -93,9 +93,8 @@ export function renderMemoryIndex(entries: MemoryEntry[]): string {
 
 /**
  * Parse a raw memory file into an entry. The filename slug is authoritative for
- * `name` (frontmatter is user-editable and may drift). Any other frontmatter
- * key — including a legacy `type:` line from before the grouping axis was
- * removed — is simply ignored.
+ * `name` (frontmatter is user-editable and may drift). A legacy `type:` line
+ * from before the grouping axis was removed still parses, but is ignored.
  *
  * @param slug - The slug from the filename
  * @param raw - The raw file contents

@@ -14,9 +14,11 @@ drop is theirs.
 Unlike the other targets, geometry here is load-bearing. Get it wrong and the
 file still loads; it just reads as the wrong waveform.
 
-- **Frame size: 2048 samples per cycle.** A power of two, and the value Serum
-  and most wavetable tooling assume. The user must set the same number in
-  Wavetable's import dialog — generate at 2048 and there is nothing to explain.
+- **Frame size: 1024 samples per cycle.** Wavetable slices an imported file into
+  fixed 1024-sample frames. There is no import dialog and no frame-size setting,
+  so any other size silently splits your cycles in the wrong places. (Serum's
+  2048-sample tables are the one exception — Live spots Serum's metadata and
+  downsamples them. Nothing written here carries that metadata.)
 - **Total length = frames × frame size, exactly.** No header padding, no
   trailing silence, no fade. A partial final frame shifts every subsequent
   cycle.
@@ -30,10 +32,13 @@ file still loads; it just reads as the wrong waveform.
 - **`normalize` across the whole table, once**, after building every frame — not
   per frame. Per-frame normalization flattens the amplitude contour that makes
   the sweep feel like it's going somewhere.
+- **Import with `Raw` on.** It's the oscillator's only import control, and it's
+  off by default. Off, Live trims silence, fades each frame's edges to zero,
+  phase-aligns and re-normalizes — undoing the last two rules on its way in.
 
 ## Anti-aliasing is correctness, not taste
 
-A single cycle of 2048 samples supports 1024 harmonics, but Wavetable plays it
+A single cycle of 1024 samples supports 512 harmonics, but Wavetable plays it
 back at whatever pitch is being played. Harmonics that exceed Nyquist at the
 playing pitch fold back as inharmonic garbage — and it will not sound like a
 bug, just like a bad wavetable.
@@ -48,7 +53,7 @@ not. Where a request genuinely calls for a hard-edged shape, band-limit it.
 1. Have a **Wavetable** instrument on a track.
 2. Drag the `.wav` onto one of its oscillators — from Finder, from Live's
    browser, or from a Session clip.
-3. Set the import frame size to what you generated (2048).
+3. Turn **Raw** on, so Live imports the samples as written.
 4. It appears under the oscillator's **User** category.
 
 To stage a draggable clip, put the file on an audio track:
@@ -79,7 +84,11 @@ whole instrument. Design _that curve_, not the endpoints:
 ## Gotchas
 
 - **No API load** — the drop is manual. Don't imply otherwise.
-- **Frame size must match on import**, or the position sweep won't align.
+- **1024 is not negotiable** — it's Wavetable's slicing size, not a setting.
+  Generate 2048 and every "frame" is half a cycle, so the sweep runs at double
+  rate through waveforms that were never designed.
+- **`Raw` defaults to off**, and off it reshapes every frame. Turn it on right
+  after the drop or none of the format rules survive.
 - **"User" is not a fixed folder** — it reflects the folder of whatever file was
   last loaded into that oscillator. Keep related tables in one directory so they
   browse together, and keep that directory stable.

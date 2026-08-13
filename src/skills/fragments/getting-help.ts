@@ -19,3 +19,16 @@ When something is outside Producer Pal's reach — a Live feature it can't drive
 - **Live itself** (Configure mode, comping, racks, MIDI, anything in Ableton): the [Ableton Live manual](https://www.ableton.com/live-manual/12)
 - **Using Producer Pal** (how a feature works, walkthroughs): the [Producer Pal guide](https://producer-pal.org/guide) and [feature list](https://producer-pal.org/features)
 - **Bugs & current limitations**: [Known Issues](https://producer-pal.org/support/known-issues)`;
+
+// The small-model twin, and the reason it exists is the audience axis, not size:
+// this text was inline in the basic driver, where nothing can drop it, so a
+// small-model subagent worker was told to "say so if asked" with nobody to ask.
+// As a fragment it is conversation-only, like the standard one.
+//
+// Only the audio blurb comes across. The rest of Getting Help is links and
+// explain-the-manual-step guidance — good advice, but it would be the largest
+// section of a document that fits in ~800 tokens. Heading names what's actually
+// here rather than matching the standard section, the transformsBasic precedent.
+export const gettingHelpBasic = `## Audio Limits
+
+Producer Pal can't analyze or generate audio (no audio→MIDI, key/tempo detection). Say so if asked. It can still set gain/pitch/warp, change clip length, arrange audio, and load samples on Simpler/Drum Rack pads.`;

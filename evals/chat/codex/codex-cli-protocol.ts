@@ -44,6 +44,7 @@ export const CODEX_CLI_TRANSPORT: AgentCliTransport = {
   buildTurnArgs: codexTurnArgs,
   buildJudgeArgs: codexJudgeArgs,
   parseStream: parseCodexStream,
+  countSteps: countCodexSteps,
 };
 
 /**
@@ -106,6 +107,31 @@ export function parseCodexStream(stdout: string): ParsedAgentTurn {
     textSeparator: "",
     handleEvent,
   });
+}
+
+/**
+ * Count the tool calls in one Codex event, for the step budget.
+ *
+ * Codex marks no boundary between model generations, so there is nothing to
+ * collapse a narrated tool call onto — counting its `agent_message` too made the
+ * same budget buy roughly half the tool work it buys on the AI SDK path, where a
+ * step is one generation. Tool calls alone are the closest stand-in. Only
+ * `item.completed`, so a call that starts and never returns is left to the
+ * wall-clock timeout rather than counted twice.
+ *
+ * A turn that only ever talks is not a runaway to catch here: with no tool call
+ * the model has nothing to loop on, and Codex ends the turn.
+ *
+ * @param event - Parsed Codex event
+ * @returns Steps this event spent
+ */
+export function countCodexSteps(event: Record<string, unknown>): number {
+  if (event.type !== "item.completed") return 0;
+  const item = event.item;
+
+  if (item == null || typeof item !== "object") return 0;
+
+  return (item as Record<string, unknown>).type === "mcp_tool_call" ? 1 : 0;
 }
 
 /**

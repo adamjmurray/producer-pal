@@ -31,11 +31,31 @@ export interface SkillSlotView {
   enabled: boolean;
   /** Whether to offer an off switch (false for the whole-document drivers). */
   canDisable: boolean;
+  /** What the assembler requires for this fragment to ship (null for drivers). */
+  gate: SkillGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
+  /** Set when this override predates the slot's `-write` split (null if not). */
+  splitStale: SplitStale | null;
   /** Producer Pal version the override was forked from (null when none). */
   forkedFromVersion: string | null;
 }
+
+/** A pre-split override's overlap with the `-write` sibling it duplicates. */
+export interface SplitStale {
+  /** The `-write` fragment that ships this text now. */
+  sibling: string;
+  /** How many of the override's lines are still the built-in's. */
+  sharedLines: number;
+}
+
+/**
+ * What a fragment ships under: any-of a tool list, or one of the two conditions
+ * no toolset decides. Declared here rather than imported from `src/skills`
+ * because webui may only reach into `#src/shared` — the server sends the value
+ * verbatim, so this mirrors `FragmentGate`.
+ */
+export type SkillGate = readonly string[] | "always" | "conversation-only";
 
 /** Status of the whole slot collection. */
 export type SkillOverridesStatus =
@@ -154,9 +174,13 @@ interface RawSkillSlot {
   override: string;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
+  /** Absent on an older server, and null whenever nothing is stale. */
+  splitStale?: SplitStale | null;
   /** Optional so a slot from an older server reads as on rather than off. */
   enabled?: boolean;
   canDisable?: boolean;
+  /** Absent on an older server, and legitimately null for the drivers. */
+  gate?: unknown;
 }
 
 /** The fields a per-slot PUT may carry; either alone is a valid write. */
@@ -272,7 +296,27 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     // ships, and the toggle shows.
     enabled: raw.enabled !== false,
     canDisable: raw.canDisable !== false,
+    gate: toGate(raw.gate),
     drifted: raw.drifted,
+    splitStale: raw.splitStale ?? null,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
   };
+}
+
+/**
+ * Narrow the server's `gate` field to {@link SkillGate}. Anything unrecognized
+ * reads as null — the same as a driver, which renders no gate note — so an older
+ * server (or a field this webui doesn't know yet) simply says nothing rather
+ * than stating a rule that isn't the one being applied.
+ * @param raw - The server's gate value
+ * @returns The gate, or null when absent or unrecognized
+ */
+function toGate(raw: unknown): SkillGate | null {
+  if (raw === "always" || raw === "conversation-only") return raw;
+
+  if (Array.isArray(raw) && raw.every((tool) => typeof tool === "string")) {
+    return raw;
+  }
+
+  return null;
 }

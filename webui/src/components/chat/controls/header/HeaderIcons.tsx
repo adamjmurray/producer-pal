@@ -186,11 +186,13 @@ export function TrashIcon({ size = 14 }: { size?: number }) {
 
 /**
  * Lined-document icon for the project context view
+ * @param props - Component props
+ * @param props.size - Rendered size in px (default 20)
  * @returns SVG element
  */
-export function ContextIcon() {
+export function ContextIcon({ size }: { size?: number } = {}) {
   return (
-    <Icon20 strokeWidth="1.6">
+    <Icon20 strokeWidth="1.6" size={size}>
       <path d="M4.5 2.5h7L15.5 6.5v11a1 1 0 01-1 1H4.5a1 1 0 01-1-1V3.5a1 1 0 011-1z" />
       <path d="M11.5 2.5V6.5h4" />
       <line x1="6" y1="10" x2="13" y2="10" />
@@ -272,23 +274,26 @@ export function SearchIcon() {
 // --- Helpers below main exports ---
 
 /**
- * Shared 20x20 SVG wrapper with standard stroke attributes.
+ * Shared SVG wrapper on a 20-unit grid, with standard stroke attributes.
  * @param props - Component props
  * @param props.strokeWidth - SVG stroke width
+ * @param props.size - Rendered size in px, both axes (default 20)
  * @param props.children - SVG child elements
  * @returns SVG element
  */
 function Icon20({
   strokeWidth,
+  size = 20,
   children,
 }: {
   strokeWidth: string;
+  size?: number;
   children: preact.ComponentChildren;
 }) {
   return (
     <svg
-      width="20"
-      height="20"
+      width={size}
+      height={size}
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"

@@ -23,7 +23,7 @@ export const OTHER_MODEL_OPTION = {
   label: "Other...",
 } as const;
 
-export const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+export const OPENAI_REALTIME_MODEL = "gpt-realtime-2.1";
 
 /**
  * Gemini's recommended Live API model (audio-to-audio, low latency). Used as
@@ -125,14 +125,14 @@ export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
 
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
-  { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
+  { value: "claude-opus-5", label: "Claude Opus 5" },
   { value: "claude-fable-5", label: "Claude Fable 5" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
-  { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash" },
+  { value: "gemini-3.7-flash", label: "Gemini 3.7 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
   { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
@@ -147,12 +147,10 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
   { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
-  { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
   {
     value: OPENAI_REALTIME_MODEL,
-    label: "GPT Realtime 2 (Voice)",
+    label: "GPT Realtime 2.1 (Voice)",
     kind: "realtime",
   },
   OTHER_MODEL_OPTION,
@@ -169,8 +167,8 @@ export const MISTRAL_MODELS = [
 export const OPENROUTER_MODELS = [
   // Paid models
   {
-    value: "google/gemini-3.6-flash",
-    label: "[Paid] Google Gemini 3.6 Flash",
+    value: "google/gemini-3.7-flash",
+    label: "[Paid] Google Gemini 3.7 Flash",
   },
   {
     value: "google/gemini-3.1-pro-preview",
@@ -181,8 +179,8 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Sonnet 5",
   },
   {
-    value: "anthropic/claude-opus-4.8",
-    label: "[Paid] Anthropic Claude Opus 4.8",
+    value: "anthropic/claude-opus-5",
+    label: "[Paid] Anthropic Claude Opus 5",
   },
   {
     value: "anthropic/claude-fable-5",
@@ -190,6 +188,10 @@ export const OPENROUTER_MODELS = [
   },
   { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
+  {
+    value: "deepseek/deepseek-v4-flash-0731",
+    label: "[Paid] DeepSeek V4 Flash",
+  },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
@@ -222,6 +224,7 @@ export const OLLAMA_MODELS = [
   { value: "qwen3-coder", label: "qwen3-coder" },
   { value: "mistral", label: "mistral" },
   { value: "devstral-small-2", label: "devstral-small-2" },
+  { value: "muse-glimmer:30b-mlx", label: "muse-glimmer:30b-mlx" },
   { value: "lfm2.5", label: "lfm2.5" },
   { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },

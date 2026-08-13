@@ -479,6 +479,32 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
+  it("should warn and return null when the device path's container is missing", () => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({ path: "t99/d0", wrapInRack: true });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'wrapInRack: device not found at "t99/d0"',
+    );
+    expect(result).toBeNull();
+  });
+
+  it("should warn and return null when a drum-pad container can't be resolved", () => {
+    // "pC1" under a device that is not a Drum Rack: resolveContainer yields
+    // null, which is a different miss from the device simply not existing.
+    mockNonExistentObjects();
+
+    const result = updateDevice({ path: "t0/d0/pC1/d0", wrapInRack: true });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'wrapInRack: device not found at "t0/d0/pC1/d0"',
+    );
+    expect(result).toBeNull();
+  });
+
   it("should warn and return null when toPath container does not exist", () => {
     mockNonExistentObjects();
 

@@ -12,7 +12,10 @@ import {
   type ChatMessage,
   type SubagentConfigOverride,
 } from "#webui/chat/sdk/types";
-import { resolveLockedNotation } from "#webui/hooks/chat/helpers/streaming-helpers";
+import {
+  resolveLockedNotation,
+  resolveLockedSmallModelMode,
+} from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -176,7 +179,7 @@ function buildOpenAIOptions(
 
 /**
  * Build the model/inference override a spawned worker runs under from the
- * user's resolved "Default subagent" preset. Returns undefined to inherit the
+ * user's resolved "Subagent preset". Returns undefined to inherit the
  * orchestrator config (no preset chosen). A preset that can't build a model
  * (e.g. a `custom` provider missing its base URL) must NOT break the
  * orchestrator's own chat init, so failures warn and fall back to inherit.
@@ -217,7 +220,7 @@ function buildSubagentConfig(
     };
   } catch (error) {
     console.warn(
-      "Default subagent preset could not be built; subagents will inherit " +
+      "Subagent preset could not be built; subagents will inherit " +
         `the current settings. ${error instanceof Error ? error.message : String(error)}`,
     );
 
@@ -255,15 +258,20 @@ export const chatAdapter: ChatAdapter<
     // started with, even after the global override changes; a brand-new
     // conversation has none and resolves the current override instead.
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
-      string | undefined;
+      | string
+      | undefined;
     const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
-      string | null | undefined;
+      | string
+      | null
+      | undefined;
     const systemInstruction =
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);
     // Carried onto the config so client.initialize sends it as the per-request
-    // MCP header (schema shrink + basic skills variant for this caller).
-    const smallModelMode = Boolean(extraParams?.smallModelMode);
+    // MCP header (schema shrink + basic skills variant for this caller). Locked
+    // like the instruction: a restored conversation passes its snapshot
+    // (lockedSmallModelMode) and keeps the schemas and skills it started with.
+    const smallModelMode = resolveLockedSmallModelMode(extraParams ?? {});
     // Same idea for notation, which the chat also sends per-request rather than
     // letting every call fall through to the device global — otherwise flipping
     // the dropdown re-teaches an open conversation mid-turn and the next tool
@@ -275,11 +283,12 @@ export const chatAdapter: ChatAdapter<
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
-    // Resolve the "Default subagent" preset (if any) to the model/inference a
+    // Resolve the "Subagent preset" (if any) to the model/inference a
     // spawned worker runs under; buildWorkerConfig layers it over the clone.
     const subagentConfig = buildSubagentConfig(
       extraParams?.[SUBAGENT_PRESET_PARAM] as
-        ResolvedSubagentPreset | undefined,
+        | ResolvedSubagentPreset
+        | undefined,
     );
 
     // Temperature is no longer sent: it was phased-out dead config (no UI, pinned

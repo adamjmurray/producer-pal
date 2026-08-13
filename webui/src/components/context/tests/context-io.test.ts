@@ -47,7 +47,10 @@ describe("makeContextIoHandlers", () => {
 
   it("onExport downloads the current content under a dated .md name", () => {
     const { editor } = makeEditor("# my content");
-    const { onExport } = makeContextIoHandlers(editor, "producer-pal-global");
+    const { onExport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "producer-pal-global",
+    });
 
     onExport();
 
@@ -61,9 +64,41 @@ describe("makeContextIoHandlers", () => {
     expect(content).toBe("# my content");
   });
 
+  it("onExport falls back to the built-in an un-customized pane is showing", () => {
+    // The draft is seeded from the stored override, which is empty until the
+    // user forks — but the pane is displaying the default, so exporting the
+    // empty draft would download a 0-byte file from a screen full of text.
+    const { editor } = makeEditor("");
+    const { onExport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "producer-pal-skill-standard",
+      builtIn: "# The shipped default",
+    });
+
+    onExport();
+
+    expect(downloadTextFile.mock.calls[0]?.[1]).toBe("# The shipped default");
+  });
+
+  it("onExport prefers the user's own content over the built-in", () => {
+    const { editor } = makeEditor("# my fork");
+    const { onExport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+      builtIn: "# The shipped default",
+    });
+
+    onExport();
+
+    expect(downloadTextFile.mock.calls[0]?.[1]).toBe("# my fork");
+  });
+
   it("onImportText forwards text straight to the editor's import", () => {
     const { editor, handleImport } = makeEditor();
-    const { onImportText } = makeContextIoHandlers(editor, "base");
+    const { onImportText } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+    });
 
     onImportText("dropped body");
 
@@ -73,12 +108,11 @@ describe("makeContextIoHandlers", () => {
   it("onImportText fires onImportSuccess so a stale notice is cleared", () => {
     const { editor, handleImport } = makeEditor();
     const onImportSuccess = vi.fn();
-    const { onImportText } = makeContextIoHandlers(
+    const { onImportText } = makeContextIoHandlers({
       editor,
-      "base",
-      undefined,
+      exportBasename: "base",
       onImportSuccess,
-    );
+    });
 
     onImportText("dropped body");
 
@@ -90,12 +124,11 @@ describe("makeContextIoHandlers", () => {
     pickTextFile.mockResolvedValue({ kind: "text", text: "picked body" });
     const { editor } = makeEditor();
     const onImportSuccess = vi.fn();
-    const { onImport } = makeContextIoHandlers(
+    const { onImport } = makeContextIoHandlers({
       editor,
-      "base",
-      undefined,
+      exportBasename: "base",
       onImportSuccess,
-    );
+    });
 
     onImport();
 
@@ -105,7 +138,10 @@ describe("makeContextIoHandlers", () => {
   it("onImport reads a picked file and imports it", async () => {
     pickTextFile.mockResolvedValue({ kind: "text", text: "picked body" });
     const { editor, handleImport } = makeEditor();
-    const { onImport } = makeContextIoHandlers(editor, "base");
+    const { onImport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+    });
 
     onImport();
     await vi.waitFor(() =>
@@ -118,7 +154,11 @@ describe("makeContextIoHandlers", () => {
     pickTextFile.mockResolvedValue({ kind: "cancel" });
     const { editor, handleImport } = makeEditor();
     const onImportError = vi.fn();
-    const { onImport } = makeContextIoHandlers(editor, "base", onImportError);
+    const { onImport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+      onImportError,
+    });
 
     onImport();
     await Promise.resolve();
@@ -132,7 +172,11 @@ describe("makeContextIoHandlers", () => {
     pickTextFile.mockResolvedValue({ kind: "too-large" });
     const { editor, handleImport } = makeEditor();
     const onImportError = vi.fn();
-    const { onImport } = makeContextIoHandlers(editor, "base", onImportError);
+    const { onImport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+      onImportError,
+    });
 
     onImport();
     await vi.waitFor(() =>
@@ -145,7 +189,11 @@ describe("makeContextIoHandlers", () => {
     pickTextFile.mockResolvedValue({ kind: "read-error" });
     const { editor, handleImport } = makeEditor();
     const onImportError = vi.fn();
-    const { onImport } = makeContextIoHandlers(editor, "base", onImportError);
+    const { onImport } = makeContextIoHandlers({
+      editor,
+      exportBasename: "base",
+      onImportError,
+    });
 
     onImport();
     await vi.waitFor(() =>

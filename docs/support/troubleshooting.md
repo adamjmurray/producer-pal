@@ -26,7 +26,7 @@ doesn't trigger it, try:
 - "connect to ableton with your ppal-connect tool"
 
 If tools are visible but the AI won't call them, check you're using a model that
-supports tool calling. Many local models (including some in LM Studio) don't
+supports tool calling. Many local models (including some in Bionic) don't
 support tools.
 
 ## Connection Issues

@@ -21,13 +21,14 @@
  * was NOT supplied, so the arg is the reliable signal).
  */
 
+import { argText } from "../../arg-text.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
-import { MSG_CONNECT, TOOL_CONNECT } from "../clip-scenario-helpers.ts";
+import { MSG_CONNECT, TOOL_CONNECT } from "../helpers/clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const LIVE_SET = "basic-midi-4-track";
@@ -51,7 +52,7 @@ function getLengthArg(turns: EvalTurnResult[], turn: number): string {
 
   const call = calls.find((c) => c.args.length != null) ?? calls[0];
 
-  return String(call?.args.length ?? "");
+  return argText(call?.args.length);
 }
 
 /**
@@ -193,7 +194,7 @@ export const durationArgMixedCombiner: EvalScenario = {
           (c) => c.name === TOOL_CREATE_CLIP,
         );
         const call = calls.find((c) => c.args.timeSignature != null);
-        const ts = String(call?.args.timeSignature ?? "");
+        const ts = argText(call?.args.timeSignature);
 
         if (ts !== "6/8") {
           throw new Error(

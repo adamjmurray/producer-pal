@@ -123,7 +123,7 @@ export function ContextTabs(props: ContextTabsProps = {}): preact.JSX.Element {
   const { confirmLeaveRef } = props;
 
   useEffect(() => {
-    if (confirmLeaveRef == null) return;
+    if (confirmLeaveRef == null) return undefined;
     confirmLeaveRef.current = leaveGuard.confirmLeave;
 
     return () => {

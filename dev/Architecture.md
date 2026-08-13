@@ -97,8 +97,8 @@ UI from the MCP server's Express app and connects directly to the LLM API.
 The chat UI also has a realtime **voice mode**: speech-to-speech conversation
 with the model, with the same MCP tools and conversation store as text chat. The
 browser selects voice mode by choosing a realtime model; the provider is derived
-from the model id (`gpt-realtime-2` → OpenAI, `gemini-3.1-flash-live-preview` →
-Gemini). Two backends are supported behind one interface:
+from the model id (`gpt-realtime-2.1` → OpenAI, `gemini-3.1-flash-live-preview`
+→ Gemini). Two backends are supported behind one interface:
 
 - **OpenAI** uses the `@openai/agents` Realtime SDK over **WebRTC**. The SDK
   owns mic capture, voice-activity detection, and audio playback.
@@ -224,9 +224,10 @@ dependencies of its own, so the import is harmless; it is grandfathered via the
 rule's `except` clause rather than relocated, keeping the live-library feature
 cohesive.
 
-The boundary rules apply to production source only. Test infrastructure (mocks,
-fixtures, `*-test-helpers.ts`, `tests/` directories, `src/test/`) legitimately
-reaches across layers and is excluded.
+The boundary rules apply to production source only. Test infrastructure —
+everything the project classifies as a test file (see dev/Testing.md) —
+legitimately reaches across layers and is excluded. It governs the shipped
+dependency graph, which no test file is part of.
 
 ## Runtime Boundary: Filesystem & User-Content Features
 
@@ -237,7 +238,8 @@ filesystem access** (`node:fs`). Shipped `src/**` also cannot shell out — the
 lint config bans `child_process`.
 
 The consequence for user-content and config features (global context, custom
-system prompt, `~/.producer-pal` skills overrides): **all filesystem reads and
+system prompt, `~/.producer-pal` skills overrides, and the machine-global
+preferences in `~/.producer-pal/settings.json`): **all filesystem reads and
 writes are handled Node-side, and these features do not touch the Live API.**
 From the outside it is one MCP/REST service — it does not matter which runtime
 services which part of a request. So content that must reach an external MCP
@@ -255,10 +257,9 @@ where the filesystem lives and the result is injected into `ppal-connect`.
 
 ### Per-request assembly
 
-`POST /mcp` builds a fresh `createMcpServer` per request, so three settings can
-vary per caller rather than per device. Each rides an HTTP header, and each
-falls back to the global config when absent, so external MCP clients are
-unaffected:
+Three settings vary per caller rather than per device. Each rides an HTTP
+header, and each falls back to the global config when absent, so clients that
+send nothing are unaffected:
 
 - `SMALL_MODEL_MODE_HEADER` (`src/shared/config.ts`) — shrinks tool schemas and
   selects the `basic` skills driver.
@@ -271,6 +272,13 @@ unaffected:
   validates against — `config.ts` stays import-free because the webui compiles
   it under a tsconfig that rejects `.ts` import paths) — selects the notation
   variant of the skills and the notation-keyed param descriptions.
+
+Every HTTP surface that serves tools resolves them through one
+`resolveRequestProfile` (`src/mcp-server/helpers/http/request-profile.ts`):
+`POST /mcp`, which builds a fresh `createMcpServer` per request, plus the REST
+tool endpoints and `GET /subagent-briefing`. Sharing the resolver is the point —
+REST once shipped reading only the toolset header, which left an Agent Skill no
+way to pick a notation except a device-wide `POST /config`.
 
 The subtraction shape is what the webui can actually send: its `enabledTools` is
 a sparse map (absent = enabled), and the header must be set when the transport
@@ -301,6 +309,16 @@ worker's **system instruction** at spawn
 The endpoint reads the caller's profile off the **same three headers** above, so
 a briefing describes exactly the toolset and notation the worker's own tool
 calls will run under; one builder (`perRequestHeaders`) emits them for both.
+
+Every spawn fetches its own briefing, even in a parallel fan-out where all the
+profiles are identical. Do not collapse those into one cached fetch: the
+briefing embeds a Live Set overview, and workers change the Live Set, so a later
+worker would be briefed on a Set that no longer exists.
+
+It also requires a fourth, `x-producer-pal-briefing`. It is the only read
+endpoint that dispatches a Live API call, and the origin gate alone can't cover
+it: Origin-less requests pass (non-browser clients need that), and a browser
+sends no Origin for `<img>` or `<script>` — which also can't set a header.
 
 Two things move the blob out of message history and into the system prompt:
 

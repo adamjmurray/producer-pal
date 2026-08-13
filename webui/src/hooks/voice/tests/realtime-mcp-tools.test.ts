@@ -10,14 +10,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 import {
   callToolMock,
+  closeMock,
+  createConnectedMcpClientMock,
   fakeMcpClient,
   listToolsMock,
   mcpClientHelpersMock,
   mockCallToolText,
   mockListBareTools,
+  mockListTwoTools,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
+// connectAndListTools stays real — it owns the close-on-catalog-failure path.
 vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
   mcpClientHelpersMock(),
 );
@@ -53,28 +57,9 @@ async function buildSingleTool(name: string): Promise<unknown> {
 
 describe("createRealtimeMcpTools", () => {
   it("maps MCP tools to Realtime tools with normalized schemas", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-track",
-          description: "Read a track",
-          inputSchema: {
-            type: "object",
-            properties: { trackIndex: { type: "number" } },
-            required: ["trackIndex"],
-          },
-        },
-        {
-          name: "ppal-create-clip",
-          description: "Create a clip",
-          inputSchema: { properties: {} }, // missing type + required — normalized
-        },
-      ],
-    });
+    mockListTwoTools();
 
-    const { tools, mcpClient } = await createRealtimeMcpTools(
-      "http://localhost:3350/mcp",
-    );
+    const { tools, mcpClient } = await createRealtimeMcpTools(MCP_URL);
 
     expect(mcpClient).toBe(fakeMcpClient);
     expect(tools).toHaveLength(2);
@@ -106,6 +91,24 @@ describe("createRealtimeMcpTools", () => {
     );
 
     expect(tools.map((t) => t.name)).toStrictEqual(["ppal_a", "ppal_c"]);
+  });
+
+  it("sends the toolset to the server, but no small-model mode or notation", async () => {
+    mockListBareTools("ppal-a");
+
+    const enabledTools = { "ppal-a": true, "ppal-b": false };
+
+    await createRealtimeMcpTools(MCP_URL, enabledTools);
+
+    // The disabled-tools header is what stops the server from shipping skills
+    // fragments for tools voice can't call. The two undefineds keep voice on the
+    // device globals for small-model mode and notation.
+    expect(createConnectedMcpClientMock).toHaveBeenCalledWith(
+      MCP_URL,
+      undefined,
+      enabledTools,
+      undefined,
+    );
   });
 
   it("execute() forwards args to mcpClient.callTool and returns text content", async () => {
@@ -218,6 +221,27 @@ describe("createRealtimeMcpTools", () => {
     expect(t.parameters.properties).toStrictEqual({});
     expect(t.parameters.required).toStrictEqual([]);
     expect(t.parameters.additionalProperties).toBe(true);
+  });
+
+  // The caller (use-voice-session) only stores mcpClient once this resolves, so a
+  // throw past a successful connect leaves an open transport nothing can reach —
+  // one more on every Talk retry.
+  it("closes the connection when the catalog read fails", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+
+    await expect(createRealtimeMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
+    expect(closeMock).toHaveBeenCalledOnce();
+  });
+
+  it("reports the original failure even when the close fails too", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+    closeMock.mockRejectedValueOnce(new Error("socket already gone"));
+
+    await expect(createRealtimeMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
   });
 });
 

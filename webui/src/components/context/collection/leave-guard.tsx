@@ -86,7 +86,7 @@ export function useDraftLeaveGuard(
     if (!active) {
       leaveGuard.register(null);
 
-      return;
+      return undefined;
     }
 
     leaveGuard.register(() => window.confirm(confirmMessage));

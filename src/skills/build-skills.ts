@@ -13,12 +13,21 @@ import {
   gatedOutFragments,
   type SkillsAudience,
 } from "#src/skills/fragment-tool-gates.ts";
+import { fragmentRequires } from "#src/skills/fragment-requires.ts";
 import { resolveIncludes } from "#src/skills/include-resolver.ts";
 import {
+  isDisableableSkillSlot,
   isSkillSlotName,
   RETIRED_SKILL_SLOTS,
-  SKILL_SLOTS,
+  SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
+import { staleSplitLines } from "#src/skills/stale-split-lines.ts";
+
+/** How much of a copied line a warning quotes. */
+const SNIPPET_LENGTH = 60;
+
+/** How many copied lines a warning names before the count speaks for itself. */
+const EXAMPLE_LINES = 3;
 
 /** Runtime context that selects which skills variant is assembled. */
 export interface BuildSkillsOptions {
@@ -61,6 +70,18 @@ export interface SkillOverrides {
   disabled?: readonly string[];
 }
 
+/** An assembled blob plus what the runtime context dropped from it. */
+export interface AssembledSkills {
+  /** The skills string returned in the ppal-connect tool result. */
+  skills: string;
+  /**
+   * Fragments this document referenced that the TOOLSET or AUDIENCE emptied, in
+   * include order. The user's own off switches are excluded — those they can
+   * already see in the editor; these are the ones nothing on screen explains.
+   */
+  dropped: string[];
+}
+
 /**
  * Assemble the Producer Pal Skills string for the active runtime context. Small-
  * model mode picks the driver root (`basic` vs `standard`); everything else —
@@ -90,6 +111,29 @@ export interface SkillOverrides {
  * @returns The skills string returned in the ppal-connect tool result.
  */
 export function buildSkills(
+  options: BuildSkillsOptions = {},
+  overrides: SkillOverrides = {},
+  onWarn?: (message: string) => void,
+): string {
+  return assembleSkills(options, overrides, onWarn).skills;
+}
+
+/**
+ * Assemble as {@link buildSkills} does, and also report which of the document's
+ * fragments the toolset or audience emptied. Separate from `buildSkills` because
+ * only a surface that EXPLAINS the blob needs the second half — the live inject
+ * wants the string and nothing else.
+ *
+ * @param options - Runtime context ({@link BuildSkillsOptions}).
+ * @param options.notation - The global notation setting (defaults to bar|beat).
+ * @param options.smallModelMode - Whether small-model mode is active.
+ * @param options.tools - The tools available to this caller (omit for no gating).
+ * @param options.audience - Who the blob is for (omit for the user-facing chat).
+ * @param overrides - Per-fragment user overrides (empty by default).
+ * @param onWarn - Sink for non-fatal assembly warnings.
+ * @returns The blob and the fragments gating dropped from it.
+ */
+export function assembleSkills(
   {
     notation = DEFAULT_NOTATION,
     smallModelMode = false,
@@ -98,21 +142,29 @@ export function buildSkills(
   }: BuildSkillsOptions = {},
   overrides: SkillOverrides = {},
   onWarn?: (message: string) => void,
-): string {
+): AssembledSkills {
   const builtIns = builtinFragments();
   const root = smallModelMode ? "basic" : "standard";
   const fragments = overrides.fragments ?? {};
+  // Reported separately from the other two: a user's own off switch is already
+  // visible as an unchecked box, while these have nothing on screen to explain
+  // them.
+  const gated = new Set([
+    ...gatedOutFragments(tools),
+    ...audienceGatedFragments(audience),
+  ]);
   // Tool gating, audience gating, and the user's per-slot off switches empty a
   // fragment in exactly the same way, so all three resolve through one set.
   const suppressed = new Set([
-    ...gatedOutFragments(tools),
-    ...audienceGatedFragments(audience),
-    ...(overrides.disabled ?? []),
+    ...gated,
+    ...switchableOff(overrides.disabled ?? [], onWarn),
   ]);
 
   warnRetiredOverrides(overrides, onWarn);
+  warnSplitOverrides(overrides, builtIns, suppressed, onWarn);
 
   const included = new Set<string>();
+  const dropped = new Set<string>();
   const skills = resolveIncludes(root, {
     notation,
     lookup: (name) => {
@@ -130,23 +182,67 @@ export function buildSkills(
     // stays on is precisely the vocabulary-without-grammar case that warning
     // exists for. Gating alone can never produce it — a dependent's gate is a
     // subset of its prerequisite's — so this only bites on a user's own switch.
-    onFragment: (name) => {
+    onFragment: (name, body) => {
       const key = resolveFragmentAlias(name);
 
-      if (!suppressed.has(key)) included.add(key);
+      if (suppressed.has(key)) {
+        // Only fragments that would otherwise have carried text. `code-transforms`
+        // in a release build, and the `-write` placeholders a notation without an
+        // authoring half registers, are empty either way — reporting them as
+        // "left out" describes a loss the caller never took.
+        if (gated.has(key) && (fragments[key] ?? builtIns[key])) {
+          dropped.add(key);
+        }
+
+        return;
+      }
+
+      // Same reason, in the other direction: a fragment that resolved to nothing
+      // neither needs its prerequisites nor satisfies anyone else's.
+      if (body.trim() !== "") included.add(key);
     },
   });
 
   warnUnmetRequirements(included, onWarn);
 
-  return skills;
+  return { skills, dropped: [...dropped] };
 }
 
 // --- Helpers below main export ---
 
 /**
+ * The user's off switches, minus the ones for a fragment that has no off switch.
+ * A driver root IS the document, so suppressing it resolves the whole blob to ""
+ * — the AI gets no instructions at all, and nothing on screen says why. The
+ * editor hides that toggle and the REST route refuses to store it, but
+ * hand-editing `enabled: false` into `~/.producer-pal/skills/standard.md` is a
+ * supported path (ADR-0010) that reaches here directly.
+ *
+ * Unknown names pass through: a fork may include fragments of its own, and
+ * switching one of those off is exactly what the flag is for.
+ *
+ * @param disabled - Fragment names the user switched off
+ * @param onWarn - Warning sink (no-op when the caller passed none)
+ * @returns The names that may actually be suppressed
+ */
+function switchableOff(
+  disabled: readonly string[],
+  onWarn?: (message: string) => void,
+): string[] {
+  return disabled.filter((name) => {
+    if (!isSkillSlotName(name) || isDisableableSkillSlot(name)) return true;
+
+    onWarn?.(
+      `skills override "${name}.md" says enabled: false, which is ignored — that fragment is the whole document, not a section of it. Delete @include lines from it to drop sections.`,
+    );
+
+    return false;
+  });
+}
+
+/**
  * Warn when a document includes a fragment without the fragments it declares it
- * needs ({@link SkillSlotDef.requires}).
+ * needs ({@link FRAGMENT_REQUIRES}).
  *
  * Deleting one include line is the documented way to trim skills, and the
  * dependent cases used to fail in the worst way available: silently, and with
@@ -165,9 +261,7 @@ function warnUnmetRequirements(
   onWarn?: (message: string) => void,
 ): void {
   for (const name of included) {
-    if (!isSkillSlotName(name)) continue;
-
-    const missing = (SKILL_SLOTS[name].requires ?? []).filter(
+    const missing = fragmentRequires(name).filter(
       (required) => !included.has(required),
     );
 
@@ -226,4 +320,63 @@ function warnRetiredOverrides(
       `skills override "${name}.md" is no longer used — that fragment is now ${replacedBy.join(", ")}`,
     );
   }
+}
+
+/**
+ * Warn about an override of a notation head that predates its `-write` split
+ * ({@link SPLIT_SKILL_SLOTS}). The fork holds the whole guide, and the driver now
+ * includes the head AND the sibling, so the authoring half ships twice — costing
+ * context and, worse, restating guidance a later release may have changed.
+ *
+ * The split kept the head's name on purpose, so nothing else can catch this: the
+ * override still resolves, and the document still assembles. The overlap itself
+ * is the only evidence, which is why this looks for COPIED TEXT rather than
+ * assuming every override of a split slot is stale — a fork made today carries
+ * none of the sibling's prose and stays quiet.
+ *
+ * Runs before assembly, so it can't know whether the active notation and level
+ * include this slot at all — an override of `stark-standard` under bar|beat ships
+ * nothing. Hence the warning says "whenever this override is in use" rather than
+ * claiming the duplication is happening right now.
+ *
+ * @param overrides - The user's per-fragment overrides
+ * @param builtIns - The release built-ins, read for the sibling's text
+ * @param suppressed - Fragments resolving to empty (a suppressed sibling ships nothing to duplicate)
+ * @param onWarn - Warning sink (no-op when the caller passed none)
+ */
+function warnSplitOverrides(
+  overrides: SkillOverrides,
+  builtIns: Record<string, string>,
+  suppressed: ReadonlySet<string>,
+  onWarn?: (message: string) => void,
+): void {
+  const fragments = overrides.fragments ?? {};
+
+  for (const [head, write] of Object.entries(SPLIT_SKILL_SLOTS)) {
+    const body = fragments[head];
+
+    // Overriding the sibling too means the user has already met the split.
+    if (body == null || fragments[write] != null || suppressed.has(write)) {
+      continue;
+    }
+
+    const shared = staleSplitLines(body, builtIns[write] ?? "");
+
+    if (shared.length === 0) continue;
+
+    onWarn?.(
+      `skills override "${head}.md" predates the writing-notes split: ${shared.length} of its lines are still the built-in's, e.g. ${shared.slice(0, EXAMPLE_LINES).map(snippet).map(quoted).join(", ")} — that text is now the separate fragment "${write}", so it ships twice whenever this override is in use. Delete it from your override, or switch "${write}" off.`,
+    );
+  }
+}
+
+/**
+ * The head of a line, for naming it in a warning without pasting a paragraph.
+ * @param line - The shared line
+ * @returns Its first few words, ellipsized when cut
+ */
+function snippet(line: string): string {
+  return line.length <= SNIPPET_LENGTH
+    ? line
+    : `${line.slice(0, SNIPPET_LENGTH).trimEnd()}…`;
 }

@@ -13,7 +13,7 @@
 
 import { createHash } from "node:crypto";
 import { VERSION } from "#src/shared/config.ts";
-import { serializeFrontmatter } from "./markdown-store/frontmatter.ts";
+import { serializeFrontmatter } from "./config-store/frontmatter.ts";
 
 /** Fork-time provenance recorded in a saved override's frontmatter. */
 export interface OverrideProvenance {

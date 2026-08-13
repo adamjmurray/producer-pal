@@ -17,7 +17,10 @@ import {
 } from "#webui/components/mode-context";
 import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
-import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import {
+  type McpTool,
+  useMcpConnection,
+} from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-setting";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
@@ -27,9 +30,16 @@ import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { useBackdropClick } from "#webui/hooks/use-backdrop-click";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import {
+  enabledToolsDiverge as toolsetsDiffer,
+  isToolEnabled,
+  withLiveApiTool,
+} from "#webui/lib/utils/enabled-tools";
+import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
 import { ContextTabs } from "./context/ContextTabs";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
@@ -61,18 +71,25 @@ export function App() {
   );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
+  // Over the full catalog: a tool the server isn't listing right now can still
+  // appear in a restored transcript, and an unnamed tool falls back to its raw
+  // id. Reopening a chat after switching Direct Live API off is the case.
   const toolNamesMap = useMemo(
-    () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
+    () =>
+      Object.fromEntries(
+        fullToolCatalog(mcpTools ?? []).map((tool) => [tool.id, tool.name]),
+      ),
     [mcpTools],
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
-  const totalToolsCount = mcpTools?.length ?? 0;
-  const enabledToolsCount = mcpTools
-    ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
-    : 0;
 
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
+  // The Presets tab's create form is a sub-form inside the settings dialog:
+  // saving or dismissing would close the modal over an unfinished preset, so
+  // while it's open both paths are blocked. Lives here because the dismiss
+  // handlers (backdrop, Esc) do too.
+  const [presetDraftOpen, setPresetDraftOpen] = useState(false);
 
   useSyncServerSetting(
     remoteConfig.serverLiveApiEnabled,
@@ -149,7 +166,7 @@ export function App() {
   // Transient session state, intentionally not persisted: a refresh or a fresh
   // tab opened from the Max device lands on chat, not the context editor.
   const [contextOpen, setContextOpen] = useState(false);
-  const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
+  const { shake, clearShake, overlayHandlers } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
     settingsClosing,
@@ -161,6 +178,7 @@ export function App() {
     // !settingsConfigured) — without this, both handlers fire and either
     // Settings refuses to close OR both close at once.
     blockEscape: contextOpen,
+    blockDismiss: presetDraftOpen,
   });
 
   const [contextClosing, setContextClosing] = useState(false);
@@ -186,6 +204,18 @@ export function App() {
     if (confirmLeave == null || confirmLeave()) closeContext();
   }, [closeContext]);
 
+  const contextBackdrop = useBackdropClick(
+    useCallback(
+      (e: MouseEvent) => {
+        // Existing entries autosave, so a backdrop click is safe for them;
+        // an unsaved new-entry draft is guarded (confirm before discard).
+        // Only close on backdrop hits, not clicks inside the editor.
+        if (e.target === e.currentTarget) attemptCloseContext();
+      },
+      [attemptCloseContext],
+    ),
+  );
+
   // Jump from the Settings "Edit Context" shortcut straight into the context
   // editor. Settings and Context are sibling overlays with Settings stacked on
   // top, so leaving Settings open would hide the editor behind it — close
@@ -197,7 +227,7 @@ export function App() {
   // Escape closes the context overlay (consistent with native modal idioms),
   // honoring the editor's leave guard for an unsaved draft.
   useEffect(() => {
-    if (!contextOpen) return;
+    if (!contextOpen) return undefined;
 
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === "Escape") attemptCloseContext();
@@ -212,6 +242,13 @@ export function App() {
   // setModeContext so the shared SettingsScreen renders them.
   const [modeContext, setModeContext] =
     useState<ModeContext>(DEFAULT_MODE_CONTEXT);
+
+  const toolIndicator = toolIndicatorState(
+    mcpTools,
+    modeContext.conversationLock.activeEnabledTools,
+    settings.enabledTools,
+    remoteConfig.serverLiveApiEnabled,
+  );
 
   // Mode is derived from the saved provider+model (only updates on save), not
   // the in-modal `provider`/`model`. This prevents the underlying chat or voice
@@ -231,8 +268,7 @@ export function App() {
     viewState,
     setViewState,
     mcpStatus,
-    totalToolsCount,
-    enabledToolsCount,
+    ...toolIndicator,
     onOpenSettings: () => openSettings(),
     /* v8 ignore start -- inline settings tab navigation */
     onOpenToolsSettings: () => openSettings("tools"),
@@ -271,12 +307,7 @@ export function App() {
       {contextOpen && (
         <div
           className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
-          onClick={(e) => {
-            // Existing entries autosave, so a backdrop click is safe for them;
-            // an unsaved new-entry draft is guarded (confirm before discard).
-            // Only close on backdrop hits, not clicks inside the editor.
-            if (e.target === e.currentTarget) attemptCloseContext();
-          }}
+          {...contextBackdrop}
         >
           {/* Stable panel wrapper. The overlay's fade-in/out animation targets
               `.settings-overlay > *` (see main.css), and ContextTabs remounts
@@ -296,7 +327,7 @@ export function App() {
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
-          onClick={handleSettingsDismiss}
+          {...overlayHandlers}
         >
           <SettingsScreen
             settings={settings}
@@ -312,6 +343,8 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
+            presetDraftOpen={presetDraftOpen}
+            onPresetDraftOpenChange={setPresetDraftOpen}
             onDeleteAllConversations={modeContext.onDeleteAllConversations}
             onDeleteUnbookmarkedConversations={
               modeContext.onDeleteUnbookmarkedConversations
@@ -325,4 +358,63 @@ export function App() {
       )}
     </ToolNamesContext.Provider>
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * What the header's tools indicator shows: the size of the toolset the active
+ * conversation is PINNED to, and whether the current setting has moved past it.
+ *
+ * Counting the pinned map rather than the setting is what keeps the header
+ * honest — a restored conversation reconnects on the tools it ran with, so the
+ * setting can say 1/21 while the conversation is really running 21/21. Null
+ * before the first send (and in voice, which pins nothing): there the setting is
+ * what the next client will use, and nothing has diverged from it yet.
+ *
+ * The setting's own count rides along so the locked tooltip can name what the
+ * default moved to, the way the model display does.
+ *
+ * Both maps get the Direct Live API flag stamped in the same way (see
+ * withLiveApiTool), so the comparison is between two toolsets described alike —
+ * stamping only one side would report a divergence on every conversation.
+ *
+ * Counted against the full catalog rather than the MCP response, so the
+ * denominator holds still while the Live API flag moves and so the Subagent
+ * toggle registers in it at all. All zero until the server answers — a fraction
+ * of a catalog we haven't loaded would be a made-up number.
+ *
+ * @param mcpTools - The server's tool catalog, or null before it loads
+ * @param lockedTools - The conversation's pinned toolset, or null when unpinned
+ * @param settingsTools - The current Tools-tab selection
+ * @param liveApiEnabled - The device's current Direct Live API flag
+ * @returns The counts to display and whether to flag the display as locked
+ */
+function toolIndicatorState(
+  mcpTools: McpTool[] | null,
+  lockedTools: Record<string, boolean> | null,
+  settingsTools: Record<string, boolean>,
+  liveApiEnabled: boolean,
+): {
+  totalToolsCount: number;
+  enabledToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
+} {
+  const catalog = mcpTools ? fullToolCatalog(mcpTools) : [];
+  // isToolEnabled, not a bare `!== false`: absent means enabled for ordinary
+  // tools but disabled for the opt-in Subagent, and the counts have to agree
+  // with the checkbox and with what the model is actually offered.
+  const count = (tools: Record<string, boolean>): number =>
+    catalog.filter((tool) => isToolEnabled(tools, tool.id)).length;
+  const settings = withLiveApiTool(settingsTools, liveApiEnabled);
+  const locked =
+    lockedTools == null ? null : withLiveApiTool(lockedTools, liveApiEnabled);
+
+  return {
+    totalToolsCount: catalog.length,
+    enabledToolsCount: count(locked ?? settings),
+    defaultToolsCount: count(settings),
+    enabledToolsDiverge: locked != null && toolsetsDiffer(locked, settings),
+  };
 }

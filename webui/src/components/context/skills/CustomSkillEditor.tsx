@@ -10,6 +10,7 @@ import {
   EditorFooter,
   NameField,
 } from "#webui/components/context/collection/collection-editor-parts";
+import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
 import {
   type CustomSkillView,
@@ -32,11 +33,12 @@ interface CustomSkillEditorProps {
  * Right-pane form for one custom skill: name (editable only when creating — the
  * slug is the stable handle), a one-line description hook, an enabled toggle, and
  * the instruction body the assistant loads on demand. Keyed by the selected
- * entry in the parent so the draft re-seeds on selection change. Autosaves so a
- * draft is never lost on close/switch: idle-debounced for an existing skill and
- * flushed on unmount; a new skill persists on close (its explicit Create button
- * forks it into an existing skill). Surfaces a Reload banner when this skill
- * changed elsewhere (a hand edit, another tab) while the draft here is clean.
+ * entry in the parent so the draft re-seeds on selection change. An existing
+ * skill autosaves so a draft is never lost on close/switch: idle-debounced and
+ * flushed on unmount. A new skill is created ONLY by the explicit Create button
+ * — leaving a half-typed one confirms the discard first. Surfaces a Reload
+ * banner when this skill changed elsewhere (a hand edit, another tab) while the
+ * draft here is clean.
  * @param props - Editor props
  * @returns Editor element
  */
@@ -54,10 +56,11 @@ export function CustomSkillEditor(
   const [bodyEditorKey, setBodyEditorKey] = useState(0);
 
   const targetName = isNew ? name : entry.name;
-  const canSave =
-    targetName.trim().length > 0 &&
-    body.trim().length > 0 &&
-    collection.saveStatus !== "saving";
+  // Two flavors on purpose: the autosave hook must NOT be gated on an in-flight
+  // save (it chains overlapping writes, and gating drops its unmount flush
+  // mid-save), while the footer button still disables while one is on the wire.
+  const draftValid = targetName.trim().length > 0 && body.trim().length > 0;
+  const canSave = draftValid && collection.saveStatus !== "saving";
 
   const doSave = (): Promise<CustomSkillView | null> =>
     collection.saveEntry(
@@ -68,7 +71,7 @@ export function CustomSkillEditor(
 
   const { noteSaved, externalUpdate, adoptExternal } =
     useCollectionEntryAutosave({
-      canSave,
+      canSave: draftValid,
       draftKey: customSkillKey({
         name: targetName,
         description,
@@ -76,6 +79,9 @@ export function CustomSkillEditor(
         body,
       }),
       autosaveOnIdle: !isNew,
+      // A new skill is created only by the explicit Create button — never
+      // silently flushed on navigate-away. The discard confirm below guards it.
+      flushOnLeave: !isNew,
       persist: async () => {
         const saved = await doSave();
 
@@ -84,6 +90,15 @@ export function CustomSkillEditor(
       externalKey: entry != null ? customSkillKey(entry) : undefined,
     });
 
+  // A new draft with any field filled guards against silent loss: leaving it
+  // (New, select another skill, switch tabs, close the browser tab) confirms a
+  // discard first. A blank draft (or an existing skill) guards nothing.
+  const isDirtyNew =
+    isNew &&
+    (name.trim() !== "" || description.trim() !== "" || body.trim() !== "");
+
+  useDraftLeaveGuard(isDirtyNew, DISCARD_NEW_SKILL_MESSAGE);
+
   const handleSave = async (): Promise<void> => {
     const saved = await doSave();
 
@@ -91,18 +106,6 @@ export function CustomSkillEditor(
       noteSaved(customSkillKey(saved));
       onSaved(saved.name);
     }
-  };
-
-  const handleDelete = async (): Promise<void> => {
-    if (isNew) return;
-    if (
-      !window.confirm(
-        `Delete custom skill "${entry.name}"? This cannot be undone.`,
-      )
-    )
-      return;
-
-    if (await collection.deleteEntry(entry.name)) onDeleted();
   };
 
   // Adopt the server's current fields as the new draft AND advance the
@@ -165,13 +168,42 @@ export function CustomSkillEditor(
         canSave={canSave}
         createLabel="Create skill"
         onSave={() => void handleSave()}
-        onDelete={() => void handleDelete()}
+        onDelete={() => void confirmDelete(collection, entry, onDeleted)}
       />
     </div>
   );
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Confirm, then delete this skill and notify the parent. A new draft has
+ * nothing to delete.
+ * @param collection - The collection hook (owns deleteEntry)
+ * @param entry - The skill being edited, or null when creating a new one
+ * @param onDeleted - Called after a successful delete
+ */
+async function confirmDelete(
+  collection: UseCustomSkillsCollectionReturn,
+  entry: CustomSkillView | null,
+  onDeleted: () => void,
+): Promise<void> {
+  if (entry == null) return;
+
+  if (
+    !window.confirm(
+      `Delete custom skill "${entry.name}"? This cannot be undone.`,
+    )
+  ) {
+    return;
+  }
+
+  if (await collection.deleteEntry(entry.name)) onDeleted();
+}
+
+/** Confirm text shown before abandoning an unsaved new-skill draft. */
+const DISCARD_NEW_SKILL_MESSAGE =
+  "Discard this new skill? Your changes will be lost.";
 
 /**
  * Serialize a custom skill's persisted fields into one comparable key, used as

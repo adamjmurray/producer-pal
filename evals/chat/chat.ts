@@ -9,6 +9,7 @@
  */
 
 import { type ModelMessage, stepCountIs, streamText } from "ai";
+import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { createMcpTools } from "./mcp.ts";
 import { createProviderModel } from "./provider.ts";
@@ -19,7 +20,6 @@ import { type ChatOptions, type TurnResult } from "./shared/types.ts";
 import { processCliStream } from "./stream.ts";
 import { buildProviderOptions } from "./thinking.ts";
 
-const MAX_TOOL_STEPS = 10;
 const DEFAULT_MAX_TOKENS = 8192;
 
 interface ChatSession {

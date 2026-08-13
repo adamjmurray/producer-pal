@@ -4,17 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Tool, jsonSchema } from "ai";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  isToolEnabled,
+  SPAWN_SUBAGENT_TOOL_NAME,
+} from "#webui/lib/utils/enabled-tools";
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
-
-/**
- * Client-side delegation tool name. Not an MCP tool: it runs a nested chat
- * session in the browser (needs the decrypted API key + chat client, both
- * unreachable from the server), so it has no `ppal-` prefix and never appears in
- * the MCP /tools response. The Tools tab surfaces it as an opt-in "Subagent"
- * toggle keyed by this exact string.
- */
-export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 
 /**
  * A worker's nested tool-step budget. Higher than the orchestrator's default so
@@ -26,9 +22,10 @@ export const SPAWN_SUBAGENT_TOOL_NAME = "spawn_subagent";
 export const MAX_WORKER_STEPS = 20;
 
 /**
- * Safety/cost cap on worker RUNS one orchestrator TURN may start, independent of
- * the step budget. Resuming a worker is a run, so it counts too — a resume costs
- * a full nested session, same as a fresh spawn.
+ * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
+ * independent of the step budget. Resuming a worker counts — it costs a full
+ * nested session, same as a fresh spawn — and so does an attempt this tool
+ * rejects, which is what stops a model repeating a call it keeps getting wrong.
  *
  * Per turn, not per conversation: the human is in the loop between turns and can
  * see what the last one spent, so this exists to stop ONE runaway turn, not to
@@ -40,17 +37,12 @@ export const MAX_SPAWNS = 10;
 
 const TOOL_DESCRIPTION =
   "Delegate a self-contained subtask to a subagent: a nested assistant with the " +
-  "full Producer Pal toolset that works in the same Ableton Live Set and reports " +
-  "its final result back to you. Break a large job into focused pieces (plan the " +
-  "arrangement yourself, then delegate each track). When subtasks are " +
-  "independent, call this tool several times in ONE response so the subagents run " +
-  "in parallel — the results all come back together. The subagent cannot see this " +
-  "conversation, so give a complete, standalone instruction, and scope it to " +
-  "specific tracks/clips so parallel subagents don't overwrite each other. " +
-  "Subagents cannot spawn their own subagents. You receive only each subagent's " +
-  "final message, not its full work log. Each result is labeled with that " +
-  "subagent's number — pass it as resumeFrom to give the same subagent more work " +
-  "instead of briefing a fresh one.";
+  "full Producer Pal toolset, working in the same Ableton Live Set. Break a large " +
+  "job into focused pieces (plan the arrangement yourself, then delegate each " +
+  "track), and call this tool several times in ONE response to run independent " +
+  "subtasks in parallel. Subagents cannot spawn their own. You receive only each " +
+  "subagent's final message, labeled with its number — pass that number as " +
+  "resumeFrom to give the same subagent more work instead of briefing a fresh one.";
 
 const TASK_DESCRIPTION =
   "Complete, standalone instruction for the subagent to carry out. Include all " +
@@ -63,12 +55,19 @@ const RESUME_DESCRIPTION =
   "Number of an earlier subagent to continue (from its result label) instead of " +
   "starting a fresh one. It keeps everything it did and knows, so this is the " +
   "cheap way to extend, correct, or finish its work — including work you stopped " +
-  "partway. Omit to start a new subagent.";
+  'partway. For a NEW subagent, leave this field out: {"task": "..."}.';
 
 /** What the runner needs to start (or continue) one worker session. */
 export interface RunWorkerOptions {
-  /** Cloned orchestrator config, seeded with the session to continue if any. */
-  workerConfig: ChatClientConfig;
+  /**
+   * Produce the config this worker runs under (a clone of the orchestrator's,
+   * seeded with the session to continue if any, briefed if a briefing can be
+   * had). A thunk, not a value: fetching the briefing is a real round trip, and
+   * awaiting it before handing the run to the runner would leave the run
+   * untracked for its whole duration — a turn that ended in that window would
+   * tear down while a worker was still about to edit the Live Set.
+   */
+  resolveConfig: () => Promise<ChatClientConfig>;
   /** The instruction to send as this run's user turn. */
   task: string;
   /** Spawn tool-call id; keys the card's live status and the transcript stash. */
@@ -79,6 +78,18 @@ export interface RunWorkerOptions {
   abortSignal?: AbortSignal;
 }
 
+/** What one worker run produced. */
+export interface WorkerRunResult {
+  /**
+   * The messages THIS run added — a resume's seeded prefix is excluded, so the
+   * result reported back is always an answer to the task just given, never the
+   * previous run's closing message.
+   */
+  messages: ChatMessage[];
+  /** Whether the run stopped on its step budget rather than finishing. */
+  toolLimitReached: boolean;
+}
+
 /** Dependencies the spawn tool needs from its owning ChatSdkClient. */
 export interface SpawnSubagentDeps {
   /** The orchestrator config, cloned per worker. The clone inherits model,
@@ -87,15 +98,14 @@ export interface SpawnSubagentDeps {
    * buildWorkerConfig. */
   config: ChatClientConfig;
   /**
-   * Run a worker session for `task` and resolve with the worker's final chat
-   * history (the whole thing, including any seeded prefix). Injected by the
-   * client so this module needs no ChatSdkClient import (avoids an import cycle)
-   * and stays unit-testable. The runner publishes the worker's live status (e.g.
-   * a rate-limit backoff) to the card, and owns stashing the transcript, because
-   * it still holds the worker's history on the paths where this tool throws (a
-   * Stop mid-worker above all).
+   * Run a worker session for `task` and resolve with what that run produced.
+   * Injected by the client so this module needs no ChatSdkClient import (avoids
+   * an import cycle) and stays unit-testable. The runner publishes the worker's
+   * live status (e.g. a rate-limit backoff) to the card, and owns stashing the
+   * transcript, because it still holds the worker's history on the paths where
+   * this tool throws (a Stop mid-worker above all).
    */
-  runWorker: (options: RunWorkerOptions) => Promise<ChatMessage[]>;
+  runWorker: (options: RunWorkerOptions) => Promise<WorkerRunResult>;
   /** Mutable per-conversation spawn state; see SpawnState. */
   spawnState: SpawnState;
   /**
@@ -110,16 +120,20 @@ export interface SpawnSubagentDeps {
    * pre-briefing behavior and the required fallback when the server or Live
    * can't be reached.
    */
-  getBriefing?: (config: ChatClientConfig) => Promise<string | null>;
+  getBriefing?: (
+    config: ChatClientConfig,
+    abortSignal?: AbortSignal,
+  ) => Promise<string | null>;
 }
 
 /** Mutable spawn bookkeeping shared by the tool and its owning client. */
 export interface SpawnState {
   /**
-   * Worker runs started in the CURRENT turn; enforces MAX_SPAWNS. Reset at the top
-   * of every sendMessage, so the cap bounds a single turn's fan-out rather than
-   * budgeting a whole conversation. Unlike `nextIndex` it is deliberately NOT
-   * seeded from history — see MAX_SPAWNS for why per-turn is the intended shape.
+   * Spawn attempts made in the CURRENT turn, refused ones included; enforces
+   * MAX_SPAWNS. Reset at the top of every sendMessage, so the cap bounds a single
+   * turn's fan-out rather than budgeting a whole conversation. Unlike `nextIndex`
+   * it is deliberately NOT seeded from history — see MAX_SPAWNS for why per-turn
+   * is the intended shape.
    */
   count: number;
   /**
@@ -164,17 +178,22 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
         toolCallId,
       }: { abortSignal?: AbortSignal; toolCallId: string },
     ): Promise<string> => {
-      const task = args.task;
-
-      if (typeof task !== "string" || task.trim() === "") {
-        throw new Error("spawn_subagent requires a non-empty 'task' string.");
-      }
-
       if (deps.spawnState.count >= MAX_SPAWNS) {
         throw new Error(
           `Subagent limit reached (${MAX_SPAWNS} per turn). Finish the ` +
             "remaining work directly, or say what is left for the next turn.",
         );
+      }
+
+      // Count the ATTEMPT, ahead of every check below that can reject it. A
+      // model repeating a call this tool refuses would otherwise loop uncounted
+      // until the orchestrator's whole step budget was gone.
+      deps.spawnState.count++;
+
+      const task = args.task;
+
+      if (typeof task !== "string" || task.trim() === "") {
+        throw new Error("spawn_subagent requires a non-empty 'task' string.");
       }
 
       // A resume inherits the worker's index and its recorded session; a fresh
@@ -191,12 +210,11 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
         );
       }
 
-      deps.spawnState.count++;
       deps.spawnState.active.add(subagentIndex);
 
       try {
-        const transcript = await deps.runWorker({
-          workerConfig: await resolveWorkerConfig(deps, session),
+        const run = await deps.runWorker({
+          resolveConfig: () => resolveWorkerConfig(deps, session, abortSignal),
           task,
           toolCallId,
           subagentIndex,
@@ -205,7 +223,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
 
         return labelWorkerResult(
           subagentIndex,
-          extractWorkerResult(transcript),
+          extractWorkerResult(run.messages, run.toolLimitReached),
         );
       } finally {
         deps.spawnState.active.delete(subagentIndex);
@@ -228,18 +246,20 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh
+ * @param abortSignal - The turn's signal, so Stop cancels the briefing fetch
  * @returns The worker config to run
  */
 async function resolveWorkerConfig(
   deps: SpawnSubagentDeps,
   session?: ChatMessage[],
+  abortSignal?: AbortSignal,
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
   if (!deps.getBriefing) return inherited;
 
   const narrowed = withheldToolsApplied(inherited);
-  const briefing = await deps.getBriefing(narrowed);
+  const briefing = await deps.getBriefing(narrowed, abortSignal);
 
   return briefing == null ? inherited : withBriefing(narrowed, briefing);
 }
@@ -250,14 +270,15 @@ async function resolveWorkerConfig(
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
  *
- * When the user picked a "Default subagent" preset, the orchestrator config
+ * When the user picked a "Subagent preset", the orchestrator config
  * carries a resolved `subagentConfig` whose model/inference AND toolset (when
  * the preset saved one) are layered over the clone — so a strong planner can
  * drive uniform cheaper workers. A preset that carries a toolset supplies the
  * worker's tools as-is (its captured sparse map; it does NOT carry over the
  * orchestrator's explicit disables, so a tool the preset never captured stays at
  * its default-enabled state downstream — same as applying the preset in the
- * picker). A preset without one (and the no-preset case) inherits the
+ * picker), except for the Direct Live API tool — see withInheritedLiveApi. A
+ * preset without one (and the no-preset case) inherits the
  * orchestrator's tools. The system instruction always inherits (subagentConfig
  * never carries it). `notation` layers the same way, through the spread — a
  * worker that carries one runs its whole MCP conversation in it (skills, param
@@ -300,9 +321,36 @@ export function buildWorkerConfig(
       // the orchestrator's. It's a sparse map — absent keys stay default-enabled
       // downstream (filterEnabledTools), so this does not carry over the
       // orchestrator's disables. Guard applied last, unconditionally.
-      ...(subagentConfig?.enabledTools ?? enabledTools),
+      ...(subagentConfig?.enabledTools
+        ? withInheritedLiveApi(subagentConfig.enabledTools, enabledTools)
+        : enabledTools),
       [SPAWN_SUBAGENT_TOOL_NAME]: false,
     },
+  };
+}
+
+/**
+ * Carry the orchestrator's Direct Live API state into a preset's toolset.
+ *
+ * That tool is the one a preset can never speak for: its checkbox writes the
+ * device-global flag instead of a map entry, so a captured toolset structurally
+ * has no key for it, and absent reads as enabled everywhere downstream. Left
+ * alone, a worker would follow the device flag while its orchestrator follows
+ * the state pinned into the conversation — a chat locked before the flag was
+ * switched on would spawn workers that can call it when it cannot. The
+ * conversation's pin wins, so the worker matches the chat that spawned it.
+ *
+ * @param presetTools - The preset's captured toolset
+ * @param inherited - The orchestrator's toolset (carrying the pinned state)
+ * @returns The preset's toolset with the Live API entry filled in
+ */
+function withInheritedLiveApi(
+  presetTools: Record<string, boolean>,
+  inherited?: Record<string, boolean>,
+): Record<string, boolean> {
+  return {
+    [LIVE_API_TOOL_ID]: isToolEnabled(inherited ?? {}, LIVE_API_TOOL_ID),
+    ...presetTools,
   };
 }
 
@@ -310,19 +358,31 @@ export function buildWorkerConfig(
  * The compact result handed back to the orchestrator model: the worker's last
  * assistant message. The full transcript is kept UI-side and never sent to the
  * model.
- * @param history - The worker's final chat history (oldest first)
+ *
+ * Takes THIS run's messages only. Scanning a resumed worker's whole history
+ * would walk back into the previous run and report its closing message as the
+ * answer to the new task — success claimed for work that never happened.
+ *
+ * @param messages - What this run added to the worker's history (oldest first)
+ * @param toolLimitReached - Whether the run stopped on its step budget
  * @returns The worker's final assistant text, or a fallback if it produced none
  */
-export function extractWorkerResult(history: ChatMessage[]): string {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
+export function extractWorkerResult(
+  messages: ChatMessage[],
+  toolLimitReached = false,
+): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
 
     if (msg?.role === "assistant" && !msg.isError && msg.content.trim()) {
       return msg.content.trim();
     }
   }
 
-  return "The subagent finished without a final message.";
+  return toolLimitReached
+    ? "The subagent ran out of tool steps before reporting back. Resume it " +
+        "(resumeFrom) to let it finish, or take the rest on yourself."
+    : "The subagent finished without a final message.";
 }
 
 /**
@@ -348,9 +408,16 @@ export function labelWorkerResult(index: number, result: string): string {
 
 /**
  * Validate the `resumeFrom` argument, coercing the numeric string LLMs often
- * send. Anything present but unusable throws rather than silently starting a
- * fresh worker — a resume that quietly becomes a new spawn would re-do work and
- * lose the context the caller was trying to reuse.
+ * send. Anything else present but unusable throws rather than silently starting
+ * a fresh worker — a resume that quietly becomes a new spawn would re-do work
+ * and lose the context the caller was trying to reuse.
+ *
+ * `0` is the exception, and it is deliberate. Worker indices are 1-based, so 0
+ * names no worker, but it is exactly what a model sends for an optional number
+ * it means to leave empty — observed repeatedly from GPT-5.6, which kept sending
+ * it after being told to omit the field. Treating it as "omitted" costs nothing
+ * (there is no worker it could have meant) and turns a whole failed turn into a
+ * normal spawn.
  * @param value - The raw argument value
  * @returns The worker index to resume, or undefined when not resuming
  */
@@ -358,6 +425,8 @@ function parseResumeFrom(value: unknown): number | undefined {
   if (value == null || value === "") return undefined;
 
   const index = Number(value);
+
+  if (index === 0) return undefined;
 
   if (!Number.isInteger(index) || index < 1) {
     throw new Error(
@@ -371,6 +440,10 @@ function parseResumeFrom(value: unknown): number | undefined {
 
 /**
  * Load the session `resumeFrom` names, or explain why it can't be resumed.
+ *
+ * The error names the numbers that WOULD work, because a model that guessed
+ * wrong once has nothing to guess better from otherwise — and re-guessing burns
+ * the turn's spawn budget a call at a time.
  * @param resumeFrom - The worker index the caller asked to continue
  * @param deps - The tool's injected dependencies
  * @returns The recorded session to seed the worker with
@@ -382,11 +455,34 @@ function loadSession(
   const session = deps.getSession?.(resumeFrom);
 
   if (!session) {
+    const existing = existingSubagents(deps);
+
     throw new Error(
-      `There is no subagent ${resumeFrom} in this conversation. Omit ` +
-        "resumeFrom to start a new subagent for this work.",
+      `There is no subagent ${resumeFrom} in this conversation. ` +
+        (existing.length > 0
+          ? `Existing subagents: ${existing.join(", ")}. `
+          : "It has no subagents yet. ") +
+        "Omit resumeFrom to start a new subagent for this work.",
     );
   }
 
   return session;
+}
+
+/**
+ * The worker numbers this conversation can actually resume. Indices are handed
+ * out 1..nextIndex, but only those with a recorded transcript are resumable, so
+ * each is probed rather than assumed. Error path only — one history walk per
+ * index is fine there.
+ * @param deps - The tool's injected dependencies
+ * @returns Resumable worker indices, ascending
+ */
+function existingSubagents(deps: SpawnSubagentDeps): number[] {
+  const indices: number[] = [];
+
+  for (let i = 1; i <= deps.spawnState.nextIndex; i++) {
+    if (deps.getSession?.(i)) indices.push(i);
+  }
+
+  return indices;
 }

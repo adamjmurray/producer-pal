@@ -5,6 +5,8 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  mockMergeNoteTracking,
+  note,
   setupAudioClipMock,
   setupUpdateClipMocks,
   setupMidiClipMock,
@@ -204,6 +206,38 @@ describe("updateClip - Note updates", () => {
       ],
     });
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+  });
+
+  it("deletes an existing note with a midi-json v:0 marker", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockMergeNoteTracking(mocks.clip123, [DEFAULT_C3_NOTE]);
+
+    // v:0 deletes the existing C3; the E3 alongside it is still written, and no
+    // velocity-0 note reaches add_new_notes (Live rejects it).
+    const result = await updateClip(
+      {
+        ids: "123",
+        notes: "[{p:60,t:0,d:1,v:0},{p:64,t:1,d:1,v:100}]",
+      },
+      { notation: "midi-json" },
+    );
+
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [note(64, 1)],
+    });
+    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+  });
+
+  it("clears the clip when every note is a midi-json v:0 marker", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockMergeNoteTracking(mocks.clip123, [DEFAULT_C3_NOTE]);
+
+    await updateClip(
+      { ids: "123", notes: "[{p:60,t:0,d:1,v:0}]" },
+      { notation: "midi-json" },
+    );
+
+    expectNotesClearedOnly(mocks.clip123);
   });
 
   it("should not call add_new_notes when the resulting notes array is empty", async () => {

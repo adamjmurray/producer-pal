@@ -10,7 +10,6 @@ import {
   RETIRED_SKILL_SLOTS,
   SKILL_SLOT_NAMES,
   SKILL_SLOTS,
-  type SkillSlotName,
 } from "#src/skills/skill-slots.ts";
 
 describe("SKILL_SLOTS registry", () => {
@@ -27,56 +26,6 @@ describe("SKILL_SLOTS registry", () => {
     const builtIns = SKILL_SLOT_NAMES.map((name) => SKILL_SLOTS[name].builtIn);
 
     expect(new Set(builtIns).size).toBe(SKILL_SLOT_NAMES.length);
-  });
-});
-
-describe("SKILL_SLOTS requires", () => {
-  it("never lists a slot as needing itself", () => {
-    for (const name of SKILL_SLOT_NAMES) {
-      expect(SKILL_SLOTS[name].requires ?? []).not.toContain(name);
-    }
-  });
-
-  it("closes transitively without a cycle", () => {
-    // The per-worker selection closes a set by walking these edges, so a cycle
-    // there is an infinite walk rather than a bad document.
-    for (const start of SKILL_SLOT_NAMES) {
-      const seen = new Set<string>();
-      const queue = [...(SKILL_SLOTS[start].requires ?? [])];
-
-      while (queue.length > 0) {
-        const next = queue.shift() as SkillSlotName;
-
-        expect(next, `${start} requires a cycle through ${next}`).not.toBe(
-          start,
-        );
-
-        if (seen.has(next)) continue;
-
-        seen.add(next);
-        queue.push(...(SKILL_SLOTS[next].requires ?? []));
-      }
-    }
-  });
-
-  it("is satisfied by the standard driver for every fragment it includes", () => {
-    // Guards the built-in manifest itself: a fragment whose prerequisite the
-    // driver never includes would ship the broken subset by default.
-    const included = new Set(
-      [
-        ...SKILL_SLOTS.standard.builtIn.matchAll(
-          /@include\s+"\.\/([^"]+)\.md"/g,
-        ),
-      ].map((match) => match[1]),
-    );
-
-    for (const name of SKILL_SLOT_NAMES) {
-      if (!included.has(name)) continue;
-
-      for (const required of SKILL_SLOTS[name].requires ?? []) {
-        expect(included.has(required), `${name} needs ${required}`).toBe(true);
-      }
-    }
   });
 });
 

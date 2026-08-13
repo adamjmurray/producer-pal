@@ -46,6 +46,80 @@ describe("buildSkills - composition", () => {
     expect(result).toContain("## Getting Help");
   });
 
+  it("loses nothing to the bar|beat read/write carve", () => {
+    // The split moved whole sections between two fragments. Nothing catches a
+    // section dropped on the floor mid-move — every include still resolves and
+    // both halves still look like prose — so pin the markers of everything that
+    // moved, plus the two lines that were REWRITTEN rather than moved (the meter
+    // fact kept on the read side, the repeat prescription sent to the write one).
+    const result = buildSkills({ notation: "barbeat" });
+
+    for (const marker of [
+      "## Positions & Meter",
+      "## MIDI Syntax",
+      "## Writing Notes",
+      "**Repeat patterns**",
+      "**Pattern brackets**",
+      "@N-M=P-Q tiles bars",
+      "## Examples",
+      "### Bar Copying",
+      "### Repeats with Variations",
+      "the grid beat is NOT a quarter",
+      "Prefer repeats over hand-listing beats",
+      "`v0` deletes earlier notes",
+    ]) {
+      expect(result, `lost "${marker}"`).toContain(marker);
+    }
+  });
+
+  it("loses nothing to the small-model and stark carves either", () => {
+    // Same hazard as above, for the two later splits: both halves still look
+    // like prose and every include still resolves, so only pinned markers catch
+    // a section that fell on the floor mid-move.
+    const barbeatBasic = buildSkills({
+      notation: "barbeat",
+      smallModelMode: true,
+    });
+
+    for (const marker of [
+      "## MIDI Notation",
+      "## Generate notes",
+      "Melody (a quarter note per beat)",
+      "Chords (multiple pitches share one position",
+      "Drums (re-set n per lane",
+      "The beat can be a comma-separated list",
+    ]) {
+      expect(barbeatBasic, `lost "${marker}"`).toContain(marker);
+    }
+
+    for (const smallModelMode of [false, true]) {
+      const stark = buildSkills({ notation: "stark", smallModelMode });
+
+      for (const marker of [
+        "## MIDI Notation — Stark",
+        "- **Drums**",
+        "- **Pitched**",
+        "- **Registers**",
+        "## Writing Notes",
+        "- **Chords**",
+        "Round-trip preserves pitch, timing, and duration exactly",
+      ]) {
+        expect(stark, `${smallModelMode} lost "${marker}"`).toContain(marker);
+      }
+    }
+
+    // The bracket-voicing escape hatch is standard-only, and its chords-line use
+    // was REWRITTEN onto the write half rather than moved — the one place a
+    // regression would show up first.
+    expect(buildSkills({ notation: "stark" })).toContain("- **Voicings**");
+    expect(buildSkills({ notation: "stark" })).toContain(
+      "works on a `chords:` line too",
+    );
+    expect(
+      buildSkills({ notation: "stark", smallModelMode: true }),
+    ).not.toContain("**Voicings**");
+  });
+
   it("gives every notation its own head at both depths — never a fallback", () => {
     for (const notation of NOTATIONS) {
       const standard = buildSkills({ notation });
@@ -66,7 +140,7 @@ describe("buildSkills - composition", () => {
     const basic = buildSkills({ notation: "barbeat", smallModelMode: true });
 
     expect(basic).toContain("If a tool call errors, read the message");
-    expect(basic).toContain("## Delete / clear notes"); // transforms-basic
+    expect(basic).toContain("## Editing a clip that already has notes"); // transforms-basic
     // Standard-only fragments stay out of the small-model blob.
     expect(basic).not.toContain("## Devices & Instruments");
   });
@@ -337,6 +411,7 @@ describe("buildSkills - overrides", () => {
     expect(result).not.toContain("## Transforms");
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
       expect.stringContaining(
         `"transforms-expressions" needs "transforms-core"`,
       ),
@@ -346,7 +421,7 @@ describe("buildSkills - overrides", () => {
     ]);
   });
 
-  it("warns when specialized-devices outlives the devices guide it sits under", () => {
+  it("warns when the device siblings outlive the guide they sit under", () => {
     const warnings: string[] = [];
 
     buildSkills(
@@ -360,6 +435,7 @@ describe("buildSkills - overrides", () => {
     );
 
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"devices-write" needs "devices"`),
       expect.stringContaining(`"specialized-devices" needs "devices"`),
     ]);
   });
@@ -369,6 +445,7 @@ describe("buildSkills - overrides", () => {
     const warnings: string[] = [];
     const forked = [
       "transforms-core",
+      "transforms-editing",
       "transforms-expressions",
       "transforms-generative",
     ].reduce(
@@ -430,8 +507,10 @@ describe("buildSkills - disabled fragments", () => {
     // Same contract as a tool-gated fragment: present-but-empty, not missing.
     const warnings: string[] = [];
 
-    buildSkills({ notation: "barbeat" }, { disabled: ["arrangement"] }, (m) =>
-      warnings.push(m),
+    buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["arrangement", "arrangement-write"] },
+      (m) => warnings.push(m),
     );
 
     expect(warnings).toStrictEqual([]);
@@ -450,6 +529,7 @@ describe("buildSkills - disabled fragments", () => {
 
     expect(result).toContain("### Generative Transforms"); // kept, and orphaned
     expect(warnings).toStrictEqual([
+      expect.stringContaining(`"transforms-editing" needs "transforms-core"`),
       expect.stringContaining(
         `"transforms-expressions" needs "transforms-core"`,
       ),
@@ -463,7 +543,7 @@ describe("buildSkills - disabled fragments", () => {
     const warnings: string[] = [];
     const result = buildSkills(
       { notation: "barbeat" },
-      { disabled: ["devices", "specialized-devices"] },
+      { disabled: ["devices", "devices-write", "specialized-devices"] },
       (message) => warnings.push(message),
     );
 
@@ -494,6 +574,54 @@ describe("buildSkills - disabled fragments", () => {
     expect(warnings).toStrictEqual([
       expect.stringContaining(`"core-devices.md" is no longer used`),
     ]);
+  });
+
+  // A driver root is the document, not a section of it, so honoring its off
+  // switch would return an empty blob — the AI silently losing every
+  // instruction. The editor hides that toggle and the REST route refuses it,
+  // but a hand-edited `enabled: false` arrives here having passed neither.
+  it("ignores an off switch on the driver root, and says so", () => {
+    const warnings: string[] = [];
+    const result = buildSkills(
+      { notation: "barbeat" },
+      { disabled: ["standard"] },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain(HEADER);
+    expect(result).toContain("## Time & Note Values");
+    expect(warnings).toStrictEqual([
+      expect.stringContaining(`"standard.md" says enabled: false`),
+    ]);
+  });
+
+  it("ignores it for the small-model driver too", () => {
+    const result = buildSkills(
+      { smallModelMode: true },
+      { disabled: ["basic"] },
+    );
+
+    expect(result).toContain(HEADER);
+  });
+
+  it("keeps honoring the off switch for a name it doesn't know", () => {
+    // A fork may include fragments of its own; only the two drivers are pinned.
+    const warnings: string[] = [];
+    const result = buildSkills(
+      {},
+      {
+        fragments: {
+          standard: `MY INTRO\n\n@include "./mine.md"`,
+          mine: "MY SECTION",
+        },
+        disabled: ["mine"],
+      },
+      (message) => warnings.push(message),
+    );
+
+    expect(result).toContain("MY INTRO");
+    expect(result).not.toContain("MY SECTION");
+    expect(warnings).toStrictEqual([]);
   });
 
   it("warns once about a slot that is both overridden and switched off", () => {

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -35,7 +36,7 @@ function SineWave() {
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      style="overflow: visible;"
+      style={{ overflow: "visible" }}
     >
       <defs>
         <filter id="blur">

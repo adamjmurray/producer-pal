@@ -83,6 +83,12 @@ export interface AgentCliTransport {
   buildJudgeArgs: (input: AgentCliArgsInput) => string[];
   /** Parse one turn's JSONL stdout, throwing on a reported failure. */
   parseStream: (stdout: string) => ParsedAgentTurn;
+  /**
+   * Count the model actions in one stream event — tool calls and replies — for
+   * the turn's step budget. Read live off stdout, so it sees each event once,
+   * in order, and cannot look at anything the turn hasn't emitted yet.
+   */
+  countSteps: (event: Record<string, unknown>) => number;
 }
 
 /**

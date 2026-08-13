@@ -17,12 +17,12 @@
 // on-demand entries whose bodies load via `ppal-context read`. The filesystem
 // lives Node-side; V8's ppal-context round-trips through the skills.* RPC routes.
 
-import { parseFrontmatter } from "../markdown-store/frontmatter.ts";
+import { parseFrontmatter } from "../config-store/frontmatter.ts";
 import {
   type BuildStoredArgs,
   collectionIndexLine,
   makeMarkdownCollectionStore,
-} from "../markdown-store/markdown-collection-store.ts";
+} from "../config-store/markdown-collection-store.ts";
 
 /** One stored custom skill: its slug, hook, enabled flag, and instructions. */
 export interface CustomSkillEntry {

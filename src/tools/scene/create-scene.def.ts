@@ -9,20 +9,24 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
-  description: "Create empty scene(s) or capture playing session clips.",
+  // Small model mode drops `capture`, so neither string may mention it — and
+  // with capture gone, sceneIndex is required outright (the handler throws
+  // without it) rather than conditionally.
+  description: {
+    default: "Create empty scene(s) or capture playing session clips.",
+    smallModel: "Create an empty scene.",
+  },
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe(
+    sceneIndex: param(z.coerce.number().int().min(0).optional(), {
+      default:
         "0-based index for new scene(s), shifts existing scenes. Required when capture=false, optional when capture=true",
-      ),
+      smallModel:
+        "required: 0-based index for the new scene, shifts existing scenes down",
+    }),
     count: param(z.coerce.number().int().min(1).default(1), {
       default: "number to create",
       smallModel: null,

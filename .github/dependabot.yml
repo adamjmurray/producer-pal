@@ -11,7 +11,7 @@ updates:
       - "/claude-desktop-extension"
       - "/npm"
     target-branch: "dev"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 20
     schedule:
       interval: "weekly"
     versioning-strategy: "increase"

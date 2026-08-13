@@ -346,6 +346,33 @@ describe("useCollectionEntryAutosave", () => {
     expect(persist).toHaveBeenCalledTimes(2);
   });
 
+  it("still flushes on unmount while a PUT is on the wire", async () => {
+    // The editors used to fold "a save is in flight" into canSave, which made
+    // this flush bail out — so every edit typed during a save's round trip was
+    // dropped when the overlay closed before that save landed.
+    const { persist, resolvers } = deferredPersist();
+    const { rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await typeAndDebounce(rerender, persist, "v1");
+    expect(persist).toHaveBeenCalledTimes(1);
+
+    // One more edit, then close the overlay before v1's PUT comes back.
+    rerender({ canSave: true, draftKey: "v2", autosaveOnIdle: true, persist });
+    unmount();
+
+    await act(async () => {
+      resolvers[0]?.("v1");
+      await flushMicrotasks();
+    });
+
+    expect(persist).toHaveBeenCalledTimes(2);
+  });
+
   it("queues a third flush behind the second (registration is synchronous)", async () => {
     // Registering the new promise before any await is the load-bearing half: if
     // flush awaited first and registered afterwards, a second and third flush in
@@ -375,6 +402,37 @@ describe("useCollectionEntryAutosave", () => {
       await flushMicrotasks();
     });
     expect(persist).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps autosaving, and lets a rename settle, after a persist rejects", async () => {
+    // persist resolves null on failure today. A rejection would leave the
+    // rejected promise parked in inFlightRef with nothing to null it: every
+    // later flush would chain off it and never dispatch (autosave silently dead
+    // for the rest of the mount), and settlePendingSave would throw into
+    // commitRename's un-awaited call, breaking renames too.
+    const persist = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValue("v2");
+    const { result, rerender } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    await typeAndDebounce(rerender, persist, "v1");
+    expect(persist).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await flushMicrotasks();
+    });
+
+    await typeAndDebounce(rerender, persist, "v2");
+    expect(persist).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await expect(result.current.settlePendingSave()).resolves.toBeUndefined();
+    });
   });
 
   it("does not dispatch a queued flush for an entry deleted while it waited", async () => {

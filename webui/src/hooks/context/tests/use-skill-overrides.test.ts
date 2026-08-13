@@ -97,7 +97,9 @@ describe("useSkillOverrides", () => {
         override: "",
         enabled: true,
         canDisable: true,
+        gate: null,
         drifted: false,
+        splitStale: null,
         forkedFromVersion: null,
       },
       {
@@ -108,11 +110,52 @@ describe("useSkillOverrides", () => {
         override: "MINE",
         enabled: true,
         canDisable: true,
+        gate: null,
         drifted: true,
+        splitStale: null,
         forkedFromVersion: "1.4.0",
       },
     ]);
     expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+  });
+
+  it("carries a slot's split-staleness through, and reads it as absent on an older server", async () => {
+    const splitStale = { sibling: "barbeat-standard-write", sharedLines: 6 };
+    const result = await renderReady([
+      rawSlot({ override: "MINE", splitStale }),
+      rawSlot({ name: "stark" }),
+    ]);
+    const { status } = result.current;
+
+    expect(
+      status.kind === "ready" && status.slots[0]?.splitStale,
+    ).toStrictEqual(splitStale);
+    expect(status.kind === "ready" && status.slots[1]?.splitStale).toBeNull();
+  });
+
+  it("maps each gate shape, and reads anything unrecognized as no gate", async () => {
+    const result = await renderReady([
+      rawSlot({ gate: ["ppal-read-clip", "ppal-create-clip"] }),
+      rawSlot({ gate: "always" }),
+      rawSlot({ gate: "conversation-only" }),
+      // A driver, and — same handling — a value from a server this webui
+      // doesn't understand. Saying nothing beats stating the wrong rule.
+      rawSlot({ gate: null }),
+      rawSlot({ gate: "made-up" }),
+      rawSlot({ gate: [1, 2] }),
+    ]);
+    const status = result.current.status;
+
+    expect(
+      status.kind === "ready" && status.slots.map((s) => s.gate),
+    ).toStrictEqual([
+      ["ppal-read-clip", "ppal-create-clip"],
+      "always",
+      "conversation-only",
+      null,
+      null,
+      null,
+    ]);
   });
 
   it("falls back to an empty list when slots is missing", async () => {
@@ -366,6 +409,74 @@ describe("useSkillOverrides", () => {
       },
     );
 
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
+    // A superseded write's result is discarded, so its resolution says nothing
+    // about what is on disk. Painting "Saved" here tells the user the edit they
+    // just made is persisted while its PUT is still on the wire.
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) }));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("does not let a superseded write's FAILURE paint over a newer one", async () => {
+    // The error-path mirror of the test above. A discarded write's failure says
+    // nothing about what is on disk either: reporting it tells the user their
+    // edit was lost while the PUT that owns the file is still on the wire (or has
+    // already succeeded).
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.reject(new Error("network died"));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+    expect(result.current.saveError).toBeNull();
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
     expect(overrideOf(result, 0)).toBe("NEW");
   });
 

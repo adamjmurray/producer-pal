@@ -22,7 +22,7 @@
  */
 
 import { type EvalScenario } from "../../../../types.ts";
-import { leadClipNotationScenario } from "../../clip-scenario-helpers.ts";
+import { leadClipNotationScenario } from "../../helpers/clip-scenario-builders.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
 const EPS = 1e-6;

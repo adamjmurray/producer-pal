@@ -39,10 +39,10 @@ You can:
 - **Put your own AI in front of it.** The API doesn't care which model. Use an
   agent framework, a local model, a notebook, whatever fits.
 
-The [`ppal-live-api`](/features#ppal-live-api) tool goes lower, with direct
-access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-reads and writes the specialized tools don't cover. It's off by default — see
-[Live API](/guide/rest-api#live-api).
+The [`ppal-live-api`](/features/tools#ppal-live-api) tool goes lower, with
+direct access to the [Live Object Model](https://docs.cycling74.com/apiref/lom/)
+for reads and writes the specialized tools don't cover. It's off by default —
+see [Live API](/guide/rest-api#live-api).
 
 Zero-dependency [Node and Python sample scripts](/guide/rest-api#sample-scripts)
 are included to get you started.
@@ -58,22 +58,24 @@ A coding agent can write and run code against the API, iterate on a generative
 script while you listen, and change device settings mid-session:
 [notation](/features/midi-notation),
 [small model mode](/features#small-model-mode),
-[Direct Live API](/features#ppal-live-api). MCP clients can only change those by
-changing settings on the device and starting a new conversation.
+[Direct Live API](/features/tools#ppal-live-api). MCP clients can only change
+those by changing settings on the device and starting a new conversation.
 
 Two [companion skills](/guide/skills#companion-skills) build on that connection.
 **`ableton-audio-generator`** synthesizes audio from scratch with plain Node.js
 DSP — drum kits, Simpler samples, wavetables, reverb impulse responses, drones —
 and places it in Live. **`ableton-analyze-audio`** goes the other way, in two
-halves that also work on their own: render the mix or a single track to a file
-(**macOS only** — Live exposes no render API, so this drives the Export dialog
-with AppleScript), then optionally hand that file to Google's Gemini for
-feedback on how it actually sounds (any platform, needs a `GEMINI_KEY`; it's one
-small script, so pointing it at a different audio-capable API is a short edit).
+halves that also work on their own: render the mix, a single track, or one
+Session clip to a file (**macOS only** — Live exposes no render API, so this
+drives the Export dialog with AppleScript), then optionally hand that file to
+Google's Gemini for feedback on how it actually sounds (any platform, needs a
+`GEMINI_KEY`; it's one small script, so pointing it at a different audio-capable
+API is a short edit).
 
-Neither could be a Producer Pal tool: writing DSP, driving another app's UI, and
-calling an external API all need a real runtime, which a coding agent has and
-the Max for Live device doesn't.
+Neither belongs in Producer Pal. Driving another app's UI and calling an
+external API need a real runtime the Max for Live device doesn't have. The
+device could technically do DSP, but synthesis is open-ended enough that an
+agent writing real code beats any DSL Producer Pal would have to teach.
 
 [Set up the Agent Skill →](/guide/skills)
 
@@ -99,30 +101,31 @@ workflow in plain language, you can change how the AI works.
 
 ## Choosing the right extension point
 
-| I want to…                                         | Use                                                |
-| -------------------------------------------------- | -------------------------------------------------- |
-| Script Ableton Live without AI                     | [REST API](/guide/rest-api)                        |
-| Build my own interface for Live                    | [REST API](/guide/rest-api)                        |
-| Work from Claude Code, Codex CLI, or Gemini CLI    | [Agent Skill](/guide/skills)                       |
-| Synthesize audio and land it in Live               | [Companion skills](/guide/skills#companion-skills) |
-| Render a mixdown or stem (macOS), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
-| Teach the AI a production technique                | [Skills](/guide/customizing-skills)                |
-| Tell the AI my preferences once, for good          | [Global context](/guide/context#global)            |
-| Cut what the AI costs per conversation             | [Trim the skills](/guide/customizing-skills)       |
+| I want to…                                              | Use                                                |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| Script Ableton Live without AI                          | [REST API](/guide/rest-api)                        |
+| Build my own interface for Live                         | [REST API](/guide/rest-api)                        |
+| Work from Claude Code, Codex CLI, or Gemini CLI         | [Agent Skill](/guide/skills)                       |
+| Synthesize audio and land it in Live                    | [Companion skills](/guide/skills#companion-skills) |
+| Render a mixdown or stem (macOS only), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
+| Teach the AI a production technique                     | [Skills](/guide/customizing-skills)                |
+| Tell the AI my preferences once, for good               | [Global context](/guide/context#global)            |
+| Cut what the AI costs per conversation                  | [Trim the skills](/guide/customizing-skills)       |
 
 ## Ideas under consideration
 
-These aren't commitments, just what I'm thinking about after 2.0:
+These aren't commitments, just what I'm thinking about after 2.1:
 
 - **Custom skills as first-class.** Today you extend the skills by overriding a
   fragment and `@include`-ing your own files. Registering a standalone skill —
   named, described, and loaded when it's relevant — is a natural next step.
-- **Personas.** Presets that bundle a tool set with its own context and skills,
-  so you can switch the AI's whole setup for a focused task.
-- **Workflows, or subagents, or neither.** The original idea was "workflows":
-  fixed tool-call sequences the AI runs but doesn't improvise. But maybe that's
-  just a command-oriented skill, or maybe subagents are the better version.
-  Still undecided.
+- **Personas.** [Presets](/guide/chat-ui#presets) already bundle a provider,
+  model, tool set, and notation. Carrying their own context and skills too would
+  make them a full switch of the AI's setup for a focused task.
+- **Workflows.** Fixed tool-call sequences the AI runs but doesn't improvise.
+  2.1 answered half the question with [subagents](/guide/chat-ui#subagents),
+  which cover the delegation part; whether the fixed-sequence part is worth
+  building — or is just a command-oriented skill — is still undecided.
 
 Have an opinion on any of these?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or

@@ -23,6 +23,7 @@ import {
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
+import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
 import {
@@ -31,7 +32,6 @@ import {
 } from "./helpers/seed-connect/seeded-turn.ts";
 import { type EvalProvider, type TurnResult } from "./types.ts";
 
-const MAX_TOOL_STEPS = 10;
 const DEFAULT_MAX_TOKENS = 8192;
 
 /**

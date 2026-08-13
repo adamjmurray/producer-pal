@@ -30,7 +30,9 @@
         "NOTATION": "${user_config.notation}",
         "SMALL_MODEL_MODE": "${user_config.small_model_mode}",
         "LIVE_API": "${user_config.live_api}",
-        "JSON_OUTPUT": "${user_config.json_output}"
+        "JSON_OUTPUT": "${user_config.json_output}",
+        "TOOLS": "${user_config.tools}",
+        "DISABLE_TOOLS": "${user_config.disable_tools}"
       }
     }
   },
@@ -92,6 +94,22 @@
       "required": false,
       "sensitive": false,
       "default": false
+    },
+    "tools": {
+      "type": "string",
+      "title": "Tools",
+      "description": "Requires Allow configuration overrides. Keep only these tools, dropping the rest along with the instructions that teach them — a smaller ppal-connect response in every conversation. Comma-separated tool names ('read-clip' or 'ppal-read-clip') and/or groups: core, session, actions, live-set, track, scene, clip, device, advanced, read-only. Leave blank for all tools. ppal-connect is always kept. Applies to this extension only, unlike the settings above: the chat UI and other MCP clients keep the full toolset.",
+      "required": false,
+      "sensitive": false,
+      "default": ""
+    },
+    "disable_tools": {
+      "type": "string",
+      "title": "Disable tools",
+      "description": "Requires Allow configuration overrides. Drop these tools, and the instructions that teach them, from every conversation. Same names and groups as Tools; applied after it. Leave blank to drop nothing. Applies to this extension only, unlike the global settings above.",
+      "required": false,
+      "sensitive": false,
+      "default": ""
     }
   },
   "keywords": [
@@ -105,7 +123,7 @@
     "assistant",
     "pal"
   ],
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/adamjmurray/producer-pal"

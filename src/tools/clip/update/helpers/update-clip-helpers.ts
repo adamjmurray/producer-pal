@@ -5,11 +5,17 @@
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  markerBeatsPerUnit,
+  markerClampSeconds,
+} from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
+  forceWarpForLooping,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
@@ -111,13 +117,13 @@ export function processSingleClipUpdate(
     clipIndex,
     clipCount,
     notationString,
-    name,
-    color,
     timeSignature,
-    start,
-    length,
     firstStart,
     looping,
+    gainDb,
+    pitchShift,
+    warpMode,
+    warping,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -135,57 +141,41 @@ export function processSingleClipUpdate(
     clip,
   );
 
-  // Determine looping state
-  const isLooping = looping ?? (clip.getProperty("looping") as number) > 0;
+  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+
+  if (isAudioClip) {
+    // Before the region write, because `warping` changes what the region write
+    // means: it picks the unit the markers are in, forces `looping` off, and
+    // switching it off resets end_marker to the whole file — which would erase
+    // a start/length requested in the same call.
+    setAudioParameters(clip, {
+      gainDb,
+      pitchShift,
+      warpMode,
+      warping,
+      looping,
+    });
+    forceWarpForLooping(clip, looping, warping);
+  } else {
+    warnIgnoredParams({ gainDb, pitchShift, warpMode, warping }, "MIDI clips");
+  }
+
+  // Determine looping state. Read `wasLooping` here, after the audio params:
+  // switching warp off forces looping off, and that counts as the before state.
+  const wasLooping = (clip.getProperty("looping") as number) > 0;
+  const isLooping = looping ?? wasLooping;
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
     console.warn("firstStart parameter ignored for non-looping clips");
   }
 
-  const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
-
-  // start/length/firstStart are applied to the loop region BEFORE duplicateLoop
-  // runs (clip.setAll below precedes resolveNoteResult), so they compose: set
-  // the region to select a portion, then Live's native duplicate_loop doubles
-  // exactly that selected region. No length suppression - the selection drives
-  // what gets doubled.
-
-  // Calculate beat positions (includes end_marker bounds check for start_marker)
-  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
-    start,
-    length,
-    firstStart,
+  writeClipProperties(params, {
     timeSigNumerator,
     timeSigDenominator,
-    clip,
     isLooping,
+    wasLooping,
   });
-
-  // Build and set clip properties
-  const currentLoopEnd = isLooping
-    ? (clip.getProperty("loop_end") as number)
-    : null;
-  const propsToSet = buildClipPropertiesToSet({
-    name,
-    color,
-    timeSignature,
-    timeSigNumerator,
-    timeSigDenominator,
-    startMarkerBeats,
-    looping,
-    isLooping,
-    startBeats,
-    endBeats,
-    currentLoopEnd,
-  });
-
-  clip.setAll(propsToSet);
-
-  // Verify color quantization if color was set
-  if (color != null) {
-    verifyColorQuantization(clip, color);
-  }
 
   // Build context for transform variables (clip.*, bar.*)
   // prettier-ignore
@@ -241,6 +231,87 @@ export function processSingleClipUpdate(
     noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Write the clip's name, color, meter, and loop region.
+ *
+ * Runs BEFORE duplicateLoop (see the caller), so the two compose: the region
+ * selects a portion, then Live's native duplicate_loop doubles exactly that.
+ *
+ * @param params - The full single-clip update params
+ * @param resolved - Derived per-clip values not present on params
+ * @param resolved.timeSigNumerator - Resolved time signature numerator
+ * @param resolved.timeSigDenominator - Resolved time signature denominator
+ * @param resolved.isLooping - The clip's looping state after this update
+ * @param resolved.wasLooping - The clip's looping state before this update
+ */
+function writeClipProperties(
+  params: ProcessSingleClipUpdateParams,
+  {
+    timeSigNumerator,
+    timeSigDenominator,
+    isLooping,
+    wasLooping,
+  }: {
+    timeSigNumerator: number;
+    timeSigDenominator: number;
+    isLooping: boolean;
+    wasLooping: boolean;
+  },
+): void {
+  const {
+    clip,
+    name,
+    color,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+    looping,
+  } = params;
+  const beatsPerMarkerUnit = markerBeatsPerUnit(clip);
+
+  // Includes the end_marker bounds check for start_marker
+  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
+    start,
+    length,
+    firstStart,
+    timeSigNumerator,
+    timeSigDenominator,
+    clip,
+    isLooping,
+    wasLooping,
+    beatsPerMarkerUnit,
+    markerClampSeconds: markerClampSeconds(clip),
+  });
+
+  // Both ends: loop_start and start_marker are bounded by different properties,
+  // and one call can write both.
+  const markerBeats = (property: string) =>
+    (clip.getProperty(property) as number) * beatsPerMarkerUnit;
+
+  clip.setAll(
+    buildClipPropertiesToSet({
+      name,
+      color,
+      timeSignature,
+      timeSigNumerator,
+      timeSigDenominator,
+      startMarkerBeats,
+      looping,
+      isLooping,
+      startBeats,
+      endBeats,
+      currentLoopEnd: markerBeats("loop_end"),
+      currentEndMarker: markerBeats("end_marker"),
+      beatsPerMarkerUnit,
+    }),
+  );
+
+  if (color != null) {
+    verifyColorQuantization(clip, color);
+  }
 }
 
 /**
@@ -315,7 +386,8 @@ function resolveNoteResult(
 }
 
 /**
- * Apply audio-clip-only updates: params, transforms, and the preTransforms warn.
+ * Apply audio-clip-only updates: transforms and the preTransforms warn. The
+ * audio parameters ran earlier, before the region write — see the call site.
  * Audio clips have no MIDI notes, so preTransforms is unconditionally ignored.
  * @param clip - The audio clip to update
  * @param clipContext - Clip-level context for transform variables
@@ -326,10 +398,7 @@ function handleAudioClipUpdate(
   clipContext: ClipContext,
   params: ProcessSingleClipUpdateParams,
 ): void {
-  const { gainDb, pitchShift, warpMode, warping, transformString } = params;
-
-  setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
-  applyAudioTransforms(clip, transformString, clipContext);
+  applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
     console.warn("preTransforms parameter ignored for audio clips");

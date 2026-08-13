@@ -13,7 +13,7 @@ type GetProviderConnection = (provider: Provider) => {
 };
 
 /**
- * The `extraParams` key carrying the resolved "Default subagent" preset from
+ * The `extraParams` key carrying the resolved "Subagent preset" from
  * use-chat-mode-state (writer) to chatAdapter.buildConfig (reader). A shared
  * const so a rename breaks the compile instead of silently degrading every
  * worker to "inherit" — the two sides never talk through a typed contract
@@ -29,7 +29,7 @@ export interface PresetConnection {
 }
 
 /**
- * A "Default subagent" preset resolved to everything buildWorkerConfig needs:
+ * A "Subagent preset" resolved to everything buildWorkerConfig needs:
  * the connection (provider + live key/baseUrl), the model/inference a preset
  * swaps, and the preset's toolset and notation when it saved them (absent =
  * inherit the orchestrator's). The system instruction is absent by design — a
@@ -67,11 +67,11 @@ export function presetToExtraParams(
 }
 
 /**
- * Resolve the user's chosen "Default subagent" preset id into the full bundle a
+ * Resolve the user's chosen "Subagent preset" id into the full bundle a
  * spawned worker runs under, or `undefined` to inherit the orchestrator config.
  * Returns undefined for the inherit sentinel (null/empty) AND for a dangling id
  * (a preset since deleted) so a stale setting degrades gracefully to inherit.
- * @param presetId - The saved default-subagent preset id (null/empty = inherit)
+ * @param presetId - The saved subagent preset id (null/empty = inherit)
  * @param presets - The current preset list
  * @param getProviderConnection - Reads the preset provider's key/baseUrl live
  * @returns The resolved worker preset, or undefined to inherit

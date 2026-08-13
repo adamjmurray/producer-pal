@@ -26,6 +26,17 @@ own tools can read and edit a Live Set with plain HTTP.
 - [Ableton Live Project Management with Producer Pal](https://www.youtube.com/watch?v=_pB3qESiIhw)
 - [Producer Pal Walk-through with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
 
+## Vision
+
+Producer Pal exists to help people make music — not to make music instead of
+them. It's a creative assistant for exploring ideas and getting past technical
+barriers. The musician remains the author.
+
+That shapes what gets built: accessibility (including voice control), freedom of
+choice (any AI provider, cloud or local — or no AI at all), and open source.
+
+**→ [Read the full Vision](https://producer-pal.org/vision)**
+
 ## Resources
 
 - [Documentation](https://producer-pal.org)

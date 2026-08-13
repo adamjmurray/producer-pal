@@ -30,6 +30,7 @@
  * guidance (net-shrink) — see the eval validation tracker.
  */
 
+import { argText } from "../../arg-text.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
@@ -42,7 +43,7 @@ import {
   READ_DRUM_NOTES,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 
@@ -75,13 +76,13 @@ function classifySlmPath(
   const reach = calls.find(
     (c) =>
       c.args.preTransforms != null &&
-      String(c.args.preTransforms).trim() !== "",
+      argText(c.args.preTransforms).trim() !== "",
   );
 
   if (reach) {
     return {
       path: "pretransforms-shorthand",
-      evidence: `preTransforms: ${String(reach.args.preTransforms).slice(0, 80)}`,
+      evidence: `preTransforms: ${argText(reach.args.preTransforms).slice(0, 80)}`,
     };
   }
 
@@ -91,26 +92,27 @@ function classifySlmPath(
   // SLM-specific preTransforms shorthand — so it must not be tagged
   // "unrecognized".
   const transformsEdit = calls.find(
-    (c) => c.args.transforms != null && String(c.args.transforms).trim() !== "",
+    (c) =>
+      c.args.transforms != null && argText(c.args.transforms).trim() !== "",
   );
 
   if (transformsEdit) {
     return {
       path: "transforms-direct",
-      evidence: `transforms: ${String(transformsEdit.args.transforms).slice(0, 80)}`,
+      evidence: `transforms: ${argText(transformsEdit.args.transforms).slice(0, 80)}`,
     };
   }
 
   // No preTransforms — did the model try to encode the clear inside notes
   // (the contamination failure)? A `v0` token in notes is the tell.
   const notesV0 = calls.find((c) =>
-    /(^|\s)v0(\s|$)/.test(String(c.args.notes ?? "")),
+    /(^|\s)v0(\s|$)/.test(argText(c.args.notes)),
   );
 
   if (notesV0) {
     return {
       path: "notes-contamination",
-      evidence: `v0 in notes arg: ${String(notesV0.args.notes).slice(0, 80)}`,
+      evidence: `v0 in notes arg: ${argText(notesV0.args.notes).slice(0, 80)}`,
     };
   }
 
@@ -123,9 +125,7 @@ function classifySlmPath(
 
   return {
     path: "unrecognized",
-    evidence: `single call, no recognized clear strategy: ${String(
-      calls[0]?.args.notes ?? "",
-    ).slice(0, 80)}`,
+    evidence: `single call, no recognized clear strategy: ${argText(calls[0]?.args.notes).slice(0, 80)}`,
   };
 }
 

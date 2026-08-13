@@ -47,9 +47,9 @@ second and a half is to assume a one-bar loop and stretch the render to fit,
 which for a synthesized sound alters the timbre that _is_ the content. Material
 with clear transients usually gets beat-detected correctly instead.
 
-`ppal-create-clip` reports `warping` back and warns when the file is being
-stretched, so an omitted `warping` is at least visible rather than silent. Being
-explicit is still less to think about.
+`ppal-create-clip` reports the settled `warping` back, so an omitted `warping`
+is at least visible after the fact rather than silent. Being explicit is still
+less to think about.
 
 ## Design notes
 

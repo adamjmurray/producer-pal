@@ -62,12 +62,17 @@ export const DEFAULT_VOICE_LANGUAGE = "en";
 const ENGLISH = VOICE_LANGUAGES[0] as VoiceLanguage;
 
 /**
- * OpenAI's purpose-built streaming ASR model for the realtime transcription
- * side-channel — pinned over the older whisper-1 / gpt-4o-transcribe so short or
- * noisy utterances aren't misclassified into another language. Affects the
- * transcript text only, not comprehension.
+ * ASR model for the realtime transcription side-channel. Affects the transcript
+ * text only, not comprehension.
+ *
+ * gpt-transcribe over the streaming gpt-realtime-whisper / gpt-live-transcribe:
+ * it's ~4x cheaper per minute and writes numbers as digits ("bar 3 beat 2", "128
+ * BPM") where the streaming models spell them out. Its one tradeoff — no partial
+ * transcripts until the turn commits — costs us nothing, because the Realtime
+ * SDK discards user-transcription deltas and only updates history on
+ * `.completed` anyway.
  */
-export const OPENAI_TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
+export const OPENAI_TRANSCRIPTION_MODEL = "gpt-transcribe";
 
 /**
  * Whether a code names one of the offered voice languages. Used to validate a

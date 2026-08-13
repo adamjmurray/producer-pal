@@ -5,14 +5,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  BRIEFING_REQUEST_HEADER,
   DISABLED_TOOLS_HEADER,
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
 import { NOTATION_HEADER } from "#src/shared/notation";
-import {
-  SPAWN_SUBAGENT_TOOL_NAME,
-  createSpawnSubagentTool,
-} from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { createSpawnSubagentTool } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   WORKER_WITHHELD_TOOLS,
   fetchSubagentBriefing,
@@ -76,15 +75,18 @@ describe("fetchSubagentBriefing", () => {
       [NOTATION_HEADER]: "stark",
       [SMALL_MODEL_MODE_HEADER]: "true",
       [DISABLED_TOOLS_HEADER]: "ppal-library",
+      [BRIEFING_REQUEST_HEADER]: "1",
     });
   });
 
-  it("sends no header for a profile with no opinion, so the server globals win", async () => {
+  it("sends no profile header when the profile has no opinion, so the server globals win", async () => {
     mockFetchJson({ briefing: BRIEFING });
 
     await fetchSubagentBriefing(createConfig());
 
-    expect(sentHeaders()).toStrictEqual({});
+    // The client header is not a profile header — the route requires it as a
+    // CSRF guard, so it is always sent.
+    expect(sentHeaders()).toStrictEqual({ [BRIEFING_REQUEST_HEADER]: "1" });
   });
 
   it("returns null on a non-2xx (Live unreachable) so the caller falls back", async () => {
@@ -166,12 +168,13 @@ describe("spawn_subagent briefing wiring", () => {
   async function spawn(config?: ChatClientConfig): Promise<void> {
     const tool = createSpawnSubagentTool({
       config: config ?? createConfig({ systemInstruction: "Base prompt." }),
-      runWorker: (options) => {
-        workerConfig = options.workerConfig;
+      runWorker: async (options) => {
+        workerConfig = await options.resolveConfig();
 
-        return Promise.resolve([
-          { role: "assistant", content: "done" },
-        ] as ChatMessage[]);
+        return await Promise.resolve({
+          messages: [{ role: "assistant", content: "done" }] as ChatMessage[],
+          toolLimitReached: false,
+        });
       },
       spawnState: { count: 0, nextIndex: 0, active: new Set<number>() },
       getBriefing: getBriefing as unknown as (

@@ -10,7 +10,7 @@ import {
 import { formatNotation } from "#src/notation/notation.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
   parseIncludeArray,

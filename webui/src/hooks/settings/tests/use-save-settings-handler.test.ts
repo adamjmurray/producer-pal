@@ -97,6 +97,23 @@ function makeArgs(
   };
 }
 
+/**
+ * Build the args for `overrides`, render the handler, and invoke it. Tests that
+ * need to mutate `args` before rendering call makeArgs/renderHook directly.
+ * @param overrides - Field overrides, as for makeArgs
+ * @returns The makeArgs bundle, for asserting on the spies
+ */
+function renderSave(
+  overrides: Parameters<typeof makeArgs>[0] = {},
+): ReturnType<typeof makeArgs> {
+  const bundle = makeArgs(overrides);
+  const { result } = renderHook(() => useSaveSettingsHandler(bundle.args));
+
+  result.current();
+
+  return bundle;
+}
+
 describe("useSaveSettingsHandler", () => {
   beforeEach(() => {
     window.location.hash = "";
@@ -104,13 +121,10 @@ describe("useSaveSettingsHandler", () => {
 
   it("preserves the URL hash when the saved mode (voice/chat) does not change", async () => {
     window.location.hash = "conv-123";
-    const { args, saveSettings } = makeArgs({
+    const { saveSettings } = renderSave({
       model: "gemini-2.5-pro",
       savedModel: "gemini-1.5-flash",
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     // Hash mutation now lives inside closeSettings's afterClose, which only
     // runs after saveSettings resolves (a failed persist must keep the modal
@@ -121,26 +135,15 @@ describe("useSaveSettingsHandler", () => {
 
   it("clears the URL hash when saving flips chat → voice", async () => {
     window.location.hash = "chat-conv-1";
-    const { args } = makeArgs({
-      model: "gpt-realtime-2",
-      savedModel: "gemini-1.5-flash",
-    });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
+    renderSave({ model: "gpt-realtime-2", savedModel: "gemini-1.5-flash" });
 
     await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
   it("clears the URL hash when saving flips voice → chat", async () => {
     window.location.hash = "voice-conv-1";
-    const { args } = makeArgs({
-      model: "gemini-1.5-flash",
-      savedModel: "gpt-realtime-2",
-    });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
 
-    result.current();
+    renderSave({ model: "gemini-1.5-flash", savedModel: "gpt-realtime-2" });
 
     await waitFor(() => expect(window.location.hash).toBe(""));
   });
@@ -150,27 +153,21 @@ describe("useSaveSettingsHandler", () => {
     // model is a chat model; the save flips the saved mode to voice. The screen
     // won't remount, so wiping the hash here would lose the displayed record.
     window.location.hash = "voice-conv-1";
-    const { args, saveSettings } = makeArgs({
+    const { saveSettings } = renderSave({
       model: "gpt-realtime-2",
       savedModel: "gemini-1.5-flash",
       viewingMode: "voice",
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     expect(window.location.hash).toBe("#voice-conv-1");
   });
 
   it("posts liveApiEnabled then re-lists MCP tools when the toggle changed", async () => {
-    const { args, postLiveApiEnabled, checkMcpConnection } = makeArgs({
+    const { postLiveApiEnabled, checkMcpConnection } = renderSave({
       liveApiEnabled: true,
       liveApiEnabledDirty: true,
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     // The handler chains postLiveApiEnabled inside saveSettings().then(...), so
     // it lands a microtask later than the synchronous-fire pattern this test
@@ -182,25 +179,19 @@ describe("useSaveSettingsHandler", () => {
   });
 
   it("does not post liveApiEnabled when the toggle was untouched", () => {
-    const { args, postLiveApiEnabled, checkMcpConnection } = makeArgs({
+    const { postLiveApiEnabled, checkMcpConnection } = renderSave({
       liveApiEnabledDirty: false,
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     expect(postLiveApiEnabled).not.toHaveBeenCalled();
     expect(checkMcpConnection).not.toHaveBeenCalled();
   });
 
   it("posts notation when the dropdown changed (no MCP re-list)", async () => {
-    const { args, postNotation, checkMcpConnection } = makeArgs({
+    const { postNotation, checkMcpConnection } = renderSave({
       notation: "midi-json",
       notationDirty: true,
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     await waitFor(() => expect(postNotation).toHaveBeenCalledWith("midi-json"));
     // Notation doesn't change the tool list, so no reconnect is triggered.
@@ -208,12 +199,9 @@ describe("useSaveSettingsHandler", () => {
   });
 
   it("does not post notation when the dropdown was untouched", async () => {
-    const { args, postNotation, saveSettings } = makeArgs({
+    const { postNotation, saveSettings } = renderSave({
       notationDirty: false,
     });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     expect(postNotation).not.toHaveBeenCalled();
@@ -228,15 +216,12 @@ describe("useSaveSettingsHandler", () => {
       resolveSave = resolve;
     });
     const saveSettings = vi.fn().mockReturnValue(savePromise);
-    const { args, postSmallModelMode, postLiveApiEnabled, checkMcpConnection } =
-      makeArgs({
+    const { postSmallModelMode, postLiveApiEnabled, checkMcpConnection } =
+      renderSave({
         liveApiEnabled: true,
         liveApiEnabledDirty: true,
         saveSettings,
       });
-    const { result } = renderHook(() => useSaveSettingsHandler(args));
-
-    result.current();
 
     // saveSettings is called immediately but its promise is in flight; the
     // downstream RPCs must NOT have fired yet.

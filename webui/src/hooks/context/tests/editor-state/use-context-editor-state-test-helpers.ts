@@ -107,6 +107,30 @@ export function deferredSave(): {
 }
 
 /**
+ * A save spy whose FIRST call stays pending until the test resolves it, with
+ * every later call resolving true — for cases that hold one write open and then
+ * assert whether the next one reaches the wire.
+ * @returns The save spy and a trigger to resolve the first save
+ */
+export function deferredFirstSave(): {
+  save: ReturnType<typeof vi.fn>;
+  resolveFirstSave: (saved: boolean) => void;
+} {
+  let resolve: (saved: boolean) => void = () => {};
+  const save = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<boolean>((r) => {
+          resolve = r;
+        }),
+    )
+    .mockResolvedValue(true);
+
+  return { save, resolveFirstSave: (saved) => resolve(saved) };
+}
+
+/**
  * A save spy whose every call stays pending until the test resolves it by call
  * index, so a test can hold several writes in flight at once and settle them in
  * a chosen order. {@link deferredSave} covers the single-write case; this one is
@@ -178,15 +202,30 @@ export async function startBlockedClear(
   result: RenderedEditor["result"],
   clear: ReturnType<typeof vi.fn>,
 ): Promise<{ pending: Promise<boolean> }> {
+  const started = await startClear(result);
+
+  // Allow microtasks to run; clear must still be waiting on the in-flight save.
+  await drainMicrotasks();
+  expect(clear).not.toHaveBeenCalled();
+
+  return started;
+}
+
+/**
+ * Fire Clear and hand back its still-pending promise, asserting nothing about
+ * whether it dispatched. Use {@link startBlockedClear} when the point is that it
+ * must still be waiting on an in-flight save.
+ * @param result - The rendered hook's result handle
+ * @returns The pending handleClear promise, for the test to await later
+ */
+export async function startClear(
+  result: RenderedEditor["result"],
+): Promise<{ pending: Promise<boolean> }> {
   let clearPromise: Promise<boolean> | null = null;
 
   await act(() => {
     clearPromise = result.current.handleClear();
   });
-
-  // Allow microtasks to run; clear must still be waiting on the in-flight save.
-  await drainMicrotasks();
-  expect(clear).not.toHaveBeenCalled();
 
   // Wrapped, not returned bare: an async function returning a promise awaits it,
   // which would hang here — the whole point is that this one is still pending.

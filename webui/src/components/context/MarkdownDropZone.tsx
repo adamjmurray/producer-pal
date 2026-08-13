@@ -100,14 +100,6 @@ export function MarkdownDropZone(
     setDragging(true);
   };
 
-  const handleDragOver = (event: DragEvent): void => {
-    if (!dragHasFiles(event.dataTransfer)) return;
-    // preventDefault marks this a valid drop target; stopPropagation keeps the
-    // wrapped editor from handling (and inserting) the dragged file.
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
   const handleDragLeave = (event: DragEvent): void => {
     if (!dragHasFiles(event.dataTransfer)) return;
     depthRef.current = Math.max(0, depthRef.current - 1);
@@ -157,4 +149,17 @@ export function MarkdownDropZone(
       )}
     </div>
   );
+}
+
+/**
+ * Mark the region a valid drop target for a file drag.
+ * @param event - The dragover event
+ * @returns Nothing
+ */
+function handleDragOver(event: DragEvent): void {
+  if (!dragHasFiles(event.dataTransfer)) return;
+  // preventDefault marks this a valid drop target; stopPropagation keeps the
+  // wrapped editor from handling (and inserting) the dragged file.
+  event.preventDefault();
+  event.stopPropagation();
 }

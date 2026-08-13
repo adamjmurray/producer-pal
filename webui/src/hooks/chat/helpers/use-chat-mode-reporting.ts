@@ -24,6 +24,8 @@ interface UseChatModeReportingParams {
   display: PreferencesSettings;
   enabledToolsCount: number;
   totalToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
   handleDeleteAll: () => void;
   handleDeleteUnbookmarked: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -46,6 +48,8 @@ export function useChatModeReporting(
     display,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     handleDeleteAll,
     handleDeleteUnbookmarked,
     setModeContext,
@@ -94,6 +98,8 @@ export function useChatModeReporting(
       provider: settings.provider,
       enabledToolsCount,
       totalToolsCount,
+      defaultToolsCount,
+      enabledToolsDiverge,
       smallModelMode: chat.activeSmallModelMode ?? settings.smallModelMode,
       defaultSmallModelMode: settings.smallModelMode,
       showHelpLinks: display.showHelpLinks,
@@ -107,6 +113,8 @@ export function useChatModeReporting(
       settings.smallModelMode,
       enabledToolsCount,
       totalToolsCount,
+      defaultToolsCount,
+      enabledToolsDiverge,
       display.showHelpLinks,
     ],
   );

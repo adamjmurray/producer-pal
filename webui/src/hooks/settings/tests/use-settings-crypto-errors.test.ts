@@ -28,7 +28,7 @@ describe("useSettings crypto error handling", () => {
   it("logs (does not throw) when the post-mount decrypt-load fails", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
-      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-3.6-flash" }),
+      JSON.stringify({ apiKey: "enc:v1:bogus", model: "gemini-3.7-flash" }),
     );
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -61,7 +61,7 @@ describe("useSettings crypto error handling", () => {
 
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
     });
 
     let saved: boolean | undefined;
@@ -84,5 +84,34 @@ describe("useSettings crypto error handling", () => {
         expect.any(Error),
       );
     });
+  });
+
+  it("leaves the localStorage flags alone when the encrypted write fails", async () => {
+    localStorage.setItem("producer_pal_subagent_preset", "before");
+    localStorage.setItem("producer_pal_small_model_mode", "false");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = renderHook(() => useSettings());
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to load provider settings",
+        expect.any(Error),
+      );
+    });
+
+    await act(() => {
+      result.current.setApiKey("sk-will-fail-to-encrypt");
+      result.current.setSubagentPresetId("after");
+      result.current.setSmallModelMode(true);
+    });
+
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+
+    // These two write straight to localStorage, and Cancel reads them back —
+    // so a failed Save that had already written them would be un-cancellable.
+    expect(localStorage.getItem("producer_pal_subagent_preset")).toBe("before");
+    expect(localStorage.getItem("producer_pal_small_model_mode")).toBe("false");
   });
 });

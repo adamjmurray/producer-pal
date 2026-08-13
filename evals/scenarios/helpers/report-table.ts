@@ -165,7 +165,7 @@ function printSummaryRow(
       }
     }
 
-    if (pcts2.length === 0) return;
+    if (pcts2.length === 0) return undefined;
     const avg = pcts2.reduce((a, b) => a + b, 0) / pcts2.length;
 
     return pctColor(avg);

@@ -68,7 +68,9 @@ function expectConnected(result: unknown): ConnectResult {
   const parsed = parseToolResult<ConnectResult>(result);
 
   expect(parsed.connected).toBe(true);
-  expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+  // Release candidates ship a real `-rcN` prerelease version — same shape the
+  // version-agreement meta test accepts.
+  expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+(-rc[1-9]\d*)?$/);
 
   return parsed;
 }

@@ -9,6 +9,12 @@
  * simplified variant, so both drivers' `{notation}-{depth}` include refs are
  * ALIASED onto this one body (see builtin-fragments.ts), and a user's single
  * `midi-json` override applies at both depths.
+ *
+ * Says nothing about merging into a clip that already has notes: that ships to
+ * read-only callers too and is update-clip's alone, so it lives in
+ * `transforms-editing`, whose gate is exactly update-clip. The `v:0` marker DOES
+ * belong here — it is what the velocity field means, not a way of editing, and
+ * omitting it left models guessing (and silently writing velocity-1 notes).
  */
 export const midiJson = `## MIDI Notation — MIDI JSON
 
@@ -19,6 +25,5 @@ The \`notes\` argument (and read-clip's returned notes) is a compact array-of-ob
 Keys: \`p\` pitch 0-127 (C3=60, middle C), \`t\` start and \`d\` duration in musical beats, \`v\` velocity 1-127, optional \`vd\` velocity-deviation 0-127 (default 0) and \`c\` probability/chance 0-1 (default 1) — omit \`vd\`/\`c\` at their defaults.
 
 - \`t\` and \`d\` are absolute musical beats (a quarter = 1 beat in x/4): \`t:0\` is clip start, \`t:4\` is beat 5. Chords share a \`t\`.
-- For exact tuplets, write \`t\`/\`d\` as a fraction: \`d:2/3\` (triplet quarter), \`d:1/3\` (triplet eighth) — read-back returns the fraction rather than a lossy \`0.3333\`.
-- MIDI JSON has no \`v0\`-delete — use \`preTransforms\` to delete or edit existing notes.
-- \`notes\` MERGES into an existing clip: a note at the *same* pitch+start overwrites that note; others are untouched. Restate just the notes you're changing — don't resend the whole clip.`;
+- \`v:0\` deletes instead of adding: it removes the note at that same \`p\`+\`t\` (already in the clip, or written earlier in this same array) and writes nothing. It applies to that one object only.
+- For exact tuplets, write \`t\`/\`d\` as a fraction: \`d:2/3\` (triplet quarter), \`d:1/3\` (triplet eighth) — read-back returns the fraction rather than a lossy \`0.3333\`.`;

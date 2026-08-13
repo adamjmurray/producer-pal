@@ -5,7 +5,7 @@
 
 import { type ComponentChildren, Fragment } from "preact";
 import { useMemo } from "preact/hooks";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   type UIMessage,
@@ -139,7 +139,7 @@ function renderSinglePart(
       return (
         <AssistantSubagentCall
           key={i}
-          task={String(part.args.task ?? "")}
+          task={typeof part.args.task === "string" ? part.args.task : ""}
           result={part.result}
           isError={part.isError}
           isResponding={isResponding}

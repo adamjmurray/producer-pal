@@ -6,10 +6,7 @@
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ToolSet, jsonSchema } from "ai";
 import { type Notation } from "#src/shared/notation";
-import {
-  createConnectedMcpClient,
-  filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+import { connectAndListTools } from "#webui/chat/helpers/connect-and-list-tools";
 import { extractMcpText } from "#webui/lib/utils/mcp-content";
 
 /** Result of creating AI SDK tools from MCP */
@@ -40,15 +37,12 @@ export async function createMcpTools(
   smallModelMode?: boolean,
   notation?: Notation,
 ): Promise<McpTools> {
-  const mcpClient = await createConnectedMcpClient(
+  const { mcpClient, tools: filtered } = await connectAndListTools(
     mcpUrl,
     smallModelMode,
     enabledTools,
     notation,
   );
-  const toolsResult = await mcpClient.listTools();
-  const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
-
   const tools: ToolSet = {};
 
   for (const t of filtered) {

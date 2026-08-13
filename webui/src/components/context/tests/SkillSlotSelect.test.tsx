@@ -40,6 +40,30 @@ describe("SkillSlotSelect", () => {
     expect(options[2]?.textContent).toBe("⚠ library.md");
   });
 
+  it("marks an override that predates a -write split with the same warning glyph", () => {
+    // Drift and split-staleness both mean "this override wants a look", so they
+    // share the glyph rather than teaching a second symbol.
+    const slots = [
+      slot({
+        name: "barbeat-standard",
+        override: "MINE",
+        splitStale: { sibling: "barbeat-standard-write", sharedLines: 4 },
+      }),
+    ];
+
+    render(
+      <SkillSlotSelect
+        slots={slots}
+        selected="barbeat-standard"
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option").textContent).toBe(
+      "⚠ barbeat-standard.md",
+    );
+  });
+
   it("keeps the human title reachable as each option's tooltip", () => {
     const slots = [slot({ name: "basic", title: "Full skills (small-model)" })];
 

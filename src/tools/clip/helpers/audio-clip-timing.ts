@@ -43,7 +43,9 @@ export function audioClipTiming(clip: LiveAPI): AudioClipTiming {
   const loopStart = clip.getProperty("loop_start") as number;
   const loopEnd = clip.getProperty("loop_end") as number;
 
-  // A looping clip plays its loop brace; an unlooped one plays marker to marker
+  // A looping clip plays its loop brace; an unlooped one plays marker to marker.
+  // Only warped clips reach the loop branch — Live forces `looping` off when
+  // warp goes off, and forces warp back on if you set `looping`.
   const rawStart = isLooping ? loopStart : startMarker;
   const rawEnd = isLooping ? loopEnd : endMarker;
 
@@ -80,19 +82,67 @@ export function audioClipTiming(clip: LiveAPI): AudioClipTiming {
 }
 
 /**
- * The real duration an audio clip's region occupies, in seconds at the current
- * tempo. On a warped clip this differs from `sampleSeconds` by exactly the
- * amount Live is time-stretching the file.
+ * A clip's playable length in real Ableton beats, for either clip type.
  *
- * @param timing - Timing already read from the clip
- * @returns The region's duration in seconds, or 0 when the tempo is unreadable
+ * `Clip.length` is right for MIDI but stale for an unwarped session audio clip
+ * (see audioClipTiming), so anything that compares a clip's length against a
+ * requested length has to go through the markers for audio.
+ *
+ * @param clip - The clip to measure
+ * @returns Length in real beats at the current tempo
  */
-export function audioClipPlayedSeconds(timing: AudioClipTiming): number {
-  const tempo = currentTempo();
+export function clipLengthBeats(clip: LiveAPI): number {
+  if ((clip.getProperty("is_midi_clip") as number) > 0) {
+    return clip.getProperty("length") as number;
+  }
 
-  if (tempo <= 0) return 0;
+  const { startBeats, endBeats } = audioClipTiming(clip);
 
-  return ((timing.endBeats - timing.startBeats) * 60) / tempo;
+  return endBeats - startBeats;
+}
+
+/**
+ * How many real beats one unit of a clip's marker properties is worth.
+ *
+ * `start_marker`, `end_marker`, `loop_start` and `loop_end` hold beats for MIDI
+ * and warped audio, but **seconds** on an unwarped audio clip. Multiply a
+ * marker by this to get beats; divide a requested beat position by it to get
+ * the value to write. Reading also needs `markerClampSeconds` to match what
+ * audioClipTiming reports, so `start`/`length` round-trip.
+ *
+ * @param clip - The clip whose markers are being read or written
+ * @returns 1, or tempo/60 for an unwarped audio clip
+ */
+export function markerBeatsPerUnit(clip: LiveAPI): number {
+  return markersAreSeconds(clip) ? currentTempo() / 60 : 1;
+}
+
+/**
+ * How far a marker may be trusted before converting it to beats.
+ *
+ * An unwarped clip's `end_marker` is not bounded by the file — Live keeps
+ * whatever number was there when warping went off. audioClipTiming clamps it
+ * to the sample, so anything reading markers directly has to clamp the same
+ * way or a `length` that came from read-clip writes back a region past the end
+ * of the sample.
+ *
+ * @param clip - The clip whose markers are being read
+ * @returns The sample duration in seconds, or 0 when no clamp applies
+ */
+export function markerClampSeconds(clip: LiveAPI): number {
+  return markersAreSeconds(clip) ? audioClipSampleSeconds(clip) : 0;
+}
+
+/**
+ * Whether a clip's marker properties hold seconds rather than beats.
+ * @param clip - The clip to check
+ * @returns True for an unwarped audio clip
+ */
+function markersAreSeconds(clip: LiveAPI): boolean {
+  return (
+    (clip.getProperty("is_audio_clip") as number) > 0 &&
+    !((clip.getProperty("warping") as number) > 0)
+  );
 }
 
 /**

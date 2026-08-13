@@ -16,7 +16,8 @@ type MockMax = typeof Max & {
   handlers: Map<string, (input: unknown) => void>;
   mcpResponseHandler: ((requestId: string, ...chunks: string[]) => void) | null;
   defaultMcpResponseHandler:
-    ((requestId: string, ...chunks: string[]) => void) | null;
+    | ((requestId: string, ...chunks: string[]) => void)
+    | null;
 };
 const mockMax = Max as MockMax;
 
@@ -434,6 +435,21 @@ describe("MCP Express App", () => {
 
       // Express json middleware returns 400 for invalid JSON
       expect(response.status).toBe(400);
+    });
+
+    it("should log a nameless request rather than crash on it", async () => {
+      // A POST with no JSON-RPC method (or no body at all) still has to reach
+      // the transport, which is what turns it into a protocol error.
+      const response = await fetch(appState.serverUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1 }),
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
     });
   });
 

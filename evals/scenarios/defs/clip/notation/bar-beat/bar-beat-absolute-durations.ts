@@ -20,7 +20,7 @@ import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
-} from "../../clip-scenario-helpers.ts";
+} from "../../helpers/clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as consoleModule from "#src/shared/v8-max-console.ts";
+import * as consoleModule from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,

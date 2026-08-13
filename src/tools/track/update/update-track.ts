@@ -5,7 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,
@@ -59,7 +59,6 @@ interface UpdateTrackArgs {
   outputRoutingTypeId?: string;
   outputRoutingChannelId?: string;
   monitoringState?: string;
-  arrangementFollower?: boolean;
   sendGainDb?: number;
   sendReturn?: string;
 }
@@ -369,7 +368,6 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
  * @param args.outputRoutingTypeId - Optional output routing type identifier
  * @param args.outputRoutingChannelId - Optional output routing channel identifier
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
- * @param args.arrangementFollower - Whether the track should follow the arrangement timeline
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
  * @param args.sendReturn - Optional return track name (exact or letter prefix), requires sendGainDb
  * @param _context - Internal context object (unused)
@@ -393,7 +391,6 @@ export function updateTrack(
     outputRoutingTypeId,
     outputRoutingChannelId,
     monitoringState,
-    arrangementFollower,
     sendGainDb,
     sendReturn,
   }: UpdateTrackArgs,
@@ -459,11 +456,6 @@ export function updateTrack(
       outputRoutingTypeId,
       outputRoutingChannelId,
     });
-
-    // Handle arrangement follower
-    if (arrangementFollower != null) {
-      track.set("back_to_arranger", arrangementFollower ? 0 : 1);
-    }
 
     // Handle monitoring state
     applyMonitoringState(track, monitoringState);

@@ -18,7 +18,7 @@ describe("voice-language", () => {
   it("offers English first as the default", () => {
     expect(VOICE_LANGUAGES[0]?.code).toBe("en");
     expect(DEFAULT_VOICE_LANGUAGE).toBe("en");
-    expect(OPENAI_TRANSCRIPTION_MODEL).toBe("gpt-realtime-whisper");
+    expect(OPENAI_TRANSCRIPTION_MODEL).toBe("gpt-transcribe");
   });
 
   it("pairs each language with an ISO code, name, and label", () => {

@@ -49,7 +49,7 @@ export function getColorForIndex(
   index: number,
   parsedColors: string[] | null,
 ): string | undefined {
-  if (color == null) return;
+  if (color == null) return undefined;
   if (parsedColors == null) return color;
 
   return parsedColors[index % parsedColors.length];

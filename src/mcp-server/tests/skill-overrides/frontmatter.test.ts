@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseFrontmatter,
   serializeFrontmatter,
-} from "#src/mcp-server/helpers/markdown-store/frontmatter.ts";
+} from "#src/mcp-server/helpers/config-store/frontmatter.ts";
 
 // The provenance keys most fixtures here use; a leading `---…---` block is only
 // treated as frontmatter when every key is in the caller's known set.

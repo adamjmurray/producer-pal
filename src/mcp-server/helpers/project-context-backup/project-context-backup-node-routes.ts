@@ -47,7 +47,14 @@ export interface ProjectContextSyncArgs {
 
 /** What the route did, echoed back so V8 can apply a restore to the param. */
 export interface ProjectContextSyncResult {
-  action: "restore" | "backup" | "clear" | "none";
+  /**
+   * "none" means there was nothing to do. "failed" means there WAS and the
+   * filesystem refused — the two must not collapse, or V8 memoizes a backup
+   * that never reached disk as a success and the user is never told.
+   * "unreadable" is the restore-side version of the same rule: a sidecar is
+   * there but couldn't be read, so the restore is still owed.
+   */
+  action: "restore" | "backup" | "clear" | "none" | "failed" | "unreadable";
   /** The restored blob — present only when action === "restore". */
   content?: string;
 }
@@ -114,7 +121,8 @@ function syncRoute(
  *
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param deps - Node-side collaborators (the project-context mirror setter)
- * @returns A "restore" result carrying the blob, or "none"
+ * @returns A "restore" result carrying the blob, "unreadable" when a sidecar is
+ *   there but couldn't be read, else "none"
  */
 function restoreIfBackupExists(
   filePath: string,
@@ -122,13 +130,21 @@ function restoreIfBackupExists(
 ): ProjectContextSyncResult {
   const sidecar = readProjectContextSidecar(filePath);
 
-  if (sidecar == null || sidecar.trim() === "") {
+  // There IS a sidecar and we can't see what's in it, so this device load may
+  // still be owed a restore. Reporting "none" would read as "no backup": V8
+  // memoizes the sync as done, spends the session's one restore, settles the
+  // wipe question, and the next edit writes over notes nothing ever read.
+  if (sidecar.status === "unreadable") {
+    return { action: "unreadable" };
+  }
+
+  if (sidecar.status !== "found" || sidecar.content.trim() === "") {
     return { action: "none" };
   }
 
-  deps.setProjectContext(sidecar);
+  deps.setProjectContext(sidecar.content);
 
-  return { action: "restore", content: sidecar };
+  return { action: "restore", content: sidecar.content };
 }
 
 /**
@@ -136,12 +152,20 @@ function restoreIfBackupExists(
  * delete the sidecar so the clear sticks and isn't restored on the next load.
  *
  * @param filePath - Absolute path to the Live Set (.als) file
- * @returns A "clear" result when a sidecar was deleted, else "none"
+ * @returns "clear" when a sidecar was deleted, "failed" when the delete threw
+ *   (the sidecar survives and would restore over the clear), else "none"
  */
 function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
-  return deleteProjectContextSidecar(filePath)
-    ? { action: "clear" }
-    : { action: "none" };
+  switch (deleteProjectContextSidecar(filePath)) {
+    case "deleted":
+      return { action: "clear" };
+
+    case "failed":
+      return { action: "failed" };
+
+    default:
+      return { action: "none" };
+  }
 }
 
 /**
@@ -153,7 +177,8 @@ function clearBackupIfPresent(filePath: string): ProjectContextSyncResult {
  * @param filePath - Absolute path to the Live Set (.als) file
  * @param content - The device param's current project-context blob
  * @param isEdit - Whether a genuine project-context write triggered this sync
- * @returns A "backup" result when written, else "none"
+ * @returns "backup" when written, "failed" when the write threw, "unreadable"
+ *   when a sidecar is there but couldn't be read, else "none"
  */
 function backupIfStale(
   filePath: string,
@@ -162,20 +187,35 @@ function backupIfStale(
 ): ProjectContextSyncResult {
   const existing = readProjectContextSidecar(filePath);
 
-  if (existing === content) {
-    return { action: "none" };
+  // There IS a sidecar and we can't see what's in it, so we can't tell whether
+  // writing would bury the folder's shared notes. Treating it as "no backup"
+  // would skip the isEdit guard below in the one case it matters most. Not
+  // "none" either: on a genuine write the user believes their notes were backed
+  // up, and only V8 knows which kind of sync this was.
+  if (existing.status === "unreadable") {
+    return { action: "unreadable" };
   }
 
-  // A sidecar that exists and differs, with nothing written: the param is just
-  // what some .als had saved in it — most often an OLDER Set in this same Live
-  // Project folder, whose stale blob would otherwise replace the folder's newer
-  // shared notes on load. Only a real write supersedes an existing backup. An
-  // empty sidecar counts as no backup, matching restoreIfBackupExists.
-  if (existing != null && existing.trim() !== "" && !isEdit) {
-    return { action: "none" };
+  if (existing.status === "found") {
+    if (existing.content === content) {
+      return { action: "none" };
+    }
+
+    // A sidecar that differs, with nothing written: the param is just what some
+    // .als had saved in it — most often an OLDER Set in this same Live Project
+    // folder, whose stale blob would otherwise replace the folder's newer shared
+    // notes on load. Only a real write supersedes an existing backup. An empty
+    // sidecar counts as no backup, matching restoreIfBackupExists.
+    if (existing.content.trim() !== "" && !isEdit) {
+      return { action: "none" };
+    }
   }
 
-  writeProjectContextSidecar(filePath, content);
-
-  return { action: "backup" };
+  // A failed write reports its own action rather than throwing: an RPC failure
+  // is what V8 refuses to memoize, so it would retry — and warn into the tool
+  // result — on every call from here on. "failed" is a successful RPC carrying
+  // bad news, so V8 can memoize it and say so once.
+  return writeProjectContextSidecar(filePath, content)
+    ? { action: "backup" }
+    : { action: "failed" };
 }

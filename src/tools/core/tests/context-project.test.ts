@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as v8Console from "#src/shared/v8-max-console.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { context } from "../context.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
@@ -242,6 +242,48 @@ describe("context - project scope (default)", () => {
       await expectWriteAllowed(rewritten);
     });
 
+    // Headings vouch only when there is nothing else to vouch. A document that
+    // is all headings used to fall through the guard entirely.
+    describe("headings-only document", () => {
+      const HEADINGS = "# Genres\n# Artists\n# Reference tracks";
+
+      it("guards a document that is nothing but headings", async () => {
+        await expectWriteSkipped(HEADINGS, "# Something else entirely");
+      });
+
+      it("allows a write that keeps one of the headings", async () => {
+        toolContext.projectContext!.content = HEADINGS;
+
+        await expectWriteAllowed(`${HEADINGS}\n- Genre: deep house.`);
+      });
+
+      it("stays inert when the headings carry no letters or digits", async () => {
+        toolContext.projectContext!.content = "#\n##";
+
+        await expectWriteAllowed("- Key: A minor.");
+      });
+
+      // Headings over a body of pure structure: the body exists but can vouch
+      // for nothing, so holding the headings out left this unguarded on the
+      // strength of its `---` and an unrelated write destroyed the heading
+      // silently.
+      it("guards headings whose only body is structure", async () => {
+        await expectWriteSkipped("# Song Ideas\n---", "- Key: A minor.");
+      });
+
+      it("allows a write that keeps a heading over structure", async () => {
+        toolContext.projectContext!.content = "# Song Ideas\n---";
+
+        await expectWriteAllowed("# Song Ideas\n\n- Key: A minor.");
+      });
+    });
+
+    // The reason headings are held out while a body exists: keeping the shell
+    // and dropping everything under it is the clobber, not an edit.
+    it("still guards a write that keeps only the heading", async () => {
+      await expectWriteSkipped(EXISTING, "# Notes\n- Key: A minor.");
+    });
+
     // Both sides are normalized before the containment test, so an ordinary
     // reformat still counts as surviving — without it, this guard would fire on
     // the everyday rewrite and teach models to reach for force.
@@ -250,6 +292,8 @@ describe("context - project scope (default)", () => {
       ["re-indented", "  Genre: deep house.\n\t- Drop at bar 33."],
       ["trailing punctuation added", "Genre: deep house!\n- Drop at bar 33."],
       ["numbered instead of dashed", "1. Genre: deep house\n2. Drop at bar 33"],
+      ["re-cased", "GENRE: Deep House.\nDROP at bar 33."],
+      ["emphasis added", "Genre: **deep house**.\nDrop at **bar 33**."],
     ])(
       "allows a reformat that keeps the content (%s)",
       async (_, rewritten) => {
@@ -259,6 +303,16 @@ describe("context - project scope (default)", () => {
         await expectWriteAllowed(rewritten);
       },
     );
+
+    // The other direction: the needle carries the markup and the write drops it.
+    // Both sides are normalized, so stripping emphasis off the whole document is
+    // still an edit — it used to read as keeping none of it.
+    it("allows a rewrite that strips the document's emphasis", async () => {
+      toolContext.projectContext!.content =
+        "- **Genre**: deep house.\n- _Drop at bar 33._";
+
+      await expectWriteAllowed("- Genre: deep house.\n- Drop at bar 33.");
+    });
 
     // Where that tolerance ends: normalization forgives a line's markup, not a
     // restructuring that splits one line across several. Every fact below

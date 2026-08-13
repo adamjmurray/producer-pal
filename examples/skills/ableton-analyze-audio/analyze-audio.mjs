@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// analyze-audio.mjs — send a rendered .wav to Google's Gemini API and print the
+// analyze-audio.mjs — send an audio file to Google's Gemini API and print the
 // model's analysis. Zero dependencies (Node 18+ global fetch).
 //
 // Auth: set GEMINI_API_KEY in the environment (or pass --api-key). This is the
@@ -8,13 +8,22 @@
 // Producer Pal device — the Max-for-Live runtime has no clean secrets story.
 //
 // Small files are sent inline; larger ones go through the Files API (upload,
-// wait for ACTIVE, then reference). NOTE: model IDs and request limits move —
-// override the model with --model / GEMINI_MODEL and check Google's docs.
+// wait for ACTIVE, then reference). An upload is NOT deleted for you — it's
+// printed instead, so more questions about the same audio cost one upload
+// (--file-uri) and you delete it when you're done (--delete). Storage is free
+// and Google drops it after 48h regardless. NOTE: model IDs and request limits
+// move — override the model with --model / GEMINI_MODEL and check Google's docs.
 //
 // Usage:
-//   node analyze-audio.mjs render.wav
-//   node analyze-audio.mjs render.wav --prompt "Describe the timbre and any mix issues."
-//   GEMINI_MODEL=gemini-2.5-pro node analyze-audio.mjs render.wav
+//   node analyze-audio.mjs render.mp3
+//   node analyze-audio.mjs render.mp3 --prompt "Describe the timbre and any mix issues."
+//   node analyze-audio.mjs render.mp3 --upload          # force an upload, to reuse it
+//   node analyze-audio.mjs --file-uri files/abc --prompt "Now describe the drums."
+//   node analyze-audio.mjs --delete files/abc
+//   GEMINI_MODEL=<other-model> node analyze-audio.mjs render.mp3
+//
+// Each run is one question — reusing an upload saves the transfer, not the
+// context. The model never sees the previous answer.
 //
 // Expectations: Gemini gives strong QUALITATIVE description (timbre, character,
 // obvious problems, transcription). It is not a precise MIR tool — don't trust
@@ -38,14 +47,36 @@ const AUDIO_MIME = {
   ".ogg": "audio/ogg",
   ".m4a": "audio/mp4",
 };
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
+// The silence sentence earns its place: a render from Ableton covers the whole
+// arrangement, so a single track or clip arrives padded with silence. Asking
+// where the music is beats guessing, and it makes a wrong-track render obvious.
+// The "only what you hear" clause earns its place too: asked openly to describe
+// the instrumentation, the model padded a drum stem with a bass part and vocal
+// stabs that were not in it — then correctly said "no vocal stabs" when asked
+// directly. Open description invites genre-typical filler.
 const DEFAULT_PROMPT =
   "You are an audio engineer. Analyze this rendered audio: describe the " +
   "instrumentation and timbre, the overall character and mood, and flag any " +
-  "obvious problems (clipping, noise, imbalance). Keep it concise.";
+  "obvious problems (clipping, noise, imbalance). Keep it concise. The file " +
+  "may be mostly silence — say where the audible material starts and ends, " +
+  "and analyze only that part. Describe only what you actually hear: do not " +
+  "infer instruments that are typical of the genre, and say so when you are " +
+  "unsure whether something is present.";
 
 // Options that consume the following argument; everything else is positional.
-const VALUE_OPTS = new Set(["--prompt", "-p", "--model", "--api-key"]);
+const VALUE_OPTS = new Set([
+  "--prompt",
+  "-p",
+  "--model",
+  "--api-key",
+  "--file-uri",
+  "--delete",
+]);
+const USAGE =
+  "Usage: node analyze-audio.mjs <audio-file> [--prompt <text>] [--upload]\n" +
+  "       node analyze-audio.mjs --file-uri <files/id> [--prompt <text>]\n" +
+  "       node analyze-audio.mjs --delete <files/id>";
 
 /**
  * Split argv into positionals and a value map, honoring value-taking options.
@@ -57,8 +88,15 @@ function parseArgs(argv) {
   const opts = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (VALUE_OPTS.has(arg)) opts[arg] = argv[++i];
-    else if (arg.startsWith("--"))
+    if (VALUE_OPTS.has(arg)) {
+      const value = argv[++i];
+      // No value — last token, or another flag right after — is a malformed
+      // invocation, not a request for the default. Falling back silently ran
+      // `--api-key` against GEMINI_API_KEY with nothing to say it had.
+      if (value == null || value.startsWith("--"))
+        throw new Error(`Missing value for ${arg}`);
+      opts[arg] = value;
+    } else if (arg.startsWith("--"))
       opts[arg] = "true"; // bare boolean flag
     else positionals.push(arg);
   }
@@ -67,12 +105,6 @@ function parseArgs(argv) {
 
 async function main() {
   const { positionals, opts } = parseArgs(process.argv.slice(2));
-  const file = positionals[0];
-  if (!file)
-    throw new Error(
-      "Usage: node analyze-audio.mjs <file.wav> [--prompt <text>]",
-    );
-
   const apiKey =
     opts["--api-key"] ?? process.env.GEMINI_API_KEY ?? process.env.GEMINI_KEY;
   if (!apiKey) {
@@ -80,45 +112,108 @@ async function main() {
       "Missing API key (set GEMINI_API_KEY or GEMINI_KEY, or pass --api-key).",
     );
   }
+
+  if (opts["--delete"] != null) {
+    const name = fileRef(opts["--delete"]);
+    await deleteFile(name, apiKey);
+    process.stderr.write(`Deleted ${name}\n`);
+    return;
+  }
+
+  const file = positionals[0];
+  const reuse = opts["--file-uri"];
+  if (!file && !reuse) throw new Error(USAGE);
+
   const model = opts["--model"] ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
   const prompt = opts["--prompt"] ?? opts["-p"] ?? DEFAULT_PROMPT;
-  const mimeType = AUDIO_MIME[extname(file).toLowerCase()] ?? "audio/wav";
+  const audioPart = reuse
+    ? await uploadedPart(fileRef(reuse), apiKey)
+    : await localPart(file, apiKey, opts["--upload"] != null);
 
-  const { size } = await stat(file);
-  process.stderr.write(
-    `Analyzing ${basename(file)} (${(size / 1e6).toFixed(1)} MB) with ${model}…\n`,
-  );
-
-  const audioPart =
-    size <= INLINE_MAX_BYTES
-      ? await inlinePart(file, mimeType)
-      : await filesApiPart(file, mimeType, apiKey);
-
+  process.stderr.write(`Asking ${model}…\n`);
   const text = await generate({ apiKey, model, prompt, audioPart });
   process.stdout.write(text + "\n");
 }
 
 /**
- * Build an inline_data part (base64) for a small audio file.
+ * Build the audio part for a local file: inline when it's small, otherwise (or
+ * with `upload`) via the Files API. An upload is left in place for reuse and
+ * reported on stderr — deleting it is the caller's job, like the audio file.
  * @param {string} file - Path to the audio file.
- * @param {string} mimeType - Audio MIME type.
+ * @param {string} apiKey - Gemini API key.
+ * @param {boolean} upload - Force the Files API even for a small file.
  * @returns {Promise<object>} A generateContent part.
  */
-async function inlinePart(file, mimeType) {
-  const bytes = await readFile(file);
-  const data = bytes.toString("base64");
-  return { inline_data: { mime_type: mimeType, data } };
+async function localPart(file, apiKey, upload) {
+  // Guessing a MIME type for an unknown extension only moves the failure to the
+  // API, where the message is worse.
+  const ext = extname(file).toLowerCase();
+  const mimeType = AUDIO_MIME[ext];
+  if (!mimeType)
+    throw new Error(
+      `Unsupported audio type "${ext || file}". Gemini takes: ${Object.keys(AUDIO_MIME).join(", ")}`,
+    );
+
+  const { size } = await stat(file);
+  process.stderr.write(
+    `Reading ${basename(file)} (${(size / 1e6).toFixed(1)} MB)…\n`,
+  );
+  if (!upload && size <= INLINE_MAX_BYTES) {
+    const bytes = await readFile(file);
+    return {
+      inline_data: { mime_type: mimeType, data: bytes.toString("base64") },
+    };
+  }
+
+  const info = await uploadFile(file, mimeType, apiKey);
+  process.stderr.write(
+    `Uploaded as ${info.name} — ask again with --file-uri ${info.name}, ` +
+      `then --delete ${info.name} when done (expires after 48h).\n`,
+  );
+  return { file_data: { mime_type: mimeType, file_uri: info.uri } };
 }
 
 /**
- * Upload a large file via the Files API and return a file_data part once it is
- * ACTIVE (audio must finish server-side processing before generateContent).
+ * Build the audio part for a file already uploaded by an earlier run. The MIME
+ * type comes from the server, so a bare `files/<id>` is enough to go on.
+ * @param {string} name - Files API resource name, e.g. "files/abc123".
+ * @param {string} apiKey - Gemini API key.
+ * @returns {Promise<object>} A generateContent part.
+ */
+async function uploadedPart(name, apiKey) {
+  const res = await fetch(`${API_ROOT}/v1beta/${name}?key=${apiKey}`);
+  if (!res.ok)
+    throw new Error(
+      `Could not read ${name} (uploads expire after 48h): ${await res.text()}`,
+    );
+  const info = await res.json();
+  if (info.state !== "ACTIVE")
+    throw new Error(`Uploaded file ${name} is not ACTIVE (${info.state})`);
+  return { file_data: { mime_type: info.mimeType, file_uri: info.uri } };
+}
+
+/**
+ * Pull the `files/<id>` resource name out of a name or a full file URI.
+ * @param {string} value - A resource name or URI.
+ * @returns {string} The resource name.
+ */
+function fileRef(value) {
+  const match = /files\/[A-Za-z0-9_-]+/.exec(value);
+  if (!match)
+    throw new Error(`Not an uploaded-file reference: "${value}" (files/<id>)`);
+  return match[0];
+}
+
+/**
+ * Upload a large file via the Files API and return it once it is ACTIVE (audio
+ * must finish server-side processing before generateContent can use it).
  * @param {string} file - Path to the audio file.
  * @param {string} mimeType - Audio MIME type.
  * @param {string} apiKey - Gemini API key.
- * @returns {Promise<object>} A generateContent part referencing the uploaded file.
+ * @returns {Promise<{name: string, uri: string}>} The uploaded file's resource
+ *   name (for deleting it) and URI (for referencing it).
  */
-async function filesApiPart(file, mimeType, apiKey) {
+async function uploadFile(file, mimeType, apiKey) {
   const bytes = await readFile(file);
   process.stderr.write(`Uploading via Files API…\n`);
 
@@ -169,7 +264,20 @@ async function filesApiPart(file, mimeType, apiKey) {
   if (fileInfo.state !== "ACTIVE") {
     throw new Error(`Uploaded file not ACTIVE (state: ${fileInfo.state})`);
   }
-  return { file_data: { mime_type: mimeType, file_uri: fileInfo.uri } };
+  return fileInfo;
+}
+
+/**
+ * Delete an uploaded file.
+ * @param {string} name - Files API resource name, e.g. "files/abc123".
+ * @param {string} apiKey - Gemini API key.
+ * @returns {Promise<void>} Resolves once it's gone.
+ */
+async function deleteFile(name, apiKey) {
+  const res = await fetch(`${API_ROOT}/v1beta/${name}?key=${apiKey}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Could not delete ${name}: ${await res.text()}`);
 }
 
 /**

@@ -11,10 +11,10 @@ import { execSync } from "node:child_process";
  *
  * A version number alone can't tell two builds of the same version apart, so a
  * pre-release tester who downloads an early release candidate keeps reporting
- * that version after the artifacts are re-cut under the same tag — and a
- * version-only update check tells them they're up to date forever. The update
- * check compares this against the build published in the release notes (see
- * src/shared/version-check.ts).
+ * that version after the artifacts are re-cut under the same tag. Diagnostic
+ * only: it answers "which commit produced these bytes" when a bug report and a
+ * version number disagree. The update check does NOT read it — every build now
+ * carries its own -rcN, so the version string alone answers that.
  *
  * Releases pass BUILD_SHA in explicitly (scripts/build-and-release/
  * prepare-release.ts) so the baked value and the published marker come from one

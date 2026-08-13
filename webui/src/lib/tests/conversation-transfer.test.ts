@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import "fake-indexeddb/auto";
-import { describe, expect, it, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as ConversationDb from "#webui/lib/conversation-db";
 import {
   type ConversationRecord,
   MAX_CONVERSATIONS,
@@ -52,6 +53,38 @@ const importThenReread = async (
 
   return parsed.conversations.find((c) => c.id === id)!;
 };
+
+/**
+ * Export-format payload whose one assistant message carries a single spawn
+ * tool result with the given raw subagent fields.
+ * @param id - Conversation id
+ * @param subagent - Raw subagent fields to put on the tool result
+ * @returns Export-format payload
+ */
+const withSubagentResult = (id: string, subagent: Record<string, unknown>) => ({
+  version: 1,
+  conversations: [
+    {
+      id,
+      createdAt: 100,
+      messages: [
+        {
+          role: "assistant",
+          content: "spawned",
+          toolResults: [
+            {
+              id: "call-1",
+              name: "spawn_subagent",
+              args: {},
+              result: "ok",
+              ...subagent,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+});
 
 describe("conversation-transfer", () => {
   beforeEach(async () => {
@@ -545,5 +578,224 @@ describe("conversation-transfer", () => {
     const imported = await importThenReread(data, "bad-tools");
 
     expect(imported).not.toHaveProperty("enabledTools");
+  });
+
+  it("round-trips a well-formed subagent transcript and index", async () => {
+    const imported = await importThenReread(
+      withSubagentResult("good-subagent", {
+        subagentTranscript: [{ role: "user", content: "do the thing" }],
+        subagentIndex: 2,
+      }),
+      "good-subagent",
+    );
+    const entry = imported.messages[0]!.toolResults![0]!;
+
+    expect(entry.subagentIndex).toBe(2);
+    expect(entry.subagentTranscript).toStrictEqual([
+      { role: "user", content: "do the thing" },
+    ]);
+  });
+
+  it("drops only the malformed messages from a subagent transcript", async () => {
+    // A transcript is spliced verbatim into a resumed worker's chat history, so
+    // a message without string content has to go. The rest stays: dropping the
+    // whole array leaves the index behind, and that card renders empty and
+    // fails to resume.
+    const imported = await importThenReread(
+      withSubagentResult("bad-transcript", {
+        subagentTranscript: [{}, { role: "user", content: "do the thing" }],
+        subagentIndex: 1,
+      }),
+      "bad-transcript",
+    );
+    const entry = imported.messages[0]!.toolResults![0]!;
+
+    expect(entry.subagentTranscript).toStrictEqual([
+      { role: "user", content: "do the thing" },
+    ]);
+    expect(entry.subagentIndex).toBe(1);
+  });
+
+  it("drops a subagent index that isn't a whole number from 1", async () => {
+    // highestSubagentIndex compares with `>`, so a numeric string would seed the
+    // allocator while collectSubagentTranscript's `===` never matches it.
+    const imported = await importThenReread(
+      withSubagentResult("bad-index", { subagentIndex: "2" }),
+      "bad-index",
+    );
+
+    expect(imported.messages[0]!.toolResults![0]!).not.toHaveProperty(
+      "subagentIndex",
+    );
+  });
+
+  it("falls back to createdAt for a non-numeric updatedAt", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "bad-timestamp",
+          createdAt: 100,
+          updatedAt: "2026-01-01",
+          messages: [{ role: "user", content: "hi" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "bad-timestamp");
+
+    expect(imported.updatedAt).toBe(100);
+  });
+
+  it("drops a toolResults that isn't an array", async () => {
+    // Every reader treats it as one, and the throw lands outside the
+    // per-message error boundary — so importing this used to persist a
+    // conversation that could never be opened again.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "not-an-array",
+          createdAt: 100,
+          messages: [
+            {
+              role: "assistant",
+              content: "hi",
+              toolCalls: [{ id: "1", name: "ppal-read-song", args: {} }],
+              toolResults: { id: "1" },
+            },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "not-an-array");
+
+    expect(imported.messages[0]).not.toHaveProperty("toolResults");
+    // The rest of the message survives.
+    expect(imported.messages[0]!.content).toBe("hi");
+  });
+
+  it("gives a tool call with no args an empty one", async () => {
+    // The subagent card reads `args.task` with no guard, so a missing `args`
+    // threw and the message row fell back to its error boundary.
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "no-args",
+          createdAt: 100,
+          messages: [
+            {
+              role: "assistant",
+              content: "",
+              toolCalls: [{ id: "1", name: "spawn_subagent" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "no-args");
+
+    expect(imported.messages[0]!.toolCalls![0]!.args).toStrictEqual({});
+  });
+
+  it("drops a toolCalls that isn't an array", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "calls-not-array",
+          createdAt: 100,
+          messages: [{ role: "assistant", content: "hi", toolCalls: "nope" }],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "calls-not-array");
+
+    expect(imported.messages[0]).not.toHaveProperty("toolCalls");
+    expect(imported.messages[0]!.content).toBe("hi");
+  });
+
+  it("leaves a tool call that isn't an object alone", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "odd-call",
+          createdAt: 100,
+          messages: [
+            { role: "assistant", content: "spawned", toolCalls: [null] },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "odd-call");
+
+    expect(imported.messages[0]!.toolCalls).toStrictEqual([null]);
+  });
+
+  it("leaves a tool result that isn't an object alone", async () => {
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "odd-entry",
+          createdAt: 100,
+          messages: [
+            { role: "assistant", content: "spawned", toolResults: [null] },
+          ],
+        },
+      ],
+    };
+
+    const imported = await importThenReread(data, "odd-entry");
+
+    expect(imported.messages[0]!.toolResults).toStrictEqual([null]);
+  });
+});
+
+describe("importConversations when the write fails", () => {
+  afterEach(() => {
+    vi.doUnmock("#webui/lib/conversation-db");
+    vi.resetModules();
+  });
+
+  it("counts a record whose save throws as skipped and keeps going", async () => {
+    // A full disk / quota error is the only way saveConversation rejects, and
+    // one bad record must not abandon the rest of the import.
+    vi.resetModules();
+    vi.doMock(import("#webui/lib/conversation-db"), async () => ({
+      ...(await vi.importActual<typeof ConversationDb>(
+        "#webui/lib/conversation-db",
+      )),
+      saveConversation: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("QuotaExceededError"))
+        .mockResolvedValue(undefined),
+    }));
+
+    const { importConversations: importWithFailingSave } =
+      await import("#webui/lib/conversation-transfer");
+
+    const result = await importWithFailingSave(
+      JSON.stringify({
+        version: 1,
+        conversations: [
+          { id: "boom", createdAt: 100, messages: [] },
+          { id: "ok", createdAt: 100, messages: [] },
+        ],
+      }),
+    );
+
+    expect(result).toStrictEqual({
+      newCount: 1,
+      updatedCount: 0,
+      skippedCount: 1,
+      ignoredCount: 0,
+    });
   });
 });

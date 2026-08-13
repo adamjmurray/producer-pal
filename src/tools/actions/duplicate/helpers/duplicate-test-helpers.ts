@@ -11,8 +11,44 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
+const NEW_TRACK_ID = "live_set/tracks/1";
+
 export { children };
 export { type RegisteredMockObject, registerMockObject };
+
+/**
+ * Register the freshly duplicated track (index 1) together with one clip slot
+ * per `hasClip` flag — the scaffold every "duplicate a track that has clips"
+ * case needs before calling duplicate().
+ * @param hasClip - One flag per clip slot: does that slot hold a clip?
+ * @param arrangementClipIds - Arrangement clip ids on the new track
+ * @returns The new track handle and its slot handles, in slot order
+ */
+export function registerDuplicatedTrackSlots(
+  hasClip: boolean[],
+  arrangementClipIds: string[] = [],
+): { newTrack: RegisteredMockObject; slots: RegisteredMockObject[] } {
+  const slotIds = hasClip.map((_, index) => `slot${index}`);
+
+  const newTrack = registerMockObject(NEW_TRACK_ID, {
+    path: livePath.track(1),
+    properties: {
+      devices: [],
+      clip_slots: children(...slotIds),
+      arrangement_clips:
+        arrangementClipIds.length > 0 ? children(...arrangementClipIds) : [],
+    },
+  });
+
+  const slots = hasClip.map((has, index) =>
+    registerMockObject(slotIds[index] as string, {
+      path: livePath.track(1).clipSlot(index),
+      properties: { has_clip: has ? 1 : 0 },
+    }),
+  );
+
+  return { newTrack, slots };
+}
 
 /**
  * Register a clip slot and optionally its clip in the mock registry.
@@ -418,7 +454,7 @@ export function setupProducerPalDeviceMocks(): {
   const liveSet = registerMockObject("live_set", {
     path: livePath.liveSet,
   });
-  const newTrack = registerMockObject("live_set/tracks/1", {
+  const newTrack = registerMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       devices: children("device0", "device1", "device2"),
@@ -447,7 +483,7 @@ export function setupRoutingMocks(
     path: livePath.track(0),
     properties: mockData[String(livePath.track(0))] as Record<string, unknown>,
   });
-  const newTrack = registerMockObject("live_set/tracks/1", {
+  const newTrack = registerMockObject(NEW_TRACK_ID, {
     path: livePath.track(1),
     properties: {
       ...(mockData[String(livePath.track(1))] as Record<string, unknown>),

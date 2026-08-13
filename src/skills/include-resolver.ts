@@ -49,11 +49,13 @@ export interface ResolveIncludesOptions {
   onWarn?: (message: string) => void;
   /**
    * Optional sink called once per include that resolved to a known fragment,
-   * in document order. This is how a caller learns WHICH fragments a document
-   * actually composed — needed to check a fragment's declared prerequisites,
-   * which the resolver itself has no opinion about.
+   * in document order, with the body it resolved to. This is how a caller learns
+   * WHICH fragments a document actually composed — needed to check a fragment's
+   * declared prerequisites, which the resolver itself has no opinion about. The
+   * body comes along because a fragment that resolved to nothing composed
+   * nothing: a build-gated one, or a user's off switch.
    */
-  onFragment?: (name: string) => void;
+  onFragment?: (name: string, body: string) => void;
 }
 
 /**
@@ -88,7 +90,7 @@ export function resolveIncludes(
 
       if (included == null) return "";
 
-      options.onFragment?.(name);
+      options.onFragment?.(name, included);
 
       return stripNestedIncludes(included, name, options);
     },

@@ -12,13 +12,15 @@
     "**/generated-*-parser.js",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*-test-cases.ts",
     "**/*-test-helpers.ts",
     "**/*-test-helpers.tsx",
-    "**/*-test-case.ts",
-    "**/test-cases/**",
-    "**/test-utils/**",
+    "**/test/**",
     "**/tests/**",
-    "**/e2e/**"
+    "**/test-cases/**",
+    "**/test-utils/**"
   ],
   "path": ["../src", "../webui/src"]
 }

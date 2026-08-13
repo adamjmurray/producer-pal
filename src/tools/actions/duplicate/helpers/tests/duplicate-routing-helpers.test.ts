@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";

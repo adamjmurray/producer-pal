@@ -21,6 +21,11 @@ const defaultProps = createDefaultProps(mockAdapter);
 // The chat's own notation, which a brand-new conversation locks and every
 // request then carries as its header.
 const withNotation = { ...defaultProps, extraParams: { notation: "barbeat" } };
+// A chat whose Settings currently have small model mode switched on.
+const withSmallModel = {
+  ...defaultProps,
+  extraParams: { smallModelMode: true },
+};
 
 // A chat whose Tools tab currently has the library tool switched on.
 const withTools = {
@@ -34,6 +39,16 @@ const withTools = {
  */
 function lastLockedNotation(): unknown {
   return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[4]?.lockedNotation;
+}
+
+/**
+ * The `lockedSmallModelMode` carried by the init the adapter last built a
+ * config from.
+ * @returns The locked small-model mode, or undefined when the init carried no key
+ */
+function lastLockedSmallModelMode(): unknown {
+  return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[4]
+    ?.lockedSmallModelMode;
 }
 
 /**
@@ -127,8 +142,44 @@ describe("useChat notation locking", () => {
   });
 });
 
-describe("useChat toolset recording", () => {
-  it("records the toolset a new conversation connected with", async () => {
+describe("useChat small model mode locking", () => {
+  it("locks the current small model mode when a new conversation starts", async () => {
+    const { result } = renderHook(() => useChat(withSmallModel));
+
+    await act(async () => {
+      await result.current.handleSend("hello");
+    });
+
+    expect(lastLockedSmallModelMode()).toBeNull();
+    expect(result.current.activeSmallModelMode).toBe(true);
+  });
+
+  it("continues a restored conversation in the mode it started in", async () => {
+    // Settings now say small model mode, but this conversation was built against
+    // the full tool schemas and the standard skills — flipping either mid-chat
+    // contradicts what the model was already taught.
+    const { result } = renderHook(() => useChat(withSmallModel));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings({ smallModelMode: false }),
+      );
+    });
+
+    expect(result.current.activeSmallModelMode).toBe(false);
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(lastLockedSmallModelMode()).toBe(false);
+    expect(result.current.activeSmallModelMode).toBe(false);
+  });
+});
+
+describe("useChat toolset locking", () => {
+  it("locks the toolset a new conversation connected with", async () => {
     const { result } = renderHook(() => useChat(withTools));
 
     await act(async () => {
@@ -140,10 +191,10 @@ describe("useChat toolset recording", () => {
     });
   });
 
-  it("reconnects a restored conversation with today's tools, not its own", async () => {
-    // Deliberately unlike model/notation: a tool the user just turned on to keep
-    // working on an old conversation has to be reachable. The restored map is
-    // still surfaced first, which is what the settings notice reports.
+  it("reconnects a restored conversation on the toolset it ran with", async () => {
+    // Locked like the model and notation: the transcript's successful calls are
+    // themselves an instruction to keep calling those tools, so a tool switched
+    // off in Settings must not disappear from under a running conversation.
     const { result } = renderHook(() => useChat(withTools));
 
     await act(async () => {
@@ -153,8 +204,26 @@ describe("useChat toolset recording", () => {
       );
     });
 
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(lastEnabledTools()).toStrictEqual({ "ppal-library": false });
     expect(result.current.activeEnabledTools).toStrictEqual({
       "ppal-library": false,
+    });
+  });
+
+  it("falls back to the current toolset for a record saved before it was locked", async () => {
+    // Legacy records carry no toolset. There is nothing to honor, so the current
+    // selection is what the client connects with — and what gets locked.
+    const { result } = renderHook(() => useChat(withTools));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings(),
+      );
     });
 
     await act(async () => {
@@ -162,12 +231,9 @@ describe("useChat toolset recording", () => {
     });
 
     expect(lastEnabledTools()).toStrictEqual({ "ppal-library": true });
-    expect(result.current.activeEnabledTools).toStrictEqual({
-      "ppal-library": true,
-    });
   });
 
-  it("records nothing until a conversation connects", () => {
+  it("locks nothing until a conversation connects", () => {
     // A chat that has never built a client has no toolset to be compared
     // against, so the settings notice has nothing to report.
     const { result } = renderHook(() => useChat(withTools));

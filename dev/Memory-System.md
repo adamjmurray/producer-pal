@@ -15,8 +15,7 @@ always-injected index of `name → description` recall hooks, and on-demand body
 load via `ppal-context read`. The store, REST routes, and webui editor are all
 built generic so a second collection is a thin binding, not a rewrite:
 
-- **Store**:
-  `src/mcp-server/helpers/markdown-store/markdown-collection-store.ts`
+- **Store**: `src/mcp-server/helpers/config-store/markdown-collection-store.ts`
   (`makeMarkdownCollectionStore`) owns the CRUD, filesystem-safe slugging +
   path-traversal guard, and reserved-index-slug protection. A binding supplies
   only what differs: subdir/index filename, how a file parses into an entry,
@@ -160,9 +159,7 @@ wiped" (restore) or "the user cleared the context"
 gated on `allowRestore = !memo.syncedOnce` — allowed only on the session's first
 sync. After that first sync, an empty param is a deliberate clear, and the route
 _deletes_ the sidecar so the clear sticks and isn't resurrected by a restore on
-the next load. Residual gap: clearing as the literal first action on a
-freshly-upgraded set before any other tool call — negligible, since
-`ppal-connect` (which triggers the first sync) is the entry point.
+the next load.
 
 The tool-call sync is the primary trigger, but a **manual edit** (device-UI
 textedit or webui `POST /config`) changes the context without invoking a tool,
@@ -173,9 +170,16 @@ function only **backs up** a non-empty blob or **clears** the sidecar for an
 emptied one — it **never restores** (restore stays the first tool-call sync's
 job). An empty param seen _before_ the first sync is left untouched: it may be
 an upgrade-wiped device, and deleting the sidecar would destroy the very backup
-a restore needs; a non-empty edit is always safe (it can only write). The shared
-memo dedupes the tool-call sync's own outlet round-trip, so the restore echo
-can't loop.
+a restore needs. A non-empty edit in that same window is sent as a _non_-write
+(`isEdit: false`) for the same reason: it may be the first thing typed into a
+box that was wiped, and overwriting the sidecar with it buries notes nothing can
+restore afterward — the param is no longer empty, so the restore path is closed.
+It still creates a missing sidecar. Unless the **load echo carried content** —
+then nothing wiped the param, so the clear is real and propagates immediately,
+and edits get their write privileges back. Without that, clearing the context in
+the device UI and then making any tool call would restore what was just cleared.
+The shared memo dedupes the tool-call sync's own outlet round-trip, so the
+restore echo can't loop.
 
 `ppal-context write scope:project` needs the same trigger, and for a reason
 worth stating: its `update_project_context` outlet reaches the device-UI
@@ -229,20 +233,39 @@ notes with that Set's stale ones, with no context write and no user intent.
 The rule now enforced: create a _missing_ sidecar always (covering a first save,
 a Save-As, and a moved folder), but overwrite an _existing, differing_ one only
 on a real project-context write. An `isEdit` flag on the sync request is what
-separates them, and the two V8 entry points each hardcode it, because each knows
-statically which kind it is:
+separates them, and each V8 entry point knows which kind it is:
 
 - `syncProjectContextBackup` runs before every tool call and only _observes_ the
   param, so it always sends `isEdit: false`. It can still create a missing
   sidecar; it can never replace a differing one.
 - `backupProjectContextOnEdit` is only ever reached by a genuine write, so it
-  always sends `isEdit: true`.
+  sends `isEdit: true` — except while the device may have loaded wiped (no sync
+  yet and no load echo with content), where even a write waits its turn.
 
 The node route refuses the overwrite directly
 (`existing != null && !isEdit ⇒ action: "none"`, treating an empty sidecar as no
 backup). A device load is additionally filtered before it gets that far: the
 setter classifies a set that changes nothing, or the session's first set, as a
 load echo rather than an edit.
+
+A sidecar that exists but can't be read is its own outcome
+(`action: "unreadable"`), never `"none"`. The route always skips — it can't tell
+whether writing would bury the folder's shared notes — but only V8 knows what
+the skip cost, so it decides what to do:
+
+- **Restore** (empty blob): still owed. V8 leaves the session's one restore
+  unspent and the wipe question open, warns once, and retries the read on the
+  next tool call. Collapsing this into `"none"` would look like "no backup": the
+  restore is silently forfeited and the next edit overwrites the sidecar as soon
+  as it's readable again.
+- **Genuine write**: didn't reach disk, and the user thinks it did. Warned once
+  per blob, so a later edit says so again, and not memoized either — an
+  unreadable sidecar is usually a passing lock (cloud sync), so the next sync
+  retries. This is keyed off "was this a write", not off `isEdit`: a write made
+  while the wipe question is open carries `isEdit: false`, and it is still the
+  user's own text that didn't reach disk.
+- **Passing sync**: lost nothing, since it was never allowed to overwrite an
+  existing sidecar. Memoized silently.
 
 The sidecar is NOT under `~/.producer-pal`, so it deliberately does not go
 through the config-markdown store — it writes into the user's Live project
@@ -269,7 +292,7 @@ all, and (see below) the memory-index injection is skipped for the same reason.
 ## Memory entry format
 
 One fact per file, `~/.producer-pal/memory/<slug>.md`. Frontmatter is flat
-`key: value` (no YAML dependency — `helpers/markdown-store/frontmatter.ts`) and
+`key: value` (no YAML dependency — `helpers/config-store/frontmatter.ts`) and
 holds exactly two fields:
 
 ```markdown

@@ -29,11 +29,14 @@ export type NonDefaultNotation = Exclude<Notation, "barbeat">;
  * notation), or a compound `smallModel:{notation}` cell pinning both axes.
  */
 export type ModeKey =
-  NonDefaultNotation | "smallModel" | `smallModel:${NonDefaultNotation}`;
+  | NonDefaultNotation
+  | "smallModel"
+  | `smallModel:${NonDefaultNotation}`;
 
 /** Tool `description`: a plain string, or per-mode text over a required base. */
 export type ModalDescription =
-  string | ({ default: string } & Partial<Record<ModeKey, string>>);
+  | string
+  | ({ default: string } & Partial<Record<ModeKey, string>>);
 
 /**
  * A param's value in one mode: a replacement description string, `null` to hide
@@ -41,7 +44,9 @@ export type ModalDescription =
  * optional description). Absent key ⇒ a less-specific key (or `default`) applies.
  */
 export type ParamModeValue =
-  string | null | { description?: string; excludeEnumValues?: string[] };
+  | string
+  | null
+  | { description?: string; excludeEnumValues?: string[] };
 
 /** A param's per-mode overrides over its required base description. */
 export type ParamModeMap = { default: string } & Partial<
@@ -199,17 +204,21 @@ function firstPresent<T>(
 }
 
 /**
+ * A winning param mode value, after resolveParamModes has ruled out the absent
+ * (`undefined`) and hide-the-param (`null`) cases. Taking this rather than the
+ * full type is what lets the readers below be total: drop either guard at the
+ * call site and they stop compiling.
+ */
+type PresentParamModeValue = Exclude<ParamModeValue, null>;
+
+/**
  * Extracts a description string from a param mode value (string form, or an
  * object's `description`), or undefined if the value carries no description.
  * @param value - A resolved param mode value
  * @returns The description string, or undefined
  */
-function descriptionOf(value: ParamModeValue | undefined): string | undefined {
-  if (typeof value === "string") return value;
-
-  if (value != null && typeof value === "object") return value.description;
-
-  return undefined;
+function descriptionOf(value: PresentParamModeValue): string | undefined {
+  return typeof value === "string" ? value : value.description;
 }
 
 /**
@@ -218,9 +227,6 @@ function descriptionOf(value: ParamModeValue | undefined): string | undefined {
  * @param value - A resolved param mode value
  * @returns The enum values to exclude, or undefined
  */
-function enumValuesOf(value: ParamModeValue | undefined): string[] | undefined {
-  if (value != null && typeof value === "object")
-    return value.excludeEnumValues;
-
-  return undefined;
+function enumValuesOf(value: PresentParamModeValue): string[] | undefined {
+  return typeof value === "string" ? undefined : value.excludeEnumValues;
 }

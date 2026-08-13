@@ -99,6 +99,7 @@ export {
 export {
   drumBackbeatMatrix,
   melodyPitchMatrix,
+  middleCScaleMatrix,
   rhythmGridMatrix,
 } from "./clip/notation/notation-matrix-scenarios.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";

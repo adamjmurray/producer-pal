@@ -19,6 +19,7 @@ const defaultHeaderInfo: HeaderInfo = {
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
+  defaultToolsCount: 20,
   smallModelMode: false,
   defaultSmallModelMode: false,
   showHelpLinks: true,
@@ -39,6 +40,7 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     isHistoryOpen: false,
     update: null,
+    onDismissUpdate: vi.fn(),
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
@@ -138,18 +140,18 @@ describe("ChatHeader", () => {
       expect(screen.getByText("Gemini 3.5 Flash-Lite")).toBeDefined();
     });
 
-    it("shows Gemini 3.6 Flash model with provider", () => {
+    it("shows Gemini 3.7 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.6-flash",
+            activeModel: "gemini-3.7-flash",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.6 Flash")).toBeDefined();
+      expect(screen.getByText("Gemini 3.7 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {
@@ -230,10 +232,69 @@ describe("ChatHeader", () => {
           headerInfo={hi({ enabledToolsCount: 15, totalToolsCount: 20 })}
         />,
       );
-      const indicator = screen.getByTitle("15/20 tools enabled");
+      const indicator = screen.getByTitle(/^15\/20 tools enabled/);
 
       expect(indicator.textContent).toContain("🔧");
       expect(indicator.textContent).toContain("15");
+    });
+
+    it("explains the gap the experimental tools leave in the denominator", () => {
+      // 21/23 out of the box is the normal state, not a fault.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({ enabledToolsCount: 18, totalToolsCount: 20 })}
+        />,
+      );
+
+      // Queried loosely on the gap between the lines: getByTitle collapses the
+      // newline the tooltip actually carries.
+      expect(
+        screen.getByTitle(
+          /^18\/20 tools enabled\s+Experimental tools \(Live API, Subagent\) are off by default$/,
+        ),
+      ).toBeDefined();
+    });
+
+    it("goes amber when the conversation's pinned toolset has been left behind", () => {
+      // The count is the PINNED toolset, so without the amber it would read as
+      // the current selection and the Tools tab would look like it did nothing.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            enabledToolsCount: 15,
+            defaultToolsCount: 18,
+            enabledToolsDiverge: true,
+          })}
+        />,
+      );
+      const indicator = screen.getByTitle(
+        /^Locked: 15\/20 tools enabled \(default is now 18\/20\)/,
+      );
+
+      expect(indicator.className).toContain("amber");
+    });
+
+    it("says the set differs when the two toolsets are the same size", () => {
+      // One tool swapped for another: naming a number that doesn't move would
+      // read as nothing having changed.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            enabledToolsCount: 20,
+            defaultToolsCount: 20,
+            enabledToolsDiverge: true,
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByTitle(
+          "Locked: 20/20 tools enabled (default is a different set)",
+        ),
+      ).toBeDefined();
     });
   });
 
@@ -508,18 +569,60 @@ describe("ChatHeader", () => {
 
       expect(fullText).toBeDefined();
     });
+
+    it("names what the default moved to when the conversation's mode is locked", () => {
+      // Same shape as the model display's locked title, so the three amber
+      // indicators read as one story rather than three phrasings.
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({
+            // The lock only exists once a conversation has connected.
+            activeModel: "gemini-3.1-pro-preview",
+            smallModelMode: true,
+            defaultSmallModelMode: false,
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByTitle(
+          "Locked: small model mode (default is now large model mode)",
+        ),
+      ).toBeDefined();
+    });
+
+    it("adds no locked tooltip when nothing diverges", () => {
+      // The indicator stays untitled so the wrapping button's "Connection
+      // settings" is what the user sees, matching the model display.
+      render(<ChatHeader {...defaultProps} />);
+
+      expect(screen.queryByTitle(/^Locked:/)).toBeNull();
+    });
   });
 
   describe("VersionDisplay", () => {
     it("does not show update link when there is no update", () => {
-      render(<VersionDisplay version="1.4.4" update={null} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={null}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
 
       expect(screen.getByText(/v1\.4\.4/)).toBeDefined();
       expect(screen.queryByText("(update)")).toBeNull();
     });
 
     it("shows update link when an update is available", () => {
-      render(<VersionDisplay version="1.4.4" update={{ version: "1.5.0" }} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={{ version: "1.5.0" }}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
       const link = screen.getByText("(update)");
 
       expect(link).toBeDefined();
@@ -531,7 +634,13 @@ describe("ChatHeader", () => {
     });
 
     it("shows latest version in tooltip", () => {
-      render(<VersionDisplay version="1.4.4" update={{ version: "2.0.0" }} />);
+      render(
+        <VersionDisplay
+          version="1.4.4"
+          update={{ version: "2.0.0" }}
+          onDismissUpdate={vi.fn()}
+        />,
+      );
       const link = screen.getByText("(update)");
 
       expect(link.getAttribute("title")).toBe(

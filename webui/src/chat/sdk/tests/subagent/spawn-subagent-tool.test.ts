@@ -8,12 +8,14 @@ import {
   MAX_SPAWNS,
   MAX_WORKER_STEPS,
   type RunWorkerOptions,
-  SPAWN_SUBAGENT_TOOL_NAME,
+  type WorkerRunResult,
   buildWorkerConfig,
   createSpawnSubagentTool,
   extractWorkerResult,
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
   type ChatMessage,
@@ -21,7 +23,7 @@ import {
 } from "#webui/chat/sdk/types";
 import { createConfig } from "#webui/chat/sdk/tests/client-test-helpers";
 
-type RunWorker = (options: RunWorkerOptions) => Promise<ChatMessage[]>;
+type RunWorker = (options: RunWorkerOptions) => Promise<WorkerRunResult>;
 
 const options = (abortSignal?: AbortSignal) => ({
   toolCallId: "tc1",
@@ -98,7 +100,7 @@ describe("buildWorkerConfig", () => {
     ).toBe("stark");
   });
 
-  describe("with a default-subagent preset override", () => {
+  describe("with a subagent preset override", () => {
     const override: SubagentConfigOverride = {
       model: { modelId: "cheap-worker", provider: "openai" } as never,
       smallModelMode: true,
@@ -170,6 +172,35 @@ describe("buildWorkerConfig", () => {
       expect(worker.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     });
 
+    it("keeps the conversation's Direct Live API state under a preset toolset", () => {
+      // A preset can never capture this tool (its checkbox writes the device
+      // flag, not a map entry), so an absent key must not hand the worker a tool
+      // the conversation is pinned off from.
+      const worker = buildWorkerConfig(
+        createConfig({
+          enabledTools: { [LIVE_API_TOOL_ID]: false },
+          subagentConfig: {
+            ...override,
+            enabledTools: { "ppal-create-clip": true },
+          },
+        }),
+      );
+
+      expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(false);
+      expect(worker.enabledTools?.["ppal-create-clip"]).toBe(true);
+    });
+
+    it("passes the Live API tool through when the conversation has it on", () => {
+      const worker = buildWorkerConfig(
+        createConfig({
+          enabledTools: { [LIVE_API_TOOL_ID]: true },
+          subagentConfig: { ...override, enabledTools: {} },
+        }),
+      );
+
+      expect(worker.enabledTools?.[LIVE_API_TOOL_ID]).toBe(true);
+    });
+
     it("runs the worker in the preset's notation, not the orchestrator's", () => {
       // The per-worker notation unblock: a bar|beat orchestrator delegating to a
       // stark worker. It rides the same spread as model/inference.
@@ -225,6 +256,16 @@ describe("extractWorkerResult", () => {
       "The subagent finished without a final message.",
     );
   });
+
+  it("says so when the worker ran out of tool steps", () => {
+    const history: ChatMessage[] = [{ role: "user", content: "do it" }];
+
+    // The orchestrator can only make the right call — resume or take over — if
+    // it can tell a step-limit stop from a worker that simply said nothing.
+    expect(extractWorkerResult(history, true)).toContain(
+      "ran out of tool steps",
+    );
+  });
 });
 
 describe("createSpawnSubagentTool", () => {
@@ -243,7 +284,10 @@ describe("createSpawnSubagentTool", () => {
   }) => {
     const runWorker: Mock<RunWorker> =
       overrides?.runWorker ??
-      vi.fn<RunWorker>().mockResolvedValue(workerHistory);
+      vi.fn<RunWorker>().mockResolvedValue({
+        messages: workerHistory,
+        toolLimitReached: false,
+      });
     const spawnState = {
       count: overrides?.count ?? 0,
       nextIndex: overrides?.nextIndex ?? 0,
@@ -278,12 +322,11 @@ describe("createSpawnSubagentTool", () => {
     );
     // The worker config passed to runWorker has spawn disabled.
     const call = firstCall(runWorker);
+    const workerConfig = await call.resolveConfig();
 
-    expect(call.workerConfig.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(
-      false,
-    );
+    expect(workerConfig.enabledTools?.[SPAWN_SUBAGENT_TOOL_NAME]).toBe(false);
     expect(call.task).toBe("write a bassline");
-    expect(call.workerConfig.chatHistory).toStrictEqual([]);
+    expect(workerConfig.chatHistory).toStrictEqual([]);
   });
 
   it("forwards the tool-call id and abort signal to the worker", async () => {
@@ -387,6 +430,25 @@ describe("createSpawnSubagentTool", () => {
     expect(runWorker).not.toHaveBeenCalled();
   });
 
+  it("counts a REFUSED attempt against the cap", async () => {
+    // Nothing else bounds a model that keeps re-sending a call this tool
+    // rejects, so it would otherwise burn the orchestrator's whole step budget.
+    const { tool, spawnState } = setup({
+      count: MAX_SPAWNS - 1,
+      getSession: () => undefined,
+    });
+
+    await expect(
+      tool.execute!({ task: "more", resumeFrom: 4 }, options()),
+    ).rejects.toThrow("no subagent 4");
+    expect(spawnState.count).toBe(MAX_SPAWNS);
+
+    // ...and the next attempt hits the cap rather than repeating forever.
+    await expect(tool.execute!({ task: "x" }, options())).rejects.toThrow(
+      `${MAX_SPAWNS}`,
+    );
+  });
+
   describe("resuming a worker", () => {
     const session: ChatMessage[] = [
       { role: "user", content: "write a bassline" },
@@ -409,7 +471,9 @@ describe("createSpawnSubagentTool", () => {
 
       const call = firstCall(runWorker);
 
-      expect(call.workerConfig.chatHistory).toBe(session);
+      const resumedConfig = await call.resolveConfig();
+
+      expect(resumedConfig.chatHistory).toBe(session);
       expect(call.task).toBe("make it swing");
       // The worker keeps its identity, and the fresh-spawn allocator is
       // untouched so the next new worker still gets 4.
@@ -438,13 +502,26 @@ describe("createSpawnSubagentTool", () => {
       expect(firstCall(runWorker).subagentIndex).toBe(2);
     });
 
-    it("refuses a worker this conversation never had", async () => {
-      const { tool, runWorker } = setup({ getSession: () => {} });
+    it("refuses a worker this conversation never had, naming the real ones", async () => {
+      // A model that guessed wrong has nothing to guess better from unless the
+      // error says which numbers exist.
+      const { tool, runWorker } = setup({
+        nextIndex: 3,
+        getSession: (index) => (index === 9 ? undefined : session),
+      });
 
       await expect(
         tool.execute!({ task: "more", resumeFrom: 9 }, options()),
-      ).rejects.toThrow("no subagent 9");
+      ).rejects.toThrow("Existing subagents: 1, 2, 3.");
       expect(runWorker).not.toHaveBeenCalled();
+    });
+
+    it("says so plainly when there are no subagents to resume", async () => {
+      const { tool } = setup({ getSession: () => undefined });
+
+      await expect(
+        tool.execute!({ task: "more", resumeFrom: 2 }, options()),
+      ).rejects.toThrow("It has no subagents yet.");
     });
 
     it("refuses a resumeFrom that isn't a worker number", async () => {
@@ -452,7 +529,7 @@ describe("createSpawnSubagentTool", () => {
       // the context the caller was reusing.
       const { tool, runWorker } = setup({ getSession: () => session });
 
-      for (const bad of [0, -1, 1.5, "first"]) {
+      for (const bad of [-1, 1.5, "first"]) {
         await expect(
           tool.execute!({ task: "more", resumeFrom: bad }, options()),
         ).rejects.toThrow("resumeFrom must be");
@@ -461,14 +538,22 @@ describe("createSpawnSubagentTool", () => {
       expect(runWorker).not.toHaveBeenCalled();
     });
 
-    it("treats null and empty resumeFrom as a fresh spawn", async () => {
+    it("treats null, empty, and 0 resumeFrom as a fresh spawn", async () => {
+      // 0 names no worker (indices are 1-based) but is what models send for an
+      // optional number they mean to leave empty — see parseResumeFrom.
       const { tool, runWorker } = setup({ getSession: () => session });
 
       await tool.execute!({ task: "fresh", resumeFrom: null }, options());
       await tool.execute!({ task: "fresh", resumeFrom: "" }, options());
+      await tool.execute!({ task: "fresh", resumeFrom: 0 }, options());
+      await tool.execute!({ task: "fresh", resumeFrom: "0" }, options());
+
+      expect(runWorker).toHaveBeenCalledTimes(4);
 
       for (const call of runWorker.mock.calls) {
-        expect(call[0].workerConfig.chatHistory).toStrictEqual([]);
+        const workerConfig = await call[0].resolveConfig();
+
+        expect(workerConfig.chatHistory).toStrictEqual([]);
       }
     });
 

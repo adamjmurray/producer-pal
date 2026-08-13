@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type SubagentRun,
   type SubagentTranscriptStash,
@@ -143,6 +143,20 @@ describe("attachStashedTranscripts", () => {
     );
   });
 
+  it("consumes the stash entry it attached", () => {
+    // The transcript lives on the history entry from here on. Keeping the
+    // stash's copy makes the Map the sole owner of every worker log once a
+    // compaction reassigns chatHistory.
+    const history = [spawnMessage("tc1")];
+    const stash: SubagentTranscriptStash = new Map([
+      ["tc1", run("worker one")],
+    ]);
+
+    attachStashedTranscripts(history, 0, stash);
+
+    expect(stash.size).toBe(0);
+  });
+
   it("skips messages before fromIndex", () => {
     const history: ChatMessage[] = [spawnMessage("tc1"), spawnMessage("tc2")];
     const stash: SubagentTranscriptStash = new Map([
@@ -213,8 +227,8 @@ describe("collectSubagentTranscript", () => {
   });
 
   it("returns a deep copy so the worker cannot write through to history", () => {
-    // The seeded array becomes the worker's live chatHistory and the retry path
-    // truncates it in place. Sharing it would corrupt the persisted record.
+    // The seeded array becomes the worker's live chatHistory, which a run
+    // appends to and mutates in place. Sharing it would corrupt the record.
     const stored: ChatMessage[] = [{ role: "assistant", content: "original" }];
     const history = [recordedRun(1, stored)];
 
@@ -262,13 +276,27 @@ describe("highestSubagentIndex", () => {
 });
 
 describe("isSpawnToolResult", () => {
-  it("accepts only a spawn_subagent tool-result part", () => {
+  it("accepts a spawn_subagent tool-result or tool-error part", () => {
     expect(
       isSpawnToolResult({
         type: "tool-result",
         toolName: SPAWN_SUBAGENT_TOOL_NAME,
       }),
     ).toBe(true);
+    // A spawn that threw (retry budget spent, MAX_SPAWNS, bad resumeFrom) still
+    // has a transcript worth showing — usually the most worth showing.
+    expect(
+      isSpawnToolResult({
+        type: "tool-error",
+        toolName: SPAWN_SUBAGENT_TOOL_NAME,
+      }),
+    ).toBe(true);
+    expect(
+      isSpawnToolResult({
+        type: "tool-error",
+        toolName: "ppal-read-live-set",
+      }),
+    ).toBe(false);
     expect(
       isSpawnToolResult({
         type: "tool-result",

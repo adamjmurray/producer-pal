@@ -42,6 +42,8 @@ describe("useChatModeReporting", () => {
         } as unknown as PreferencesSettings,
         enabledToolsCount: 3,
         totalToolsCount: 5,
+        defaultToolsCount: 5,
+        enabledToolsDiverge: false,
         handleDeleteAll,
         handleDeleteUnbookmarked,
         setModeContext,
@@ -81,6 +83,8 @@ describe("useChatModeReporting", () => {
         display: { showHelpLinks: true } as unknown as PreferencesSettings,
         enabledToolsCount: 3,
         totalToolsCount: 5,
+        defaultToolsCount: 5,
+        enabledToolsDiverge: false,
         handleDeleteAll: vi.fn(),
         handleDeleteUnbookmarked: vi.fn(),
         setModeContext: (ctx: ModeContext) => {

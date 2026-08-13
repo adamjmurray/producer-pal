@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
+import { drumPatternNotes } from "../../barbeat-test-helpers.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { pitchName } from "../helpers/barbeat-serializer-state.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";

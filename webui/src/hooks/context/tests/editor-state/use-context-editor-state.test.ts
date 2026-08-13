@@ -389,6 +389,58 @@ describe("useContextEditorState", () => {
       expect(result.current.editorKey).toBe(startingKey);
     });
 
+    it("restores the pre-import draft when the import save fails", async () => {
+      // Nothing remounted, so the editor still shows the old content. Leaving
+      // the markers on the imported text would make getContent() (Export) and
+      // the size readout describe text nobody can see, with nothing to retry it.
+      const save = vi.fn().mockResolvedValue(false);
+      const { result } = renderReadyEditor({ save });
+
+      stubConfirm(true);
+
+      await act(async () => {
+        await result.current.handleImport("# imported");
+      });
+
+      expect(result.current.getContent()).toBe("old");
+      expect(result.current.charCount).toBe("old".length);
+      expect(result.current.dirty).toBe(false);
+    });
+
+    it("restores the pre-clear draft when the clear fails", async () => {
+      const clear = vi.fn().mockResolvedValue(false);
+      const { result } = renderReadyEditor({ clear });
+
+      stubConfirm(true);
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(result.current.getContent()).toBe("old");
+      expect(result.current.charCount).toBe("old".length);
+      expect(result.current.dirty).toBe(false);
+    });
+
+    it("leaves an unflushed draft dirty when the clear fails", async () => {
+      // This draft never reached the server: the replace cancelled its debounce
+      // before dispatching. Rolling the baseline back to the draft rather than to
+      // what was really saved would call it saved — leaving it clean, so the next
+      // external-update banner's Reload discards it.
+      const clear = vi.fn().mockResolvedValue(false);
+      const { result } = renderReadyEditor({ clear });
+
+      stubConfirm(true);
+      await typeDraft(result, "never saved");
+
+      await act(async () => {
+        await result.current.handleClear();
+      });
+
+      expect(result.current.getContent()).toBe("never saved");
+      expect(result.current.dirty).toBe(true);
+    });
+
     it("getContent returns the live draft", async () => {
       const { result } = renderEditor(makeReady("seed"));
 
@@ -559,6 +611,32 @@ describe("useContextEditorState", () => {
       unmount();
 
       expect(save).toHaveBeenCalledWith("typed-but-not-yet-saved");
+    });
+
+    it("rolls the baseline back and retries when a failed save leaves the editor mounted", async () => {
+      // The counterpart to the guard below: while the hook IS mounted, a
+      // transient failure must arm the unattended SAVE_RETRY_MS re-POST so an
+      // absent user's edits still land.
+      const save = vi.fn().mockResolvedValue(false);
+      const { result } = renderReadyEditor({ save });
+
+      await act(() => {
+        result.current.handleChange("typed");
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(save).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+        await Promise.resolve();
+      });
+
+      expect(save).toHaveBeenCalledTimes(2);
+      expect(save).toHaveBeenLastCalledWith("typed");
     });
 
     it("does not schedule a retry loop when the unmount flush's save fails", async () => {

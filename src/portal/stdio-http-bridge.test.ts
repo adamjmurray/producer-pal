@@ -12,23 +12,24 @@ import {
   vi,
   type Mock,
 } from "vitest";
+import {
+  callToolRequest,
+  callToolSuccessfully,
+  callToolWithMcpError,
+  expectBrandedErrorText,
+  expectPushedConfig,
+  getHandler,
+  mockClient,
+  mockLiveApiTool,
+  mockServer,
+  mockStandardTools,
+  mockTransport,
+  startAndGetCallHandler,
+  type TestBridge,
+} from "./stdio-http-bridge-test-helpers.ts";
 
-// Mock MCP SDK components
-const mockClient = {
-  connect: vi.fn(),
-  close: vi.fn(),
-  listTools: vi.fn(),
-  callTool: vi.fn(),
-};
-
-const mockServer = {
-  setRequestHandler: vi.fn(),
-  connect: vi.fn(),
-  close: vi.fn(),
-};
-
-const mockTransport = {};
-
+// The mock objects live in the helper module; these factories only dereference
+// them when the mocked constructor is called, so there is no init-order hazard.
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
   Client: vi.fn(function () {
@@ -64,37 +65,32 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
   ErrorCode: { ConnectionClosed: -32000 },
 }));
 
-const mockStandardTools = {
-  "ppal-read-live-set": {
-    title: "Read Live Set",
-    description: "Read comprehensive information about the Live Set",
-    inputSchema: { type: "object", properties: {} },
-  },
-  "ppal-create-clip": {
-    title: "Create Clip",
-    description: "Creates MIDI clips in Session or Arrangement",
-    inputSchema: { type: "object", properties: {} },
-  },
-};
-
-const mockLiveApiTool = {
-  "ppal-live-api": {
-    title: "Live API",
-    description: "Direct access to the Ableton Live Object Model.",
-    inputSchema: { type: "object", properties: {} },
-  },
-};
-
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
 vi.mock(import("#src/mcp-server/create-mcp-server.ts"), () => ({
-  // Mirror the real server's opt-in gating: ppal-live-api is registered only
-  // when liveApiEnabled is set, so the portal's offline fallback reflects it.
+  // Mirror the real server's gating: ppal-live-api is registered only when
+  // liveApiEnabled is set, and `tools` whitelists the rest — so the portal's
+  // offline fallback reflects both.
   createMcpServer: vi.fn(
-    (_callLiveApi: unknown, opts?: { liveApiEnabled?: boolean }) => ({
-      _registeredTools: opts?.liveApiEnabled
+    (
+      _callLiveApi: unknown,
+      opts?: { liveApiEnabled?: boolean; tools?: string[] },
+    ) => {
+      const registered: Record<string, unknown> = opts?.liveApiEnabled
         ? { ...mockStandardTools, ...mockLiveApiTool }
-        : mockStandardTools,
-    }),
+        : mockStandardTools;
+      const whitelist = opts?.tools;
+
+      return {
+        _registeredTools:
+          whitelist == null
+            ? registered
+            : Object.fromEntries(
+                Object.entries(registered).filter(([name]) =>
+                  whitelist.includes(name),
+                ),
+              ),
+      };
+    },
   ),
 }));
 
@@ -115,183 +111,10 @@ vi.mock(import("./file-logger.ts"), () => ({
 
 // Import the class after mocking
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { VERSION } from "#src/shared/config.ts";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { logger } from "./file-logger.ts";
-import { type BridgeOptions, StdioHttpBridge } from "./stdio-http-bridge.ts";
-
-/**
- * Get a registered handler from mockServer.setRequestHandler calls
- * @param schema - Schema name to find (e.g., "CallToolRequestSchema")
- * @param which - Which matching call to return
- * @returns The handler function
- */
-function getHandler(
-  schema: string,
-  which: "first" | "last" = "first",
-): (request: unknown) => Promise<unknown> {
-  const calls = (mockServer.setRequestHandler as Mock).mock.calls.filter(
-    (c: unknown[]) => c[0] === schema,
-  );
-
-  return which === "last" ? calls.at(-1)?.[1] : calls[0]?.[1];
-}
-
-// Type for accessing private properties on the bridge
-interface BridgeInternals {
-  httpUrl: string;
-  mcpServer: object | null;
-  httpClient: object | null;
-  isConnected: boolean;
-  smallModelMode: boolean;
-  fallbackTools: {
-    tools: Array<{
-      name: string;
-      title?: string;
-      description: string;
-      inputSchema: object;
-    }>;
-  };
-  start: () => Promise<void>;
-  stop: () => Promise<void>;
-  _createSetupErrorResponse: () => {
-    content: Array<{ type: string; text: string }>;
-    isError: boolean;
-  };
-  _createMisconfiguredUrlResponse: () => {
-    content: Array<{ type: string; text: string }>;
-    isError: boolean;
-  };
-  _ensureHttpConnection: () => Promise<void>;
-}
-
-// Cast to BridgeInternals to access private properties in tests
-type TestBridge = BridgeInternals;
-
-/**
- * Connect a fresh bridge built with `options` and assert the JSON body it POSTed
- * to /config — or, when `expectedBody` is null, that it pushed nothing. Restores
- * the fetch spy before returning.
- * @param options - Bridge constructor options
- * @param expectedBody - Expected POST /config body, or null to assert no push
- */
-async function expectPushedConfig(
-  options: BridgeOptions,
-  expectedBody: Record<string, unknown> | null,
-): Promise<void> {
-  const fetchSpy = vi
-    .spyOn(globalThis, "fetch")
-    .mockResolvedValue(new Response("{}"));
-  const testBridge = new StdioHttpBridge(
-    "http://localhost:3350/mcp",
-    options,
-  ) as unknown as TestBridge;
-
-  mockClient.connect.mockResolvedValue(undefined);
-
-  await testBridge._ensureHttpConnection();
-
-  if (expectedBody == null) {
-    expect(fetchSpy).not.toHaveBeenCalled();
-  } else {
-    expect(fetchSpy).toHaveBeenCalledWith("http://localhost:3350/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(expectedBody),
-    });
-  }
-
-  fetchSpy.mockRestore();
-}
-
-/**
- * Create a tool call request object for handler tests.
- * @param name - Tool name
- * @param args - Tool arguments
- * @returns Request object
- */
-function callToolRequest(
-  name = "test-tool",
-  args: Record<string, unknown> = {},
-): { params: { name: string; arguments: Record<string, unknown> } } {
-  return { params: { name, arguments: args } };
-}
-
-/**
- * Start the bridge and return the call tool handler.
- * @param b - Bridge instance
- * @returns The CallToolRequestSchema handler
- */
-async function startAndGetCallHandler(
-  b: TestBridge,
-): Promise<(request: unknown) => Promise<unknown>> {
-  mockServer.connect.mockResolvedValue(undefined);
-  await b.start();
-
-  return getHandler("CallToolRequestSchema");
-}
-
-/**
- * Assert that an error response's text contains common Producer Pal branding.
- * @param response - Error response object
- * @param response.content - Array of content items with type and text
- */
-function expectBrandedErrorText(response: {
-  content: Array<{ type: string; text: string }>;
-}): void {
-  expect(response.content[0]?.text).toContain("producer-pal.org");
-  expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
-}
-
-/**
- * Set up mocks for a successful tool call and invoke the handler.
- * @param handler - The call tool handler
- * @param request - The tool call request
- * @param request.params - The request parameters
- * @param request.params.name - The tool name
- * @param request.params.arguments - The tool arguments
- * @returns The tool result
- */
-async function callToolSuccessfully(
-  handler: (request: unknown) => Promise<unknown>,
-  request: { params: { name: string; arguments?: Record<string, unknown> } },
-): Promise<unknown> {
-  const toolResult = { content: [{ type: "text", text: "Success" }] };
-
-  mockClient.connect.mockResolvedValue(undefined);
-  mockClient.callTool.mockResolvedValue(toolResult);
-
-  const result = await handler(request);
-
-  return { result, toolResult };
-}
-
-/**
- * Create an MCP protocol error and set up mocks to reject with it.
- * @param handler - The call tool handler
- * @param message - Error message
- * @param code - MCP error code
- * @returns The call tool result cast with content and isError
- */
-async function callToolWithMcpError(
-  handler: (request: unknown) => Promise<unknown>,
-  message: string,
-  code: number,
-): Promise<{
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}> {
-  const mcpError = new Error(message) as Error & { code: number };
-
-  mcpError.code = code;
-
-  mockClient.connect.mockResolvedValue(undefined);
-  mockClient.callTool.mockRejectedValue(mcpError);
-
-  return (await handler(callToolRequest())) as {
-    content: Array<{ type: string; text: string }>;
-    isError?: boolean;
-  };
-}
+import { StdioHttpBridge } from "./stdio-http-bridge.ts";
 
 describe("StdioHttpBridge", () => {
   let bridge: TestBridge;
@@ -299,6 +122,11 @@ describe("StdioHttpBridge", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Every test starts the bridge, and the real Server's connect and
+    // sendToolListChanged both return promises — a bare vi.fn() returns
+    // undefined, which the awaiting code would then throw on.
+    mockServer.connect.mockResolvedValue(undefined);
+    mockServer.sendToolListChanged.mockResolvedValue(undefined);
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     bridge = new StdioHttpBridge(
       "http://localhost:3350/mcp",
@@ -356,6 +184,67 @@ describe("StdioHttpBridge", () => {
 
       expect(toolNames).toContain("ppal-live-api");
       expect(toolNames).toContain("ppal-read-live-set");
+    });
+  });
+
+  describe("withheld tools", () => {
+    /**
+     * A bridge that withholds one tool, connected so the transport was built.
+     * @returns The transport options the bridge passed
+     */
+    async function connectWithWithheldTool(): Promise<unknown> {
+      const narrowed = new StdioHttpBridge("http://localhost:3350/mcp", {
+        disabledTools: ["ppal-create-clip"],
+      }) as unknown as TestBridge;
+
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await narrowed._ensureHttpConnection();
+
+      const transportMock = StreamableHTTPClientTransport as unknown as Mock;
+
+      return transportMock.mock.calls.at(-1)?.[1];
+    }
+
+    it("sends them as the disabled-tools header on every request", async () => {
+      expect(await connectWithWithheldTool()).toStrictEqual({
+        requestInit: {
+          headers: { [DISABLED_TOOLS_HEADER]: "ppal-create-clip" },
+        },
+      });
+    });
+
+    it("never pushes them via POST /config — that setting is device-global", async () => {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("{}"));
+
+      await connectWithWithheldTool();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("passes no transport options when nothing is withheld", async () => {
+      mockClient.connect.mockResolvedValue(undefined);
+
+      await bridge._ensureHttpConnection();
+
+      const transportMock = StreamableHTTPClientTransport as unknown as Mock;
+
+      expect(transportMock.mock.calls.at(-1)?.[1]).toBeUndefined();
+    });
+
+    it("drops them from the offline fallback list too", () => {
+      // The fallback is what a client caches before the device comes up, and the
+      // stateless server has no list_changed to correct it later.
+      const narrowed = new StdioHttpBridge("http://localhost:3350/mcp", {
+        disabledTools: ["ppal-create-clip"],
+      }) as unknown as TestBridge;
+
+      expect(narrowed.fallbackTools.tools.map((t) => t.name)).toStrictEqual([
+        "ppal-read-live-set",
+      ]);
     });
   });
 
@@ -607,8 +496,6 @@ describe("StdioHttpBridge", () => {
 
   describe("start", () => {
     it("starts successfully and logs appropriate messages", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-
       await bridge.start();
 
       expect(mockServer.setRequestHandler).toHaveBeenCalledTimes(2);
@@ -624,7 +511,6 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns HTTP tools when connected", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
@@ -642,7 +528,6 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up list tools handler that returns fallback tools when HTTP fails", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
       await bridge.start();
 
       const listToolsHandler = getHandler("ListToolsRequestSchema");
@@ -656,6 +541,86 @@ describe("StdioHttpBridge", () => {
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Returning fallback tools list",
       );
+    });
+
+    it("notifies tools/list_changed once the device comes online after a fallback list", async () => {
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
+
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+
+      // Already re-listed — a later reconnect must not notify again.
+      bridge.isConnected = false;
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it("still connects, and retries the notification, when the send fails", async () => {
+      // The send runs inside _doConnect, so an unhandled failure here would
+      // surface to the user as "cannot connect to Ableton Live". The nudge has
+      // to survive too: nothing else tells the client to re-list, so spending
+      // the flag on a failed send strands it on the cached offline tool list
+      // until it restarts.
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+
+      mockServer.sendToolListChanged.mockRejectedValueOnce(
+        new Error("no pipe"),
+      );
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [{ name: "live" }] });
+
+      expect(await listToolsHandler({})).toStrictEqual({
+        tools: [{ name: "live" }],
+      });
+      expect(bridge.isConnected).toBe(true);
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(1);
+
+      bridge.isConnected = false;
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).toHaveBeenCalledTimes(2);
+    });
+
+    it("skips the notification when the server is already torn down", async () => {
+      await bridge.start();
+
+      const listToolsHandler = getHandler("ListToolsRequestSchema");
+
+      mockClient.connect.mockRejectedValueOnce(new Error("Connection failed"));
+      await listToolsHandler({});
+
+      // stop() raced the reconnect: there is no server left to notify.
+      bridge.mcpServer = null;
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await listToolsHandler({});
+
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
+    });
+
+    it("does not notify tools/list_changed when the first connect succeeds", async () => {
+      await bridge.start();
+
+      mockClient.connect.mockResolvedValue(undefined);
+      mockClient.listTools.mockResolvedValue({ tools: [] });
+      await getHandler("ListToolsRequestSchema")({});
+
+      expect(mockServer.sendToolListChanged).not.toHaveBeenCalled();
     });
 
     it("sets up call tool handler that calls HTTP tool when connected", async () => {

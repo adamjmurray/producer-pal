@@ -26,6 +26,14 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 
+// Shrink the autosave debounce so settleAutosave() only has to outwait preact's
+// deferred effect, not a real 800ms idle window on every test.
+vi.mock(import("#webui/lib/constants/autosave"), () => ({
+  VOICE_AUTOSAVE_DEBOUNCE_MS: 1,
+  CONTEXT_EDITOR_SAVE_DEBOUNCE_MS: 1,
+  DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS: 1,
+}));
+
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 
 const ENTRY: MemoryEntryView = {
@@ -36,6 +44,13 @@ const ENTRY: MemoryEntryView = {
 
 /** The server's echo of the rename: the same fields under the new slug. */
 const RENAMED: MemoryEntryView = { ...ENTRY, name: "new-slug" };
+
+/** A second memory, for navigating away while a rename is in flight. */
+const OTHER: MemoryEntryView = {
+  name: "likes-swing",
+  description: "groove",
+  body: "Swing everything.",
+};
 
 const fetchMock = installFetchMock();
 
@@ -86,13 +101,13 @@ function fakeServer(): {
   const pending: PendingWrite[] = [];
 
   (fetchMock as unknown as FetchMock).mockImplementation((rawUrl, init) => {
-    const url = String(rawUrl);
+    const url = rawUrl;
 
     if ((init?.method ?? "GET") === "GET") {
       return Promise.resolve(jsonResponse({ entries: [...store.values()] }));
     }
 
-    const body = JSON.parse(String(init?.body)) as {
+    const body = JSON.parse(init?.body as string) as {
       description: string;
       content: string;
       newName?: string;
@@ -132,9 +147,24 @@ function fakeServer(): {
 }
 
 /**
+ * The entry a write's response echoes: the fields it sent, under its URL slug.
+ * @param url - The request URL
+ * @param init - The request options carrying the JSON body
+ * @returns The entry the server echoes back
+ */
+function echoOf(url: string, init: RequestInit | undefined): MemoryEntryView {
+  const { description, content } = JSON.parse(init?.body as string) as {
+    description: string;
+    content: string;
+  };
+
+  return { name: url.split("/").pop() ?? "", description, body: content };
+}
+
+/**
  * Queue the stubbed fetch for one rename round trip: the mount GET lists
- * `ENTRY`, the rename PUT hangs on a deferred the test resolves, and anything
- * after that echoes the renamed entry.
+ * `ENTRY`, the rename PUT hangs on a deferred the test resolves, and a
+ * stateless server holding the renamed entry answers everything after that.
  * @returns The rename PUT's deferred response
  */
 function routeFetch(): Deferred<Response> {
@@ -142,7 +172,16 @@ function routeFetch(): Deferred<Response> {
 
   fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY] }));
   fetchMock.mockReturnValueOnce(renamePut.promise);
-  fetchMock.mockResolvedValue(jsonResponse({ entry: RENAMED }));
+  // A save echoes what it wrote, like the real server. Echoing a fixed entry
+  // would advance the autosave baseline to content the editor never had, so
+  // every saved draft would read dirty and flush again on unmount.
+  (fetchMock as unknown as FetchMock).mockImplementation((url, init) =>
+    Promise.resolve(
+      (init?.method ?? "GET") === "GET"
+        ? jsonResponse({ entries: [RENAMED] })
+        : jsonResponse({ entry: echoOf(url, init) }),
+    ),
+  );
 
   return renamePut;
 }
@@ -158,7 +197,7 @@ function entryPuts(): CapturedSave[] {
     .filter(([url, init]) => init?.method === "PUT" && !url.endsWith("/rename"))
     .map(([url, init]) => ({
       url,
-      body: JSON.parse(String(init?.body)) as CapturedSave["body"],
+      body: JSON.parse(init?.body as string) as CapturedSave["body"],
     }));
 }
 
@@ -195,11 +234,11 @@ function fieldValue(name: string | RegExp): string {
 /**
  * Wait out the editor's idle autosave: preact defers post-paint effects (the
  * arming) to a real timeout that happy-dom's rAF never beats, then the debounce
- * itself runs. Both directions need the same settle, so whether a save fires is
- * an honest assertion either way.
+ * itself runs (mocked to ~0 above). Both directions need the same settle, so
+ * whether a save fires is an honest assertion either way.
  */
 async function settleAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  await new Promise((resolve) => setTimeout(resolve, 150));
 }
 
 describe("MemoryScreen — editing during an in-flight rename", () => {
@@ -261,6 +300,50 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
     expect(entryPuts()).toStrictEqual([]);
   });
 
+  it("still retries a failed autosave after a rename", async () => {
+    const renamePut = routeFetch();
+
+    const { unmount } = render(<MemoryScreenHarness />);
+
+    await startRename();
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+    await screen.findByRole("button", { name: "Edit new-slug" });
+
+    // Fail the next save. A rename passes through one render with no entry,
+    // which used to re-run the unmount effect and latch the editor "unmounted"
+    // — after which a failed save never rolled its baseline back and the draft
+    // read as saved.
+    let failNextSave = true;
+
+    (fetchMock as unknown as FetchMock).mockImplementation((_url, init) => {
+      if ((init?.method ?? "GET") === "GET") {
+        return Promise.resolve(jsonResponse({ entries: [RENAMED] }));
+      }
+
+      if (failNextSave) {
+        failNextSave = false;
+
+        return Promise.reject(new Error("network down"));
+      }
+
+      return Promise.resolve(jsonResponse({ entry: RENAMED }));
+    });
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+    await settleAutosave();
+
+    expect(entryPuts()).toHaveLength(1);
+
+    // Closing the editor has to retry the lost write, not drop the edit.
+    unmount();
+
+    await waitFor(() => {
+      expect(entryPuts()).toHaveLength(2);
+    });
+  });
+
   it("never leaves the deleted-externally banner paintable", async () => {
     const renamePut = routeFetch();
 
@@ -281,9 +364,7 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
       setTimeout(
         () =>
           resolve(
-            String(document.body.textContent).includes(
-              "deleted outside the editor",
-            ),
+            document.body.textContent.includes("deleted outside the editor"),
           ),
         0,
       );
@@ -291,6 +372,46 @@ describe("MemoryScreen — editing during an in-flight rename", () => {
 
     expect(bannerAtNextTask).toBe(false);
     await screen.findByRole("button", { name: "Edit new-slug" });
+  });
+});
+
+describe("MemoryScreen — navigating away during a rename", () => {
+  it("leaves the newly opened memory alone when the rename lands", async () => {
+    const renamePut = deferred<Response>();
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY, OTHER] }));
+    fetchMock.mockReturnValueOnce(renamePut.promise);
+    fetchMock.mockResolvedValue(
+      jsonResponse({ entries: [RENAMED, OTHER], entry: RENAMED }),
+    );
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    // Blur committed the rename; the click that caused it opens another memory,
+    // so the mounted editor is now on OTHER when the rename resolves.
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+
+    // Following the rename here would point this editor at the renamed entry
+    // WITHOUT remounting it, and its idle autosave would then write OTHER's
+    // fields over that entry. Every write must stay on the entry the user is
+    // actually looking at.
+    await settleAutosave();
+
+    expect(fieldValue("Rename")).toBe("likes-swing");
+    expect(entryPuts().map((put) => put.url)).not.toContain(
+      expect.stringContaining("new-slug"),
+    );
+
+    for (const put of entryPuts()) {
+      expect(put.url).toContain("likes-swing");
+      expect(put.body.description).toBe(OTHER.description);
+    }
   });
 });
 

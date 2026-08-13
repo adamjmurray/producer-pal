@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {

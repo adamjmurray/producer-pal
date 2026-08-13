@@ -47,6 +47,7 @@ import {
   resetConversationsDb,
   saveVoiceRecord,
   userTextItem,
+  waitForAutosave,
   waitForEffects,
 } from "./voice-persistence-test-helpers";
 
@@ -77,7 +78,7 @@ describe("useVoicePersistence autosave delete-during-write race", () => {
     };
 
     rerender([userTextItem("a new turn")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     // .then() must re-check canceledIds and bail: no stale re-adoption of the
     // deleted id, and the on-disk delete stands.
@@ -100,7 +101,7 @@ describe("useVoicePersistence autosave navigate-during-write race", () => {
     };
 
     rerender([userTextItem("a brand new turn")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     // The fresh session must stay active (null), not be bumped back onto the
     // abandoned record's id.
@@ -126,7 +127,7 @@ describe("useVoicePersistence autosave navigate-during-write race", () => {
     };
 
     rerender([userTextItem("a brand new turn")]);
-    await waitForEffects(800);
+    await waitForAutosave();
 
     // The hash/active id must stay on the foreign record, not snap back to the
     // in-flight voice record.

@@ -5,8 +5,8 @@
 
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
@@ -73,13 +73,21 @@ export function warnMidiOnlyAudioParams(
 ): void {
   if (sampleFile == null) return;
 
-  const ignored = Object.keys(params).filter((name) => params[name] != null);
+  warnIgnoredParams(params, "audio clips - the sample defines the clip region");
+}
 
-  if (ignored.length === 0) return;
+/**
+ * Warn about audio-only parameters supplied without a sampleFile.
+ * @param sampleFile - Audio file path, or null for a MIDI clip
+ * @param params - Candidate parameters, keyed by their tool argument name
+ */
+export function warnAudioOnlyMidiParams(
+  sampleFile: string | null,
+  params: Record<string, unknown>,
+): void {
+  if (sampleFile != null) return;
 
-  console.warn(
-    `${ignored.join(", ")} ignored for audio clips - the sample defines the clip region`,
-  );
+  warnIgnoredParams(params, "MIDI clips");
 }
 
 /**

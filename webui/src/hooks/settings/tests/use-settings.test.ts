@@ -45,7 +45,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Default",
       hasApiKey: false,
     });
@@ -74,7 +74,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         thinking: "Max",
       }),
     );
@@ -82,7 +82,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Max",
     });
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
@@ -97,7 +97,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         thinking: "Adaptive",
       }),
     );
@@ -105,7 +105,7 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
@@ -142,10 +142,10 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
     });
 
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
   });
 
   it("savedModel only updates on saveSettings, not setModel", async () => {
@@ -153,16 +153,16 @@ describe("useSettings", () => {
     const initialSavedModel = result.current.savedModel;
 
     await act(() => {
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
     });
     // In-modal change should NOT flip the App-level routing model.
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
     expect(result.current.savedModel).toBe(initialSavedModel);
 
     await act(async () => {
       await result.current.saveSettings();
     });
-    expect(result.current.savedModel).toBe("gemini-3.6-flash");
+    expect(result.current.savedModel).toBe("gemini-3.7-flash");
   });
 
   it("savedProvider only updates on saveSettings, not setProvider", async () => {
@@ -262,7 +262,7 @@ describe("useSettings", () => {
     await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
       result.current.setThinking("Max");
     });
 
@@ -286,7 +286,7 @@ describe("useSettings", () => {
     });
 
     await expectStored("gemini", "new-key", {
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Max",
     });
   });
@@ -687,17 +687,9 @@ describe("useSettings", () => {
     });
   });
 
-  it("isToolEnabled returns true for enabled tools", () => {
+  it("setEnabledTools records a disabled tool", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Tools are enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
-  });
-
-  it("isToolEnabled returns false for disabled tools", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Disable a tool
     await act(() => {
       result.current.setEnabledTools({
         ...result.current.enabledTools,
@@ -705,14 +697,9 @@ describe("useSettings", () => {
       });
     });
 
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
-  });
-
-  it("isToolEnabled returns true for unknown tools (default)", () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Unknown tools default to enabled
-    expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
+    expect(result.current.enabledTools).toStrictEqual({
+      "ppal-connect": false,
+    });
   });
 
   it("setProvider preserves thinking value when switching providers", async () => {
@@ -772,8 +759,8 @@ describe("useSettings", () => {
     localStorage.setItem("producer_pal_enabled_tools", "invalid json{");
     const { result } = renderHook(() => useSettings());
 
-    // Should fallback to defaults, all tools enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    // Should fall back to an empty map (no explicit overrides)
+    expect(result.current.enabledTools).toStrictEqual({});
     // Cleanup
     localStorage.removeItem("producer_pal_enabled_tools");
   });

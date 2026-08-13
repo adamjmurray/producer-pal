@@ -98,9 +98,9 @@ Set up a signal chain conversationally:
 > mute that track and set its color to purple
 
 Producer Pal knows Live's native devices, including
-[device-specific controls](/features#ppal-update-device) for Drift, Wavetable,
-Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, and Spectral
-Resonator.
+[device-specific controls](/features/tools#ppal-update-device) for Drift,
+Wavetable, Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, and
+Spectral Resonator.
 
 ## Work with samples
 
@@ -220,4 +220,4 @@ thinking" or "high reasoning effort" can help, though it's typically overkill
 and burns usage limits faster.
 
 For the full feature reference see the [Features page](/features), and for known
-constraints see [Limitations](/features#limitations).
+constraints see [Limitations](/features/limitations).

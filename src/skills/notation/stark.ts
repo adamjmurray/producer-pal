@@ -8,14 +8,16 @@
  * literal pitches, a chords line is chord SYMBOLS, and drums are event-based (a
  * line of drum hits) — all with absolute /N durations.
  *
- * The two variants share a body and differ in two escape hatches the standard
- * head adds and the basic head omits: the absolute drum pitch-name header (`C3:`)
- * for pads outside the 16 named General MIDI drums, and `[..]` bracket voicings.
- * The parser reads both in EVERY mode — the serializer still emits `C3:` headers
- * and bracket stacks — so read-back is unchanged; the basic head only narrows
- * what a small model is TAUGHT to generate (chord symbols + the 16 named pads).
- * The matching driver (`standard` / `basic`) `@include`s whichever head
- * small-model mode selects — `resolveIncludes` composes them, buildSkills glues
+ * Two axes cross here. DEPTH: the standard head adds two escape hatches the basic
+ * head omits — the absolute drum pitch-name header (`C3:`) for pads outside the 16
+ * named General MIDI drums, and `[..]` bracket voicings. The parser reads both in
+ * EVERY mode, so read-back is unchanged; the basic head only narrows what a small
+ * model is TAUGHT to generate. DIRECTION: chord symbols are the one thing here the
+ * serializer never emits, so they split off into a `-write` sibling at both depths
+ * and a read-only caller stops paying for them (ADR-0019).
+ *
+ * The matching driver (`standard` / `basic`) `@include`s the head and its `-write`
+ * sibling on adjacent lines — `resolveIncludes` composes them, buildSkills glues
  * nothing.
  */
 
@@ -37,24 +39,49 @@ Drum names (General MIDI 16-pad layout, notes 36-51): kick snare snare2 hihat pe
 // Standard-only clause: how to address a pad outside the 16 named drums.
 const starkDrumPitchNameFallback = ` A pad with no name uses an absolute pitch-name header instead (\`C3: X z X z\`, Ableton C3=60) — same content syntax.`;
 
-// Pitched lines, registers, and chord symbols (shared by both heads).
+// Pitched lines and registers (shared by both heads). Absolute octaves (`C3`)
+// parse on note tokens but are deliberately NOT taught here — models write them
+// unprompted, and the Skills teach one spelling. See ADR-0018.
+//
+// Both bullets still name `chords:` (its default duration, its register) though
+// the chord SYMBOLS moved to the write half. That is the whole-bullet seam doing
+// its job: a read-back never carries a chords line, but trimming two clauses out
+// of the middle of a shared bullet is the mis-sort ADR-0019 rejected, and the
+// cost is a few tokens.
 const starkHeadPitched = `
 - **Pitched** — \`melody: C Eb G'\` (also \`bass:\`). A token is letter \`A\`-\`G\` + optional \`#\`/\`b\` (immediately after the letter, so \`Cb\`=C-flat but a lone \`b\`=note B) + octave marks (\`'\` up, \`,\` down, stackable) + duration \`/N\` + dynamic (\`!\`=accent, \`?\`=soft, omit=normal). \`/N\` is an ABSOLUTE note value: \`/1\`=whole (4 beats), \`/2\`=half, \`/4\`=quarter (1 beat), \`/8\`, \`/16\`. A trailing \`.\` means dotted (×1.5): \`/4.\`=dotted quarter (1.5 beats); a trailing \`t\` means triplet (×2/3): \`/8t\`=eighth-note triplet (⅓ beat, three per beat). One modifier max (\`.\` or \`t\`, not both). Repeat any token with a trailing \`*N\`: \`C*4\`, \`z*3\`. Rest = \`z\` or \`z/N\`. Default duration is \`/4\` for bass/melody, \`/1\` for chords; set a line default in the header (\`melody/8: ...\`).
-- **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there.
-- **Chords** — \`chords: C Am F G7\` one chord SYMBOL per token: root (letter + optional \`#\`/\`b\`, e.g. \`Ebm7\`, \`Bb7\`) + quality. Bare root = major triad; \`m\`=minor (\`Cm\`), then \`maj7 m7 7 dim aug sus2 sus4 6 9 11 13 add9\` and alterations like \`7b9\`/\`7#5\`. Slash bass = \`/\` + a note: \`G7/B\`. Suffixes come AFTER the quality (and after any slash bass) and apply to the whole chord — \`/N\` duration, \`'\`/\`,\` octave, \`!\`/\`?\` dynamic, \`*N\` repeat: \`Cm/2\` (half note), \`Fmaj7'\` (up an octave), \`G7/B/4\` (quarter, over B), \`Am!\` (accent), \`C*4\` (four times). Chord symbols are input-only sugar — read-back returns the literal notes.`;
+- **Registers** (the MIDI pitch a bare \`C\` maps to, Ableton naming where C3=60=middle C): bass=C1, melody=C3, chords=C2; octave marks shift from there.`;
 
 // Bracket voicings — an advanced escape hatch taught to the standard head only;
 // the parser accepts them in every mode, so small models simply aren't shown them.
+// The serializer emits them on melody/bass, which is why they stay on the read
+// side. Their use on a `chords:` line is restated in the write half, because the
+// example there names a chord symbol a read-only caller was never taught.
 const starkBracketVoicings = `
-- **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Separate the notes with SPACES only: inside a bracket \`,\` and \`'\` are octave marks (\`[C, E]\` = C and E each an octave down, still one stack), so write \`[C E G]\`, NEVER \`[C, E, G]\` — commas there would silently drop those notes an octave. Valid on melody/bass (their register) and on a \`chords:\` line (chord register), alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
+- **Voicings** — a \`[C E G]\` bracket is an explicit simultaneous stack sharing one \`/N\` + dynamic: \`melody: [C E G]/2!\`. Separate the notes with SPACES only: inside a bracket \`,\` and \`'\` are octave marks (\`[C, E]\` = C and E each an octave down, still one stack), so write \`[C E G]\`, NEVER \`[C, E, G]\` — commas there would silently drop those notes an octave. Valid on melody/bass, in their register.`;
 
-// The merge note closes both heads. It also refines the "round-trippable" claim:
-// pitch/timing/duration are exact, but velocity is quantized to the 3 dynamics.
-const starkMergeNote = `
+// Closes both heads by refining the "round-trippable" claim: pitch/timing/
+// duration are exact, but velocity is quantized to the 3 dynamics.
+//
+// The merge rule used to close this too. It moved to `transforms-editing`
+// (update-clip's gate): this head ships to read-only callers, who have nothing
+// to merge, and it pointed at a `preTransforms` those callers were never taught.
+const starkRoundTripNote = `
 
-Round-trip preserves pitch, timing, and duration exactly; velocity is the lossy axis — on read-back it snaps to the three dynamics (soft/normal/accent) and is re-randomized within each range, so use bar|beat or midi-json when exact velocities matter.
+Round-trip preserves pitch, timing, and duration exactly; velocity is the lossy axis — on read-back it snaps to the three dynamics (soft/normal/accent) and is re-randomized within each range, so use bar|beat or midi-json when exact velocities matter.`;
 
-\`notes\` MERGES into an existing clip; use \`preTransforms\` to delete or edit notes already in the clip.`;
+// The authoring half, shared by both depths: chord symbols and nothing else. The
+// serializer realizes every symbol to literal pitches and never emits a `chords:`
+// line at all, so a read-back provably contains none of this.
+const starkChords = `## Writing Notes
+
+- **Chords** — \`chords: C Am F G7\` one chord SYMBOL per token: root (letter + optional \`#\`/\`b\`, e.g. \`Ebm7\`, \`Bb7\`) + quality. Bare root = major triad; \`m\`=minor (\`Cm\`), then \`maj7 m7 7 dim aug sus2 sus4 6 9 11 13 add9\` and alterations like \`7b9\`/\`7#5\`. Slash bass = \`/\` + a note: \`G7/B\`. Suffixes come AFTER the quality (and after any slash bass) and apply to the whole chord — \`/N\` duration, \`'\`/\`,\` octave, \`!\`/\`?\` dynamic, \`*N\` repeat: \`Cm/2\` (half note), \`Fmaj7'\` (up an octave), \`G7/B/4\` (quarter, over B), \`Am!\` (accent), \`C*4\` (four times). Chord symbols are input-only sugar — read-back returns the literal notes.`;
+
+// Standard-only: the chords-line use of a voicing, restated here because the read
+// half's Voicings bullet now stops at melody/bass. Its example mixes a symbol with
+// a bracket, so it only makes sense once symbols have been taught.
+const starkChordVoicings = `
+- A \`[..]\` **voicing** works on a \`chords:\` line too, in the chord register, alongside symbols: \`chords: Cm7 [Eb G C']\`.`;
 
 /**
  * Standard stark head: adds the absolute pitch-name fallback for unnamed pads and
@@ -65,10 +92,23 @@ export const starkStandard =
   starkDrumPitchNameFallback +
   starkHeadPitched +
   starkBracketVoicings +
-  starkMergeNote;
+  starkRoundTripNote;
 
 /**
- * Small-model stark head: the 16 named pads and chord symbols only — no absolute
- * pitch-name fallback and no bracket voicings.
+ * Standard stark authoring half: chord symbols, plus their use inside a bracket
+ * voicing. Gated on the two clip writers.
  */
-export const starkBasic = starkHeadDrums + starkHeadPitched + starkMergeNote;
+export const starkStandardWrite = starkChords + starkChordVoicings;
+
+/**
+ * Small-model stark head: the 16 named pads only — no absolute pitch-name
+ * fallback and no bracket voicings.
+ */
+export const starkBasic =
+  starkHeadDrums + starkHeadPitched + starkRoundTripNote;
+
+/**
+ * Small-model stark authoring half: chord symbols alone. No voicings clause —
+ * the basic head never taught brackets.
+ */
+export const starkBasicWrite = starkChords;

@@ -229,6 +229,29 @@ describe("MCP Express App - Config", () => {
       });
     });
 
+    it("should clear projectContext and sampleFolder sent as null", async () => {
+      // Max sends a bare `null` for an emptied field; it must land as "" rather
+      // than as a null the rest of the config code has to guard against.
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectContext: "notes",
+          sampleFolder: "/path/to/samples",
+        }),
+      });
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectContext: null, sampleFolder: null }),
+      });
+      const config = await response.json();
+
+      expect(config.projectContext).toBe("");
+      expect(config.sampleFolder).toBe("");
+    });
+
     it("should update tools whitelist", async () => {
       const subset = ["ppal-connect", "ppal-read-live-set", "ppal-playback"];
 

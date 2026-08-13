@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";

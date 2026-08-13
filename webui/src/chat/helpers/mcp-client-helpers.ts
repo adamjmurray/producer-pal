@@ -12,6 +12,7 @@ import {
   SMALL_MODEL_MODE_HEADER,
 } from "#src/shared/config";
 import { NOTATION_HEADER, type Notation } from "#src/shared/notation";
+import { disabledToolNames } from "#webui/lib/utils/enabled-tools";
 
 const MCP_CLIENT_NAME = "producer-pal-chat-ui";
 const MCP_CLIENT_VERSION = "1.0.0";
@@ -30,7 +31,8 @@ export interface McpToolDefinition {
  * per-request small-model-mode header, so the server shrinks tool schemas and
  * serves the basic skills variant for THIS caller (the built-in chat, or a
  * subagent worker) independent of the global default. Omit it — as the voice
- * paths do — to send no header and let the server fall back to the global.
+ * paths do, passing only their toolset — to send no header and let the server
+ * fall back to the global.
  *
  * `enabledTools` likewise rides along as a header, listing only what this caller
  * turned OFF: the server then neither registers those tools nor sends the skills
@@ -114,27 +116,11 @@ export function perRequestHeaders(
 }
 
 /**
- * The comma-separated tool names to withhold, from the sparse enabled map.
- * Only explicit `false` entries count — an absent tool is enabled, which is what
- * keeps a tool added in a later release on by default.
- *
- * @param enabledTools - Map of tool name to enabled state
- * @returns Comma-separated disabled tool names, or "" when none are disabled
- */
-function disabledToolNames(enabledTools?: Record<string, boolean>): string {
-  if (!enabledTools) return "";
-
-  return Object.keys(enabledTools)
-    .filter((name) => enabledTools[name] === false)
-    .join(",");
-}
-
-/**
  * Filters MCP tools based on enabled/disabled configuration.
  *
  * Kept even though {@link createConnectedMcpClient} now withholds the same tools
- * server-side: this is what decides the toolset when no header applies (the
- * voice paths), and it covers names the server's whitelist never had.
+ * server-side: this is what decides the toolset when no header applies, and it
+ * covers names the server's whitelist never had.
  *
  * @param tools - Array of MCP tool definitions
  * @param enabledTools - Map of tool names to enabled state (undefined = enabled)

@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
@@ -47,12 +48,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4'); clip meter",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
-    duplicateLoop: z
-      .boolean()
-      .optional()
-      .describe(
+    duplicateLoop: param(z.boolean().optional(), {
+      default:
         "double the clip length and copy existing notes (and automation envelopes) into the new half (Live's Duplicate Loop). MIDI clips only. Composes with edits in a defined order: start/length/firstStart set the loop region first (select a portion to double; any content past that region is pushed later, not deleted), preTransforms edit the source, then the double; notes/transforms then apply across the full doubled clip",
-      ),
+      smallModel:
+        "double the clip length and copy existing notes into the new half (Live's Duplicate Loop). MIDI clips only. Order: start/length pick the region to double, preTransforms edit it, then the double; notes merge across the full doubled clip",
+    }),
     firstStart: param(z.string().optional(), {
       default:
         "bar|beat playback start (looping clips, when different from start; clip meter)",
@@ -101,7 +102,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     warping: z
       .boolean()
       .optional()
-      .describe("audio clip warping on/off (ignored for MIDI)"),
+      .describe(
+        "audio clip warping on/off (ignored for MIDI). false resets the region to the whole file and turns looping off; looping:true forces warping back on",
+      ),
 
     // MIDI note parameters. Notation-keyed `notes` text so the schema reflects
     // the active note format instead of the default bar|beat.
@@ -111,9 +114,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       smallModel:
         "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
       "midi-json":
-        "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start & d duration in beats, v velocity; see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). No v0-delete; delete/move existing notes via preTransforms - don't rewrite the clip",
+        "MIDI notes as a JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start & d duration in beats, v velocity; see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). `v:0` deletes the note at that pitch+start. To clear a region or move notes use preTransforms - don't rewrite the clip",
       "smallModel:midi-json":
-        "MIDI notes as JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start, d dur, v vel; see Skills). MERGES - overwrites at same pitch+start. No v0-delete; delete/move via preTransforms, don't rewrite the clip",
+        "MIDI notes as JSON array string, e.g. `[{p:60,t:0,d:4,v:100}]` (p pitch, t start, d dur, v vel; see Skills). MERGES - overwrites at same pitch+start. `v:0` deletes the note at that pitch+start. Clear a region or move notes via preTransforms, don't rewrite the clip",
       stark:
         "MIDI notes in stark notation, a literal per-line `type: content` format with event-based drum hits (see Skills) - MIDI clips only. MERGES (overwrites at same pitch+start; restate to edit in place). Delete/move existing notes via preTransforms - don't rewrite the clip",
       "smallModel:stark":
@@ -132,9 +135,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
-            default:
-              "JS function body (broadcast across ids): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)",
+          code: param(boundedString(MAX_CODE_LENGTH).optional(), {
+            default: `JS function body (broadcast across ids; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
             smallModel: null,
           }),
         }

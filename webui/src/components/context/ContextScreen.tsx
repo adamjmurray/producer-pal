@@ -94,12 +94,13 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
   const { doc, labels, tabSlot, onClose } = props;
   const editor = useContextEditorState(doc, labels.clearConfirmMessage);
   const importNotice = useImportNotice();
-  const io = makeContextIoHandlers(
+  const io = makeContextIoHandlers({
     editor,
-    labels.exportBasename,
-    importNotice.showNotice,
-    importNotice.clearNotice,
-  );
+    exportBasename: labels.exportBasename,
+    builtIn: labels.builtIn,
+    onImportError: importNotice.showNotice,
+    onImportSuccess: importNotice.clearNotice,
+  });
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Cap the editable region so it lines up with the chat column instead of
   // sprawling across a wide monitor. At rest the editor matches the chat width;

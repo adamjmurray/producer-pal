@@ -15,7 +15,7 @@ import {
 import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
@@ -31,40 +31,29 @@ function registerTrack1WithDevice456(): void {
   registerMockObject("device456", { path: livePath.track(1).device(0) });
 }
 
+/**
+ * Re-register track 0 holding one existing device, so an insert at position 1
+ * lands after it, plus the device that insert_device returns.
+ * @returns The re-registered track 0 mock
+ */
+function registerTrack0WithExistingDevice(): RegisteredMockObject {
+  const track = registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { devices: children("existing-device") },
+    methods: { insert_device: () => ["id", "device123"] },
+  });
+
+  registerMockObject("device123", { path: livePath.track(0).device(1) });
+
+  return track;
+}
+
 function registerTrack0WithDevice123(): void {
   registerMockObject("track-0", {
     path: livePath.track(0),
     methods: { insert_device: () => ["id", "device123"] },
   });
   registerMockObject("device123", { path: livePath.track(0).device(2) });
-}
-
-/**
- * Register a freshly-created Simpler at track 0 / device 2, plus track 0
- * itself with an `insert_device` method returning that Simpler's id.
- *
- * @returns The simpler and track 0 mocks
- */
-function registerSimplerCreationFixture(): {
-  simpler: RegisteredMockObject;
-  track0: RegisteredMockObject;
-} {
-  const simpler = registerMockObject("simpler-new", {
-    path: livePath.track(0).device(2),
-    type: "SimplerDevice",
-    properties: {
-      class_display_name: "Simpler",
-      multi_sample_mode: 0,
-      parameters: children(),
-    },
-  });
-
-  const track0 = registerMockObject("track-0", {
-    path: livePath.track(0),
-    methods: { insert_device: () => ["id", "simpler-new"] },
-  });
-
-  return { simpler, track0 };
 }
 
 describe("createDevice", () => {
@@ -224,9 +213,7 @@ describe("createDevice", () => {
       });
 
       it("should create device on track via path with position", () => {
-        registerMockObject("device123", {
-          path: livePath.track(0).device(1),
-        });
+        track0 = registerTrack0WithExistingDevice();
 
         const result = createDevice({
           path: "t0/d1",
@@ -286,6 +273,28 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           deviceIndex: 0,
+        });
+      });
+
+      it("should warn and append when position is past the end of the chain", async () => {
+        const mockConsole = await import("#src/shared/max/v8-max-console.ts");
+
+        track0 = registerTrack0WithExistingDevice();
+
+        const result = createDevice({
+          path: "t0/d5",
+          deviceName: "Compressor",
+        });
+
+        expect(track0.call).toHaveBeenCalledWith("insert_device", "Compressor");
+        expect(mockConsole.warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'path "t0/d5" is past the end of the device chain (1 device), appending "Compressor" instead',
+          ),
+        );
+        expect(result).toStrictEqual({
+          id: "device123",
+          deviceIndex: 1,
         });
       });
 
@@ -412,12 +421,12 @@ describe("createDevice", () => {
         };
         const originalExists = liveAPIGlobal.LiveAPI.prototype.exists;
 
-        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(function (this: {
-          _path?: string;
-        }) {
-          // Chains container doesn't exist
-          return !this._path?.includes("chains");
-        });
+        liveAPIGlobal.LiveAPI.prototype.exists = vi.fn(
+          function (this: { _path?: string }) {
+            // Chains container doesn't exist
+            return !this._path?.includes("chains");
+          },
+        );
 
         expect(() =>
           createDevice({
@@ -446,6 +455,10 @@ describe("createDevice", () => {
       });
 
       it("should throw error with position when insert_device returns falsy id", () => {
+        track0 = registerMockObject("track-0", {
+          path: livePath.track(0),
+          properties: { devices: children("existing-device") },
+        });
         track0.call.mockImplementation((method: string) => {
           if (method === "insert_device") return ["id", undefined];
 
@@ -505,7 +518,7 @@ describe("createDevice", () => {
       mockNonExistentObjects();
       registerTrack0WithDevice123();
 
-      const mockConsole = await import("#src/shared/v8-max-console.ts");
+      const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 
       const result = createDevice({
         path: "t0,t99",
@@ -573,190 +586,6 @@ describe("createDevice", () => {
       createDevice({});
 
       expect(selectMockRef.get()).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("params after creation", () => {
-    it("loads a sample on a created Simpler via params", () => {
-      const fixture = registerSimplerCreationFixture();
-
-      track0 = fixture.track0;
-
-      createDevice({
-        deviceName: "Simpler",
-        path: "t0",
-        params: [{ name: "sample", value: "/tmp/kick.wav" }],
-      });
-
-      expect(fixture.simpler.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/tmp/kick.wav",
-      );
-    });
-
-    it("prefixes param warnings with createDevice, not updateDevice", async () => {
-      const mockConsole = await import("#src/shared/v8-max-console.ts");
-
-      vi.mocked(mockConsole.warn).mockClear();
-
-      track0 = registerSimplerCreationFixture().track0;
-
-      createDevice({
-        deviceName: "Simpler",
-        path: "t0",
-        params: [{ name: "nonexistent", value: "42" }],
-      });
-
-      const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
-
-      expect(calls).toMatch(/createDevice: param "nonexistent" not found/);
-      expect(calls).not.toMatch(/updateDevice:/);
-    });
-
-    it("does not call replace_sample on a non-Simpler when sample is in params", () => {
-      const eqEight = registerMockObject("eq-new", {
-        path: livePath.track(0).device(2),
-        type: "Device",
-        properties: {
-          class_display_name: "EQ Eight",
-          parameters: children(),
-        },
-      });
-
-      track0 = registerMockObject("track-0", {
-        path: livePath.track(0),
-        methods: { insert_device: () => ["id", "eq-new"] },
-      });
-
-      createDevice({
-        deviceName: "EQ Eight",
-        path: "t0",
-        params: [{ name: "sample", value: "/tmp/kick.wav" }],
-      });
-
-      expect(eqEight.call).not.toHaveBeenCalledWith(
-        "replace_sample",
-        expect.anything(),
-      );
-    });
-  });
-
-  describe("drum kit builder (path-prefixed params)", () => {
-    /**
-     * Set up a fresh, empty Drum Rack created on track 0. Referencing a pad note
-     * auto-creates its chain; the pad's first device slot auto-creates a Simpler
-     * that records the sample it receives. The created Simpler ships with a
-     * loaded sample child so a follow-up gainDb write has something to target.
-     * @returns A map of created Simpler ids → their mocks, plus their sample children
-     */
-    function setupDrumKitFixture(): {
-      simplers: Record<string, RegisteredMockObject>;
-      samples: Record<string, RegisteredMockObject>;
-    } {
-      const simplers: Record<string, RegisteredMockObject> = {};
-      const samples: Record<string, RegisteredMockObject> = {};
-      const chainIdArray: string[] = [];
-
-      registerMockObject("track-0", {
-        path: livePath.track(0),
-        properties: { devices: children() },
-        methods: { insert_device: () => ["id", "drum-rack"] },
-      });
-
-      registerMockObject("drum-rack", {
-        path: livePath.track(0).device(0),
-        type: "RackDevice",
-        properties: { chains: chainIdArray, can_have_drum_pads: 1 },
-        methods: {
-          insert_chain: () => {
-            const newId = `chain-${chainIdArray.length / 2}`;
-
-            chainIdArray.push("id", newId);
-            const props: Record<string, unknown> = { in_note: -1, devices: [] };
-            const chainMock = registerMockObject(newId, {
-              type: "DrumChain",
-              properties: props,
-              methods: {
-                insert_device: () => {
-                  const simplerId = `${newId}-simpler`;
-                  const sampleId = `${simplerId}-sample`;
-
-                  (props.devices as unknown[]).push("id", simplerId);
-                  simplers[simplerId] = registerMockObject(simplerId, {
-                    type: "SimplerDevice",
-                    properties: {
-                      class_display_name: "Simpler",
-                      multi_sample_mode: 0,
-                      parameters: children(),
-                      sample: ["id", sampleId],
-                    },
-                  });
-                  samples[sampleId] = registerMockObject(sampleId, {
-                    type: "Sample",
-                    properties: { file_path: "/loaded.wav", gain: 1 },
-                  });
-
-                  return ["id", simplerId];
-                },
-              },
-            });
-
-            chainMock.set.mockImplementation((prop: string, value: unknown) => {
-              props[prop] = value;
-            });
-
-            return ["id", newId];
-          },
-        },
-      });
-
-      return { simplers, samples };
-    }
-
-    it("builds a full kit in one call (chain + Simpler auto-create per pad)", () => {
-      const { simplers } = setupDrumKitFixture();
-
-      const result = createDevice({
-        deviceName: "Drum Rack",
-        path: "t0",
-        params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
-          { name: "pC#1/d0/sample", value: "/snare.wav" },
-        ],
-      });
-
-      expect(result).toMatchObject({ id: "drum-rack" });
-      expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/kick.wav",
-      );
-      expect(simplers["chain-1-simpler"]!.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/snare.wav",
-      );
-    });
-
-    it("sets a pad's gainDb after its sample in the same call", () => {
-      const { simplers, samples } = setupDrumKitFixture();
-
-      createDevice({
-        deviceName: "Drum Rack",
-        path: "t0",
-        params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
-          { name: "pC1/d0/gainDb", value: "-6" },
-        ],
-      });
-
-      expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/kick.wav",
-      );
-      // gainDb resolves to the now-existing Simpler and sets its sample's gain.
-      expect(samples["chain-0-simpler-sample"]!.set).toHaveBeenCalledWith(
-        "gain",
-        expect.any(Number),
-      );
     });
   });
 });

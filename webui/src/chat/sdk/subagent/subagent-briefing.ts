@@ -17,6 +17,7 @@
 // briefing is an optimization, and losing it must degrade to the old behavior
 // rather than launch a worker that knows nothing about the Live Set.
 
+import { BRIEFING_REQUEST_HEADER } from "#src/shared/config";
 import { perRequestHeaders } from "#webui/chat/helpers/mcp-client-helpers";
 import { type ChatClientConfig } from "#webui/chat/sdk/types";
 import { getSubagentBriefingUrl } from "#webui/utils/mcp-url";
@@ -45,18 +46,26 @@ export const WORKER_WITHHELD_TOOLS = ["ppal-connect", "ppal-context"] as const;
  * doesn't get.
  *
  * @param config - The resolved worker config
+ * @param abortSignal - The turn's signal, so Stop cancels the fetch too
  * @returns The briefing text, or null when it could not be fetched
  */
 export async function fetchSubagentBriefing(
   config: ChatClientConfig,
+  abortSignal?: AbortSignal,
 ): Promise<string | null> {
   try {
     const response = await fetch(getSubagentBriefingUrl(config.mcpUrl), {
-      headers: perRequestHeaders(
-        config.smallModelMode,
-        config.enabledTools,
-        config.notation,
-      ),
+      signal: abortSignal,
+      headers: {
+        ...perRequestHeaders(
+          config.smallModelMode,
+          config.enabledTools,
+          config.notation,
+        ),
+        // Required by the route: a custom header is the one thing a markup-
+        // driven cross-site GET can't produce. See BRIEFING_REQUEST_HEADER.
+        [BRIEFING_REQUEST_HEADER]: "1",
+      },
     });
 
     if (!response.ok) return null;

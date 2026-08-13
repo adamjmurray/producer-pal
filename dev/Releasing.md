@@ -151,15 +151,7 @@ release build.
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
 7. Check "Set as a pre-release"
-8. Write release notes, ending with the pre-release notice:
-
-   ```md
-   > ⚠️ **This is a pre-release.** Producer Pal's update check ignores
-   > pre-releases, so it won't prompt you while testing — if a newer candidate
-   > is cut, I'll let you know directly. You'll be prompted once this becomes a
-   > final release.
-   ```
-
+8. Write release notes
 9. Publish pre-release
 
 Each candidate gets its own pre-release, because each one is its own version
@@ -332,9 +324,8 @@ After testing succeeds:
    npm run tag       # creates vX.Y.Z
    ```
 
-   Create a new GitHub release for `vX.Y.Z` (not a pre-release), upload the
-   fresh files, and leave the pre-release notice out of the notes. This is the
-   release everyone gets prompted to install.
+   Create a new GitHub release for `vX.Y.Z` (not a pre-release) and upload the
+   fresh files. This is the release everyone gets prompted to install.
 
 4. Publish to npm — the first and only publish of this version:
 

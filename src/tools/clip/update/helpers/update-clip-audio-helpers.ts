@@ -5,28 +5,20 @@
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  LIVE_API_WARP_MODE_BEATS,
-  LIVE_API_WARP_MODE_COMPLEX,
-  LIVE_API_WARP_MODE_PRO,
-  LIVE_API_WARP_MODE_REPITCH,
-  LIVE_API_WARP_MODE_REX,
-  LIVE_API_WARP_MODE_TEXTURE,
-  LIVE_API_WARP_MODE_TONES,
-  WARP_MODE,
-} from "#src/tools/constants.ts";
+  type AudioClipProperties,
+  pitchShiftToCoarseFine,
+  setAudioClipProperties,
+} from "#src/tools/clip/helpers/audio-clip-properties.ts";
+import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 
-interface AudioParams {
-  /** Audio clip gain in decibels (-70 to 24) */
-  gainDb?: number;
-  /** Audio clip pitch shift in semitones (-48 to 48) */
-  pitchShift?: number;
-  /** Audio clip warp mode */
-  warpMode?: string;
+interface AudioParams extends AudioClipProperties {
   /** Audio clip warping on/off */
   warping?: boolean;
+  /** Requested looping state, which can veto `warping` (see below) */
+  looping?: boolean;
 }
 
 /**
@@ -37,43 +29,51 @@ interface AudioParams {
  * @param params.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param params.warpMode - Audio clip warp mode
  * @param params.warping - Audio clip warping on/off
+ * @param params.looping - Requested looping state, which vetoes `warping: false`
  */
 export function setAudioParameters(
   clip: LiveAPI,
-  { gainDb, pitchShift, warpMode, warping }: AudioParams,
+  { gainDb, pitchShift, warpMode, warping, looping }: AudioParams,
 ): void {
-  if (gainDb !== undefined) {
-    const liveGain = dbToLiveGain(gainDb);
+  setAudioClipProperties(clip, { gainDb, pitchShift, warpMode });
 
-    clip.set("gain", liveGain);
+  // `looping: true` forces warping back on, so a `warping: false` alongside it
+  // is vetoed (forceWarpForLooping warns). Skip it here rather than let it run
+  // and be overridden: the unwarp resets end_marker to the whole sample, and
+  // re-warping maps that back as beats — collapsing the clip's region on the
+  // way through, even though the flag ends up where it started.
+  if (looping !== true) applyAudioClipWarping(clip, warping);
+}
+
+/**
+ * Pre-apply the warp that `looping: true` forces on an audio clip.
+ *
+ * Live turns `warping` back on when you set `looping`, which flips the markers
+ * from seconds to beats. Doing it up front keeps the region math on one side of
+ * the switch — otherwise a region computed in seconds lands in properties Live
+ * has already started reading as beats.
+ *
+ * @param clip - The audio clip
+ * @param looping - Requested looping state
+ * @param warping - Requested warp state, for the conflict warning
+ */
+export function forceWarpForLooping(
+  clip: LiveAPI,
+  looping: boolean | undefined,
+  warping: boolean | undefined,
+): void {
+  if (looping !== true) return;
+
+  // Warn before the already-warped bail-out: setAudioParameters skips the
+  // vetoed unwarp entirely, so on a warped clip there is nothing left to do
+  // here except say the flag was ignored.
+  if (warping === false) {
+    console.warn("warping: false ignored - looping: true forces warping on");
   }
 
-  if (pitchShift !== undefined) {
-    const { coarse, fine } = pitchShiftToCoarseFine(pitchShift);
+  if ((clip.getProperty("warping") as number) > 0) return;
 
-    clip.set("pitch_coarse", coarse);
-    clip.set("pitch_fine", fine);
-  }
-
-  if (warpMode !== undefined) {
-    const warpModeValue: Record<string, number> = {
-      [WARP_MODE.BEATS]: LIVE_API_WARP_MODE_BEATS,
-      [WARP_MODE.TONES]: LIVE_API_WARP_MODE_TONES,
-      [WARP_MODE.TEXTURE]: LIVE_API_WARP_MODE_TEXTURE,
-      [WARP_MODE.REPITCH]: LIVE_API_WARP_MODE_REPITCH,
-      [WARP_MODE.COMPLEX]: LIVE_API_WARP_MODE_COMPLEX,
-      [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
-      [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
-    };
-
-    if (warpModeValue[warpMode] !== undefined) {
-      clip.set("warp_mode", warpModeValue[warpMode]);
-    }
-  }
-
-  if (warping !== undefined) {
-    clip.set("warping", warping ? 1 : 0);
-  }
+  applyAudioClipWarping(clip, true);
 }
 
 /**
@@ -191,25 +191,4 @@ export function handleWarpMarkerOperation(
       break;
     }
   }
-}
-
-/**
- * Decomposes a fractional semitone pitch shift into Live's pitch_coarse
- * (integer semitones) and pitch_fine (cents).
- *
- * Rounds to the nearest semitone so the cents remainder stays within Live's
- * ±50 range. Flooring (the previous behavior) pushed the remainder up to +99
- * cents for negative shifts, which Live silently clamps to +50 — turning e.g.
- * -3.25 into -3.5.
- * @param pitchShift - Pitch shift in semitones (may be fractional)
- * @returns Coarse semitones and fine cents (each in [-50, 50])
- */
-function pitchShiftToCoarseFine(pitchShift: number): {
-  coarse: number;
-  fine: number;
-} {
-  const coarse = Math.round(pitchShift);
-  const fine = Math.round((pitchShift - coarse) * 100);
-
-  return { coarse, fine };
 }

@@ -11,10 +11,15 @@ import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 // Realtime + Gemini Live). Both bridges build on the same mcp-client-helpers, so
 // they share one fake client + one vi.mock factory rather than duplicating the
 // setup in each test file.
+//
+// Only mcp-client-helpers is mocked. connectAndListTools is left real, so each
+// bridge's close-on-catalog-failure path is genuinely exercised — which is also
+// why it lives in its own module: a mock can't intercept a same-module call.
 
 export const callToolMock = vi.fn();
 export const listToolsMock = vi.fn();
 export const closeMock = vi.fn();
+export const createConnectedMcpClientMock = vi.fn();
 
 export const fakeMcpClient = {
   callTool: callToolMock,
@@ -28,14 +33,14 @@ export const fakeMcpClient = {
  * @returns The mocked module shape
  */
 export function mcpClientHelpersMock(): {
-  createConnectedMcpClient: () => Promise<Client>;
+  createConnectedMcpClient: typeof createConnectedMcpClientMock;
   filterEnabledTools: (
     tools: McpToolDefinition[],
     enabledTools?: Record<string, boolean>,
   ) => McpToolDefinition[];
 } {
   return {
-    createConnectedMcpClient: vi.fn(async () => fakeMcpClient),
+    createConnectedMcpClient: createConnectedMcpClientMock,
     filterEnabledTools: (tools, enabledTools) =>
       enabledTools
         ? tools.filter((t) => enabledTools[t.name] !== false)
@@ -48,7 +53,18 @@ export function resetMcpClientMocks(): void {
   callToolMock.mockReset();
   listToolsMock.mockReset();
   closeMock.mockReset();
+  createConnectedMcpClientMock.mockReset();
+  applyMcpClientDefaults();
 }
+
+/** The defaults every test starts from: connect resolves, close resolves. */
+function applyMcpClientDefaults(): void {
+  createConnectedMcpClientMock.mockResolvedValue(fakeMcpClient);
+  // The real close() returns a promise, and the bridges chain .catch() onto it.
+  closeMock.mockResolvedValue(undefined);
+}
+
+applyMcpClientDefaults();
 
 /**
  * Queue a `listTools()` response that returns the named bare tools (no input
@@ -62,6 +78,36 @@ export function mockListBareTools(...names: string[]): void {
       description: "",
       inputSchema: { properties: {} },
     })),
+  });
+}
+
+/**
+ * Queue the two-tool `listTools()` response both adapter suites map: one tool
+ * with a full schema, and one whose schema omits `type` and `required` so the
+ * adapter has to supply them.
+ * @param firstSchemaExtras - Extra keys merged into the first tool's inputSchema
+ */
+export function mockListTwoTools(
+  firstSchemaExtras: Record<string, unknown> = {},
+): void {
+  listToolsMock.mockResolvedValueOnce({
+    tools: [
+      {
+        name: "ppal-read-track",
+        description: "Read a track",
+        inputSchema: {
+          ...firstSchemaExtras,
+          type: "object",
+          properties: { trackIndex: { type: "number" } },
+          required: ["trackIndex"],
+        },
+      },
+      {
+        name: "ppal-create-clip",
+        description: "Create a clip",
+        inputSchema: { properties: {} },
+      },
+    ],
   });
 }
 

@@ -26,7 +26,7 @@ There are three notations to choose from, and one expression language —
 | Notation                | Best for                              | Strengths                                                                     | Tradeoffs                                                                 |
 | ----------------------- | ------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | [bar\|beat](#bar-beat)  | **The default.** Capable models.      | Most expressive: velocity ranges, probability, bar copying, note deletion     | Stateful syntax; bars and beats shift meaning in odd meters               |
-| [MIDI JSON](#midi-json) | Coding agents; exact data             | Highest fidelity: exact velocities and tuplets; trivial to generate and parse | Verbose — every note spelled out in full; no delete syntax                |
+| [MIDI JSON](#midi-json) | Coding agents; exact data             | Highest fidelity: exact velocities and tuplets; trivial to generate and parse | Verbose — every note spelled out in full                                  |
 | [Stark](#stark)         | Small and local models; drums; chords | Literal and round-trippable; chord symbols; event-based drum lines            | Velocity is lossy (three dynamics); no probability or velocity randomness |
 
 If you're using Claude, GPT, Gemini, or another frontier model through the chat
@@ -56,11 +56,15 @@ places:
 
 - **Max for Live device** — the **Notation** control on the
   [Setup tab](/guide/device#behavior)
-- **Chat UI** — Settings → Tools → Advanced → **Notation**
+- **Chat UI** — Settings → Tools, at the bottom of the **Clip** group
 - **REST API** — `POST /config` with `{"notation": "stark"}`
 - **Command line** — `npx producer-pal --notation stark`
-- **Coding agents** — the [Agent Skill](/guide/skills) sets it itself with
-  `node ppal.mjs --set-config '{"notation":"midi-json"}'`
+
+A client can also pick its own notation for a single request, without changing
+the global — the `x-producer-pal-notation`
+[header](/guide/rest-api#per-request-notation), honored by both the REST and MCP
+endpoints. This is how the [Agent Skill](/guide/skills) works in `midi-json`
+while your Chat UI stays on bar|beat.
 
 ::: tip Switching takes effect in a new conversation
 
@@ -150,6 +154,9 @@ Times are absolute musical beats: `t:0` is the clip start, `t:4` is beat 5, and
 chords share a `t`. Tuplets can be written as exact fractions — `d:2/3` is a
 triplet quarter — and read back as fractions rather than a lossy `0.3333`.
 
+`v:0` deletes instead of adding: it removes the note at that same `p` and `t`,
+whether it's already in the clip or was written earlier in the same array.
+
 The parser is deliberately tolerant, so whatever an LLM emits still parses: keys
 may be quoted or bare, short (`p`/`t`/`d`/`v`) or long (`pitch`/`start`/…).
 
@@ -159,8 +166,8 @@ than composing a text notation by hand, which is why the
 [Agent Skill](/guide/skills) selects it.
 
 **Tradeoffs.** It's the most verbose per note — there's no statefulness, no bar
-copying, no repeats, so a busy clip costs the most tokens. And it has no delete
-syntax; to remove or edit existing notes, use [`preTransforms`](#transforms).
+copying, no repeats, so a busy clip costs the most tokens. Deleting is per note,
+so clearing a whole region is a job for [`preTransforms`](#transforms).
 
 <!--@include: ../_generated/notation-params-midi-json.md-->
 
@@ -200,6 +207,12 @@ into concrete pitches. Drums use the 16 General MIDI names (`kick`, `snare`,
 `hihat`, `clap`, …); an absolute pitch name works as a header too (`C3:`) for
 pads outside that set.
 
+Octave numbers work too — `C Eb G` is `C3 Eb3 G3` spelled out, and the two
+combine (`C3'` = C4). Note it's a note-level spelling: inside a chord symbol the
+digits are the chord quality (`C7` is a dominant seventh), so symbols place
+themselves with octave marks only. Reading a clip back always re-emits the
+octave-mark spelling.
+
 **Strengths.** Literal and predictable — no key, no scale, no snapping, and
 accidentals spelled explicitly. Reading a clip back re-emits Stark rather than
 falling back to another notation, so the AI sees what it wrote. The event-based
@@ -219,9 +232,9 @@ symbols reads back as literal notes.
 
 Notation says _what the notes are_. Transforms say _how to reshape them_ — a
 small expression language for changing notes and audio properties with math.
-Pass a `transforms` string to [Create Clip](/features#ppal-create-clip),
-[Update Clip](/features#ppal-update-clip), or
-[Duplicate](/features#ppal-duplicate).
+Pass a `transforms` string to [Create Clip](/features/tools#ppal-create-clip),
+[Update Clip](/features/tools#ppal-update-clip), or
+[Duplicate](/features/tools#ppal-duplicate).
 
 Each line is `[selector:] parameter operator expression`:
 
@@ -255,13 +268,14 @@ pitch += clipseq(0, 5, 7)             // per-copy transposition
 A transform string **broadcasts across every clip or copy** in a batch, so one
 string can vary many clips at once — `clip.index` arithmetic or `clipseq(...)`
 gives each one a different result. That's what makes
-[Duplicate](/features#ppal-duplicate) able to generate a set of variations in a
-single call, and it pairs naturally with [take lanes](/features#take-lanes).
+[Duplicate](/features/tools#ppal-duplicate) able to generate a set of variations
+in a single call, and it pairs naturally with
+[take lanes](/features#take-lanes).
 
 `preTransforms` is the same language, applied to a clip's _existing_ notes
 before any new `notes` merge in. It's the general editing path — and for
-[MIDI JSON](#midi-json) and [Stark](#stark), which have no delete syntax of
-their own, it's how you remove or rewrite notes.
+[Stark](#stark), which has no delete syntax of its own, it's how you remove or
+rewrite notes.
 
 ::: info Transforms are the same in every notation
 
@@ -276,9 +290,9 @@ regardless. Even on MIDI JSON or Stark, you still write `1|1-2|1: delete` and
 ## The instructions the AI actually gets
 
 Producer Pal teaches the AI its notation at the start of every conversation, by
-returning a skill set from the [Connect tool](/features#ppal-connect). The full
-text of those skills — including the notation guide for whichever notation is
-active — isn't reproduced here; see the [features page](/features#skills) for
+returning a skill set from the [Connect tool](/features/tools#ppal-connect). The
+full text of those skills — including the notation guide for whichever notation
+is active — isn't reproduced here; see the [features page](/features#skills) for
 where to read it: the Chat UI's Skills tab previews the assembled document for
 any notation and model size, and the source is browsable on GitHub. You can
 [customize or replace them](/guide/customizing-skills), including swapping in

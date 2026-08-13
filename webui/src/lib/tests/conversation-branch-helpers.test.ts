@@ -300,6 +300,12 @@ describe("computeBranchPoints", () => {
     ]);
   });
 
+  it("shows no arrows for a lone orphan whose trunk was deleted", () => {
+    const b = rec("B", { forkParentId: "A", forkedAtIndex: 2 });
+
+    expect(computeBranchPoints("B", [b])).toStrictEqual([]);
+  });
+
   it("shows both the inbound and outbound sets for a mid-chain branch", () => {
     // A → B (at 2); B → C (at 4). Viewing B: it is a fork of A and a trunk of C.
     const a = rec("A");

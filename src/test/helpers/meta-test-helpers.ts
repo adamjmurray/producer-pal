@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type ExpectStatic } from "vitest";
+import { isTestFile, TEST_DIR_NAMES } from "./test-file-classification.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,10 +121,7 @@ interface TestHeavyFolder {
 /** Directories that are expected to contain mostly test files */
 const TEST_HEAVY_SKIP_DIRS: Set<string> = new Set([
   "node_modules",
-  "tests",
-  "test",
-  "test-cases",
-  "test-utils",
+  ...TEST_DIR_NAMES,
 ]);
 
 /**
@@ -153,7 +151,7 @@ export function findTestHeavyFolders(
         results.push(...findTestHeavyFolders(fullPath, minTestFiles));
       }
     } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
-      if (isTestFile(item)) {
+      if (isTestFile(path.relative(projectRoot, fullPath))) {
         testCount++;
       } else {
         sourceCount++;
@@ -245,24 +243,6 @@ export function countPatternOccurrences(
 /** Source file extensions */
 const SOURCE_EXTENSIONS: Set<string> = new Set([".js", ".mjs", ".ts", ".tsx"]);
 
-/** Test file patterns */
-const TEST_FILE_PATTERNS: string[] = [
-  ".test.js",
-  ".test.ts",
-  ".test.tsx",
-  "-test-helpers.js",
-  "-test-helpers.ts",
-];
-
-/**
- * Checks if a filename is a test file based on patterns
- * @param filename - File name to check
- * @returns True if it's a test file
- */
-export function isTestFile(filename: string): boolean {
-  return TEST_FILE_PATTERNS.some((pattern) => filename.endsWith(pattern));
-}
-
 /** Text file extensions scanned by whole-repo content checks */
 const TEXT_EXTENSIONS: Set<string> = new Set([
   ".ts",
@@ -310,12 +290,12 @@ export function findRepoTextFiles(rootDir: string = projectRoot): string[] {
 /**
  * Recursively find files in a directory matching a filter
  * @param dirPath - Directory to scan
- * @param filter - Function that receives a filename and returns true to include it
- * @returns Array of file paths
+ * @param filter - Given a repo-relative path, returns true to include the file
+ * @returns Array of absolute file paths
  */
 function findFilesRecursive(
   dirPath: string,
-  filter: (filename: string) => boolean,
+  filter: (relPath: string) => boolean,
 ): string[] {
   const results: string[] = [];
 
@@ -331,7 +311,7 @@ function findFilesRecursive(
 
     if (stat.isDirectory()) {
       results.push(...findFilesRecursive(fullPath, filter));
-    } else if (filter(item)) {
+    } else if (filter(path.relative(projectRoot, fullPath))) {
       results.push(fullPath);
     }
   }
@@ -349,10 +329,10 @@ export function findSourceFiles(
   dirPath: string,
   excludeTests: boolean = false,
 ): string[] {
-  return findFilesRecursive(dirPath, (item) => {
-    if (!SOURCE_EXTENSIONS.has(path.extname(item))) return false;
+  return findFilesRecursive(dirPath, (relPath) => {
+    if (!SOURCE_EXTENSIONS.has(path.extname(relPath))) return false;
 
-    return !excludeTests || !isTestFile(item);
+    return !excludeTests || !isTestFile(relPath);
   });
 }
 
@@ -364,7 +344,8 @@ export function findSourceFiles(
 export function findTestFiles(dirPath: string): string[] {
   return findFilesRecursive(
     dirPath,
-    (item) => SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item),
+    (relPath) =>
+      SOURCE_EXTENSIONS.has(path.extname(relPath)) && isTestFile(relPath),
   );
 }
 

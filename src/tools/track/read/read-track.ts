@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
@@ -298,7 +299,6 @@ export function readTrackGeneric({
     type: computeTrackType(isMidiTrack, category),
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),
-    // arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
 
   addOptionalBooleanProperties(result, track, canBeArmed);
@@ -316,7 +316,7 @@ export function readTrackGeneric({
   }
 
   if (groupId) {
-    result.groupId = String(groupId);
+    result.groupId = atomToString(groupId);
   }
 
   addCategoryIndex(result, category, trackIndex);
