@@ -1,6 +1,15 @@
 # Known Issues
 
-This page documents known bugs and limitations in Producer Pal.
+This page documents known bugs and rough edges in Producer Pal.
+
+::: tip Looking for what Producer Pal can't do?
+
+Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
+synthesis, and multiple Drum Racks per track are
+**[Limitations](/features/limitations)** — design boundaries rather than bugs,
+so they aren't listed here.
+
+:::
 
 ## Undo/Redo Behavior
 
@@ -21,12 +30,6 @@ UI between requests if you want separate undo steps.
 Looped arrangement clips cannot be directly lengthened. Instead, they are
 duplicated and tiled, which can create a lot of clips. Unlooped clips (MIDI and
 audio) are extended in place without creating additional clips.
-
-## Automation and Envelopes Not Supported
-
-Producer Pal cannot read, create, or edit arrangement automation or clip
-envelopes (parameter values that change over time). See
-[Limitations](/features#limitations) on the Features page for details.
 
 ## Recent Project Context Can Be Lost on a Device Upgrade (Rare)
 

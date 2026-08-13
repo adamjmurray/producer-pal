@@ -34,7 +34,7 @@ the loop.
   [transforms](#transforms). [Clip tools →](/features/tools#clip-tools)
 - **Audio clips** — place samples, set gain, pitch shift, and warp settings,
   reshape the region, and arrange them on the timeline. Producer Pal manages
-  audio but can't listen to it — see [Limitations](#limitations).
+  audio but can't listen to it — see [Limitations](/features/limitations).
   [Clip tools →](/features/tools#clip-tools)
 - **Arrangement** — place, move, split, and duplicate clips along the timeline,
   add locators, and stack alternate versions on [take lanes](#take-lanes).
@@ -45,7 +45,7 @@ the loop.
 - **Devices and instruments** — add and control native Live instruments and
   effects, build Drum Racks and Simpler instruments from samples, move devices
   into racks, and drive macro variations. Third-party VST/AU plug-ins need a
-  mapping step first — see [Limitations](#limitations).
+  mapping step first — see [Limitations](/features/limitations).
   [Device tools →](/features/tools#device-tools)
 - **Library** — search Live's browser by name or tag, browse its category
   taxonomy, rank samples by similarity to a seed sample, and list installed
@@ -62,6 +62,9 @@ the loop.
 
 Every tool, with its full parameter list:
 **[Tool Reference →](/features/tools)**
+
+What it can't do — automation, VST/AU plug-in internals, audio analysis:
+**[Limitations →](/features/limitations)**
 
 ## MIDI Notation {#custom-music-notation}
 
@@ -139,37 +142,6 @@ variations side by side without cluttering the timeline.
 Control Ableton Live from another computer on your local network, no extra setup
 required. For fully remote control, use
 [web tunnels](/installation/web-tunnels).
-
-## Limitations
-
-- **Automation and envelopes are not supported.** Producer Pal cannot read,
-  create, or edit arrangement automation or clip envelopes — parameter values
-  that change over time. Track and device parameters like volume, pan, sends,
-  and knobs can be set to static values, but not automated.
-- **VST/AU plug-in internals can't be controlled directly.** Producer Pal can
-  open or close a plug-in's editor window, but it cannot read or set the
-  parameters inside a third-party VST/AU plug-in. To control them, map the
-  parameters onto the Live plug-in device using Live's
-  [Configure mode](https://www.ableton.com/live-manual/12/working-with-instruments-and-effects/#plug-in-configure-mode)
-  (expand the device, click "Configure", then click the controls you want in the
-  plug-in's window); Producer Pal can then set those mapped parameters like any
-  other device parameter. You map them yourself — up to 128 parameters, and not
-  every plug-in parameter is mappable, so pick the ones that matter most.
-- **Audio content can't be analyzed or generated.** Producer Pal can manage
-  audio clips — set gain, pitch, and warp settings, change clip length, arrange
-  clips in the Arrangement, and load and manage samples on Simpler instruments
-  (including Drum Rack pads) — but it cannot listen to, analyze, or transcribe
-  the audio itself (no detecting notes, key, or tempo from a waveform; no
-  audio-to-MIDI), nor synthesize audio from scratch. Not from the device,
-  anyway: the Live API exposes no audio content, and Max for Live gives it no
-  runtime for DSP or file writing. A coding agent has both, so the
-  [companion audio skills](/guide/skills#companion-skills) generate and analyze
-  audio today — and that's the better home for it, since synthesis is open-ended
-  enough that an agent writing real code beats any DSL Producer Pal could teach
-  it.
-- **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
-  with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
-  per track for predictable results.
 
 ## Small Model Mode {#small-model-mode}
 

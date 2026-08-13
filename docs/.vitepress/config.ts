@@ -155,6 +155,7 @@ export default defineConfig({
           { text: "Tool Reference", link: "/features/tools" },
           { text: "Usage Examples", link: "/features/examples" },
           { text: "MIDI Notation", link: "/features/midi-notation" },
+          { text: "Limitations", link: "/features/limitations" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },

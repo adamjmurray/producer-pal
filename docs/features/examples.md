@@ -220,4 +220,4 @@ thinking" or "high reasoning effort" can help, though it's typically overkill
 and burns usage limits faster.
 
 For the full feature reference see the [Features page](/features), and for known
-constraints see [Limitations](/features#limitations).
+constraints see [Limitations](/features/limitations).
