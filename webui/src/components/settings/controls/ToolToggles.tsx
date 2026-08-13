@@ -17,6 +17,11 @@ import { type GroupedTools, groupTools } from "./helpers/tool-toggles-helpers";
 import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
 
+// Rendered width of an unstyled checkbox. The Edit Context icon matches it so
+// the CTA's icon and text line up with the checkboxes and labels above it.
+// Restyle the checkboxes and this has to move with them.
+const CHECKBOX_PX = 13;
+
 interface ToolTogglesProps {
   tools: McpTool[] | null;
   mcpStatus: McpStatus;
@@ -268,7 +273,7 @@ function ToolGroupSection({
 }: ToolGroupSectionProps) {
   return (
     <div className="flex flex-col h-full">
-      <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-300 uppercase tracking-wide mb-1">
+      <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-300 uppercase tracking-wide mb-1.5">
         {group.label}
       </h4>
       <div className="space-y-1">
@@ -306,7 +311,10 @@ function ToolGroupSection({
           );
         })}
       </div>
-      {cta && <div className="mt-2.5">{cta}</div>}
+      {/* 5px sets the CTA a hair clear of the rows, which sit 4px apart — it
+          used to be 10px. `flex` so the inline-flex button doesn't pick up
+          baseline leading and drift down. */}
+      {cta && <div className="mt-1.25 flex">{cta}</div>}
       {footer && <div className="mt-auto pt-3">{footer}</div>}
     </div>
   );
@@ -338,7 +346,7 @@ function EditContextButton({
       title={disabled ? "Configure settings first" : undefined}
       className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline disabled:hover:text-blue-600 dark:disabled:hover:text-blue-400"
     >
-      <ContextIcon />
+      <ContextIcon size={CHECKBOX_PX} />
       Edit Context
     </button>
   );
