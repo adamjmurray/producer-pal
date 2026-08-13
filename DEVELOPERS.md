@@ -110,10 +110,10 @@ Additional checks enforced within tests:
 
 And `npm run check:build` additionally validates:
 
-| Check                   | What it enforces                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| **Production build**    | Rollup bundles (MCP server, V8, portal) and Vite UI build compile without errors |
-| **Documentation build** | VitePress site compiles successfully                                             |
+| Check                   | What it enforces                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| **Production build**    | Rolldown bundles (MCP server, V8, portal) and Vite UI build compile without errors |
+| **Documentation build** | VitePress site compiles successfully                                               |
 
 ### Key oxlint limits
 

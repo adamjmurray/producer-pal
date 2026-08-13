@@ -18,7 +18,7 @@ const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
 
 export default defineConfig({
-  // Bake the build identity in, same as the rollup bundles do. The browser has
+  // Bake the build identity in, same as the rolldown bundles do. The browser has
   // no `process`, so this must always substitute to a literal.
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),

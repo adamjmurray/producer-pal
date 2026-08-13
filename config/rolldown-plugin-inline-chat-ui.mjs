@@ -27,7 +27,7 @@ function getFilesRecursively(dir) {
 }
 
 /**
- * Rollup plugin to inline chat-ui.html as a virtual module.
+ * Rolldown plugin to inline chat-ui.html as a virtual module.
  * This allows the MCP server bundle to work in frozen .amxd builds
  * where external file access is not available.
  */

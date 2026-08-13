@@ -20,19 +20,19 @@ const mockBridge = {
 };
 
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
-vi.mock(import("./stdio-http-bridge.ts"), () => ({
+vi.mock(import("../stdio-http-bridge.ts"), () => ({
   StdioHttpBridge: vi.fn(function () {
     return mockBridge;
   }),
 }));
 
-vi.mock(import("./file-logger.ts"), () => ({
+vi.mock(import("../file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 // Stubbed so --list-tools doesn't reach for a real device here; what it prints
 // is tool-listing.test.ts's business.
-vi.mock(import("./tool-listing.ts"), () => ({
+vi.mock(import("../tool-listing.ts"), () => ({
   formatToolListing: vi.fn(() => Promise.resolve("TOOL LISTING")),
 }));
 
@@ -98,9 +98,9 @@ describe("producer-pal-portal", () => {
   async function importPortalAndGetCalls(): Promise<unknown[][]> {
     vi.resetModules();
 
-    const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
+    const { StdioHttpBridge } = await import("../stdio-http-bridge.ts");
 
-    await import("./producer-pal-portal.ts");
+    await import("../producer-pal-portal.ts");
 
     return (StdioHttpBridge as unknown as Mock).mock.calls;
   }

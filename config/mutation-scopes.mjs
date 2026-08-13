@@ -28,7 +28,7 @@
 // in that vocabulary rather than adding a name only this file knows — a suffix
 // only one config recognizes reads as a test here and as source everywhere
 // else. `*-disabled.ts` are build-time substitution stubs swapped in by
-// rollup when a feature flag is off (e.g. ENABLE_CODE_EXEC); tests run with the
+// rolldown when a feature flag is off (e.g. ENABLE_CODE_EXEC); tests run with the
 // feature enabled so the stubs are never imported (all-NoCoverage by
 // construction) — they are already coverage-excluded in vitest.config.ts, so
 // exclude them here too. (src/tools/ currently has no types.ts, but that

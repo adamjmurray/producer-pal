@@ -34,10 +34,9 @@ updates:
         patterns:
           - "@codemirror/*"
           - "@lezer/*"
-      rollup:
+      bundler:
         patterns:
-          - "rollup"
-          - "@rollup/*"
+          - "rolldown"
           - "rollup-plugin-*"
       # oxlint replaced eslint, but four eslint plugins remain: oxlint runs them
       # through its jsPlugins bridge, natively implementing none of their rules

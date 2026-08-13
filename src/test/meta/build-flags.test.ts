@@ -12,7 +12,7 @@ import {
 } from "#src/test/helpers/meta-test-helpers.ts";
 import packageJson from "../../../package.json" with { type: "json" };
 
-// Build flags gate code out of release bundles: rollup substitutes their value
+// Build flags gate code out of release bundles: rolldown substitutes their value
 // at build time, so every flag needs a documented way to switch it ON —
 // otherwise the code it guards is unreachable in every build and can never be
 // exercised by hand.
@@ -29,14 +29,14 @@ const OPT_IN_FLAGS = ["ENABLE_REMOTE_CORS"];
 const BUILD_FLAGS = [...DEBUG_FLAGS, ...OPT_IN_FLAGS];
 
 // Runtime flags are read from the real environment when the portal runs (users
-// set them in their MCP client config), so they must stay out of the rollup
+// set them in their MCP client config), so they must stay out of the rolldown
 // replacements — substituting one would freeze it off at build time.
 const RUNTIME_FLAGS = ["ENABLE_LOGGING"];
 
 const FLAG_READ = /process\.env\.(ENABLE_[A-Z0-9_]+)/g;
 
 const scripts = packageJson.scripts as Record<string, string>;
-const rollupConfig = readRepoFile("config/rollup.config.mjs");
+const rolldownConfig = readRepoFile("config/rolldown.config.mjs");
 const ciWorkflow = readRepoFile(".github/workflows/run-checks-and-tests.yml");
 
 describe("build flags", () => {
@@ -46,16 +46,16 @@ describe("build flags", () => {
     );
   });
 
-  it("declares every build flag in the rollup replacements", () => {
+  it("declares every build flag in the rolldown replacements", () => {
     // Unreplaced process.env references would throw in the Max V8 runtime.
     for (const flag of BUILD_FLAGS) {
-      expect(rollupConfig).toContain(`process.env.${flag}`);
+      expect(rolldownConfig).toContain(`process.env.${flag}`);
     }
   });
 
-  it("keeps runtime flags out of the rollup replacements", () => {
+  it("keeps runtime flags out of the rolldown replacements", () => {
     for (const flag of RUNTIME_FLAGS) {
-      expect(rollupConfig).not.toContain(flag);
+      expect(rolldownConfig).not.toContain(flag);
     }
   });
 
@@ -89,8 +89,8 @@ describe("build identity", () => {
   // src/shared/config.ts so the update check can tell two builds of the same
   // version apart. Every bundler must substitute it: left unreplaced, the
   // `process` reference throws in the Max V8 runtime and the browser bundle.
-  it("substitutes BUILD_SHA in the rollup bundles", () => {
-    expect(rollupConfig).toContain("process.env.BUILD_SHA");
+  it("substitutes BUILD_SHA in the rolldown bundles", () => {
+    expect(rolldownConfig).toContain("process.env.BUILD_SHA");
   });
 
   it("substitutes BUILD_SHA in the chat UI bundle", () => {

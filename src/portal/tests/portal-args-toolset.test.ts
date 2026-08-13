@@ -5,9 +5,9 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { ALL_TOOL_IDS, CONNECT_TOOL_ID } from "#src/shared/tool-groups.ts";
-import { parsePortalArgs } from "./portal-args.ts";
+import { parsePortalArgs } from "../portal-args.ts";
 
-vi.mock(import("./file-logger.ts"), () => ({
+vi.mock(import("../file-logger.ts"), () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
