@@ -10,8 +10,10 @@ import { CONTEXT_DOCS_URL } from "#webui/lib/config";
 import { SaveIndicator } from "./SaveIndicator";
 
 // Circular "?" help badge, matching the chat header and settings help links.
+// It has no padding of its own, so mx-1 gives it the same 4px inset that the
+// close button's p-1 gives its icon, keeping the gaps even.
 const helpLinkClass =
-  "inline-flex items-center justify-center w-6 h-6 text-sm font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0 transition-colors";
+  "inline-flex items-center justify-center w-6 h-6 mx-1 text-sm font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0 transition-colors";
 
 interface ContextHeaderProps {
   title: string;

@@ -13,8 +13,10 @@ import { ToolsIndicator } from "./ToolsIndicator";
 const iconBtn =
   "p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors";
 
+// The "?" has no padding of its own, so mx-1 gives it the same 4px inset that
+// iconBtn's p-1 gives the icons beside it, keeping the gaps even.
 const helpBtn =
-  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0";
+  "inline-flex items-center justify-center w-5 h-5 mx-1 text-xs font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0";
 
 /** Header display state: model/provider/tools/small-model info passed through the component tree */
 export interface HeaderInfo {
@@ -115,10 +117,14 @@ export function HeaderActions({
         />
       </button>
 
+      {/* mr-1 because this is the last text item before the icon cluster, and
+          text butted against the dense context icon reads tighter than the gap
+          actually is. Here rather than on the help link so it holds up whether
+          or not help links are showing. */}
       <button
         type="button"
         onClick={onOpenConnectionSettings}
-        className="hover:opacity-70 transition-opacity cursor-pointer shrink-0"
+        className="mr-1 hover:opacity-70 transition-opacity cursor-pointer shrink-0"
         title="Connection settings"
       >
         <SmallModelIndicator
