@@ -491,7 +491,7 @@ describe("transformOpenRouterRequest", () => {
 
   it("caches Gemini models (google/gemini prefix)", async () => {
     const parsed = await transform({
-      model: "google/gemini-3.6-flash",
+      model: "google/gemini-3.7-flash",
       messages: [{ role: "user", content: "hi" }],
     });
 

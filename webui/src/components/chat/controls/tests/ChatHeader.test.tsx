@@ -140,18 +140,18 @@ describe("ChatHeader", () => {
       expect(screen.getByText("Gemini 3.5 Flash-Lite")).toBeDefined();
     });
 
-    it("shows Gemini 3.6 Flash model with provider", () => {
+    it("shows Gemini 3.7 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
           headerInfo={hi({
-            activeModel: "gemini-3.6-flash",
+            activeModel: "gemini-3.7-flash",
             activeProvider: "gemini",
           })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 3.6 Flash")).toBeDefined();
+      expect(screen.getByText("Gemini 3.7 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {

@@ -54,7 +54,7 @@ describe("ModelSelector", () => {
       screen.getByRole("option", { name: /^Gemini 3\.1 Pro$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /^Gemini 3\.6 Flash$/ }),
+      screen.getByRole("option", { name: /^Gemini 3\.7 Flash$/ }),
     ).toBeDefined();
   });
 
@@ -62,7 +62,7 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-3.6-flash");
+    expect(options[0]!.value).toBe("gemini-3.7-flash");
     expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
     expect(options[2]!.value).toBe("gemini-3.5-flash-lite");
   });
@@ -74,32 +74,34 @@ describe("ModelSelector", () => {
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-3.1-pro-preview");
   });
 
-  it("can select gemini-3.6-flash", () => {
+  it("can select gemini-3.7-flash", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-3.6-flash", setModel);
+    expectModelSelected("gemini-3.7-flash", setModel);
   });
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
-      expect(screen.getByRole("option", { name: /^GPT-5\.5$/ })).toBeDefined();
+      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
       expect(
-        screen.getByRole("option", { name: /^GPT-5\.4 Mini$/ }),
+        screen.getByRole("option", { name: /^GPT-5\.6 Terra$/ }),
+      ).toBeDefined();
+      expect(
+        screen.getByRole("option", { name: /^GPT-5\.3 Codex$/ }),
       ).toBeDefined();
     });
 
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5.5",
+        model: "gpt-5.6-terra",
       });
 
-      expectModelSelected("gpt-5.4-mini", setModel);
+      expectModelSelected("gpt-5.3-codex", setModel);
     });
 
     it("includes the realtime (voice) model in the OpenAI dropdown", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      renderModelSelector({ provider: "openai", model: "gpt-5.6-terra" });
       expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });

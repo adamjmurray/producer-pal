@@ -132,7 +132,7 @@ export const ANTHROPIC_MODELS = [
 ];
 
 export const GEMINI_MODELS: ModelPresetItem[] = [
-  { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash" },
+  { value: "gemini-3.7-flash", label: "Gemini 3.7 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
   { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite" },
   {
@@ -147,9 +147,7 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   { value: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
   { value: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-  { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
-  { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
   {
     value: OPENAI_REALTIME_MODEL,
     label: "GPT Realtime 2.1 (Voice)",
@@ -169,8 +167,8 @@ export const MISTRAL_MODELS = [
 export const OPENROUTER_MODELS = [
   // Paid models
   {
-    value: "google/gemini-3.6-flash",
-    label: "[Paid] Google Gemini 3.6 Flash",
+    value: "google/gemini-3.7-flash",
+    label: "[Paid] Google Gemini 3.7 Flash",
   },
   {
     value: "google/gemini-3.1-pro-preview",
