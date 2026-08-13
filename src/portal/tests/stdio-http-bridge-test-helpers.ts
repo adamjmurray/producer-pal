@@ -14,7 +14,7 @@
  */
 import { expect, vi, type Mock } from "vitest";
 import { VERSION } from "#src/shared/config.ts";
-import { type BridgeOptions, StdioHttpBridge } from "./stdio-http-bridge.ts";
+import { type BridgeOptions, StdioHttpBridge } from "../stdio-http-bridge.ts";
 
 export const mockClient = {
   connect: vi.fn(),

@@ -66,7 +66,7 @@ vi.mock(
 
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
-import { formatToolListing } from "./tool-listing.ts";
+import { formatToolListing } from "../tool-listing.ts";
 
 const MCP_URL = "http://localhost:3350/mcp";
 

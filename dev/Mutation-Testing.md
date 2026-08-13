@@ -486,7 +486,7 @@ helpers are mostly pure functions with tight, directly-unit-testable contracts.
 
 One scope-config change accompanied the tests: `toolDomain()` in
 `config/mutation-scopes.mjs` now excludes `*-disabled.ts`, the build-time
-substitution stubs rollup swaps in when a feature flag is off (e.g.
+substitution stubs rolldown swaps in when a feature flag is off (e.g.
 `ENABLE_CODE_EXEC`). Tests run with the feature enabled, so the stubs are never
 imported — 14 all-`NoCoverage` mutants that can never be killed.
 `vitest.config.ts` already coverage-excludes them; this mirrors that exclusion.

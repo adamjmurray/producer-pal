@@ -342,7 +342,7 @@ and bootstraps itself the old way. A worker with neither is blind.
 
 ## Build System
 
-Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
+Four separate bundles built with rolldown (MCP server, V8, Portal) and Vite
 (Chat UI):
 
 ### MCP Server Bundle

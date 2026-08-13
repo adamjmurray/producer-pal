@@ -101,7 +101,7 @@ vi.mock(import("zod"), () => ({
   },
 }));
 
-vi.mock(import("./file-logger.ts"), () => ({
+vi.mock(import("../file-logger.ts"), () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -113,8 +113,8 @@ vi.mock(import("./file-logger.ts"), () => ({
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
-import { logger } from "./file-logger.ts";
-import { StdioHttpBridge } from "./stdio-http-bridge.ts";
+import { logger } from "../file-logger.ts";
+import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
 describe("StdioHttpBridge", () => {
   let bridge: TestBridge;
