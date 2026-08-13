@@ -123,9 +123,9 @@ These aren't commitments, just what I'm thinking about after 2.1:
   model, tool set, and notation. Carrying their own context and skills too would
   make them a full switch of the AI's setup for a focused task.
 - **Workflows.** Fixed tool-call sequences the AI runs but doesn't improvise.
-  2.1 answered half the question with [subagents](/guide/chat-ui#tools), which
-  cover the delegation part; whether the fixed-sequence part is worth building —
-  or is just a command-oriented skill — is still undecided.
+  2.1 answered half the question with [subagents](/guide/chat-ui#subagents),
+  which cover the delegation part; whether the fixed-sequence part is worth
+  building — or is just a command-oriented skill — is still undecided.
 
 Have an opinion on any of these?
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions) or

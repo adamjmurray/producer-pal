@@ -1,3 +1,7 @@
+---
+outline: [2, 3]
+---
+
 # Chat UI
 
 The built-in Chat UI provides a browser-based interface for chatting with AI
@@ -50,6 +54,11 @@ The header is organized into two areas:
 Toggle the history panel using the panel icon in the header. On mobile it takes
 the full width; on larger screens it appears as a sidebar.
 
+### Search
+
+The search box filters the list by title, message text, and voice transcripts.
+Clear it with the ✕ to bring the full list back.
+
 ### Bookmarks
 
 Star a conversation to pin it to the **Bookmarks** section at the top of the
@@ -67,10 +76,10 @@ Each conversation in the list has action buttons that appear on hover:
 - **Delete** - Remove the conversation from history
 
 Conversations are stored in your browser's built-in database (IndexedDB), and
-settings (including API keys) are stored in local storage. This means all your
-data lives in that specific browser and user profile — it won't be available if
-you switch browsers or profiles. Use [Export & Import](#export-import) to move
-conversations between browsers.
+settings are stored in local storage, with API keys [encrypted](#settings). This
+means all your data lives in that specific browser and user profile — it won't
+be available if you switch browsers or profiles. Use
+[Export & Import](#export-import) to move conversations between browsers.
 
 Up to 200 conversations are kept; when the limit is reached, the oldest
 non-bookmarked conversations are automatically removed.
@@ -163,6 +172,46 @@ Pressing **Stop** clears the queue along with the response in progress. If a
 response fails, your queued messages are kept (not lost) and go out with your
 next send.
 
+## Subagents
+
+The AI can hand a self-contained subtask to a nested assistant working in the
+same Live Set. Turn it on with the experimental **Subagent** checkbox under
+**Advanced** on the [Tools tab](#tools), and pick what the workers run under
+with **Subagent preset** on the [Presets tab](#presets).
+
+Each subagent is numbered and appears as its own card in the transcript — expand
+it for the result it reported back, and expand the card inside that for its full
+work log. When the AI delegates several independent subtasks at once, the
+subagents run in parallel.
+
+![Parallel subagents](/img/producer-pal-chat-subagents.png)
+
+A subagent can be given more work later instead of being replaced by a fresh
+one. The AI does this on its own when it makes sense — that run's card is marked
+**resumed** and carries the same subagent number, because it is the same
+subagent picking up with everything it already did and knows. Asking for a
+change to a subagent's work ("subagent 2's bassline is too busy — thin it out")
+is usually enough for the AI to continue that subagent rather than start over.
+
+::: tip Resuming is the cheap option
+
+A fresh subagent has to be briefed from scratch and re-reads the Live Set before
+it can start. Resuming skips all of that, so follow-up work on the same material
+costs much less.
+
+:::
+
+Pressing **Stop** while a subagent is working no longer throws its work away.
+The card reads **stopped** and keeps the work log it got through, and the AI can
+resume that subagent to finish the job — you may have to say which one, since a
+run stopped before it reported back doesn't hand the AI its number.
+
+If a provider rate-limits a subagent, its card shows a **rate limited**
+countdown and the subagent retries on its own instead of failing. Subagents
+running in parallel share that backoff: when one hits a limit the others show
+**waiting** and pause with it, rather than piling more requests onto the
+provider.
+
 ## Voice Mode
 
 Producer Pal includes an experimental hands-free voice mode for talking with the
@@ -241,8 +290,10 @@ there are unsaved changes, the dialog will shake as a reminder to save or
 cancel).
 
 Settings are stored in your browser so you don't have to redo the setup every
-time. If entering an AI cloud provider's API key concerns you, use a private
-browser or clear your settings after use.
+time. API keys are encrypted at rest, so they never sit in local storage as
+plain text — but that's not a substitute for OS-level protection, since anything
+running code in your browser can still decrypt them. If that concerns you, use a
+private browser or clear your settings after use.
 
 When an active conversation was started with a different model or provider than
 the current defaults, a notice appears indicating that changes apply to new
@@ -360,6 +411,8 @@ A preset is a named, one-click bundle of a full chat setup: **provider**,
 and the **notation**. Because a preset spans both the Connection and Tools tabs,
 it gets its own home here.
 
+<img src="/img/producer-pal-chat-settings-presets.png" alt="Presets" width="500"/>
+
 The preset buttons save the moment you click them — unlike everything else in
 this dialog, they don't wait for the footer **Save**.
 
@@ -448,39 +501,8 @@ project context, global context, and the memory index are attached when AI
 connects either way, so to stop it reading a layer, empty that layer. **Edit
 Context** below the checkbox opens the context editor.
 
-The experimental **Subagent** checkbox lets the AI delegate a self-contained
-subtask to a nested assistant working in the same Live Set. Each subagent is
-numbered and appears as its own card in the transcript — expand it for the
-result it reported back, and expand the card inside that for its full work log.
-When the AI delegates several independent subtasks at once, the subagents run in
-parallel. Choose what they run under with **Subagent preset** on the
-[Presets tab](#presets).
-
-A subagent can be given more work later instead of being replaced by a fresh
-one. The AI does this on its own when it makes sense — that run's card is marked
-**resumed** and carries the same subagent number, because it is the same
-subagent picking up with everything it already did and knows. Asking for a
-change to a subagent's work ("subagent 2's bassline is too busy — thin it out")
-is usually enough for the AI to continue that subagent rather than start over.
-
-::: tip Resuming is the cheap option
-
-A fresh subagent has to be briefed from scratch and re-reads the Live Set before
-it can start. Resuming skips all of that, so follow-up work on the same material
-costs much less.
-
-:::
-
-Pressing **Stop** while a subagent is working no longer throws its work away.
-The card reads **stopped** and keeps the work log it got through, and the AI can
-resume that subagent to finish the job — you may have to say which one, since a
-run stopped before it reported back doesn't hand the AI its number.
-
-If a provider rate-limits a subagent, its card shows a **rate limited**
-countdown and the subagent retries on its own instead of failing. Subagents
-running in parallel share that backoff: when one hits a limit the others show
-**waiting** and pause with it, rather than piling more requests onto the
-provider.
+The experimental **Subagent** checkbox under **Advanced** lets the AI delegate
+work to nested assistants — see [Subagents](#subagents).
 
 The **Live API** checkbox under **Advanced** behaves differently from the other
 toggles. The rest only filter which tools the Chat UI's AI can see, but this one

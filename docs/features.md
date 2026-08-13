@@ -199,10 +199,11 @@ it.
 
 ## Subagents {#subagents}
 
-In the [Chat UI](/guide/chat-ui#tools), AI can hand a self-contained task to a
-nested assistant working in the same Live Set — plan a track's arrangement, then
-delegate each part and check the results. Independent tasks run in parallel, and
-a subagent can be given follow-up work rather than replaced by a fresh one.
+In the [Chat UI](/guide/chat-ui#subagents), AI can hand a self-contained task to
+a nested assistant working in the same Live Set — plan a track's arrangement,
+then delegate each part and check the results. Independent tasks run in
+parallel, and a subagent can be given follow-up work rather than replaced by a
+fresh one.
 
 The point is cost and context as much as speed: a worker's transcript never
 enters the main conversation, only its final answer, and each worker can run a
@@ -211,7 +212,7 @@ pairing is what [presets](/guide/chat-ui#presets) are for — a named bundle of
 provider, model, tool set, and notation, with one designated as what subagents
 run as. This is experimental and off by default.
 
-[Set up subagents →](/guide/chat-ui#tools)
+[Set up subagents →](/guide/chat-ui#subagents)
 
 ## Skills {#skills}
 
