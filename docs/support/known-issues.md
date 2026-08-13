@@ -5,7 +5,7 @@ This page documents known bugs and rough edges in Producer Pal.
 ::: tip Looking for what Producer Pal can't do?
 
 Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
-synthesis, and multiple Drum Racks per track are
+synthesis, drum pitch maps, and lengthening looped arrangement clips are
 **[Limitations](/features/limitations)** — design boundaries rather than bugs,
 so they aren't listed here.
 
@@ -25,24 +25,22 @@ for Live limitation specific to Producer Pal.
 **Workaround:** Save your Live Set before big changes. Click somewhere in Live's
 UI between requests if you want separate undo steps.
 
-## Lengthening Looped Arrangement Clips
-
-Looped arrangement clips cannot be directly lengthened. Instead, they are
-duplicated and tiled, which can create a lot of clips. Unlooped clips (MIDI and
-audio) are extended in place without creating additional clips.
-
-## Recent Project Context Can Be Lost on a Device Upgrade (Rare)
+## Recent Project Context Can Be Lost on a Device Upgrade (Pre-2.1.0 Devices)
 
 Your **project context** lives inside the Producer Pal device, so it travels
-with your Live Set. To survive a device upgrade — a newer `.amxd` starts as a
-fresh, empty device — Producer Pal also keeps a backup:
+with your Live Set. A newer `.amxd` starts as a fresh, empty device, so an
+upgrade used to lose it. Version 2.1.0 fixes that with a backup:
 `Producer Pal Project Context.md`, saved in your Live Project folder — one file,
 shared by every Set in it. It restores automatically the first time the AI uses
 a tool after upgrading.
 
+**Upgrading from a device older than 2.1.0 has nothing to restore from** — those
+devices never wrote the backup. Copy the context out of the old device before
+you replace it.
+
 The backup is (re)written whenever the context changes through a Producer Pal
-tool call, a chat, or an edit in the device or Chat UI. One narrow sequence can
-leave the newest context un-backed-up:
+tool call, a chat, or an edit in the device or Chat UI. From 2.1.0 on, one
+narrow sequence can still leave the newest context un-backed-up:
 
 1. Change the project context,
 2. save the Set for the **first time**, or **Save As** to a new project folder,

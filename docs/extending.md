@@ -101,16 +101,16 @@ workflow in plain language, you can change how the AI works.
 
 ## Choosing the right extension point
 
-| I want to…                                         | Use                                                |
-| -------------------------------------------------- | -------------------------------------------------- |
-| Script Ableton Live without AI                     | [REST API](/guide/rest-api)                        |
-| Build my own interface for Live                    | [REST API](/guide/rest-api)                        |
-| Work from Claude Code, Codex CLI, or Gemini CLI    | [Agent Skill](/guide/skills)                       |
-| Synthesize audio and land it in Live               | [Companion skills](/guide/skills#companion-skills) |
-| Render a mixdown or stem (macOS), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
-| Teach the AI a production technique                | [Skills](/guide/customizing-skills)                |
-| Tell the AI my preferences once, for good          | [Global context](/guide/context#global)            |
-| Cut what the AI costs per conversation             | [Trim the skills](/guide/customizing-skills)       |
+| I want to…                                              | Use                                                |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| Script Ableton Live without AI                          | [REST API](/guide/rest-api)                        |
+| Build my own interface for Live                         | [REST API](/guide/rest-api)                        |
+| Work from Claude Code, Codex CLI, or Gemini CLI         | [Agent Skill](/guide/skills)                       |
+| Synthesize audio and land it in Live                    | [Companion skills](/guide/skills#companion-skills) |
+| Render a mixdown or stem (macOS only), or analyze a mix | [Companion skills](/guide/skills#companion-skills) |
+| Teach the AI a production technique                     | [Skills](/guide/customizing-skills)                |
+| Tell the AI my preferences once, for good               | [Global context](/guide/context#global)            |
+| Cut what the AI costs per conversation                  | [Trim the skills](/guide/customizing-skills)       |
 
 ## Ideas under consideration
 

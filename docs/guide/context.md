@@ -70,7 +70,7 @@ first time the AI uses a tool after upgrading. It's a backup, not the source of
 truth — you normally never touch it, and it's safe to delete. (Unlike the two
 layers below, this is the one context file that lives with your project rather
 than under `~/.producer-pal`.) See
-[a rare case where the newest context isn't captured](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare).
+[when an upgrade can still lose it](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices).
 
 Keep it about the project, not about you. "Kick stays four-on-the-floor" belongs
 here; "I always work in A minor" belongs in Global.

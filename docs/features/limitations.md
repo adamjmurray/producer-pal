@@ -3,7 +3,7 @@ title: Limitations
 description:
   What Producer Pal can't do, and the workarounds — no control over VST/AU
   plug-in internals, no automation or clip envelopes, no audio analysis or
-  synthesis, and one Drum Rack per track.
+  synthesis, and one drum pitch map per track.
 ---
 
 # Limitations
@@ -14,8 +14,10 @@ surprising, see [Known Issues](/support/known-issues).
 
 ## VST/AU Plug-in Internals Can't Be Controlled Directly
 
-Producer Pal can open or close a plug-in's editor window, but it cannot read or
-set the parameters inside a third-party VST/AU plug-in.
+Producer Pal can open or close a plug-in's editor window, and
+[list the plug-ins you have installed](/features/tools#ppal-library) (Live
+12.4+), but it cannot read or set the parameters inside a third-party VST/AU
+plug-in.
 
 ::: tip Workaround: map the parameters you need
 
@@ -38,9 +40,7 @@ mappings of every plug-in inside it.
 ::: tip Workaround: use Live's own devices
 
 Live's instruments and effects expose every parameter, so anything built from
-them works fully. Producer Pal can also
-[list your installed plug-ins](/features/tools#ppal-library) (Live 12.4+) when
-you want to see what's available.
+them works fully — no mapping step, nothing to keep in sync.
 
 :::
 
@@ -59,32 +59,37 @@ Simpler instruments (including Drum Rack pads) — but it cannot listen to,
 analyze, or transcribe the audio itself. No detecting notes, key, or tempo from
 a waveform; no audio-to-MIDI; no synthesizing audio from scratch.
 
-Not from the device, anyway: the Live API exposes no audio content, and Max for
-Live gives it no runtime for DSP or file writing.
-
 ::: tip Workaround: drive it from a coding agent
 
-An agent has both, so the
-[companion audio skills](/guide/skills#companion-skills) generate and analyze
-audio today. That's the better home for it: synthesis is open-ended enough that
-an agent writing real code beats any DSL Producer Pal could teach it.
+A coding agent runs outside Live, with a real runtime and a filesystem, so the
+[companion audio skills](/guide/skills#companion-skills) cover the whole round
+trip today: synthesize audio from scratch, render a MIDI track or the entire mix
+to a file (macOS only), and analyze what comes back. That's the better home for
+it — synthesis is open-ended enough that an agent writing real code beats any
+DSL Producer Pal could teach it.
 
 :::
 
-## One Drum Rack Per Track
+## Looped Arrangement Clips Can't Be Lengthened in Place
 
-Producer Pal tells the AI which MIDI pitch triggers which drum pad, so it can
-put your kick on C1 and your snare on D1 by name instead of guessing. It reads
-that mapping from a single Drum Rack — the first one on the track, including
-ones nested inside other racks. Pads in a second Drum Rack on the same track
-stay invisible to the AI.
+An unlooped arrangement clip, MIDI or audio, is extended by moving its end. A
+looped one has no equivalent move — what plays is the loop region, so covering
+more of the timeline takes more clips.
 
-::: tip Workaround: keep it to one rack per track
+::: tip Workaround: Producer Pal tiles them for you
 
-Put every drum sound in one Drum Rack — it holds 128 pads, so a second rack is
-rarely what you need. If you want a separate kit, give it its own track.
+Ask for a longer looped arrangement clip and Producer Pal duplicates and tiles
+it to fill the length. Nothing to do on your side — just expect a row of clips
+instead of one long one.
 
 :::
+
+## One Drum Rack Pitch Map Per Track
+
+Reading a track gives the AI a map of which MIDI pitch triggers which drum pad,
+so it can place your kick and snare by name instead of guessing. That map comes
+from the first Drum Rack on the track, including ones nested inside other racks
+— so if you layer several, the AI goes by the first one's pad names.
 
 ---
 

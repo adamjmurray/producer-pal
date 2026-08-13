@@ -47,8 +47,12 @@ needs the manual step.**
 
 Project context is backed up in your Live Project folder and restored the first
 time the AI uses a tool on the new device — see
-[the rare exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-rare)
+[the one exception](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices)
 if you changed it right before a first save.
+
+**Coming from a pre-2.1.0 device?** That one never wrote the backup, so there's
+nothing to restore from. Copy your project context out of the old device before
+you replace it.
 
 :::
 
