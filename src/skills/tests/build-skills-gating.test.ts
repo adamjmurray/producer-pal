@@ -129,7 +129,7 @@ describe("buildSkills - tool gating", () => {
         "## MIDI Syntax",
       );
       expect(result, `${tools.join()} lost the octave convention`).toContain(
-        "C3 = MIDI 60",
+        "C3 = middle C = MIDI 60",
       );
     }
   });

@@ -55,6 +55,7 @@ import {
   legatoTransforms,
   melodyPitchMatrix,
   melodyTransforms,
+  middleCScaleMatrix,
   noteOpsMerge,
   noteOpsRatchetRoll,
   noteOpsRepeat,
@@ -155,6 +156,7 @@ const allScenarios: EvalScenario[] = [
   ...drumBackbeatMatrix,
   ...melodyPitchMatrix,
   ...rhythmGridMatrix,
+  ...middleCScaleMatrix,
 ];
 
 export interface LoadScenariosOptions {

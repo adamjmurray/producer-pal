@@ -18,10 +18,16 @@
  * statements of an update-clip rule to callers who couldn't merge — and they
  * pointed at a `preTransforms` the fragment that defines it had already been
  * gated away from.
+ *
+ * The pitch line spells out the octave convention because this tier has no
+ * `time-and-values`, where the standard tier states it once for everyone. The
+ * other two basic heads carry their own statement (stark says "Ableton naming",
+ * midi-json is numeric); this was the one place a model could read "C3 = middle
+ * C" and still write C4 for middle C, an octave off in silence.
  */
 export const barbeatBasic = `## MIDI Notation
 
-Pitches: C0-G8, # or b for sharps/flats (C#3, Bb2). C3 = middle C.
+Pitches: C0-G8, # or b for sharps/flats (C#3, Bb2). C3 = middle C = MIDI 60 (Ableton numbering; most other software calls this note C4).
 Format: \`v<vel> n<dur> pitch(es) bar|beat\` — always state v and n explicitly (don't rely on defaults); set them *before* the pitches and they persist until you change them.
 - v: velocity 0-127 (louder = higher)
 - n: duration, and it REQUIRES a denominator: n/4 quarter, n/8 eighth, n/16 sixteenth, n/2 half, n/1 whole, n/12 eighth-triplet. Add \`d\` for dotted or \`t\` for triplet: n/4d = dotted quarter (= n3/8), n/8t = eighth triplet (= n/12). Bare numbers are invalid.

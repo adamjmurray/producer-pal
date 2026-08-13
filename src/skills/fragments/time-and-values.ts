@@ -38,4 +38,4 @@ Applies to every notation: transforms, clip \`length\`, and arrangement duration
 
 **Positions** in transform selectors and single-point fields use **bar|beat**: 1-indexed, \`X|Y\` reads left-to-right (\`4|2\` = bar 4 beat 2, \`1|1\` = the very start), meter-relative. Sub-beat via a decimal (\`2|3.5\`) or an \`±n\` note-value offset off the grid beat (\`1|1+n/12\`).
 
-**Pitch names** use Ableton's octave numbering, wherever a pitch is written: **C3 = MIDI 60 = middle C**, so C1 = 36 (the bottom-left drum-rack pad), C-2 = 0, G8 = 127. Sharp/flat goes right after the letter (\`C#3\`, \`Bb2\`), case-insensitive. Other software numbers the same MIDI note C4 or C5 — inside Producer Pal it is always C3.`;
+**Pitch names** use Ableton's octave numbering, wherever a pitch is written: **C3 = middle C = MIDI 60** (most other software calls this note C4), so C1 = 36 (the bottom-left drum-rack pad), G8 = 127. Sharp/flat goes right after the letter (\`C#3\`, \`Bb2\`), case-insensitive.`;
