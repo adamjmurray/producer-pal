@@ -44,15 +44,21 @@ const ctx = setupMcpTestContext({ once: true });
 
 /**
  * The tools the subsetting tests withhold. Chosen for their skills gates:
- * ppal-library owns the `library` fragment outright, and the three device tools
- * own `devices`, `devices-write`, and `specialized-devices` — so dropping them
- * has to shorten the blob, not just the tool list.
+ * ppal-library owns the `library` fragment outright, and between them these
+ * clear the `devices`, `devices-write`, and `specialized-devices` gates — so
+ * dropping them has to shorten the blob, not just the tool list.
+ *
+ * select/delete/duplicate are here because `devices` gates on every tool that
+ * takes a device path, not just the three device tools.
  */
 const WITHHELD = [
   "ppal-library",
   "ppal-read-device",
   "ppal-create-device",
   "ppal-update-device",
+  "ppal-select",
+  "ppal-delete",
+  "ppal-duplicate",
 ];
 
 /** The skills fragments {@link WITHHELD} gates out, per fragment-tool-gates.ts. */
