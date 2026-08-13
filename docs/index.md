@@ -100,6 +100,7 @@ features:
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
           <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
+          <li><a href="/installation/antigravity">Antigravity (Google)</a></li>
           <li><a href="/installation/bionic">Bionic (LM Studio)</a> <span class="tag">offline</span></li>
         </ul>
       </div>

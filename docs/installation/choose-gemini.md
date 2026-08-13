@@ -5,10 +5,11 @@ options. A free tier is available with rate limits for trying out Producer Pal.
 
 ## Options
 
-| Option                       | Best For   | Trade-offs                                                        |
-| ---------------------------- | ---------- | ----------------------------------------------------------------- |
-| [Built-in Chat UI](./gemini) | Most users | Native integration, easy setup. Free tier has strict rate limits. |
-| [Gemini CLI](./gemini-cli)   | Developers | Terminal-based. Google AI subscription increases CLI limits.      |
+| Option                       | Best For         | Trade-offs                                                        |
+| ---------------------------- | ---------------- | ----------------------------------------------------------------- |
+| [Built-in Chat UI](./gemini) | Most users       | Native integration, easy setup. Free tier has strict rate limits. |
+| [Antigravity](./antigravity) | Desktop app fans | Google's agent app. MCP servers are added by editing a JSON file. |
+| [Gemini CLI](./gemini-cli)   | Developers       | Terminal-based. Google AI subscription increases CLI limits.      |
 
 ## Recommendation
 
@@ -25,5 +26,5 @@ provider.
 - When you outgrow the free tier:
   - [OpenRouter](./chat-ui-other-providers#openrouter) with Gemini - simplest
     paid option
-  - [Gemini CLI](./gemini-cli) with a Google AI subscription - higher limits
-    without API billing setup
+  - [Antigravity](./antigravity) or [Gemini CLI](./gemini-cli) with a Google AI
+    subscription - higher limits without API billing setup

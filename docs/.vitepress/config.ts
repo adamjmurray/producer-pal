@@ -221,6 +221,7 @@ export default defineConfig({
                 link: "/installation/claude-desktop",
               },
               { text: "ChatGPT App", link: "/installation/chatgpt-app" },
+              { text: "Antigravity", link: "/installation/antigravity" },
               { text: "Bionic (LM Studio)", link: "/installation/bionic" },
             ],
           },

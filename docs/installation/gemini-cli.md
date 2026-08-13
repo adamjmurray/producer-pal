@@ -13,9 +13,9 @@ experience.
 :::
 
 If you feel comfortable with the command line, this is an option for using
-Producer Pal. Also consider using Gemini with Producer Pal's
-[built-in chat UI](./gemini) (but probably via OpenRouter as noted on that
-page).
+Producer Pal. Also consider [Antigravity](./antigravity), Google's desktop agent
+app, or using Gemini with Producer Pal's [built-in chat UI](./gemini) (but
+probably via OpenRouter as noted on that page).
 
 <!--@include: ../_partials/agent-skill-callout.md-->
 
@@ -34,6 +34,14 @@ page).
 ### 2. Configure Gemini CLI
 
 Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
+
+::: warning Not the same file as Antigravity
+
+[Antigravity](./antigravity) reads `~/.gemini/config/mcp_config.json` instead.
+Same folder, separate configs — adding Producer Pal to one does not add it to
+the other.
+
+:::
 
 **Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
