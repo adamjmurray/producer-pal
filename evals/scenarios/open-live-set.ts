@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -22,10 +23,10 @@ import { existsSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
 const ABLETON_APP = "Ableton Live 12 Suite"; // For `open -a`
 const ABLETON_PROCESS = "Live"; // For System Events
-const MCP_URL = "http://localhost:3350/mcp";
 const DIALOG_POLL_INTERVAL_MS = 250;
 const DIALOG_TIMEOUT_MS = 2500;
 const MCP_POLL_INTERVAL_MS = 500;
@@ -104,14 +105,41 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
  */
 async function openAbletonLiveProject(projectPath: string): Promise<void> {
   return await new Promise((resolve, reject) => {
-    exec(`open -g -a "${ABLETON_APP}" "${projectPath}"`, (error) => {
-      if (error) {
-        reject(new Error(`Failed to open project: ${error.message}`));
-      } else {
-        resolve();
-      }
-    });
+    exec(
+      `open -g -a "${ABLETON_APP}" "${projectPath}"`,
+      { env: envWithoutTestMarkers() },
+      (error) => {
+        if (error) {
+          reject(new Error(`Failed to open project: ${error.message}`));
+        } else {
+          resolve();
+        }
+      },
+    );
   });
+}
+
+/**
+ * The current environment minus vitest's markers. macOS `open` hands the
+ * caller's environment to an app it COLD-STARTS, so a Live launched from the
+ * e2e suite would inherit VITEST=true — which makes the server treat
+ * ~/.producer-pal as inert (see config-markdown-store.ts), silently emptying
+ * global context, memory, and skill overrides. An already-running Live keeps
+ * whatever environment it started with, so without this the suite tests a
+ * different server depending on whether Live happened to be open.
+ *
+ * @returns A copy of process.env with the vitest markers removed
+ */
+function envWithoutTestMarkers(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("VITEST")) delete env[key];
+  }
+
+  delete env.NODE_ENV;
+
+  return env;
 }
 
 /**

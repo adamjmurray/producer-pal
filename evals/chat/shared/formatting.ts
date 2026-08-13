@@ -102,13 +102,15 @@ export function describeStreamError(error: unknown): string {
 
   const err = error as {
     message?: unknown;
-    statusCode?: unknown;
+    statusCode?: number | string;
     url?: unknown;
   };
+  // An error object with no message string has nothing left to show — its
+  // String() is "[object Object]", so say so plainly instead.
   const base =
     typeof err.message === "string" && err.message.length > 0
       ? err.message
-      : String(error);
+      : "unknown error";
   const details: string[] = [];
 
   if (err.statusCode != null) details.push(`HTTP ${String(err.statusCode)}`);
@@ -203,11 +205,22 @@ export function formatToolCall(
 /**
  * Format a tool result for display
  *
+ * Warnings get their own untruncated lines: they are the tool's warn-and-skip
+ * signal, and the 160-char payload cutoff would usually swallow them.
+ *
  * @param result - Tool result text
+ * @param warnings - Relayed `WARNING:` blocks from the same result
  * @returns Formatted tool result string (includes trailing newline for spacing)
  */
-export function formatToolResult(result: string | undefined): string {
-  return `   ↳ ${truncate(result, 160)}\n`;
+export function formatToolResult(
+  result: string | undefined,
+  warnings: string[] = [],
+): string {
+  const warningLines = warnings
+    .map((warning) => "   " + styleText("yellow", `⚠ ${warning}`) + "\n")
+    .join("");
+
+  return `   ↳ ${truncate(result, 160)}\n${warningLines}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -11,11 +11,7 @@ import {
   handleLiveApiResult,
   type RequestOverrides,
   setTimeoutForTesting,
-} from "../../max-api-adapter.ts"; // eslint-disable-line import-x/no-duplicates -- separate side-effect import below registers handler
-
-// Make sure the module's handler is registered
-// eslint-disable-next-line import-x/no-duplicates -- intentional side-effect import
-import "../../max-api-adapter.ts";
+} from "../../max-api-adapter.ts";
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
 vi.mock(import("../../code-exec-protocol.ts"), () => ({
@@ -37,7 +33,8 @@ let nodeRequestHandler: ((...args: unknown[]) => void) | undefined;
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "timeoutMs") as
-  unknown[] | undefined;
+  | unknown[]
+  | undefined;
 
 if (timeoutMsCall) {
   timeoutMsHandler = timeoutMsCall[1] as (input: unknown) => void;
@@ -46,7 +43,8 @@ if (timeoutMsCall) {
 const codeExecCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "code_exec_request") as
-  unknown[] | undefined;
+  | unknown[]
+  | undefined;
 
 if (codeExecCall) {
   codeExecRequestHandler = codeExecCall[1] as (...args: unknown[]) => void;
@@ -55,7 +53,8 @@ if (codeExecCall) {
 const nodeRequestCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
 ).mock.calls.find((call: unknown[]) => call[0] === "node_request") as
-  unknown[] | undefined;
+  | unknown[]
+  | undefined;
 
 if (nodeRequestCall) {
   nodeRequestHandler = nodeRequestCall[1] as (...args: unknown[]) => void;

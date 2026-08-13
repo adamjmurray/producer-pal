@@ -79,9 +79,10 @@ export function createProviderModel(
       }).chatModel(model);
     }
 
+    case "claude-code":
     case "codex-code":
       throw new Error(
-        "codex-code uses the Codex CLI transport, not the AI SDK provider.",
+        `${provider} uses a spawned agent CLI transport, not the AI SDK provider.`,
       );
 
     default: {

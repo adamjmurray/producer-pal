@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
 
 /**
@@ -33,19 +33,18 @@ export function copyNoteToDestination(
   events.push(copiedNote);
 
   // Track in notesByBar cache
-  if (!notesByBar.has(destBar)) {
-    notesByBar.set(destBar, []);
+  let destBarNotes = notesByBar.get(destBar);
+
+  if (destBarNotes == null) {
+    destBarNotes = [];
+    notesByBar.set(destBar, destBarNotes);
   }
 
-  const destBarNotes = notesByBar.get(destBar);
-
-  if (destBarNotes) {
-    destBarNotes.push({
-      ...copiedNote,
-      relativeTime: sourceNote.relativeTime,
-      originalBar: destBar,
-    });
-  }
+  destBarNotes.push({
+    ...copiedNote,
+    relativeTime: sourceNote.relativeTime,
+    originalBar: destBar,
+  });
 }
 
 /**

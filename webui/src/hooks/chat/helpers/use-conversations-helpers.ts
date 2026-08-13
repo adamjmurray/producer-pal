@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
@@ -27,11 +28,13 @@ export interface ActiveMeta {
   model: string | null;
   provider: Provider | null;
   thinking: string | null;
-  temperature: number | null;
-  showThoughts: boolean | null;
   smallModelMode: boolean | null;
   /** Resolved system instruction in effect (snapshotted onto the record). */
   systemInstruction: string | null;
+  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
+  notation: Notation | null;
+  /** Toolset the conversation last connected with (recorded, not enforced). */
+  enabledTools: Record<string, boolean> | null;
 }
 
 export const DEFAULT_META: ActiveMeta = {
@@ -41,10 +44,10 @@ export const DEFAULT_META: ActiveMeta = {
   model: null,
   provider: null,
   thinking: null,
-  temperature: null,
-  showThoughts: null,
   smallModelMode: null,
   systemInstruction: null,
+  notation: null,
+  enabledTools: null,
 };
 
 /** Ref snapshot for building a save record */
@@ -119,7 +122,7 @@ export function useHashNavigation(params: {
       if (hashId) {
         void switchConversation(hashId);
       } else {
-        void startNewConversation();
+        startNewConversation();
       }
     };
 
@@ -146,10 +149,10 @@ export function buildLockedSettings(
     model: record.model,
     provider: record.provider as Provider | null,
     thinking: record.thinking,
-    temperature: record.temperature,
-    showThoughts: record.showThoughts,
     smallModelMode: record.smallModelMode,
     systemInstruction: record.systemInstruction ?? null,
+    notation: record.notation ?? null,
+    enabledTools: record.enabledTools ?? null,
   };
 }
 
@@ -170,9 +173,6 @@ export function buildSaveRecord(
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
   const title = deriveTitle(existingTitle, chatHistory);
-  // Lock the snapshot at the first save: prefer an already-stored value.
-  const systemInstruction =
-    existing?.systemInstruction ?? refs.systemInstruction;
 
   return {
     id: refs.id,
@@ -184,16 +184,12 @@ export function buildSaveRecord(
     model: refs.model,
     modelLabel: refs.model ? getModelName(refs.model) : null,
     thinking: refs.thinking,
-    temperature: refs.temperature,
-    showThoughts: refs.showThoughts,
     smallModelMode: refs.smallModelMode,
     totalUsage: sumMessageUsage(chatHistory),
     sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
     voiceHistory: null,
-    // Snapshot the system instruction (locked above). Omitted when unknown so a
-    // record with no resolved instruction keeps its prior shape.
-    ...(systemInstruction != null && { systemInstruction }),
+    ...snapshotFields(refs, existing),
     // Carry branch linkage across updates. A fork's later saves (e.g. the
     // post-response autosave) route through here too; without this they would
     // strip the fields that make it a sibling, so its ‹ n/m › arrows vanish and
@@ -204,6 +200,34 @@ export function buildSaveRecord(
     ...(existing?.forkedAtIndex != null && {
       forkedAtIndex: existing.forkedAtIndex,
     }),
+  };
+}
+
+/**
+ * The optional fields recording what the conversation ran with, all omitted when
+ * unknown so a record that knows none of them keeps its prior shape.
+ *
+ * The system instruction and notation are locked at the FIRST save: both prefer
+ * an already-stored value over the current one, so a later save can't re-capture
+ * a global the user has since changed. `enabledTools` needs no such guard: it
+ * comes from the conversation's active toolset, which is itself pinned once the
+ * chat connects, so re-capturing it every save writes the same value.
+ * @param refs - Active refs supplying the currently-locked values
+ * @param existing - Previously saved record (if updating)
+ * @returns The snapshot fields to spread onto the record
+ */
+function snapshotFields(
+  refs: ActiveRefs,
+  existing: ConversationRecord | undefined,
+): Pick<ConversationRecord, "systemInstruction" | "notation" | "enabledTools"> {
+  const systemInstruction =
+    existing?.systemInstruction ?? refs.systemInstruction;
+  const notation = existing?.notation ?? refs.notation;
+
+  return {
+    ...(systemInstruction != null && { systemInstruction }),
+    ...(notation != null && { notation }),
+    ...(refs.enabledTools != null && { enabledTools: refs.enabledTools }),
   };
 }
 
@@ -280,10 +304,15 @@ export async function buildConversationSaveRecord(args: {
     });
 
     // A fork shares the trunk's transcript, so it inherits the trunk's
-    // system-prompt snapshot rather than re-capturing the current global.
-    return source?.systemInstruction != null
-      ? { ...forked, systemInstruction: source.systemInstruction }
-      : forked;
+    // system-prompt and notation snapshots rather than re-capturing the current
+    // globals — the turns it carries were written under the trunk's pair.
+    return {
+      ...forked,
+      ...(source?.systemInstruction != null && {
+        systemInstruction: source.systemInstruction,
+      }),
+      ...(source?.notation != null && { notation: source.notation }),
+    };
   }
 
   const existing = reuseId == null ? undefined : await loadConversation(id);

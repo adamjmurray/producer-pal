@@ -7,6 +7,7 @@ import {
   ExportIcon,
   ImportIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
+import { ICON_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 
 interface ContextIoButtonsProps {
   /** Open a file picker and import the chosen .md file. */
@@ -14,10 +15,6 @@ interface ContextIoButtonsProps {
   /** Export the editor's current content to a .md file. */
   onExport: () => void;
 }
-
-/** Shared class for the small icon-button actions in the controls strips. */
-const IO_BUTTON_CLASS =
-  "shrink-0 rounded p-0.5 text-zinc-400 hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-200 transition-colors";
 
 /**
  * The Import/Export icon-button pair shared by the context and skills editors'
@@ -37,7 +34,7 @@ export function ContextIoButtons(
       <button
         type="button"
         onClick={onImport}
-        className={IO_BUTTON_CLASS}
+        className={ICON_BUTTON_CLASS}
         aria-label="Import"
         title="Import from a .md file"
       >
@@ -46,7 +43,7 @@ export function ContextIoButtons(
       <button
         type="button"
         onClick={onExport}
-        className={IO_BUTTON_CLASS}
+        className={ICON_BUTTON_CLASS}
         aria-label="Export"
         title="Export to a .md file"
       >

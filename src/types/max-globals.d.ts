@@ -13,7 +13,7 @@
  * Contains runtime state managed by the live-api-adapter.
  */
 interface ToolContext {
-  memory: {
+  projectContext: {
     content: string;
   };
   smallModelMode: boolean;

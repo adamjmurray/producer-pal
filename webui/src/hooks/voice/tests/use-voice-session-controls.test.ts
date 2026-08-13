@@ -220,20 +220,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     const { result, session } = await connectAndGetSession();
 
     // Force into rate-limited state first.
-    await act(() => {
-      session.emit("transport_event", {
-        type: "response.done",
-        response: {
-          status: "failed",
-          status_details: {
-            error: {
-              code: "rate_limit_exceeded",
-              message: "Please try again in 1s",
-            },
-          },
-        },
-      });
-    });
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Please try again in 1s",
+    );
     expect(result.current.rateLimitedUntil).not.toBeNull();
 
     await act(() => {
@@ -251,20 +242,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
 
     // No "try again in …" in the message — without a fallback this would leave a
     // dead error banner with no retry path.
-    await act(() => {
-      session.emit("transport_event", {
-        type: "response.done",
-        response: {
-          status: "failed",
-          status_details: {
-            error: {
-              code: "rate_limit_exceeded",
-              message: "Rate limit reached. Please slow down.",
-            },
-          },
-        },
-      });
-    });
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Rate limit reached. Please slow down.",
+    );
     expect(result.current.rateLimitedUntil).not.toBeNull();
   });
 
@@ -274,20 +256,11 @@ describe("useVoiceSession mute / interrupt / retry", () => {
     vi.useFakeTimers();
 
     try {
-      await act(() => {
-        session.emit("transport_event", {
-          type: "response.done",
-          response: {
-            status: "failed",
-            status_details: {
-              error: {
-                code: "rate_limit_exceeded",
-                message: "Please try again in 166ms",
-              },
-            },
-          },
-        });
-      });
+      await emitResponseFailure(
+        session,
+        "rate_limit_exceeded",
+        "Please try again in 166ms",
+      );
       expect(result.current.rateLimitedUntil).not.toBeNull();
       expect(session.transport.sendEvent).not.toHaveBeenCalled();
 
@@ -559,6 +532,31 @@ describe("useVoiceSession half-duplex (barge-in disabled)", () => {
     expect(session.mute).toHaveBeenLastCalledWith(false);
   });
 
+  // response.done fires when the model stops generating, but the assistant is
+  // still audible until the output buffer drains — the window a user actually
+  // talks over it. The mute has to span the tail, not just the generation.
+  it("holds the mute past response.done until the audio buffer drains", async () => {
+    const { session } = await connectWith(DEFAULT_TURN_DETECTION);
+
+    await act(() => {
+      session.emit("transport_event", { type: "response.created" });
+      session.emit("transport_event", { type: "output_audio_buffer.started" });
+      session.emit("transport_event", {
+        type: "response.done",
+        response: { status: "completed" },
+      });
+    });
+
+    expect(session.mute).toHaveBeenCalledTimes(1);
+    expect(session.mute).toHaveBeenCalledWith(true);
+
+    await act(() => {
+      session.emit("transport_event", { type: "output_audio_buffer.stopped" });
+    });
+
+    expect(session.mute).toHaveBeenLastCalledWith(false);
+  });
+
   it("does not auto-mute when barge-in is on", async () => {
     const { session } = await connectWith(TD_ON);
 
@@ -608,7 +606,7 @@ describe("useVoiceSession output volume", () => {
     });
 
     const audioElement = (
-      mocks.FakeTransport.instances[0]?.options as {
+      mocks.FakeTransport.instances[0]!.options as {
         audioElement: HTMLAudioElement;
       }
     ).audioElement;

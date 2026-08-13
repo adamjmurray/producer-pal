@@ -58,8 +58,8 @@ export function makeConversation(
     updatedAt: 1,
     bookmarked: false,
     provider: "gemini",
-    model: "gemini-3.6-flash",
-    modelLabel: "Gemini 3.6 Flash",
+    model: "gemini-3.7-flash",
+    modelLabel: "Gemini 3.7 Flash",
     sessionType: "text",
     messages: [],
     ...overrides,
@@ -115,7 +115,7 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
-  // Custom system prompt read (the chat mounts useSystemPromptMemory) — empty
+  // Custom system prompt read (the chat mounts useSystemPrompt) — empty
   // means "use the built-in instruction", the default state under test.
   await page.route("**/system-prompt", (route) =>
     route.fulfill({
@@ -125,13 +125,13 @@ export async function installStubs(page: Page): Promise<void> {
     }),
   );
 
-  // GitHub release check (useUpdateCheck) — empty body => no update banner, and
-  // keeps the test offline/deterministic.
-  await page.route("https://api.github.com/**", (route) =>
+  // Update check (useUpdateCheck) — the server's cached answer, not GitHub. A
+  // literal `null` body means "up to date", so no update link renders.
+  await page.route("**/update", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: "{}",
+      body: "null",
     }),
   );
 
@@ -145,10 +145,9 @@ export async function installStubs(page: Page): Promise<void> {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "",
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         thinking: "Default",
         temperature: 1.0,
-        showThoughts: true,
       }),
     );
   });
@@ -190,6 +189,7 @@ export async function seedConversations(
           store.createIndex("updatedAt", "updatedAt");
         }
       };
+
       req.onsuccess = () => {
         const db = req.result;
         const tx = db.transaction("conversations", "readwrite");
@@ -202,8 +202,10 @@ export async function seedConversations(
           db.close();
           resolve();
         };
+
         tx.onerror = () => reject(tx.error);
       };
+
       req.onerror = () => reject(req.error);
     });
   }, conversations);
@@ -230,8 +232,10 @@ export async function readConversationsFromDb(
           db.close();
           resolve(getAll.result as SeedConversation[]);
         };
+
         getAll.onerror = () => reject(getAll.error);
       };
+
       req.onerror = () => reject(req.error);
     });
   });

@@ -88,6 +88,9 @@ export function isSameOriginRequest(origin: string, req: Request): boolean {
  * remotely writable. The stricter localhost-only {@link rejectCrossOriginWrite}
  * still guards /config and voice-token minting.
  *
+ * Also guards GET /subagent-briefing — a read, but the only one that dispatches
+ * a Live API call, so it needs the same gate a write does.
+ *
  * @param req - Express request
  * @param res - Express response (a 403 is written when rejected)
  * @param message - Error body for the 403 (endpoint-specific wording)

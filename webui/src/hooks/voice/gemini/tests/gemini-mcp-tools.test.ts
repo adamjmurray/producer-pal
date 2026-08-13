@@ -9,14 +9,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   callToolMock,
+  closeMock,
+  createConnectedMcpClientMock,
   fakeMcpClient,
   listToolsMock,
   mcpClientHelpersMock,
   mockCallToolText,
   mockListBareTools,
+  mockListTwoTools,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
+// connectAndListTools stays real — it owns the close-on-catalog-failure path.
 vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
   mcpClientHelpersMock(),
 );
@@ -29,24 +33,10 @@ const MCP_URL = "http://localhost:3350/mcp";
 
 describe("createGeminiMcpTools", () => {
   it("maps MCP tools to function declarations, keeping dashed names", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-track",
-          description: "Read a track",
-          inputSchema: {
-            $schema: "https://json-schema.org/draft/2020-12/schema",
-            type: "object",
-            properties: { trackIndex: { type: "number" } },
-            required: ["trackIndex"],
-          },
-        },
-        {
-          name: "ppal-create-clip",
-          description: "Create a clip",
-          inputSchema: { properties: {} }, // missing type + required — defaulted
-        },
-      ],
+    // The $schema meta-key is only interesting here: Gemini's validator chokes
+    // on it, so the adapter must strip it (asserted below).
+    mockListTwoTools({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
     });
 
     const { functionDeclarations, mcpClient } =
@@ -112,6 +102,24 @@ describe("createGeminiMcpTools", () => {
     ]);
   });
 
+  it("sends the toolset to the server, but no small-model mode or notation", async () => {
+    mockListBareTools("ppal-a");
+
+    const enabledTools = { "ppal-a": true, "ppal-b": false };
+
+    await createGeminiMcpTools(MCP_URL, enabledTools);
+
+    // The disabled-tools header is what stops the server from shipping skills
+    // fragments for tools voice can't call. The two undefineds keep voice on the
+    // device globals for small-model mode and notation.
+    expect(createConnectedMcpClientMock).toHaveBeenCalledWith(
+      MCP_URL,
+      undefined,
+      enabledTools,
+      undefined,
+    );
+  });
+
   it("executeTool forwards args and returns flattened text content", async () => {
     mockListBareTools("ppal-read-live-set");
     mockCallToolText("Track 1: Drums", "Track 2: Bass");
@@ -154,5 +162,26 @@ describe("createGeminiMcpTools", () => {
 
     expect(out).toContain("Error calling ppal-y");
     expect(out).toContain("ECONNREFUSED");
+  });
+
+  // The caller (use-gemini-voice-session) only stores mcpClient once this
+  // resolves, so a throw past a successful connect leaves an open transport
+  // nothing can reach — one more on every Talk retry.
+  it("closes the connection when the catalog read fails", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+
+    await expect(createGeminiMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
+    expect(closeMock).toHaveBeenCalledOnce();
+  });
+
+  it("reports the original failure even when the close fails too", async () => {
+    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
+    closeMock.mockRejectedValueOnce(new Error("socket already gone"));
+
+    await expect(createGeminiMcpTools(MCP_URL)).rejects.toThrow(
+      "catalog unavailable",
+    );
   });
 });

@@ -16,6 +16,8 @@ import {
   loadConversation,
 } from "#webui/lib/conversation-db";
 import {
+  type ConversationsResult,
+  type ConversationsState,
   createConversationsProps,
   resetConversationsTestState,
   waitForEffects,
@@ -47,10 +49,8 @@ async function setupForkHook() {
  * @param history - Chat history to persist
  */
 async function save(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
-  result: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
-  state: any,
+  result: ConversationsResult,
+  state: ConversationsState,
   history: { role: string; content: string }[],
 ): Promise<void> {
   state.chatHistory = history;
@@ -80,10 +80,8 @@ async function setupWithSavedOriginal() {
  * @returns The active conversation id after the save
  */
 async function saveAsFork(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
-  result: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose test typing
-  state: any,
+  result: ConversationsResult,
+  state: ConversationsState,
   pendingForkRef: PendingForkRef,
   history: { role: string; content: string }[],
   anchorIndex = 0,

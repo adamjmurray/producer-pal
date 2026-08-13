@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useState } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import { type Provider } from "#webui/types/settings";
 
@@ -12,23 +13,30 @@ export interface ActiveSettings {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
-  activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
+  activeNotation: Notation | null;
+  activeEnabledTools: Record<string, boolean> | null;
+}
+
+/**
+ * The values a conversation locks when its client is (re)initialized. Passed as
+ * an object rather than positionally: there are enough same-typed fields here
+ * that argument order would be easy to get wrong and impossible to read.
+ */
+export interface LockedSettingsInput {
+  model: string;
+  provider: Provider;
+  thinking: string;
+  smallModelMode: boolean;
+  systemInstruction: string;
+  notation: Notation | null;
+  enabledTools: Record<string, boolean>;
 }
 
 interface ActiveSettingsActions {
   /** Lock settings when a new conversation starts */
-  lockSettings: (
-    model: string,
-    provider: Provider,
-    thinking: string,
-    temperature: number,
-    showThoughts: boolean | null,
-    smallModelMode: boolean,
-    systemInstruction: string,
-  ) => void;
+  lockSettings: (settings: LockedSettingsInput) => void;
   /** Restore settings from a saved conversation */
   restoreSettings: (lockedSettings?: ConversationLockedSettings) => void;
   /** Clear all active settings (new conversation) */
@@ -47,49 +55,37 @@ export function useActiveSettings(): UseActiveSettingsReturn {
   const [activeModel, setActiveModel] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
   const [activeThinking, setActiveThinking] = useState<string | null>(null);
-  const [activeTemperature, setActiveTemperature] = useState<number | null>(
-    null,
-  );
-  const [activeShowThoughts, setActiveShowThoughts] = useState<boolean | null>(
-    null,
-  );
   const [activeSmallModelMode, setActiveSmallModelMode] = useState<
     boolean | null
   >(null);
   const [activeSystemInstruction, setActiveSystemInstruction] = useState<
     string | null
   >(null);
+  const [activeNotation, setActiveNotation] = useState<Notation | null>(null);
+  const [activeEnabledTools, setActiveEnabledTools] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
 
-  const lockSettings = useCallback(
-    (
-      model: string,
-      provider: Provider,
-      thinking: string,
-      temperature: number,
-      showThoughts: boolean | null,
-      smallModelMode: boolean,
-      systemInstruction: string,
-    ) => {
-      setActiveModel(model);
-      setActiveProvider(provider);
-      setActiveThinking(thinking);
-      setActiveTemperature(temperature);
-      setActiveShowThoughts(showThoughts);
-      setActiveSmallModelMode(smallModelMode);
-      setActiveSystemInstruction(systemInstruction);
-    },
-    [],
-  );
+  const lockSettings = useCallback((settings: LockedSettingsInput) => {
+    setActiveModel(settings.model);
+    setActiveProvider(settings.provider);
+    setActiveThinking(settings.thinking);
+    setActiveSmallModelMode(settings.smallModelMode);
+    setActiveSystemInstruction(settings.systemInstruction);
+    setActiveNotation(settings.notation);
+    setActiveEnabledTools(settings.enabledTools);
+  }, []);
 
   const restoreSettings = useCallback(
     (lockedSettings?: ConversationLockedSettings) => {
       setActiveModel(lockedSettings?.model ?? null);
       setActiveProvider(lockedSettings?.provider ?? null);
       setActiveThinking(lockedSettings?.thinking ?? null);
-      setActiveTemperature(lockedSettings?.temperature ?? null);
-      setActiveShowThoughts(lockedSettings?.showThoughts ?? null);
       setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
       setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
+      setActiveNotation(lockedSettings?.notation ?? null);
+      setActiveEnabledTools(lockedSettings?.enabledTools ?? null);
     },
     [],
   );
@@ -98,20 +94,20 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveModel(null);
     setActiveProvider(null);
     setActiveThinking(null);
-    setActiveTemperature(null);
-    setActiveShowThoughts(null);
     setActiveSmallModelMode(null);
     setActiveSystemInstruction(null);
+    setActiveNotation(null);
+    setActiveEnabledTools(null);
   }, []);
 
   return {
     activeModel,
     activeProvider,
     activeThinking,
-    activeTemperature,
-    activeShowThoughts,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
+    activeEnabledTools,
     lockSettings,
     restoreSettings,
     clearSettings,

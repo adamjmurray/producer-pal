@@ -124,9 +124,9 @@ export function deriveForkParentId(
  * @param items - All conversation summaries (uncollapsed, so every sibling is present)
  * @returns Branch points sorted by anchor index, one per divergence message
  */
-export function computeBranchPoints<T extends BranchRecord>(
+export function computeBranchPoints(
   activeId: string,
-  items: T[],
+  items: BranchRecord[],
 ): BranchPoint[] {
   const byId = new Map(items.map((item) => [item.id, item]));
   const active = byId.get(activeId);
@@ -165,9 +165,9 @@ export function computeBranchPoints<T extends BranchRecord>(
  * @param items - All conversation summaries (uncollapsed, every sibling present)
  * @returns Set of every id sharing a seed's family root (seeds always included)
  */
-export function branchFamilyIds<T extends BranchRecord>(
+export function branchFamilyIds(
   seedIds: readonly string[],
-  items: T[],
+  items: BranchRecord[],
 ): ReadonlySet<string> {
   const byId = new Map(items.map((item) => [item.id, item]));
   const roots = new Set(seedIds.map((id) => branchRootId(id, byId)));
@@ -286,10 +286,7 @@ function branchRootId(id: string, byId: Map<string, BranchRecord>): string {
  * @param items - All records
  * @returns Set of `forkedAtIndex` values of direct forks
  */
-function trunkForkIndexes<T extends BranchRecord>(
-  trunkId: string,
-  items: T[],
-): Set<number> {
+function trunkForkIndexes(trunkId: string, items: BranchRecord[]): Set<number> {
   const indexes = new Set<number>();
 
   for (const item of items) {
@@ -310,12 +307,12 @@ function trunkForkIndexes<T extends BranchRecord>(
  * @param activeId - Id of the conversation being viewed (for the current position)
  * @param items - All records
  */
-function addBranchPoint<T extends BranchRecord>(
+function addBranchPoint(
   byAnchor: Map<number, BranchPoint>,
   anchorIndex: number,
   trunkId: string,
   activeId: string,
-  items: T[],
+  items: BranchRecord[],
 ): void {
   const siblingIds = siblingsOfSet(trunkId, anchorIndex, items);
   const currentIndex = siblingIds.indexOf(activeId);
@@ -337,10 +334,10 @@ function addBranchPoint<T extends BranchRecord>(
  * @param items - All records
  * @returns Ordered sibling ids
  */
-function siblingsOfSet<T extends BranchRecord>(
+function siblingsOfSet(
   trunkId: string,
   index: number,
-  items: T[],
+  items: BranchRecord[],
 ): string[] {
   const forks = items
     .filter(

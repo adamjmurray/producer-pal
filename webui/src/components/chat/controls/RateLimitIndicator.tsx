@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useState } from "preact/hooks";
@@ -12,7 +13,13 @@ interface RateLimitIndicatorProps {
 }
 
 /**
- * Displays rate limit status with countdown timer
+ * Displays rate limit status with countdown timer.
+ *
+ * Framed as its own card rather than sitting flush on the chat surface: it
+ * mounts below the scrolling message list, so without a break the list's last
+ * row — often the thinking indicator's waveform, clipped by the scroll edge —
+ * appears to run into this block and read as broken rendering rather than as
+ * content scrolled under a panel. The amber tint matches the accents below.
  * @param {RateLimitIndicatorProps} props - Component props
  * @param {number} props.retryAttempt - Current retry attempt (0-indexed)
  * @param {number} props.maxAttempts - Maximum retry attempts allowed
@@ -42,7 +49,7 @@ export function RateLimitIndicator({
   const progress = 1 - remainingMs / retryDelayMs;
 
   return (
-    <div className="flex flex-col items-center py-4 px-6">
+    <div className="mx-4 my-3 flex flex-col items-center rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-400/[0.07] py-4 px-6">
       <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-2">
         <RetryIcon />
         <span className="font-medium">Rate limit reached</span>

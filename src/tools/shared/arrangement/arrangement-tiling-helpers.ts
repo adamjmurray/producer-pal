@@ -48,7 +48,8 @@ export function createAudioClipInSession(
 
   if (!isEmpty) {
     const newSceneResult = liveSet.call("create_scene", sceneIds.length) as
-      string[] | string;
+      | string[]
+      | string;
 
     // LiveAPI.call returns an array like ["id", "833"], join it with space to match getChildIds format
     workingSceneId = Array.isArray(newSceneResult)

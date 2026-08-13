@@ -18,16 +18,16 @@ vi.mock(
 
 describe("connect", () => {
   it("does not embed the per-project context blob in the result", () => {
-    // Project context used to ride along as result.memoryContent. It now ships
-    // as its own labeled connect block, injected Node-side (withProjectContext),
-    // so the V8 result must stay context-free — the same shape as global context
-    // and the memory index.
+    // Project context used to ride along in the V8 result. It now ships as its
+    // own labeled connect block, injected Node-side (withProjectContext), so the
+    // V8 result must stay context-free — the same shape as global context and
+    // the memory index.
     setupConnectMocks({ liveSetName: "Project with Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const result = connect({}) as unknown as Record<string, unknown>;
 
-    expect(result.memoryContent).toBeUndefined();
+    expect(result.projectContext).toBeUndefined();
   });
 
   it("does not build the skills blob (assembled Node-side, not in V8)", () => {

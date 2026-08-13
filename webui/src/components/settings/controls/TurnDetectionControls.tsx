@@ -221,7 +221,7 @@ export function LabeledSlider({
         <button
           type="button"
           onClick={() => onChange(defaultValue)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
           data-testid={`${testId}-reset`}
         >
           Reset

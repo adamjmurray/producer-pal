@@ -3,31 +3,36 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { errorMessage } from "#src/shared/error-utils";
 import { DEFAULT_NOTATION, type Notation } from "#src/shared/notation";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
+import { useApplyPreset } from "./presets/preset-apply";
 import {
   type AllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadSmallModelMode,
   type ProviderSettings,
   type ProviderSettingsApplier,
+  type ProviderStateSetters,
   saveCurrentSettings,
+  saveSubagentPresetId,
   saveSmallModelMode,
 } from "./settings-helpers";
-import { useProviderConnections } from "./use-provider-connections";
+import { useProviderSlices } from "./use-provider-connections";
 import { useVoiceModeSettings } from "./use-voice-mode-settings";
-
-type ProviderStateSetters = Record<
-  Provider,
-  (update: (prev: ProviderSettings) => ProviderSettings) => void
->;
 
 /**
  * Build the per-key setter bag (apiKey/model/baseUrl/...) that mutates the
@@ -57,8 +62,6 @@ function useProviderSetters(
       setModel: createSetter("model"),
       setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
       setThinking: createSetter("thinking"),
-      setTemperature: createSetter("temperature"),
-      setShowThoughts: createSetter("showThoughts"),
     };
   }, [provider, providerStateSetters]);
 }
@@ -99,6 +102,12 @@ export function useSettings(): UseSettingsReturn {
     useState<Record<string, boolean>>(loadEnabledTools);
   const [smallModelMode, setSmallModelModeState] =
     useState<boolean>(loadSmallModelMode);
+  // Which preset a spawned subagent runs under (null = inherit the orchestrator
+  // config). A modal-local buffer like smallModelMode: persisted on Save,
+  // reverted on Cancel.
+  const [subagentPresetId, setSubagentPresetId] = useState<string | null>(
+    loadSubagentPresetId,
+  );
   // False until the post-mount async decrypt has applied the real apiKeys.
   // saveSettings gates on this — saving the placeholder blanks would wipe
   // every stored encrypted key.
@@ -118,6 +127,14 @@ export function useSettings(): UseSettingsReturn {
   // seedNotation and leaves dirty false.
   const [notation, setNotationState] = useState<Notation>(DEFAULT_NOTATION);
   const [notationDirty, setNotationDirty] = useState<boolean>(false);
+  // Whether `notation` is a real answer (server-seeded or user-chosen) rather
+  // than the provisional mount-time default. A new conversation locks the
+  // notation at its first send, so the chat has to be able to tell the two
+  // apart — DEFAULT_NOTATION is itself a valid choice, so the value can't say.
+  // Set in the same update as the value so any render that sees this true also
+  // sees the notation it refers to; a flag derived further upstream would lag a
+  // render behind and defeat the point.
+  const [notationKnown, setNotationKnown] = useState<boolean>(false);
   // Surfaced after a failed persist so the modal can stay open with a visible
   // error instead of closing with silent data loss (previously persistAllSettings
   // swallowed errors and the saved* snapshots were committed before the
@@ -142,66 +159,31 @@ export function useSettings(): UseSettingsReturn {
   const setNotation = useCallback((value: Notation) => {
     setNotationState(value);
     setNotationDirty(true);
+    setNotationKnown(true);
   }, []);
 
   const seedNotation = useCallback((value: Notation) => {
     setNotationState(value);
     setNotationDirty(false);
+    setNotationKnown(true);
   }, []);
-  const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
-    () => loadProviderSettings("anthropic"),
-  );
-  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("gemini"),
-  );
-  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("openai"),
-  );
-  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("mistral"),
-  );
-  const [openrouterSettings, setOpenrouterSettings] =
-    useState<ProviderSettings>(() => loadProviderSettings("openrouter"));
-  const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
-    () => loadProviderSettings("lmstudio"),
-  );
-  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("ollama"),
-  );
-  const [customSettings, setCustomSettings] = useState<ProviderSettings>(() =>
-    loadProviderSettings("custom"),
-  );
-
-  // Mapping of providers to their state setters
-  const providerStateSetters: ProviderStateSetters = useMemo(
-    () => ({
-      anthropic: setAnthropicSettings,
-      gemini: setGeminiSettings,
-      openai: setOpenaiSettings,
-      mistral: setMistralSettings,
-      openrouter: setOpenrouterSettings,
-      lmstudio: setLmstudioSettings,
-      ollama: setOllamaSettings,
-      custom: setCustomSettings,
-    }),
-    [],
-  );
-
-  // Memoized providerSettings + a stable getProviderConnection (see the hook):
-  // keeps identities stable so consumers like resolveConnection in
-  // useChatModeState don't churn the chat hook's callbacks/effects every render.
-  const { providerSettings, getProviderConnection } = useProviderConnections(
-    anthropicSettings,
-    geminiSettings,
+  const {
+    providerSettings,
+    getProviderConnection,
+    providerStateSetters,
     openaiSettings,
-    mistralSettings,
-    openrouterSettings,
-    lmstudioSettings,
-    ollamaSettings,
-    customSettings,
-  );
+    geminiSettings,
+  } = useProviderSlices();
 
   const currentSettings = providerSettings[provider];
+
+  const applyPreset = useApplyPreset(
+    providerStateSetters,
+    setProviderState,
+    setSmallModelModeState,
+    setEnabledToolsState,
+    setNotation,
+  );
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
@@ -212,17 +194,23 @@ export function useSettings(): UseSettingsReturn {
     [providerStateSetters],
   );
 
+  // Cancels whichever decrypt-and-apply is still in flight. Every start replaces
+  // it, so a second load (cancel, then cancel again) can't have the earlier one
+  // apply on top of the later, and unmount can't apply into a dead component.
+  const cancelPendingLoadRef = useRef<(() => void) | null>(null);
+
   // Post-mount: replace the synchronous placeholder settings (apiKey blanked)
   // with the real values, decrypting each provider's apiKey from its at-rest
   // envelope. Runs once; the synchronous useState initializers above already
   // populated everything except the (async-decrypted) apiKey.
-  useEffect(
-    () =>
-      applyDecryptedSettings(applyLoadedSettings, () =>
-        setSettingsLoaded(true),
-      ),
-    [applyLoadedSettings],
-  );
+  useEffect(() => {
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
+
+    return () => cancelPendingLoadRef.current?.();
+  }, [applyLoadedSettings]);
 
   const saveSettings = useCallback(async (): Promise<boolean> => {
     if (!warnIfNotLoaded(settingsLoaded)) return false;
@@ -241,6 +229,7 @@ export function useSettings(): UseSettingsReturn {
         enabledTools,
         providerSettings,
         smallModelMode,
+        subagentPresetId,
       );
     } catch (err) {
       console.error("Failed to save provider settings", err);
@@ -263,6 +252,7 @@ export function useSettings(): UseSettingsReturn {
     provider,
     enabledTools,
     smallModelMode,
+    subagentPresetId,
     voiceModeSettings,
     providerSettings,
   ]);
@@ -271,13 +261,18 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
+    setSubagentPresetId(loadSubagentPresetId());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
     // tick later, mirroring the post-mount load). Pass the same onLoaded as the
     // post-mount effect so a cancel-during-initial-load (StrictMode remount,
     // fast cancel-then-reopen) still settles settingsLoaded → true — otherwise
     // the next Save would silently no-op via warnIfNotLoaded.
-    applyDecryptedSettings(applyLoadedSettings, () => setSettingsLoaded(true));
+    cancelPendingLoadRef.current?.();
+    cancelPendingLoadRef.current = applyDecryptedSettings(
+      applyLoadedSettings,
+      () => setSettingsLoaded(true),
+    );
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
@@ -285,14 +280,10 @@ export function useSettings(): UseSettingsReturn {
     setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
-  const {
-    setApiKey,
-    setModel,
-    setBaseUrl,
-    setThinking,
-    setTemperature,
-    setShowThoughts,
-  } = useProviderSetters(provider, providerStateSetters);
+  const { setApiKey, setModel, setBaseUrl, setThinking } = useProviderSetters(
+    provider,
+    providerStateSetters,
+  );
   // Reconcile presence with the *decrypted* in-memory key. decryptApiKey fails
   // safe to "" for an orphaned/undecryptable envelope (e.g. the IndexedDB crypto
   // key was reset while the localStorage envelope persisted), so reading the raw
@@ -304,15 +295,9 @@ export function useSettings(): UseSettingsReturn {
     provider === "lmstudio" || provider === "ollama"
       ? checkHasApiKey(provider)
       : Boolean(currentSettings.apiKey);
-  const isToolEnabled = useCallback(
-    (toolId: string) => enabledTools[toolId] ?? true,
-    [enabledTools],
-  );
   const resetBehaviorToDefaults = useCallback(() => {
-    setTemperature(1.0);
     setThinking(DEFAULT_SETTINGS[provider].thinking);
-    setShowThoughts(true);
-  }, [provider, setTemperature, setThinking, setShowThoughts]);
+  }, [provider, setThinking]);
   const hasBaseUrl = ["custom", "lmstudio", "ollama"].includes(provider);
 
   return {
@@ -338,10 +323,7 @@ export function useSettings(): UseSettingsReturn {
     thinking: currentSettings.thinking,
     setThinking,
     savedThinking,
-    temperature: currentSettings.temperature,
-    setTemperature,
-    showThoughts: currentSettings.showThoughts,
-    setShowThoughts,
+    applyPreset,
     saveSettings,
     cancelSettings,
     hasApiKey,
@@ -350,9 +332,10 @@ export function useSettings(): UseSettingsReturn {
     enabledTools,
     setEnabledTools: setEnabledToolsState,
     resetBehaviorToDefaults,
-    isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
+    subagentPresetId,
+    setSubagentPresetId,
     saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
@@ -360,6 +343,7 @@ export function useSettings(): UseSettingsReturn {
     seedLiveApiEnabled,
     notation,
     notationDirty,
+    notationKnown,
     setNotation,
     seedNotation,
     realtimeVoice: voiceModeSettings.realtimeVoice,
@@ -400,19 +384,27 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * when the encrypted write fails so saveSettings can keep the modal open and
  * surface the error instead of committing the in-memory saved* snapshots
  * against an empty at-rest envelope.
+ *
+ * The encrypted write goes first because it's the one that can fail. The two
+ * localStorage flags after it are what cancelSettings reads back, so writing
+ * them first would leave a failed Save already applied — and Cancel would then
+ * restore the values the user was trying to abandon.
  * @param {Provider} provider - Currently selected provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - Settings for every provider
  * @param {boolean} smallModelMode - Small-model-mode flag
+ * @param {string | null} subagentPresetId - Subagent preset id (null = inherit)
  */
 async function persistAllSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
   smallModelMode: boolean,
+  subagentPresetId: string | null,
 ): Promise<void> {
-  saveSmallModelMode(smallModelMode);
   await saveCurrentSettings(provider, enabledTools, allSettings);
+  saveSmallModelMode(smallModelMode);
+  saveSubagentPresetId(subagentPresetId);
 }
 
 /**

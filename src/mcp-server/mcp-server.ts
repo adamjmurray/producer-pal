@@ -5,18 +5,19 @@
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { VERSION } from "#src/shared/config.ts";
-import { checkForUpdate } from "#src/shared/version-check.ts";
+import { BUILD_SHA, VERSION } from "#src/shared/config.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { isConfigDirInert } from "./helpers/config-store/config-markdown-store.ts";
 import { registerGlobalContextNodeRoutes } from "./helpers/global-context/global-context-node-routes.ts";
-import { registerGlobalMemoryNodeRoutes } from "./helpers/memory/global-memory-node-routes.ts";
+import { getUpdate } from "./helpers/http/update-check.ts";
+import { registerMemoryNodeRoutes } from "./helpers/memory/memory-node-routes.ts";
 import { registerCustomSkillsNodeRoutes } from "./helpers/skills-custom/custom-skills-node-routes.ts";
 import { registerLibraryRoutes } from "./live-library/library-routes.ts";
 import * as console from "./node-for-max-logger.ts";
 
 registerLibraryRoutes();
 registerGlobalContextNodeRoutes();
-registerGlobalMemoryNodeRoutes();
+registerMemoryNodeRoutes();
 registerCustomSkillsNodeRoutes();
 
 interface ServerError extends Error {
@@ -44,7 +45,13 @@ for (const [index, arg] of args.entries()) {
   }
 }
 
-console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
+// The build SHA disambiguates two builds of the same version — the only way a
+// bug report can name the exact artifact it came from.
+const versionLabel = BUILD_SHA ? `${VERSION} (${BUILD_SHA})` : VERSION;
+
+console.log(
+  `Producer Pal ${versionLabel} starting MCP server on port ${port}...`,
+);
 
 const devFlags = [
   ["ENABLE_LIVE_API", process.env.ENABLE_LIVE_API],
@@ -60,6 +67,18 @@ if (devFlags.length > 0) {
   );
 }
 
+// Only a Live started from a test process gets here (VITEST is inherited by an
+// app macOS cold-starts). Say it out loud: everything under ~/.producer-pal —
+// global context, memory, skill overrides — reads empty and writes vanish,
+// which otherwise looks like a working server with nothing saved.
+if (isConfigDirInert()) {
+  console.warn(
+    "Producer Pal: ~/.producer-pal is disabled (VITEST is set in this " +
+      "process). Global context, memory, and skill overrides will read as " +
+      "empty and writes will be dropped.",
+  );
+}
+
 const appServer = createExpressApp();
 
 appServer
@@ -67,7 +86,7 @@ appServer
     const url = `http://localhost:${port}/mcp`;
 
     console.log(
-      `Producer Pal ${VERSION} running.\nConnect Claude Desktop or another MCP client to ${url}`,
+      `Producer Pal ${versionLabel} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );
     void Max.outlet("version", VERSION);
 
@@ -75,7 +94,9 @@ appServer
     // occurs too early, before our message handlers are registered.
     void Max.outlet("started");
 
-    void checkForUpdate(VERSION).then((update) => {
+    // The process's only GitHub request. `GET /update` reuses this same result
+    // rather than making its own — see update-check.ts.
+    void getUpdate().then((update) => {
       if (update) {
         console.log(`Producer Pal update available: ${update.version}`);
         void Max.outlet("update_available", update.version);

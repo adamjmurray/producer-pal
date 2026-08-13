@@ -7,7 +7,15 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
-import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
+import {
+  type ChatClientConfig,
+  type ChatMessage,
+  type SubagentConfigOverride,
+} from "#webui/chat/sdk/types";
+import {
+  resolveLockedNotation,
+  resolveLockedSmallModelMode,
+} from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
   isLegacyThinkingModel,
@@ -17,6 +25,10 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
+import {
+  type ResolvedSubagentPreset,
+  SUBAGENT_PRESET_PARAM,
+} from "#webui/hooks/settings/presets/preset-extra-params";
 import { getThinkingBudget, resolveSystemInstruction } from "#webui/lib/config";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
@@ -28,14 +40,12 @@ import { type ChatAdapter } from "./use-chat-types";
  * @param provider - Provider identifier
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
- * @param showThoughts - Whether to include reasoning in response
  * @returns Provider options object for streamText
  */
 function buildProviderOptions(
   provider: Provider,
   thinking: string,
   model: string,
-  showThoughts: boolean,
 ): ProviderOptions | undefined {
   if (provider === "anthropic") {
     return buildAnthropicOptions(thinking, model);
@@ -59,7 +69,6 @@ function buildProviderOptions(
         openrouter: {
           reasoning: {
             effort,
-            ...(!showThoughts ? { exclude: true } : {}),
           },
         },
       };
@@ -69,7 +78,7 @@ function buildProviderOptions(
   }
 
   if (provider === "openai") {
-    return buildOpenAIOptions(thinking, model, showThoughts);
+    return buildOpenAIOptions(thinking, model);
   }
 
   if (provider === "gemini") {
@@ -80,7 +89,7 @@ function buildProviderOptions(
         google: {
           thinkingConfig: {
             thinkingBudget,
-            includeThoughts: showThoughts,
+            includeThoughts: true,
           },
         },
       };
@@ -143,17 +152,18 @@ function buildAnthropicOptions(
  * Build OpenAI-specific provider options for reasoning.
  * @param thinking - Thinking level from UI settings
  * @param model - Model identifier
- * @param showThoughts - Whether to include reasoning summaries
  * @returns OpenAI provider options or undefined
  */
 function buildOpenAIOptions(
   thinking: string,
   model: string,
-  showThoughts: boolean,
 ): ProviderOptions | undefined {
   const effort = mapThinkingToReasoningEffort(thinking, model);
+  // Off thinking suppresses reasoning summaries even for reasoning models that
+  // generate reasoning internally — matching the openrouter/gemini paths, which
+  // return no reasoning options when thinking is Off.
   const reasoningSummary =
-    showThoughts && isOpenAIReasoningModel(model) ? "auto" : undefined;
+    thinking !== "Off" && isOpenAIReasoningModel(model) ? "auto" : undefined;
 
   if (effort || reasoningSummary) {
     return {
@@ -165,6 +175,57 @@ function buildOpenAIOptions(
   }
 
   return undefined;
+}
+
+/**
+ * Build the model/inference override a spawned worker runs under from the
+ * user's resolved "Subagent preset". Returns undefined to inherit the
+ * orchestrator config (no preset chosen). A preset that can't build a model
+ * (e.g. a `custom` provider missing its base URL) must NOT break the
+ * orchestrator's own chat init, so failures warn and fall back to inherit.
+ * @param preset - The resolved subagent preset, or undefined to inherit
+ * @returns The worker override, or undefined to inherit
+ */
+function buildSubagentConfig(
+  preset: ResolvedSubagentPreset | undefined,
+): SubagentConfigOverride | undefined {
+  if (preset == null) return undefined;
+
+  try {
+    return {
+      model: createProviderModel(
+        preset.provider,
+        preset.model,
+        preset.apiKey,
+        preset.baseUrl,
+      ),
+      smallModelMode: preset.smallModelMode,
+      providerOptions: buildProviderOptions(
+        preset.provider,
+        preset.thinking,
+        preset.model,
+      ),
+      buildProviderOptions: (overrideThinking: string) =>
+        buildProviderOptions(preset.provider, overrideThinking, preset.model),
+      // Carry the preset's toolset through; buildWorkerConfig replaces the
+      // worker's tools with it (and always re-strips spawn_subagent).
+      enabledTools: preset.enabledTools,
+      // And its notation, which reaches the worker's MCP requests and its
+      // briefing fetch as the per-request header — so a stark worker can serve a
+      // bar|beat orchestrator without either one touching the device global.
+      // Conditional, not `notation: preset.notation`: buildWorkerConfig spreads
+      // this whole object over the clone, so a present-but-undefined key would
+      // erase an inherited notation rather than leaving it alone.
+      ...(preset.notation ? { notation: preset.notation } : {}),
+    };
+  } catch (error) {
+    console.warn(
+      "Subagent preset could not be built; subagents will inherit " +
+        `the current settings. ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    return undefined;
+  }
 }
 
 /**
@@ -182,7 +243,6 @@ export const chatAdapter: ChatAdapter<
 
   buildConfig(
     model: string,
-    temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
     chatHistory: ChatMessage[] | undefined,
@@ -198,48 +258,57 @@ export const chatAdapter: ChatAdapter<
     // started with, even after the global override changes; a brand-new
     // conversation has none and resolves the current override instead.
     const systemInstructionOverride = extraParams?.systemInstructionOverride as
-      string | undefined;
+      | string
+      | undefined;
     const lockedSystemInstruction = extraParams?.lockedSystemInstruction as
-      string | null | undefined;
+      | string
+      | null
+      | undefined;
     const systemInstruction =
       lockedSystemInstruction ??
       resolveSystemInstruction(systemInstructionOverride);
-    // When thinking is Off, always exclude reasoning tokens even if the model generates them.
-    // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
-    const showThoughts =
-      thinking !== "Off" && Boolean(extraParams?.showThoughts);
+    // Carried onto the config so client.initialize sends it as the per-request
+    // MCP header (schema shrink + basic skills variant for this caller). Locked
+    // like the instruction: a restored conversation passes its snapshot
+    // (lockedSmallModelMode) and keeps the schemas and skills it started with.
+    const smallModelMode = resolveLockedSmallModelMode(extraParams ?? {});
+    // Same idea for notation, which the chat also sends per-request rather than
+    // letting every call fall through to the device global — otherwise flipping
+    // the dropdown re-teaches an open conversation mid-turn and the next tool
+    // call parses its notes as something else. A restored conversation passes its
+    // locked snapshot (lockedNotation) so continuing it keeps parsing the way it
+    // was written; a brand-new one takes the current setting. Null when neither
+    // exists: no header, device global wins, external MCP clients unaffected.
+    const notation = resolveLockedNotation(extraParams ?? {});
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
-    const providerOptions = buildProviderOptions(
-      provider,
-      thinking,
-      model,
-      showThoughts,
+    const providerOptions = buildProviderOptions(provider, thinking, model);
+    // Resolve the "Subagent preset" (if any) to the model/inference a
+    // spawned worker runs under; buildWorkerConfig layers it over the clone.
+    const subagentConfig = buildSubagentConfig(
+      extraParams?.[SUBAGENT_PRESET_PARAM] as
+        | ResolvedSubagentPreset
+        | undefined,
     );
 
-    // Adaptive-family Anthropic models (Sonnet 5, Opus 4.6+, Fable) reject any
-    // non-default sampling parameter with a 400 — suppress temperature for them
-    // regardless of thinking level, including "Off". Haiku uses legacy enabled
-    // thinking, which requires temperature=1 only when thinking is active, so
-    // suppress there only when thinking is on; "Off" on Haiku keeps temperature.
-    // Pre-3.7 models (via the "Other..." input) support temperature normally and
-    // aren't adaptive, so always keep it — dropping it there was a regression.
-    const suppressTemperature =
-      (provider === "openai" && isOpenAIReasoningModel(model)) ||
-      (provider === "anthropic" &&
-        !isLegacyNonThinkingModel(model) &&
-        (!isLegacyThinkingModel(model) || thinking !== "Off"));
+    // Temperature is no longer sent: it was phased-out dead config (no UI, pinned
+    // at 1.0) so the request now carries no `temperature` and each provider
+    // applies its own default. Adaptive Anthropic / OpenAI reasoning models — the
+    // ones that 400 on a non-default temperature — are satisfied by sending none.
 
     return {
       model: languageModel,
-      temperature: suppressTemperature ? undefined : temperature,
       systemInstruction,
       enabledTools,
-      showThoughts,
+      smallModelMode,
       providerOptions,
       buildProviderOptions: (overrideThinking: string) =>
-        buildProviderOptions(provider, overrideThinking, model, showThoughts),
+        buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
+      subagentConfig,
+      // Conditional: ChatClientConfig.notation is optional and a present-but-
+      // undefined key would still be read as "the caller has an opinion".
+      ...(notation ? { notation } : {}),
     };
   },
 

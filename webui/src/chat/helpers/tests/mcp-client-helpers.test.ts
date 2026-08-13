@@ -4,6 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+  DISABLED_TOOLS_HEADER,
+  SMALL_MODEL_MODE_HEADER,
+} from "#src/shared/config";
+import { NOTATION_HEADER } from "#src/shared/notation";
 import {
   createConnectedMcpClient,
   filterEnabledTools,
@@ -22,6 +28,8 @@ vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
 vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
+
+const mockTransport = vi.mocked(StreamableHTTPClientTransport);
 
 const tools: McpToolDefinition[] = [
   { name: "tool-a", inputSchema: {} },
@@ -70,5 +78,100 @@ describe("createConnectedMcpClient", () => {
 
     expect(client).toBeDefined();
     expect(mockConnect).toHaveBeenCalledOnce();
+  });
+
+  it("sends no per-request header when smallModelMode is omitted", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp");
+
+    // Voice paths omit the flag and must fall back to the global config value.
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends the small-model-mode header true when enabled", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", true);
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [SMALL_MODEL_MODE_HEADER]: "true" });
+  });
+
+  it("sends the small-model-mode header false when explicitly disabled", async () => {
+    // Explicit false is authoritative for this caller, overriding the global.
+    await createConnectedMcpClient("http://localhost:3000/mcp", false);
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [SMALL_MODEL_MODE_HEADER]: "false" });
+  });
+
+  it("lists only the explicitly disabled tools in the disabled-tools header", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", undefined, {
+      "tool-a": true,
+      "tool-b": false,
+      "tool-c": false,
+    });
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [DISABLED_TOOLS_HEADER]: "tool-b,tool-c" });
+  });
+
+  it("sends both headers when both apply", async () => {
+    await createConnectedMcpClient("http://localhost:3000/mcp", true, {
+      "tool-b": false,
+    });
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({
+      [SMALL_MODEL_MODE_HEADER]: "true",
+      [DISABLED_TOOLS_HEADER]: "tool-b",
+    });
+  });
+
+  it("sends no disabled-tools header when nothing is disabled", async () => {
+    // An all-enabled map must leave the server's toolset alone, not send "".
+    await createConnectedMcpClient("http://localhost:3000/mcp", undefined, {
+      "tool-a": true,
+    });
+
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends the notation header when a notation is given", async () => {
+    await createConnectedMcpClient(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
+    );
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({ [NOTATION_HEADER]: "stark" });
+  });
+
+  it("sends no notation header when it is omitted", async () => {
+    // The main chat leaves notation to the device's global setting.
+    await createConnectedMcpClient("http://localhost:3000/mcp");
+
+    expect(mockTransport.mock.calls[0]?.[1]).toBeUndefined();
+  });
+
+  it("sends all three per-request headers together", async () => {
+    await createConnectedMcpClient(
+      "http://localhost:3000/mcp",
+      true,
+      { "tool-b": false },
+      "midi-json",
+    );
+
+    expect(
+      mockTransport.mock.calls[0]?.[1]?.requestInit?.headers,
+    ).toStrictEqual({
+      [SMALL_MODEL_MODE_HEADER]: "true",
+      [DISABLED_TOOLS_HEADER]: "tool-b",
+      [NOTATION_HEADER]: "midi-json",
+    });
   });
 });

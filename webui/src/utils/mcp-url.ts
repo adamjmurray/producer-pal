@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const VITE_DEV_PORT = "5173";
@@ -33,20 +34,32 @@ export async function detectCorsBlock(url: string): Promise<boolean> {
 }
 
 /**
+ * Gets a sibling endpoint's URL: the MCP URL with `/mcp` swapped for `path`.
+ * Every endpoint below goes through this, so they all inherit `getMcpUrl`'s
+ * dev-port rule (Vite's 5173 → localhost:3350) without restating it.
+ * @param path - The endpoint path, with a leading slash (e.g. "/config")
+ * @param mcpUrl - A client config's MCP URL override, if it set one
+ * @returns {string} The endpoint URL
+ */
+function serverUrl(path: string, mcpUrl?: string): string {
+  return (mcpUrl ?? getMcpUrl()).replace(/\/mcp$/, path);
+}
+
+/**
  * Gets the config endpoint URL based on the MCP URL.
  * @returns {string} The config endpoint URL
  */
 export function getConfigUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/config");
+  return serverUrl("/config");
 }
 
 /**
  * Gets the global-context endpoint URL (the machine-global ~/.producer-pal
- * context, distinct from the per-project /config memory).
+ * context, distinct from the per-project /config project context).
  * @returns {string} The global-context endpoint URL
  */
 export function getGlobalContextUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/global-context");
+  return serverUrl("/global-context");
 }
 
 /**
@@ -55,7 +68,7 @@ export function getGlobalContextUrl(): string {
  * @returns {string} The system-prompt endpoint URL
  */
 export function getSystemPromptUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/system-prompt");
+  return serverUrl("/system-prompt");
 }
 
 /**
@@ -64,7 +77,7 @@ export function getSystemPromptUrl(): string {
  * @returns {string} The skill-overrides endpoint URL
  */
 export function getSkillOverridesUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/skill-overrides");
+  return serverUrl("/skill-overrides");
 }
 
 /**
@@ -78,12 +91,31 @@ export function getSkillOverrideUrl(slot: string): string {
 }
 
 /**
+ * Gets the update-check endpoint URL (the version check the server makes once at
+ * startup and then serves from memory).
+ * @returns {string} The update-check endpoint URL
+ */
+export function getUpdateUrl(): string {
+  return serverUrl("/update");
+}
+
+/**
+ * Gets the global-settings endpoint URL (the machine-global
+ * ~/.producer-pal/settings.json preferences, distinct from the device's live
+ * /config state).
+ * @returns {string} The settings endpoint URL
+ */
+export function getSettingsUrl(): string {
+  return serverUrl("/settings");
+}
+
+/**
  * Gets the memory collection endpoint URL (lists every stored memory entry;
  * the LLM-managed ~/.producer-pal/memory/ collection).
  * @returns {string} The memory collection endpoint URL
  */
 export function getMemoryCollectionUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/memory");
+  return serverUrl("/memory");
 }
 
 /**
@@ -102,7 +134,7 @@ export function getMemoryEntryUrl(name: string): string {
  * @returns {string} The custom-skills collection endpoint URL
  */
 export function getCustomSkillsCollectionUrl(): string {
-  return getMcpUrl().replace(/\/mcp$/, "/custom-skills");
+  return serverUrl("/custom-skills");
 }
 
 /**
@@ -119,21 +151,50 @@ export function getCustomSkillEntryUrl(name: string): string {
  * Gets the skills-preview endpoint URL for a notation + small-model combination
  * (the assembled "# Producer Pal Skills" blob ppal-connect would return for that
  * combination, with the user's fragment overrides applied).
+ *
+ * `disabledTools` mirrors the chat's disabled-tools header — the tools this
+ * toolset withholds, subtracted from the device's whitelist — so the preview
+ * shows the blob that toolset would receive. Pass null to turn tool gating off
+ * entirely and preview every fragment.
  * @param notation - The notation to preview
  * @param smallModel - Whether to preview the small-model (basic) skills
+ * @param disabledTools - Tools to withhold, or null for no gating at all
  * @returns {string} The skills-preview endpoint URL with query params
  */
 export function getSkillsPreviewUrl(
   notation: string,
   smallModel: boolean,
+  disabledTools: string | null,
 ): string {
-  const base = getMcpUrl().replace(/\/mcp$/, "/skills-preview");
+  const base = serverUrl("/skills-preview");
   const params = new URLSearchParams({
     notation,
     smallModel: String(smallModel),
   });
 
+  if (disabledTools == null) {
+    params.set("allTools", "true");
+  } else if (disabledTools !== "") {
+    params.set("disabledTools", disabledTools);
+  }
+
   return `${base}?${params.toString()}`;
+}
+
+/**
+ * Gets the subagent-briefing endpoint URL (the system-prompt addendum a spawned
+ * worker starts with: skills, the Live Set, and the user's context layers). The
+ * caller's profile rides on request headers, not query params, so there is
+ * nothing to interpolate here.
+ *
+ * The briefing lives beside the MCP endpoint on the same server, so it follows
+ * the same base: pass a client config's `mcpUrl` override and the briefing is
+ * fetched from that server, exactly as its MCP requests would be.
+ * @param {string} [mcpUrl] - A client config's MCP URL override, if it set one
+ * @returns {string} The subagent-briefing endpoint URL
+ */
+export function getSubagentBriefingUrl(mcpUrl?: string): string {
+  return serverUrl("/subagent-briefing", mcpUrl);
 }
 
 /**

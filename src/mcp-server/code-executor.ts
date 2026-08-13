@@ -20,6 +20,7 @@
  */
 
 import vm from "node:vm";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   CODE_EXEC_TIMEOUT_MS,
   type SandboxResult,
@@ -87,7 +88,9 @@ export function executeSandboxedCode(
       displayErrors: true,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // An error thrown from inside the vm belongs to the vm's realm, so it is not
+    // `instanceof` the host Error — errorMessage() falls back to String() there.
+    const message = errorMessage(error);
 
     if (message.includes("Script execution timed out")) {
       return {

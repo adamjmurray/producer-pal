@@ -21,10 +21,10 @@ const ALL_NULL: SyncActiveMetaParams = {
   activeModel: null,
   activeProvider: null,
   activeThinking: null,
-  activeTemperature: null,
-  activeShowThoughts: null,
   activeSmallModelMode: null,
   activeSystemInstruction: null,
+  activeNotation: null,
+  activeEnabledTools: null,
 };
 
 describe("useSyncActiveMeta", () => {
@@ -44,10 +44,10 @@ describe("useSyncActiveMeta", () => {
         activeModel: "claude-sonnet-5",
         activeProvider: "anthropic",
         activeThinking: "high",
-        activeTemperature: 0.7,
-        activeShowThoughts: true,
         activeSmallModelMode: false,
         activeSystemInstruction: "Be brief.",
+        activeNotation: "stark",
+        activeEnabledTools: { "ppal-read-clip": false },
       }),
     );
 
@@ -56,10 +56,10 @@ describe("useSyncActiveMeta", () => {
       model: "claude-sonnet-5",
       provider: "anthropic",
       thinking: "high",
-      temperature: 0.7,
-      showThoughts: true,
       smallModelMode: false,
       systemInstruction: "Be brief.",
+      notation: "stark",
+      enabledTools: { "ppal-read-clip": false },
     });
   });
 });

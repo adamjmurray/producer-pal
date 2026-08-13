@@ -5,10 +5,7 @@
 
 import { type FunctionDeclaration } from "@google/genai";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import {
-  createConnectedMcpClient,
-  filterEnabledTools,
-} from "#webui/chat/helpers/mcp-client-helpers";
+import { connectAndListTools } from "#webui/chat/helpers/connect-and-list-tools";
 import { callMcpToolToString } from "#webui/hooks/voice/voice-mcp-call";
 
 /** Result of creating Gemini Live function declarations from MCP. */
@@ -39,9 +36,13 @@ export async function createGeminiMcpTools(
   mcpUrl: string,
   enabledTools?: Record<string, boolean>,
 ): Promise<GeminiMcpTools> {
-  const mcpClient = await createConnectedMcpClient(mcpUrl);
-  const toolsResult = await mcpClient.listTools();
-  const filtered = filterEnabledTools(toolsResult.tools, enabledTools);
+  // Pass only the toolset: voice locks no small-model mode or notation of its
+  // own, so those stay undefined and fall through to the device globals.
+  const { mcpClient, tools: filtered } = await connectAndListTools(
+    mcpUrl,
+    undefined,
+    enabledTools,
+  );
 
   const functionDeclarations: FunctionDeclaration[] = filtered.map((t) => ({
     name: t.name,

@@ -21,8 +21,8 @@ import {
   deleteConfigMarkdown,
   readConfigMarkdown,
   writeConfigMarkdown,
-} from "./markdown-store/config-markdown-store.ts";
-import { parseFrontmatter } from "./markdown-store/frontmatter.ts";
+} from "./config-store/config-markdown-store.ts";
+import { parseFrontmatter } from "./config-store/frontmatter.ts";
 import {
   hashBuiltIn,
   isDrifted,

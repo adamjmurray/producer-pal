@@ -15,10 +15,11 @@
  *
  * Prompts use Ableton pitch naming (C3 = MIDI 60), matching everything else the
  * model sees in Producer Pal; the grader asserts MIDI numbers, so each notation's
- * own pitch spelling is transparent to it.
+ * own pitch spelling is transparent to it. `middle-c-scale` is the deliberate
+ * exception — naming no pitch is what makes it a test of the octave convention.
  */
 
-import { type ExpectedNote } from "../clip-scenario-helpers.ts";
+import { type ExpectedNote } from "../helpers/clip-scenario-helpers.ts";
 import {
   DRUMS_TRACK,
   LEAD_TRACK,
@@ -131,4 +132,42 @@ export const rhythmGridMatrix = notationNeutralScenarios({
   prompt:
     "On the Lead track, create a 1-bar MIDI clip in scene 1 with every note on C3: a quarter note on beat 1, two eighth notes on beat 2, four sixteenth notes on beat 3, and a quarter note on beat 4.",
   expected: MIXED_RHYTHM,
+});
+
+/**
+ * Ascending C natural minor from middle C, quarter notes, Ableton beats 0–7:
+ * 60, 62, 63, 65, 67, 68, 70, 72.
+ */
+const MIDDLE_C_SCALE: ExpectedNote[] = [
+  { pitch: 60, start: 0, duration: 1 }, // C3
+  { pitch: 62, start: 1, duration: 1 }, // D3
+  { pitch: 63, start: 2, duration: 1 }, // Eb3
+  { pitch: 65, start: 3, duration: 1 }, // F3
+  { pitch: 67, start: 4, duration: 1 }, // G3
+  { pitch: 68, start: 5, duration: 1 }, // Ab3
+  { pitch: 70, start: 6, duration: 1 }, // Bb3
+  { pitch: 72, start: 7, duration: 1 }, // C4
+];
+
+/**
+ * The octave-convention probe, and the one spec that deliberately breaks this
+ * file's rule of prompting in Ableton pitch names: it says "middle C" and never
+ * a pitch name, so the model must translate the concept into a register itself.
+ * That is the step a C4=middle C assumption gets wrong — silently, since every
+ * pitch is legal and only the octave moves.
+ *
+ * Grading is unchanged (exact MIDI numbers), so the failure reads straight off
+ * the diff: a whole scale at 72–84 is the wrong-convention run. midi-json is the
+ * control arm — it names pitches by number, so its result measures "does the
+ * model know C natural minor" with the convention question removed. A barbeat or
+ * stark rate below the midi-json rate is the octave text failing to land.
+ */
+export const middleCScaleMatrix = notationNeutralScenarios({
+  baseId: "middle-c-scale",
+  description: "Ascending C natural minor from middle C — octave convention",
+  track: LEAD_TRACK,
+  meter: "4/4",
+  prompt:
+    "On the Lead track, create a 2-bar MIDI clip in scene 1: an ascending C natural minor scale in quarter notes, one note per beat, starting on middle C and ending on the C one octave above it (8 notes).",
+  expected: MIDDLE_C_SCALE,
 });

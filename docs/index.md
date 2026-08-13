@@ -39,8 +39,8 @@ features:
   - title: Bring Your Own AI — or None
     details: >
       Use cloud AI (Claude, Gemini, ChatGPT), run free and private with local
-      models (Ollama, LM Studio), or skip AI entirely and script Live through
-      the open REST API. No lock-in.
+      models (Ollama, Bionic), or skip AI entirely and script Live through the
+      open REST API. No lock-in.
     link: /installation
     linkText: Setup guide
 
@@ -55,7 +55,7 @@ features:
 
 <div class="download-band">
   <h2 class="download-title">Get Producer Pal</h2>
-  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs, the chat UI, and everything else.</p>
+  <p class="download-subtitle">The Max for Live device is all you need to start — drop it onto a track in Ableton Live and it links you to the docs and the chat UI.</p>
   <div class="download-actions">
     <a class="download-btn download-btn-primary" href="https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd">
       <span class="download-btn-label">Download Max for Live Device</span>
@@ -99,8 +99,9 @@ features:
         <p class="card-description">Dedicated AI apps</p>
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
-          <li><a href="/installation/codex-app">Codex App (OpenAI)</a></li>
-          <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/chatgpt-app">ChatGPT App (OpenAI)</a></li>
+          <li><a href="/installation/antigravity">Antigravity (Google)</a></li>
+          <li><a href="/installation/bionic">Bionic (LM Studio)</a> <span class="tag">offline</span></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -124,18 +125,18 @@ features:
         <div class="card-header">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
             </svg>
           </div>
-          <h3 class="card-title"><a href="/installation">More Options</a></h3>
+          <h3 class="card-title"><a href="/extending">Agents &amp; Code</a></h3>
         </div>
-        <p class="card-description">Other ways to connect</p>
+        <p class="card-description">Coding agents and your own code</p>
         <ul class="card-links">
+          <li><a href="/guide/skills">Agent Skill</a> <span class="tag">no MCP</span></li>
+          <li><a href="/guide/rest-api">REST API</a> <span class="tag">no AI</span></li>
           <li><a href="/installation/cli">Command Line Tools</a></li>
-          <li><a href="/installation/web-apps">Web Apps</a></li>
-          <li><a href="/installation/other-mcp">Other LLMs</a></li>
+          <li><a href="/installation">Web apps &amp; more</a></li>
         </ul>
       </div>
     </div>
@@ -217,12 +218,12 @@ tracks, writing MIDI and audio clips, tweaking instruments and effects, and
 building arrangements.
 
 It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
-and local models via Ollama or LM Studio. And the AI is optional: the same
-device exposes an open [REST API](/guide/rest-api), so anything that can make an
-HTTP request — scripts, coding agents, your own tools — can read and edit a Live
-Set with no AI in the loop. A portable [Agent Skill](/guide/skills) that drops
-into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible runtime
-rounds out three integration paths from one Max for Live device.
+and local models via Ollama or LM Studio Bionic. And the AI is optional: the
+same device exposes an open [REST API](/guide/rest-api), so anything that can
+make an HTTP request — scripts, coding agents, your own tools — can read and
+edit a Live Set with no AI in the loop. A portable [Agent Skill](/guide/skills)
+that drops into Claude Code, Codex CLI, Gemini CLI, and any SKILL.md-compatible
+runtime rounds out three integration paths from one Max for Live device.
 
 Producer Pal is free, open-source (GPL-3.0), and actively developed in the open
 with regular updates for the latest Ableton Live features.

@@ -4,8 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+
+const MAX_CONTENT_LENGTH = 10_000;
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
@@ -76,11 +79,11 @@ export const toolDefContext = defineTool("ppal-context", {
       },
     ),
 
-    content: param(z.string().max(10_000).optional(), {
+    content: param(boundedString(MAX_CONTENT_LENGTH).optional(), {
       default:
         "Text to write — project/global: the whole document; memory: the " +
-        "entry body (one fact).",
-      smallModel: "The full document text to write.",
+        `entry body (one fact). Max ${MAX_CONTENT_LENGTH} chars.`,
+      smallModel: `The full document text to write. Max ${MAX_CONTENT_LENGTH} chars.`,
     }),
 
     name: param(z.string().max(200).optional(), {
@@ -96,5 +99,20 @@ export const toolDefContext = defineTool("ppal-context", {
         "when it's relevant. Required on a memory write.",
       smallModel: null,
     }),
+
+    // The escape hatch for the clobber guard (context-helpers.ts's
+    // clobberWarning), and deliberately NOT taught in the skills: the model
+    // learns of it from the warning, at the moment it is relevant, so it never
+    // reaches for it casually. Declared in EVERY mode — including small-model,
+    // where it costs a few tokens — because a guard whose only way out is hidden
+    // from the tier that hits it would deadlock the write, which is worse than
+    // the clobber it prevents.
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Only when a write was skipped for dropping the whole document: " +
+          "true replaces it anyway.",
+      ),
   },
 });

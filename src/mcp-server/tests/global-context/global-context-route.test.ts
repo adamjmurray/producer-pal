@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { registerGlobalContextRoutes } from "#src/mcp-server/routes/global-context-route.ts";
+import { registerGlobalContextRoutes } from "#src/mcp-server/routes/config/global-context-route.ts";
 
 const ORIGINAL_DIR = process.env.PRODUCER_PAL_CONFIG_DIR;
 

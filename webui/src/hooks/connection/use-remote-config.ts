@@ -16,7 +16,14 @@ export interface UseRemoteConfigReturn {
   serverSmallModelMode: boolean;
   serverLiveApiEnabled: boolean;
   serverLiveApiForcedOn: boolean;
-  serverNotation: Notation;
+  /**
+   * Null until the first `/config` attempt has produced an answer. Unlike the
+   * booleans above, a provisional default here is not harmless: a new
+   * conversation locks the notation it sees at its first send, so seeding a
+   * guess would lock the wrong grammar for that conversation's whole life.
+   * Null keeps the value honestly unknown so consumers can wait for it.
+   */
+  serverNotation: Notation | null;
   postSmallModelMode: (enabled: boolean) => void;
   postLiveApiEnabled: (enabled: boolean) => Promise<void>;
   postNotation: (notation: Notation) => void;
@@ -28,6 +35,20 @@ export interface UseRemoteConfigReturn {
  * MCP reconnection, and window focus (the focus refetch picks up device-side
  * Setup-tab changes when the user returns to the chat UI window).
  * Provides POST functions for syncing local changes to the server on save.
+ *
+ * `serverSmallModelMode` starts at a provisional `false` and is simply corrected
+ * when the fetch lands. `serverNotation` cannot do that — see its doc on
+ * {@link UseRemoteConfigReturn} — so it starts null and stays null until an
+ * answer arrives, a failure resolves it to the default, or a POST sets it.
+ *
+ * `serverLiveApiEnabled` is provisional in the same way, but it is NOT harmless:
+ * it is stamped into the toolset a new conversation locks at its first send (see
+ * withLiveApiTool), so a turn fired inside the fetch window would pin the tool
+ * off for that conversation's whole life on a device that has it on — the same
+ * invisible, permanent failure as the notation case. It is safe only because it
+ * rides this same GET as `serverNotation`, which useFirstSendGate waits for. If
+ * that wait is ever relaxed, this needs its own known-flag.
+ *
  * @param {McpStatus} mcpStatus - Current MCP connection status
  * @returns {UseRemoteConfigReturn} Server config values and POST functions
  */
@@ -35,8 +56,7 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverSmallModelMode, setServerSmallModelMode] = useState(false);
   const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
-  const [serverNotation, setServerNotation] =
-    useState<Notation>(DEFAULT_NOTATION);
+  const [serverNotation, setServerNotation] = useState<Notation | null>(null);
   // Two counters coordinate overlapping config operations:
   //   configSeqRef       — monotonic allocator; every GET (mount, reconnect,
   //                        focus) and every POST takes a unique, issue-ordered
@@ -79,9 +99,22 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
         setServerNotation(
           isNotation(config.notation) ? config.notation : DEFAULT_NOTATION,
         );
+
+        return;
       }
     } catch {
-      // Server not available or request aborted, keep current state
+      // Server not available or request aborted; fall through.
+    }
+
+    // No usable config came back (non-OK response or a network error). An abort
+    // is not an answer — it means we tore down or superseded the request, and a
+    // later attempt may still land — but a genuine failure has to resolve the
+    // notation, or a consumer waiting on it would wait forever for a server
+    // that is never going to reply. Functional update so this only fills in a
+    // still-unknown value and can't clobber one a successful fetch or a POST
+    // already established.
+    if (!signal?.aborted) {
+      setServerNotation((prev) => prev ?? DEFAULT_NOTATION);
     }
   }, []);
 

@@ -117,11 +117,10 @@ function readDeviceTarget(
     return readDeviceById(deviceId, options);
   }
 
-  if (!path) {
-    throw new Error("Either deviceId or path must be provided");
-  }
-
-  const resolved = resolvePathToLiveApi(path);
+  // readDevice's validateExclusiveParams already rejected "neither" (and "both"),
+  // so a missing deviceId means the path is present.
+  const devicePath = path as string;
+  const resolved = resolvePathToLiveApi(devicePath);
 
   switch (resolved.targetType) {
     case "device":
@@ -129,16 +128,26 @@ function readDeviceTarget(
 
     case "chain":
     case "return-chain":
-      return readChain(resolved.liveApiPath, path, options);
+      return readChain(resolved.liveApiPath, devicePath, options);
 
     case "drum-pad":
       return readDrumPadByPath(
         resolved.liveApiPath,
         resolved.drumPadNote as string,
         resolved.remainingSegments,
-        path,
+        devicePath,
         options,
       );
+
+    // Unreachable: every TargetType is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    /* v8 ignore start -- exhaustive switch: all TargetType values handled above */
+    default: {
+      const exhaustive: never = resolved.targetType;
+
+      return exhaustive;
+    }
+    /* v8 ignore stop */
   }
 }
 
@@ -400,12 +409,9 @@ function buildDrumPadInfo(
   options: ReadOptions,
 ): Record<string, unknown> {
   const midiNote = pad.getProperty("note") as number;
-  const noteName = midiToNoteName(midiNote);
-
-  if (noteName == null) {
-    throw new Error(`Invalid MIDI note from drum pad: ${midiNote}`);
-  }
-
+  // readDrumPadByPath matched this pad by the MIDI note parsed from the pad path,
+  // so the note is always in range and always names.
+  const noteName = midiToNoteName(midiNote) as string;
   const isMuted = (pad.getProperty("mute") as number) > 0;
   const isSoloed = (pad.getProperty("solo") as number) > 0;
 

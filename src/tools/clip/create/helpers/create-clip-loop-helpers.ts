@@ -11,7 +11,7 @@ import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -44,6 +44,8 @@ export interface CreateClipsParams {
   color: string | null;
   timeSigNumerator: number;
   timeSigDenominator: number;
+  /** The raw timeSignature argument, or null when the song's meter was used */
+  timeSignature: string | null;
   notationString: string | null;
   notes: MidiNote[];
   transformString: string | null;
@@ -55,6 +57,14 @@ export interface CreateClipsParams {
   code: string | null;
   /** Take lane to create arrangement clips on, or null for the main lane */
   takeLane: LiveAPI | null;
+  /** Requested audio warp state, or null to keep Live's own choice */
+  warping: boolean | null;
+  /** Audio clip gain in decibels; omitted leaves it alone */
+  gainDb?: number | null;
+  /** Audio clip pitch shift in semitones; omitted leaves it alone */
+  pitchShift?: number | null;
+  /** Audio clip warp mode; omitted leaves it alone */
+  warpMode?: string | null;
 }
 
 /**
@@ -183,6 +193,13 @@ async function createClipAtIndex(
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
       params.takeLane,
+      {
+        warping: params.warping,
+        gainDb: params.gainDb,
+        pitchShift: params.pitchShift,
+        warpMode: params.warpMode,
+      },
+      params.timeSignature,
     );
 
     createdClips.push(clipResult);

@@ -48,10 +48,12 @@ export function setupConsoleCapture(): ConsoleLogs {
         // The real fix lives upstream; drop this allowlist once it lands. See
         // https://github.com/OpenRouterTeam/ai-sdk-provider/issues/423 and
         // https://github.com/OpenRouterTeam/ai-sdk-provider/issues/418
-        if (!(
-          text.includes("reasoning_details") &&
-          text.includes("missing signatures")
-        )) {
+        if (
+          !(
+            text.includes("reasoning_details") &&
+            text.includes("missing signatures")
+          )
+        ) {
           captured.warnings.push(text);
         }
       } else if (type === "log") {

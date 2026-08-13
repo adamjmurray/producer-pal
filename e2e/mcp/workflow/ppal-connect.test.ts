@@ -58,17 +58,32 @@ function blockIndex(result: unknown, prefix: string): number {
   return typed?.content?.findIndex((c) => c.text?.startsWith(prefix)) ?? -1;
 }
 
+/**
+ * Parse a connect result and assert the baseline connection status every mode
+ * must report, whatever skills it goes on to inject.
+ * @param result - Raw ppal-connect tool result
+ * @returns The parsed connect result, for mode-specific assertions
+ */
+function expectConnected(result: unknown): ConnectResult {
+  const parsed = parseToolResult<ConnectResult>(result);
+
+  expect(parsed.connected).toBe(true);
+  // Release candidates ship a real `-rcN` prerelease version — same shape the
+  // version-agreement meta test accepts.
+  expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+(-rc[1-9]\d*)?$/);
+
+  return parsed;
+}
+
 describe("ppal-connect", () => {
   it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active, with notation pinned so the assertion is
     // deterministic regardless of any notation left set by a prior test.
     await setConfig({ smallModelMode: false, notation: "barbeat" });
-    const result = await callConnectRaw();
-    const parsed = parseToolResult<ConnectResult>(result);
 
-    // Connection status
-    expect(parsed.connected).toBe(true);
-    expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    const result = await callConnectRaw();
+    const parsed = expectConnected(result);
+
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
     expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
@@ -95,12 +110,11 @@ describe("ppal-connect", () => {
   it("returns simplified skills (smallModelMode=true)", async () => {
     // Enable small model mode, notation pinned (see standard-mode test above).
     await setConfig({ smallModelMode: true, notation: "barbeat" });
+
     const result = await callConnectRaw();
-    const parsed = parseToolResult<ConnectResult>(result);
 
     // Connection status still works
-    expect(parsed.connected).toBe(true);
-    expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    expectConnected(result);
 
     // Small model mode injects the notation's basic skills verbatim — and,
     // crucially, something different from standard mode, proving the mode
@@ -114,7 +128,7 @@ describe("ppal-connect", () => {
   });
 
   describe("project context", () => {
-    // config.memoryContent is the per-Live-Set project context blob — the field
+    // config.projectContext is the per-Live-Set project context blob — the field
     // name predates the memory system. It is no longer embedded in the connect
     // JSON; it's injected Node-side as its own "Project context (this Live Set):"
     // block (the same shape as the skills/global/memory blocks).
@@ -122,7 +136,7 @@ describe("ppal-connect", () => {
     const PROJECT_CONTEXT_PREFIX = "Project context (this Live Set):";
 
     it("injects a project context block when content is non-empty", async () => {
-      await setConfig({ memoryContent: TEST_CONTEXT });
+      await setConfig({ projectContext: TEST_CONTEXT });
       const result = await callConnectRaw();
 
       expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe(
@@ -131,7 +145,7 @@ describe("ppal-connect", () => {
     });
 
     it("omits the project context block when content is empty", async () => {
-      await setConfig({ memoryContent: "" });
+      await setConfig({ projectContext: "" });
       const result = await callConnectRaw();
 
       expect(extractBlock(result, PROJECT_CONTEXT_PREFIX)).toBe("");
@@ -234,7 +248,7 @@ describe("ppal-connect", () => {
         // beforeEach, but set both together for a self-contained arrange step.)
         await setConfig({
           smallModelMode: false,
-          memoryContent: "e2e order-probe project context",
+          projectContext: "e2e order-probe project context",
         });
 
         const result = await callConnectRaw();
@@ -251,7 +265,7 @@ describe("ppal-connect", () => {
       } finally {
         // Restore the dev machine's global context and remove the probe memory so
         // ~/.producer-pal is left untouched. Project context needs no restore —
-        // the next test's beforeEach resetConfig clears memoryContent.
+        // the next test's beforeEach resetConfig clears projectContext.
         await fetch(GLOBAL_CONTEXT_URL, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

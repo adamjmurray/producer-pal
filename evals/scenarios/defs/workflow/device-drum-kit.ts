@@ -18,9 +18,10 @@
  *
  * Grading is path-independent (the model names its own track): we find ONE
  * device call carrying >= 2 pad-path sample params and confirm the engine took
- * it (no failure `WARNING` in the relayed result). The judge covers the rest.
+ * it (no relayed `WARNING` on that call). The judge covers the rest.
  */
 
+import { argText } from "../arg-text.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { resolveSamplesPath } from "../../run-scenario-helpers.ts";
 import { type EvalScenario, type EvalTurnResult } from "../../types.ts";
@@ -67,7 +68,7 @@ export const deviceDrumKit: EvalScenario = {
 
           const padPads = new Set(
             (c.args.params as Array<{ name?: unknown }>)
-              .map((p) => String(p.name ?? ""))
+              .map((p) => argText(p.name))
               .filter((name) => PAD_SAMPLE_PARAM.test(name)),
           );
 
@@ -80,9 +81,11 @@ export const deviceDrumKit: EvalScenario = {
           );
         }
 
-        if (/warning/i.test(String(oneCallKit.result ?? ""))) {
+        // Warnings ride on the call's `warnings`, not its `result`: the relay
+        // appends each one as its own content block after the payload.
+        if ((oneCallKit.warnings?.length ?? 0) > 0) {
           throw new Error(
-            "the kit-build call warned — a sample failed to load (bad path or pad address)",
+            `the kit-build call warned — a sample failed to load (bad path or pad address): ${(oneCallKit.warnings ?? []).join("; ")}`,
           );
         }
 

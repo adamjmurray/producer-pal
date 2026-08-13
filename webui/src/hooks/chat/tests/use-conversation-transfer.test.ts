@@ -452,12 +452,11 @@ describe("useConversationTransfer", () => {
     );
   });
 
-  // eslint-disable-next-line vitest/expect-expect -- smoke test: verifies unmount cleanup doesn't throw
   it("clears pending timer on unmount", async () => {
     const { unmount } = await exportWithNotification();
 
     // Unmount should trigger the useEffect cleanup without errors
-    unmount();
+    expect(() => unmount()).not.toThrow();
   });
 
   it("auto-dismisses notification after timeout", async () => {

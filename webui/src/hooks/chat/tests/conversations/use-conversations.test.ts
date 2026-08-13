@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act } from "@testing-library/preact";
+import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
@@ -469,10 +469,13 @@ describe("useConversations", () => {
     expect(result.current.notification?.message).toContain("Deleted");
     expect(result.current.notification?.action?.label).toBe("Undo");
 
+    // The banner's onClick is fire-and-forget (`() => void undo()`), so act()
+    // has no promise to await. Poll rather than waiting one fixed tick: the
+    // restore does two IndexedDB round-trips (save, then list refresh), which
+    // can outrun a single tick on a loaded CI runner.
     await act(() => result.current.notification!.action!.onClick());
-    await waitForEffects();
+    await waitFor(() => expect(result.current.conversations).toHaveLength(1));
 
-    expect(result.current.conversations).toHaveLength(1);
     expect(result.current.conversations[0]?.id).toBe(savedId);
     expect(result.current.notification).toBeNull();
   });

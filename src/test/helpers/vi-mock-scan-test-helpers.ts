@@ -256,6 +256,9 @@ function isValueReference(node: ts.Identifier): boolean {
   if (ts.isQualifiedName(p) && p.right === node) return false; // typeof a.b type pos
   if (ts.isPropertyAssignment(p) && p.name === node) return false;
   if (ts.isTypeReferenceNode(p) || ts.isTypeQueryNode(p)) return false;
+  // The source key of a renaming destructure — the `fs` of `const { fs: x } = o`
+  // — reads as a bare identifier but only names a property of the initializer.
+  if (ts.isBindingElement(p) && p.propertyName === node) return false;
 
   if (
     (ts.isMethodDeclaration(p) ||

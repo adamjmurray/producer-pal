@@ -38,13 +38,13 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
   validateBarBeatPosition: vi.fn(),
 }));
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
   warn: vi.fn(),
   log: vi.fn(),
 }));
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 describe("clip-result-helpers", () => {
   beforeEach(() => {

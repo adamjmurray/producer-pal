@@ -234,14 +234,12 @@ export function setupDeviceParamMocks(config: DeviceParamConfig = {}): {
     properties: {
       ...paramProps,
     },
-    methods: {
-      // Add str_for_value method if provided
-      ...(strForValue
-        ? {
-            str_for_value: (value: unknown) => strForValue(value),
-          }
-        : {}),
-    },
+    // Add str_for_value method if provided
+    methods: strForValue
+      ? {
+          str_for_value: (value: unknown) => strForValue(value),
+        }
+      : {},
   });
 
   return {
@@ -308,9 +306,9 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
       parameters: [],
       sample: sample ? ["id", sampleObjId] : [],
     },
-    methods: {
-      // For rack devices with chains
-      ...(can_have_chains === 1 || chainIds.length > 0
+    // For rack devices with chains
+    methods:
+      can_have_chains === 1 || chainIds.length > 0
         ? {
             getChildren: (...args: unknown[]) => {
               const childType = args[0];
@@ -324,8 +322,7 @@ export function setupBasicDeviceMock(config: BasicDeviceConfig = {}): {
               return [];
             },
           }
-        : {}),
-    },
+        : {},
   });
 
   // Register view object if collapsed state is specified

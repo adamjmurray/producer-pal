@@ -32,11 +32,11 @@ function refs(over: Partial<ActiveRefs> = {}): ActiveRefs {
     bookmarked: false,
     model: null,
     provider: null,
+    notation: null,
     thinking: null,
-    temperature: null,
-    showThoughts: null,
     smallModelMode: null,
     systemInstruction: null,
+    enabledTools: null,
     ...over,
   };
 }
@@ -122,6 +122,77 @@ describe("buildSaveRecord systemInstruction snapshot", () => {
   });
 });
 
+describe("buildSaveRecord notation snapshot", () => {
+  it("snapshots the active notation on a new record", () => {
+    const rec = buildSaveRecord(
+      refs({ notation: "stark" }),
+      undefined,
+      HISTORY,
+    );
+
+    expect(rec.notation).toBe("stark");
+  });
+
+  it("preserves an existing snapshot over the current notation", () => {
+    // Restoring this conversation has to keep parsing its notes the way they
+    // were written, so a later save can't re-capture whatever the device is on.
+    const existing = buildSaveRecord(
+      refs({ notation: "stark" }),
+      undefined,
+      HISTORY,
+    );
+    const updated = buildSaveRecord(
+      refs({ notation: "barbeat" }),
+      existing,
+      HISTORY,
+    );
+
+    expect(updated.notation).toBe("stark");
+  });
+
+  it("omits the field when no notation is known", () => {
+    const rec = buildSaveRecord(refs(), undefined, HISTORY);
+
+    expect("notation" in rec).toBe(false);
+  });
+});
+
+describe("buildSaveRecord toolset snapshot", () => {
+  it("records the toolset the conversation last connected with", () => {
+    const rec = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": false } }),
+      undefined,
+      HISTORY,
+    );
+
+    expect(rec.enabledTools).toStrictEqual({ "ppal-library": false });
+  });
+
+  it("re-captures the toolset on later saves", () => {
+    // The opposite of the two snapshots above: a restored conversation really
+    // does reconnect with the current tools, so the record has to follow rather
+    // than freeze what it first ran with.
+    const existing = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": false } }),
+      undefined,
+      HISTORY,
+    );
+    const updated = buildSaveRecord(
+      refs({ enabledTools: { "ppal-library": true } }),
+      existing,
+      HISTORY,
+    );
+
+    expect(updated.enabledTools).toStrictEqual({ "ppal-library": true });
+  });
+
+  it("omits the field when no toolset is known", () => {
+    const rec = buildSaveRecord(refs(), undefined, HISTORY);
+
+    expect("enabledTools" in rec).toBe(false);
+  });
+});
+
 describe("buildConversationSaveRecord fork inheritance", () => {
   afterEach(() => {
     vi.mocked(loadConversation).mockReset();
@@ -144,6 +215,26 @@ describe("buildConversationSaveRecord fork inheritance", () => {
 
     expect(rec.systemInstruction).toBe("TRUNK SI");
     expect(rec.forkParentId).toBe("trunk");
+  });
+
+  it("inherits the trunk's notation when forking", async () => {
+    // The fork carries the trunk's turns, which were written under the trunk's
+    // notation — re-capturing the current global would mis-parse them.
+    vi.mocked(loadConversation).mockResolvedValue({
+      id: "trunk",
+      notation: "stark",
+    } as never);
+
+    const rec = await buildConversationSaveRecord({
+      id: "fork-1",
+      reuseId: "trunk",
+      fork: { anchorIndex: 1 },
+      refs: refs({ notation: "barbeat" }),
+      chatHistory: HISTORY,
+      updatedAt: undefined,
+    });
+
+    expect(rec.notation).toBe("stark");
   });
 
   it("uses the current instruction when the trunk has no snapshot", async () => {

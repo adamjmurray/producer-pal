@@ -50,11 +50,13 @@ interface EditorProps {
   entry?: MemoryEntryView | null;
   /** The onSaved callback (default: a spy). */
   onSaved?: (name: string) => void;
+  /** The onRenamed callback (default: a spy). */
+  onRenamed?: (from: string, to: string) => void;
 }
 
 /**
  * The editor element with test defaults, so render and rerender share one shape.
- * @param props - Overrides for the collection, entry, and onSaved
+ * @param props - Overrides for the collection, entry, and the save callbacks
  * @returns The MemoryEntryEditor element
  */
 function editorElement(props: EditorProps = {}): preact.JSX.Element {
@@ -63,13 +65,14 @@ function editorElement(props: EditorProps = {}): preact.JSX.Element {
       collection={props.collection ?? fakeCollection()}
       entry={props.entry ?? null}
       onSaved={props.onSaved ?? vi.fn()}
+      onRenamed={props.onRenamed ?? vi.fn()}
     />
   );
 }
 
 /**
  * Render the editor with test defaults (idle collection, create mode).
- * @param props - Overrides for the collection, entry, and onSaved
+ * @param props - Overrides for the collection, entry, and the save callbacks
  * @returns The Testing Library render result (for unmount / rerender)
  */
 function renderEditor(props: EditorProps = {}): RenderResult {
@@ -323,25 +326,34 @@ describe("MemoryEntryEditor — rename", () => {
     body: "Composes in C minor.",
   };
 
-  it("renames on blur, carrying the current fields and navigating to the new slug", async () => {
+  it("renames on blur, carrying the current fields and following the new slug", async () => {
     const renameEntry = vi.fn().mockResolvedValue(RENAMED);
     const collection = fakeCollection({ renameEntry });
     const onSaved = vi.fn();
+    const onRenamed = vi.fn();
 
-    renderEditor({ collection, entry: EXISTING, onSaved });
+    renderEditor({ collection, entry: EXISTING, onSaved, onRenamed });
 
-    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+    const nameInput = screen.getByRole("textbox", {
+      name: "Rename",
+    }) as HTMLInputElement;
 
     fireEvent.input(nameInput, { target: { value: "New Slug" } });
     fireEvent.blur(nameInput);
 
+    // onRenamed, NOT onSaved: the parent must follow the new slug WITHOUT
+    // remounting this editor, whose draft is the only copy of anything typed
+    // during the rename's round trip.
     await waitFor(() => {
-      expect(onSaved).toHaveBeenCalledWith("new-slug");
+      expect(onRenamed).toHaveBeenCalledWith("prefers-c-minor", "new-slug");
     });
+    expect(onSaved).not.toHaveBeenCalled();
     expect(renameEntry).toHaveBeenCalledWith("prefers-c-minor", "New Slug", {
       description: "default key & genre",
       content: "Composes in C minor.",
     });
+    // The field adopts the server's slugified name (no remount does it for us).
+    expect(nameInput.value).toBe("new-slug");
   });
 
   it("commits the rename on Enter", async () => {

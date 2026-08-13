@@ -3,33 +3,42 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  NewConversationIcon,
-  TrashIcon,
-} from "#webui/components/chat/controls/header/HeaderIcons";
+import { useEffect, useState } from "preact/hooks";
+import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
 import { CHIP_BUTTON_CLASS } from "./context-buttons";
+
+/** Pane label while the built-in is shown and nothing has been customized yet. */
+const UNFORKED_LABEL = "Default — start typing to customize";
 
 interface OverridePanesProps {
   /** Remount key for the uncontrolled editor (bumped on reset/reload). */
   editorKey: number;
   /**
    * Whether the slot is in "override" mode (see `useContextEditorState`). Drives
-   * the editable-vs-built-in structure — LATCHED, not derived from `value`, so
-   * editing the override down to empty doesn't collapse the editable pane.
+   * the pane chrome — LATCHED, not derived from `value`, so editing the override
+   * down to empty doesn't flip it back to the built-in framing.
    */
   hasOverride: boolean;
   /**
-   * The editor's seed content for the editable pane. Only read at (re)mount
-   * (the editor is uncontrolled, keyed by `editorKey`); the structural branch
-   * uses `hasOverride`, never this.
+   * The stored override, and the editor's seed content whenever it is non-empty.
+   * Only read at (re)mount (the editor is uncontrolled, keyed by `editorKey`);
+   * an empty one means there's nothing stored, so the editor seeds from
+   * `builtIn` instead.
+   *
+   * Deliberately NOT branched on `hasOverride`: that latch is set from an
+   * effect, so it still reads false on the render where a stored override first
+   * mounts the editor — seeding off it would show the built-in in place of the
+   * user's saved text, and the frozen editor key means the corrected render
+   * never remounts to fix it. Empty-vs-stored is the same distinction anyway:
+   * blank content deletes the override server-side.
    */
   value: string;
-  /** The read-only built-in reference shown alongside the override. */
+  /** The shipped default — the editor's seed until the user forks it. */
   builtIn: string;
-  /** Label above the editable pane (e.g. "Your override" / "Your instructions"). */
+  /** Label above the pane once forked (e.g. "Your override" / "Your instructions"). */
   overrideLabel: string;
   /**
    * Whether the built-in reference pane is revealed. Owned by the parent so it
@@ -48,18 +57,11 @@ interface OverridePanesProps {
    */
   onReset: () => Promise<boolean>;
   /**
-   * Fork the built-in default into an editable override (the "Customize" action
-   * shown while there is no override yet). Persists the default as the starting
-   * override, which flips this component into the editing view.
+   * Latch into override mode. Fired on the first edit made while the pane is
+   * still showing the built-in — the editor already holds the default's text, so
+   * the edit's own autosave persists the fork; this only flips the chrome.
    */
-  onCustomize: () => void;
-
-  /**
-   * Optional control centered in the pane header (the Skills tab passes its
-   * Preview/Source view toggle here). Omitted by the custom-instructions editor,
-   * which has no such view.
-   */
-  centerControl?: preact.JSX.Element;
+  onBeginOverride: () => void;
 
   /** Editable-pane callbacks (autosave lifecycle). */
   onChange: (value: string) => void;
@@ -67,18 +69,22 @@ interface OverridePanesProps {
 }
 
 /**
- * Editor body for a document that overrides a shipped default, in two states:
+ * Editor body for a document that overrides a shipped default. One editor, two
+ * framings — there is no read-only state to click out of:
  *
- * - **No override yet** (`!hasOverride`): shows only the default, read-only,
- *   with a pen "Customize" button that forks it into an editable override. The
- *   default is the content worth showing when there's nothing to edit, and
- *   nothing extra is on screen.
- * - **Has an override**: shows the editable override at full single-column
- *   width, with a trash "Reset to default" button beside its label (reachable
- *   without revealing the default first). The default is hidden until requested
- *   (via "Show default"), then renders in a read-only {@link MarkdownEditor} —
- *   same markdown formatting as the editable pane — beside the override, with a
- *   Copy button.
+ * - **No override yet** (`!hasOverride`): the editor is seeded with the default
+ *   and labelled {@link UNFORKED_LABEL}. Typing forks it — the document already
+ *   holds the default's bytes, so the first edit's autosave writes default +
+ *   edit as the override, exactly what an explicit "Customize" used to persist.
+ * - **Has an override**: the same editor, relabelled, with a trash "Reset to
+ *   default" button beside its label. The default is hidden until requested (via
+ *   "Show default"), then renders in a read-only {@link MarkdownEditor} — same
+ *   markdown formatting as the editable pane — beside the override, with a Copy
+ *   button.
+ *
+ * The two framings deliberately share one JSX position AND one editor key (see
+ * {@link useBuiltInSeedKey}), so the fork doesn't remount CodeMirror and drop
+ * the keystroke that triggered it.
  *
  * Shared by the skills-fragment editor and the custom-instructions editor.
  * @param props - Panes props
@@ -86,71 +92,63 @@ interface OverridePanesProps {
  */
 export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   const { editorKey, hasOverride, value, builtIn, overrideLabel } = props;
-  const { showBuiltIn, onToggleBuiltIn, onReset, onCustomize } = props;
-  const { centerControl, onChange, onBlur } = props;
-
-  if (!hasOverride) {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col gap-1">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
-          <span className="min-w-0 truncate text-xs font-medium text-zinc-400 dark:text-zinc-500">
-            Default
-          </span>
-          <div className="justify-self-center">{centerControl}</div>
-          <button
-            type="button"
-            onClick={onCustomize}
-            className={`justify-self-end shrink-0 ${CHIP_BUTTON_CLASS}`}
-          >
-            <NewConversationIcon />
-            Customize
-          </button>
-        </div>
-        <ReadOnlyBuiltIn value={builtIn} />
-      </div>
-    );
-  }
+  const { showBuiltIn, onToggleBuiltIn, onReset, onBeginOverride } = props;
+  const { onChange, onBlur } = props;
+  const seedKey = useBuiltInSeedKey(builtIn, hasOverride);
 
   return (
     <div className="flex-1 min-h-0 flex gap-3">
       <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
-          <span className="min-w-0 truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            {overrideLabel}
+        <div className="flex items-center justify-between h-7 gap-3">
+          <span
+            className={`min-w-0 truncate text-xs font-medium ${
+              hasOverride
+                ? "text-zinc-500 dark:text-zinc-400"
+                : "text-zinc-400 dark:text-zinc-500"
+            }`}
+          >
+            {hasOverride ? overrideLabel : UNFORKED_LABEL}
           </span>
-          <div className="justify-self-center">{centerControl}</div>
-          <div className="justify-self-end flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                // Collapse the reveal only when the reset actually happened —
-                // cancelling its confirm must leave the comparison open.
-                void onReset().then((ok) => {
-                  if (ok) onToggleBuiltIn(false);
-                })
-              }
-              aria-label="Reset to default"
-              title="Reset to default"
-              className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
-            >
-              <TrashIcon />
-            </button>
-            {!showBuiltIn && (
-              <button
-                type="button"
-                onClick={() => onToggleBuiltIn(true)}
-                className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
-              >
-                Show default
-              </button>
+          <div className="flex items-center gap-2">
+            {hasOverride && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    // Collapse the reveal only when the reset actually happened —
+                    // cancelling its confirm must leave the comparison open.
+                    void onReset().then((ok) => {
+                      if (ok) onToggleBuiltIn(false);
+                    })
+                  }
+                  aria-label="Reset to default"
+                  title="Reset to default"
+                  className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+                >
+                  <TrashIcon />
+                </button>
+                {!showBuiltIn && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleBuiltIn(true)}
+                    className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
+                  >
+                    Show default
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
         <MarkdownEditor
-          key={editorKey}
-          initialValue={value}
+          key={`${editorKey}:${seedKey}`}
+          initialValue={value !== "" ? value : builtIn}
           readOnly={false}
-          onChange={onChange}
+          onChange={(next) => {
+            // The first edit to an un-forked pane IS the fork.
+            if (!hasOverride) onBeginOverride();
+            onChange(next);
+          }}
           onBlur={onBlur}
           className="flex-1 min-h-0"
         />
@@ -176,7 +174,13 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
               </button>
             </div>
           </div>
-          <ReadOnlyBuiltIn value={builtIn} />
+          <MarkdownEditor
+            key={builtIn}
+            initialValue={builtIn}
+            readOnly={true}
+            onChange={noop}
+            className="flex-1 min-h-0"
+          />
         </div>
       )}
     </div>
@@ -186,27 +190,29 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
 // --- Helpers below main export ---
 
 /**
- * The read-only built-in reference editor, rendered identically whether it is
- * the sole content (no override yet) or the revealed reference beside an
- * override. Read-only markdown so it matches the editable pane's formatting.
+ * The built-in half of the editable pane's remount key.
  *
- * Keyed by `value`: MarkdownEditor is uncontrolled (seeds at mount only), so
- * without a content key a built-in that changes server-side while the pane is
- * open — e.g. the notation switch re-tuning the fragment, picked up by the 5s
- * poll — would leave a stale preview even though Customize forks from the fresh
- * value. Remounting on content change keeps the shown default in sync.
- * @param props - Editor props
- * @param props.value - The built-in markdown to display
- * @returns Read-only editor element
+ * MarkdownEditor is uncontrolled (seeds at mount only), so while the pane still
+ * shows the default, a built-in that changes server-side — e.g. the notation
+ * switch re-tuning the fragment, picked up by the 5s poll — must remount the
+ * editor or the user would read a stale default and fork from it.
+ *
+ * It stops tracking the moment the pane becomes an override: from then on the
+ * editor holds the user's text, and re-keying on an upstream built-in change
+ * would throw that away. Freezing here (rather than branching the key on
+ * `hasOverride`) is also what keeps the key STABLE across the fork itself — the
+ * flip render must not remount, or it eats the keystroke that caused it.
+ * @param builtIn - The current built-in default
+ * @param hasOverride - Whether the pane has forked into an override
+ * @returns The seed key to compose into the editor's `key`
  */
-function ReadOnlyBuiltIn(props: { value: string }): preact.JSX.Element {
-  return (
-    <MarkdownEditor
-      key={props.value}
-      initialValue={props.value}
-      readOnly={true}
-      onChange={noop}
-      className="flex-1 min-h-0"
-    />
-  );
+function useBuiltInSeedKey(builtIn: string, hasOverride: boolean): string {
+  const [seed, setSeed] = useState(builtIn);
+
+  useEffect(() => {
+    if (hasOverride) return;
+    setSeed(builtIn);
+  }, [builtIn, hasOverride]);
+
+  return seed;
 }

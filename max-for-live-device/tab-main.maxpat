@@ -9,7 +9,7 @@
             "modernui": 1
         },
         "classnamespace": "box",
-        "rect": [ 371.0, 205.0, 597.0, 604.0 ],
+        "rect": [ 698.0, 225.0, 597.0, 604.0 ],
         "openinpresentation": 1,
         "boxes": [
             {
@@ -352,9 +352,9 @@
                     "numoutlets": 0,
                     "patching_rect": [ 267.0, 154.0, 78.0, 21.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 183.0, 39.0, 54.0, 21.0 ],
+                    "presentation_rect": [ 182.0, 39.0, 67.0, 21.0 ],
                     "text": "vX.Y.Z",
-                    "textjustification": 1
+                    "textjustification": 0
                 }
             },
             {

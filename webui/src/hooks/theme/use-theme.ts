@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useState } from "preact/hooks";
@@ -37,7 +38,7 @@ export function useTheme() {
     localStorage.setItem("theme", theme);
 
     // Only listen for system theme changes when using "system" theme
-    if (theme !== "system") return;
+    if (theme !== "system") return undefined;
 
     mediaQuery.addEventListener("change", applyTheme);
 

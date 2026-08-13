@@ -15,7 +15,7 @@ import {
   parseToolResultWithWarnings,
   type ReadClipResult,
 } from "../../mcp-test-helpers.ts";
-import { type ExpectedClip } from "./arrangement-lengthening-expected.ts";
+import { type ExpectedClip } from "./arrangement-lengthening-expected-test-cases.ts";
 
 export const ARRANGEMENT_CLIP_TESTS_PATH =
   "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als";
@@ -82,9 +82,8 @@ export function parseLengthenResult(result: unknown): {
   // Use parseToolResultWithWarnings since lengthening operations emit expected warnings
   // (e.g. "no additional file content", "capped at file boundary")
   try {
-    const { data: asArray, warnings } = parseToolResultWithWarnings<
-      CreateClipResult[]
-    >(result as Awaited<ReturnType<Client["callTool"]>>);
+    const { data: asArray, warnings } =
+      parseToolResultWithWarnings<CreateClipResult[]>(result);
 
     if (Array.isArray(asArray)) {
       return { clips: asArray, warnings };
@@ -94,9 +93,7 @@ export function parseLengthenResult(result: unknown): {
   }
 
   const { data: asObject, warnings } =
-    parseToolResultWithWarnings<CreateClipResult>(
-      result as Awaited<ReturnType<Client["callTool"]>>,
-    );
+    parseToolResultWithWarnings<CreateClipResult>(result);
 
   return { clips: [asObject], warnings };
 }
@@ -174,7 +171,7 @@ export function assertClipDetails(
   }
 }
 
-type LengthenResult = {
+export type LengthenResult = {
   trackType: "midi" | "audio";
   initialClips: ReadClipResult[];
   resultClips: ReadClipResult[];

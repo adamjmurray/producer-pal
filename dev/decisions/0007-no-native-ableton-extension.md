@@ -5,45 +5,39 @@
 
 ## Context
 
-Ableton offers an extension/control-surface SDK. On paper, a native extension
-looks like a cleaner integration than a Max for Live device hosting a V8 MCP
-server, so it's a natural "shouldn't we just…" question.
+Ableton has an extension/control-surface SDK. On paper a native extension looks
+cleaner than a Max for Live device hosting a V8 MCP server, so "shouldn't we
+just use that?" comes up regularly.
 
 ## Decision
 
-Stay on the Max for Live + V8 architecture. Do not port Producer Pal to a native
-Ableton extension.
+Stay on Max for Live + V8. Don't port Producer Pal to a native extension.
 
 ## Alternatives rejected
 
-- **Native Ableton extension SDK** (`@ableton-extensions/sdk`, beta-only as of
-  Live 12.4) — investigated (verdict 2026-06-23, verified against the SDK type
-  defs + three third-party SDK/MCP projects that all hit the same walls) and
-  found a curated subset strictly thinner than the M4L/Live API surface we
-  already use. Blocking gaps:
-  - **No transport/playback** — no play/stop, no clip/scene `fire`, no
-    `current_song_time`. Producer Pal's whole launch story is impossible.
-  - **No MIDI-instrument / post-FX render** — `renderPreFxAudio` is the only
-    render and is pre-FX only, so there is no freeze/flatten/bounce and you
-    **cannot resample a MIDI instrument**. (Precision: this is the real blocker.
-    The SDK _can_ write a generated file and add it as an audio clip via
-    `createAudioClip`, so it does **not** block clip content from generated
-    files — don't overstate this.)
-  - **Ephemeral handles** invalidated on move/delete/session — no move-stable
-    identity, which breaks the LLM-facing stable-id contract our tools rely on.
-  - **No reach upside**: Extensions require Live 12 Suite Beta — the same
-    Suite-only audience as Max for Live. Adopting the SDK gains zero addressable
-    market to offset the capability losses. Reach is **not** a reason to reopen.
+**The Ableton extension SDK** (`@ableton-extensions/sdk`, beta-only as of Live
+12.4). Investigated 2026-06-23 against the SDK type definitions and three
+third-party projects that hit the same walls. It exposes a curated subset that
+is strictly thinner than the Live API we already use:
 
-  Adopting it would lose capability, not gain it.
+- **No transport or playback** — no play/stop, no clip or scene `fire`, no
+  `current_song_time`. Producer Pal's entire launch story is impossible.
+- **No MIDI-instrument or post-FX render.** `renderPreFxAudio` is pre-FX only,
+  so there's no freeze, flatten, or bounce, and you can't resample a MIDI
+  instrument. This is the real blocker. Note it does _not_ block clip content
+  from generated files — the SDK can write a file and add it via
+  `createAudioClip`.
+- **Ephemeral handles** invalidated on move, delete, or new session. No
+  move-stable identity, which breaks the stable-id contract our tools give the
+  model.
+- **No reach upside.** Extensions need Live 12 Suite Beta — the same Suite-only
+  audience as Max for Live, so there's no market gained to offset the losses.
+  Reach is explicitly not a reason to reopen this.
 
 ## Consequences
 
-- The M4L device remains the integration point; its constraints (and the
-  workarounds in `dev/Arrangement-Operations.md`) are the accepted cost.
-- Revisit triggers (either is sufficient): the SDK gains (1) MIDI-instrument /
-  post-FX render or freeze/flatten, **or** (2) a move-stable identity primitive.
-  Reach/distribution is explicitly not a trigger.
-- Public write-up: `docs/how-it-works/why-not-an-extension.md` and
-  `docs/how-it-works/running-inside-live.md`. Broader ecosystem thinking lives
-  in `dev/plans/Ecosystem.md`.
+- The M4L device stays the integration point, and its constraints (see
+  `dev/Arrangement-Operations.md`) are the accepted cost.
+- Revisit if the SDK gains either MIDI-instrument/post-FX render (or
+  freeze/flatten) or a move-stable identity primitive.
+- Public write-up: `docs/how-it-works/why-not-an-extension.md`.

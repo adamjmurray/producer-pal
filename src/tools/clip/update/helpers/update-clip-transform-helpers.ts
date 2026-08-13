@@ -7,7 +7,8 @@ import { dedupeNotesKeepingLast, sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
@@ -111,7 +112,7 @@ export function buildClipContext(
   const durationBeats = isArrangementClip
     ? (clip.getProperty("end_time") as number) -
       (clip.getProperty("start_time") as number)
-    : (clip.getProperty("length") as number);
+    : clipLengthBeats(clip);
 
   return {
     clipDuration: durationBeats * (timeSigDenominator / 4),

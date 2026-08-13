@@ -23,7 +23,6 @@ export const mockChatHook = {
   stopResponse: vi.fn(),
   activeModel: "test-model",
   activeThinking: null,
-  activeTemperature: 1.0,
   activeSmallModelMode: null,
   queuedMessages: [],
   enqueueMessage: vi.fn(),
@@ -50,10 +49,6 @@ export const mockSettingsHook = {
   savedProvider: "gemini" as const,
   thinking: "default" as const,
   setThinking: vi.fn(),
-  temperature: 1.0,
-  setTemperature: vi.fn(),
-  showThoughts: false,
-  setShowThoughts: vi.fn(),
 
   enabledTools: {},
   setEnabledTools: vi.fn(),
@@ -74,6 +69,7 @@ export const mockSettingsHook = {
 
   notation: DEFAULT_NOTATION,
   notationDirty: false,
+  notationKnown: true,
   setNotation: vi.fn(),
   seedNotation: vi.fn(),
 

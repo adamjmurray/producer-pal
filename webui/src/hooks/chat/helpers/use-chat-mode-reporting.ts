@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useMemo, useRef } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { type ModeContext } from "#webui/components/mode-context";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -13,6 +14,8 @@ interface ChatLike {
   activeModel: HeaderInfo["activeModel"];
   activeProvider: HeaderInfo["activeProvider"];
   activeSmallModelMode: boolean | null;
+  activeNotation: Notation | null;
+  activeEnabledTools: Record<string, boolean> | null;
 }
 
 interface UseChatModeReportingParams {
@@ -21,6 +24,8 @@ interface UseChatModeReportingParams {
   display: PreferencesSettings;
   enabledToolsCount: number;
   totalToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
   handleDeleteAll: () => void;
   handleDeleteUnbookmarked: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -43,6 +48,8 @@ export function useChatModeReporting(
     display,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     handleDeleteAll,
     handleDeleteUnbookmarked,
     setModeContext,
@@ -66,6 +73,8 @@ export function useChatModeReporting(
         activeModel: chat.activeModel,
         activeProvider: chat.activeProvider,
         activeSmallModelMode: chat.activeSmallModelMode,
+        activeNotation: chat.activeNotation,
+        activeEnabledTools: chat.activeEnabledTools,
       },
       onDeleteAllConversations: () => handlersRef.current.handleDeleteAll(),
       onDeleteUnbookmarkedConversations: () =>
@@ -76,6 +85,8 @@ export function useChatModeReporting(
     chat.activeModel,
     chat.activeProvider,
     chat.activeSmallModelMode,
+    chat.activeNotation,
+    chat.activeEnabledTools,
     setModeContext,
   ]);
 
@@ -87,6 +98,8 @@ export function useChatModeReporting(
       provider: settings.provider,
       enabledToolsCount,
       totalToolsCount,
+      defaultToolsCount,
+      enabledToolsDiverge,
       smallModelMode: chat.activeSmallModelMode ?? settings.smallModelMode,
       defaultSmallModelMode: settings.smallModelMode,
       showHelpLinks: display.showHelpLinks,
@@ -100,6 +113,8 @@ export function useChatModeReporting(
       settings.smallModelMode,
       enabledToolsCount,
       totalToolsCount,
+      defaultToolsCount,
+      enabledToolsDiverge,
       display.showHelpLinks,
     ],
   );

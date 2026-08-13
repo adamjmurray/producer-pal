@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -62,17 +62,20 @@ describe("liveApi", () => {
       color: string,
     ) => string;
 
-    // goto is not on the mock LiveAPI type, so cast to assign it
-    (LiveAPI.prototype as unknown as Record<string, unknown>).goto = vi.fn(
-      function (this: MockLiveAPIContext, path: string) {
-        this._path = path;
-        this._id = path.replaceAll(/\s+/g, "/");
-        // Clear registration so getters use updated _path/_id
-        this._registered = undefined;
+    // goto/getcount/getstring are not on the mock LiveAPI type, so cast to assign them
+    const proto = LiveAPI.prototype as unknown as Record<string, unknown>;
 
-        return 1;
-      },
-    );
+    proto.goto = vi.fn(function (this: MockLiveAPIContext, path: string) {
+      this._path = path;
+      this._id = path.replaceAll(/\s+/g, "/");
+      // Clear registration so getters use updated _path/_id
+      this._registered = undefined;
+
+      return 1;
+    });
+
+    proto.getcount = vi.fn(() => 4);
+    proto.getstring = vi.fn((property: string) => `<${property}>`);
   });
 
   describe("input validation", () => {
@@ -85,9 +88,10 @@ describe("liveApi", () => {
     });
 
     it("should throw error if operations array exceeds 50 operations", () => {
-      const operations = Array(51).fill({
-        type: "info",
-      }) as LiveApiOperation[];
+      const operations = Array.from(
+        { length: 51 },
+        () => ({ type: "info" }) as LiveApiOperation,
+      );
 
       expect(() => liveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
@@ -96,9 +100,10 @@ describe("liveApi", () => {
 
     it("should not throw when operations array has exactly 50 operations", () => {
       // Boundary: MAX_OPERATIONS is 50, so exactly 50 is allowed (> not >=).
-      const operations = Array(50).fill({
-        type: "exists",
-      }) as LiveApiOperation[];
+      const operations = Array.from(
+        { length: 50 },
+        () => ({ type: "exists" }) as LiveApiOperation,
+      );
 
       const result = liveApi({ operations });
 
@@ -394,6 +399,159 @@ describe("liveApi", () => {
     });
   });
 
+  describe("LiveAPI object operations", () => {
+    it("should handle set_path operation", () => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      const result = liveApi({
+        operations: [{ type: "set_path", value: String(livePath.track(0)) }],
+      });
+
+      // The result is a read-back of api.path, not an echo of the input.
+      expect(result.results[0]!.result).toBe(String(livePath.track(0)));
+      expect(result.path).toBe(String(livePath.track(0)));
+    });
+
+    it("should handle set_path operation with an empty path", () => {
+      // Clearing the path is the whole point of this operation: it is what
+      // releases the path listeners Live installs. "" is falsy, so this only
+      // works because the operation requires a defined value, not a truthy one.
+      const result = liveApi({
+        operations: [{ type: "set_path", value: "" }],
+      });
+
+      expect(result.results[0]!.result).toBe("");
+      expect(result.path).toBe("");
+      // A cleared path reports id "0", the same as any path that doesn't
+      // resolve, so the object reads as nonexistent. (This suite stubs
+      // exists(); the e2e suite asserts it against real Live.)
+      expect(result.id).toBe("0");
+    });
+
+    it("should throw error for set_path without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_path" }],
+        }),
+      ).toThrow("set_path operation requires value (path)");
+    });
+
+    it("should handle set_mode operation", () => {
+      const result = liveApi({
+        operations: [
+          { type: "set_mode", value: 1 },
+          { type: "get_property", property: "mode" },
+        ],
+      });
+
+      expect(result.results[0]!.result).toBe(1);
+      expect(result.results[1]!.result).toBe(1);
+    });
+
+    it("should handle set_mode operation with mode 0", () => {
+      // 0 is falsy, so this only passes validation because set_mode requires a
+      // defined value rather than a truthy one.
+      const result = liveApi({
+        operations: [{ type: "set_mode", value: 0 }],
+      });
+
+      expect(result.results[0]!.result).toBe(0);
+    });
+
+    it("should throw error for set_mode without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_mode" }],
+        }),
+      ).toThrow("set_mode operation requires value (mode)");
+    });
+
+    it("should handle getcount operation", () => {
+      const result = liveApi({
+        operations: [{ type: "getcount", property: "tracks" }],
+      });
+
+      expect(result.results[0]!.result).toBe(4);
+      expect(LiveAPI.prototype.getcount).toHaveBeenCalledWith("tracks");
+    });
+
+    it("should throw error for getcount without property", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "getcount" }],
+        }),
+      ).toThrow("getcount operation requires property (child type)");
+    });
+
+    it("should handle getstring operation", () => {
+      const result = liveApi({
+        operations: [{ type: "getstring", property: "tempo" }],
+      });
+
+      expect(result.results[0]!.result).toBe("<tempo>");
+      expect(LiveAPI.prototype.getstring).toHaveBeenCalledWith("tempo");
+    });
+
+    it("should throw error for getstring without property", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "getstring" }],
+        }),
+      ).toThrow("getstring operation requires property");
+    });
+  });
+
+  describe("releasing the object", () => {
+    // Live arms a path listener on every collection along a path-based
+    // LiveAPI's path and never takes it down; clearing the path is the only
+    // thing that does. LiveAPI.from is wrapped so the test can reach the
+    // instance liveApi() builds internally.
+    let created: { path: string }[];
+    let originalFrom: typeof LiveAPI.from;
+
+    beforeEach(() => {
+      created = [];
+      originalFrom = LiveAPI.from.bind(LiveAPI);
+      LiveAPI.from = ((idOrPath: Parameters<typeof LiveAPI.from>[0]) => {
+        const api = originalFrom(idOrPath);
+
+        created.push(api as unknown as { path: string });
+
+        return api;
+      }) as typeof LiveAPI.from;
+    });
+
+    afterEach(() => {
+      LiveAPI.from = originalFrom;
+    });
+
+    it("should clear the path when the call ends", () => {
+      const result = liveApi({
+        path: String(livePath.track(0)),
+        operations: [{ type: "exists" }],
+      });
+
+      // The response still reports the path — it is captured before release.
+      expect(result.path).toBe(String(livePath.track(0)));
+      expect(created).toHaveLength(1);
+      expect(created[0]!.path).toBe("");
+    });
+
+    it("should clear the path even when an operation fails", () => {
+      // A failed call armed a listener just the same, so the release has to
+      // survive the throw.
+      expect(() => liveApi({ operations: [{ type: "get_property" }] })).toThrow(
+        "Operation failed",
+      );
+
+      expect(created).toHaveLength(1);
+      expect(created[0]!.path).toBe("");
+    });
+  });
+
   describe("path handling", () => {
     it("should create LiveAPI with path when provided", () => {
       const trackMock = registerMockObject("track-0", {
@@ -494,6 +652,17 @@ describe("liveApi", () => {
           operations: [{ type: "unknown_operation" }],
         } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown_operation");
+    });
+
+    it("should reject an inherited Object.prototype key as an operation type", () => {
+      // `type in OPERATION_REQUIREMENTS` walks the prototype chain, so
+      // "toString" clears the validator. The switch's default is what actually
+      // stops it.
+      expect(() =>
+        liveApi({
+          operations: [{ type: "toString" }],
+        } as unknown as Parameters<typeof liveApi>[0]),
+      ).toThrow("Unknown operation type: toString");
     });
 
     it("should wrap operation errors and preserve the original as cause", () => {

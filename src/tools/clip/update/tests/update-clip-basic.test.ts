@@ -305,11 +305,20 @@ describe("updateClip - Basic operations", () => {
     });
   });
 
+  it("should ignore an empty toSlot instead of moving the clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({ ids: "123", toSlot: "" });
+
+    expect(result).not.toHaveProperty("slot");
+  });
+
   it("should warn and use first slot when toSlot has multiple values", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi.spyOn(consoleModule, "warn");
 
     const result = await updateClip({ ids: "123", toSlot: "1/2, 3/4" });
@@ -432,6 +441,17 @@ describe("updateClip - Basic operations", () => {
       "notes parameter ignored for audio clip",
     );
     expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+  });
+
+  it("should warn that audio-only parameters were ignored on a MIDI clip", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", warping: false, gainDb: -6 });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "gainDb, warping ignored for MIDI clips",
+    );
   });
 
   it("should apply code exactly once per clip without a failure warning", async () => {

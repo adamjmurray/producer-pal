@@ -45,7 +45,10 @@ interface DepsOverrides {
  */
 function setup(over: DepsOverrides = {}) {
   const adapter = createMockAdapter();
-  const runWithChat = vi.fn(async (fn: () => Promise<unknown>) => await fn());
+  const runWithChat = vi.fn(
+    async (fn: (stillCurrent: () => boolean) => Promise<unknown>) =>
+      await fn(() => true),
+  );
   const invalidateCompactionUndo = vi.fn();
   const clientRef = { current: over.client ?? null };
   const pendingHistoryRef = { current: over.pendingHistory ?? null };

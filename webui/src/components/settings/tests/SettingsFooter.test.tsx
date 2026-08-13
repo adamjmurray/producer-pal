@@ -18,7 +18,33 @@ describe("SettingsFooter", () => {
     pulse: false,
     hasUnsavedChanges: false,
     saveError: null,
+    blockedMessage: null,
   };
+
+  it("disables Save and explains why when blockedMessage is set", () => {
+    const saveSettings = vi.fn();
+
+    render(
+      <SettingsFooter
+        {...defaultProps}
+        saveSettings={saveSettings}
+        hasUnsavedChanges={true}
+        blockedMessage="Create or cancel the new preset before saving settings."
+      />,
+    );
+
+    expect((screen.getByText("Save") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("settings-save-blocked")).toBeTruthy();
+    // The blocked notice stands in for the unsaved-changes nag.
+    expect(
+      screen.queryByText(
+        "You have unsaved changes. Save or cancel to dismiss.",
+      ),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByText("Save"));
+    expect(saveSettings).not.toHaveBeenCalled();
+  });
 
   it("renders Save button", () => {
     render(<SettingsFooter {...defaultProps} />);

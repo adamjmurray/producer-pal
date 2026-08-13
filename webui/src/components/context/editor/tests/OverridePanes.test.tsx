@@ -7,31 +7,51 @@
  * @vitest-environment happy-dom
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { type VNode } from "preact";
+import { useRef } from "preact/hooks";
 import { describe, expect, it, vi } from "vitest";
 import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 
-// The MarkdownEditor wires CodeMirror; stub it to a plain node echoing the
-// seeded value so we can assert each pane's content without a real editor. The
-// built-in pane renders through this same component (read-only), so a shown
-// built-in appears as a second editor node.
+// The MarkdownEditor wires CodeMirror; stub it to a textarea that captures its
+// seed at MOUNT, so the stub honors the real editor's uncontrolled contract —
+// a re-seed needs a remount. That's what makes the fork test meaningful: if the
+// key changed across the fork, the remount would re-seed and lose the edit. The
+// built-in reference pane renders through this same component (read-only), so a
+// shown built-in appears as a second editor node.
 vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
-  MarkdownEditor: (props: { initialValue: string; readOnly: boolean }) => (
-    <div data-testid="editor" data-readonly={String(props.readOnly)}>
-      {props.initialValue}
-    </div>
-  ),
+  MarkdownEditor: (props: {
+    initialValue: string;
+    readOnly: boolean;
+    onChange: (value: string) => void;
+  }) => {
+    const seeded = useRef(props.initialValue);
+
+    return (
+      <textarea
+        data-testid="editor"
+        data-readonly={String(props.readOnly)}
+        defaultValue={seeded.current}
+        onInput={(event) =>
+          props.onChange((event.target as HTMLTextAreaElement).value)
+        }
+      />
+    );
+  },
 }));
+
+type PaneProps = Parameters<typeof OverridePanes>[0];
 
 /**
  * Render OverridePanes with sensible defaults.
  * @param over - Props to override on the defaults
- * @returns The render result and the toggle/reset/customize spies
+ * @returns The spies plus `rerenderPanes(over)`, which re-renders with new props
  */
-function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
+function renderPanes(over: Partial<PaneProps> = {}) {
   const onToggleBuiltIn = vi.fn();
   const onReset = vi.fn().mockResolvedValue(true);
-  const onCustomize = vi.fn();
-  const result = render(
+  const onBeginOverride = vi.fn();
+  const onChange = vi.fn();
+  const el = (next: Partial<PaneProps>): VNode => (
     <OverridePanes
       editorKey={0}
       hasOverride={true}
@@ -41,14 +61,32 @@ function renderPanes(over: Partial<Parameters<typeof OverridePanes>[0]> = {}) {
       showBuiltIn={false}
       onToggleBuiltIn={onToggleBuiltIn}
       onReset={onReset}
-      onCustomize={onCustomize}
-      onChange={vi.fn()}
+      onBeginOverride={onBeginOverride}
+      onChange={onChange}
       onBlur={vi.fn()}
-      {...over}
-    />,
+      {...next}
+    />
   );
+  const { rerender } = render(el(over));
 
-  return { ...result, onToggleBuiltIn, onReset, onCustomize };
+  return {
+    onToggleBuiltIn,
+    onReset,
+    onBeginOverride,
+    onChange,
+    rerenderPanes: (next: Partial<PaneProps>) => rerender(el(next)),
+  };
+}
+
+/**
+ * The seeded values of the currently-rendered editors, in DOM order. When the
+ * built-in is revealed there are two: the override, then the read-only built-in.
+ * @returns Each editor's value
+ */
+function editorValues(): string[] {
+  return screen
+    .getAllByTestId("editor")
+    .map((editor) => (editor as HTMLTextAreaElement).value);
 }
 
 describe("OverridePanes", () => {
@@ -56,10 +94,9 @@ describe("OverridePanes", () => {
     renderPanes();
 
     expect(screen.getByText("Your override")).toBeTruthy();
-    expect(screen.getByTestId("editor").textContent).toBe("MY OVERRIDE");
+    expect(editorValues()).toStrictEqual(["MY OVERRIDE"]);
     // The default reference is not on screen until requested.
     expect(screen.queryByText("Default")).toBeNull();
-    expect(screen.queryByText("SHIPPED DEFAULT")).toBeNull();
     expect(screen.getByText("Show default")).toBeTruthy();
   });
 
@@ -75,16 +112,15 @@ describe("OverridePanes", () => {
     renderPanes({ showBuiltIn: true });
 
     expect(screen.getByText("Default")).toBeTruthy();
+    // Two editors: the editable override and the read-only built-in.
+    expect(editorValues()).toStrictEqual(["MY OVERRIDE", "SHIPPED DEFAULT"]);
+
     const editors = screen.getAllByTestId("editor");
 
-    // Two editors: the editable override and the read-only built-in.
-    expect(editors.map((e) => e.textContent)).toStrictEqual([
-      "MY OVERRIDE",
-      "SHIPPED DEFAULT",
+    expect(editors.map((e) => e.getAttribute("data-readonly"))).toStrictEqual([
+      "false",
+      "true",
     ]);
-    const builtIn = editors.find((e) => e.textContent === "SHIPPED DEFAULT");
-
-    expect(builtIn?.getAttribute("data-readonly")).toBe("true");
     // No "Show default" affordance while it is already visible.
     expect(screen.queryByText("Show default")).toBeNull();
   });
@@ -141,45 +177,101 @@ describe("OverridePanes", () => {
     });
   });
 
-  it("keeps the editable pane mounted when the override is edited to empty", () => {
-    // Regression: the structural branch used to key off `value` (server
-    // content), so editing an override down to "" — or a debounced save("")
-    // echo — unmounted the editable pane mid-edit and dropped the next
-    // keystrokes. `hasOverride` is latched, so an empty draft stays editable.
+  it("keeps the override framing when the override is edited to empty", () => {
+    // Regression: the framing used to key off `value` (server content), so
+    // editing an override down to "" — or a debounced save("") echo — reverted
+    // the pane to its built-in framing mid-edit. `hasOverride` is latched.
     renderPanes({ value: "", hasOverride: true });
 
     expect(screen.getByText("Your override")).toBeTruthy();
-    const editors = screen.getAllByTestId("editor");
-
-    // A single editable pane (built-in hidden), NOT the read-only built-in.
-    expect(editors).toHaveLength(1);
-    expect(editors[0]?.getAttribute("data-readonly")).toBe("false");
-    expect(screen.queryByText("Customize")).toBeNull();
+    expect(screen.queryByText(/start typing to customize/)).toBeNull();
+    expect(screen.getAllByTestId("editor")).toHaveLength(1);
   });
 
   describe("no override yet", () => {
-    it("shows only the default with a Customize button", () => {
+    it("seeds the editor with the default and invites typing", () => {
       renderPanes({ value: "", hasOverride: false });
 
-      // The default is the sole content, read-only; no editable pane or its
-      // reveal affordance is shown.
-      const editors = screen.getAllByTestId("editor");
-
-      expect(editors).toHaveLength(1);
-      expect(editors[0]?.textContent).toBe("SHIPPED DEFAULT");
-      expect(editors[0]?.getAttribute("data-readonly")).toBe("true");
-      expect(screen.getByText("Customize")).toBeTruthy();
+      // The default is the editor's starting text — editable, so typing forks
+      // it. No override chrome (reveal toggle, reset) until it does.
+      expect(editorValues()).toStrictEqual(["SHIPPED DEFAULT"]);
+      expect(
+        screen.getAllByTestId("editor")[0]?.getAttribute("data-readonly"),
+      ).toBe("false");
+      expect(
+        screen.getByText("Default — start typing to customize"),
+      ).toBeTruthy();
       expect(screen.queryByText("Your override")).toBeNull();
       expect(screen.queryByText("Show default")).toBeNull();
       expect(screen.queryByLabelText("Reset to default")).toBeNull();
     });
 
-    it("forks the built-in into an override when Customize is clicked", () => {
-      const { onCustomize } = renderPanes({ value: "", hasOverride: false });
+    it("still seeds from a stored override before the latch settles", () => {
+      // `hasOverride` is latched from an effect, so it reads false on the render
+      // where a stored override first mounts the editor. Seeding is content-
+      // derived precisely so that render doesn't show the built-in instead of
+      // the user's saved text — nothing remounts afterwards to correct it.
+      renderPanes({ value: "MY OVERRIDE", hasOverride: false });
 
-      fireEvent.click(screen.getByText("Customize"));
+      expect(editorValues()).toStrictEqual(["MY OVERRIDE"]);
+    });
 
-      expect(onCustomize).toHaveBeenCalledOnce();
+    it("forks the built-in on the first edit", () => {
+      const { onBeginOverride, onChange } = renderPanes({
+        value: "",
+        hasOverride: false,
+      });
+
+      fireEvent.input(screen.getByTestId("editor"), {
+        target: { value: "SHIPPED DEFAULT!" },
+      });
+
+      // The fork is the latch plus the ordinary autosave of the edited text —
+      // the editor already holds the default, so no separate write is needed.
+      expect(onBeginOverride).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledWith("SHIPPED DEFAULT!");
+    });
+
+    it("keeps the editor mounted across the fork", () => {
+      // The load-bearing property of the single-tree layout: the render that
+      // flips `hasOverride` must reuse the editor instance, or it would remount
+      // (re-seeding from the built-in) and swallow the keystroke that forked it.
+      const { rerenderPanes } = renderPanes({ value: "", hasOverride: false });
+      const before = screen.getByTestId("editor");
+
+      fireEvent.input(before, { target: { value: "SHIPPED DEFAULT!" } });
+      // The parent latches the override; its `value` catches up only after the
+      // debounced save round-trips, so it is still the pre-fork "" here.
+      rerenderPanes({ value: "", hasOverride: true });
+
+      expect(screen.getByTestId("editor")).toBe(before);
+      expect(editorValues()).toStrictEqual(["SHIPPED DEFAULT!"]);
+      // ...and the chrome has switched over.
+      expect(screen.getByText("Your override")).toBeTruthy();
+      expect(screen.getByLabelText("Reset to default")).toBeTruthy();
+    });
+
+    it("re-seeds when the built-in changes under an un-forked pane", () => {
+      // The built-in can change server-side (e.g. the notation switch retuning
+      // a fragment, picked up by the 5s poll). Nothing is at stake in the
+      // un-forked pane, and forking must start from the fresh default.
+      const { rerenderPanes } = renderPanes({ value: "", hasOverride: false });
+
+      rerenderPanes({ value: "", hasOverride: false, builtIn: "RETUNED" });
+
+      expect(editorValues()).toStrictEqual(["RETUNED"]);
+    });
+
+    it("keeps the user's text when the built-in changes after a fork", () => {
+      // The same poll must NOT re-seed once the pane holds the user's own work.
+      const { rerenderPanes } = renderPanes({ value: "", hasOverride: false });
+
+      fireEvent.input(screen.getByTestId("editor"), {
+        target: { value: "MINE" },
+      });
+      rerenderPanes({ value: "MINE", hasOverride: true, builtIn: "RETUNED" });
+
+      expect(editorValues()).toStrictEqual(["MINE"]);
     });
   });
 });

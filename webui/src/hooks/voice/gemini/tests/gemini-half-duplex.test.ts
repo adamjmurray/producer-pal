@@ -99,10 +99,80 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     expect(mic.setMuted).toHaveBeenCalledWith(true);
     expect(deps.autoMutedRef.current).toBe(true);
 
-    // The real turn end lifts it.
+    // The interrupt's flush emptied the queue, so the real turn end lifts it.
+    vi.mocked(player.hasQueued).mockReturnValue(false);
     await handleGeminiMessage(turnDone, deps);
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
     expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  // turnComplete only means the server stopped sending — the tail of the turn
+  // is still scheduled locally, and that's when a user talks over the assistant.
+  it("holds the auto-mute past turnComplete until the queue drains", async () => {
+    const { deps, drain, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(deps.autoMutedRef.current).toBe(true);
+
+    drain();
+
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("keeps the speaking indicator up as long as the mic is held muted", async () => {
+    // The indicator and the mute have to move together. Clearing it at
+    // turnComplete showed "Listening — go ahead" while the assistant was still
+    // audible and every word the user said was dropped at the mic.
+    const { deps, drain, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(deps.setAssistantSpeaking).not.toHaveBeenCalledWith(false);
+
+    drain();
+
+    expect(deps.setAssistantSpeaking).toHaveBeenLastCalledWith(false);
+  });
+
+  it("lifts the auto-mute when an interrupt discards the turn's tail", async () => {
+    // turnComplete parked its lift on onDrained, and the interrupt's flush
+    // drops that callback. Nothing later would ever lift the mute, so the
+    // interrupt has to — otherwise the mic stays shut for the rest of the
+    // session and the Muted indicator disagrees with it. Safe here precisely
+    // because turnComplete already ran: no further chunk can re-mute.
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("keeps holding the auto-mute for a mid-stream interrupt", async () => {
+    // No turnComplete yet, so the server is still sending: lifting now would
+    // let the next chunk re-mute and flicker the indicator.
+    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+
+    vi.mocked(player.hasQueued).mockReturnValue(true);
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(deps.autoMutedRef.current).toBe(true);
   });
 
   it("lifts the auto-mute on interruption once the queue has drained", async () => {

@@ -17,6 +17,7 @@
  * barbeat's interpret/format seams.
  */
 
+import { applyV0Deletions } from "#src/notation/apply-v0-deletions.ts";
 import { NOTE_VALUE_DENOMINATORS } from "#src/notation/barbeat/barbeat-config.ts";
 import {
   codeNoteToNoteEvent,
@@ -29,6 +30,7 @@ import {
 } from "#src/notation/midi-json/parser/midi-json-parser.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 
 const DEFAULT_DENOMINATOR = 4;
 
@@ -38,10 +40,26 @@ export interface MidiJsonOptions {
   timeSigDenominator?: number;
 }
 
+/** Options for the interpret seam only. */
+export interface MidiJsonInterpretOptions extends MidiJsonOptions {
+  /**
+   * Keep `v:0` delete markers in the result instead of resolving them against
+   * this string's own notes. For update-clip's merge, which resolves them
+   * against the existing clip notes too.
+   */
+  keepV0Deletes?: boolean;
+}
+
 /**
  * Parse a MIDI JSON string into note events. The string must be an array of note
  * objects (short or long keys, quoted or bare); each is normalized, validated,
  * and clamped, then scaled from musical beats to Ableton (quarter-note) beats.
+ *
+ * `v:0` (any velocity <= 0) is a delete marker rather than a note: it removes
+ * the note at the same pitch and start (see {@link applyV0Deletions}) and is
+ * resolved away before returning, since Live cannot take velocity 0 — unless
+ * `keepV0Deletes` defers that to the caller. Unlike bar|beat's inline `v0` it is
+ * per-note; nothing in MIDI JSON is sticky.
  *
  * @param input - MIDI JSON array string
  * @param options - Interpretation options
@@ -50,7 +68,7 @@ export interface MidiJsonOptions {
  */
 export function interpretMidiJson(
   input: string,
-  options: MidiJsonOptions = {},
+  options: MidiJsonInterpretOptions = {},
 ): NoteEvent[] {
   if (!input.trim()) {
     return [];
@@ -61,16 +79,18 @@ export function interpretMidiJson(
   try {
     parsed = parseMidiJson(input);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`Invalid MIDI JSON: ${message}`, { cause: error });
+    throw new Error(`Invalid MIDI JSON: ${errorMessage(error)}`, {
+      cause: error,
+    });
   }
 
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;
   const events: NoteEvent[] = [];
 
   for (const raw of parsed) {
-    const validated = validateAndSanitizeNote(normalizeMidiJsonNote(raw));
+    const validated = validateAndSanitizeNote(normalizeMidiJsonNote(raw), {
+      allowVelocityZero: true,
+    });
 
     if (validated.valid) {
       events.push(codeNoteToNoteEvent(validated.note, timeSigDenominator));
@@ -78,7 +98,7 @@ export function interpretMidiJson(
     // Invalid notes (e.g. missing pitch/start) are silently filtered out.
   }
 
-  return events;
+  return options.keepV0Deletes === true ? events : applyV0Deletions(events);
 }
 
 /**

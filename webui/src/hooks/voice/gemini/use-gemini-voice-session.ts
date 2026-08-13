@@ -8,7 +8,10 @@ import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { endGeminiHalfDuplexMute } from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+import {
+  applyManualMute,
+  endGeminiHalfDuplexMute,
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
@@ -174,7 +177,7 @@ export function useGeminiVoiceSession(
           await createGeminiMcpTools(mcpUrl, enabledTools);
 
         mcpClientRef.current = mcpClient;
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         const credential = await fetchGeminiToken(
           voiceTokenUrl,
@@ -182,7 +185,7 @@ export function useGeminiVoiceSession(
           model,
         );
 
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         const player = new GeminiPcmPlayer();
 
@@ -192,7 +195,7 @@ export function useGeminiVoiceSession(
         // contexts and an orphan would also keep the tab alive across HMR.
         playerRef.current = player;
         await player.resume();
-        if (stale()) return void (await cleanup());
+        if (stale()) return await cleanup();
 
         // turn-detection is fixed for the session (changes apply on the next
         // Stop → Talk), so the half-duplex flag is too — mirrors the OpenAI hook.
@@ -252,7 +255,7 @@ export function useGeminiVoiceSession(
         if (stale()) {
           closeQuietly(session);
 
-          return void (await cleanup());
+          return await cleanup();
         }
 
         sessionRef.current = session;
@@ -276,7 +279,7 @@ export function useGeminiVoiceSession(
         // If cleanup() ran during mic.start(), it stopped a partial mic and
         // didn't see the resources mic.start() set up afterward. Stop the
         // orphan locally — cleanup() already ran the rest of teardown.
-        if (stale()) return void (await mic.stop());
+        if (stale()) return await mic.stop();
 
         seedGeminiContext(session, initialHistory);
         setActiveVoice(voice ?? null);
@@ -308,13 +311,9 @@ export function useGeminiVoiceSession(
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {
-    const mic = micRef.current;
-
-    if (!mic) return;
-
-    mic.setMuted(!isMuted);
-    isMutedRef.current = !isMuted;
-    setIsMuted(!isMuted);
+    if (applyManualMute(micRef.current, !isMuted, isMutedRef, autoMutedRef)) {
+      setIsMuted(!isMuted);
+    }
   }, [isMuted]);
 
   // Manual interrupt: flush local playback and close the open model turn. (Gemini

@@ -7,7 +7,7 @@ import {
   VALID_PITCH_CLASS_NAMES,
   pitchClassToNumber,
 } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";

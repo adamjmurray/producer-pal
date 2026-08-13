@@ -15,7 +15,7 @@ import {
   clearMockRegistry,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createSplittingCallMock,
   setupClipSplittingMocks,

@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isNotation, type Notation } from "#src/shared/notation";
 import {
   type ChatAdapter,
   type ChatClient,
   type MessageOverrides,
   type PendingForkRef,
+  type RateLimitState,
 } from "#webui/hooks/chat/use-chat-types";
 import { resolveSystemInstruction } from "#webui/lib/config";
 import { type UIMessage } from "#webui/types/messages";
@@ -201,6 +203,105 @@ export function recoverFromChatError<
   }
 }
 
+interface RunChatTurnDeps<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+> {
+  adapter: ChatAdapter<TClient, TMessage, TConfig>;
+  clientRef: { current: TClient | null };
+  pendingHistoryRef: { current: TMessage[] | null };
+  abortControllerRef: { current: AbortController | null };
+  autoSaveRef?: { current: (() => void) | null };
+  pendingForkRef?: PendingForkRef;
+  /** Ticket dispenser: bumped per turn, so a late turn knows it was superseded. */
+  turnIdRef: { current: number };
+  pendingUserMessageRef: { current: TMessage | null };
+  setMessages: (msgs: UIMessage[]) => void;
+  setIsAssistantResponding: (responding: boolean) => void;
+  setToolLimitReached: (reached: boolean) => void;
+  setRateLimitState: (state: RateLimitState | null) => void;
+}
+
+/**
+ * Run one chat turn, owning the state shared across turns: the responding flag,
+ * the abort controller, the rate-limit notice, the tool-limit notice, and the
+ * user message stashed for retry/edit.
+ *
+ * Turns can OVERLAP. Stop re-enables the composer immediately, but the stopped
+ * turn keeps unwinding — its stream waits on any subagent still finishing an MCP
+ * call, which takes no abort signal — so a send inside that window starts the
+ * next turn while the old one is still settling. Each turn therefore takes a
+ * ticket on the way in and only touches the shared state while it still holds
+ * the current one. Without that, the late turn nulls the new turn's abort
+ * controller (its Stop then silently no-ops), clears its responding flag
+ * mid-stream, and drops its retry stash.
+ *
+ * The ticket is dispensed HERE and handed to `fn` as `stillCurrent`, so the
+ * turn's own setup (client init, then streaming) is measured against the ticket
+ * it started with. Reading the dispenser again later would hand a superseded
+ * turn the NEWER turn's ticket, making its guard vacuously true.
+ *
+ * @param fn - The turn to run; receives this turn's currency check
+ * @param userMessage - Message to stash for retry/edit, if this turn sends one
+ * @param deps - Adapter, the chat refs, and the per-turn state setters
+ * @returns What the turn returned, or undefined when it failed
+ */
+export async function runChatTurn<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+  T,
+>(
+  fn: (stillCurrent: () => boolean) => Promise<T>,
+  userMessage: TMessage | undefined,
+  deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
+): Promise<T | undefined> {
+  const { turnIdRef, pendingUserMessageRef } = deps;
+  const turnId = ++turnIdRef.current;
+  const stillCurrent = () => turnId === turnIdRef.current;
+
+  deps.setIsAssistantResponding(true);
+  // A new request clears any prior tool-limit notice before streaming.
+  deps.setToolLimitReached(false);
+  pendingUserMessageRef.current = userMessage ?? null;
+
+  try {
+    const result = await fn(stillCurrent);
+
+    if (stillCurrent()) {
+      pendingUserMessageRef.current = null;
+      deps.setToolLimitReached(
+        deps.clientRef.current?.toolLimitReached ?? false,
+      );
+    }
+
+    return result;
+  } catch (error) {
+    // Reachable while superseded when the failure comes from the turn's SETUP
+    // rather than its stream — a client init that was still connecting when the
+    // user stopped and re-sent. recoverFromChatError renders the error, can
+    // reassign the shared client's chatHistory, and autosaves, so a stale one
+    // would corrupt the turn now streaming.
+    if (!stillCurrent()) return undefined;
+
+    recoverFromChatError({
+      ...deps,
+      error,
+      stashed: pendingUserMessageRef.current,
+    });
+
+    return undefined;
+  } finally {
+    if (stillCurrent()) {
+      pendingUserMessageRef.current = null;
+      deps.abortControllerRef.current = null;
+      deps.setIsAssistantResponding(false);
+      deps.setRateLimitState(null);
+    }
+  }
+}
+
 /** Effective connection used to (re)build a chat client at init time. */
 export interface InitConnection {
   provider: Provider;
@@ -209,6 +310,16 @@ export interface InitConnection {
   extraParams: Record<string, unknown>;
   /** The resolved system instruction to lock and send for this init. */
   systemInstruction: string;
+  /**
+   * The notation to lock and send for this init, or null when the caller has no
+   * notation of its own (voice mode, tests) and the request should fall through
+   * to the device global.
+   */
+  notation: Notation | null;
+  /** The small-model mode to lock and send for this init. */
+  smallModelMode: boolean;
+  /** The toolset to lock and connect with for this init. */
+  enabledTools: Record<string, boolean>;
 }
 
 /**
@@ -223,26 +334,42 @@ export interface InitConnection {
  * A restored conversation also carries its locked system instruction through as
  * `lockedSystemInstruction`, so the adapter sends what the conversation started
  * with rather than the current global override. Null (brand-new conversation)
- * lets the adapter fall back to resolving the current override.
+ * lets the adapter fall back to resolving the current override. Its locked
+ * notation and small-model mode ride along the same way, as `lockedNotation` and
+ * `lockedSmallModelMode`.
  *
- * @param locked - Conversation's locked provider/model/system-instruction (null fields if unset)
+ * The toolset resolves the same way but NOT through `extraParams` — no adapter
+ * reads it; it is passed to the client builder directly.
+ *
+ * @param locked - Conversation's locked provider/model/system-instruction/notation/small-model mode/toolset (null fields if unset)
  * @param locked.activeProvider - Locked provider, or null when not locked
  * @param locked.activeModel - Locked model, or null when not locked
  * @param locked.activeSystemInstruction - Locked system instruction, or null when not locked
- * @param fallback - Current-settings provider/model (used when not locked)
+ * @param locked.activeNotation - Locked notation, or null when not locked
+ * @param locked.activeSmallModelMode - Locked small-model mode, or null when not locked
+ * @param locked.activeEnabledTools - Locked toolset, or null when not locked
+ * @param fallback - Current-settings provider/model/toolset (used when not locked)
  * @param fallback.provider - Current-settings provider
  * @param fallback.model - Current-settings model
+ * @param fallback.enabledTools - Current-settings toolset
  * @param resolveConnection - Resolves a provider's current key + base URL
  * @param extraParams - Base extra params to merge the connection into
- * @returns Effective provider, model, key, and merged extra params
+ * @returns Effective provider, model, key, toolset, and merged extra params
  */
 export function resolveInitConnection(
   locked: {
     activeProvider: Provider | null;
     activeModel: string | null;
     activeSystemInstruction: string | null;
+    activeNotation: Notation | null;
+    activeSmallModelMode: boolean | null;
+    activeEnabledTools: Record<string, boolean> | null;
   },
-  fallback: { provider: Provider; model: string },
+  fallback: {
+    provider: Provider;
+    model: string;
+    enabledTools: Record<string, boolean>;
+  },
   resolveConnection: (provider: Provider) => {
     apiKey: string;
     baseUrl?: string;
@@ -258,6 +385,8 @@ export function resolveInitConnection(
     apiKey,
     baseUrl,
     lockedSystemInstruction: locked.activeSystemInstruction,
+    lockedNotation: locked.activeNotation,
+    lockedSmallModelMode: locked.activeSmallModelMode,
   };
 
   return {
@@ -266,6 +395,9 @@ export function resolveInitConnection(
     apiKey,
     extraParams: mergedExtraParams,
     systemInstruction: resolveLockedSystemInstruction(mergedExtraParams),
+    notation: resolveLockedNotation(mergedExtraParams),
+    smallModelMode: resolveLockedSmallModelMode(mergedExtraParams),
+    enabledTools: locked.activeEnabledTools ?? fallback.enabledTools,
   };
 }
 
@@ -286,4 +418,43 @@ export function resolveLockedSystemInstruction(
       extraParams.systemInstructionOverride as string | undefined,
     )
   );
+}
+
+/**
+ * The notation to lock and send for an init: the conversation's locked snapshot
+ * when continuing a restored chat, else the caller's current notation for a
+ * brand-new one. Mirrors the adapter's resolution so the locked value equals
+ * what was sent. Null when neither is present — a caller with no notation of its
+ * own (voice mode, tests) sends no header and gets the device global, the same
+ * contract external MCP clients have.
+ * @param extraParams - The init's extra params (locked snapshot + current setting)
+ * @returns The effective notation, or null to fall through to the device global
+ */
+export function resolveLockedNotation(
+  extraParams: Record<string, unknown>,
+): Notation | null {
+  const locked = extraParams.lockedNotation;
+
+  if (isNotation(locked)) return locked;
+
+  return isNotation(extraParams.notation) ? extraParams.notation : null;
+}
+
+/**
+ * The small-model mode to lock and send for an init: the conversation's locked
+ * snapshot when continuing a restored chat, else the current setting for a
+ * brand-new one. Mirrors the adapter's resolution so the locked value equals
+ * what was sent — the tool schemas and skills variant a restored conversation
+ * gets must not flip when the Settings toggle moves under it.
+ * @param extraParams - The init's extra params (locked snapshot + current setting)
+ * @returns The effective small-model mode
+ */
+export function resolveLockedSmallModelMode(
+  extraParams: Record<string, unknown>,
+): boolean {
+  const locked = extraParams.lockedSmallModelMode;
+
+  if (typeof locked === "boolean") return locked;
+
+  return Boolean(extraParams.smallModelMode);
 }

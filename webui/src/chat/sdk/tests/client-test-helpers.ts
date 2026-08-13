@@ -22,7 +22,6 @@ export function createConfig(
       provider: "openai",
       specificationVersion: "v3",
     } as never,
-    showThoughts: false,
     ...overrides,
   };
 }
@@ -38,6 +37,6 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
   }
 
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
+    stream: iterate(),
   });
 }

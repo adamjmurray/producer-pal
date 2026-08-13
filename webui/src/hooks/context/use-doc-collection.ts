@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   deleteEntryRequest,
   fetchEntries,
@@ -19,12 +19,10 @@ import {
 } from "#webui/utils/collection-transport";
 import {
   runGuardedRefresh,
+  useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
-  useSaveRefreshGuard,
-} from "./use-doc-memory";
-
-const AUTOSAVE_DEBOUNCE_MS = 800;
+} from "./use-doc";
 
 type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
@@ -108,22 +106,18 @@ export interface DocCollectionConfig {
  * @param config - The collection's endpoints and error label
  * @returns Collection state plus save/delete and refresh actions
  */
-export function useDocCollection<TView extends DocCollectionEntry, TInput>(
-  config: DocCollectionConfig,
-): UseDocCollectionReturn<TView, TInput> {
+export function useDocCollection<
+  TView extends DocCollectionEntry,
+  TInput extends object,
+>(config: DocCollectionConfig): UseDocCollectionReturn<TView, TInput> {
   const { label, collectionUrl, entryUrl } = config;
   const [status, setStatus] = useState<DocCollectionStatus<TView>>({
     kind: "loading",
   });
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  // Bumped whenever the edited entry changes (via resetSaveStatus). A save
-  // captures this at dispatch; if it has advanced by the time the save
-  // resolves, the user switched entries, so the outcome must not paint the
-  // shared "saved"/"error" indicator onto the now-active entry (the list merge
-  // still applies — only the status indicator is entry-scoped).
-  const saveGenerationRef = useRef(0);
-  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
+  // saveEntry/renameEntry return the entry (or null) straight from `mutate`;
+  // deleteEntry maps its void result to a boolean.
+  const { saveStatus, saveError, resetSaveStatus, guardRefresh, mutate } =
+    useCollectionMutator();
 
   const refresh = useCallback(
     (): Promise<void> =>
@@ -136,48 +130,12 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     [guardRefresh, collectionUrl, label],
   );
 
-  // Shared save lifecycle for the mutators: mark saving, run `op`, commit its
-  // result (a setStatus) on success, record the error on failure, and always
-  // clear the in-flight guard. Resolves `op`'s result, or null on failure — so
-  // saveEntry/renameEntry return the entry (or null) and deleteEntry maps the
-  // void result to a boolean.
-  const mutate = useCallback(
-    async <T>(
-      op: () => Promise<T>,
-      commit: (result: T) => void,
-    ): Promise<T | null> => {
-      const generation = saveGenerationRef.current;
-
-      beginSave();
-      setSaveStatus("saving");
-      setSaveError(null);
-
-      try {
-        const result = await op();
-
-        commit(result);
-        if (saveGenerationRef.current === generation) setSaveStatus("saved");
-
-        return result;
-      } catch (error: unknown) {
-        if (saveGenerationRef.current === generation) {
-          setSaveError(errorMessage(error));
-          setSaveStatus("error");
-        }
-
-        return null;
-      } finally {
-        endSave();
-      }
-    },
-    [beginSave, endSave],
-  );
-
   const saveEntry = useCallback(
     (name: string, input: TInput, createOnly = false): Promise<TView | null> =>
       mutate(
-        () => putEntry<TView, TInput>(entryUrl(name), input, createOnly, label),
+        () => putEntry<TView>(entryUrl(name), input, createOnly, label),
         (entry) => setStatus((prev) => mergeEntry(prev, entry)),
+        [name],
       ),
     [mutate, entryUrl, label],
   );
@@ -186,7 +144,7 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
     (oldName: string, newName: string, input: TInput): Promise<TView | null> =>
       mutate(
         () =>
-          putRename<TView, TInput>(
+          putRename<TView>(
             `${entryUrl(oldName)}/rename`,
             newName,
             input,
@@ -196,6 +154,8 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
         // re-adds it; the list re-sorts by name, so order is irrelevant).
         (entry) =>
           setStatus((prev) => mergeEntry(removeEntry(prev, oldName), entry)),
+        // A rename touches both slugs, so a later write to EITHER supersedes it.
+        [oldName, newName],
       ),
     [mutate, entryUrl, label],
   );
@@ -207,23 +167,13 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
       const result = await mutate(
         () => deleteEntryRequest(entryUrl(name), label),
         () => setStatus((prev) => removeEntry(prev, name)),
+        [name],
       );
 
       return result !== null;
     },
     [mutate, entryUrl, label],
   );
-
-  const resetSaveStatus = useCallback((): void => {
-    saveGenerationRef.current += 1;
-    setSaveStatus("idle");
-    setSaveError(null);
-  }, []);
-
-  // Initial load.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useRefreshOnFocusAndPoll(refresh);
 
@@ -242,8 +192,14 @@ export function useDocCollection<TView extends DocCollectionEntry, TInput>(
 /** Params for {@link useCollectionEntryAutosave}. */
 export interface CollectionEntryAutosaveParams {
   /**
-   * Whether the current draft is valid to persist (name + body present and no
-   * save in flight). A non-savable draft is never flushed.
+   * Whether the current draft is valid to persist (its required fields are
+   * present). A non-savable draft is never flushed.
+   *
+   * Must NOT fold in "a save is already in flight": flush chains behind an
+   * in-flight write itself (see flush), so gating here would silently drop the
+   * unmount and tab-close flushes for exactly the edits typed during a save's
+   * round trip — type, wait for the debounce to dispatch, type once more, close
+   * the overlay, and that last edit is gone with no notice.
    */
   canSave: boolean;
   /**
@@ -304,7 +260,8 @@ export interface CollectionEntryAutosaveReturn {
    * was open) AND the draft is clean (`draftKey` === baseline). A dirty draft
    * suppresses this — typing is an implicit last-write-wins choice, and the
    * debounced autosave would clobber the external change within
-   * `AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to solve there.
+   * `DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS` anyway, so there is nothing more to
+   * solve there.
    * Always false in new-entry mode (no `externalKey`).
    */
   externalUpdate: boolean;
@@ -319,6 +276,16 @@ export interface CollectionEntryAutosaveReturn {
    * so reading it off the same ref is safe here.
    */
   adoptExternal: () => void;
+  /**
+   * Settle the idle autosave before a write that MOVES this entry (a rename):
+   * cancel the armed debounce, and resolve once any already-dispatched save has
+   * landed. Both target the entry's CURRENT slug, so a rename issued on top of
+   * one leaves two writes racing for the same file — and if the rename lands
+   * first, the save re-creates the entry it just moved away from (a duplicate
+   * under the old name). Cancelling loses nothing: the rename carries the same
+   * live draft to the new slug.
+   */
+  settlePendingSave: () => Promise<void>;
 }
 
 /**
@@ -343,9 +310,11 @@ export function useCollectionEntryAutosave(
   params: CollectionEntryAutosaveParams,
 ): CollectionEntryAutosaveReturn {
   const { canSave, draftKey, autosaveOnIdle, persist, externalKey } = params;
-  // Constant per mount (isNew is fixed per editor key), so the leave effects can
-  // gate on it directly without a ref.
+  // NOT constant per mount: a rename renders once with no entry, which flips
+  // this false and back without remounting the editor. The unmount effect reads
+  // it through a ref (see below) so that blip can't re-run its cleanup.
   const flushOnLeave = params.flushOnLeave ?? true;
+  const flushOnLeaveRef = useRef(flushOnLeave);
   const canSaveRef = useRef(canSave);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
@@ -354,6 +323,10 @@ export function useCollectionEntryAutosave(
   const deletedExternallyRef = useRef(false);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tail of the save chain: the last flush registered, so the next one queues
+  // behind it (see flush) and a rename can wait the whole chain out (see
+  // settlePendingSave). Null whenever no save is outstanding.
+  const inFlightRef = useRef<Promise<void> | null>(null);
   const mountedRef = useRef(true);
   const seededRef = useRef(false);
   const [externalUpdate, setExternalUpdate] = useState(false);
@@ -367,6 +340,7 @@ export function useCollectionEntryAutosave(
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
+    flushOnLeaveRef.current = flushOnLeave;
   });
 
   // Deletion detection is synced in a LAYOUT effect — it runs synchronously at
@@ -406,11 +380,52 @@ export function useCollectionEntryAutosave(
     const previous = lastSavedRef.current;
 
     lastSavedRef.current = key;
-    void persistRef.current().then((echoKey) => {
-      if (!mountedRef.current || lastSavedRef.current !== key) return;
 
-      lastSavedRef.current = echoKey ?? previous;
-    });
+    // Send the current draft — unless the entry was deleted while this flush was
+    // waiting its turn behind an earlier one. Re-creating it from the kept draft
+    // is the explicit Save button's job alone (same reason as the guard above),
+    // so the deferred dispatch has to re-check rather than trust the decision
+    // made when it was queued. Resolving null takes the failure path below,
+    // rolling the baseline back so the draft still reads as unsaved.
+    const dispatch = (): Promise<string | null> =>
+      deletedExternallyRef.current
+        ? Promise.resolve(null)
+        : persistRef.current();
+    // Chain behind whatever is already on the wire instead of racing it. An entry
+    // PUT carries the WHOLE body, so two overlapping writes are not a field-level
+    // overlap: whichever the server happens to handle last owns the file
+    // outright, and a slow first PUT landing second reverts content the UI is
+    // already showing (use-doc's generation counter keeps the SCREEN correct, so
+    // the disagreement stays silent until the next poll). The same-key guard
+    // above stops a re-flush of unchanged content, not this — a CHANGED draft
+    // dispatched mid-flight is exactly the 800ms-debounce-vs-slow-PUT case.
+    //
+    // Registration is synchronous, before any await, so a third flush arriving
+    // inside this window chains behind THIS one rather than reading a
+    // pre-registration inFlightRef and putting two writes on the wire anyway.
+    // Only the DISPATCH defers — the same split as useContextEditorState's
+    // dispatchOrderedWrite.
+    //
+    // Registered as a promise that SETTLES, like dispatchOrderedWrite's: a
+    // rejection left in `inFlightRef` would never be nulled, so every later
+    // flush would `prior.then(dispatch)` without ever dispatching (autosave
+    // stops for the rest of the mount) and settlePendingSave would throw into
+    // commitRename's un-awaited call. `persist` resolves null rather than
+    // throwing today — this keeps that from being load-bearing, and a null takes
+    // the same baseline-rollback path a failed save does.
+    const prior = inFlightRef.current;
+    const pending: Promise<void> = (
+      prior == null ? dispatch() : prior.then(dispatch)
+    )
+      .catch(() => null)
+      .then((echoKey) => {
+        if (inFlightRef.current === pending) inFlightRef.current = null;
+        if (!mountedRef.current || lastSavedRef.current !== key) return;
+
+        lastSavedRef.current = echoKey ?? previous;
+      });
+
+    inFlightRef.current = pending;
   }, []);
 
   // Seed the baseline once (an unedited existing entry must not re-save on
@@ -424,14 +439,14 @@ export function useCollectionEntryAutosave(
       seededRef.current = true;
       lastSavedRef.current = canSave ? draftKey : null;
 
-      return;
+      return undefined;
     }
 
     if (!autosaveOnIdle || !canSave || draftKey === lastSavedRef.current) {
-      return;
+      return undefined;
     }
 
-    timerRef.current = setTimeout(flush, AUTOSAVE_DEBOUNCE_MS);
+    timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimer(timerRef);
   }, [canSave, draftKey, autosaveOnIdle, flush]);
@@ -461,7 +476,7 @@ export function useCollectionEntryAutosave(
   // flushOnLeave (existing entries). A new draft is created explicitly (Create),
   // so its editor prompts a discard confirm on close instead of silently saving.
   useEffect(() => {
-    if (!flushOnLeave) return;
+    if (!flushOnLeave) return undefined;
 
     const onBeforeUnload = (): void => flush();
 
@@ -474,12 +489,17 @@ export function useCollectionEntryAutosave(
   // afterward), then flush the pending draft — overlay close, tab switch, and
   // entry-selection change all unmount this editor. A new draft skips the flush
   // (flushOnLeave false); its discard is confirmed by the nav guard instead.
+  //
+  // Depends on `flush` alone (stable), so this cleanup runs ONLY on a real
+  // unmount. Gating on `flushOnLeave` directly would re-run it on the
+  // no-entry render a rename passes through, latching `mountedRef` false for
+  // the rest of the mount and killing every later flush's rollback.
   useEffect(
     () => () => {
       mountedRef.current = false;
-      if (flushOnLeave) flush();
+      if (flushOnLeaveRef.current) flush();
     },
-    [flush, flushOnLeave],
+    [flush],
   );
 
   const noteSaved = useCallback((echoKey: string): void => {
@@ -491,7 +511,17 @@ export function useCollectionEntryAutosave(
     setExternalUpdate(false);
   }, []);
 
-  return { noteSaved, externalUpdate, adoptExternal };
+  // Cancel the armed debounce (the rename carries the same draft onward), then
+  // wait out any save already dispatched — it can only be resolved by letting it
+  // land, since the request is gone. Awaiting the chain's tail covers a queued
+  // flush too: its PUT hasn't gone out yet, but it still targets the old slug.
+  // See the interface doc for why.
+  const settlePendingSave = useCallback(async (): Promise<void> => {
+    clearTimer(timerRef);
+    await inFlightRef.current;
+  }, []);
+
+  return { noteSaved, externalUpdate, adoptExternal, settlePendingSave };
 }
 
 // --- Helpers below main export ---

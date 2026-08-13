@@ -77,7 +77,7 @@ describe("summarizeHistory", () => {
 
     const call = (generateText as ReturnType<typeof vi.fn>).mock.calls[0]![0];
 
-    expect(call.system).toBe(COMPACTION_PROMPT);
+    expect(call.instructions).toBe(COMPACTION_PROMPT);
     expect(call.messages[0].content).toContain("USER: hi");
     expect(call.messages[0].content).toContain("Summarize the conversation");
   });

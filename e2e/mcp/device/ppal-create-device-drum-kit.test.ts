@@ -49,6 +49,23 @@ async function createMidiTrack(): Promise<number> {
   return track.trackIndex;
 }
 
+/**
+ * Create a fresh MIDI track carrying an empty Drum Rack.
+ * @returns The new track's index (its rack sits at `t<index>/d0`)
+ */
+async function createTrackWithDrumRack(): Promise<number> {
+  const t = await createMidiTrack();
+
+  await ctx.client!.callTool({
+    name: "ppal-create-device",
+    arguments: { deviceName: "Drum Rack", path: `t${t}` },
+  });
+
+  await sleep(100);
+
+  return t;
+}
+
 /** Read a device's chains (maxDepth 0) and return how many chains it has. */
 async function readChainCount(path: string): Promise<number> {
   const device = parseToolResult<{ chains?: unknown[] }>(
@@ -121,15 +138,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   });
 
   it("update-device path-prefixed params set a sample on an existing rack", async () => {
-    const t = await createMidiTrack();
-
-    // Create an empty Drum Rack.
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: { deviceName: "Drum Rack", path: `t${t}` },
-    });
-
-    await sleep(100);
+    const t = await createTrackWithDrumRack();
 
     // Load a sample into pad D1 via update-device.
     await ctx.client!.callTool({
@@ -154,16 +163,9 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   });
 
   it("replaces a DrumSampler on a pad with a Simpler to honor the sample write", async () => {
-    const t = await createMidiTrack();
+    const t = await createTrackWithDrumRack();
 
-    // Create a Drum Rack and put a DrumSampler on pad E1.
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: { deviceName: "Drum Rack", path: `t${t}` },
-    });
-
-    await sleep(100);
-
+    // Put a DrumSampler on pad E1.
     await ctx.client!.callTool({
       name: "ppal-create-device",
       arguments: { deviceName: "DrumSampler", path: `t${t}/d0/pE1/d0` },

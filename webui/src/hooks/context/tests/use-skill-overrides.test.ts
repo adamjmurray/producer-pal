@@ -7,14 +7,16 @@
  * @vitest-environment happy-dom
  */
 import { act, renderHook, waitFor } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
   deferred,
   installFetchMock,
   jsonResponse,
+  raceTwoWrites,
   renderAndWait,
-} from "./doc-memory-transport-test-helpers";
+  useFakeTimersForPolling,
+} from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
@@ -32,10 +34,31 @@ function rawSlot(over: Record<string, unknown> = {}): Record<string, unknown> {
     description: "Slot description.",
     builtIn: "BUILT-IN",
     override: "",
+    enabled: true,
+    canDisable: true,
     drifted: false,
     provenance: null,
     ...over,
   };
+}
+
+/** A rendered hook's `result` handle. */
+type HookResult = { current: ReturnType<typeof useSkillOverrides> };
+
+/**
+ * One slot's current override, asserting the collection is ready first.
+ * @param result - The rendered hook's `result` handle
+ * @param index - Position in the slot list
+ * @returns That slot's override body
+ */
+function overrideOf(result: HookResult, index: number): string | undefined {
+  const { status } = result.current;
+
+  if (status.kind !== "ready") {
+    throw new Error(`expected ready, got ${status.kind}`);
+  }
+
+  return status.slots[index]?.override;
 }
 
 describe("useSkillOverrides", () => {
@@ -45,7 +68,7 @@ describe("useSkillOverrides", () => {
   // Most tests only need the mount to succeed before exercising a write.
   async function renderReady(
     slots: Array<Record<string, unknown>> = [rawSlot()],
-  ): Promise<{ current: ReturnType<typeof useSkillOverrides> }> {
+  ): Promise<HookResult> {
     fetchMock.mockResolvedValueOnce(jsonResponse({ slots }));
 
     return await renderAndWait(useSkillOverrides, "ready");
@@ -72,7 +95,11 @@ describe("useSkillOverrides", () => {
         description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "",
+        enabled: true,
+        canDisable: true,
+        gate: null,
         drifted: false,
+        splitStale: null,
         forkedFromVersion: null,
       },
       {
@@ -81,11 +108,54 @@ describe("useSkillOverrides", () => {
         description: "Slot description.",
         builtIn: "BUILT-IN",
         override: "MINE",
+        enabled: true,
+        canDisable: true,
+        gate: null,
         drifted: true,
+        splitStale: null,
         forkedFromVersion: "1.4.0",
       },
     ]);
     expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+  });
+
+  it("carries a slot's split-staleness through, and reads it as absent on an older server", async () => {
+    const splitStale = { sibling: "barbeat-standard-write", sharedLines: 6 };
+    const result = await renderReady([
+      rawSlot({ override: "MINE", splitStale }),
+      rawSlot({ name: "stark" }),
+    ]);
+    const { status } = result.current;
+
+    expect(
+      status.kind === "ready" && status.slots[0]?.splitStale,
+    ).toStrictEqual(splitStale);
+    expect(status.kind === "ready" && status.slots[1]?.splitStale).toBeNull();
+  });
+
+  it("maps each gate shape, and reads anything unrecognized as no gate", async () => {
+    const result = await renderReady([
+      rawSlot({ gate: ["ppal-read-clip", "ppal-create-clip"] }),
+      rawSlot({ gate: "always" }),
+      rawSlot({ gate: "conversation-only" }),
+      // A driver, and — same handling — a value from a server this webui
+      // doesn't understand. Saying nothing beats stating the wrong rule.
+      rawSlot({ gate: null }),
+      rawSlot({ gate: "made-up" }),
+      rawSlot({ gate: [1, 2] }),
+    ]);
+    const status = result.current.status;
+
+    expect(
+      status.kind === "ready" && status.slots.map((s) => s.gate),
+    ).toStrictEqual([
+      ["ppal-read-clip", "ppal-create-clip"],
+      "always",
+      "conversation-only",
+      null,
+      null,
+      null,
+    ]);
   });
 
   it("falls back to an empty list when slots is missing", async () => {
@@ -163,6 +233,47 @@ describe("useSkillOverrides", () => {
         body: JSON.stringify({ content: "MINE" }),
       }),
     );
+  });
+
+  it("setSlotEnabled PUTs only the flag, so a body save can't be clobbered", async () => {
+    const result = await renderReady([rawSlot({ override: "MINE\n" })]);
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ slot: rawSlot({ override: "MINE\n", enabled: false }) }),
+    );
+
+    await act(async () => {
+      await result.current.setSlotEnabled("barbeat-standard", false);
+    });
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+      enabled: false,
+      override: "MINE\n",
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      SLOT_URL,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ enabled: false }),
+      }),
+    );
+  });
+
+  it("reads a slot with no enabled/canDisable fields as on and switchable", async () => {
+    // Backwards-compatible read: an older server omits both, and defaulting the
+    // other way would show every fragment as switched off.
+    const result = await renderReady([
+      { ...rawSlot(), enabled: undefined, canDisable: undefined },
+    ]);
+
+    const status = result.current.status;
+
+    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+      enabled: true,
+      canDisable: true,
+    });
   });
 
   it("resetSlot DELETEs the slot and merges the reset echo", async () => {
@@ -279,6 +390,120 @@ describe("useSkillOverrides", () => {
     });
   });
 
+  it("drops an older save's echo for the same slot when a newer save has landed", async () => {
+    // The slot editor autosaves (debounce flush, then a blur flush behind it),
+    // so two writes of one slot overlap. An older echo landing last would put
+    // `override` back and raise a spurious "changed outside the editor" banner
+    // whose Reload adopts the superseded content.
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    await raceTwoWrites(
+      fetchMock,
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "OLD"),
+        echo: jsonResponse({ slot: rawSlot({ override: "OLD" }) }),
+      },
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "NEW"),
+        echo: jsonResponse({ slot: rawSlot({ override: "NEW" }) }),
+      },
+    );
+
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
+    // A superseded write's result is discarded, so its resolution says nothing
+    // about what is on disk. Painting "Saved" here tells the user the edit they
+    // just made is persisted while its PUT is still on the wire.
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) }));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("does not let a superseded write's FAILURE paint over a newer one", async () => {
+    // The error-path mirror of the test above. A discarded write's failure says
+    // nothing about what is on disk either: reporting it tells the user their
+    // edit was lost while the PUT that owns the file is still on the wire (or has
+    // already succeeded).
+    const result = await renderReady([rawSlot({ override: "loaded" })]);
+
+    const older = deferred<Response>();
+    const newer = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(older.promise);
+    fetchMock.mockReturnValueOnce(newer.promise);
+
+    let newerPending: Promise<boolean> | undefined;
+
+    await act(async () => {
+      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
+
+      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
+      older.reject(new Error("network died"));
+      await olderPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saving");
+    expect(result.current.saveError).toBeNull();
+
+    await act(async () => {
+      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+      await newerPending;
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(overrideOf(result, 0)).toBe("NEW");
+  });
+
+  it("does not let a save of one slot discard another slot's echo", async () => {
+    // Ordering is per slot: newest-write-wins across the whole collection would
+    // drop this first slot's merge just because a second slot was saved after.
+    const result = await renderReady([
+      rawSlot({ override: "loaded" }),
+      rawSlot({ name: "stark", override: "loaded" }),
+    ]);
+
+    await raceTwoWrites(
+      fetchMock,
+      {
+        dispatch: () => result.current.saveSlot("barbeat-standard", "A"),
+        echo: jsonResponse({ slot: rawSlot({ override: "A" }) }),
+      },
+      {
+        dispatch: () => result.current.saveSlot("stark", "B"),
+        echo: jsonResponse({ slot: rawSlot({ name: "stark", override: "B" }) }),
+      },
+    );
+
+    expect(overrideOf(result, 0)).toBe("A");
+    expect(overrideOf(result, 1)).toBe("B");
+  });
+
   it("drops a refresh that a concurrent save superseded", async () => {
     const result = await renderReady([rawSlot({ override: "loaded" })]);
 
@@ -309,16 +534,7 @@ describe("useSkillOverrides", () => {
   });
 
   describe("focus-gated polling", () => {
-    const POLL_MS = 5000; // mirrors POLL_INTERVAL_MS in the hook
-
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-      vi.restoreAllMocks();
-    });
+    const POLL_MS = useFakeTimersForPolling();
 
     it("re-reads each interval while focused", async () => {
       vi.spyOn(document, "hasFocus").mockReturnValue(true);

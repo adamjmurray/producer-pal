@@ -12,8 +12,8 @@ import {
   createDrumChainMock,
   createSimpleInstrumentMock,
   mockTrackProperties,
-} from "../helpers/read-track-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+} from "./helpers/read-track-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 /**

@@ -9,10 +9,7 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { useCustomSkillsCollection } from "#webui/hooks/context/use-custom-skills-collection";
-import {
-  installFetchMock,
-  jsonResponse,
-} from "./doc-memory-transport-test-helpers";
+import { installFetchMock, jsonResponse } from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 // The collection machinery itself is covered by use-memory-collection.test; this

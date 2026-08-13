@@ -7,18 +7,18 @@ import { cloneElement } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { useLeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 import {
   type DocCollectionEntry,
   type UseDocCollectionReturn,
 } from "#webui/hooks/context/use-doc-collection";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
 
 const CLOSE_ARIA_LABEL = "Close context editor";
 
 // A synthetic "ready" status for the header's save indicator while an existing
 // entry is open — the per-entry editor is always ready (its content is in hand);
 // only the collection-level save status varies.
-const EDITING_STATUS: DocMemoryStatus = { kind: "ready", content: "" };
+const EDITING_STATUS: DocStatus = { kind: "ready", content: "" };
 
 /** Which entry the right pane is editing: an existing one, or a fresh one. */
 type Selection = { mode: "edit"; name: string } | { mode: "new" };
@@ -39,6 +39,18 @@ export interface CollectionEditorRenderArgs<TView> {
   entry: TView | null;
   onSaved: (name: string) => void;
   onDeleted: () => void;
+  /**
+   * Follow this editor's entry to a new slug WITHOUT remounting the editor (a
+   * rename). The live draft — including anything typed during the rename's
+   * round trip — exists only in the mounted instance's state, so remounting
+   * there re-seeds from the server's pre-edit echo and drops it. Editors whose
+   * collection can't rename (custom skills) ignore this.
+   *
+   * Takes the old slug too: a rename can resolve after the user has already
+   * moved to another entry, and moving the selection then would point the
+   * mounted editor at someone else's entry — which it would autosave over.
+   */
+  onRenamed: (from: string, to: string) => void;
 }
 
 interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
@@ -69,9 +81,10 @@ interface CollectionScreenProps<TView extends DocCollectionEntry, TInput> {
  * Owns the selection state, loading/error gating, and the delete-out-from-under
  * affordance; the caller supplies the domain list + editor and the labels.
  *
- * The editor is keyed by the selection (not the found entry) so its draft
+ * The editor is keyed by a selection epoch (not the found entry) so its draft
  * re-seeds on switch, yet a poll that deletes the entry mid-edit keeps the
- * editor mounted with the user's draft (the banner explains it; Save re-creates).
+ * editor mounted with the user's draft (the banner explains it; Save
+ * re-creates), and so does a rename (see `onRenamed`).
  *
  * @param props - Screen props
  * @returns Screen element
@@ -83,19 +96,25 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     props;
   const { description } = props;
   const [selected, setSelected] = useState<Selection>({ mode: "new" });
-  const selectionKey = selected.mode === "edit" ? selected.name : "__new__";
+  // The editor's identity. Bumped by every selection change that lands on a
+  // DIFFERENT draft, so the editor remounts and re-seeds — including a New
+  // press while the create form is already the active pane (otherwise a
+  // half-filled draft sat there and the button looked inert). A RENAME
+  // deliberately does NOT bump it: see the onRenamed doc.
+  const [editorEpoch, setEditorEpoch] = useState(0);
+  const editorKey = `${selected.mode}:${editorEpoch}`;
   // Selecting another entry unmounts the active editor; confirm a discard first
   // if it holds an unsaved new draft (the editor registers the guard).
   const leaveGuard = useLeaveGuardContext();
 
-  // Reset the save indicator whenever the edited entry (or the create form)
-  // changes, so it never carries the previous entry's "Saved" onto the next one
-  // or onto the create form.
+  // Reset the save indicator whenever the editor switches to another draft, so
+  // it never carries the previous entry's "Saved" onto the next one or onto the
+  // create form. A rename keeps the same editor, and with it its own outcome.
   const { resetSaveStatus } = collection;
 
   useEffect(() => {
     resetSaveStatus();
-  }, [selectionKey, resetSaveStatus]);
+  }, [editorKey, resetSaveStatus]);
 
   if (collection.status.kind !== "ready") {
     return (
@@ -118,12 +137,45 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     selected.mode === "edit"
       ? (entries.find((entry) => entry.name === selected.name) ?? null)
       : null;
-  const editorKey = selected.mode === "edit" ? selected.name : "__new__";
+  // A rename resolves this to null for ONE render: the collection hook's commit
+  // drops the old slug before the caller's `.then` moves `selected` to the new
+  // one. That is not a paintable flicker — both updates are microtasks in the
+  // same task, and a browser can only paint between tasks, so the banner below
+  // is added and removed within one checkpoint (guarded by MemoryScreen-rename's
+  // next-task assertion). Keep those two updates in the same task: an `await`
+  // on I/O between them would make this transient banner genuinely visible.
   const deletedExternally = selected.mode === "edit" && activeEntry == null;
+
+  // Point the right pane at another draft, remounting the editor so it re-seeds.
+  // Re-selecting the entry already open is a no-op, so clicking its row again
+  // (or re-saving it under the same slug) keeps the in-progress draft.
+  const selectDraft = (next: Selection): void => {
+    if (
+      next.mode === "edit" &&
+      selected.mode === "edit" &&
+      selected.name === next.name
+    ) {
+      return;
+    }
+
+    setSelected(next);
+    setEditorEpoch((epoch) => epoch + 1);
+  };
+
   const editor = props.renderEditor({
     entry: activeEntry,
-    onSaved: (name) => setSelected({ mode: "edit", name }),
-    onDeleted: () => setSelected({ mode: "new" }),
+    onSaved: (name) => selectDraft({ mode: "edit", name }),
+    onDeleted: () => selectDraft({ mode: "new" }),
+    // No epoch bump: the entry changes slug under the SAME mounted editor.
+    // Only when that editor is still the one that was renamed — if the user
+    // navigated away while the rename was in flight, the mounted editor is on
+    // another entry and must not be dragged onto this slug.
+    onRenamed: (from, to) =>
+      setSelected((prev) =>
+        prev.mode === "edit" && prev.name === from
+          ? { mode: "edit", name: to }
+          : prev,
+      ),
   });
 
   // Delete from the list (the row trash). Return to the create form when the
@@ -134,7 +186,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
     const ok = await collection.deleteEntry(name);
 
     if (ok && selected.mode === "edit" && selected.name === name) {
-      setSelected({ mode: "new" });
+      selectDraft({ mode: "new" });
     }
   };
 
@@ -166,16 +218,18 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             creating: activeEntry == null,
             onSelect: (name) => {
               if (leaveGuard.confirmLeave())
-                setSelected({ mode: "edit", name });
+                selectDraft({ mode: "edit", name });
             },
-            // From the create form, New keeps it mounted (same key), so a dirty
-            // draft isn't abandoned — no guard. But from an entry (including one
-            // deleted out from under us, whose kept draft is a dirty NEW entry)
-            // New unmounts the editor, so confirm a discard first like onSelect.
+            // New always means a BLANK form — including when the create form is
+            // already open holding a half-filled draft, which used to be kept
+            // (the button appeared to do nothing). The editor's own discard
+            // confirm gates it, exactly as onSelect does: both collections
+            // register one for a dirty new draft, so the user is asked before
+            // losing it. An editor that registers nothing just gets the fresh
+            // form.
             onNew: () => {
-              if (selected.mode === "edit" && !leaveGuard.confirmLeave())
-                return;
-              setSelected({ mode: "new" });
+              if (!leaveGuard.confirmLeave()) return;
+              selectDraft({ mode: "new" });
             },
             onDelete: (name) => void handleDeleteEntry(name),
           })}
@@ -184,7 +238,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
           {deletedExternally && (
             <DeletedExternallyBanner
               message={deletedBanner}
-              onDiscard={() => setSelected({ mode: "new" })}
+              onDiscard={() => selectDraft({ mode: "new" })}
             />
           )}
           {cloneElement(editor, { key: editorKey })}

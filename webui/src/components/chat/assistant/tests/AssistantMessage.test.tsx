@@ -150,6 +150,57 @@ describe("AssistantMessage", () => {
     });
   });
 
+  describe("subagent tool parts", () => {
+    it("routes spawn_subagent to the subagent card, not the generic tool call", () => {
+      const parts: UIPart[] = [
+        {
+          type: "tool",
+          name: "spawn_subagent",
+          args: { task: "write a bassline" },
+          result: JSON.stringify("Added a bassline."),
+        },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      // The subagent card shows the 🤖 icon + "subagent" label, not 🔧.
+      expect(container.textContent).toContain("subagent");
+      expect(container.textContent).toContain("write a bassline");
+      expect(container.textContent).not.toContain("🔧");
+    });
+
+    it("renders the worker transcript from subagentMessages", () => {
+      const parts: UIPart[] = [
+        {
+          type: "tool",
+          name: "spawn_subagent",
+          args: { task: "x" },
+          result: JSON.stringify("done"),
+          subagentMessages: [
+            {
+              role: "user",
+              parts: [{ type: "text", content: "delegated task text" }],
+              rawHistoryIndex: 0,
+              timestamp: 0,
+            },
+            {
+              role: "model",
+              parts: [{ type: "text", content: "worker reply text" }],
+              rawHistoryIndex: 1,
+              timestamp: 0,
+            },
+          ],
+        },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent).toContain("↳ subagent transcript");
+      expect(container.textContent).toContain("delegated task text");
+      expect(container.textContent).toContain("worker reply text");
+    });
+  });
+
   describe("error parts", () => {
     it("renders error part using AssistantError", () => {
       const parts: UIPart[] = [

@@ -22,6 +22,9 @@ describe("useSettings notation", () => {
 
     expect(result.current.notation).toBe("barbeat");
     expect(result.current.notationDirty).toBe(false);
+    // The default is a guess, not an answer: the chat's first-send gate relies
+    // on this being false so it doesn't lock a notation nobody chose.
+    expect(result.current.notationKnown).toBe(false);
   });
 
   it("setNotation marks dirty and updates the value", async () => {
@@ -33,6 +36,7 @@ describe("useSettings notation", () => {
 
     expect(result.current.notation).toBe("midi-json");
     expect(result.current.notationDirty).toBe(true);
+    expect(result.current.notationKnown).toBe(true);
   });
 
   it("seedNotation updates the value without marking dirty", async () => {
@@ -44,6 +48,26 @@ describe("useSettings notation", () => {
 
     expect(result.current.notation).toBe("stark");
     expect(result.current.notationDirty).toBe(false);
+    expect(result.current.notationKnown).toBe(true);
+  });
+
+  it("keeps notationKnown true once known, even after cancelSettings", async () => {
+    // Monotonic on purpose: cancel reverts the user's pending edit, but the
+    // notation is no longer an unanswered question, so the gate must not
+    // re-arm and park a later send.
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.seedNotation("stark");
+    });
+    await act(() => {
+      result.current.setNotation("midi-json");
+    });
+    await act(() => {
+      result.current.cancelSettings();
+    });
+
+    expect(result.current.notationKnown).toBe(true);
   });
 
   it("saveSettings clears the dirty flag", async () => {

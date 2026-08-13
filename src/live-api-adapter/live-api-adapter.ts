@@ -16,12 +16,13 @@ import {
   planChunks,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
+import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -47,6 +48,11 @@ import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
+import {
+  backupProjectContextOnEdit,
+  noteProjectContextLoaded,
+  syncProjectContextBackup,
+} from "./project-context-sync.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -55,18 +61,18 @@ setoutletassist(1, "tool call warnings");
 
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.
- * This object is the single source of truth for memory/smallModelMode/
+ * This object is the single source of truth for projectContext/smallModelMode/
  * sampleFolder; per-request contexts snapshot from it.
  */
 interface SessionState {
-  memory: { content: string };
+  projectContext: { content: string };
   smallModelMode: boolean;
   notation: Notation;
   sampleFolder: string | null;
 }
 
 const sessionState: SessionState = {
-  memory: {
+  projectContext: {
     content: "",
   },
   smallModelMode: false,
@@ -78,17 +84,17 @@ const sessionState: SessionState = {
  * Build a fresh per-request ToolContext that snapshots the persistent
  * session state and merges in request-scoped fields from the caller.
  * Concurrent in-flight requests get distinct contexts so a tool that
- * mutates its context can't leak state into another request. The memory
- * object is shared by reference so writes via ppal-context immediately
- * persist to sessionState (the Max textedit also receives the update via
- * the `update_memory` outlet round-trip).
+ * mutates its context can't leak state into another request. The
+ * projectContext object is shared by reference so writes via ppal-context
+ * immediately persist to sessionState (the Max textedit also receives the
+ * update via the `update_project_context` outlet round-trip).
  *
  * @param incoming - Per-request fields parsed from the contextJSON arg
  * @returns Fresh ToolContext owned by the calling request
  */
 function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return {
-    memory: sessionState.memory,
+    projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
@@ -211,15 +217,82 @@ export function notation(value: unknown): void {
 }
 
 /**
- * Set the memory content
+ * Whether the next projectContext() call is the device's saved blob coming back
+ * at load rather than a user edit. The blob reaches V8 through the same setter
+ * either way — Live emits the textedit's embedded value when it restores the
+ * device, and the ---v8-started / ---node-started bangs re-emit it — so a load
+ * is indistinguishable from an edit by message alone. It IS separable by two
+ * facts that hold whatever order Live, V8 and Node initialize in:
  *
- * @param content - Memory content
+ *   - The session's FIRST setter call is always a load echo. That is how the
+ *     blob reaches V8 at all, and it lands before a user could plausibly type.
+ *   - Every later load echo carries the SAME textedit content, so a set that
+ *     changes nothing is never an edit (see the guard in projectContext()).
+ *
+ * Without this, opening an older Set in a Live Project backs its stale blob up
+ * over the folder's newer shared sidecar. See dev/Memory-System.md.
  */
-export function memoryContent(content: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = content === "bang" ? "" : String(content ?? "");
+let expectLoadEcho = true;
 
-  sessionState.memory.content = value;
+/**
+ * Set the project context content
+ *
+ * @param content - Project context content
+ */
+export function projectContext(content: unknown): void {
+  const value = textEditParamToString(content);
+  const isLoadEcho = expectLoadEcho;
+
+  expectLoadEcho = false;
+
+  // A set that changes nothing can't be an edit: it's another load-time echo of
+  // the blob we already hold (Live's textedit restore and the two -started
+  // resync bangs all re-emit the same content, in no guaranteed order).
+  const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
+
+  sessionState.projectContext.content = value;
+
+  if (isLoadEcho) noteProjectContextLoaded(value);
+
+  // Device-UI and webui edits reach us only through this setter (never an MCP
+  // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
+  // forget: the write is Node-side and must not block the param update, and
+  // requestNode never rejects so this can't throw.
+  if (isEdit) void backupProjectContextOnEdit(value);
+}
+
+/**
+ * Apply a project-context blob restored from the on-disk backup: update the
+ * session state and re-persist it into the Max device param via the same outlet
+ * ppal-context uses. A null (no restore happened) is a no-op.
+ *
+ * Skips the apply when the param changed while the restore was in flight. A
+ * `ppal-context` write landing in that window (two connected clients, or the
+ * parallel tool calls a turn with subagents makes routine) is NEWER than the
+ * sidecar blob this restore is carrying, so overwriting would silently revert
+ * it in both memory and the device UI — after the tool already reported
+ * success.
+ *
+ * @param restored - The restored blob, or null when nothing was restored
+ * @param snapshot - The param's content when the restore was requested
+ */
+function applyRestoredProjectContext(
+  restored: string | null,
+  snapshot: string,
+): void {
+  if (restored == null) return;
+
+  if (sessionState.projectContext.content !== snapshot) {
+    console.warn(
+      "Project context changed while the backup restore was in flight; " +
+        "keeping the newer content.",
+    );
+
+    return;
+  }
+
+  sessionState.projectContext.content = restored;
+  outlet(0, "update_project_context", restored);
 }
 
 /**
@@ -228,8 +301,7 @@ export function memoryContent(content: unknown): void {
  * @param path - Sample folder path
  */
 export function sampleFolder(path: unknown): void {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = path === "bang" ? "" : String(path ?? "");
+  const value = textEditParamToString(path);
 
   sessionState.sampleFolder = value;
 }
@@ -339,6 +411,19 @@ export async function mcp_request(
 
     const requestContext = buildRequestContext(incomingContext);
 
+    // Best-effort: keep the on-disk project-context backup in sync with the
+    // current Live Set, and restore it into an empty param after a device
+    // upgrade. Runs before the tool so a restored blob is visible to it — and,
+    // for ppal-connect, to the Node-side injected project-context block. The
+    // post-await write to sessionState lives in a helper so concurrent requests
+    // don't trip require-atomic-updates.
+    const contextBeforeSync = sessionState.projectContext.content;
+
+    applyRestoredProjectContext(
+      await syncProjectContextBackup(contextBeforeSync),
+      contextBeforeSync,
+    );
+
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
       // Compare this to the old way of passing the JS object directly here,
@@ -377,7 +462,10 @@ const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
-// while changing the code repeatedly during development:
+// while changing the code repeatedly during development. The patch answers it
+// by banging the saved project-context textedit back at us, but not
+// re-entrantly: this call returns before that echo arrives, which is why the
+// load-vs-edit split in projectContext() can't be scoped to this statement.
 outlet(0, "started");
 
 /**

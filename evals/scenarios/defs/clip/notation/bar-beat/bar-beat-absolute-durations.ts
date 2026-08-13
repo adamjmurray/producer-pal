@@ -15,16 +15,17 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
+import { CONNECT_MESSAGE } from "../../../../helpers/seed-connect/seed-connect.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
-} from "../../clip-scenario-helpers.ts";
+} from "../../helpers/clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";
 const LIVE_SET = "basic-midi-4-track";
-const MSG_CONNECT = "Connect to Ableton Live";
+const MSG_CONNECT = CONNECT_MESSAGE;
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
 const DRUMS_TRACK = 0;
 const KICK_PITCH = 36;

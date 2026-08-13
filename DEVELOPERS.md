@@ -25,15 +25,20 @@ which require v24+.
    → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:debug` to enable
-debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`). `ENABLE_LIVE_API=true`
-forces the runtime `liveApiEnabled` flag on so the Direct Live API tool
-(`ppal-live-api`) is always available — the Setup-tab toggle cannot disable it
-in this build. `POST /config { liveApiEnabled }` still works in either direction
-so e2e tests can exercise both states. Chat UI development (`npm run ui:dev`)
-works against any build: the MCP server reflects CORS for localhost origins by
-default, so a browser page on another local port can reach it. Set
-`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
-from a non-localhost browser origin (a remote inspector, or over the LAN).
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_WARP_MARKERS`).
+`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
+Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
+cannot disable it in this build. `POST /config { liveApiEnabled }` still works
+in either direction so e2e tests can exercise both states.
+`ENABLE_WARP_MARKERS=true` exposes the work-in-progress warp-marker surface —
+`warpMarkers` in `ppal-read-clip`'s `warp` include, and the `warpOp` /
+`warpBeatTime` / `warpSampleTime` / `warpDistance` params on `ppal-update-clip`
+— so it can be exercised by hand; release builds omit it entirely. Chat UI
+development (`npm run ui:dev`) works against any build: the MCP server reflects
+CORS for localhost origins by default, so a browser page on another local port
+can reach it. Set `ENABLE_REMOTE_CORS=true` before a build only if you need to
+reach the server from a non-localhost browser origin (a remote inspector, or
+over the LAN).
 
 ## Core Development Scripts
 
@@ -87,21 +92,21 @@ see
 
 All checks run via `npm run check` and must pass before merging:
 
-| Check               | Tool          | What it enforces                                                                                                             |
-| ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Linting**         | ESLint        | 60+ rules including complexity limits, import ordering, TypeScript strictness, code quality (SonarJS), and style consistency |
-| **Type checking**   | TypeScript    | Strict mode across all source trees (`src/`, `webui/`, `scripts/`, `evals/`, `e2e/`)                                         |
-| **Formatting**      | Prettier      | Consistent code formatting                                                                                                   |
-| **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                             |
-| **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                       |
-| **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                         |
+| Check               | Tool          | What it enforces                                                                                                                        |
+| ------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Linting**         | oxlint        | 200+ rules including complexity limits, TypeScript strictness (type-aware, via tsgolint), code quality (SonarJS), and style consistency |
+| **Type checking**   | TypeScript    | Strict mode across all source trees (`src/`, `webui/`, `scripts/`, `evals/`, `e2e/`)                                                    |
+| **Formatting**      | oxfmt         | Consistent code formatting                                                                                                              |
+| **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                                        |
+| **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                                  |
+| **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                                    |
 
 Additional checks enforced within tests:
 
-| Check                       | What it enforces                                                                                                                                                                                                 |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lint suppression limits** | Per-directory caps on `eslint-disable`, `@ts-expect-error`, `@ts-nocheck`, and `v8 ignore` comments. For example: 0 `@ts-expect-error` in `src/`, 0 `eslint-disable` in `scripts/`. Prevents suppression sprawl. |
-| **v8 ignore descriptions**  | All coverage exclusion comments must include a `-- reason` explanation                                                                                                                                           |
+| Check                       | What it enforces                                                                                                                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint suppression limits** | Per-directory caps on lint-disable comments (either the `eslint-` or `oxlint-` prefix), `@ts-expect-error`, `@ts-nocheck`, and `v8 ignore`. For example: 0 `@ts-expect-error` in `src/`, 0 lint-disable in `scripts/`. Prevents suppression sprawl. |
+| **v8 ignore descriptions**  | All coverage exclusion comments must include a `-- reason` explanation                                                                                                                                                                              |
 
 And `npm run check:build` additionally validates:
 
@@ -110,7 +115,7 @@ And `npm run check:build` additionally validates:
 | **Production build**    | Rollup bundles (MCP server, V8, portal) and Vite UI build compile without errors |
 | **Documentation build** | VitePress site compiles successfully                                             |
 
-### Key ESLint limits
+### Key oxlint limits
 
 - **325 lines** max per source file (650 for test files), ignoring blanks and
   comments — prevents files from growing too large for agents to work with
@@ -130,7 +135,9 @@ And `npm run check:build` additionally validates:
   silently excluding coverage.
 - **Lint suppression limits** are ratcheted to current counts. Adding a new
   `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
-  (or getting approval to raise the limit).
+  (or getting approval to raise the limit). Write directives with the `eslint-`
+  prefix even though the linter is oxlint — the rule that requires a `-- reason`
+  only recognizes that spelling (see `dev/Linting.md`).
 - **File size limits** force agents to split code into focused modules rather
   than growing monolithic files.
 - **Duplication limits** prevent copy-paste patterns that diverge over time.

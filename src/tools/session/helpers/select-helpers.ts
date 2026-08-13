@@ -7,7 +7,7 @@ import {
   type TrackPath,
   livePath,
 } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";

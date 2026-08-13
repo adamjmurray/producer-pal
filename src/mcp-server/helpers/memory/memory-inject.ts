@@ -8,7 +8,7 @@ import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "../connect/connect-append.ts";
-import { listMemoryEntries, renderMemoryIndex } from "./global-memory-store.ts";
+import { listMemoryEntries, renderMemoryIndex } from "./memory-store.ts";
 
 /**
  * Wrap a callLiveApi so a successful ppal-connect response carries the user's

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
@@ -225,7 +225,8 @@ function createSimplerInChain(
   toolName: string,
 ): LiveAPI | null {
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
-    [string, string | number] | undefined;
+    | [string, string | number]
+    | undefined;
   const rawId = result?.[1];
   const id = rawId ? String(rawId) : null;
 
@@ -247,8 +248,17 @@ function createSimplerInChain(
  * @returns True when the device is a DrumSampler
  */
 function isDrumSampler(className: string): boolean {
-  const normalize = (value: string): string =>
-    value.replaceAll(/\s+/g, "").toLowerCase();
+  return (
+    normalizeClassName(className) ===
+    normalizeClassName(DEVICE_CLASS.DRUM_SAMPLER)
+  );
+}
 
-  return normalize(className) === normalize(DEVICE_CLASS.DRUM_SAMPLER);
+/**
+ * Strip whitespace and case from a class_display_name for comparison.
+ * @param value - The display name to normalize
+ * @returns The name with all whitespace removed and lowercased
+ */
+function normalizeClassName(value: string): string {
+  return value.replaceAll(/\s+/g, "").toLowerCase();
 }

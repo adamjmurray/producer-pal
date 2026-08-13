@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { type Provider } from "#webui/types/settings";
+import { ModelSelector } from "./controls/ModelSelector";
+import { ProviderSelector } from "./controls/ProviderSelector";
 import {
   API_KEY_URLS,
   DEFAULT_LOCAL_URLS,
@@ -11,38 +13,23 @@ import {
   SmallModelToggle,
   ThinkingSelector,
   VoiceSettings,
-} from "./connection-tab-helpers";
-import { ModelSelector } from "./controls/ModelSelector";
-import { ProviderSelector } from "./controls/ProviderSelector";
+  type VoiceSettingsProps,
+} from "./helpers/connection-tab-helpers";
 import { TestConnectionButton } from "./TestConnectionButton";
 
-interface ConnectionTabProps {
-  provider: Provider;
+/** Connection settings plus every prop forwarded verbatim to `VoiceSettings`. */
+interface ConnectionTabProps extends VoiceSettingsProps {
   setProvider: (provider: Provider) => void;
   apiKey: string;
   setApiKey: (apiKey: string) => void;
   baseUrl: string | null | undefined;
   setBaseUrl?: (baseUrl: string) => void;
-  model: string;
   setModel: (model: string) => void;
   providerLabel: string;
   thinking: string;
   setThinking: (thinking: string) => void;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
-  realtimeVoice: string;
-  setRealtimeVoice: (voice: string) => void;
-  voiceLanguage: string;
-  setVoiceLanguage: (language: string) => void;
-  voiceVolume: number;
-  setVoiceVolume: (volume: number) => void;
-  voiceSpeed: number;
-  setVoiceSpeed: (speed: number) => void;
-  turnDetection: TurnDetectionSettings;
-  setTurnDetection: (settings: TurnDetectionSettings) => void;
-  /** Voice currently locked into the live RealtimeSession (or null when idle).
-   * Used to render a pending-change notice. */
-  activeVoice: string | null;
 }
 
 /**
@@ -77,17 +64,7 @@ export function ConnectionTab({
   setThinking,
   smallModelMode,
   setSmallModelMode,
-  realtimeVoice,
-  setRealtimeVoice,
-  voiceLanguage,
-  setVoiceLanguage,
-  voiceVolume,
-  setVoiceVolume,
-  voiceSpeed,
-  setVoiceSpeed,
-  turnDetection,
-  setTurnDetection,
-  activeVoice,
+  ...voice
 }: ConnectionTabProps) {
   return (
     <>
@@ -106,7 +83,7 @@ export function ConnectionTab({
             data-testid="api-key-input"
           />
           {API_KEY_URLS[provider] && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
               <a
                 href={API_KEY_URLS[provider]}
                 target="_blank"
@@ -117,7 +94,7 @@ export function ConnectionTab({
               </a>
             </p>
           )}
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
             API keys are encrypted at rest in your browser; this is not a
             substitute for OS-level protection.
           </p>
@@ -140,7 +117,7 @@ export function ConnectionTab({
               }
               className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
             />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
               {DEFAULT_LOCAL_URLS[provider]
                 ? `Default: ${DEFAULT_LOCAL_URLS[provider]}`
                 : "OpenAI-compatible API endpoint"}
@@ -157,21 +134,7 @@ export function ConnectionTab({
       <ModelSelector provider={provider} model={model} setModel={setModel} />
       <ModelDocsLink provider={provider} providerLabel={providerLabel} />
 
-      <VoiceSettings
-        provider={provider}
-        model={model}
-        realtimeVoice={realtimeVoice}
-        setRealtimeVoice={setRealtimeVoice}
-        voiceLanguage={voiceLanguage}
-        setVoiceLanguage={setVoiceLanguage}
-        voiceVolume={voiceVolume}
-        setVoiceVolume={setVoiceVolume}
-        voiceSpeed={voiceSpeed}
-        setVoiceSpeed={setVoiceSpeed}
-        turnDetection={turnDetection}
-        setTurnDetection={setTurnDetection}
-        activeVoice={activeVoice}
-      />
+      <VoiceSettings provider={provider} model={model} {...voice} />
 
       <div className="flex items-center justify-between">
         <ThinkingSelector thinking={thinking} setThinking={setThinking} />

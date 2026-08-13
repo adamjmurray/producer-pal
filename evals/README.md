@@ -38,6 +38,7 @@ scripts/eval [options]
 | `-s, --skip-setup`    | Skip Live Set setup (reuse existing connection)   |
 | `--skip-judge`        | Skip the LLM-as-judge step (checks only)          |
 | `--skip-reflection`   | Skip the self-reflection turn after a failure     |
+| `--no-seed-connect`   | Let the model run the opening connect turn        |
 | `-q, --quiet`         | Suppress detailed AI and judge responses          |
 | `-r, --repeat <N>`    | Run each scenario N times (for flakiness)         |
 | `-u, --usage`         | Show token usage per turn                         |
@@ -49,18 +50,20 @@ scripts/eval [options]
 Models use `provider/model` format, or just the model name if the provider can
 be inferred from the prefix:
 
-| Format                          | Provider   |
-| ------------------------------- | ---------- |
-| `gemini-3-flash-preview`        | google     |
-| `claude-sonnet-4-5`             | anthropic  |
-| `gpt-5-nano`                    | openai     |
-| `google/gemini-3-flash-preview` | google     |
-| `anthropic/claude-sonnet-4-5`   | anthropic  |
-| `codex-code/sol`                | codex-code |
-| `codex-code/terra`              | codex-code |
-| `codex-code/luna`               | codex-code |
-| `openrouter/some-model`         | openrouter |
-| `local/model-name`              | local      |
+| Format                          | Provider    |
+| ------------------------------- | ----------- |
+| `gemini-3-flash-preview`        | google      |
+| `claude-sonnet-4-5`             | anthropic   |
+| `gpt-5-nano`                    | openai      |
+| `google/gemini-3-flash-preview` | google      |
+| `anthropic/claude-sonnet-4-5`   | anthropic   |
+| `codex-code/sol`                | codex-code  |
+| `codex-code/terra`              | codex-code  |
+| `codex-code/luna`               | codex-code  |
+| `claude-code/sonnet`            | claude-code |
+| `claude-code/opus`              | claude-code |
+| `openrouter/some-model`         | openrouter  |
+| `local/model-name`              | local       |
 
 ### Examples
 
@@ -74,6 +77,9 @@ scripts/eval -t connect-to-ableton -m gemini-3-flash-preview -m claude-sonnet-4-
 # Compare Codex subscription models (requires `codex login`)
 scripts/eval -t connect-to-ableton \
   -m codex-code/sol -m codex-code/terra -m codex-code/luna
+
+# Compare subscription CLIs against each other (requires `codex` and `claude`)
+scripts/eval -t connect-to-ableton -m codex-code/terra -m claude-code/sonnet
 
 # Skip Live Set reopening (reuse current MCP connection)
 scripts/eval -t connect-to-ableton -s
@@ -98,6 +104,60 @@ scripts/eval -m local/qwen3-8b -t duplicate --small-model
 The local provider connects to `http://localhost:11434/v1` by default (Ollama).
 Override with `-b` / `--base-url` in the chat CLI, or set `LOCAL_BASE_URL` in
 `.env` for evals.
+
+### Testing subscription CLIs
+
+`claude-code` and `codex-code` are not API providers — they drive an installed
+coding-agent CLI as a subprocess (`claude -p --output-format stream-json`,
+`codex exec --json`), so a run bills the logged-in subscription instead of a
+metered API key. The CLI owns the conversation and the MCP connection; each turn
+is a fresh process that resumes the previous turn's session id.
+
+```bash
+# Requires `claude` on PATH and a logged-in subscription (`claude auth login`)
+scripts/eval -m claude-code/sonnet -t connect-to-ableton
+
+# Requires `codex` on PATH and `codex login`
+scripts/eval -m codex-code/terra -t connect-to-ableton
+```
+
+Both transports strip the vendor's API-key environment variables before
+spawning, so an exported `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` cannot silently
+turn a subscription run into a billed one. Both also run the CLI stripped down
+to Producer Pal: built-in tools off, settings and plugins off, other MCP servers
+ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
+(which is also what keeps the user's memory files out of the run).
+
+A looping model is bounded the same way it is on the AI SDK path. Neither CLI
+takes a step limit we can rely on, so the transports count the model's actions
+(each tool call, each reply) off the event stream and kill the subprocess once
+the turn goes past the shared budget in `evals/shared/step-budget.ts`. The run
+then fails as a blown budget in seconds rather than as a five-minute timeout.
+
+Two caveats when comparing a subscription-CLI run against anything else:
+
+- **Token counts are not comparable across transports.** Each vendor defines
+  `input_tokens` differently: Codex reports the total (its `cached_input_tokens`
+  is a subset of it), while Anthropic reports only the uncached portion, with
+  `cache_read_input_tokens` / `cache_creation_input_tokens` alongside. A real
+  `claude-code` turn that processed ~38k tokens prints `tokens: 18` — everything
+  else was a cache read. The mapping deliberately matches the `anthropic` AI SDK
+  path so the two Anthropic routes agree; it does NOT line up with `codex-code`.
+- **Session files outlive the run.** Claude Code keys its on-disk session store
+  by working directory, and each eval session uses a fresh temp directory that
+  `close()` removes. The transcript under `~/.claude/projects/` stays behind,
+  one entry per eval session. (The judge passes `--no-session-persistence` and
+  leaves nothing; turns cannot, since they resume by session id.)
+
+Point `CLAUDE_CODE_BIN` / `CODEX_BIN` at a specific binary when the CLI is not
+on PATH. The transport tests use the same variables to swap in a fixture that
+emits canned JSONL, so `evals/chat/agent-cli/` is testable with neither CLI
+installed.
+
+Adding another CLI is a protocol module implementing `AgentCliTransport` (argv,
+stream parsing, model names) plus one entry in
+`evals/chat/agent-cli/agent-cli-registry.ts`; spawning, session dirs, session-id
+continuity, turn rendering, and judging are already shared.
 
 ### Run environment
 
@@ -143,6 +203,38 @@ Run `scripts/eval -l` for the current list. Scenarios are tagged as
 **regression** (should always pass) or **capability** (improvement targets, may
 have low pass rates).
 
+### The seeded connect turn
+
+Nearly every scenario opens with "Connect to Ableton Live", and every model
+answers it the same way: one `ppal-connect` call, then a sentence acknowledging
+it. That turn is setup — the behavior under test starts at the next message —
+but it is the run's most expensive turn, because the connect result (Live Set
+overview + Producer Pal skills) is re-sent as input on the round trip that
+produces the acknowledgment.
+
+So the runner writes that turn into the conversation itself, for free. It is not
+a recording: `ppal-connect` is called for real over MCP against the Live Set
+that is actually open, under the run's actual config, so nothing can go stale.
+Only the assistant's closing sentence is canned, and the model reads the same
+context either way. Turn numbering is unchanged, so `turn: 0` assertions still
+mean the connect turn.
+
+A scenario is seeded when its first message is the connect message and something
+follows it. Set `seedConnect: false` on scenarios that GRADE that turn — its
+prose, or what it did or didn't write (`connect-to-ableton`, the
+`context-onboarding-*` family). `--no-seed-connect` disables it for a whole run,
+which is how to A/B the seeding against real connect turns.
+
+Note that a `{ type: "tool_called", tool: "ppal-connect", turn: 0 }` assertion
+passes trivially in a seeded scenario. `connect-to-ableton` is where "does the
+model reach for `ppal-connect`" is actually graded.
+
+The agent-CLI providers (`claude-code`, `codex-code`) are never seeded: the CLI
+resumes a session by id and owns its own history, so there is nothing to write
+into and they fall back to a real connect turn. Worth remembering when comparing
+one of those runs against any other provider — only one of them paid for that
+turn.
+
 ### Scoring
 
 Each scenario has assertions that contribute to pass/fail:
@@ -184,6 +276,10 @@ Interactive chat for manual testing and debugging.
 ```bash
 scripts/chat [options] [text...]
 ```
+
+Every provider except `claude-code` and `codex-code` is supported: those two run
+through an agent-CLI transport (a spawned `claude` / `codex` subprocess), which
+only the eval CLI drives.
 
 ### Options
 
@@ -231,6 +327,10 @@ Set these in `.env` at the project root:
 | `LOCAL_BASE_URL` | Local server URL (default: `http://localhost:11434/v1`) |
 | `MCP_URL`        | MCP server URL (default: `http://localhost:3350/mcp`)   |
 
+The subscription CLIs take no key. `CLAUDE_CODE_BIN` and `CODEX_BIN` override
+which executable is spawned (see
+[Testing subscription CLIs](#testing-subscription-clis)).
+
 ## Prerequisites
 
 - Ableton Live running with the Producer Pal Max for Live device
@@ -239,6 +339,7 @@ Set these in `.env` at the project root:
 - API keys configured for the providers you want to test
 - For local models: Ollama, LM Studio, or another OpenAI-compatible server
   running
+- For `claude-code` / `codex-code`: that CLI installed and logged in
 
 ## Adding scenarios
 

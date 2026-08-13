@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- hoisted doubles (vi.mock factories can only see vi.hoisted values) ---
@@ -84,6 +84,13 @@ const h = vi.hoisted(() => {
 
     flush = vi.fn();
     enqueueBase64 = vi.fn();
+    // Nothing queued, so the half-duplex unmute is never deferred here; the
+    // deferral itself is covered in gemini-half-duplex.test.ts.
+    hasQueued = vi.fn(() => false);
+    onDrained = vi.fn((callback: () => void) => callback());
+    // Reached by any `interrupted` message; without it the handler throws
+    // where the `as never` cast at the mock site would have hidden it.
+    hasPendingDrain = vi.fn(() => false);
     close = vi.fn(async () => {});
     constructor() {
       FakePlayer.last = this;
@@ -604,12 +611,21 @@ describe("useGeminiVoiceSession", () => {
 
     await act(async () => {
       h.state.callbacks.onclose?.();
-      // Wait past openResumableGeminiSession's linear backoff (attempt 1 = 1s).
-      await new Promise((r) => setTimeout(r, 1100));
     });
 
-    expect(h.liveConnect).toHaveBeenCalledTimes(2);
-    expect(result.current.status).toBe("connected");
+    // openResumableGeminiSession retries behind a linear backoff (attempt 1 =
+    // 1s). Poll past it instead of sleeping a hair over: a 1100ms fixed wait
+    // leaves only a 10% margin, so a loaded runner clips the resume and fails
+    // these assertions. The timeout must clear the backoff itself, which the
+    // 1s waitFor default would not.
+    await waitFor(
+      () => {
+        expect(h.liveConnect).toHaveBeenCalledTimes(2);
+        expect(result.current.status).toBe("connected");
+      },
+      { timeout: 5000 },
+    );
+
     expect(result.current.error).toBeNull();
     const cfg = h.state.connectParams!.config as {
       sessionResumption?: { handle?: string };
@@ -726,6 +742,35 @@ describe("useGeminiVoiceSession", () => {
     // Both calls should be `true`: auto-mute (true), then restore-to-manual (true).
     expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
     expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
+  });
+
+  it("half-duplex: unmuting mid-turn lets the rest of the turn re-mute", async () => {
+    // Manual intent clears the auto-mute flag. Left set, every later chunk of
+    // the same turn finds beginGeminiHalfDuplexMute already "armed" and no-ops,
+    // so the assistant plays on into an open mic.
+    const { result } = await renderConnected({
+      turnDetection: HALF_DUPLEX_VAD,
+    });
+    const mic = h.FakeMic.last!;
+
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("A"));
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+
+    // The user overrides the auto-mute from the Mute/Unmute button, ending
+    // unmuted — no turnComplete in between, so nothing else clears the flag.
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    mic.setMuted.mockClear();
+
+    await emit(assistantAudioMsg("B"));
+
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
   });
 
   it("bails after MCP tools resolve if torn down first", async () => {

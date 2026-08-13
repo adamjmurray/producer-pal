@@ -24,8 +24,8 @@ vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
-vi.mock(import("#webui/hooks/use-update-check"), () => ({
-  useUpdateCheck: () => null,
+vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
+  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
 }));
 vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
@@ -34,14 +34,14 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
 // App renders the real ContextTabs + system-prompt hook, both of which fetch a
 // same-origin endpoint; stub them so these tests don't leak real localhost
 // fetches. See App-context-mocks for details.
-vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
-  useSystemPromptMemory: systemPromptMemoryMock,
+vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
+  useSystemPrompt: systemPromptDocMock,
 }));
 vi.mock(import("#webui/components/context/ContextTabs"), () => ({
   ContextTabs: ContextTabsStub,
 }));
 
-import { ContextTabsStub, systemPromptMemoryMock } from "./App-context-mocks";
+import { ContextTabsStub, systemPromptDocMock } from "./App-context-mocks";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";

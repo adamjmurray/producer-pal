@@ -14,6 +14,48 @@ import {
   updateDevice,
 } from "../update-device-test-helpers.ts";
 
+/**
+ * Register a device holding one 0–1 continuous param whose min/max labels are
+ * numeric Hz (so the setter takes the binary-search path) but whose mid-range
+ * label is whatever the case wants to feed the parser.
+ * @param paramId - Mock-registry id for the param object
+ * @param name - The param's name, as `params: [{ name }]` addresses it
+ * @param midLabel - The label returned for every value between the extremes
+ * @returns The registered param mock
+ */
+function registerBinarySearchParam(
+  paramId: string,
+  name: string,
+  midLabel: string,
+): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children(paramId) },
+  });
+
+  return registerMockObject(paramId, {
+    properties: {
+      name,
+      original_name: name,
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
+    methods: {
+      str_for_value: (v: unknown) => {
+        const n = Number(v);
+
+        if (n <= 0.01) return "0 Hz";
+        if (n >= 0.99) return "1000 Hz";
+
+        return midLabel;
+      },
+    },
+  });
+}
+
 describe("updateDevice - param value conversion", () => {
   describe("non-linear params (binary search)", () => {
     let param: RegisteredMockObject;
@@ -221,33 +263,9 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("flaky-param") },
-      });
-      param = registerMockObject("flaky-param", {
-        properties: {
-          name: "Flaky",
-          original_name: "Flaky",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: {
-          // Min/max labels parseable (triggers binary search),
-          // but mid-range label becomes unparseable
-          str_for_value: (v: unknown) => {
-            const n = Number(v);
-
-            if (n <= 0.01) return "0 Hz";
-            if (n >= 0.99) return "1000 Hz";
-
-            return "---";
-          },
-        },
-      });
+      // Min/max labels parseable (triggers binary search), but mid-range
+      // label becomes unparseable.
+      param = registerBinarySearchParam("flaky-param", "Flaky", "---");
     });
 
     it("should converge toward min when mid-range labels parse as NaN", () => {
@@ -291,7 +309,7 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
-  describe("resolve param by relative device path", () => {
+  describe("resolve param registered at a relative device path", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
@@ -320,11 +338,10 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should resolve param via device-relative 'parameters N' path", () => {
-      // Use numeric key "3" which triggers resolveParamForDevice
-      // with "3" as paramId. Since "3" doesn't match /parameters (\d+)$/,
-      // it falls through to LiveAPI.from("3") — the absolute ID path.
-      // To test the relative "parameters N" path, use name-based resolution.
+    it("should resolve a param living under 'parameters N' by name", () => {
+      // Param keys are either a name or an absolute numeric id — there is no
+      // device-relative "parameters N" key form, so a param at that path is
+      // reached by name like any other.
       updateDevice({ ids: "dev1", params: [{ name: "Freq", value: "0.6" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.6);
@@ -368,33 +385,13 @@ describe("updateDevice - param value conversion", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
-      registerMockObject("dev1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: { parameters: children("note-display-param") },
-      });
-      param = registerMockObject("note-display-param", {
-        properties: {
-          name: "NoteParam",
-          original_name: "NoteParam",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: {
-          // Min/max labels are numeric (triggers binary search),
-          // but mid-range returns a note name (string value from parseLabel)
-          str_for_value: (v: unknown) => {
-            const n = Number(v);
-
-            if (n <= 0.01) return "0 Hz";
-            if (n >= 0.99) return "1000 Hz";
-
-            return "C4";
-          },
-        },
-      });
+      // Min/max labels are numeric (triggers binary search), but mid-range
+      // returns a note name (a string value from parseLabel).
+      param = registerBinarySearchParam(
+        "note-display-param",
+        "NoteParam",
+        "C4",
+      );
     });
 
     it("should return mid when binary search encounters string-typed label", () => {

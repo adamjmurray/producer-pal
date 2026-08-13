@@ -30,19 +30,37 @@ import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test
 const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes } = createClipTransformHelpers(ctx);
 
+/**
+ * Apply an update-clip call and assert the note count it reports back. Every
+ * test here turns on that count: it is read back from the clip, so it says
+ * whether preTransforms edited in place or merged a copy.
+ * @param clipId - Clip to update
+ * @param args - update-clip arguments beyond the clip id
+ * @param noteCount - Expected note count after the update
+ */
+async function expectUpdatedNoteCount(
+  clipId: string,
+  args: Record<string, unknown>,
+  noteCount: number,
+): Promise<void> {
+  const updated = parseToolResult<UpdateClipResult>(
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clipId, ...args },
+    }),
+  );
+
+  await sleep(100);
+
+  expect(updated.noteCount).toBe(noteCount);
+}
+
 describe("ppal-update-clip preTransforms", () => {
   it("clears all existing notes with a bare preTransforms (no notes arg)", async () => {
     const clipId = await createMidiClip(0, "C3 D3 E3 1|1");
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clipId, preTransforms: "v0" },
-    });
-    const updated = parseToolResult<UpdateClipResult>(result);
+    await expectUpdatedNoteCount(clipId, { preTransforms: "v0" }, 0);
 
-    await sleep(100);
-
-    expect(updated.noteCount).toBe(0);
     expect(await readClipNotes(clipId)).toBe("");
   });
 
@@ -51,15 +69,7 @@ describe("ppal-update-clip preTransforms", () => {
 
     // Bare edit: set velocity on every existing note. Note count must stay 3 —
     // this proves preTransforms edits in place rather than merging a copy.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clipId, preTransforms: "v50" },
-    });
-    const updated = parseToolResult<UpdateClipResult>(result);
-
-    await sleep(100);
-
-    expect(updated.noteCount).toBe(3);
+    await expectUpdatedNoteCount(clipId, { preTransforms: "v50" }, 3);
 
     const notes = await readClipNotes(clipId);
 
@@ -77,20 +87,12 @@ describe("ppal-update-clip preTransforms", () => {
     );
 
     // Clear all of bar 1, then merge a single new note into it. Bar 2 untouched.
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clipId,
-        preTransforms: "1|1-1|4: v0",
-        notes: "C4 1|1",
-      },
-    });
-    const updated = parseToolResult<UpdateClipResult>(result);
-
-    await sleep(100);
-
     // 1 merged (C4) + 2 preserved (G3, A3)
-    expect(updated.noteCount).toBe(3);
+    await expectUpdatedNoteCount(
+      clipId,
+      { preTransforms: "1|1-1|4: v0", notes: "C4 1|1" },
+      3,
+    );
 
     const notes = await readClipNotes(clipId);
 
@@ -106,16 +108,8 @@ describe("ppal-update-clip preTransforms", () => {
   it("remaps a drum lane with preTransforms (C1: C4)", async () => {
     const clipId = await createMidiClip(0, "C1 1|1 1|2 1|3 1|4");
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: { ids: clipId, preTransforms: "C1: C4" },
-    });
-    const updated = parseToolResult<UpdateClipResult>(result);
-
-    await sleep(100);
-
     // Remap moves pitch in place; the 4 notes stay 4 notes.
-    expect(updated.noteCount).toBe(4);
+    await expectUpdatedNoteCount(clipId, { preTransforms: "C1: C4" }, 4);
 
     const notes = await readClipNotes(clipId);
 

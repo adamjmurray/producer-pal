@@ -286,6 +286,10 @@ Adds warp/time-stretch properties for audio clips. No effect on MIDI clips.
 | `warpMode`     | `string`       | Warp algorithm (beats, tones, etc.) |
 | `warpMarkers`  | `WarpMarker[]` | Warp markers (if any exist)         |
 
+`warpMarkers` is work-in-progress and gated behind the `ENABLE_WARP_MARKERS`
+build flag: it appears in `npm run build:debug` builds (and in tests) only, not
+in release builds. The examples below show it as it appears in a debug build.
+
 ### Include: `"color"`
 
 | Field   | Type     | Description                       |

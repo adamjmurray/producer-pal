@@ -36,7 +36,7 @@ vi.mock(import("#webui/hooks/voice/gemini/use-gemini-voice-session"), () => ({
   useGeminiVoiceSession: mocks.useGeminiVoiceSession,
 }));
 
-vi.mock(import("#webui/hooks/use-update-check"), () => ({
+vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
 
@@ -131,7 +131,8 @@ function renderAndDeleteConversation(
 // so a test can fire it the way a Settings bulk delete would.
 function grabOnLiveRecordDeleted(): (() => void) | undefined {
   const params = mocks.useVoicePersistence.mock.calls.at(-1)?.[0] as
-    { onLiveRecordDeleted?: () => void } | undefined;
+    | { onLiveRecordDeleted?: () => void }
+    | undefined;
 
   return params?.onLiveRecordDeleted;
 }
@@ -785,9 +786,10 @@ describe("VoiceApp", () => {
 
       expect(setModeContextMock).toHaveBeenCalled();
       const ctx = setModeContextMock.mock.calls.at(-1)?.[0] as
-        ModeContext | undefined;
+        | ModeContext
+        | undefined;
 
-      expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2");
+      expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2.1");
       expect(ctx?.conversationLock.activeProvider).toBe("openai");
       // Delete handlers route through the persistence hook
       ctx?.onDeleteAllConversations();

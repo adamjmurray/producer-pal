@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Notation } from "#src/shared/notation";
 import { type QueuedMessage } from "#webui/hooks/chat/use-message-queue";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
@@ -24,6 +25,17 @@ export interface ChatClient<TMessage> {
   initialize: () => Promise<void>;
   sendMessage: (
     message: string,
+    signal: AbortSignal,
+    overrides?: MessageOverrides,
+    shouldInterrupt?: () => boolean,
+  ) => AsyncIterable<TMessage[]>;
+  /**
+   * Re-stream the current turn after a rate limit WITHOUT re-sending the user's
+   * message, which is already in chatHistory. The client owns whether the resume
+   * needs a synthetic user turn to be a valid request — that depends on the wire
+   * shape, which only it knows.
+   */
+  resumeStream: (
     signal: AbortSignal,
     overrides?: MessageOverrides,
     shouldInterrupt?: () => boolean,
@@ -55,7 +67,6 @@ export interface ChatAdapter<
   /** Build provider-specific configuration */
   buildConfig: (
     model: string,
-    temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
     chatHistory: TMessage[] | undefined,
@@ -83,8 +94,6 @@ export interface ConversationLockedSettings {
   model: string | null;
   provider: Provider | null;
   thinking: string | null;
-  temperature: number | null;
-  showThoughts: boolean | null;
   smallModelMode: boolean | null;
   /**
    * The resolved system instruction the conversation runs with. Locked like the
@@ -92,6 +101,24 @@ export interface ConversationLockedSettings {
    * with, even after the global override changes. Null for legacy records.
    */
   systemInstruction: string | null;
+  /**
+   * The notation the conversation runs with, sent per-request so it is this
+   * chat's notation rather than the device global. Hard-locked like the system
+   * instruction rather than re-read per init: notation decides how clip notes are
+   * PARSED, so a transcript written in one notation must keep being read in it —
+   * swapping mid-conversation would hand the model note strings it was never
+   * taught. Null for legacy records and for a chat that has yet to lock one.
+   */
+  notation: Notation | null;
+  /**
+   * The tool selection the conversation runs with. Locked for the mirror image
+   * of the notation reason: a transcript full of successful calls to a tool is
+   * itself an instruction to keep calling it, so withdrawing that tool
+   * mid-conversation invites a call the client can no longer route. Null for
+   * legacy records and for a chat that has yet to lock one; those reconnect on
+   * the current selection.
+   */
+  enabledTools: Record<string, boolean> | null;
 }
 
 /**
@@ -123,11 +150,13 @@ export interface UseChatReturn {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
-  activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   /** The resolved system instruction locked for the active conversation. */
   activeSystemInstruction: string | null;
+  /** The notation locked for the active conversation. */
+  activeNotation: Notation | null;
+  /** The tool selection the active conversation last connected with. */
+  activeEnabledTools: Record<string, boolean> | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
@@ -168,12 +197,10 @@ export interface UseChatProps<
   apiKey: string;
   model: string;
   thinking: string;
-  temperature: number;
   enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   /**
    * Resolve the connection (key + base URL) for a given provider from the

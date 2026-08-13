@@ -7,8 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
-  recoverFromChatError,
   resolveInitConnection,
+  runChatTurn,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
@@ -42,9 +42,7 @@ export function useChat<
   apiKey,
   model,
   thinking,
-  temperature,
   enabledTools,
-  smallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -77,6 +75,9 @@ export function useChat<
   // is created before initializeChat is defined below.
   const bootstrapClientRef = useRef<(() => Promise<void>) | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Per-turn state runChatTurn owns; see there for why a turn takes a ticket.
+  const turnIdRef = useRef(0);
+  const pendingUserMessageRef = useRef<TMessage | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
   useEffect(() => {
@@ -172,7 +173,11 @@ export function useChat<
   );
 
   const initializeChat = useCallback(
-    async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
+    async (
+      chatHistory?: TMessage[],
+      overrides?: MessageOverrides,
+      stillCurrent?: () => boolean,
+    ) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
@@ -182,19 +187,26 @@ export function useChat<
       // switched restored conversations to the selected model on the next send.
       const init = resolveInitConnection(
         active,
-        { provider, model },
+        { provider, model, enabledTools },
         resolveConnection,
         extraParams,
       );
 
       const config = adapter.buildConfig(
         init.model,
-        temperature,
         effectiveThinking,
-        enabledTools,
+        init.enabledTools,
         chatHistory,
         init.extraParams,
       );
+
+      // The connection check can take real network round-trips, and Stop
+      // re-enables the composer while this turn is still in it — so by now the
+      // user may have re-sent, and the newer turn may already be streaming on
+      // the client below. Disposing it would close that stream's MCP connection
+      // mid-flight, so a superseded init bails instead. Callers with no ticket
+      // (compaction bootstrap) aren't racing a turn.
+      if (stillCurrent && !stillCurrent()) return;
 
       // Dispose any prior client before replacing it — initializeChat is the
       // fork/retry re-init path, so a live client (with an open MCP connection)
@@ -202,24 +214,25 @@ export function useChat<
       clientRef.current?.dispose?.();
       clientRef.current = adapter.createClient(init.apiKey, config);
       await clientRef.current.initialize();
-      lockSettings(
-        init.model,
-        init.provider,
-        effectiveThinking,
-        temperature,
-        null,
-        smallModelMode,
-        init.systemInstruction,
-      );
+      lockSettings({
+        model: init.model,
+        provider: init.provider,
+        thinking: effectiveThinking,
+        smallModelMode: init.smallModelMode,
+        systemInstruction: init.systemInstruction,
+        notation: init.notation,
+        // Pinned like the rest: a restored conversation reconnects with the
+        // toolset it ran with, so the model never loses a tool it has already
+        // used (or gains one its transcript never mentions).
+        enabledTools: init.enabledTools,
+      });
     },
     [
-      smallModelMode,
       mcpStatus,
       mcpError,
       checkMcpConnection,
       model,
       provider,
-      temperature,
       thinking,
       enabledTools,
       resolveConnection,
@@ -246,47 +259,25 @@ export function useChat<
     bootstrapClientRef.current = bootstrapClient;
   }, [bootstrapClient]);
 
-  // Stash the user message for retry/edit when an early error (missing API
-  // key, MCP init failure) means it never reached client.chatHistory.
-  const pendingUserMessageRef = useRef<TMessage | null>(null);
-
   const runWithChat = useCallback(
     async <T>(
-      fn: () => Promise<T>,
+      fn: (stillCurrent: () => boolean) => Promise<T>,
       userMessage?: TMessage,
-    ): Promise<T | undefined> => {
-      setIsAssistantResponding(true);
-      // A new request clears any prior tool-limit notice before streaming.
-      setToolLimitReached(false);
-      pendingUserMessageRef.current = userMessage ?? null;
-
-      try {
-        const result = await fn();
-
-        pendingUserMessageRef.current = null;
-        setToolLimitReached(clientRef.current?.toolLimitReached ?? false);
-
-        return result;
-      } catch (error) {
-        recoverFromChatError({
-          error,
-          adapter,
-          clientRef,
-          pendingHistoryRef,
-          stashed: pendingUserMessageRef.current,
-          setMessages,
-          autoSaveRef,
-          pendingForkRef,
-        });
-
-        return undefined;
-      } finally {
-        pendingUserMessageRef.current = null;
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
-    },
+    ): Promise<T | undefined> =>
+      await runChatTurn(fn, userMessage, {
+        adapter,
+        clientRef,
+        pendingHistoryRef,
+        abortControllerRef,
+        autoSaveRef,
+        pendingForkRef,
+        turnIdRef,
+        pendingUserMessageRef,
+        setMessages,
+        setIsAssistantResponding,
+        setToolLimitReached,
+        setRateLimitState,
+      }),
     [adapter, autoSaveRef, pendingForkRef],
   );
 
@@ -323,13 +314,20 @@ export function useChat<
         const userMessageEntry = adapter.createUserMessage(userMessage);
         const sendOptions = currentOptions;
 
-        const succeeded = await runWithChat(async () => {
+        const succeeded = await runWithChat(async (stillCurrent) => {
           if (!clientRef.current) {
             const pendingHistory = pendingHistoryRef.current ?? undefined;
 
             pendingHistoryRef.current = null;
-            await initializeChat(pendingHistory, sendOptions);
+            await initializeChat(pendingHistory, sendOptions, stillCurrent);
           }
+
+          // Superseded while setting up: the user stopped this turn mid-connect
+          // (which re-enables the composer) and re-sent. The newer turn owns the
+          // abort ref and the client's stream now, so bail before taking either
+          // — two turns streaming into one chatHistory interleave, and both
+          // paint and autosave.
+          if (!stillCurrent()) return false;
 
           const client = clientRef.current;
 
@@ -353,15 +351,17 @@ export function useChat<
           const shouldInterrupt = () => queueRef.current.length > queueBaseline;
 
           return await executeWithRetry({
-            executeStream: (msg) =>
+            executeStream: () =>
               client.sendMessage(
-                msg,
+                userMessage,
                 controller.signal,
                 filtered,
                 shouldInterrupt,
               ),
+            resumeStream: () =>
+              client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
-            originalMessage: userMessage,
+            stillCurrent,
           });
         }, userMessageEntry);
 

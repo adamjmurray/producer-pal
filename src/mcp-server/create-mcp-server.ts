@@ -30,7 +30,7 @@ import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { type RequestOverrides } from "./helpers/request-overrides.ts";
+import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 
 export type CallLiveApiFunction = (
   tool: string,
@@ -140,4 +140,58 @@ export function createMcpServer(
   }
 
   return server;
+}
+
+/**
+ * Validate the `tools` whitelist from a POST /config request: every name must
+ * be a known tool (ppal-live-api only when the Live API tool is enabled) and
+ * ppal-connect must be present (it is the required entry point). Lives here,
+ * with the tool registry that owns TOOL_NAMES, rather than in the route handler.
+ *
+ * @param tools - The tools value from the request body
+ * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
+ * @returns An error response body when invalid, or null when valid
+ */
+export function validateTools(
+  tools: unknown,
+  liveApiEnabled: boolean,
+): { error: string; validToolNames: string[] } | null {
+  const validToolNames = getValidToolNames(liveApiEnabled);
+  const validToolSet = new Set<string>(validToolNames);
+
+  if (!Array.isArray(tools)) {
+    return { error: "tools must be an array of tool names", validToolNames };
+  }
+
+  const list = tools.map(String);
+  const invalid = list.filter((name) => !validToolSet.has(name));
+
+  if (invalid.length > 0) {
+    return {
+      error: `Invalid tool name(s): ${invalid.join(", ")}`,
+      validToolNames,
+    };
+  }
+
+  if (!list.includes("ppal-connect")) {
+    return {
+      error:
+        "ppal-connect must be included in tools (it is the required entry point)",
+      validToolNames,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * The list of valid tool names, including ppal-live-api when enabled.
+ *
+ * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
+ * @returns The valid tool names
+ */
+function getValidToolNames(liveApiEnabled: boolean): string[] {
+  if (!liveApiEnabled) return [...TOOL_NAMES];
+
+  return [...TOOL_NAMES, toolDefLiveApi.toolName];
 }

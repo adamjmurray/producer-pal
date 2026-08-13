@@ -20,6 +20,12 @@ export interface ConnectEnrichmentConfig {
   smallModelMode: boolean;
   /** This Live Set's context blob, held by the Max device (config, not fs). */
   projectContext: string;
+  /**
+   * The tools this caller can call — the global whitelist, or one request's
+   * narrowed set. Skills fragments teaching only tools that are off are dropped.
+   * Omitted ⇒ no gating (every fragment ships).
+   */
+  tools?: readonly string[];
 }
 
 /**
@@ -50,6 +56,7 @@ export function enrichConnect(
           withSkills(inner, () => ({
             notation: getConfig().notation,
             smallModelMode: getConfig().smallModelMode,
+            tools: getConfig().tools,
           })),
           () => getConfig().projectContext,
         ),

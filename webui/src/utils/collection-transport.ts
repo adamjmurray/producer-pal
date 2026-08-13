@@ -5,9 +5,9 @@
 
 // REST transport for the ~/.producer-pal doc collections (memory, custom
 // skills): the list GET, per-entry PUT/rename/DELETE, and the shared write-error
-// formatter. Generic over the entry view (`TView`) and save input (`TInput`)
-// shapes, with no dependency on the collection hook's state types, so it lives
-// beside the other fetch utilities rather than inside the hook module (see
+// formatter. Generic over the entry view (`TView`) shape, with no dependency on
+// the collection hook's state types, so it lives beside the other fetch
+// utilities rather than inside the hook module (see
 // #webui/hooks/context/use-doc-collection).
 
 /**
@@ -39,7 +39,7 @@ export async function fetchEntries<TView>(
 // drops the last autosave. Collection entries (memory facts, skill fragments)
 // are small, so the browser's ~64KB keepalive body quota is never a concern
 // here — unlike the single-doc context/system-prompt writes (see
-// #webui/hooks/context/use-doc-memory `makeContentTransport`), whose imported
+// #webui/hooks/context/use-doc `makeContentTransport`), whose imported
 // bodies can far exceed it, so those deliberately stay a plain fetch.
 
 /**
@@ -50,26 +50,17 @@ export async function fetchEntries<TView>(
  * @param label - Error-message label (e.g. "Memory")
  * @returns The server's echo of the stored entry
  */
-export async function putEntry<TView, TInput>(
+export async function putEntry<TView>(
   url: string,
-  input: TInput,
+  input: object,
   createOnly: boolean,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(createOnly ? { ...input, createOnly } : input),
-    keepalive: true,
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
+  return await putJson<TView>(
+    url,
+    createOnly ? { ...input, createOnly } : input,
+    label,
+  );
 }
 
 /**
@@ -80,26 +71,13 @@ export async function putEntry<TView, TInput>(
  * @param label - Error-message label (e.g. "Memory")
  * @returns The server's echo of the renamed entry
  */
-export async function putRename<TView, TInput>(
+export async function putRename<TView>(
   url: string,
   newName: string,
-  input: TInput,
+  input: object,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...input, newName }),
-    keepalive: true,
-  });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
-
-  const body = (await response.json()) as { entry: TView };
-
-  return body.entry;
+  return await putJson<TView>(url, { ...input, newName }, label);
 }
 
 /**
@@ -116,6 +94,34 @@ export async function deleteEntryRequest(
   if (!response.ok) {
     throw new Error(await writeErrorMessage(response, label));
   }
+}
+
+/**
+ * PUT a JSON body to an entry endpoint and unwrap the server's `{ entry }` echo.
+ * @param url - The endpoint to write to
+ * @param body - The payload to serialize
+ * @param label - Error-message label (e.g. "Memory")
+ * @returns The server's echo of the stored entry
+ */
+async function putJson<TView>(
+  url: string,
+  body: unknown,
+  label: string,
+): Promise<TView> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    throw new Error(await writeErrorMessage(response, label));
+  }
+
+  const parsed = (await response.json()) as { entry: TView };
+
+  return parsed.entry;
 }
 
 /**

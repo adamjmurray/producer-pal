@@ -124,7 +124,8 @@ function buildEfficiency(
   if (!tokenResult) return undefined;
 
   const details = tokenResult.details as
-    { total: number; target: number; percentage: number } | undefined;
+    | { total: number; target: number; percentage: number }
+    | undefined;
 
   return {
     inputTokens: details?.total ?? 0,
@@ -208,9 +209,12 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
       name: tc.name,
       args: tc.args,
       ...(tc.result != null && { result: tc.result }),
+      ...(tc.warnings != null &&
+        tc.warnings.length > 0 && { warnings: tc.warnings }),
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
+    ...(turn.seeded === true && { seeded: true }),
   };
 }
 

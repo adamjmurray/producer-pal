@@ -67,11 +67,14 @@ export function SkillsPreviewScreen(
         selected={preview.selected}
         currentMode={preview.currentMode}
         status={preview.status}
+        enabledToolsOnly={preview.enabledToolsOnly}
+        viewSlot={viewSlot}
         onNotation={preview.setNotation}
         onSmallModel={preview.setSmallModelMode}
+        onEnabledToolsOnly={preview.setEnabledToolsOnly}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
-        <PreviewBody status={preview.status} viewSlot={viewSlot} />
+        <PreviewBody status={preview.status} />
       </div>
     </div>
   );
@@ -83,20 +86,24 @@ interface PreviewControlsProps {
   selected: SkillsCombination;
   currentMode: SkillsCombination | null;
   status: SkillsPreviewStatus;
+  enabledToolsOnly: boolean;
+  viewSlot: preact.JSX.Element;
   onNotation: (notation: Notation) => void;
   onSmallModel: (smallModelMode: boolean) => void;
+  onEnabledToolsOnly: (enabledToolsOnly: boolean) => void;
 }
 
 /**
- * Controls strip: the notation + model-size pickers, and (right aligned) the
- * live-combination badge and the assembled blob's size. The Preview/Source view
- * toggle sits centered in the body header below (see PreviewFrame), matching the
- * editor's toggle position so switching views never moves it.
+ * Controls strip: the notation + model-size pickers and the tool-gating
+ * checkbox, then (right aligned) the live-combination badge, the assembled
+ * blob's size, and the view toggle. The toggle ends this strip and the fragment
+ * editor's alike, so switching views never moves it.
  * @param props - Controls props
  * @returns Controls element
  */
 function PreviewControls(props: PreviewControlsProps): preact.JSX.Element {
-  const { selected, currentMode, status, onNotation, onSmallModel } = props;
+  const { selected, currentMode, status, enabledToolsOnly, viewSlot } = props;
+  const { onNotation, onSmallModel, onEnabledToolsOnly } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
@@ -105,12 +112,53 @@ function PreviewControls(props: PreviewControlsProps): preact.JSX.Element {
       >
         <NotationSelect value={selected.notation} onSelect={onNotation} />
         <ModelSelect value={selected.smallModelMode} onSelect={onSmallModel} />
+        <EnabledToolsToggle
+          value={enabledToolsOnly}
+          onSelect={onEnabledToolsOnly}
+        />
         <div className="ml-auto flex items-center gap-3">
           {isLive(selected, currentMode) && <LiveBadge />}
           <PreviewSize status={status} />
+          {viewSlot}
         </div>
       </div>
     </div>
+  );
+}
+
+interface EnabledToolsToggleProps {
+  value: boolean;
+  onSelect: (enabledToolsOnly: boolean) => void;
+}
+
+/**
+ * Checkbox gating the preview on the tools switched on in Settings — the same
+ * toolset a new conversation connects with, so the blob matches what the AI will
+ * actually be told. Off previews every fragment, which is how to read one whose
+ * tools are currently switched off.
+ * @param props - Toggle props
+ * @returns Toggle element
+ */
+function EnabledToolsToggle(
+  props: EnabledToolsToggleProps,
+): preact.JSX.Element {
+  const { value, onSelect } = props;
+
+  return (
+    <label
+      className="shrink-0 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"
+      title="On: leaves out the sections no enabled tool uses, like a new conversation would. Off: shows every section."
+    >
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={(event) =>
+          onSelect((event.target as HTMLInputElement).checked)
+        }
+        className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600"
+      />
+      Enabled tools only
+    </label>
   );
 }
 
@@ -218,24 +266,22 @@ function PreviewSize(props: PreviewSizeProps): preact.JSX.Element {
 
 interface PreviewBodyProps {
   status: SkillsPreviewStatus;
-  /** The Preview/Source view toggle, centered in the body header (all states). */
-  viewSlot: preact.JSX.Element;
 }
 
 /**
  * The assembled-blob body: a loading/error state, or the read-only skills text
- * with a caption naming its two active slots and a Copy button. Every state is
- * wrapped in {@link PreviewFrame} so the view toggle stays centered in the same
- * on-screen spot as the editor's toggle — switching views never moves it.
+ * with a caption naming the two slots this combination selects (the driver,
+ * whose manifest names every other fragment, and the notation head) and a Copy
+ * button.
  * @param props - Body props
  * @returns Body element
  */
 function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
-  const { status, viewSlot } = props;
+  const { status } = props;
 
   if (status.kind === "loading") {
     return (
-      <PreviewFrame viewSlot={viewSlot}>
+      <PreviewFrame>
         <div className="flex-1 flex items-center justify-center text-zinc-500">
           Assembling preview…
         </div>
@@ -245,7 +291,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
 
   if (status.kind === "error") {
     return (
-      <PreviewFrame viewSlot={viewSlot}>
+      <PreviewFrame>
         <div className="flex-1 flex items-center justify-center px-8 text-center text-red-600 dark:text-red-400">
           {status.message}
         </div>
@@ -253,14 +299,13 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
     );
   }
 
-  const { skills, head, driver, warnings } = status.preview;
+  const { skills, head, driver, dropped, warnings } = status.preview;
 
   return (
     <PreviewFrame
-      viewSlot={viewSlot}
       left={
         <span className="min-w-0 truncate text-xs text-zinc-400 dark:text-zinc-500">
-          Fragments: {driver} + {head}
+          Driver: {driver} · Notation: {head}
         </span>
       }
       right={
@@ -268,6 +313,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
       }
     >
       {warnings.length > 0 && <PreviewWarnings warnings={warnings} />}
+      {dropped.length > 0 && <DroppedNote dropped={dropped} />}
       <MarkdownEditor
         key={skills}
         ariaLabel="Assembled skills preview"
@@ -281,35 +327,54 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
 }
 
 interface PreviewFrameProps {
-  viewSlot: preact.JSX.Element;
-  /** Left cell of the toggle row (the fragment caption in the ready state). */
+  /** Left cell of the caption row (the fragment caption in the ready state). */
   left?: preact.JSX.Element;
-  /** Right cell of the toggle row (the Copy button in the ready state). */
+  /** Right cell of the caption row (the Copy button in the ready state). */
   right?: preact.JSX.Element;
   children: preact.ComponentChildren;
 }
 
 /**
- * The preview content frame: the shared centered column plus a top row that
- * keeps the Preview/Source toggle at the page center — the SAME spot as the
- * editor's toggle — across the loading, error, and ready states. The caption and
- * Copy button fill the row's sides only when there's a blob to describe.
+ * The preview content frame: the shared centered column plus a caption row.
+ * The row is kept (empty) in the loading and error states so the blob doesn't
+ * jump up the page once it arrives.
  * @param props - Frame props
  * @returns Frame element
  */
 function PreviewFrame(props: PreviewFrameProps): preact.JSX.Element {
-  const { viewSlot, left, right, children } = props;
+  const { left, right, children } = props;
 
   return (
     <div
       className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
     >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center h-7 gap-3">
-        <div className="min-w-0 justify-self-start">{left}</div>
-        <div className="justify-self-center">{viewSlot}</div>
-        <div className="justify-self-end">{right}</div>
+      <div className="flex items-center justify-between h-7 gap-3">
+        <div className="min-w-0">{left}</div>
+        <div>{right}</div>
       </div>
       {children}
+    </div>
+  );
+}
+
+interface DroppedNoteProps {
+  dropped: string[];
+}
+
+/**
+ * Names the fragments this blob is missing because the tools that would use them
+ * are switched off in Settings. Without it the preview just looks short — the
+ * gating is the only part of assembly nothing else on screen accounts for.
+ * @param props - Note props
+ * @returns Note element
+ */
+function DroppedNote(props: DroppedNoteProps): preact.JSX.Element {
+  const { dropped } = props;
+
+  return (
+    <div className="shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs text-zinc-600 dark:text-zinc-400">
+      <span className="font-medium">Left out — no enabled tool uses them:</span>{" "}
+      <span className="font-mono">{dropped.join(", ")}</span>
     </div>
   );
 }
@@ -319,8 +384,9 @@ interface PreviewWarningsProps {
 }
 
 /**
- * Banner listing assembly warnings (override cycles, unsafe/too-deep refs) so a
- * broken user override is visible here rather than silently truncating the blob.
+ * Banner listing assembly warnings (unknown fragments, refused nesting, unsafe
+ * refs, overrides keyed to a retired slot) so a broken user override is visible
+ * here rather than silently shortening the blob.
  * @param props - Warnings props
  * @returns Banner element
  */

@@ -11,9 +11,10 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { type ToolSet, jsonSchema } from "ai";
+import { MCP_URL } from "#evals/shared/mcp-url.ts";
 import { parseCompactJSLiteral } from "#src/shared/compact/compact-parser.ts";
+import { mcpResultText } from "./shared/mcp-result-text.ts";
 
-const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 const MCP_CLIENT_NAME = "producer-pal-chat";
 const MCP_CLIENT_VERSION = "1.0.0";
 
@@ -29,17 +30,34 @@ export interface McpTools {
   mcpClient: Client;
 }
 
+/** Options for {@link connectMcp} */
+export interface ConnectMcpOptions {
+  /**
+   * Extra HTTP headers sent on every request this connection makes. The point
+   * is the per-request `x-producer-pal-*` headers (disabled tools, small-model
+   * mode, notation): they are scoped to one caller, so proving that takes a
+   * second connection carrying different ones.
+   */
+  headers?: Record<string, string>;
+}
+
 /**
  * Connect to an MCP server (raw connection without AI SDK tools).
  * Used by e2e tests and eval assertions that need direct MCP access.
  *
  * @param url - MCP server URL
+ * @param options - Connection options ({@link ConnectMcpOptions})
+ * @param options.headers - Extra HTTP headers for every request
  * @returns MCP connection with client and transport
  */
 export async function connectMcp(
-  url: string = DEFAULT_MCP_URL,
+  url: string = MCP_URL,
+  { headers }: ConnectMcpOptions = {},
 ): Promise<McpConnection> {
-  const transport = new StreamableHTTPClientTransport(new URL(url));
+  const transport = new StreamableHTTPClientTransport(
+    new URL(url),
+    headers ? { requestInit: { headers } } : undefined,
+  );
   const client = new Client({
     name: MCP_CLIENT_NAME,
     version: MCP_CLIENT_VERSION,
@@ -57,9 +75,7 @@ export async function connectMcp(
  * @param url - MCP server URL
  * @returns AI SDK tools and the underlying MCP client
  */
-export async function createMcpTools(
-  url: string = DEFAULT_MCP_URL,
-): Promise<McpTools> {
+export async function createMcpTools(url: string = MCP_URL): Promise<McpTools> {
   const transport = new StreamableHTTPClientTransport(new URL(url));
   const mcpClient = new Client({
     name: MCP_CLIENT_NAME,
@@ -94,13 +110,15 @@ export async function createMcpTools(
 /**
  * Extract text content from an MCP tool call result
  *
+ * The payload only — relayed `WARNING:` blocks sit in the content items after
+ * it and are read with `mcpResultWarnings`. Keeping them out is what lets
+ * callers hand this straight to `parseToolResult`.
+ *
  * @param result - The result from an MCP callTool invocation
  * @returns The text content from the first content item, or empty string
  */
 export function extractToolResultText(result: unknown): string {
-  const typed = result as { content?: Array<{ text?: string }> } | null;
-
-  return typed?.content?.[0]?.text ?? "";
+  return mcpResultText(result);
 }
 
 /**

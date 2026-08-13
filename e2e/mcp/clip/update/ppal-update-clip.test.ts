@@ -21,6 +21,10 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import {
+  createClipInSlot,
+  readClipNotes,
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -29,6 +33,35 @@ const emptyMidiTrack = 8;
 
 // Two off-grid notes used by the quantization tests.
 const OFF_GRID_NOTES = "C3 1|1.25\nD3 1|2.75";
+
+/** Read a clip's serialized notes. */
+const readNotes = (clipId: string): Promise<string> =>
+  readClipNotes(ctx, clipId);
+
+/**
+ * Create a 1-bar clip holding off-grid notes for a quantization test.
+ * @param sceneIndex - Session scene index on the empty MIDI track
+ * @param notes - Off-grid bar|beat notation
+ * @returns The new clip's id
+ */
+function createOffGridClip(sceneIndex: number, notes: string): Promise<string> {
+  return createClipInSlot(ctx, `${emptyMidiTrack}/${sceneIndex}`, {
+    notes,
+    length: "1bar",
+  });
+}
+
+/**
+ * Assert a full-strength 1/4 snap of {@link OFF_GRID_NOTES}: beat 1.25 lands on
+ * beat 1 and beat 2.75 on beat 3, with neither off-grid position left behind.
+ * @param notes - The read-back notes string
+ */
+function expectSnappedToQuarters(notes: string): void {
+  expect(notes).not.toContain("1|1.25");
+  expect(notes).not.toContain("1|2.75");
+  expect(notes).toContain("1|1");
+  expect(notes).toContain("1|3");
+}
 
 /**
  * Resets a clip back to the off-grid notes (clearing existing notes with a v0
@@ -160,14 +193,9 @@ describe("ppal-update-clip", () => {
     });
 
     await sleep(100);
-    const verifyMerge = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const mergedClip = parseToolResult<ReadClipResult>(verifyMerge);
 
     // After merging G3 A3 into C3 D3, notes should contain all four
-    expect(mergedClip.notes).toContain("G3");
+    expect(await readNotes(clip.id)).toContain("G3");
 
     // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
@@ -176,104 +204,59 @@ describe("ppal-update-clip", () => {
     });
 
     await sleep(100);
-    const verifyReplace = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const replacedClip = parseToolResult<ReadClipResult>(verifyReplace);
 
-    expect(replacedClip.notes).toContain("C4");
+    const replacedNotes = await readNotes(clip.id);
+
+    expect(replacedNotes).toContain("C4");
     // The cleared notes (e.g. the G3 merged in above) should be gone
-    expect(replacedClip.notes).not.toContain("G3");
+    expect(replacedNotes).not.toContain("G3");
 
     // Test 3: Quantize notes
     // First clear and add some off-grid notes, then snap to a 1/4 grid
     await resetOffGridAndQuantize(clip.id, "1/4");
 
-    const verifyQuantize = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const quantizedClip = parseToolResult<ReadClipResult>(verifyQuantize);
-
     // Full-strength 1/4 snap: beat 1.25 -> beat 1 (1|1), beat 2.75 -> beat 3
     // (1|3). The off-grid decimal positions must be gone.
-    expect(quantizedClip.notes).not.toContain("1|1.25");
-    expect(quantizedClip.notes).not.toContain("1|2.75");
-    expect(quantizedClip.notes).toContain("1|1");
-    expect(quantizedClip.notes).toContain("1|3");
+    expectSnappedToQuarters(await readNotes(clip.id));
   });
 
   it("quantizes MIDI notes using n/N grid aliases", async () => {
     // Setup: a clip with two off-grid notes on the empty MIDI track
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/6`,
-        notes: "C3 1|1.25\nD3 1|2.75",
-        length: "1bar",
-      },
-    });
-    const clip = parseToolResult<{ id: string }>(createResult);
-
-    await sleep(100);
+    const clipId = await createOffGridClip(6, OFF_GRID_NOTES);
 
     // n/4 is the note-value alias for the native 1/4 grid (bridged in
     // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, quantize: 1.0, quantizeGrid: "n/4" },
+      arguments: { ids: clipId, quantize: 1.0, quantizeGrid: "n/4" },
     });
 
     await sleep(100);
-    const verifyQuarter = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const quarterClip = parseToolResult<ReadClipResult>(verifyQuarter);
-
-    expect(quarterClip.notes).not.toContain("1|1.25");
-    expect(quarterClip.notes).not.toContain("1|2.75");
-    expect(quarterClip.notes).toContain("1|1");
-    expect(quarterClip.notes).toContain("1|3");
+    expectSnappedToQuarters(await readNotes(clipId));
 
     // n/12 is the alias for the 1/8T eighth-triplet grid (no decimal spelling).
     // Reset the off-grid notes, then snap to triplets: 1.25 -> beat 1+1/3
     // (1|1+n/12), 2.75 -> beat 2+2/3 (1|2+n/6).
-    await resetOffGridAndQuantize(clip.id, "n/12");
+    await resetOffGridAndQuantize(clipId, "n/12");
 
-    const verifyTriplet = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const tripletClip = parseToolResult<ReadClipResult>(verifyTriplet);
+    const tripletNotes = await readNotes(clipId);
 
-    expect(tripletClip.notes).not.toContain("1|1.25");
-    expect(tripletClip.notes).not.toContain("1|2.75");
-    expect(tripletClip.notes).toContain("1|1+n/12");
-    expect(tripletClip.notes).toContain("1|2+n/6");
+    expect(tripletNotes).not.toContain("1|1.25");
+    expect(tripletNotes).not.toContain("1|2.75");
+    expect(tripletNotes).toContain("1|1+n/12");
+    expect(tripletNotes).toContain("1|2+n/6");
   });
 
   it("limits quantization to a single pitch with quantizePitch", async () => {
     // Two off-grid notes at different pitches and positions.
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/7`,
-        notes: "C3 1|1.25\nE3 1|2.75",
-        length: "1bar",
-      },
-    });
-    const clip = parseToolResult<{ id: string }>(createResult);
-
-    await sleep(100);
+    const clipId = await createOffGridClip(7, "C3 1|1.25\nE3 1|2.75");
 
     // Quantize only C3 to the 1/4 grid: C3 snaps from beat 1.25 to beat 1
     // (1|1); E3 is a different pitch, so it stays off-grid at 1|2.75.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: clip.id,
+        ids: clipId,
         quantize: 1.0,
         quantizeGrid: "1/4",
         quantizePitch: "C3",
@@ -281,17 +264,14 @@ describe("ppal-update-clip", () => {
     });
 
     await sleep(100);
-    const verify = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const quantizedClip = parseToolResult<ReadClipResult>(verify);
+
+    const quantizedNotes = await readNotes(clipId);
 
     // C3 moved onto the grid...
-    expect(quantizedClip.notes).not.toContain("1|1.25");
-    expect(quantizedClip.notes).toContain("1|1");
+    expect(quantizedNotes).not.toContain("1|1.25");
+    expect(quantizedNotes).toContain("1|1");
     // ...but E3 was left untouched at its off-grid position.
-    expect(quantizedClip.notes).toContain("1|2.75");
+    expect(quantizedNotes).toContain("1|2.75");
   });
 
   it("updates arrangement clip position and length", async () => {

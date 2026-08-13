@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -8,7 +9,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect } from "vitest";
 import {
   connectMcp,
   extractToolResultText,
@@ -42,6 +43,17 @@ export const KICK_FILE = resolve(
 );
 
 /**
+ * A generated one-bar 4/4 drum loop at the test Set's tempo — 98000 frames at
+ * 44100 Hz is exactly 4 beats at 108 BPM. SAMPLE_FILE is under a bar long, so
+ * anything that needs a bar-aligned audio region uses this instead. See
+ * live-sets/samples/generate-drum-loop.mjs.
+ */
+export const DRUM_LOOP_FILE = resolve(
+  __dirname,
+  "../live-sets/samples/drum-loop-1bar.wav",
+);
+
+/**
  * Parse a tool result as JSON with type casting.
  * Throws if the result contains unexpected warnings.
  * Use parseToolResultWithWarnings() for results where warnings are expected.
@@ -64,6 +76,23 @@ export function parseToolResult<T>(result: unknown): T {
     console.error("Failed to parse JSON response. Raw text:", text);
     throw error;
   }
+}
+
+/**
+ * Parse a batch create/update result and assert its shape. Every batch tool
+ * answers with an array whatever it operates on, so the scene and track suites
+ * share this check before their own per-domain assertions.
+ * @param result - Raw tool result from a batch call
+ * @param count - Expected number of items in the batch
+ * @returns The parsed batch items
+ */
+export function parseBatchResult<T>(result: unknown, count: number): T[] {
+  const batch = parseToolResult<T[]>(result);
+
+  expect(Array.isArray(batch)).toBe(true);
+  expect(batch).toHaveLength(count);
+
+  return batch;
 }
 
 /**
@@ -139,7 +168,7 @@ export const LIVE_SET_PATH =
  * Useful for waiting for Live API state to settle.
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((done) => setTimeout(done, ms));
 }
 
 /**
@@ -215,7 +244,7 @@ export async function createTestDevice(
 
   await sleep(100);
 
-  return String(created.id);
+  return created.id;
 }
 
 /**
@@ -243,6 +272,9 @@ export interface CreateClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  length?: string;
+  /** Audio clips only: whether Live is time-stretching the sample */
+  warping?: boolean;
 }
 
 /** Result from ppal-update-clip tool (single clip) */
@@ -284,4 +316,7 @@ export interface ReadClipResult {
   warpMode?: string;
   warpMarkers?: Array<{ sampleTime: number; beatTime: number }>;
   firstStart?: string;
+  sampleFile?: string;
+  sampleLength?: number;
+  sampleRate?: number;
 }

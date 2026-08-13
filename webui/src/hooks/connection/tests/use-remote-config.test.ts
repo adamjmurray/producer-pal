@@ -389,13 +389,62 @@ describe("useRemoteConfig", () => {
     );
   });
 
-  it("defaults serverNotation to barbeat", () => {
+  it("reports serverNotation as unknown until the first answer lands", async () => {
+    // Unlike the booleans, notation must not start at a provisional default: a
+    // new conversation locks the notation it sees at its first send, so a guess
+    // here would lock the wrong grammar for that conversation's whole life.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),
     );
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    expect(result.current.serverNotation).toBe("barbeat");
+    expect(result.current.serverNotation).toBeNull();
+
+    // A response with no notation field IS an answer: fall back to the default.
+    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+  });
+
+  it("resolves serverNotation to the default when /config is unreachable", async () => {
+    // A consumer that waits for a known notation (the chat's first-send gate)
+    // would park forever if a dead server left it null.
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
+    const { result } = renderHook(() => useRemoteConfig("connecting"));
+
+    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+  });
+
+  it("resolves serverNotation to the default when /config returns non-OK", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({}),
+    } as Response);
+
+    const { result } = renderHook(() => useRemoteConfig("connecting"));
+
+    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+  });
+
+  it("leaves serverNotation unknown when the request was aborted", async () => {
+    // An abort is not an answer — we tore the request down — so it must not
+    // resolve the notation to a default that a later, real answer would replace.
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      const signal = (init as RequestInit | undefined)?.signal;
+
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    });
+
+    const { result, unmount } = renderHook(() => useRemoteConfig("connecting"));
+
+    await act(async () => {
+      unmount();
+      await Promise.resolve();
+    });
+
+    expect(result.current.serverNotation).toBeNull();
   });
 
   it("fetches serverNotation on mount", async () => {

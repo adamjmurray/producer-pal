@@ -18,6 +18,30 @@ export interface EditorIoTarget {
   getContent: () => string;
 }
 
+/** Everything the import/export handlers need from their screen. */
+export interface ContextIoOptions {
+  /** The editor-state hook (import/getContent surface). */
+  editor: EditorIoTarget;
+  /** Human basename for the export file (dated + slugified at download time). */
+  exportBasename: string;
+  /**
+   * The document's built-in default, for screens that have one. Exported when
+   * the pane has no override, because that default IS what the pane is showing
+   * — without it Export saves an empty file from a screen full of text.
+   */
+  builtIn?: string;
+  /**
+   * Surface a picker rejection (too-large/unreadable) to the user, mirroring the
+   * drop zone's notice; a plain cancel stays silent.
+   */
+  onImportError?: (message: string) => void;
+  /**
+   * Called when an import applies text (drop or pick), so a caller can clear any
+   * stale rejection notice a prior bad import left showing.
+   */
+  onImportSuccess?: () => void;
+}
+
 /** Wired import/export handlers for an editor's controls strip + drop zone. */
 export interface ContextIoHandlers {
   /** File-picker import (controls-strip "Import" button). */
@@ -32,20 +56,15 @@ export interface ContextIoHandlers {
  * Build the import/export handlers shared by the context and skills editors:
  * the file picker, the drag-drop apply, and the `.md` export. Both editors wire
  * their controls-strip buttons and {@link MarkdownDropZone} to these.
- * @param editor - The editor-state hook (import/getContent surface)
- * @param exportBasename - Human basename for the export file (dated + slugified)
- * @param onImportError - Surface a picker rejection (too-large/unreadable) to the
- *   user, mirroring the drop zone's notice; a plain cancel stays silent
- * @param onImportSuccess - Called when an import applies text (drop or pick), so a
- *   caller can clear any stale rejection notice a prior bad import left showing
+ * @param options - Editor surface, export basename, built-in, notice callbacks
  * @returns The wired handlers
  */
 export function makeContextIoHandlers(
-  editor: EditorIoTarget,
-  exportBasename: string,
-  onImportError?: (message: string) => void,
-  onImportSuccess?: () => void,
+  options: ContextIoOptions,
 ): ContextIoHandlers {
+  const { editor, exportBasename, builtIn } = options;
+  const { onImportError, onImportSuccess } = options;
+
   const onImportText = (text: string): void => {
     onImportSuccess?.();
     void editor.handleImport(text);
@@ -61,10 +80,14 @@ export function makeContextIoHandlers(
     });
   };
 
+  // An empty draft on a screen with a built-in means the pane is showing that
+  // default, un-customized — so that is what Export saves. Falling through on
+  // empty rather than on `hasOverride` also covers an override the user has just
+  // emptied, where the default is what the file would revert to anyway.
   const onExport = (): void =>
     downloadTextFile(
       markdownExportFilename(exportBasename),
-      editor.getContent(),
+      editor.getContent() || (builtIn ?? ""),
     );
 
   return { onImport, onExport, onImportText };

@@ -12,6 +12,7 @@ import {
   evaluateTransformAST,
 } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
+import { evaluateMathFunction } from "#src/notation/transform/helpers/transform-functions-helpers.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
   createTestNote,
@@ -230,6 +231,46 @@ describe("Transform Evaluator Error Handling", () => {
       );
 
       expect(typeof result).toBe("number");
+    });
+
+    // The grammar's swingArgumentList only accepts 1-2 arguments, so these
+    // counts can only arrive from a hand-built AST — the guard is the contract
+    // for direct callers.
+    it.each([
+      [[], "no arguments"],
+      [[1, 2, 3], "three arguments"],
+    ])("rejects swing() with %s", (args) => {
+      expect(() => {
+        evaluateFunction(
+          "swing",
+          args,
+          false,
+          false,
+          0,
+          4,
+          4,
+          { start: 0, end: 4 },
+          {},
+          evaluateExpression,
+        );
+      }).toThrow("Function swing() requires 1-2 arguments");
+    });
+
+    // evaluateFunction gates the math dispatch to the seven known names, so an
+    // unhandled name only reaches the switch through a direct call.
+    it("rejects an unknown math function name", () => {
+      expect(() => {
+        evaluateMathFunction(
+          "sqrt",
+          [1],
+          0,
+          4,
+          4,
+          { start: 0, end: 4 },
+          {},
+          evaluateExpression,
+        );
+      }).toThrow("Unknown math function: sqrt()");
     });
   });
 

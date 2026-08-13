@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   extractMaxPanValue,
@@ -36,7 +36,7 @@ export function setParamValues(
 ): void {
   for (const entry of params) {
     const key = entry.name.trim();
-    const rawValue = String(entry.value).trim();
+    const rawValue = entry.value.trim();
 
     if (key === "") {
       console.warn(`${toolName}: skipping param with empty name`);
@@ -102,9 +102,10 @@ function setOneParam(
     return;
   }
 
+  // A purely numeric key is an absolute Live API param id.
   const param =
     resolveParamByName(device, key) ??
-    (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
+    (/^\d+$/.test(key) ? LiveAPI.from(key) : null);
 
   if (!param?.exists()) {
     console.warn(`${toolName}: param "${key}" not found on device`);
@@ -149,28 +150,6 @@ function applyNestedParam(
   if (target) {
     setParamValues(target, [{ name: paramName, value: rawValue }], toolName);
   }
-}
-
-/**
- * Resolve a param ID relative to a target device
- * @param device - LiveAPI device object
- * @param paramId - Param identifier (path ending in "parameters N", or absolute ID)
- * @returns LiveAPI param object or null
- */
-function resolveParamForDevice(
-  device: LiveAPI,
-  paramId: string,
-): LiveAPI | null {
-  // If paramId ends with "parameters N", extract index and resolve relative to device
-  // This enables multi-path param updates where the same param index is applied to each device
-  const match = paramId.match(/parameters (\d+)$/);
-
-  if (match) {
-    return device.child("parameters", match[1] as string);
-  }
-
-  // Default: use absolute ID resolution (backward compatible for single-device updates)
-  return LiveAPI.from(paramId);
 }
 
 /**

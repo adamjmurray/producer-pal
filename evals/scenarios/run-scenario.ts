@@ -32,6 +32,7 @@ import {
   mergeConfigs,
   resolveLiveSetPath,
   runCorrectnessAssertion,
+  runMessageTurns,
   toCheckSummaries,
   validateConfig,
 } from "./run-scenario-helpers.ts";
@@ -62,6 +63,9 @@ export interface RunScenarioOptions {
   skipJudge?: boolean;
   /** Skip the post-failure self-reflection turn (default: inject one). */
   skipReflection?: boolean;
+  /** Seed the opening connect turn instead of paying the model for it
+   *  (default: true). See `seed-connect.ts`. */
+  seedConnect?: boolean;
 }
 
 /**
@@ -119,19 +123,12 @@ export async function runScenario(
     await scenario.setup?.(session.mcpClient);
 
     // 4. Run each message turn
-    for (const [i, message] of scenario.messages.entries()) {
-      const turnStart = Date.now();
-      const turnResult = await session.sendMessage(message, i + 1);
-
-      turns.push({
-        turnIndex: i,
-        userMessage: message,
-        assistantResponse: turnResult.text,
-        toolCalls: turnResult.toolCalls,
-        durationMs: Date.now() - turnStart,
-        stepUsages: turnResult.stepUsages,
-      });
-    }
+    await runMessageTurns(
+      scenario,
+      session,
+      turns,
+      options.seedConnect ?? true,
+    );
 
     // 5. Run all assertions (correctness, efficiency, judge)
     const assertionResults = await runAllAssertions(
@@ -434,7 +431,8 @@ async function printJudgeSection(
     results.push(result);
 
     const details = result.details as
-      { pass: boolean; issues: string[] } | undefined;
+      | { pass: boolean; issues: string[] }
+      | undefined;
 
     printJudgeDetails(details);
   }

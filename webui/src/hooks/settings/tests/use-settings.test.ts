@@ -45,10 +45,8 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Default",
-      temperature: 1.0,
-      showThoughts: true,
       hasApiKey: false,
     });
   });
@@ -57,8 +55,6 @@ describe("useSettings", () => {
     localStorage.setItem("gemini_api_key", "test-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
     localStorage.setItem("thinking", "High");
-    localStorage.setItem("temperature", "0.7");
-    localStorage.setItem("showThoughts", "false");
 
     const { result } = renderHook(() => useSettings());
 
@@ -68,8 +64,6 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
       thinking: "High",
-      temperature: 0.7,
-      showThoughts: false,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
     expect(result.current.hasApiKey).toBe(true);
@@ -80,20 +74,16 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         thinking: "Max",
-        temperature: 1.5,
-        showThoughts: false,
       }),
     );
 
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Max",
-      temperature: 1.5,
-      showThoughts: false,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
     expect(result.current.hasApiKey).toBe(true);
@@ -107,17 +97,15 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         thinking: "Adaptive",
-        temperature: 1.0,
-        showThoughts: true,
       }),
     );
 
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
@@ -130,8 +118,6 @@ describe("useSettings", () => {
         model: "qwen3.6",
         baseUrl: "http://localhost:11434",
         thinking: "Max",
-        temperature: 1.0,
-        showThoughts: true,
       }),
     );
 
@@ -156,10 +142,10 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
     });
 
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
   });
 
   it("savedModel only updates on saveSettings, not setModel", async () => {
@@ -167,16 +153,16 @@ describe("useSettings", () => {
     const initialSavedModel = result.current.savedModel;
 
     await act(() => {
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
     });
     // In-modal change should NOT flip the App-level routing model.
-    expect(result.current.model).toBe("gemini-3.6-flash");
+    expect(result.current.model).toBe("gemini-3.7-flash");
     expect(result.current.savedModel).toBe(initialSavedModel);
 
     await act(async () => {
       await result.current.saveSettings();
     });
-    expect(result.current.savedModel).toBe("gemini-3.6-flash");
+    expect(result.current.savedModel).toBe("gemini-3.7-flash");
   });
 
   it("savedProvider only updates on saveSettings, not setProvider", async () => {
@@ -231,26 +217,6 @@ describe("useSettings", () => {
     expect(result.current.thinking).toBe("Off");
   });
 
-  it("updates temperature when setTemperature is called", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setTemperature(0.5);
-    });
-
-    expect(result.current.temperature).toBe(0.5);
-  });
-
-  it("updates showThoughts when setShowThoughts is called", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-
-    expect(result.current.showThoughts).toBe(false);
-  });
-
   it("saveSettings before post-mount decrypt does not wipe stored apiKeys", async () => {
     // Seed two providers with encrypted apiKeys so we can detect a wipe.
     for (const provider of ["gemini", "openai"] as const) {
@@ -260,8 +226,6 @@ describe("useSettings", () => {
           apiKey: await encryptApiKey(`${provider}-stored`),
           model: "stored-model",
           thinking: "Default",
-          temperature: 1.0,
-          showThoughts: true,
         }),
       );
     }
@@ -298,10 +262,8 @@ describe("useSettings", () => {
     await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3.6-flash");
+      result.current.setModel("gemini-3.7-flash");
       result.current.setThinking("Max");
-      result.current.setTemperature(0.8);
-      result.current.setShowThoughts(false);
     });
 
     await act(async () => {
@@ -324,10 +286,8 @@ describe("useSettings", () => {
     });
 
     await expectStored("gemini", "new-key", {
-      model: "gemini-3.6-flash",
+      model: "gemini-3.7-flash",
       thinking: "Max",
-      temperature: 0.8,
-      showThoughts: false,
     });
   });
 
@@ -508,15 +468,11 @@ describe("useSettings", () => {
       result.current.setApiKey("gemini-key");
       result.current.setModel("gemini-2.5-pro");
       result.current.setThinking("Max");
-      result.current.setTemperature(0.5);
-      result.current.setShowThoughts(false);
     });
 
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
       thinking: "Max",
-      temperature: 0.5,
-      showThoughts: false,
     });
 
     // Switch to OpenAI - should use defaults
@@ -528,8 +484,6 @@ describe("useSettings", () => {
       apiKey: "",
       model: "gpt-5.6-terra",
       thinking: "Default",
-      temperature: 1.0,
-      showThoughts: true,
     });
 
     // Configure OpenAI with different settings
@@ -537,8 +491,6 @@ describe("useSettings", () => {
       result.current.setApiKey("openai-key");
       result.current.setModel("gpt-5.4-mini");
       result.current.setThinking("Off");
-      result.current.setTemperature(1.5);
-      result.current.setShowThoughts(false);
     });
 
     // Switch back to Gemini - should restore Gemini settings
@@ -550,8 +502,6 @@ describe("useSettings", () => {
       apiKey: "gemini-key",
       model: "gemini-2.5-pro",
       thinking: "Max",
-      temperature: 0.5,
-      showThoughts: false,
     });
 
     // Switch back to OpenAI - should restore OpenAI settings
@@ -563,8 +513,6 @@ describe("useSettings", () => {
       apiKey: "openai-key",
       model: "gpt-5.4-mini",
       thinking: "Off",
-      temperature: 1.5,
-      showThoughts: false,
     });
   });
 
@@ -574,7 +522,6 @@ describe("useSettings", () => {
       apiKey: string;
       model: string;
       thinking?: string;
-      temperature: number;
     }
     const setups: ProviderSetup[] = [
       {
@@ -582,26 +529,22 @@ describe("useSettings", () => {
         apiKey: "gemini-key",
         model: "gemini-2.5-pro",
         thinking: "Max",
-        temperature: 0.5,
       },
       {
         provider: "openai",
         apiKey: "openai-key",
         model: "gpt-5.4-mini",
         thinking: "Off",
-        temperature: 1.5,
       },
       {
         provider: "openrouter",
         apiKey: "openrouter-key",
         model: "minimax/minimax-m2:free",
-        temperature: 0.8,
       },
       {
         provider: "mistral",
         apiKey: "mistral-key",
         model: "mistral-small-latest",
-        temperature: 1.2,
       },
     ];
     const last = setups.at(-1)!;
@@ -617,7 +560,6 @@ describe("useSettings", () => {
         result.current.setApiKey(s.apiKey);
         result.current.setModel(s.model);
         if (s.thinking != null) result.current.setThinking(s.thinking);
-        result.current.setTemperature(s.temperature);
       });
     }
 
@@ -649,7 +591,6 @@ describe("useSettings", () => {
     expect(result2.current).toMatchObject({
       provider: last.provider,
       model: last.model,
-      temperature: last.temperature,
     });
     await waitFor(() => expect(result2.current.apiKey).toBe(last.apiKey));
 
@@ -658,7 +599,6 @@ describe("useSettings", () => {
       await act(() => result2.current.setProvider(s.provider));
       expect(result2.current).toMatchObject({
         model: s.model,
-        temperature: s.temperature,
         ...(s.thinking != null ? { thinking: s.thinking } : {}),
       });
       await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
@@ -725,20 +665,16 @@ describe("useSettings", () => {
     expect(result.current.saveError).toBeNull();
   });
 
-  it("resetBehaviorToDefaults resets temperature, thinking, and showThoughts", async () => {
+  it("resetBehaviorToDefaults resets thinking", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Set some non-default values
+    // Set a non-default value
     await act(() => {
-      result.current.setTemperature(0.5);
       result.current.setThinking("Off");
-      result.current.setShowThoughts(false);
     });
 
     expect(result.current).toMatchObject({
-      temperature: 0.5,
       thinking: "Off",
-      showThoughts: false,
     });
 
     // Reset to defaults
@@ -747,23 +683,13 @@ describe("useSettings", () => {
     });
 
     expect(result.current).toMatchObject({
-      temperature: 1.0,
       thinking: "Default", // Default for gemini
-      showThoughts: true,
     });
   });
 
-  it("isToolEnabled returns true for enabled tools", () => {
+  it("setEnabledTools records a disabled tool", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Tools are enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
-  });
-
-  it("isToolEnabled returns false for disabled tools", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Disable a tool
     await act(() => {
       result.current.setEnabledTools({
         ...result.current.enabledTools,
@@ -771,26 +697,10 @@ describe("useSettings", () => {
       });
     });
 
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.enabledTools).toStrictEqual({
+      "ppal-connect": false,
+    });
   });
-
-  it("isToolEnabled returns true for unknown tools (default)", () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Unknown tools default to enabled
-    expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
-  });
-
-  it.each(["mistral", "openrouter", "lmstudio", "ollama", "custom"] as const)(
-    "setShowThoughts works for %s provider",
-    async (provider) => {
-      const { result } = renderHook(() => useSettings());
-
-      await act(() => result.current.setProvider(provider));
-      await act(() => result.current.setShowThoughts(false));
-      expect(result.current.showThoughts).toBe(false);
-    },
-  );
 
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
@@ -849,8 +759,8 @@ describe("useSettings", () => {
     localStorage.setItem("producer_pal_enabled_tools", "invalid json{");
     const { result } = renderHook(() => useSettings());
 
-    // Should fallback to defaults, all tools enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    // Should fall back to an empty map (no explicit overrides)
+    expect(result.current.enabledTools).toStrictEqual({});
     // Cleanup
     localStorage.removeItem("producer_pal_enabled_tools");
   });

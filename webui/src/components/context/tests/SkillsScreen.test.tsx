@@ -67,6 +67,7 @@ function overrides(
     saveStatus: "idle",
     saveError: null,
     saveSlot: vi.fn().mockResolvedValue(true),
+    setSlotEnabled: vi.fn().mockResolvedValue(true),
     resetSlot: vi.fn().mockResolvedValue(true),
     refresh: vi.fn().mockResolvedValue(undefined),
     resetSaveStatus: vi.fn(),
@@ -166,14 +167,16 @@ describe("SkillsScreen", () => {
     expect(screen.getByText("No skills fragments available.")).toBeTruthy();
   });
 
-  it("shows the built-in with a Customize button for an untracked slot", () => {
+  it("seeds the editor with the built-in for an untracked slot", () => {
     renderSlots([slot()]);
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
-    // With no override the built-in is the sole (read-only) content, offered
-    // with a Customize fork — no editable pane, reveal toggle, reset, or drift.
-    expect(editorValues()).toContain("BUILT-IN");
-    expect(screen.getByText("Customize")).toBeTruthy();
+    // With no override the built-in is the editor's starting text, labelled as
+    // the fork invitation — no reveal toggle, reset, or drift yet.
+    expect(editorValues()).toStrictEqual(["BUILT-IN"]);
+    expect(
+      screen.getByText("Default — start typing to customize"),
+    ).toBeTruthy();
     expect(screen.queryByText("Show default")).toBeNull();
     expect(screen.queryByLabelText("Reset to default")).toBeNull();
     expect(screen.queryByText(/Default changed since you forked/)).toBeNull();
@@ -182,22 +185,64 @@ describe("SkillsScreen", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
   });
 
-  it("forks the built-in into an override when Customize is clicked", async () => {
+  it("forks the built-in into an override on the first keystroke", async () => {
     const saveSlot = vi.fn().mockResolvedValue(true);
 
     renderSlots([slot({ builtIn: "FORK-ME", override: "" })], { saveSlot });
 
-    fireEvent.click(screen.getByText("Customize"));
+    fireEvent.input(screen.getByTestId("editor"), {
+      target: { value: "FORK-ME NOW" },
+    });
+    fireEvent.blur(screen.getByTestId("editor"));
 
+    // The chrome flips immediately; the edit itself is what gets persisted.
+    expect(screen.getByText("Your override")).toBeTruthy();
     await waitFor(() => {
-      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "FORK-ME");
+      expect(saveSlot).toHaveBeenCalledWith("barbeat-standard", "FORK-ME NOW");
     });
   });
 
-  it("shows the selected slot's one-line explainer", () => {
-    renderSlots([slot({ description: "Explains what this fragment does." })]);
+  it("shows the selected slot's title and one-line explainer", () => {
+    // The dropdown lists the filename, so the human title has to land here.
+    renderSlots([
+      slot({
+        title: "bar|beat notation (standard)",
+        description: "Explains what this fragment does.",
+      }),
+    ]);
 
-    expect(screen.getByText("Explains what this fragment does.")).toBeTruthy();
+    expect(screen.getByText("bar|beat notation (standard)")).toBeTruthy();
+    expect(screen.getByText(/Explains what this fragment does\./)).toBeTruthy();
+  });
+
+  it("switches the selected fragment off from the Include checkbox", () => {
+    const setSlotEnabled = vi.fn().mockResolvedValue(true);
+
+    renderSlots([slot({ override: "MINE" })], { setSlotEnabled });
+
+    const toggle = screen.getByLabelText("Include") as HTMLInputElement;
+
+    expect(toggle.checked).toBe(true);
+
+    fireEvent.click(toggle);
+
+    expect(setSlotEnabled).toHaveBeenCalledWith("barbeat-standard", false);
+  });
+
+  it("shows a switched-off fragment unchecked, and marks it in the dropdown", () => {
+    renderSlots([slot({ enabled: false })]);
+
+    expect((screen.getByLabelText("Include") as HTMLInputElement).checked).toBe(
+      false,
+    );
+    expect(screen.getByRole("option").textContent).toContain("✕");
+  });
+
+  it("offers no Include toggle for a slot that cannot be switched off", () => {
+    // The drivers ARE the document — switching one off would empty the blob.
+    renderSlots([slot({ name: "standard", canDisable: false })]);
+
+    expect(screen.queryByLabelText("Include")).toBeNull();
   });
 
   it("shows a drift note for a drifted slot", () => {
@@ -218,6 +263,57 @@ describe("SkillsScreen", () => {
     const note = screen.getByText(/Default changed since you forked/);
 
     expect(note.textContent).not.toContain("(v");
+  });
+
+  it("shows the split-staleness fix on the fragment being edited", () => {
+    renderSlots([
+      slot({
+        override: "MINE",
+        splitStale: { sibling: "barbeat-standard-write", sharedLines: 7 },
+      }),
+    ]);
+
+    const note = screen.getByRole("alert");
+
+    expect(note.textContent).toContain("predates the writing-notes split");
+    expect(note.textContent).toContain("7 of its lines");
+    expect(note.textContent).toContain("barbeat-standard-write.md");
+  });
+
+  it("points at a stale fragment from the driver, and jumps to it", () => {
+    // The editor opens on the driver, so that is where a stale fragment
+    // elsewhere in the list has to be announced — otherwise the note waits to be
+    // selected and never reaches the user who has the problem.
+    renderSlots([
+      slot({ name: "standard", builtIn: "DRIVER", canDisable: false }),
+      slot({
+        name: "stark",
+        builtIn: "STARK",
+        override: "MINE",
+        splitStale: { sibling: "stark-write", sharedLines: 3 },
+      }),
+    ]);
+
+    expect(screen.getByRole("alert").textContent).toContain("stark.md");
+
+    fireEvent.click(screen.getByText("Open it"));
+
+    expect(editorValues()).toContain("MINE");
+  });
+
+  it("leaves an unaffected fragment to the dropdown glyph alone", () => {
+    // The banner is the driver's and the affected slot's; repeating it on all 25
+    // other fragments until the fix lands is noise.
+    renderSlots([
+      slot({ name: "library" }),
+      slot({
+        name: "stark",
+        override: "MINE",
+        splitStale: { sibling: "stark-write", sharedLines: 3 },
+      }),
+    ]);
+
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("surfaces an external-update banner when the override changes under a clean draft", () => {
@@ -306,22 +402,14 @@ describe("SkillsScreen", () => {
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.queryByTestId("preview-screen")).toBeNull();
 
-    // The toggle offers the preview (with its included fragments) and switches.
-    const toPreview = screen.getByText("Preview");
-
-    expect(toPreview.getAttribute("title")).toBe(
-      "Preview with included fragments inserted",
-    );
-    fireEvent.click(toPreview);
+    // The toggle offers the whole-document preview, and switches to it.
+    fireEvent.click(screen.getByLabelText("Preview assembled skills"));
 
     expect(screen.getByTestId("preview-screen")).toBeTruthy();
     expect(screen.queryByLabelText("Skill fragment")).toBeNull();
 
-    // Still reachable inside the preview, now offering the raw fragment source.
-    const toSource = screen.getByText("Source");
-
-    expect(toSource.getAttribute("title")).toBe("Show the raw skill fragment");
-    fireEvent.click(toSource);
+    // Still reachable inside the preview, now offering the fragment editor.
+    fireEvent.click(screen.getByLabelText("Edit skill fragments"));
 
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
   });
@@ -329,7 +417,7 @@ describe("SkillsScreen", () => {
   it("keeps the preview reachable while the fragments list is loading", () => {
     renderScreen({ kind: "loading" });
 
-    fireEvent.click(screen.getByText("Preview"));
+    fireEvent.click(screen.getByLabelText("Preview assembled skills"));
 
     expect(screen.getByTestId("preview-screen")).toBeTruthy();
   });

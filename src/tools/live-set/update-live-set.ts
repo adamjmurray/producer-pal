@@ -9,7 +9,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { intervalsToPitchClasses } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   findLocator,
   getLocatorId,
@@ -36,7 +36,6 @@ interface UpdateLiveSetArgs {
   locatorId?: string;
   locatorTime?: string;
   locatorName?: string;
-  arrangementFollower?: boolean;
 }
 
 interface LocatorOperationOptions {
@@ -67,7 +66,6 @@ type UpdateLiveSetContext = Partial<ToolContext> & { silenceWavPath?: string };
  * @param args.locatorId - Locator ID for delete/rename
  * @param args.locatorTime - Bar|beat position for create/delete/rename
  * @param args.locatorName - Name for create/rename, or name filter for delete
- * @param args.arrangementFollower - Whether tracks follow arrangement timeline
  * @param context - Internal context object with silenceWavPath for audio clips
  * @returns Updated Live Set information
  */
@@ -80,7 +78,6 @@ export async function updateLiveSet(
     locatorId,
     locatorTime,
     locatorName,
-    arrangementFollower,
   }: UpdateLiveSetArgs = {},
   context: UpdateLiveSetContext = {},
 ): Promise<Record<string, unknown>> {
@@ -123,12 +120,6 @@ export async function updateLiveSet(
           : "Scale applied to selected clips and defaults for new clips.",
       );
     }
-  }
-
-  if (arrangementFollower != null) {
-    liveSet.set("back_to_arranger", arrangementFollower ? 0 : 1);
-
-    result.arrangementFollower = arrangementFollower;
   }
 
   // Include scalePitches only when a non-empty scale was actually applied

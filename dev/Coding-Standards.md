@@ -40,8 +40,8 @@ Test files should follow this pattern:
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
 2. **Split tests**: `{filename}-{feature-group}.test.ts` (or `.tsx`) - When test
-   files exceed size limits (600 lines for source, 800 for tests), split by
-   feature area
+   files exceed size limits (325 lines for source, 650 for whole test suites),
+   split by feature area
    - Example: `update-clip-audio-arrangement.test.ts`
    - Example: `read-track-drums-advanced.test.ts`
    - Example: `duplicate-arrangement-length.test.ts`
@@ -52,10 +52,17 @@ Test files should follow this pattern:
 4. **Helper tests**: `{filename}-helpers.test.ts` - Tests for helper functions
    - Example: `duplicate-helpers.test.ts`
 
-5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities and shared
-   test setup (NOT a test file itself)
+5. **Test utilities**: `{filename}-test-helpers.ts` - Mock utilities, fixtures,
+   and shared test setup. A test file (see dev/Testing.md), but not a suite, so
+   it keeps the 325-line source budget.
    - Example: `duplicate-test-helpers.ts`
    - Example: `update-clip-test-helpers.ts`
+
+Those names, plus `*.spec.ts` / `*.spec.tsx` (Playwright suites in `e2e/`),
+`*-test-cases.ts`, and the `test/`, `tests/`, `test-cases/`, and `test-utils/`
+directories, are the project's complete definition of a test file. It lives in
+`src/test/helpers/test-file-classification.ts`; do not add a category without
+updating it.
 
 ### Naming Utilities and Helpers
 
@@ -84,6 +91,26 @@ Peggy-generated parsers are wrapped in TypeScript files (e.g.,
 - Null checks: `value == null` (covers both null/undefined)
 - ES6 shorthand: `{ name, color }`
 - Minimize comments, prefer self-documenting code
+
+### Index Access (`noUncheckedIndexedAccess`)
+
+`noUncheckedIndexedAccess: true` is set in every tsconfig (`src`, `webui`,
+`scripts`, `evals`, `config`, and the four `e2e/*`), so indexing an array or
+record yields `T | undefined`.
+
+Where the index is provably in range — a bounded loop, a length-checked lookup —
+narrow with a commented `as T`:
+
+```typescript
+for (let i = 0; i < tracks.length; i++) {
+  const track = tracks[i] as Track; // bounded by tracks.length
+}
+```
+
+- **Never use `!`** — the linter forbids the non-null assertion.
+- A commented `as` is for an index you can _prove_ is in range. Never delete a
+  runtime guard to buy coverage — warn-and-skip is a product requirement, not
+  coverage noise.
 
 ## Tools
 
@@ -157,6 +184,77 @@ ChainPath.device(i)                   → DevicePath (chainable, enables nesting
 ClipSlotPath.clip()                   → string
 ```
 
+### Audio Clip Warping
+
+Verified against Live 12. Marker properties are beats while a clip is warped and
+seconds while it is not, and toggling `warping` does **not** convert them
+uniformly:
+
+| Toggle     | `start_marker` | `loop_start` / `loop_end` | `end_marker`   | `looping`   |
+| ---------- | -------------- | ------------------------- | -------------- | ----------- |
+| warp → on  | converted      | converted                 | converted      | unchanged   |
+| warp → off | converted      | converted                 | **left as-is** | forced to 0 |
+
+Two consequences:
+
+- `end_marker` is the one property Live leaves stale on unwarp.
+  `unwarpAudioClip` (`src/tools/clip/helpers/audio-clip-warping.ts`) exists only
+  to restate it. Nothing needs restating when warp goes on.
+- An unwarped audio clip can never be looping — setting `looping` forces
+  `warping` back on. So any `isLooping` branch is unreachable in an unwarped
+  code path.
+
+Live's own conversion runs through the **warp grid**, not `beats * 60 / tempo`.
+On a time-stretched clip the two differ; they only coincide when the grid
+happens to match the Set tempo. Live exposes the grid as `warp_markers` but has
+no `beat_to_sample_time`, so there is no cheap exact conversion — which is why
+`unwarpAudioClip` resets `end_marker` to the whole sample instead of converting
+it.
+
+That does not affect `start`/`length`, which name a region rather than preserve
+one. An unwarped clip plays in real time, so its region is beats at the Set
+tempo in both directions: `markerBeatsPerUnit`
+(`src/tools/clip/helpers/audio-clip-timing.ts`) is the one conversion, and
+`audioClipTiming` reads back through the same factor.
+
+Reading a marker also needs `markerClampSeconds`. A stale `end_marker` can point
+past the end of the file, and read-clip clamps it to the sample — so anything
+deriving a region from a marker has to clamp too, or a `length` taken from
+read-clip writes back a region that starts past the end of the sample and plays
+silence. The warp toggle is applied **before** the region write in
+`processSingleClipUpdate`, so `warping: false` plus `start`/`length` in one call
+compose: the unwarp resets `end_marker` first, then the region lands on top of
+it, in seconds.
+
+### The Loop Toggle
+
+Verified against Live 12, MIDI and audio alike. Every clip has two regions, and
+`looping` picks which one plays:
+
+| `looping` | region that plays             |
+| --------- | ----------------------------- |
+| off       | `start_marker` / `end_marker` |
+| on        | `loop_start` / `loop_end`     |
+
+Flipping the flag does **not** carry the region across — it reveals whatever the
+other pair was last left with, which on a fresh clip is the whole thing.
+`calculateBeatPositions` restates the playing region into the newly selected
+pair, so `looping` changes the loop flag and nothing else (ADR-0020).
+
+Writing them is not symmetric, and these two are the ones that bite:
+
+- `start_marker` is **ignored** while `looping` is off — the set reports success
+  and does nothing. `loop_start` is the writable handle for the start then, and
+  moving it drags `start_marker` along.
+- A loop brace only survives a toggle if it was written while `looping` was on.
+
+So `buildClipPropertiesToSet` writes the markers **before** switching looping
+off, and the brace **after** switching it on.
+
+Two more traps in the same write, which is why it moves the end first when the
+new start lands at or past either current end: Live rejects a `loop_start` past
+`loop_end`, and silently drops a `start_marker` past `end_marker`.
+
 ## Coverage
 
 Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.
@@ -202,6 +300,8 @@ guidance.
 
 ## Notation Grammar Duplication
 
+### Note Values
+
 The note-value notation (durations like `n/4`, `±n` beat offsets, the off-grid
 `n<beats>/4` escape, and `Nbar` forms) is parsed at six independent sites:
 
@@ -240,3 +340,21 @@ a loud test failure:
 
 When you add or change a note-value parse site, update **every** site and add it
 to the parity test's site list.
+
+### Drum-Header Pitch Names
+
+The same situation, smaller. Stark's `DrumPitchName`
+(`$([A-Ga-g] [#b]? "-"? [0-9]+)`) is respelled as `/^([A-Ga-g])([#b]?)(-?\d+)$/`
+inside `stark-interpreter.ts`'s `drumHeaderPitch`, which resolves the header
+arithmetically so enharmonic spellings (Cb/E#/Fb/B#) work — `pitch.ts`'s exact
+table omits them and would drop the whole drum line.
+
+`drumHeaderPitch` `assertDefined`s the match rather than null-checking it,
+because the grammar is what guarantees the shape. So widening one pattern alone
+— a double accidental, a Unicode ♯ — turns a header the grammar now accepts into
+a thrown `Bug:` at interpret time. `drum-pitch-name-grammar-parity.test.ts` is
+the lock: every header in its corpus must be rejected by the grammar or accepted
+by both. It also pins the split between the two failure modes, which are not the
+same — a header the user can actually mistype resolves out of MIDI range and
+gets warn-and-skip (one line dropped, rest of the clip intact), while a shape
+mismatch can only mean the patterns drifted.

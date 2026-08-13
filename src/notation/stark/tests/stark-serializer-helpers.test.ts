@@ -8,7 +8,7 @@ import {
   classifyPitchedLine,
   durationEntry,
   dynamicSuffix,
-} from "#src/notation/stark/stark-serializer-helpers.ts";
+} from "#src/notation/stark/helpers/stark-serializer-helpers.ts";
 
 describe("stark serializer helpers — classifyPitchedLine", () => {
   it("falls back to a melody classification for an empty note list", () => {

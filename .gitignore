@@ -40,6 +40,7 @@ src/notation/*/parser/generated-*-parser.js
 # Generated docs artifacts
 docs/_generated
 docs/public/markdown
+docs/public/downloads
 
 # VitePress Documentation Site
 docs/.vitepress/dist
@@ -48,6 +49,10 @@ docs/.vitepress/cache
 # Eval results (generated JSON)
 evals/results
 
+# Skills snapshots (npm run skills:snapshot — a scratch artifact for comparing
+# two states of the fragment carve, not a committed baseline)
+dev/skills-snapshots
+
 # Playwright Test Results
 test-results
 test-reports
@@ -55,3 +60,6 @@ report/
 
 # Live project backups
 **/live-sets/**/Backup
+
+# Project context sidecars left behind by e2e/eval runs
+**/live-sets/**/Producer Pal Project Context.md*

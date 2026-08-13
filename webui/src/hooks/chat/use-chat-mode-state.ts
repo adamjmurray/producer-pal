@@ -3,7 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
@@ -20,8 +26,16 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
-import { useSystemPromptMemory } from "#webui/hooks/context/use-system-prompt-memory";
-import { useSystemPromptSendGate } from "#webui/hooks/context/use-system-prompt-send-gate";
+import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
+import {
+  resolveSubagentPreset,
+  SUBAGENT_PRESET_PARAM,
+} from "#webui/hooks/settings/presets/preset-extra-params";
+import {
+  loadPresets,
+  PRESETS_STORAGE_KEY,
+} from "#webui/hooks/settings/presets/preset-storage";
+import { useFirstSendGate } from "#webui/hooks/use-first-send-gate";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -35,6 +49,7 @@ import {
   type ConversationRecord,
   listAllConversationSummaries,
 } from "#webui/lib/conversation-db";
+import { withLiveApiTool } from "#webui/lib/utils/enabled-tools";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import { getBaseUrl, resolveProviderApiKey } from "#webui/utils/provider-url";
 
@@ -50,6 +65,8 @@ export interface UseChatModeStateParams {
   remoteConfig: UseRemoteConfigReturn;
   totalToolsCount: number;
   enabledToolsCount: number;
+  defaultToolsCount: number;
+  enabledToolsDiverge: boolean;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -76,6 +93,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     remoteConfig,
     totalToolsCount,
     enabledToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     onForeignRecord,
     clearViewingMode,
     setModeContext,
@@ -90,11 +109,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
   // The user's custom system prompt (~/.producer-pal/system-prompt.md). When
   // non-empty it fully replaces the built-in instruction for each new
   // conversation (locked at client init; see the adapter). Editing it in the
-  // Instructions tab converges here via useDocMemory's focus/poll refresh.
-  const systemPromptMemory = useSystemPromptMemory();
+  // Instructions tab converges here via useDoc's focus/poll refresh.
+  const systemPromptDoc = useSystemPrompt();
   const systemInstructionOverride =
-    systemPromptMemory.status.kind === "ready"
-      ? systemPromptMemory.status.content
+    systemPromptDoc.status.kind === "ready"
+      ? systemPromptDoc.status.content
       : "";
   // The instruction actually in effect (override or built-in): sent by the
   // adapter, snapshotted onto saved records, and shown in the transcript notice.
@@ -126,14 +145,40 @@ export function useChatModeState(params: UseChatModeStateParams) {
     [getProviderConnection],
   );
 
+  // Resolve the chosen "Subagent preset". Read the presets blob fresh
+  // each render (a usePresets snapshot would go stale — presets are edited in a
+  // separate hook instance), but key the actual parse/validate/resolve off that
+  // blob so it only recomputes when the presets or the selection change:
+  // useChatModeState re-renders per streamed token, so this avoids a JSON.parse +
+  // validation + allocation on every chunk. Undefined = inherit; the adapter
+  // turns it into the worker override.
+  const presetsBlob = localStorage.getItem(PRESETS_STORAGE_KEY);
+  const subagentPreset = useMemo(
+    () =>
+      resolveSubagentPreset(
+        settings.subagentPresetId,
+        presetsBlob ? loadPresets() : [],
+        resolveConnection,
+      ),
+    [presetsBlob, settings.subagentPresetId, resolveConnection],
+  );
+
+  // The Direct Live API tool has no entry in the Tools-tab map — its checkbox
+  // drives the device-global flag instead — so stamp the flag in before the
+  // toolset is pinned, or it would be the one tool that follows the device
+  // rather than the conversation. See withLiveApiTool.
+  const enabledTools = useMemo(
+    () =>
+      withLiveApiTool(settings.enabledTools, remoteConfig.serverLiveApiEnabled),
+    [settings.enabledTools, remoteConfig.serverLiveApiEnabled],
+  );
+
   const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey: resolvedApiKey,
     model: settings.model,
     thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    smallModelMode: settings.smallModelMode,
+    enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -141,10 +186,22 @@ export function useChatModeState(params: UseChatModeStateParams) {
     adapter: chatAdapter,
     extraParams: {
       baseUrl,
-      showThoughts: settings.showThoughts,
+      // What a NEW conversation locks; a restored one keeps its own snapshot,
+      // so flipping the toggle can't change the tool schemas and skills variant
+      // an open conversation is already running under.
+      smallModelMode: settings.smallModelMode,
       provider: settings.provider,
       apiKey: resolvedApiKey,
       systemInstructionOverride,
+      // The notation a NEW conversation locks and then sends on every request.
+      // This is the value the Tools tab is showing, seeded from the device
+      // global — so the chat runs the notation the user can see, and changing it
+      // no longer reaches back into conversations already in flight. A restored
+      // conversation ignores this in favor of its own locked snapshot. The first
+      // send is gated below until this is a real answer rather than the
+      // provisional mount-time default.
+      notation: settings.notation,
+      [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
     autoSaveRef,
     pendingForkRef,
@@ -153,11 +210,15 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
-  // Hold the first send until the custom system prompt has finished loading, so a
-  // turn fired during the mount-time fetch doesn't lock the built-in instruction
-  // when the user actually has an override. Transparent once the status resolves.
-  const gatedHandleSend = useSystemPromptSendGate(
-    systemPromptMemory.status,
+  // Hold the first send until everything it LOCKS has finished loading: the
+  // custom system prompt (else a turn fired during the fetch locks the built-in
+  // instruction when the user has an override) and the notation (else it locks
+  // the provisional default and teaches the wrong grammar for the whole
+  // conversation). The notation wait covers serverLiveApiEnabled too — same
+  // /config GET, and the stamp above pins it just as permanently. Transparent
+  // once they have resolved.
+  const gatedHandleSend = useFirstSendGate(
+    systemPromptDoc.status.kind === "loading" || !settings.notationKnown,
     wrappedHandleSend,
   );
 
@@ -176,13 +237,15 @@ export function useChatModeState(params: UseChatModeStateParams) {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,
       activeThinking: chat.activeThinking,
-      activeTemperature: chat.activeTemperature,
-      activeShowThoughts: chat.activeShowThoughts,
       activeSmallModelMode: chat.activeSmallModelMode,
       // Snapshot the LOCKED instruction (what this conversation actually ran
       // with), not the current global override — so editing the global later
-      // doesn't rewrite an existing conversation's record.
+      // doesn't rewrite an existing conversation's record. Same for notation.
       activeSystemInstruction: chat.activeSystemInstruction,
+      activeNotation: chat.activeNotation,
+      // The toolset the live client was built with, which is the current one —
+      // recorded so a later restore can tell the user the tools have moved.
+      activeEnabledTools: chat.activeEnabledTools,
     },
     onForeignRecord,
     pendingForkRef,
@@ -231,6 +294,8 @@ export function useChatModeState(params: UseChatModeStateParams) {
     display,
     enabledToolsCount,
     totalToolsCount,
+    defaultToolsCount,
+    enabledToolsDiverge,
     handleDeleteAll: conversationHandlers.handleDeleteAll,
     handleDeleteUnbookmarked: conversationHandlers.handleDeleteUnbookmarked,
     setModeContext,
@@ -286,7 +351,7 @@ export function useBranchNav(
     if (activeConversationId == null) {
       setPoints([]);
 
-      return;
+      return undefined;
     }
 
     let cancelled = false;

@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -155,10 +156,8 @@ describe("ppal-create-track", () => {
       name: "ppal-create-track",
       arguments: { count: 2 },
     });
-    const batch = parseToolResult<CreateTrackResult[]>(batchResult);
+    const batch = parseBatchResult<CreateTrackResult>(batchResult, 2);
 
-    expect(Array.isArray(batch)).toBe(true);
-    expect(batch).toHaveLength(2);
     expect(batch[0]!.id).toBeDefined();
     expect(batch[1]!.id).toBeDefined();
 

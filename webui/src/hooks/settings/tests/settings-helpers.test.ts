@@ -13,12 +13,14 @@ import {
   checkHasApiKey,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
   loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
+  saveSubagentPresetId,
   saveProviderSettings,
   saveVoiceLanguage,
   saveVoiceSpeed,
@@ -42,8 +44,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       const raw = JSON.parse(
@@ -59,8 +59,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       const loaded = await loadProviderSettingsAsync("anthropic");
@@ -73,8 +71,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       // The synchronous loader must not surface ciphertext; it returns "".
@@ -99,8 +95,6 @@ describe("settings-helpers", () => {
         apiKey: "AIza-new",
         model: "gemini-2.5-flash",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBeNull();
@@ -118,8 +112,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(localStorage.getItem("gemini_api_key")).toBe("AIza-old-cleartext");
@@ -130,8 +122,6 @@ describe("settings-helpers", () => {
         apiKey: "",
         model: "gpt-5.5",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       const raw = JSON.parse(
@@ -150,8 +140,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-anthropic-good",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       // Forge an undecryptable envelope for openai: a real IV paired with a
@@ -180,8 +168,6 @@ describe("settings-helpers", () => {
         apiKey: "sk-ant-secret",
         model: "claude-sonnet-4-6",
         thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
       });
 
       expect(checkHasApiKey("anthropic")).toBe(true);
@@ -198,6 +184,12 @@ describe("settings-helpers", () => {
 
     it("returns false when no apiKey is stored", () => {
       expect(checkHasApiKey("anthropic")).toBe(false);
+    });
+
+    it("detects the legacy standalone gemini_api_key", () => {
+      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
+
+      expect(checkHasApiKey("gemini")).toBe(true);
     });
   });
 
@@ -280,6 +272,25 @@ describe("settings-helpers", () => {
       localStorage.setItem("producer_pal_enabled_tools", "not-json");
 
       expect(loadEnabledTools()).toStrictEqual({});
+    });
+  });
+
+  describe("subagent preset persistence", () => {
+    it("returns null when nothing is stored (inherit)", () => {
+      expect(loadSubagentPresetId()).toBeNull();
+    });
+
+    it("round-trips a preset id through localStorage", () => {
+      saveSubagentPresetId("preset-abc");
+      expect(loadSubagentPresetId()).toBe("preset-abc");
+    });
+
+    it("clears the stored id when saving null (back to inherit)", () => {
+      saveSubagentPresetId("preset-abc");
+      saveSubagentPresetId(null);
+
+      expect(loadSubagentPresetId()).toBeNull();
+      expect(localStorage.getItem("producer_pal_subagent_preset")).toBeNull();
     });
   });
 

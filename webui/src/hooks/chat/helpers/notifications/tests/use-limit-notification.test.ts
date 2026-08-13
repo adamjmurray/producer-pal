@@ -204,6 +204,25 @@ describe("useLimitNotification", () => {
 
       await expectAutoDismissAfter4s(result);
     });
+
+    it("replaces a running limit-notification timer", async () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showLimitNotification({
+          deletedCount: 2,
+          limitReached: false,
+        });
+      });
+      await act(() => {
+        result.current.showSaveError(new Error("boom"));
+      });
+
+      // The error's own 4s window, not what was left of the warning's.
+      await expectAutoDismissAfter4s(result);
+    });
   });
 
   it("clears timer on dismiss when timer is running", async () => {

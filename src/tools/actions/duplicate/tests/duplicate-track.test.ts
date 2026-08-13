@@ -12,6 +12,7 @@ import {
   createTrackResult,
   createTrackResultArray,
   expectDeleteDeviceCalls,
+  registerDuplicatedTrackSlots,
   registerMockObject,
   setupProducerPalDeviceMocks,
   setupRoutingMocks,
@@ -74,29 +75,10 @@ describe("duplicate - track duplication", () => {
   it("should duplicate a track without clips when withoutClips is true", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("live_set", { path: livePath.liveSet });
-    const newTrack = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: {
-        devices: [],
-        clip_slots: children("slot0", "slot1", "slot2"),
-        arrangement_clips: children("arrangementClip0", "arrangementClip1"),
-      },
-    });
-
-    // Register clip slot children
-    const slot0 = registerMockObject("slot0", {
-      path: livePath.track(1).clipSlot(0),
-      properties: { has_clip: 1 },
-    });
-
-    registerMockObject("slot1", {
-      path: livePath.track(1).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
-    const slot2 = registerMockObject("slot2", {
-      path: livePath.track(1).clipSlot(2),
-      properties: { has_clip: 1 },
-    });
+    const { newTrack, slots } = registerDuplicatedTrackSlots(
+      [true, false, true],
+      ["arrangementClip0", "arrangementClip1"],
+    );
 
     const result = await duplicate({
       type: "track",
@@ -107,8 +89,8 @@ describe("duplicate - track duplication", () => {
     expect(result).toStrictEqual(createTrackResult(1));
 
     // Verify delete_clip was called for session clips with has_clip
-    expect(slot0.call).toHaveBeenCalledWith("delete_clip");
-    expect(slot2.call).toHaveBeenCalledWith("delete_clip");
+    expect(slots[0]!.call).toHaveBeenCalledWith("delete_clip");
+    expect(slots[2]!.call).toHaveBeenCalledWith("delete_clip");
 
     // Verify delete_clip was called for arrangement clips (on track with clip IDs)
     expect(newTrack.call).toHaveBeenCalledWith(
@@ -124,23 +106,7 @@ describe("duplicate - track duplication", () => {
   it("should collect session clips when duplicating a track with clips", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: {
-        devices: [],
-        clip_slots: children("slot0", "slot1"),
-        arrangement_clips: [],
-      },
-    });
-
-    registerMockObject("slot0", {
-      path: livePath.track(1).clipSlot(0),
-      properties: { has_clip: 1 },
-    });
-    registerMockObject("slot1", {
-      path: livePath.track(1).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
+    registerDuplicatedTrackSlots([true, false]);
     // The clip inside slot0, resolved via clipSlot.child("clip")
     registerMockObject("live_set/tracks/1/clip_slots/0/clip", {
       path: livePath.track(1).clipSlot(0).clip(),

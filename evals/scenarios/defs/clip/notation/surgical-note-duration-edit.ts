@@ -24,6 +24,7 @@
  * Handing the whole clip back as `notes` FAILS (the full-rewrite anti-pattern).
  */
 
+import { argText } from "../../arg-text.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
@@ -33,7 +34,7 @@ import {
   readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
-} from "../clip-scenario-helpers.ts";
+} from "../helpers/clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
 /** A note matches its pre-edit twin when pitch is equal and start within this. */
@@ -126,7 +127,7 @@ function assertSurgicalNotRewrite(
 
       // Match the original read to the clip the model actually edited — the
       // first read may be a scene read returning several clips with notes.
-      const editedId = String(calls[0]?.args.ids ?? "") || undefined;
+      const editedId = argText(calls[0]?.args.ids) || undefined;
       const original =
         readClipNotesFromTurn(turns, readTurn, editedId)?.notes ?? null;
 
@@ -136,12 +137,12 @@ function assertSurgicalNotRewrite(
 
       const scoped = calls.some((c) =>
         /duration/i.test(
-          `${String(c.args.preTransforms ?? "")} ${String(c.args.transforms ?? "")}`,
+          `${argText(c.args.preTransforms)} ${argText(c.args.transforms)}`,
         ),
       );
       const maxNotes = Math.max(
         0,
-        ...calls.map((c) => countPitchTokens(String(c.args.notes ?? ""))),
+        ...calls.map((c) => countPitchTokens(argText(c.args.notes))),
       );
 
       if (scoped || (maxNotes > 0 && maxNotes < original.length)) return true;

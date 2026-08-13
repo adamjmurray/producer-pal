@@ -12,6 +12,8 @@ describe("DEFAULT_MODE_CONTEXT", () => {
       activeModel: null,
       activeProvider: null,
       activeSmallModelMode: null,
+      activeNotation: null,
+      activeEnabledTools: null,
     });
   });
 

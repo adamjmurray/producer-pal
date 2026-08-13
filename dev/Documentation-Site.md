@@ -126,6 +126,20 @@ docs/
 
 - Use kebab-case for all markdown files (e.g., `chat-ui.md`)
 - Group related content in subdirectories (e.g., `installation/`, `guide/`)
+- Name a section's page after its folder — `docs/guide.md`, not
+  `docs/guide/index.md`. The one exception is `docs/index.md`.
+- URLs are clean: `/chat-ui`, not `/chat-ui.html` and no trailing slash.
+
+### Callouts
+
+Use VitePress containers, not blockquotes:
+
+```markdown
+::: tip Title ... :::
+```
+
+`tip`, `warning`, `info`, and `details` are available. Don't write
+`> **Tip:** …`.
 
 ### Frontmatter
 

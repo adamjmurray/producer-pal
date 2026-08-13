@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
@@ -96,6 +97,8 @@ export interface ClipResultObject {
   noteCount?: number;
   transformed?: number;
   length?: string;
+  /** Audio clips only: whether Live is time-stretching the sample */
+  warping?: boolean;
 }
 
 /**
@@ -167,12 +170,15 @@ export function buildClipResult(
     }
   }
 
-  // For audio clips: include actual clip length from Live API
+  // For audio clips: report the warp state Live settled on plus the region it
+  // covers. `Clip.length` is not used — on an unwarped session clip Live
+  // reports the length it would have if still warped (see audioClipTiming).
   if (sampleFile) {
-    const actualClipLength = clip.getProperty("length") as number;
+    const timing = audioClipTiming(clip);
 
+    clipResult.warping = timing.warping;
     clipResult.length = abletonBeatsToDuration(
-      actualClipLength,
+      timing.endBeats - timing.startBeats,
       timeSigNumerator,
       timeSigDenominator,
     );

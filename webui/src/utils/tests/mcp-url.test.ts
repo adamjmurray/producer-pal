@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -7,6 +8,8 @@ import {
   detectCorsBlock,
   getMcpUrl,
   getSkillsPreviewUrl,
+  getSubagentBriefingUrl,
+  getUpdateUrl,
   isViteDevServer,
 } from "#webui/utils/mcp-url";
 
@@ -75,21 +78,91 @@ describe("getSkillsPreviewUrl", () => {
     vi.unstubAllGlobals();
   });
 
-  it("derives the endpoint from the MCP URL with query params", () => {
+  /** Point getMcpUrl at the device's default port. */
+  function stubLocation(): void {
     vi.stubGlobal("window", {
       location: { hostname: "localhost", port: "3350", protocol: "http:" },
     });
-    expect(getSkillsPreviewUrl("stark", true)).toBe(
+  }
+
+  it("derives the endpoint from the MCP URL with query params", () => {
+    stubLocation();
+    expect(getSkillsPreviewUrl("stark", true, "")).toBe(
       "http://localhost:3350/skills-preview?notation=stark&smallModel=true",
     );
   });
 
   it("encodes standard (non-small-model) selections", () => {
+    stubLocation();
+    expect(getSkillsPreviewUrl("barbeat", false, "")).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false",
+    );
+  });
+
+  it("passes the withheld tools along for gating", () => {
+    stubLocation();
+    expect(
+      getSkillsPreviewUrl("barbeat", false, "ppal-library,ppal-memory"),
+    ).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false&disabledTools=ppal-library%2Cppal-memory",
+    );
+  });
+
+  it("asks for every fragment when the toolset is null", () => {
+    stubLocation();
+    expect(getSkillsPreviewUrl("barbeat", false, null)).toBe(
+      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false&allTools=true",
+    );
+  });
+});
+
+describe("getUpdateUrl", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("derives the endpoint from the MCP URL", () => {
     vi.stubGlobal("window", {
       location: { hostname: "localhost", port: "3350", protocol: "http:" },
     });
-    expect(getSkillsPreviewUrl("barbeat", false)).toBe(
-      "http://localhost:3350/skills-preview?notation=barbeat&smallModel=false",
+    expect(getUpdateUrl()).toBe("http://localhost:3350/update");
+  });
+
+  // The reason this endpoint has a builder at all: Vite serves the dev webui on
+  // 5173 with no proxy configured, so a bare same-origin "/update" 404s there and
+  // the update badge silently never appears.
+  it("reaches the MCP server from the Vite dev server", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "5173", protocol: "http:" },
+    });
+    expect(getUpdateUrl()).toBe("http://localhost:3350/update");
+  });
+});
+
+describe("getSubagentBriefingUrl", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("derives the endpoint from the MCP URL, with no query params", () => {
+    // The worker's profile rides on request headers, not the URL.
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSubagentBriefingUrl()).toBe(
+      "http://localhost:3350/subagent-briefing",
+    );
+  });
+
+  // The briefing lives beside the MCP endpoint, so a config that points its MCP
+  // requests at another server must fetch its briefing from that server too —
+  // otherwise a worker is briefed by one Producer Pal and calls tools on another.
+  it("follows a config's mcpUrl override instead of the page origin", () => {
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "3350", protocol: "http:" },
+    });
+    expect(getSubagentBriefingUrl("http://otherhost:9000/mcp")).toBe(
+      "http://otherhost:9000/subagent-briefing",
     );
   });
 });

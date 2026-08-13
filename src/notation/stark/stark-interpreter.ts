@@ -19,6 +19,11 @@
 import { chordSymbolPitches } from "#src/notation/chords/chord-symbols.ts";
 import { dedupeAndSortNotes } from "#src/notation/note-sort.ts";
 import {
+  drumHeaderPitch,
+  noteLabel,
+  notePitch,
+} from "#src/notation/stark/helpers/stark-interpreter-pitch.ts";
+import {
   type ChordItem,
   type ChordsContentItem,
   type ChordsSection,
@@ -46,18 +51,8 @@ import {
   VELOCITY_SOFT_MIN,
 } from "#src/notation/stark/stark-config.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
-
-/** Natural pitch class offsets (semitones above C). */
-const NATURAL_PC: Readonly<Record<string, number>> = {
-  C: 0,
-  D: 2,
-  E: 4,
-  F: 5,
-  G: 7,
-  A: 9,
-  B: 11,
-};
+import { assertDefined } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface StarkInterpretOptions {
   /** Time signature numerator (beats per bar). Accepted for parity; unused (timing is explicit). */
@@ -132,9 +127,11 @@ function isDrumSection(section: StarkSection): section is DrumSection {
 // pitch is fixed — the named drum's GM pitch (section.midi) or a pitch-name
 // header resolved arithmetically (Ableton C3=60).
 function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
+  // DrumHeader sets exactly one of midi (a named drum's fixed GM pitch) or
+  // noteName (a pitch-name header), so the fallback always has a name to resolve.
   const pitch =
     section.midi ??
-    (section.noteName ? drumHeaderPitch(section.noteName) : null);
+    drumHeaderPitch(assertDefined(section.noteName, "drum header note name"));
 
   if (pitch == null) {
     console.warn(
@@ -171,25 +168,6 @@ function processDrumSection(section: DrumSection, notes: NoteEvent[]): void {
   }
 }
 
-// Resolve a drum header's absolute pitch name (e.g. "Cb2", "F#3") to MIDI the
-// same arithmetic way Stark note tokens resolve pitch, so enharmonic spellings
-// (Cb/E#/Fb/B#) work. pitch.ts's noteNameToMidi rejects those — its exact table
-// omits them — silently dropping the whole drum line. Ableton C3 = 60; returns
-// null for an unparseable name or an out-of-MIDI-range result.
-function drumHeaderPitch(noteName: string): number | null {
-  // Anchored match → all three groups present (accidental is "" when absent).
-  const match = noteName.match(/^([A-Ga-g])([#b]?)(-?\d+)$/);
-
-  if (match == null) return null;
-
-  const letter = (match[1] as string).toUpperCase();
-  const accidental = match[2] === "#" ? "#" : match[2] === "b" ? "b" : null;
-  const octave = Number.parseInt(match[3] as string);
-  const midi = (octave + 2) * 12 + pitchOffset(letter, accidental);
-
-  return midi < 0 || midi > 127 ? null : midi;
-}
-
 // Convert a dynamic level to a random velocity within its range.
 function velocityFor(dynamic: StarkDynamic): number {
   if (dynamic === "accent")
@@ -198,16 +176,6 @@ function velocityFor(dynamic: StarkDynamic): number {
     return randomVelocity(VELOCITY_SOFT_MIN, VELOCITY_SOFT_MAX);
 
   return randomVelocity(VELOCITY_NORMAL_MIN, VELOCITY_NORMAL_MAX);
-}
-
-// Compute semitone offset from the register's C for a note letter + accidental.
-function pitchOffset(letter: string, accidental: "#" | "b" | null): number {
-  const base = NATURAL_PC[letter] ?? 0;
-
-  if (accidental === "#") return base + 1;
-  if (accidental === "b") return base - 1;
-
-  return base;
 }
 
 // Process a pitched section. Chords are symbolic (realized from chord symbols);
@@ -227,16 +195,9 @@ function processPitchedSection(
 
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT[section.type];
 
-  let time = 0;
-
-  for (const item of section.content) {
-    // `*N` expands one token into N copies (a barMarker has no repeat → once).
-    const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
-
-    for (let i = 0; i < count; i++) {
-      time = processItem(item, time, registerDefault, lineDefault, notes);
-    }
-  }
+  runLine(section.content, (item, time) =>
+    processItem(item, time, registerDefault, lineDefault, notes),
+  );
 }
 
 // Process a chords section: each token is a chord symbol realized into concrete
@@ -247,13 +208,25 @@ function processChordsSection(
 ): void {
   const lineDefault = section.defaultDuration ?? LINE_DEFAULT.chords;
 
+  runLine(section.content, (item, time) =>
+    processChordItem(item, time, lineDefault, notes),
+  );
+}
+
+// Walk one line's content from time 0, advancing the cursor by whatever `step`
+// returns. `*N` expands one token into N copies (a barMarker has no repeat →
+// once).
+function runLine<T extends { repeat?: number | null } | { barMarker: unknown }>(
+  content: T[],
+  step: (item: T, time: number) => number,
+): void {
   let time = 0;
 
-  for (const item of section.content) {
+  for (const item of content) {
     const count = "barMarker" in item ? 1 : (item.repeat ?? 1);
 
     for (let i = 0; i < count; i++) {
-      time = processChordItem(item, time, lineDefault, notes);
+      time = step(item, time);
     }
   }
 }
@@ -340,11 +313,16 @@ function processItem(
 
   if (item.type === "note") {
     const beats = durationBeats(item.duration ?? lineDefault);
-    const midi = clampMidi(
-      registerDefault +
-        pitchOffset(item.letter, item.accidental) +
-        item.octaveShift * 12,
-    );
+    const midi = notePitch(item, registerDefault);
+
+    // Time still advances, so one bad token can't desync the rest of the line.
+    if (midi == null) {
+      console.warn(
+        `Stark: note "${noteLabel(item)}" is out of MIDI range — skipping`,
+      );
+
+      return time + beats;
+    }
 
     notes.push({
       pitch: midi,
@@ -375,12 +353,18 @@ function pushBracketChord(
   const velocity = velocityFor(item.dynamic);
 
   for (const chordNote of item.notes) {
+    const pitch = notePitch(chordNote, registerDefault);
+
+    if (pitch == null) {
+      console.warn(
+        `Stark: note "${noteLabel(chordNote)}" is out of MIDI range — skipping`,
+      );
+
+      continue;
+    }
+
     notes.push({
-      pitch: clampMidi(
-        registerDefault +
-          pitchOffset(chordNote.letter, chordNote.accidental) +
-          chordNote.octaveShift * 12,
-      ),
+      pitch,
       start_time: time,
       duration: beats,
       velocity,
@@ -389,9 +373,4 @@ function pushBracketChord(
   }
 
   return time + beats;
-}
-
-// Clamp a computed pitch to the valid MIDI range.
-function clampMidi(midi: number): number {
-  return Math.max(0, Math.min(127, midi));
 }

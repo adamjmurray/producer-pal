@@ -3,10 +3,16 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { beforeAll, describe, expect, it } from "vitest";
+import Max from "max-api";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { projectContextSidecarPath } from "../../helpers/project-context-backup/project-context-backup-store.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
+import { dispatchNodeRoute } from "../config-dir-test-helpers.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 describe("MCP Express App - Config", () => {
@@ -29,7 +35,7 @@ describe("MCP Express App - Config", () => {
       const config = await response.json();
 
       expect(config).toMatchObject({
-        memoryContent: expect.any(String),
+        projectContext: expect.any(String),
         smallModelMode: expect.any(Boolean),
         notation: expect.any(String),
         jsonOutput: expect.any(Boolean),
@@ -131,26 +137,74 @@ describe("MCP Express App - Config", () => {
       });
     });
 
-    it("should update memoryContent string", async () => {
+    it("should update projectContext string", async () => {
       const testNotes = "Test memory content";
 
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryContent: testNotes }),
+        body: JSON.stringify({ projectContext: testNotes }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.memoryContent).toBe(testNotes);
+      expect(config.projectContext).toBe(testNotes);
 
       // Clear notes
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryContent: "" }),
+        body: JSON.stringify({ projectContext: "" }),
       });
+    });
+
+    it("restores the on-disk backup into config on projectContext.sync (device upgrade)", async () => {
+      const projectDir = mkdtempSync(join(tmpdir(), "ppal-proj-"));
+      const liveSetPath = join(projectDir, "MySong.als");
+
+      try {
+        // Upgraded device: the param is empty but a sidecar holds the backup.
+        writeFileSync(
+          projectContextSidecarPath(liveSetPath),
+          "Restored from disk",
+          "utf8",
+        );
+        await fetch(configUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectContext: "" }),
+        });
+
+        // The V8 side calls this route on its first tool call after the upgrade.
+        // dispatchNodeRoute reads Max.outlet's first recorded call, so clear the
+        // server-startup calls first.
+        vi.mocked(Max.outlet).mockClear();
+        const res = await dispatchNodeRoute("projectContext.sync", {
+          filePath: liveSetPath,
+          content: "",
+          allowRestore: true,
+        });
+
+        expect(res.result).toStrictEqual({
+          action: "restore",
+          content: "Restored from disk",
+        });
+
+        // The route updated config directly so a restore during ppal-connect is
+        // reflected in that response's injected project-context block.
+        const configResponse = await fetch(configUrl);
+        const config = await configResponse.json();
+
+        expect(config.projectContext).toBe("Restored from disk");
+      } finally {
+        rmSync(projectDir, { recursive: true, force: true });
+        await fetch(configUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectContext: "" }),
+        });
+      }
     });
 
     it("should update sampleFolder", async () => {
@@ -173,6 +227,29 @@ describe("MCP Express App - Config", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sampleFolder: "" }),
       });
+    });
+
+    it("should clear projectContext and sampleFolder sent as null", async () => {
+      // Max sends a bare `null` for an emptied field; it must land as "" rather
+      // than as a null the rest of the config code has to guard against.
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectContext: "notes",
+          sampleFolder: "/path/to/samples",
+        }),
+      });
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectContext: null, sampleFolder: null }),
+      });
+      const config = await response.json();
+
+      expect(config.projectContext).toBe("");
+      expect(config.sampleFolder).toBe("");
     });
 
     it("should update tools whitelist", async () => {
@@ -261,7 +338,7 @@ describe("MCP Express App - Config", () => {
           "Content-Type": "application/json",
           Origin: "https://evil.example.com",
         },
-        body: JSON.stringify({ memoryContent: "blocked" }),
+        body: JSON.stringify({ projectContext: "blocked" }),
       });
 
       expect(response.status).toBe(403);
@@ -277,7 +354,7 @@ describe("MCP Express App - Config", () => {
           "Content-Type": "application/json",
           Origin: "http://localhost:9999",
         },
-        body: JSON.stringify({ memoryContent: "" }),
+        body: JSON.stringify({ projectContext: "" }),
       });
 
       expect(response.status).toBe(200);

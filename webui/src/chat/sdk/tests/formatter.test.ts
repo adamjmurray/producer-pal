@@ -70,12 +70,97 @@ describe("formatChatMessages", () => {
     expect(result[0]!.parts).toStrictEqual([
       {
         type: "tool",
+        // Carried through so a running call can be matched to live status.
+        id: "tc1",
         name: "ppal-connect",
         args: {},
         result: '"Connected"',
         isError: undefined,
       },
     ]);
+  });
+
+  it("attaches a formatted worker transcript for a subagent tool call", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [
+          { id: "tc1", name: "spawn_subagent", args: { task: "bassline" } },
+        ],
+        toolResults: [
+          {
+            id: "tc1",
+            name: "spawn_subagent",
+            args: { task: "bassline" },
+            result: "Added a bassline.",
+            subagentTranscript: [
+              { role: "user", content: "bassline" },
+              { role: "assistant", content: "Added a bassline." },
+            ],
+          },
+        ],
+      },
+    ];
+    const result = formatChatMessages(history);
+    const toolPart = result[0]!.parts[0]!;
+
+    expect(toolPart.type).toBe("tool");
+    // The transcript is formatted into UIMessages for the deep-dive tier.
+    const messages =
+      toolPart.type === "tool" ? toolPart.subagentMessages : undefined;
+
+    expect(messages).toHaveLength(2);
+    expect(messages?.[0]?.role).toBe("user");
+    expect(messages?.[1]?.role).toBe("model");
+  });
+
+  it("carries the worker's index through to the tool part", () => {
+    // The index is the worker's durable identity — the card labels itself with
+    // it and resumeFrom addresses workers by it — so it has to survive
+    // formatting independently of the transcript.
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "tc1", name: "spawn_subagent", args: { task: "x" } }],
+        toolResults: [
+          {
+            id: "tc1",
+            name: "spawn_subagent",
+            args: { task: "x" },
+            result: "done",
+            subagentIndex: 3,
+          },
+        ],
+      },
+    ];
+    const toolPart = formatChatMessages(history)[0]!.parts[0]!;
+
+    expect(toolPart.type === "tool" ? toolPart.subagentIndex : undefined).toBe(
+      3,
+    );
+  });
+
+  it("omits subagentMessages and subagentIndex for an ordinary tool call", () => {
+    const history: ChatMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
+        toolResults: [
+          { id: "tc1", name: "ppal-connect", args: {}, result: "Connected" },
+        ],
+      },
+    ];
+    const toolPart = formatChatMessages(history)[0]!.parts[0]!;
+
+    expect(toolPart.type === "tool" && "subagentMessages" in toolPart).toBe(
+      false,
+    );
+    // Absent rather than present-and-undefined: index 0 is not a valid worker
+    // index, so the card can treat "has the key" as "is a worker".
+    expect(toolPart.type === "tool" && "subagentIndex" in toolPart).toBe(false);
   });
 
   it("formats tool calls without results", () => {
@@ -91,6 +176,7 @@ describe("formatChatMessages", () => {
     expect(result[0]!.parts).toStrictEqual([
       {
         type: "tool",
+        id: "tc1",
         name: "ppal-connect",
         args: {},
         result: null,
@@ -297,6 +383,15 @@ describe("formatChatMessages", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parts.every((p) => p.type !== "step-usage")).toBe(true);
+  });
+
+  it("skips holes in the history rather than formatting them", () => {
+    const history = [
+      { role: "user", content: "Hello" },
+      undefined,
+    ] as unknown as ChatMessage[];
+
+    expect(formatChatMessages(history)).toHaveLength(1);
   });
 
   it("formats a compaction summary as a compaction part", () => {

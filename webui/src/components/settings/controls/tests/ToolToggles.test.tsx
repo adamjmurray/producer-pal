@@ -43,6 +43,27 @@ describe("ToolToggles", () => {
     settingsConfigured: true,
   };
 
+  /**
+   * Render with the Live API toggle forced on, click `buttonName`, and assert the
+   * bulk action left the forced toggle alone.
+   * @param buttonName - Accessible name of the bulk-action button to click
+   */
+  function expectForcedLiveApiPreserved(buttonName: string): void {
+    const setLiveApiEnabled = vi.fn();
+
+    render(
+      <ToolToggles
+        {...defaultProps}
+        liveApiEnabled={true}
+        liveApiForcedOn={true}
+        setLiveApiEnabled={setLiveApiEnabled}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+    expect(setLiveApiEnabled).not.toHaveBeenCalled();
+  }
+
   describe("basic rendering", () => {
     it("renders title", () => {
       render(<ToolToggles {...defaultProps} />);
@@ -168,21 +189,7 @@ describe("ToolToggles", () => {
     );
 
     it("Enable default toolset preserves Live API when forced on", () => {
-      const setLiveApiEnabled = vi.fn();
-
-      render(
-        <ToolToggles
-          {...defaultProps}
-          liveApiEnabled={true}
-          liveApiForcedOn={true}
-          setLiveApiEnabled={setLiveApiEnabled}
-        />,
-      );
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Enable default toolset" }),
-      );
-      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+      expectForcedLiveApiPreserved("Enable default toolset");
     });
   });
 
@@ -194,8 +201,9 @@ describe("ToolToggles", () => {
       });
 
       // connect description + read-live-set description + injected Live API
-      // fallback description + header tooltip + notation selector tooltip = 5
-      expect(infoButtons).toHaveLength(5);
+      // fallback description + injected Subagent description + header tooltip +
+      // notation selector tooltip = 6
+      expect(infoButtons).toHaveLength(6);
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -208,9 +216,9 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      // header tooltip + injected Live API fallback description + notation
-      // selector tooltip = 3
-      expect(infoButtons).toHaveLength(3);
+      // header tooltip + injected Live API fallback description + injected
+      // Subagent description + notation selector tooltip = 4
+      expect(infoButtons).toHaveLength(4);
     });
   });
 
@@ -266,6 +274,28 @@ describe("ToolToggles", () => {
       const call = setEnabledTools.mock.calls[0]?.[0];
 
       expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
+    });
+
+    it("disables a default-enabled tool on the FIRST click", () => {
+      // The map is sparse — an absent tool is enabled — so inverting the raw
+      // entry re-wrote "enabled": the checkbox snapped back and only a second
+      // click disabled the tool.
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{}}
+          setEnabledTools={setEnabledTools}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Read Live Set"));
+
+      expect(setEnabledTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools.mock.calls[0]?.[0]?.["ppal-read-live-set"]).toBe(
+        false,
+      );
     });
 
     it("connect tool checkbox is always checked and disabled", () => {
@@ -451,29 +481,35 @@ describe("ToolToggles", () => {
     });
 
     it("Disable all preserves Live API when forced on", () => {
-      const setLiveApiEnabled = vi.fn();
-
-      render(
-        <ToolToggles
-          {...defaultProps}
-          liveApiEnabled={true}
-          liveApiForcedOn={true}
-          setLiveApiEnabled={setLiveApiEnabled}
-        />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
-      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+      expectForcedLiveApiPreserved("Disable all");
     });
   });
 
   describe("notation selector", () => {
-    it("renders the Notation dropdown (in the Advanced group)", () => {
+    it("renders the Notation dropdown", () => {
       render(<ToolToggles {...defaultProps} notation="midi-json" />);
 
       const select = screen.getByTestId("notation-select") as HTMLSelectElement;
 
       expect(select.value).toBe("midi-json");
+    });
+
+    it("puts the Notation dropdown in the Clip group", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          tools={[
+            ...TEST_TOOLS,
+            { id: "ppal-create-clip", name: "Create Clip" },
+          ]}
+        />,
+      );
+
+      const clipGroup = screen.getByText("Clip").parentElement;
+
+      expect(
+        clipGroup?.querySelector("[data-testid=notation-select]"),
+      ).not.toBeNull();
     });
 
     it("calls setNotation when a new notation is picked", () => {
@@ -532,6 +568,52 @@ describe("ToolToggles", () => {
       fireEvent.click(button);
 
       expect(onEditContext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Subagent checkbox", () => {
+    it("renders a Subagent checkbox even when not in mcpTools", () => {
+      render(<ToolToggles {...defaultProps} />);
+
+      expect(screen.getByLabelText("Subagent")).toBeDefined();
+    });
+
+    it("is unchecked by default (opt-in) when not in enabledTools", () => {
+      render(<ToolToggles {...defaultProps} enabledTools={{}} />);
+
+      const checkbox = screen.getByLabelText("Subagent") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it("is checked only when explicitly enabled", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{ spawn_subagent: true }}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Subagent") as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("enables the Subagent tool when its checkbox is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{}}
+          setEnabledTools={setEnabledTools}
+        />,
+      );
+
+      fireEvent.click(screen.getByLabelText("Subagent"));
+
+      expect(setEnabledTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools.mock.calls[0]?.[0]?.spawn_subagent).toBe(true);
     });
   });
 });

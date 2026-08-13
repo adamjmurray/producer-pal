@@ -12,7 +12,7 @@ import {
   SmallModelToggle,
   ThinkingSelector,
   VoiceSettings,
-} from "#webui/components/settings/connection-tab-helpers";
+} from "#webui/components/settings/helpers/connection-tab-helpers";
 import {
   GEMINI_REALTIME_MODEL,
   OPENAI_REALTIME_MODEL,

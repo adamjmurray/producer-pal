@@ -102,6 +102,27 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("v1.2.3-beta", "v1.2.3")).toBe(true);
   });
 
+  it("prompts an rc tester at GA promotion, which is the whole update path now", () => {
+    // Shipped versions are real `-rcN` strings, so promotion is an ordinary
+    // version difference and one request answers it. This replaced the second
+    // GitHub request (resolving the release tag to a commit) that existed only
+    // because every build of a cycle used to call itself the GA version.
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0")).toBe(true);
+    expect(isNewerVersion("2.1.0-rc4", "2.1.0")).toBe(true);
+  });
+
+  it("never prompts an rc tester to install the older stable release", () => {
+    // `/releases/latest` hides pre-releases, so mid-cycle a tester on 2.1.0-rc1
+    // gets 2.0.0 back. A downgrade prompt must not be reachable.
+    expect(isNewerVersion("2.1.0-rc1", "2.0.0")).toBe(false);
+  });
+
+  it("does not announce a mid-cycle re-cut to a tester on an earlier rc", () => {
+    // Accepted: `/releases/latest` would never surface rc2 anyway (it's marked
+    // pre-release), so the comparison is moot. Testers are told directly.
+    expect(isNewerVersion("2.1.0-rc1", "2.1.0-rc2")).toBe(false);
+  });
+
   it("does not treat pre-release latest as newer than same stable", () => {
     // latest has suffix, current doesn't → latest is NOT newer
     expect(isNewerVersion("1.2.3", "1.2.3-beta")).toBe(false);
@@ -139,6 +160,21 @@ describe("checkForUpdate", () => {
     expect(result).toStrictEqual({ version: "2.0.0" });
   });
 
+  it("reports a GA promotion to a tester holding the pre-release", async () => {
+    // The end-to-end shape of what replaced the tag-to-commit request: a real
+    // `-rcN` in the artifact makes promotion an ordinary version difference.
+    mockFetchResponse({ tag_name: "v2.1.0" });
+
+    expect(await checkForUpdate("2.1.0-rc3")).toStrictEqual({
+      version: "2.1.0",
+    });
+  });
+
+  it("stays quiet mid-cycle, when latest is the older stable release", async () => {
+    mockFetchResponse({ tag_name: "v2.0.0" });
+    expect(await checkForUpdate("2.1.0-rc1")).toBeNull();
+  });
+
   it("returns null when the current version matches latest", async () => {
     mockFetchResponse({ tag_name: "v1.0.0" });
     expect(await checkForUpdate("1.0.0")).toBeNull();
@@ -173,6 +209,11 @@ describe("checkForUpdate", () => {
   });
 
   it("passes a timeout signal to fetch", async () => {
+    // The URL is load-bearing, not incidental: `/releases/latest` is the one
+    // endpoint that hides pre-releases, which is what keeps stable users from
+    // being offered a beta. This assertion is the only guard on that choice —
+    // every mock here hand-supplies a tag_name, so none can model GitHub's own
+    // exclusion rule. See the comment on RELEASES_URL.
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({ tag_name: "v2.0.0" })));
@@ -183,5 +224,25 @@ describe("checkForUpdate", () => {
       "https://api.github.com/repos/adamjmurray/producer-pal/releases/latest",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it("makes exactly one request, whatever the answer is", async () => {
+    // GitHub's unauthenticated limit is 60/hr per IP. This function used to make
+    // a second request to resolve the release tag to a commit; real `-rcN`
+    // versions made that unnecessary, and it must not come back.
+    for (const [current, tag] of [
+      ["1.0.0", "v2.0.0"], // update available
+      ["2.0.0", "v2.0.0"], // up to date
+      ["2.1.0-rc1", "v2.0.0"], // pre-release, ahead of latest stable
+      ["2.1.0-rc1", "v2.1.0"], // pre-release, promoted
+    ] as const) {
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify({ tag_name: tag })));
+
+      await checkForUpdate(current);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      fetchSpy.mockRestore();
+    }
   });
 });

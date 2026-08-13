@@ -2,7 +2,9 @@
 
 Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 
-Use `npx producer-pal` to connect to Producer Pal's MCP server.
+Use `npx producer-pal` to connect to Producer Pal's MCP server. Its flags and
+environment variables are listed in the
+[`npx producer-pal` reference](/guide/npx-cli).
 
 ## Requirements
 
@@ -36,9 +38,9 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 ::: details Using a small/local model?
 
 Add the `--small-model-mode` flag to enable
-[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
-which simplifies the tool interface for smaller LLMs and automatically enables
-it on the device when connected:
+[Small Model Mode](./bionic#_4-tune-it-for-your-model-recommended), which
+simplifies the tool interface for smaller LLMs and automatically enables it on
+the device when connected:
 
 ```json
 {
@@ -49,10 +51,26 @@ it on the device when connected:
 
 :::
 
+::: details Only need some of the tools?
+
+Add `--tools` to keep just the tools you want, or `--disable-tools` to drop the
+ones you don't:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+}
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
+
+:::
+
 ::: details Advanced: enabling the Direct Live API
 
 Add the `--live-api` flag to turn on the opt-in
-[Direct Live API](/features#ppal-live-api) tool (`ppal-live-api`) when the
+[Direct Live API](/features/tools#ppal-live-api) tool (`ppal-live-api`) when the
 server connects — the same setting as the device's **Setup** tab, so it's global
 to the device:
 

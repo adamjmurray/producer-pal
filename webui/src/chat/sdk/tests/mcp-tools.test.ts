@@ -5,7 +5,8 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock MCP client helpers
+// Mock MCP client helpers. connectAndListTools is deliberately NOT mocked — it
+// owns the close-on-catalog-failure path asserted below.
 vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
   createConnectedMcpClient: vi.fn(),
   filterEnabledTools: vi.fn((tools) => tools),
@@ -60,6 +61,36 @@ describe("createMcpTools", () => {
 
     expect(createConnectedMcpClient).toHaveBeenCalledWith(
       "http://custom:9000/mcp",
+      undefined,
+      undefined,
+      undefined,
+    );
+  });
+
+  it("forwards smallModelMode to the MCP client (per-request header)", async () => {
+    await createMcpTools("http://localhost:3000/mcp", undefined, true);
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      true,
+      undefined,
+      undefined,
+    );
+  });
+
+  it("forwards notation to the MCP client (per-request header)", async () => {
+    await createMcpTools(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
+    );
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      undefined,
+      undefined,
+      "stark",
     );
   });
 
@@ -69,6 +100,19 @@ describe("createMcpTools", () => {
     await createMcpTools("http://localhost:3000/mcp", enabledTools);
 
     expect(filterEnabledTools).toHaveBeenCalledWith(mockTools, enabledTools);
+  });
+
+  it("forwards enabledTools to the MCP client so the server withholds them too", async () => {
+    const enabledTools = { "ppal-read": false };
+
+    await createMcpTools("http://localhost:3000/mcp", enabledTools, false);
+
+    expect(createConnectedMcpClient).toHaveBeenCalledWith(
+      "http://localhost:3000/mcp",
+      false,
+      enabledTools,
+      undefined,
+    );
   });
 
   it("sets tool descriptions", async () => {
@@ -88,6 +132,7 @@ describe("createMcpTools", () => {
         toolCallId: "tc1",
         messages: [],
         abortSignal: new AbortController().signal,
+        context: undefined,
       },
     );
 
@@ -114,9 +159,41 @@ describe("createMcpTools", () => {
           toolCallId: "tc1",
           messages: [],
           abortSignal: new AbortController().signal,
+          context: undefined,
         },
       ),
     ).rejects.toThrow("Invalid bar|beat format");
+  });
+
+  it("closes the connection when the catalog read fails", async () => {
+    // The caller only learns of the client through a successful return, so a
+    // throw here would strand an open transport nothing can reach.
+    const close = vi.fn().mockResolvedValue(undefined);
+
+    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
+      callTool: mockCallTool,
+      close,
+    });
+
+    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
+      "catalog unavailable",
+    );
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("reports the original failure even when the close fails too", async () => {
+    const close = vi.fn().mockRejectedValue(new Error("socket already gone"));
+
+    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
+      callTool: mockCallTool,
+      close,
+    });
+
+    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
+      "catalog unavailable",
+    );
   });
 
   it("returns the MCP client", async () => {

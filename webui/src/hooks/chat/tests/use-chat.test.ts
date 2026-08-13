@@ -8,6 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
 import {
@@ -139,7 +140,6 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
-      expect(result.current.activeTemperature).toBeNull();
     });
   });
 
@@ -159,7 +159,6 @@ describe("useChat", () => {
       expect(result.current.messages).toStrictEqual([]);
       expect(result.current.activeModel).toBeNull();
       expect(result.current.activeThinking).toBeNull();
-      expect(result.current.activeTemperature).toBeNull();
     });
 
     it("disposes the client so its MCP connection is released", async () => {
@@ -269,6 +268,154 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
     });
 
+    it("drops updates after the stop and reports no error for the aborted turn", async () => {
+      // Stop lands between two yields, then the provider's stream rejects. The
+      // late yield must not paint, and the rejection is the user's own cancel —
+      // not something to render as a failure.
+      let release!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            await paused;
+            client.chatHistory.push({ role: "assistant", content: "too late" });
+            yield [...client.chatHistory];
+
+            throw new Error("stream torn down");
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+      const sendPromise = act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Let the first yield land before stopping.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      release();
+      await sendPromise;
+
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        false,
+      );
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(false);
+    });
+
+    it("leaves the next turn alone when a stopped turn unwinds late", async () => {
+      // Stop re-enables the composer at once, but the stopped turn keeps
+      // unwinding — its stream waits on any subagent still finishing an MCP
+      // call, which takes no abort signal. A send inside that window owns the
+      // per-turn state from then on; the late turn must not tear it down, or
+      // its Stop silently no-ops.
+      let releaseStopped!: () => void;
+      const stoppedUnwind = new Promise<void>((resolve) => {
+        releaseStopped = resolve;
+      });
+      const signals: AbortSignal[] = [];
+      let turn = 0;
+      const adapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string, signal: AbortSignal) {
+            signals.push(signal);
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            // First turn: the post-Stop unwind. Second: still streaming.
+            await (++turn === 1 ? stoppedUnwind : new Promise(() => {}));
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      void act(() => {
+        void result.current.handleSend("second");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The stopped turn finishes only now, after the new one is under way.
+      releaseStopped();
+      await stoppedSend;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(result.current.isAssistantResponding).toBe(true);
+
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      expect(signals[1]?.aborted).toBe(true);
+      expect(result.current.isAssistantResponding).toBe(false);
+    });
+
+    it("swallows a superseded turn's SETUP failure instead of rendering it", async () => {
+      // The other half of the same window: the failure comes from the turn's
+      // setup rather than its stream — a connection check still in flight when
+      // the user stopped and re-sent. Recovery renders the error, reassigns the
+      // shared client's history, and autosaves, so a stale one corrupts the
+      // turn now streaming.
+      let releaseCheck!: () => void;
+      const checkInFlight = new Promise<void>((resolve) => {
+        releaseCheck = resolve;
+      });
+
+      vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
+        await checkInFlight;
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderHook(() => useChat(defaultProps));
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      await act(async () => {
+        await result.current.handleSend("second");
+      });
+
+      releaseCheck();
+      await stoppedSend;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(false);
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        true,
+      );
+    });
+
     it("keeps queued messages when stop is pressed so they flush on the next send", async () => {
       const result = await renderWithQueuedMessage("queued msg");
 
@@ -348,17 +495,15 @@ describe("useChat", () => {
 
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
-        temperature: 1.0,
         thinking: "Default",
       });
     });
 
-    it("sets active model, thinking, and temperature after initialization", async () => {
+    it("sets active model and thinking after initialization", async () => {
       const result = await renderAndSend();
 
       expect(result.current.activeModel).toBe("test-model");
       expect(result.current.activeThinking).toBe("Default");
-      expect(result.current.activeTemperature).toBe(1.0);
     });
 
     it("reuses existing client on subsequent messages", async () => {
@@ -395,6 +540,31 @@ describe("useChat", () => {
       });
 
       expect(autoSaveRef.current).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not autosave on the user echo alone", async () => {
+      // The echo yield carries no response yet, so saving there would persist a
+      // turn with nothing in it. This is the whole job of hasAssistantContent now
+      // that the retry path no longer consults it — the previous test can't tell
+      // the two apart, because either way the count lands on 1.
+      const autoSaveRef = { current: vi.fn() };
+      const echoOnly = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message: string) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+          },
+      );
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: echoOnly, autoSaveRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(autoSaveRef.current).not.toHaveBeenCalled();
     });
 
     it("sets isAssistantResponding to false after completion", async () => {
@@ -579,6 +749,40 @@ describe("useChat", () => {
   });
 
   describe("compact (bootstrap + race guard)", () => {
+    it("no-ops when the target message index has nothing at it", async () => {
+      const adapter = adapterWithClient(() => {});
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(async () => {
+        await result.current.compact(0);
+      });
+
+      expect(adapter.createClient).not.toHaveBeenCalled();
+      expect(result.current.isCompacting).toBe(false);
+    });
+
+    it("builds no client when the bootstrap has no API key to use", async () => {
+      // Restored history gives compact something to target, but a key removed
+      // from Settings leaves nothing to connect with — bootstrap must bail
+      // rather than construct a client that can't authenticate.
+      const adapter = adapterWithClient(() => {});
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter, apiKey: "" }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createClient).not.toHaveBeenCalled();
+      expect(result.current.isCompacting).toBe(false);
+    });
+
     it("bootstraps a client from restored history, then compacts", async () => {
       let created: MockChatClient | undefined;
       const adapter = adapterWithClient((client) => {

@@ -7,6 +7,21 @@ import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 import { parseAssignments } from "./parse-test-helpers.ts";
 
+/** The expected AST node for `note.<name>`. */
+const noteVar = (name: string) => ({
+  type: "variable",
+  namespace: "note",
+  name,
+});
+
+/** The expected AST node for a `note.<name> <op> <right>` comparison. */
+const noteComparison = (name: string, op: string, right: unknown) => ({
+  type: "comparison",
+  op,
+  left: noteVar(name),
+  right,
+});
+
 describe("Transform Parser - where() predicate", () => {
   describe("basic comparisons", () => {
     it("parses a where()-only line (no positional selector)", () => {
@@ -16,12 +31,9 @@ describe("Transform Parser - where() predicate", () => {
 
       expect(result[0]!.pitchRange).toBeNull();
       expect(result[0]!.timeRange).toBeNull();
-      expect(result[0]!.predicate).toStrictEqual({
-        type: "comparison",
-        op: "<",
-        left: { type: "variable", namespace: "note", name: "velocity" },
-        right: 40,
-      });
+      expect(result[0]!.predicate).toStrictEqual(
+        noteComparison("velocity", "<", 40),
+      );
     });
 
     it("omits predicate on a line with no where()", () => {
@@ -38,24 +50,18 @@ describe("Transform Parser - where() predicate", () => {
           `where(note.velocity ${op} 80): velocity = 0`,
         );
 
-        expect(result[0]!.predicate).toStrictEqual({
-          type: "comparison",
-          op,
-          left: { type: "variable", namespace: "note", name: "velocity" },
-          right: 80,
-        });
+        expect(result[0]!.predicate).toStrictEqual(
+          noteComparison("velocity", op, 80),
+        );
       }
     });
 
     it("tolerates missing whitespace around the operator", () => {
       const result = parseAssignments("where(note.velocity>80): v0");
 
-      expect(result[0]!.predicate).toStrictEqual({
-        type: "comparison",
-        op: ">",
-        left: { type: "variable", namespace: "note", name: "velocity" },
-        right: 80,
-      });
+      expect(result[0]!.predicate).toStrictEqual(
+        noteComparison("velocity", ">", 80),
+      );
     });
 
     it("accepts each of the six intrinsic note properties", () => {
@@ -72,11 +78,7 @@ describe("Transform Parser - where() predicate", () => {
         const result = parseAssignments(`where(note.${name} > 1): v0`);
         const predicate = result[0]!.predicate as { left: unknown };
 
-        expect(predicate.left).toStrictEqual({
-          type: "variable",
-          namespace: "note",
-          name,
-        });
+        expect(predicate.left).toStrictEqual(noteVar(name));
       }
     });
   });
@@ -108,16 +110,13 @@ describe("Transform Parser - where() predicate", () => {
         "where(note.velocity > note.duration * 100): v0",
       );
 
-      expect(result[0]!.predicate).toStrictEqual({
-        type: "comparison",
-        op: ">",
-        left: { type: "variable", namespace: "note", name: "velocity" },
-        right: {
+      expect(result[0]!.predicate).toStrictEqual(
+        noteComparison("velocity", ">", {
           type: "multiply",
-          left: { type: "variable", namespace: "note", name: "duration" },
+          left: noteVar("duration"),
           right: 100,
-        },
-      });
+        }),
+      );
     });
   });
 
@@ -133,13 +132,7 @@ describe("Transform Parser - where() predicate", () => {
           name: "abs",
           sync: false,
           raw: false,
-          args: [
-            {
-              type: "subtract",
-              left: { type: "variable", namespace: "note", name: "start" },
-              right: 4,
-            },
-          ],
+          args: [{ type: "subtract", left: noteVar("start"), right: 4 }],
         },
         right: 1,
       });
@@ -188,12 +181,9 @@ describe("Transform Parser - where() predicate", () => {
     it("groups a comparison in parens (reflexive paren)", () => {
       const result = parseAssignments("where((note.velocity > 80)): v0");
 
-      expect(result[0]!.predicate).toStrictEqual({
-        type: "comparison",
-        op: ">",
-        left: { type: "variable", namespace: "note", name: "velocity" },
-        right: 80,
-      });
+      expect(result[0]!.predicate).toStrictEqual(
+        noteComparison("velocity", ">", 80),
+      );
     });
 
     it("overrides precedence with boolean grouping a && (b || c)", () => {
@@ -212,12 +202,7 @@ describe("Transform Parser - where() predicate", () => {
 
       expect(result[0]!.predicate).toStrictEqual({
         type: "not",
-        operand: {
-          type: "comparison",
-          op: ">",
-          left: { type: "variable", namespace: "note", name: "velocity" },
-          right: 80,
-        },
+        operand: noteComparison("velocity", ">", 80),
       });
     });
 
@@ -243,12 +228,9 @@ describe("Transform Parser - where() predicate", () => {
         startPitch: 60,
         endPitch: 84,
       });
-      expect(result[0]!.predicate).toStrictEqual({
-        type: "comparison",
-        op: ">",
-        left: { type: "variable", namespace: "note", name: "velocity" },
-        right: 80,
-      });
+      expect(result[0]!.predicate).toStrictEqual(
+        noteComparison("velocity", ">", 80),
+      );
     });
 
     it("AND-combines a time range with a predicate", () => {

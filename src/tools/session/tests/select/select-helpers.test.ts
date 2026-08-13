@@ -26,7 +26,7 @@ import {
  */
 function setupSongView(): { mock: RegisteredMockObject; api: LiveAPI } {
   const mock = registerMockObject("song-view", {
-    path: String(livePath.view.song),
+    path: livePath.view.song,
     type: "Song.View",
   });
 

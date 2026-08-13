@@ -45,7 +45,7 @@ export function setupTrack(
     type: "Track",
     properties: {
       track_index: trackIndex,
-      ...(options.properties ?? {}),
+      ...options.properties,
     },
     methods: options.methods,
   });

@@ -33,6 +33,22 @@ const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes, applyTransform } =
   createClipTransformHelpers(ctx);
 
+/**
+ * Assert every velocity in a read-back notation string falls inside [min, max].
+ * The rand() suites can only assert a range, since the value is random.
+ * @param notes - The read-back notes string
+ * @param min - Inclusive lower bound
+ * @param max - Inclusive upper bound
+ */
+function expectVelocitiesWithin(notes: string, min: number, max: number): void {
+  for (const match of notes.matchAll(/v(\d+)/g)) {
+    const velocity = Number(match[1]);
+
+    expect(velocity).toBeGreaterThanOrEqual(min);
+    expect(velocity).toBeLessThanOrEqual(max);
+  }
+}
+
 /** Creates an audio track and returns its trackIndex. */
 async function createAudioTrack(trackName: string): Promise<number> {
   const trackResult = await ctx.client!.callTool({
@@ -740,29 +756,16 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     const clipId = await createMidiClip(20, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
 
     await applyTransform(clipId, "velocity += 10 * rand()");
-    const notes = await readClipNotes(clipId);
 
     // Each note should have velocity in [90, 110] (100 ± 10)
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
-
-    for (const v of velocities) {
-      expect(v).toBeGreaterThanOrEqual(90);
-      expect(v).toBeLessThanOrEqual(110);
-    }
+    expectVelocitiesWithin(await readClipNotes(clipId), 90, 110);
   });
 
   it("rand(min, max) randomizes within specified range", async () => {
     const clipId = await createMidiClip(21, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
 
     await applyTransform(clipId, "velocity = rand(60, 120)");
-    const notes = await readClipNotes(clipId);
-
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
-
-    for (const v of velocities) {
-      expect(v).toBeGreaterThanOrEqual(60);
-      expect(v).toBeLessThanOrEqual(120);
-    }
+    expectVelocitiesWithin(await readClipNotes(clipId), 60, 120);
 
     // Nested: round(rand()) for integer random transpose
     await applyTransform(clipId, "pitch = 60 + round(rand(0, 12))");

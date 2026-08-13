@@ -25,7 +25,10 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
-import { emptyMidiTrack } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import {
+  createClipInSlot,
+  emptyMidiTrack,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -44,6 +47,19 @@ async function readClipTiming(
   return parseToolResult<ReadClipResult>(result)[field];
 }
 
+/**
+ * Create the suite's standard looping session clip at the given length.
+ * @param length - Clip length in the absolute note-value duration grammar
+ * @returns The new clip's id
+ */
+function createLoopingClip(length: string): Promise<string> {
+  return createClipInSlot(ctx, `${emptyMidiTrack}/0`, {
+    notes: "C3 1|1",
+    looping: true,
+    length,
+  });
+}
+
 describe("clip duration round-trips (absolute note values)", () => {
   // n/8 (half a beat) is the shortest case here — a sanity check that sub-beat
   // loop lengths round-trip, not just whole/multi-bar ones.
@@ -59,45 +75,23 @@ describe("clip duration round-trips (absolute note values)", () => {
   ])(
     "round-trips a session clip length of $length",
     async ({ length, expected }) => {
-      const createResult = await ctx.client!.callTool({
-        name: "ppal-create-clip",
-        arguments: {
-          slot: `${emptyMidiTrack}/0`,
-          notes: "C3 1|1",
-          looping: true,
-          length,
-        },
-      });
-      const clip = parseToolResult<{ id: string }>(createResult);
+      const clipId = await createLoopingClip(length);
 
-      await sleep(100);
-
-      expect(await readClipTiming(clip.id, "length")).toBe(expected ?? length);
+      expect(await readClipTiming(clipId, "length")).toBe(expected ?? length);
     },
   );
 
   it("round-trips a session clip length through an update", async () => {
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/0`,
-        notes: "C3 1|1",
-        looping: true,
-        length: "2bar",
-      },
-    });
-    const clip = parseToolResult<{ id: string }>(createResult);
-
-    await sleep(100);
+    const clipId = await createLoopingClip("2bar");
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, length: "n/2" },
+      arguments: { ids: clipId, length: "n/2" },
     });
 
     await sleep(100);
 
-    expect(await readClipTiming(clip.id, "length")).toBe("n/2");
+    expect(await readClipTiming(clipId, "length")).toBe("n/2");
   });
 
   it("round-trips arrangementLength for an unlooped MIDI clip (create + update)", async () => {

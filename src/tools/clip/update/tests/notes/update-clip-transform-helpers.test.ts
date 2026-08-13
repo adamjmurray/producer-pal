@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
@@ -15,6 +16,7 @@ function createSessionClipMock(length = 8) {
   return {
     getProperty: vi.fn((prop: string) => {
       if (prop === "length") return length;
+      if (prop === "is_midi_clip") return 1;
       if (prop === "is_arrangement_clip") return 0;
 
       return 0;
@@ -61,6 +63,7 @@ describe("update-clip-transform-helpers", () => {
       const mockClip = {
         getProperty: vi.fn((prop: string) => {
           if (prop === "length") return 6;
+          if (prop === "is_midi_clip") return 1;
           if (prop === "is_arrangement_clip") return 0;
 
           return 0;
@@ -71,6 +74,37 @@ describe("update-clip-transform-helpers", () => {
 
       expect(ctx.clipDuration).toBe(12);
       expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("measures an unwarped session audio clip from its markers", () => {
+      // `length` on an unwarped clip is whatever it was before warp went off —
+      // stale, and not in seconds. The markers are, so at 120 BPM a 4-second
+      // region is 8 beats, not the 16 `length` still claims.
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tempo: 120 },
+      });
+
+      const mockClip = {
+        getProperty: vi.fn(
+          (prop: string) =>
+            ({
+              length: 16,
+              is_midi_clip: 0,
+              is_arrangement_clip: 0,
+              warping: 0,
+              looping: 0,
+              start_marker: 0,
+              end_marker: 4, // seconds, while unwarped
+              sample_rate: 48000,
+              sample_length: 4 * 48000,
+            })[prop] ?? 0,
+        ),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.clipDuration).toBe(8);
     });
 
     it("scales clipDuration and arrangementStart by timeSigDenominator/4 (arrangement)", () => {

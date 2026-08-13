@@ -12,7 +12,7 @@ import {
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
   log: vi.fn(),
   warn: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { resolveCreateClipTakeLane } from "#src/tools/clip/create/helpers/create-clip-prep-helpers.ts";
-import * as consoleMock from "#src/shared/v8-max-console.ts";
+import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /** Register the live_set time signature mock used by createClip. */
 function registerLiveSet(): void {

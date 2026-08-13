@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   setupAudioClipMock,
@@ -205,5 +207,93 @@ describe("readClip - warp markers", () => {
     } finally {
       process.env.ENABLE_WARP_MARKERS = original;
     }
+  });
+});
+
+describe("readClip - unwarped audio clip timing", () => {
+  const SAMPLE_RATE = 48000;
+
+  /**
+   * Register a Live Set at `tempo` and an unwarped audio clip. An unwarped
+   * clip's marker properties are in seconds, which is the unit switch these
+   * tests exist to cover.
+   * @param options - Clip configuration
+   * @param options.tempo - Live Set tempo
+   * @param options.sampleSeconds - The sample's duration in seconds
+   * @param options.endMarker - end_marker, in seconds
+   */
+  function setupUnwarpedAudioClip({
+    tempo = 120,
+    sampleSeconds,
+    endMarker,
+  }: {
+    tempo?: number;
+    sampleSeconds: number;
+    endMarker: number;
+  }): void {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: {
+        tempo,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 0,
+        name: "One Shot",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        looping: 0,
+        warping: 0,
+        start_marker: 0,
+        end_marker: endMarker,
+        loop_start: 0,
+        loop_end: endMarker,
+        sample_rate: SAMPLE_RATE,
+        sample_length: sampleSeconds * SAMPLE_RATE,
+        // Live reports this as the length the clip would have if still warped,
+        // so a correct reading must ignore it
+        length: 4,
+      },
+    });
+  }
+
+  it("reports the region in beats, not the raw seconds", () => {
+    // A 1.2s one-shot occupies 2.4 beats at 120bpm. Reading end_marker as beats
+    // would report 1.2 beats — half the clip.
+    setupUnwarpedAudioClip({ sampleSeconds: 1.2, endMarker: 1.2 });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+
+    expect(result.warping).toBe(false);
+    expect(result.end).toBe("1|3.4");
+    expect(result).toHaveLength("n3/5");
+  });
+
+  it("clamps a stale end marker left behind by unwarping", () => {
+    // end_marker keeps the beat value the warped grid had put there (4),
+    // reinterpreted as 4 seconds against a 1.5s file. Live clamps playback at
+    // the file boundary, so the region is 1.5s = 3 beats at 120bpm.
+    setupUnwarpedAudioClip({ sampleSeconds: 1.5, endMarker: 4 });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+
+    expect(result.end).toBe("1|4");
+    // 3 beats in 4/4 is a dotted half
+    expect(result).toHaveLength("n/2d");
+  });
+
+  it("scales the region with tempo, unlike a warped clip", () => {
+    setupUnwarpedAudioClip({ tempo: 60, sampleSeconds: 1.2, endMarker: 1.2 });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: ["*"] });
+
+    expect(result.end).toBe("1|2.2");
   });
 });

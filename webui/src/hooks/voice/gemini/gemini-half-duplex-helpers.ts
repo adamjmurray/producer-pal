@@ -36,6 +36,35 @@ export function beginGeminiHalfDuplexMute(
 }
 
 /**
+ * Apply the user's manual mute choice, which overrides any half-duplex
+ * auto-mute.
+ *
+ * Clearing `autoMutedRef` is the point of routing this through here: left set,
+ * the next {@link beginGeminiHalfDuplexMute} finds the mute already "armed" and
+ * no-ops, so the rest of the assistant's turn plays into an open mic.
+ *
+ * @param mic - The mic instance, or null when not connected
+ * @param muted - The state the user asked for
+ * @param isMutedRef - Ref mirroring the user's manual mute state
+ * @param autoMutedRef - Ref flagging an active half-duplex auto-mute
+ * @returns True when there was a mic to change
+ */
+export function applyManualMute(
+  mic: MutableMic | null,
+  muted: boolean,
+  isMutedRef: BooleanRef,
+  autoMutedRef: BooleanRef,
+): boolean {
+  if (!mic) return false;
+
+  autoMutedRef.current = false;
+  isMutedRef.current = muted;
+  mic.setMuted(muted);
+
+  return true;
+}
+
+/**
  * Lift a half-duplex auto-mute on turn complete / interruption, restoring the
  * user's manual mute intent. No-op when no auto-mute is active.
  *

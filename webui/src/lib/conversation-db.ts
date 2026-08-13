@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type IDBPDatabase } from "idb";
+import { type Notation } from "#src/shared/notation";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
 import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
@@ -24,8 +25,6 @@ export interface ConversationRecord {
   model: string | null;
   modelLabel: string | null;
   thinking: string | null;
-  temperature: number | null;
-  showThoughts: boolean | null;
   smallModelMode: boolean | null;
   totalUsage: TokenUsage | null;
   sessionType: SessionType;
@@ -39,6 +38,20 @@ export interface ConversationRecord {
   // edited. Optional/schemaless: legacy records read fine without it (no
   // DB_VERSION bump), and it rides the conversation export/import.
   systemInstruction?: string;
+  // The notation this conversation ran with, snapshotted on the same terms as
+  // systemInstruction. Restoring a conversation sends this rather than the
+  // current device global, so a transcript written in one notation keeps being
+  // parsed in it. Optional/schemaless: legacy records read fine without it (no
+  // DB_VERSION bump), and it rides the conversation export/import.
+  notation?: Notation;
+  // The tool selection this conversation runs with, pinned like the two snapshots
+  // above: a transcript full of calls to a tool is itself an instruction to keep
+  // calling it, so restoring re-sends this rather than the current selection.
+  // Written from the already-pinned active toolset on every save rather than
+  // frozen at the first. Optional/schemaless: legacy records read fine without it
+  // (no DB_VERSION bump) and reconnect on the current selection, and it rides the
+  // conversation export/import.
+  enabledTools?: Record<string, boolean>;
   // --- Conversation branching (edit/retry forks) ---
   // Set on records created by forking an earlier turn. The fork stores a pointer
   // back to the record it diverged from (its "trunk") plus the UI message index
@@ -105,7 +118,8 @@ export async function loadConversation(
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
   const raw = (await db.get(STORE_NAME, id)) as
-    Partial<ConversationRecord> | undefined;
+    | Partial<ConversationRecord>
+    | undefined;
 
   if (!raw) return undefined;
 
@@ -157,7 +171,8 @@ export async function renameConversation(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    ConversationRecord | undefined;
+    | ConversationRecord
+    | undefined;
 
   if (!record) return;
 
@@ -176,7 +191,8 @@ export async function setBookmark(
 ): Promise<void> {
   const db = await getConversationDb();
   const record = (await db.get(STORE_NAME, id)) as
-    ConversationRecord | undefined;
+    | ConversationRecord
+    | undefined;
 
   if (!record) return;
 
@@ -226,8 +242,6 @@ export async function listAllConversationSummaries(): Promise<
         model,
         modelLabel,
         thinking,
-        temperature,
-        showThoughts,
         smallModelMode,
         totalUsage,
         sessionType,
@@ -243,8 +257,6 @@ export async function listAllConversationSummaries(): Promise<
         model,
         modelLabel,
         thinking,
-        temperature,
-        showThoughts,
         smallModelMode,
         totalUsage,
         sessionType,
@@ -330,8 +342,6 @@ function normalizeLegacyRecord(
   raw: Partial<ConversationRecord>,
 ): ConversationRecord {
   raw.thinking ??= null;
-  raw.temperature ??= null;
-  raw.showThoughts ??= null;
   raw.smallModelMode ??= null;
   raw.totalUsage ??= null;
   raw.sessionType ??= "text";

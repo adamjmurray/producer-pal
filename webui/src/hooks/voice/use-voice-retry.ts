@@ -131,7 +131,7 @@ function useRateLimitAutoRetry(
     if (rateLimitedUntil == null) {
       setExhausted(false);
 
-      return;
+      return undefined;
     }
 
     if (attemptsRef.current >= MAX_AUTO_RETRY_ATTEMPTS) {
@@ -140,7 +140,7 @@ function useRateLimitAutoRetry(
       // to "retry manually".
       setExhausted(true);
 
-      return;
+      return undefined;
     }
 
     setExhausted(false);

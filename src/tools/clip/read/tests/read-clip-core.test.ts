@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as consoleModule from "#src/shared/v8-max-console.ts";
+import * as consoleModule from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -363,46 +363,41 @@ describe("readClip", () => {
     expect(result.type).toBe("audio");
   });
 
-  it("does not include sampleFile for MIDI clips", () => {
-    setupMidiClipMock({
+  /**
+   * Read slot 0/0 with the sample include after `setupClip` has registered a
+   * clip carrying only the standard 4/4, 4-beat properties.
+   * @param setupClip - setupMidiClipMock or setupAudioClipMock
+   * @param isMidiClip - The is_midi_clip value to register
+   * @returns The read-clip result
+   */
+  const readSampleInclude = (
+    setupClip: typeof setupMidiClipMock,
+    isMidiClip: number,
+  ) => {
+    setupClip({
       trackIndex: 0,
       sceneIndex: 0,
       clipProps: {
-        is_midi_clip: 1,
+        is_midi_clip: isMidiClip,
         signature_numerator: 4,
         signature_denominator: 4,
         length: 4,
       },
     });
 
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["sample"],
-    });
+    return readClip({ trackIndex: 0, sceneIndex: 0, include: ["sample"] });
+  };
+
+  it("does not include sampleFile for MIDI clips", () => {
+    const result = readSampleInclude(setupMidiClipMock, 1);
 
     expect(result.sampleFile).toBeUndefined();
     expect(result.type).toBe("midi");
   });
 
   it("does not include sampleFile for audio clips without file_path", () => {
-    setupAudioClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        // No file_path property
-      },
-    });
-
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["sample"],
-    });
+    // No file_path property registered.
+    const result = readSampleInclude(setupAudioClipMock, 0);
 
     expect(result.sampleFile).toBeUndefined();
     expect(result.type).toBe("audio");

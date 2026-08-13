@@ -99,13 +99,14 @@ export {
 export {
   drumBackbeatMatrix,
   melodyPitchMatrix,
+  middleCScaleMatrix,
   rhythmGridMatrix,
 } from "./clip/notation/notation-matrix-scenarios.ts";
 export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
 export { whereTransforms } from "./clip/where-transforms.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
-export { memoryWorkflow } from "./workflow/memory-workflow.ts";
+export { projectContextWorkflow } from "./workflow/project-context-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";

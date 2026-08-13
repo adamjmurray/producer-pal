@@ -5,44 +5,52 @@
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import express, {
-  type Request,
-  type Response,
-  type NextFunction,
-  type Express,
-} from "express";
+import express, { type Request, type Response, type Express } from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { textEditParamToString } from "#src/shared/max/max-atoms.ts";
 import {
   DEFAULT_NOTATION,
   isNotation,
   type Notation,
 } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
-import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
-import { requestBody } from "./helpers/http/request-body.ts";
 import {
-  isLocalOrigin,
-  rejectCrossOriginWrite,
-} from "./helpers/http/request-origin.ts";
+  TOOL_NAMES,
+  createMcpServer,
+  validateTools,
+} from "./create-mcp-server.ts";
+import { type WrappedCallLiveApi } from "./helpers/connect/connect-append.ts";
+import { enrichConnect } from "./helpers/connect/enrich-connect.ts";
+import { corsMiddleware } from "./helpers/http/cors-middleware.ts";
+import { requestBody } from "./helpers/http/request-body.ts";
+import { rejectCrossOriginWrite } from "./helpers/http/request-origin.ts";
+import {
+  resolveRequestProfile,
+  type RequestProfile,
+} from "./helpers/http/request-profile.ts";
+import { getUpdate } from "./helpers/http/update-check.ts";
+import { registerProjectContextBackupNodeRoutes } from "./helpers/project-context-backup/project-context-backup-node-routes.ts";
+import { withNotationOverride } from "./helpers/request-overrides/notation-override.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerCustomSkillsCollectionRoutes } from "./routes/custom-skills-collection-route.ts";
-import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
-import { registerGlobalContextRoutes } from "./routes/global-context-route.ts";
+import { registerGlobalContextRoutes } from "./routes/config/global-context-route.ts";
+import { registerGlobalSettingsRoutes } from "./routes/config/global-settings-route.ts";
 import { registerMemoryCollectionRoutes } from "./routes/memory-collection-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerSkillOverridesRoutes } from "./routes/skill-overrides-route.ts";
 import { registerSkillsPreviewRoute } from "./routes/skills-preview-route.ts";
-import { registerSystemPromptRoutes } from "./routes/system-prompt-route.ts";
-import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
+import { registerSubagentBriefingRoute } from "./routes/subagent-briefing-route.ts";
+import { registerSystemPromptRoutes } from "./routes/config/system-prompt-route.ts";
+import { registerGeminiVoiceTokenRoute } from "./routes/voice/gemini-voice-token-route.ts";
+import { registerVoiceTokenRoute } from "./routes/voice/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
-  memoryContent: string;
+  projectContext: string;
   smallModelMode: boolean;
   notation: Notation;
   jsonOutput: boolean; // true = JSON, false = compact (default)
@@ -64,7 +72,7 @@ interface ProducerPalConfig {
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
-  memoryContent: "",
+  projectContext: "",
   smallModelMode: false,
   notation: DEFAULT_NOTATION,
   jsonOutput: false,
@@ -88,11 +96,21 @@ Max.addHandler("notation", (value: unknown) => {
   }
 });
 
-Max.addHandler("memoryContent", (content: unknown) => {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = content === "bang" ? "" : String(content ?? "");
+Max.addHandler("projectContext", (content: unknown) => {
+  const value = textEditParamToString(content);
 
-  config.memoryContent = value;
+  config.projectContext = value;
+});
+
+// The V8 side calls projectContext.sync on tool calls to back the project
+// context up to a sidecar beside the Live Set (surviving device upgrades). A
+// restore updates our mirror directly so a restore during ppal-connect shows up
+// in that response's injected project-context block — the Max round-trip that
+// re-persists the param can't be relied on to land in time.
+registerProjectContextBackupNodeRoutes({
+  setProjectContext: (value: string) => {
+    config.projectContext = value;
+  },
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -100,8 +118,7 @@ Max.addHandler("compactOutput", (enabled: unknown) => {
 });
 
 Max.addHandler("sampleFolder", (path: unknown) => {
-  // an idiosyncrasy of Max's textedit is it routes bang for empty string:
-  const value = path === "bang" ? "" : String(path ?? "");
+  const value = textEditParamToString(path);
 
   config.sampleFolder = value;
 });
@@ -140,15 +157,51 @@ function applyLiveApiEnabled(next: boolean): void {
   }
 }
 
-// Enrich ppal-connect Node-side with the skills, context, memory, and next-step
-// blocks (see enrich-connect.ts for the block order and why it matters).
-// config.memoryContent is the per-Live Set context blob — a legacy field name
-// that predates the context/memory split, hence the rename at this boundary.
-const callLiveApiEnriched = enrichConnect(callLiveApi, () => ({
-  notation: config.notation,
-  smallModelMode: config.smallModelMode,
-  projectContext: config.memoryContent,
-}));
+/**
+ * Enrich ppal-connect Node-side with the skills, context, memory, and next-step
+ * blocks (see enrich-connect.ts for the block order and why it matters).
+ * config.projectContext is the per-Live Set context blob. smallModelMode, the
+ * toolset, and notation arrive through getters (not config directly) so a
+ * request can supply its own per-request values — the same values that shrink
+ * its tool schemas and its registered tools. POST /mcp and the REST tool
+ * endpoints both override all three, off the same headers.
+ *
+ * Notation is also pushed down as a request override (withNotationOverride), so
+ * the notation the skills teach is the one V8 actually parses and formats notes
+ * in. It wraps the inner call, inside the connect-enrichment chain.
+ *
+ * @param getSmallModelMode - Reads the small-model mode for this wrapper's calls
+ * @param getTools - Reads the toolset skills fragments are gated on
+ * @param getNotation - Reads the notation for this wrapper's calls
+ * @returns A callLiveApi whose ppal-connect results carry every block
+ */
+function buildEnrichedCall(
+  getSmallModelMode: () => boolean,
+  getTools: () => readonly string[],
+  getNotation: () => Notation,
+): WrappedCallLiveApi {
+  return enrichConnect(withNotationOverride(callLiveApi, getNotation), () => ({
+    notation: getNotation(),
+    smallModelMode: getSmallModelMode(),
+    projectContext: config.projectContext,
+    tools: getTools(),
+  }));
+}
+
+/**
+ * Build the enriched call for one REST request from that request's profile —
+ * the same three per-request values POST /mcp resolves, off the same headers.
+ *
+ * @param profile - The toolset, notation, and small-model mode for this request
+ * @returns A callLiveApi for this one request
+ */
+function buildRestCall(profile: RequestProfile): WrappedCallLiveApi {
+  return buildEnrichedCall(
+    () => profile.smallModelMode,
+    () => profile.tools,
+    () => profile.notation,
+  );
+}
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -194,50 +247,9 @@ function setNoStore(res: Response): void {
 export function createExpressApp(): Express {
   const app = express();
 
-  // CORS: by default reflect only localhost origins, so a browser page you
-  // serve locally (a dev server, the MCP Inspector, your own tool on another
-  // port) can call the API, while pages from the internet stay blocked. The
-  // Origin header is browser-set and can't be forged by page JS, so an internet
-  // page always carries its real domain and gets no header. Non-browser clients
-  // (curl, scripts, Max) ignore CORS entirely and are unaffected either way.
-  // Set ENABLE_REMOTE_CORS to widen this to any origin ("*") — needed only for
-  // browser dev tooling served from a non-localhost origin (a remote Inspector,
-  // LAN). Specify it manually on the CLI before a build; it is never baked into
-  // an npm script.
-  app.use((req: Request, res: Response, next: NextFunction): void => {
-    const origin = req.get("Origin");
-    let allowOrigin: string | null = null;
-
-    if (process.env.ENABLE_REMOTE_CORS === "true") {
-      allowOrigin = "*";
-    } else if (origin != null && isLocalOrigin(origin)) {
-      allowOrigin = origin;
-    }
-
-    if (allowOrigin != null) {
-      res.setHeader("Access-Control-Allow-Origin", allowOrigin);
-
-      // Reflected origins vary per request, so caches must key on Origin.
-      if (allowOrigin !== "*") {
-        res.setHeader("Vary", "Origin");
-      }
-
-      res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS, DELETE",
-      );
-      res.setHeader("Access-Control-Allow-Headers", "*");
-
-      // Answer the preflight for an allowed origin.
-      if (req.method === "OPTIONS") {
-        res.status(200).end();
-
-        return;
-      }
-    }
-
-    next();
-  });
+  // Localhost-only CORS by default; ENABLE_REMOTE_CORS widens it (see the
+  // middleware for the reasoning).
+  app.use(corsMiddleware);
 
   // Tool arguments with large MIDI note arrays or bar|beat transforms can
   // exceed Express's 100 KB default.
@@ -260,12 +272,32 @@ export function createExpressApp(): Express {
 
       console.info(`MCP request: ${method}`);
 
-      const server = createMcpServer(callLiveApiEnriched, {
-        smallModelMode: config.smallModelMode,
-        notation: config.notation,
-        liveApiEnabled: config.liveApiEnabled,
-        tools: config.tools,
-      });
+      // The caller's own profile, off the three per-request headers: the
+      // built-in chat and each subagent worker send their own values, so one
+      // caller's never reach the concurrently-running main session (a POST
+      // /config would). Absent ⇒ the globals, so external MCP clients are
+      // unaffected. See resolveRequestProfile for what each one drives.
+      //
+      // Deliberately no per-request output format or timeout here, unlike the
+      // REST endpoints' ?format= and ?timeoutMs=. Query params on /mcp are not
+      // something MCP clients do; this endpoint is built for MCP clients, which
+      // want the one MCP-shaped response; and the timeout exists for slow
+      // machines, which is a device-wide fact, not a per-call one.
+      const profile = resolveRequestProfile(req, config);
+
+      const server = createMcpServer(
+        buildEnrichedCall(
+          () => profile.smallModelMode,
+          () => profile.tools,
+          () => profile.notation,
+        ),
+        {
+          smallModelMode: profile.smallModelMode,
+          notation: profile.notation,
+          liveApiEnabled: config.liveApiEnabled,
+          tools: profile.tools,
+        },
+      );
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });
@@ -332,43 +364,32 @@ export function createExpressApp(): Express {
 
   app.post("/config", handleConfigUpdate);
 
-  registerRestApiRoutes(app, () => config, callLiveApiEnriched);
+  // The chat UI's update badge. It reads this instead of GitHub directly:
+  // GitHub's unauthenticated limit is per IP, and the UI remounts every time the
+  // window is opened. Served from the one check made at startup (update-check.ts),
+  // so this route never reaches the network.
+  app.get("/update", (_req: Request, res: Response): void => {
+    setNoStore(res);
+    void getUpdate().then((update) => res.json(update));
+  });
+
+  registerRestApiRoutes(app, () => config, buildRestCall);
 
   registerGlobalContextRoutes(app);
+  registerGlobalSettingsRoutes(app);
   registerMemoryCollectionRoutes(app);
   registerCustomSkillsCollectionRoutes(app);
   registerSystemPromptRoutes(app);
   registerSkillOverridesRoutes(app);
-  registerSkillsPreviewRoute(app);
+  registerSkillsPreviewRoute(app, () => config.tools);
+  // Raw callLiveApi, not the enriched one: the briefing composes its own blocks
+  // in worker order and must not inherit the user-facing connect enrichment.
+  registerSubagentBriefingRoute(app, () => config, callLiveApi);
 
   registerVoiceTokenRoute(app);
   registerGeminiVoiceTokenRoute(app);
 
   return app;
-}
-
-const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
-
-/**
- * Build the set of valid tool names, including ppal-live-api when enabled.
- * @param liveApiEnabled - Current value of config.liveApiEnabled
- * @returns Set of valid tool names
- */
-function getValidToolSet(liveApiEnabled: boolean): Set<string> {
-  if (!liveApiEnabled) return VALID_TOOL_SET;
-
-  return new Set<string>([...VALID_TOOL_SET, LIVE_API_TOOL_NAME]);
-}
-
-/**
- * Build the list of valid tool names for error responses.
- * @param liveApiEnabled - Current value of config.liveApiEnabled
- * @returns Sorted list of valid tool names
- */
-function getValidToolNames(liveApiEnabled: boolean): string[] {
-  if (!liveApiEnabled) return [...TOOL_NAMES];
-
-  return [...TOOL_NAMES, LIVE_API_TOOL_NAME];
 }
 
 /**
@@ -402,10 +423,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const incoming = requestBody(req) as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
-  if (incoming.memoryContent !== undefined) {
-    config.memoryContent = incoming.memoryContent ?? "";
+  if (incoming.projectContext !== undefined) {
+    config.projectContext = incoming.projectContext ?? "";
     outlets.push(() =>
-      Max.outlet("config", "memoryContent", config.memoryContent),
+      Max.outlet("config", "projectContext", config.projectContext),
     );
   }
 
@@ -476,47 +497,4 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   }
 
   res.json(config);
-}
-
-/**
- * Validate the tools array from a config update request.
- * Returns an error object if invalid, or null if valid.
- *
- * @param tools - The tools value from the request body
- * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
- * @returns Error response body or null
- */
-function validateTools(
-  tools: unknown,
-  liveApiEnabled: boolean,
-): { error: string; validToolNames: string[] } | null {
-  const validToolNames = getValidToolNames(liveApiEnabled);
-  const validToolSet = getValidToolSet(liveApiEnabled);
-
-  if (!Array.isArray(tools)) {
-    return {
-      error: "tools must be an array of tool names",
-      validToolNames,
-    };
-  }
-
-  const list = tools.map(String);
-  const invalid = list.filter((name) => !validToolSet.has(name));
-
-  if (invalid.length > 0) {
-    return {
-      error: `Invalid tool name(s): ${invalid.join(", ")}`,
-      validToolNames,
-    };
-  }
-
-  if (!list.includes("ppal-connect")) {
-    return {
-      error:
-        "ppal-connect must be included in tools (it is the required entry point)",
-      validToolNames,
-    };
-  }
-
-  return null;
 }

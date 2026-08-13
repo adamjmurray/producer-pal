@@ -15,10 +15,10 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
-import { createDeviceMockProperties } from "../helpers/read-track-device-test-helpers.ts";
-import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
-import { setupTrackPathMappedMocks } from "../helpers/read-track-path-mapped-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { createDeviceMockProperties } from "./helpers/read-track-device-test-helpers.ts";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 function createSoloedMidiTrackProperties(

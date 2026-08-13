@@ -5,42 +5,30 @@
 
 import { describe, expect, it } from "vitest";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import {
-  ensureLiveApiTool,
-  LIVE_API_TOOL_ID,
-  groupTools,
-} from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
+import { groupTools } from "#webui/components/settings/controls/helpers/tool-toggles-helpers";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
+import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
 
 const tool = (id: string, name: string): McpTool => ({ id, name });
 
-describe("ensureLiveApiTool", () => {
-  it("appends a Live API fallback when missing", () => {
-    const tools = [tool("ppal-connect", "Connect")];
-    const result = ensureLiveApiTool(tools);
-
-    expect(result).toHaveLength(2);
-    expect(result[1]?.id).toBe(LIVE_API_TOOL_ID);
-    expect(result[1]?.name).toBe("Live API");
-    expect(result[1]?.description).toBeDefined();
-  });
-
-  it("returns the original list when Live API is already present", () => {
-    const tools = [
-      tool("ppal-connect", "Connect"),
-      tool(LIVE_API_TOOL_ID, "Live API From Server"),
-    ];
-    const result = ensureLiveApiTool(tools);
-
-    expect(result).toBe(tools);
-  });
-});
-
 describe("groupTools", () => {
-  it("places Live API in its own Advanced group at the end", () => {
+  it("places Subagent in the Advanced group at the end", () => {
     const tools = [
       tool("ppal-connect", "Connect"),
-      tool(LIVE_API_TOOL_ID, "Live API"),
+      tool(SPAWN_SUBAGENT_TOOL_NAME, "Subagent"),
     ];
+
+    const groups = groupTools(tools);
+
+    expect(groups.at(-1)?.label).toBe("Advanced");
+    expect(groups.at(-1)?.tools.map((t) => t.id)).toStrictEqual([
+      SPAWN_SUBAGENT_TOOL_NAME,
+    ]);
+  });
+
+  it("places Live API and Subagent together in the Advanced group", () => {
+    const tools = fullToolCatalog([tool("ppal-connect", "Connect")]);
 
     const groups = groupTools(tools);
 
@@ -48,7 +36,10 @@ describe("groupTools", () => {
     expect(groups[0]?.label).toBe("Core");
     expect(groups[0]?.tools.map((t) => t.id)).toStrictEqual(["ppal-connect"]);
     expect(groups[1]?.label).toBe("Advanced");
-    expect(groups[1]?.tools.map((t) => t.id)).toStrictEqual([LIVE_API_TOOL_ID]);
+    expect(groups[1]?.tools.map((t) => t.id)).toStrictEqual([
+      LIVE_API_TOOL_ID,
+      SPAWN_SUBAGENT_TOOL_NAME,
+    ]);
   });
 
   it("groups tools by category", () => {
@@ -62,7 +53,7 @@ describe("groupTools", () => {
 
     expect(groups).toStrictEqual([
       { label: "Core", tools: [tools[0]] },
-      { label: "Clip", tools: [tools[2], tools[1]] },
+      { label: "Clip", tools: [tools[1], tools[2]] },
     ]);
   });
 
@@ -99,8 +90,8 @@ describe("groupTools", () => {
     const groups = groupTools(tools);
 
     expect(groups[0]?.tools.map((t) => t.id)).toStrictEqual([
-      "ppal-create-track",
       "ppal-read-track",
+      "ppal-create-track",
       "ppal-update-track",
     ]);
   });

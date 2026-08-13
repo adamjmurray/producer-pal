@@ -7,10 +7,11 @@
  * Scenario: Apply swing and quantize to existing MIDI clips.
  */
 
+import { argText } from "../arg-text.ts";
 import { expect } from "vitest";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead } from "./clip-scenario-helpers.ts";
+import { assertNotesRead } from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -78,7 +79,7 @@ export const swingAndQuantize: EvalScenario = {
 
           const updateCall = calls.find((c) => c.name === TOOL_UPDATE_CLIP);
 
-          const transforms = String(updateCall?.args.transforms ?? "");
+          const transforms = argText(updateCall?.args.transforms);
           const match = swingPattern.exec(transforms);
 
           if (!match) {

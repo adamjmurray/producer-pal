@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as consoleModule from "#src/shared/v8-max-console.ts";
+import * as consoleModule from "#src/shared/max/v8-max-console.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   clearMockRegistry,
@@ -110,6 +110,36 @@ describe("processWarpMarkers", () => {
   });
 });
 
+/**
+ * Register track 0 holding one non-drum rack whose single chain holds a Drum
+ * Rack. Only `can_have_chains` varies, so it decides whether the recursion
+ * reaches that nested Drum Rack.
+ * @param rackId - Mock-registry id for the outer rack
+ * @param canHaveChains - The outer rack's can_have_chains value
+ */
+function registerRackOverDrumRack(rackId: string, canHaveChains: number): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    properties: { devices: children(rackId) },
+  });
+  registerMockObject(rackId, {
+    type: "Device",
+    properties: {
+      can_have_drum_pads: 0,
+      can_have_chains: canHaveChains,
+      chains: children("innerChain"),
+    },
+  });
+  registerMockObject("innerChain", {
+    type: "Chain",
+    properties: { devices: children("drumRack") },
+  });
+  registerMockObject("drumRack", {
+    type: "Device",
+    properties: { can_have_drum_pads: 1 },
+  });
+}
+
 describe("isDrumRackTrack - chain descent guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -119,26 +149,7 @@ describe("isDrumRackTrack - chain descent guard", () => {
   it("does not descend into the chains of a device that reports no chains", () => {
     // The device has chain children holding a Drum Rack, but can_have_chains is
     // 0 — the recursion must NOT descend, so the track is not a drum track.
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      properties: { devices: children("fakeRack") },
-    });
-    registerMockObject("fakeRack", {
-      type: "Device",
-      properties: {
-        can_have_drum_pads: 0,
-        can_have_chains: 0,
-        chains: children("innerChain"),
-      },
-    });
-    registerMockObject("innerChain", {
-      type: "Chain",
-      properties: { devices: children("drumRack") },
-    });
-    registerMockObject("drumRack", {
-      type: "Device",
-      properties: { can_have_drum_pads: 1 },
-    });
+    registerRackOverDrumRack("fakeRack", 0);
 
     expect(isDrumRackTrack(0)).toBe(false);
   });
@@ -146,26 +157,7 @@ describe("isDrumRackTrack - chain descent guard", () => {
   it("descends into the chains of a real rack (can_have_chains > 0)", () => {
     // Same chain layout, but the rack reports can_have_chains: 1, so the nested
     // Drum Rack IS found. Pins the guard's true branch against the false one.
-    registerMockObject("track-0", {
-      path: livePath.track(0),
-      properties: { devices: children("realRack") },
-    });
-    registerMockObject("realRack", {
-      type: "Device",
-      properties: {
-        can_have_drum_pads: 0,
-        can_have_chains: 1,
-        chains: children("innerChain"),
-      },
-    });
-    registerMockObject("innerChain", {
-      type: "Chain",
-      properties: { devices: children("drumRack") },
-    });
-    registerMockObject("drumRack", {
-      type: "Device",
-      properties: { can_have_drum_pads: 1 },
-    });
+    registerRackOverDrumRack("realRack", 1);
 
     expect(isDrumRackTrack(0)).toBe(true);
   });

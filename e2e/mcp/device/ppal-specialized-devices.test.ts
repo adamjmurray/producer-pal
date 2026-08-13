@@ -257,9 +257,9 @@ describe("specialized devices: Wavetable", () => {
 
     expect(Array.isArray(options?.oscWavetableCategories)).toBe(true);
     expect(
-      (options?.oscWavetableCategories as string[]).length,
+      (options!.oscWavetableCategories as string[]).length,
     ).toBeGreaterThan(0);
-    expect((options?.osc1Wavetables as string[]).length).toBeGreaterThan(0);
+    expect((options!.osc1Wavetables as string[]).length).toBeGreaterThan(0);
     expect(options?.modulatableParameters as string[]).toContain("Flt 1 Freq");
   });
 
@@ -403,7 +403,7 @@ describe("specialized devices: Compressor", () => {
 
     await sleep(100);
 
-    const returnTrackId = String(created.id);
+    const returnTrackId = created.id;
 
     await createTestDevice(
       ctx.client!,
@@ -435,8 +435,8 @@ describe("specialized devices: Hybrid Reverb", () => {
     const id = await createEffect("Hybrid Reverb");
     const { options } = await readDevice(id, ["options"]);
 
-    expect((options?.irCategoryList as string[]).length).toBeGreaterThan(0);
-    expect((options?.irFileList as string[]).length).toBeGreaterThan(0);
+    expect((options!.irCategoryList as string[]).length).toBeGreaterThan(0);
+    expect((options!.irFileList as string[]).length).toBeGreaterThan(0);
 
     await updateDevice(id, {
       params: [{ name: "irCategory", value: "Halls" }],

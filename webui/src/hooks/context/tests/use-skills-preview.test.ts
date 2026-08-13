@@ -9,10 +9,7 @@
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSkillsPreview } from "#webui/hooks/context/use-skills-preview";
-import {
-  jsonResponse,
-  renderAndWait,
-} from "./doc-memory-transport-test-helpers";
+import { jsonResponse, renderAndWait } from "./doc-transport-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const CONFIG_URL = "http://localhost:3000/config";
@@ -90,9 +87,48 @@ async function renderReady(
   return await renderAndWait(useSkillsPreview, "ready");
 }
 
+/**
+ * A preview response that echoes back the notation the request asked for, so a
+ * case can assert which selection the hook actually fetched.
+ * @param url - The preview request URL
+ * @param driver - Driver body to return
+ * @param skills - Skills body to return
+ * @returns The stubbed preview response
+ */
+function echoPreview(
+  url: string,
+  driver: string,
+  skills: string,
+): Promise<Response> {
+  const params = new URL(url).searchParams;
+
+  return Promise.resolve(
+    jsonResponse({ head: params.get("notation"), driver, skills }),
+  );
+}
+
+/**
+ * Install a bespoke fetch stub, mount the hook, and switch the selection to
+ * midi-json — the arrangement the hand-rolled-transport cases share.
+ * @param fetchMock - The fetch stub for this case
+ * @returns The rendered hook result
+ */
+async function mountAndSelectMidiJson(fetchMock: typeof fetch) {
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { result } = renderHook(useSkillsPreview);
+
+  await act(async () => {
+    result.current.setNotation("midi-json");
+  });
+
+  return result;
+}
+
 describe("useSkillsPreview", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    localStorage.clear();
   });
 
   it("defaults the selection to the live combination and sizes the blob", async () => {
@@ -182,24 +218,10 @@ describe("useSkillsPreview", () => {
         });
       }
 
-      const params = new URL(url).searchParams;
-
-      return Promise.resolve(
-        jsonResponse({
-          head: params.get("notation"),
-          driver: "c",
-          skills: "s",
-        }),
-      );
+      return echoPreview(url, "c", "s");
     });
 
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await act(async () => {
-      result.current.setNotation("midi-json");
-    });
+    const result = await mountAndSelectMidiJson(fetchMock);
 
     await act(async () => {
       resolveConfig(jsonResponse({ notation: "stark", smallModelMode: true }));
@@ -267,6 +289,64 @@ describe("useSkillsPreview", () => {
     expect(result.current.currentMode).toBeNull();
   });
 
+  describe("tool gating", () => {
+    /** The query string of the most recent preview request. */
+    function lastPreviewQuery(fetchMock: ReturnType<typeof vi.fn>): string {
+      const previews = fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => !url.startsWith(CONFIG_URL));
+
+      return new URL(previews.at(-1) as string).search;
+    }
+
+    it("gates on the toolset saved in settings by default", async () => {
+      localStorage.setItem(
+        "producer_pal_enabled_tools",
+        JSON.stringify({ "ppal-library": false, "ppal-read-clip": true }),
+      );
+      const fetchMock = stubFetch({ config: "fail" });
+
+      await renderAndWait(useSkillsPreview, "ready");
+
+      // Only the explicit off switch rides along; an enabled tool is not listed.
+      expect(lastPreviewQuery(fetchMock)).toContain(
+        "disabledTools=ppal-library",
+      );
+      expect(lastPreviewQuery(fetchMock)).not.toContain("allTools");
+    });
+
+    it("asks for every fragment once gating is switched off", async () => {
+      localStorage.setItem(
+        "producer_pal_enabled_tools",
+        JSON.stringify({ "ppal-library": false }),
+      );
+      const fetchMock = stubFetch({ config: "fail" });
+      const result = await renderAndWait(useSkillsPreview, "ready");
+
+      expect(result.current.enabledToolsOnly).toBe(true);
+
+      await act(async () => {
+        result.current.setEnabledToolsOnly(false);
+      });
+
+      await waitFor(() => {
+        expect(lastPreviewQuery(fetchMock)).toContain("allTools=true");
+      });
+      expect(lastPreviewQuery(fetchMock)).not.toContain("disabledTools");
+      expect(result.current.enabledToolsOnly).toBe(false);
+    });
+
+    it("sends no toolset when nothing is switched off", async () => {
+      const fetchMock = stubFetch({ config: "fail" });
+
+      await renderAndWait(useSkillsPreview, "ready");
+
+      // Gating is still ON — the device whitelist alone decides.
+      expect(lastPreviewQuery(fetchMock)).not.toContain("disabledTools");
+      expect(lastPreviewQuery(fetchMock)).not.toContain("allTools");
+    });
+  });
+
   it("ignores a preview rejection from a superseded (aborted) request", async () => {
     // The first preview is parked; a selection change aborts it, then it
     // rejects late. The aborted-guard must swallow it and keep the newer result.
@@ -287,24 +367,10 @@ describe("useSkillsPreview", () => {
         });
       }
 
-      const params = new URL(url).searchParams;
-
-      return Promise.resolve(
-        jsonResponse({
-          head: params.get("notation"),
-          driver: "d",
-          skills: "later",
-        }),
-      );
+      return echoPreview(url, "d", "later");
     });
 
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { result } = renderHook(useSkillsPreview);
-
-    await act(async () => {
-      result.current.setNotation("midi-json");
-    });
+    const result = await mountAndSelectMidiJson(fetchMock);
 
     // Now reject the first (already-aborted) request; it must be swallowed.
     await act(async () => {

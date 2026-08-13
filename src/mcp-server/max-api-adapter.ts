@@ -15,7 +15,7 @@ import {
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
-import { type RequestOverrides } from "./helpers/request-overrides.ts";
+import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 import * as console from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
@@ -23,7 +23,7 @@ import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 export {
   MAX_TIMEOUT_MS,
   type RequestOverrides,
-} from "./helpers/request-overrides.ts";
+} from "./helpers/request-overrides/request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;

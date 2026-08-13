@@ -67,6 +67,22 @@ function renderRetry(deps: UseVoiceRetryDeps) {
   );
 }
 
+/**
+ * Enter the rate limit, then advance past the retry window so any armed timer
+ * fires.
+ * @param rerender - The rendered hook's rerender
+ * @returns Promise resolving once the timer has had its chance to run
+ */
+async function elapsePastRetryWindow(
+  rerender: ReturnType<typeof renderRetry>["rerender"],
+): Promise<void> {
+  rerender({ rateLimitedUntil: Date.now() + RATE_LIMIT_WINDOW_MS });
+
+  await act(async () => {
+    vi.advanceTimersByTime(PAST_WINDOW_MS);
+  });
+}
+
 describe("useVoiceRetry", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -81,10 +97,7 @@ describe("useVoiceRetry", () => {
       const h = makeHarness();
       const { rerender } = renderRetry(h.deps);
 
-      rerender({ rateLimitedUntil: Date.now() + RATE_LIMIT_WINDOW_MS });
-      await act(async () => {
-        vi.advanceTimersByTime(PAST_WINDOW_MS);
-      });
+      await elapsePastRetryWindow(rerender);
 
       expect(h.sendEvent).toHaveBeenCalledWith({ type: "response.create" });
       expect(h.deps.attemptsRef.current).toBe(1);
@@ -97,10 +110,7 @@ describe("useVoiceRetry", () => {
       h.deps.activeResponseRef.current = true;
       const { rerender } = renderRetry(h.deps);
 
-      rerender({ rateLimitedUntil: Date.now() + RATE_LIMIT_WINDOW_MS });
-      await act(async () => {
-        vi.advanceTimersByTime(PAST_WINDOW_MS);
-      });
+      await elapsePastRetryWindow(rerender);
 
       // The nudge no-ops over an active response, so neither the event nor the
       // capped counter advances.
@@ -133,10 +143,7 @@ describe("useVoiceRetry", () => {
 
       expect(result.current.autoRetryExhausted).toBe(false);
 
-      rerender({ rateLimitedUntil: Date.now() + RATE_LIMIT_WINDOW_MS });
-      await act(async () => {
-        vi.advanceTimersByTime(PAST_WINDOW_MS);
-      });
+      await elapsePastRetryWindow(rerender);
 
       expect(h.sendEvent).not.toHaveBeenCalled();
       expect(result.current.autoRetryExhausted).toBe(true);

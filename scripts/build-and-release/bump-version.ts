@@ -8,22 +8,57 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  type BumpType,
+  nextVersion,
+  parseVersion,
+} from "./helpers/next-version.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
 
-const [, , versionType = "patch"] = process.argv;
+const USAGE =
+  "Usage: npm run version:bump:[patch|minor|major|rc|ga]\n" +
+  "       npm run version:bump:to -- X.Y.Z[-rcN]";
 
-if (!["major", "minor", "patch"].includes(versionType)) {
-  console.error("Usage: npm run version:bump [major|minor|patch]");
+const [, , mode = "patch", target] = process.argv;
+
+const currentVersion = readPackageVersion(join(rootDir, "package.json"));
+
+// The version string ships inside the artifact, so a bump is not just a git
+// bookkeeping step — it decides what the built device calls itself and what
+// every install of it compares against GitHub's latest release.
+let newVersion: string;
+
+try {
+  if (mode === "to") {
+    if (target == null) {
+      throw new Error(`A target version is required.\n${USAGE}`);
+    }
+
+    // The escape hatch: no ordering rules, so it can also move backwards (which
+    // is how a GA version first acquires an -rcN suffix). It only checks shape.
+    parseVersion(target);
+    newVersion = target;
+  } else if (isBumpType(mode)) {
+    newVersion = nextVersion(currentVersion, mode);
+  } else {
+    throw new Error(`Unknown bump "${mode}".\n${USAGE}`);
+  }
+} catch (error) {
+  console.error(
+    `\n❌ ${error instanceof Error ? error.message : String(error)}`,
+  );
   process.exit(1);
 }
 
-// Bump root package.json
-console.log(`Bumping ${versionType} version...`);
+// Bump root package.json. `npm version` takes the literal version rather than
+// major|minor|patch: those keywords mishandle a pre-release input (see
+// helpers/next-version.ts), and this way one computation drives every file.
+console.log(`Bumping ${currentVersion} → ${newVersion}...`);
 
 try {
-  execSync(`npm version ${versionType} --no-git-tag-version`, {
+  execSync(`npm version ${newVersion} --no-git-tag-version`, {
     cwd: rootDir,
     stdio: "inherit",
   });
@@ -33,10 +68,6 @@ try {
   );
   process.exit(1);
 }
-
-// Read new version
-const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
-const newVersion = rootPkg.version;
 
 // Update claude-desktop-extension/package.json
 const dxtPkgPath = join(rootDir, "claude-desktop-extension/package.json");
@@ -105,3 +136,35 @@ console.log("Next, run:");
 console.log("  npm run check");
 console.log("  git add .");
 console.log(`  git commit -m "Bump version to ${newVersion}"`);
+
+// --- Helpers below ---
+
+/**
+ * Reads the version field out of a package.json, exiting if it is missing.
+ * @param path - Absolute path to the package.json
+ * @returns The version string
+ */
+function readPackageVersion(path: string): string {
+  const pkg: unknown = JSON.parse(readFileSync(path, "utf8"));
+
+  if (
+    pkg == null ||
+    typeof pkg !== "object" ||
+    !("version" in pkg) ||
+    typeof pkg.version !== "string"
+  ) {
+    console.error(`\n❌ No version field in ${path}`);
+    process.exit(1);
+  }
+
+  return pkg.version;
+}
+
+/**
+ * Narrows a raw CLI argument to a bump keyword.
+ * @param arg - The first CLI argument
+ * @returns True when it names a bump nextVersion() understands
+ */
+function isBumpType(arg: string): arg is BumpType {
+  return ["major", "minor", "patch", "rc", "ga"].includes(arg);
+}

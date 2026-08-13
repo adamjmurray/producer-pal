@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useEffect } from "preact/hooks";
+import { type Notation } from "#src/shared/notation";
 import {
   type ActiveMeta,
   DEFAULT_META,
@@ -14,10 +15,10 @@ export interface SyncActiveMetaParams {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeThinking: string | null;
-  activeTemperature: number | null;
-  activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   activeSystemInstruction: string | null;
+  activeNotation: Notation | null;
+  activeEnabledTools: Record<string, boolean> | null;
 }
 
 /**
@@ -37,10 +38,10 @@ export function useSyncActiveMeta(
     activeModel,
     activeProvider,
     activeThinking,
-    activeTemperature,
-    activeShowThoughts,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
+    activeEnabledTools,
   } = props;
 
   useEffect(() => {
@@ -50,20 +51,20 @@ export function useSyncActiveMeta(
     if (activeModel != null) meta.model = activeModel;
     if (activeProvider != null) meta.provider = activeProvider;
     if (activeThinking != null) meta.thinking = activeThinking;
-    if (activeTemperature != null) meta.temperature = activeTemperature;
-    if (activeShowThoughts != null) meta.showThoughts = activeShowThoughts;
     if (activeSmallModelMode != null)
       meta.smallModelMode = activeSmallModelMode;
     if (activeSystemInstruction != null)
       meta.systemInstruction = activeSystemInstruction;
+    if (activeNotation != null) meta.notation = activeNotation;
+    if (activeEnabledTools != null) meta.enabledTools = activeEnabledTools;
   }, [
     activeMetaRef,
     activeModel,
     activeProvider,
     activeThinking,
-    activeTemperature,
-    activeShowThoughts,
     activeSmallModelMode,
     activeSystemInstruction,
+    activeNotation,
+    activeEnabledTools,
   ]);
 }

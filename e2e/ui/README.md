@@ -29,8 +29,8 @@ current source.
 - **`installStubs(page)`** — fulfills the document (`**/chat-ui.html` →
   `max-for-live-device/chat-ui.html`), `**/mcp` (a minimal JSON-RPC
   `initialize`/`tools/list` stub so the status reads "connected"), `**/config`,
-  and `https://api.github.com/**`; and seeds a "configured" Gemini text-chat
-  provider in `localStorage` to skip the first-run settings screen.
+  and `**/update`; and seeds a "configured" Gemini text-chat provider in
+  `localStorage` to skip the first-run settings screen.
 - **`seedConversations(page, records)`** — writes fixture records into the
   `producer-pal-conversations` IndexedDB store.
 - **`readConversationsFromDb(page)`** — reads them back to assert persistence.

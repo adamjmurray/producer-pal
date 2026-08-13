@@ -5,13 +5,10 @@
 
 import { useLayoutEffect, useState } from "preact/hooks";
 import { CollectionStatusScreen } from "#webui/components/context/collection/CollectionScreen";
-import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { type UseSkillOverridesReturn } from "#webui/hooks/context/use-skill-overrides";
 import { SkillSlotScreen } from "./SkillSlotScreen";
 import { SkillsPreviewScreen } from "./SkillsPreviewScreen";
-
-/** The two Skills-tab views: edit the fragment overrides, or preview the blob. */
-type SkillsView = "fragments" | "preview";
+import { type SkillsView, SkillsViewToggle } from "./SkillsViewToggle";
 
 interface SkillsScreenProps {
   /** The skills-overrides collection hook (mounted in ContextTabs). */
@@ -108,42 +105,5 @@ export function SkillsScreen(props: SkillsScreenProps): preact.JSX.Element {
       viewSlot={viewSlot}
       onClose={onClose}
     />
-  );
-}
-
-// --- Helpers below main export ---
-
-interface SkillsViewToggleProps {
-  view: SkillsView;
-  onSelect: (view: SkillsView) => void;
-}
-
-/**
- * A single compact chip button toggling the Skills tab between the fragment
- * editor and the assembled-blob preview, labelled with the view it switches TO
- * ("Preview" while editing, "Source" while previewing). Compact by design so it
- * fits the row above the editor on narrow screens, where the old two-segment
- * control crowded the controls strip. Shares the pane controls' button styling
- * (see CHIP_BUTTON_CLASS).
- * @param props - Toggle props
- * @returns Toggle button element
- */
-function SkillsViewToggle(props: SkillsViewToggleProps): preact.JSX.Element {
-  const { view, onSelect } = props;
-  const previewing = view === "preview";
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(previewing ? "fragments" : "preview")}
-      title={
-        previewing
-          ? "Show the raw skill fragment"
-          : "Preview with included fragments inserted"
-      }
-      className={`shrink-0 ${CHIP_BUTTON_CLASS}`}
-    >
-      {previewing ? "Source" : "Preview"}
-    </button>
   );
 }

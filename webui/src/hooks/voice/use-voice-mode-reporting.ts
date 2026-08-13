@@ -90,6 +90,13 @@ export function useVoiceModeReporting(
         activeModel: hasActiveVoiceConv ? activeModel : null,
         activeProvider: hasActiveVoiceConv ? activeProvider : null,
         activeSmallModelMode: hasActiveVoiceConv ? false : null,
+        // Voice locks no notation of its own — its MCP calls fall through to the
+        // device global, so there is never anything to diverge from.
+        activeNotation: null,
+        // Voice reconnects its tools from current settings every session, and a
+        // voice transcript isn't resumable, so there is no earlier toolset to
+        // report having drifted from either.
+        activeEnabledTools: null,
       },
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
       onDeleteUnbookmarkedConversations: () =>
@@ -111,6 +118,9 @@ export function useVoiceModeReporting(
     provider: savedProvider,
     enabledToolsCount,
     totalToolsCount,
+    // Voice pins no toolset, so the count IS the current setting — nothing can
+    // diverge from it (same reason smallModelMode is hardcoded below).
+    defaultToolsCount: enabledToolsCount,
     smallModelMode: false,
     defaultSmallModelMode: false,
     showHelpLinks: display.showHelpLinks,

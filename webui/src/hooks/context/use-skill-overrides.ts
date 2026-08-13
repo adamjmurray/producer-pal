@@ -3,18 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { errorMessage } from "#src/shared/error-utils";
+import { useCallback, useState } from "preact/hooks";
 import {
   getSkillOverrideUrl,
   getSkillOverridesUrl,
 } from "#webui/utils/mcp-url";
 import {
   runGuardedRefresh,
+  useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
-  useSaveRefreshGuard,
-} from "./use-doc-memory";
+} from "./use-doc";
 
 /** One overridable skills fragment, as the editor needs it. */
 export interface SkillSlotView {
@@ -28,11 +27,35 @@ export interface SkillSlotView {
   builtIn: string;
   /** The user's override body ("" when the slot tracks the built-in). */
   override: string;
+  /** Whether this fragment is included in the assembled skills. */
+  enabled: boolean;
+  /** Whether to offer an off switch (false for the whole-document drivers). */
+  canDisable: boolean;
+  /** What the assembler requires for this fragment to ship (null for drivers). */
+  gate: SkillGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
+  /** Set when this override predates the slot's `-write` split (null if not). */
+  splitStale: SplitStale | null;
   /** Producer Pal version the override was forked from (null when none). */
   forkedFromVersion: string | null;
 }
+
+/** A pre-split override's overlap with the `-write` sibling it duplicates. */
+export interface SplitStale {
+  /** The `-write` fragment that ships this text now. */
+  sibling: string;
+  /** How many of the override's lines are still the built-in's. */
+  sharedLines: number;
+}
+
+/**
+ * What a fragment ships under: any-of a tool list, or one of the two conditions
+ * no toolset decides. Declared here rather than imported from `src/skills`
+ * because webui may only reach into `#src/shared` — the server sends the value
+ * verbatim, so this mirrors `FragmentGate`.
+ */
+export type SkillGate = readonly string[] | "always" | "conversation-only";
 
 /** Status of the whole slot collection. */
 export type SkillOverridesStatus =
@@ -46,6 +69,8 @@ export interface UseSkillOverridesReturn {
   saveError: string | null;
   /** Save an override for one slot (blank content resets it to the built-in). */
   saveSlot: (name: string, content: string) => Promise<boolean>;
+  /** Switch one slot's fragment on or off, leaving any override body alone. */
+  setSlotEnabled: (name: string, enabled: boolean) => Promise<boolean>;
   /** Reset one slot to the built-in (delete its override file). */
   resetSlot: (name: string) => Promise<boolean>;
   /** Re-read all slots from the server. */
@@ -61,7 +86,7 @@ export interface UseSkillOverridesReturn {
  * (PUT/DELETE) echo back the single updated slot, which is merged into the
  * cached list. Focus + interval polling surfaces external writes, and a
  * save-overlap guard keeps a slow poll from clobbering a concurrent save's echo
- * — the same coordination the single-document {@link useDocMemory} uses.
+ * — the same coordination the single-document {@link useDoc} uses.
  *
  * @returns Slot collection state plus per-slot save/reset and refresh actions
  */
@@ -69,18 +94,8 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
   const [status, setStatus] = useState<SkillOverridesStatus>({
     kind: "loading",
   });
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  // Bumped whenever the edited slot changes (via resetSaveStatus). A save
-  // captures this at dispatch; if it has advanced by the time the save
-  // resolves, the user switched slots, so the outcome must not paint the
-  // shared "saved"/"error" indicator onto the now-active slot (the list merge
-  // still applies — only the status indicator is slot-scoped).
-  const saveGenerationRef = useRef(0);
-  // Same refresh-vs-save coordination as useDocMemory (a focus/poll read can
-  // resolve older slot data than a concurrent save's echo and, landing last,
-  // clobber it), just over the slot collection instead of one document.
-  const { beginSave, endSave, guardRefresh } = useSaveRefreshGuard();
+  const { saveStatus, saveError, resetSaveStatus, guardRefresh, mutate } =
+    useCollectionMutator();
 
   const refresh = useCallback(
     (): Promise<void> =>
@@ -93,56 +108,46 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     [guardRefresh],
   );
 
+  // Slots autosave through useContextEditorState (a debounce flush, then a blur
+  // flush right behind it), so two writes of ONE slot overlap and the older echo
+  // can land last. Merging it would put `override` back, flip the status
+  // SkillSlotScreen memoizes off this list, and raise a spurious "updated
+  // outside the editor" banner whose Reload adopts the superseded content —
+  // hence the per-slot claim (a write to another slot never interferes).
+  // `mutate` resolves the slot on success and null on failure, and a slot view
+  // is never itself null, so the null check is the success signal.
   const writeSlot = useCallback(
-    async (write: () => Promise<SkillSlotView>): Promise<boolean> => {
-      const generation = saveGenerationRef.current;
+    async (
+      name: string,
+      write: () => Promise<SkillSlotView>,
+    ): Promise<boolean> => {
+      const updated = await mutate(
+        write,
+        (slot) => setStatus((prev) => mergeSlot(prev, slot)),
+        [name],
+      );
 
-      beginSave();
-      setSaveStatus("saving");
-      setSaveError(null);
-
-      try {
-        const updated = await write();
-
-        setStatus((prev) => mergeSlot(prev, updated));
-        if (saveGenerationRef.current === generation) setSaveStatus("saved");
-
-        return true;
-      } catch (error: unknown) {
-        if (saveGenerationRef.current === generation) {
-          setSaveError(errorMessage(error));
-          setSaveStatus("error");
-        }
-
-        return false;
-      } finally {
-        endSave();
-      }
+      return updated !== null;
     },
-    [beginSave, endSave],
+    [mutate],
   );
 
   const saveSlot = useCallback(
     (name: string, content: string): Promise<boolean> =>
-      writeSlot(() => putSlot(name, content)),
+      writeSlot(name, () => putSlot(name, { content })),
+    [writeSlot],
+  );
+
+  const setSlotEnabled = useCallback(
+    (name: string, enabled: boolean): Promise<boolean> =>
+      writeSlot(name, () => putSlot(name, { enabled })),
     [writeSlot],
   );
 
   const resetSlot = useCallback(
-    (name: string): Promise<boolean> => writeSlot(() => deleteSlot(name)),
+    (name: string): Promise<boolean> => writeSlot(name, () => deleteSlot(name)),
     [writeSlot],
   );
-
-  const resetSaveStatus = useCallback((): void => {
-    saveGenerationRef.current += 1;
-    setSaveStatus("idle");
-    setSaveError(null);
-  }, []);
-
-  // Initial load.
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useRefreshOnFocusAndPoll(refresh);
 
@@ -151,6 +156,7 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
     saveStatus,
     saveError,
     saveSlot,
+    setSlotEnabled,
     resetSlot,
     refresh,
     resetSaveStatus,
@@ -168,6 +174,19 @@ interface RawSkillSlot {
   override: string;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
+  /** Absent on an older server, and null whenever nothing is stale. */
+  splitStale?: SplitStale | null;
+  /** Optional so a slot from an older server reads as on rather than off. */
+  enabled?: boolean;
+  canDisable?: boolean;
+  /** Absent on an older server, and legitimately null for the drivers. */
+  gate?: unknown;
+}
+
+/** The fields a per-slot PUT may carry; either alone is a valid write. */
+interface SlotWriteBody {
+  content?: string;
+  enabled?: boolean;
 }
 
 /**
@@ -189,13 +208,17 @@ async function fetchSlots(): Promise<SkillSlotView[]> {
 }
 
 /**
- * PUT an override for one slot.
+ * PUT one slot's override body and/or its on/off flag. An omitted field is left
+ * exactly as stored, so a toggle never clobbers an in-flight body save.
  * @param name - The slot name
- * @param content - The override body (blank resets to built-in)
+ * @param write - The body (blank resets to built-in) and/or the flag
  * @returns The server's echo of the updated slot
  */
-async function putSlot(name: string, content: string): Promise<SkillSlotView> {
-  return await sendSlot(getSkillOverrideUrl(name), "PUT", { content });
+async function putSlot(
+  name: string,
+  write: SlotWriteBody,
+): Promise<SkillSlotView> {
+  return await sendSlot(getSkillOverrideUrl(name), "PUT", write);
 }
 
 /**
@@ -211,14 +234,13 @@ async function deleteSlot(name: string): Promise<SkillSlotView> {
  * Send a per-slot write and parse the echoed slot.
  * @param url - The per-slot endpoint URL
  * @param method - HTTP method ("PUT" or "DELETE")
- * @param jsonBody - Optional JSON request body
- * @param jsonBody.content - The override body to send (PUT only)
+ * @param jsonBody - Optional JSON request body (PUT only)
  * @returns The server's echo of the updated slot
  */
 async function sendSlot(
   url: string,
   method: "PUT" | "DELETE",
-  jsonBody?: { content: string },
+  jsonBody?: SlotWriteBody,
 ): Promise<SkillSlotView> {
   const response = await fetch(url, {
     method,
@@ -270,7 +292,31 @@ function toView(raw: RawSkillSlot): SkillSlotView {
     description: raw.description,
     builtIn: raw.builtIn,
     override: raw.override,
+    // Both flags default the safe way when a field is absent: the fragment
+    // ships, and the toggle shows.
+    enabled: raw.enabled !== false,
+    canDisable: raw.canDisable !== false,
+    gate: toGate(raw.gate),
     drifted: raw.drifted,
+    splitStale: raw.splitStale ?? null,
     forkedFromVersion: raw.provenance?.producerPalVersion ?? null,
   };
+}
+
+/**
+ * Narrow the server's `gate` field to {@link SkillGate}. Anything unrecognized
+ * reads as null — the same as a driver, which renders no gate note — so an older
+ * server (or a field this webui doesn't know yet) simply says nothing rather
+ * than stating a rule that isn't the one being applied.
+ * @param raw - The server's gate value
+ * @returns The gate, or null when absent or unrecognized
+ */
+function toGate(raw: unknown): SkillGate | null {
+  if (raw === "always" || raw === "conversation-only") return raw;
+
+  if (Array.isArray(raw) && raw.every((tool) => typeof tool === "string")) {
+    return raw;
+  }
+
+  return null;
 }

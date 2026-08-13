@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseCommaSeparatedValues } from "#src/tools/shared/validation/color-utils.ts";
 
 /**
@@ -34,10 +34,11 @@ export function getNameForIndex(
   index: number,
   parsedNames: string[] | null,
 ): string | undefined {
-  if (baseName == null) return;
+  if (baseName == null) return undefined;
 
   if (parsedNames != null) {
-    return index < parsedNames.length ? parsedNames[index] : undefined;
+    // Out-of-bounds index returns undefined (noUncheckedIndexedAccess)
+    return parsedNames[index];
   }
 
   return baseName;

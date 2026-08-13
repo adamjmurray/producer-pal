@@ -5,6 +5,7 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
@@ -118,9 +119,9 @@ export function buildDeviceResponseFromId(
 
   if (!device.exists()) return undefined;
 
-  const path = extractDevicePath(String(device.path));
+  const path = extractDevicePath(device.path);
 
-  return path ? { id: String(device.id), path } : undefined;
+  return path ? { id: device.id, path } : undefined;
 }
 
 /**
@@ -139,7 +140,7 @@ export function buildDeviceResponseFromPath(
 
   if (!device.exists()) return undefined;
 
-  return { id: String(device.id), path: devicePath };
+  return { id: device.id, path: devicePath };
 }
 
 /**
@@ -156,10 +157,9 @@ function buildTrackInfo(
 
   if (category == null) return undefined;
 
-  const type = computeTrackType(track, category);
   const info: NonNullable<SelectResult["selectedTrack"]> = {
-    id: String(track.id),
-    type: type ?? "unknown",
+    id: track.id,
+    type: computeTrackType(track, category),
   };
 
   if (category === "regular" && track.trackIndex != null) {
@@ -181,7 +181,7 @@ function buildSceneInfo(
 ): SelectResult["selectedScene"] | undefined {
   if (!scene.exists() || scene.sceneIndex == null) return undefined;
 
-  return { id: String(scene.id), sceneIndex: scene.sceneIndex };
+  return { id: scene.id, sceneIndex: scene.sceneIndex };
 }
 
 /**
@@ -198,7 +198,7 @@ function buildClipInfo(
 
   if (isSessionClip) {
     return {
-      id: String(clip.id),
+      id: clip.id,
       slot: `${clip.trackIndex}/${clip.clipSlotIndex}`,
     };
   }
@@ -210,7 +210,7 @@ function buildClipInfo(
   const den = liveSet.getProperty("signature_denominator") as number;
 
   return {
-    id: String(clip.id),
+    id: clip.id,
     trackIndex: clip.trackIndex ?? undefined,
     arrangementStart: abletonBeatsToBarBeat(startTime, num, den),
   };
@@ -232,33 +232,26 @@ function readSelectedDeviceInfo(
 
   if (!deviceResult?.[1]) return undefined;
 
-  const rawId = String(deviceResult[1]);
+  const rawId = atomToString(deviceResult[1]);
   const device = LiveAPI.from(`id ${rawId}`);
 
   if (!device.exists()) return undefined;
 
-  const path = extractDevicePath(String(device.path));
+  const path = extractDevicePath(device.path);
 
   return path ? { id: rawId, path } : undefined;
 }
 
 /**
- * Compute merged track type from category and has_midi_input
+ * Compute merged track type from category and has_midi_input. The caller has
+ * already established that the track exists and has a category.
  * @param track - Selected track LiveAPI object
  * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", "master", or null
+ * @returns Merged type: "midi", "audio", "return", or "master"
  */
-function computeTrackType(
-  track: LiveAPI,
-  category: TrackCategory | null,
-): string | null {
-  if (category == null) return null;
+function computeTrackType(track: LiveAPI, category: TrackCategory): string {
   if (category === "return") return "return";
   if (category === "master") return "master";
 
-  const isMidi = track.exists()
-    ? (track.getProperty("has_midi_input") as number) > 0
-    : false;
-
-  return isMidi ? "midi" : "audio";
+  return (track.getProperty("has_midi_input") as number) > 0 ? "midi" : "audio";
 }

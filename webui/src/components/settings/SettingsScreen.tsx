@@ -8,6 +8,11 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
+import {
+  type PresetSelection,
+  usePresetSelection,
+} from "#webui/hooks/settings/presets/use-preset-selection";
+import { useGlobalSettings } from "#webui/hooks/connection/use-global-settings";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
@@ -18,6 +23,7 @@ import {
   LockedSettingsNotice,
 } from "./LockedSettingsNotice";
 import { PreferencesTab } from "./PreferencesTab";
+import { PresetsTab } from "./PresetsTab";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
@@ -35,6 +41,10 @@ interface SettingsScreenProps {
   shake: boolean;
   onShakeEnd: () => void;
   hasUnsavedChanges: boolean;
+  /** Whether the Presets tab's create form is open. Owned by App, which uses
+   * it to block the backdrop/Esc dismiss as well as this dialog's Save. */
+  presetDraftOpen: boolean;
+  onPresetDraftOpenChange: (open: boolean) => void;
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
   conversationLock: ConversationLock;
@@ -71,6 +81,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
     hasUnsavedChanges,
   } = props;
 
+  // Owned here, not in the tab: the inactive tab is unmounted, and losing the
+  // selection is what sends the user back through Select — which re-applies the
+  // preset over the edit they just made. See usePresetSelection.
+  const presetSelection = usePresetSelection();
   const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
@@ -100,10 +114,15 @@ export function SettingsScreen(props: SettingsScreenProps) {
           model={settings.model}
           provider={settings.provider}
           smallModelMode={settings.smallModelMode}
+          notation={settings.notation}
+          enabledTools={settings.enabledTools}
+          liveApiEnabled={settings.liveApiEnabled}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
-          {() => <SettingsTabContent {...props} />}
+          {() => (
+            <SettingsTabContent {...props} presetSelection={presetSelection} />
+          )}
         </SettingsTabs>
 
         <SettingsFooter
@@ -113,6 +132,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
           pulse={shake}
           hasUnsavedChanges={hasUnsavedChanges}
           saveError={settings.saveError}
+          blockedMessage={
+            props.presetDraftOpen
+              ? "Create or cancel the new preset first."
+              : null
+          }
         />
       </div>
     </div>
@@ -121,12 +145,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
 /**
  * Renders the content for the active settings tab
- * @param props - Settings screen props (uses activeTab to determine which tab to render)
+ * @param props - Settings screen props plus the preset selection state
  * @returns Tab content element
  */
-function SettingsTabContent(props: SettingsScreenProps) {
+function SettingsTabContent(
+  props: SettingsScreenProps & { presetSelection: PresetSelection },
+) {
   const { settings, display, activeTab } = props;
   const providerLabel = getProviderName(settings.provider, "product");
+  // Machine-global settings, read fresh each time the modal opens so a
+  // device-side change shows up.
+  const globalSettings = useGlobalSettings();
 
   return (
     <div className="space-y-4">
@@ -159,6 +188,14 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
+      {activeTab === "presets" && (
+        <PresetsTab
+          settings={settings}
+          selection={props.presetSelection}
+          onDraftOpenChange={props.onPresetDraftOpenChange}
+        />
+      )}
+
       {activeTab === "tools" && (
         <ToolToggles
           tools={props.mcpTools}
@@ -185,6 +222,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setShowHelpLinks={display.setShowHelpLinks}
           showTokenUsage={display.showTokenUsage}
           setShowTokenUsage={display.setShowTokenUsage}
+          autoUpdateCheck={globalSettings.autoUpdateCheck}
+          setAutoUpdateCheck={globalSettings.setAutoUpdateCheck}
           onDeleteAllConversations={props.onDeleteAllConversations}
           onDeleteUnbookmarkedConversations={
             props.onDeleteUnbookmarkedConversations

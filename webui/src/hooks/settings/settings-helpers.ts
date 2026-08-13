@@ -140,69 +140,62 @@ export interface ProviderSettings {
   baseUrl?: string;
   port?: number;
   thinking: string;
-  temperature: number;
-  showThoughts: boolean;
 }
+
+/**
+ * Per-provider state setters, keyed by provider. Each accepts a functional
+ * update over that provider's slice — so a caller can write into a provider's
+ * slice regardless of which provider is currently active (used by applyPreset,
+ * which targets the preset's own provider before switching to it).
+ */
+export type ProviderStateSetters = Record<
+  Provider,
+  (update: (prev: ProviderSettings) => ProviderSettings) => void
+>;
 
 export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   anthropic: {
     apiKey: "",
     model: DEFAULT_MODELS.anthropic,
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   gemini: {
     apiKey: "",
     model: DEFAULT_MODELS.gemini,
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   openai: {
     apiKey: "",
     model: DEFAULT_MODELS.openai,
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   mistral: {
     apiKey: "",
     model: DEFAULT_MODELS.mistral,
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   openrouter: {
     apiKey: "",
     model: DEFAULT_MODELS.openrouter,
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   lmstudio: {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
     baseUrl: "http://localhost:1234",
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   ollama: {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
     baseUrl: "http://localhost:11434",
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
   custom: {
     apiKey: "",
     model: DEFAULT_MODELS.custom,
     baseUrl: "",
     thinking: "Default",
-    temperature: 1.0,
-    showThoughts: true,
   },
 };
 
@@ -331,22 +324,6 @@ function readLegacyGeminiSettings(): ProviderSettings {
 
   if (thinking) legacySettings.thinking = thinking;
 
-  const temperature =
-    localStorage.getItem("temperature") ??
-    localStorage.getItem("gemini_temperature");
-
-  if (temperature != null) {
-    legacySettings.temperature = Number.parseFloat(temperature);
-  }
-
-  const showThoughts =
-    localStorage.getItem("showThoughts") ??
-    localStorage.getItem("gemini_showThoughts");
-
-  if (showThoughts != null) {
-    legacySettings.showThoughts = showThoughts === "true";
-  }
-
   return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
 }
 
@@ -437,7 +414,7 @@ export function loadCurrentProvider(): Provider {
  * @param {unknown} value - Candidate provider value
  * @returns {boolean} - True if value is a recognized Provider
  */
-function isValidProvider(value: unknown): value is Provider {
+export function isValidProvider(value: unknown): value is Provider {
   return typeof value === "string" && PROVIDERS.includes(value as Provider);
 }
 
@@ -530,6 +507,33 @@ export function loadSmallModelMode(): boolean {
  */
 export function saveSmallModelMode(enabled: boolean): void {
   localStorage.setItem("producer_pal_small_model_mode", String(enabled));
+}
+
+const SUBAGENT_PRESET_KEY = "producer_pal_subagent_preset";
+
+/**
+ * Loads the "Subagent preset" id from localStorage — the preset a
+ * spawned subagent runs under. Null (missing/blank) means "inherit current
+ * settings", the shipped phase-1 behavior.
+ * @returns {string | null} The saved preset id, or null to inherit
+ */
+export function loadSubagentPresetId(): string | null {
+  // getItem already returns null when unset; saveSubagentPresetId never
+  // stores an empty string, and the resolver/selector treat "" as inherit too.
+  return localStorage.getItem(SUBAGENT_PRESET_KEY);
+}
+
+/**
+ * Saves the "Subagent preset" id to localStorage. Null clears it back
+ * to "inherit current settings".
+ * @param {string | null} presetId - The preset id, or null to inherit
+ */
+export function saveSubagentPresetId(presetId: string | null): void {
+  if (presetId) {
+    localStorage.setItem(SUBAGENT_PRESET_KEY, presetId);
+  } else {
+    localStorage.removeItem(SUBAGENT_PRESET_KEY);
+  }
 }
 
 /**

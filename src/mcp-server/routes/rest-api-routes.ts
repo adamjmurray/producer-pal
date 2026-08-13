@@ -17,6 +17,10 @@ import {
   type CallLiveApiFunction,
 } from "../create-mcp-server.ts";
 import {
+  resolveRequestProfile,
+  type RequestProfile,
+} from "../helpers/http/request-profile.ts";
+import {
   MAX_TIMEOUT_MS,
   type McpResponse,
   type RequestOverrides,
@@ -27,19 +31,29 @@ interface RestApiConfig {
   tools: string[];
   liveApiEnabled: boolean;
   notation: Notation;
+  smallModelMode: boolean;
 }
 
 /**
  * Register REST API routes on the Express app
  *
+ * Both endpoints resolve the same three per-request headers POST /mcp reads
+ * (see resolveRequestProfile) — the toolset, the notation, and small-model mode
+ * — so a REST caller can run its own profile without a POST /config changing
+ * every other connected client's.
+ *
  * @param app - Express application
  * @param getConfig - Returns current config (called per-request for live updates)
- * @param callLiveApi - Function to dispatch tool calls to Max V8
+ * @param buildCallLiveApi - Builds the dispatcher for one request from that
+ *   request's profile. A builder rather than a fixed function because the
+ *   ppal-connect enrichment gates skills fragments on the toolset and keys the
+ *   skills variant on notation and small-model mode, and because notation rides
+ *   down to V8 as a request override.
  */
 export function registerRestApiRoutes(
   app: Express,
   getConfig: () => RestApiConfig,
-  callLiveApi: CallLiveApiFunction,
+  buildCallLiveApi: (profile: RequestProfile) => CallLiveApiFunction,
 ): void {
   // Resolve which tool defs are available right now. The raw Live API
   // is opt-in via the device Setup tab; when disabled, it is fully absent
@@ -55,15 +69,18 @@ export function registerRestApiRoutes(
   // from the page URL, which over LAN/tunnel is a non-localhost origin, so a
   // localhost gate would 403 the documented unauthenticated remote-access
   // feature's own requests.
-  app.get("/api/tools", (_req: Request, res: Response): void => {
-    const config = getConfig();
-    const enabledSet = new Set(config.tools);
-    // Resolve descriptions and schemas against the active notation, matching how
-    // REST tool execution registers them (define-tool.ts). REST is the
-    // large-model surface, so small-model mode is off. Without this the catalog
-    // served bar|beat `notes` guidance while execution honored config.notation,
-    // making a stark/midi-json client send input that fails to parse.
-    const context = { notation: config.notation };
+  app.get("/api/tools", (req: Request, res: Response): void => {
+    const profile = resolveRequestProfile(req, getConfig());
+    const enabledSet = new Set(profile.tools);
+    // Resolve descriptions and schemas against this request's notation and mode,
+    // the same way define-tool.ts registers them for MCP. Without this the
+    // catalog served bar|beat `notes` guidance while execution honored the
+    // caller's notation, making a stark/midi-json client send input that fails
+    // to parse.
+    const context = {
+      notation: profile.notation,
+      smallModelMode: profile.smallModelMode,
+    };
 
     const tools = getActiveToolDefs()
       .filter((td) => enabledSet.has(td.toolName))
@@ -98,7 +115,8 @@ export function registerRestApiRoutes(
       res: Response,
     ): Promise<void> => {
       const { toolName } = req.params;
-      const enabledSet = new Set(getConfig().tools);
+      const profile = resolveRequestProfile(req, getConfig());
+      const enabledSet = new Set(profile.tools);
 
       const toolDef = getActiveToolDefs().find(
         (td) => td.toolName === toolName,
@@ -132,6 +150,14 @@ export function registerRestApiRoutes(
         return;
       }
 
+      // Validate against the FULL schema, not the small-model-filtered one the
+      // catalog advertises. Deliberately looser than MCP, which validates
+      // against the filtered schema — don't "fix" the asymmetry. Filtering
+      // drops params AND narrows enums, so matching MCP here would start
+      // rejecting calls that work today whenever the device's small-model mode
+      // is on: `ppal-read-clip` with `include: ["warp"]`, `ppal-context` with
+      // `action: "delete"`, and so on. Every filtered value is one the tool
+      // still handles; only the advertising shrinks.
       const schema = z.object(toolDef.toolOptions.inputSchema);
       const parsed = schema.safeParse(req.body);
 
@@ -147,7 +173,7 @@ export function registerRestApiRoutes(
       try {
         const overrides = buildOverrides(formatOverride, timeoutOverride);
 
-        const mcpResponse = (await callLiveApi(
+        const mcpResponse = (await buildCallLiveApi(profile)(
           toolName,
           parsed.data,
           overrides,

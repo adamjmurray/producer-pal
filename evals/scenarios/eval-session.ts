@@ -9,25 +9,29 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import {
-  CODEX_CODE_DEFAULT_MODEL,
-  createCodexCliSession,
-} from "#evals/chat/codex/codex-cli-session.ts";
+import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
+import { createAgentCliSession } from "#evals/chat/agent-cli/agent-cli-session.ts";
 import { createMcpTools } from "#evals/chat/mcp.ts";
 import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
 import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
+  CLAUDE_CODE_CONFIG,
+  CODEX_CODE_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
+import { MAX_TOOL_STEPS } from "#evals/shared/step-budget.ts";
 import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
+import {
+  buildSeededMessages,
+  type SeededTurn,
+} from "./helpers/seed-connect/seeded-turn.ts";
 import { type EvalProvider, type TurnResult } from "./types.ts";
 
-const MAX_TOOL_STEPS = 10;
 const DEFAULT_MAX_TOKENS = 8192;
 
 /**
@@ -40,8 +44,10 @@ export function getDefaultModel(provider: EvalProvider): string {
   switch (provider) {
     case "anthropic":
       return ANTHROPIC_CONFIG.defaultModel;
+    case "claude-code":
+      return CLAUDE_CODE_CONFIG.defaultModel;
     case "codex-code":
-      return CODEX_CODE_DEFAULT_MODEL;
+      return CODEX_CODE_CONFIG.defaultModel;
     case "google":
       return GEMINI_CONFIG.defaultModel;
     case "openai":
@@ -71,6 +77,11 @@ export interface EvalSession {
   mcpClient: Client;
   /** Close the session */
   close: () => Promise<void>;
+  /** Append a pre-built turn to history without calling the model. Absent on
+   *  transports that own their conversation state (the agent CLIs resume a
+   *  session by id, so there is no history array to write into) — callers must
+   *  fall back to a real `sendMessage` turn when this is undefined. */
+  seedTurn?: (turn: SeededTurn) => void;
 }
 
 interface EvalSessionOptions {
@@ -89,12 +100,15 @@ interface EvalSessionOptions {
 export async function createEvalSession(
   options: EvalSessionOptions,
 ): Promise<EvalSession> {
-  if (options.provider === "codex-code") {
-    return await createCodexCliSession({
+  const agentCli = getAgentCliTransport(options.provider);
+
+  if (agentCli != null) {
+    return await createAgentCliSession(agentCli, {
       ...(options.model != null ? { model: options.model } : {}),
       ...(options.instructions != null
         ? { instructions: options.instructions }
         : {}),
+      ...(options.usage != null ? { usage: options.usage } : {}),
     });
   }
 
@@ -109,6 +123,12 @@ export async function createEvalSession(
 
   return {
     mcpClient,
+
+    seedTurn: (turn: SeededTurn): void => {
+      const toolCallId = `seeded-${turn.toolName}-${messages.length}`;
+
+      messages.push(...buildSeededMessages(turn, toolCallId));
+    },
 
     sendMessage: async (
       message: string,
@@ -125,11 +145,11 @@ export async function createEvalSession(
         tools: hasTools ? tools : undefined,
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
-        system: options.instructions,
-        // Errors are rendered (in red) by processCliStream via the fullStream
+        instructions: options.instructions,
+        // Errors are rendered (in red) by processCliStream via the stream's
         // "error" part; suppress the SDK's default raw dump.
         onError: () => {},
-        onStepFinish: (event) => {
+        onStepEnd: (event) => {
           const usage = toTokenUsage(event.usage);
 
           stepUsages.push(usage);
@@ -146,16 +166,16 @@ export async function createEvalSession(
         showUsage: options.usage,
       });
 
-      // On a stream error, result.response rejects; the error was already shown
-      // by processCliStream. Skip history so the scenario can grade the miss.
+      // On a stream error, result.responseMessages rejects; the error was already
+      // shown by processCliStream. Skip history so the scenario can grade the miss.
       if (turnResult.error != null) {
         return { ...turnResult, stepUsages };
       }
 
-      // Append generated messages to history for multi-turn
-      const response = await result.response;
-
-      messages.push(...response.messages);
+      // Append generated messages to history for multi-turn. See the note in
+      // evals/chat/chat.ts: responseMessages accumulates across every step,
+      // while finalStep.response.messages holds only the last step's.
+      messages.push(...(await result.responseMessages));
 
       return { ...turnResult, stepUsages };
     },

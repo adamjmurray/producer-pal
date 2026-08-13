@@ -58,6 +58,7 @@ test.describe("Assistant markdown sanitization (real browser DOM)", () => {
     const prose = page
       .getByTestId("assistant-message-bubble")
       .locator(".prose");
+
     await expect(prose).toBeVisible();
 
     // Markdown renders to real HTML (the regression that the dompurify 3.4.x
@@ -67,12 +68,14 @@ test.describe("Assistant markdown sanitization (real browser DOM)", () => {
 
     // The safe link is preserved AND hardened to open in a new window.
     const safeLink = prose.getByRole("link", { name: "safe link" });
+
     await expect(safeLink).toHaveAttribute("href", "https://example.com");
     await expect(safeLink).toHaveAttribute("target", "_blank");
     await expect(safeLink).toHaveAttribute("rel", "noopener noreferrer");
 
     // XSS vectors are stripped from the rendered HTML.
     const html = await prose.innerHTML();
+
     expect(html).not.toContain("<script");
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("onclick");

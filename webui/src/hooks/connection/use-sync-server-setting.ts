@@ -17,17 +17,24 @@ import { useEffect } from "preact/hooks";
  * overwritten on save (the user-edit case still wins). Used for both
  * liveApiEnabled (boolean) and notation (enum).
  *
- * @param serverValue - Server-fetched value
+ * A nullish `serverValue` means "not known yet" (the mount-time fetch hasn't
+ * answered), not "seed a blank". It is skipped so the caller's local state keeps
+ * whatever provisional value it started with and its own "has this been seeded"
+ * flag stays false — which is what lets useFirstSendGate hold a chat's first
+ * turn until the real notation is in hand. `false` is a value, not nullish, so
+ * the boolean callers are unaffected.
+ *
+ * @param serverValue - Server-fetched value, or null/undefined if not yet known
  * @param dirty - Whether the user has edited the modal-local value
  * @param seed - Setter that updates local state without marking dirty
  */
 export function useSyncServerSetting<T>(
-  serverValue: T,
+  serverValue: T | null | undefined,
   dirty: boolean,
   seed: (value: T) => void,
 ): void {
   useEffect(() => {
-    if (!dirty) {
+    if (!dirty && serverValue != null) {
       seed(serverValue);
     }
   }, [serverValue, dirty, seed]);

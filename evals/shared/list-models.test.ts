@@ -106,44 +106,27 @@ describe("listModels", () => {
   });
 
   it("returns 1 and reports a non-OK response without a stack trace", async () => {
-    process.env.OPENAI_KEY = "test-key";
-    vi.stubGlobal(
-      "fetch",
+    await expectFailureReported(
       vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
         statusText: "Unauthorized",
       }),
+      ["Failed to list models for openai: ", "401"],
     );
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const code = await listModels("openai");
-
-    expect(code).toBe(1);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to list models for openai: "),
-    );
-    expect(error).toHaveBeenCalledWith(expect.stringContaining("401"));
   });
 
   it("returns 1 and unwraps a fetch-failed cause for network errors", async () => {
-    process.env.OPENAI_KEY = "test-key";
     const fetchError = new TypeError("fetch failed");
 
     fetchError.cause = new Error("connect ECONNREFUSED 127.0.0.1:11434");
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const code = await listModels("openai");
-
-    expect(code).toBe(1);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("fetch failed (connect ECONNREFUSED"),
-    );
+    await expectFailureReported(vi.fn().mockRejectedValue(fetchError), [
+      "fetch failed (connect ECONNREFUSED",
+    ]);
   });
 
   it("unwraps an AggregateError cause via its sub-errors", async () => {
-    process.env.OPENAI_KEY = "test-key";
     const fetchError = new TypeError("fetch failed");
     // Undici's `fetch failed` wraps connection attempts in an AggregateError
     // whose own message is empty.
@@ -153,45 +136,51 @@ describe("listModels", () => {
     );
 
     fetchError.cause = aggregate;
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const code = await listModels("openai");
-
-    expect(code).toBe(1);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("fetch failed (connect ECONNREFUSED ::1:11434)"),
-    );
+    await expectFailureReported(vi.fn().mockRejectedValue(fetchError), [
+      "fetch failed (connect ECONNREFUSED ::1:11434)",
+    ]);
   });
 
   it("falls back to a cause error code when no message is available", async () => {
-    process.env.OPENAI_KEY = "test-key";
     const fetchError = new TypeError("fetch failed");
     const cause = new Error("");
 
     (cause as Error & { code?: string }).code = "ENOTFOUND";
     fetchError.cause = cause;
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const code = await listModels("openai");
-
-    expect(code).toBe(1);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("fetch failed (ENOTFOUND)"),
-    );
+    await expectFailureReported(vi.fn().mockRejectedValue(fetchError), [
+      "fetch failed (ENOTFOUND)",
+    ]);
   });
 
   it("returns 1 and stringifies a non-Error rejection", async () => {
-    process.env.OPENAI_KEY = "test-key";
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue("boom"));
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const code = await listModels("openai");
-
-    expect(code).toBe(1);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to list models for openai: boom"),
-    );
+    await expectFailureReported(vi.fn().mockRejectedValue("boom"), [
+      "Failed to list models for openai: boom",
+    ]);
   });
 });
+
+/**
+ * Stub fetch, list the openai models, and assert the run failed with the given
+ * text in what it printed to console.error.
+ * @param fetchStub - The fetch stub for this case
+ * @param expected - Substrings the reported error must contain
+ * @returns Promise resolving once the assertions have run
+ */
+async function expectFailureReported(
+  fetchStub: ReturnType<typeof vi.fn>,
+  expected: string[],
+): Promise<void> {
+  process.env.OPENAI_KEY = "test-key";
+  vi.stubGlobal("fetch", fetchStub);
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const code = await listModels("openai");
+
+  expect(code).toBe(1);
+
+  for (const text of expected) {
+    expect(error).toHaveBeenCalledWith(expect.stringContaining(text));
+  }
+}

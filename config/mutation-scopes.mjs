@@ -16,16 +16,18 @@
 //            ~1 point below its triaged score, matching notation's ratchet.
 
 // Glob set for one tool domain under src/tools/. Excludes tests, test dirs,
-// test/mock helpers, `.def.ts` tool definitions, `*-disabled.ts` build-time
+// test helpers, `.def.ts` tool definitions, `*-disabled.ts` build-time
 // stubs, and type-only modules — none carry mutable behavior worth asserting on.
 // `.def.ts` files are purely declarative (a `defineTool()` call: Zod schema +
 // LLM-facing description strings, no logic): mutating a `.describe("…")` string
 // just blanks prose that is eval-tested, not unit-tested, so asserting exact
 // wording would over-fit and fight the description-iteration workflow. Schema
 // constraints (`.min`/`.max`) are enforced by the MCP SDK, not our runtime code.
-// `*-mock-helpers.ts` is test-only mock infrastructure (like
-// `*-test-helpers.ts`); it stays source-classified for coverage but must not be
-// mutated. `*-disabled.ts` are build-time substitution stubs swapped in by
+// The test exclusions spell out the project's definition of a test file (see
+// dev/Testing.md); mutating one is meaningless. Keep them
+// in that vocabulary rather than adding a name only this file knows — a suffix
+// only one config recognizes reads as a test here and as source everywhere
+// else. `*-disabled.ts` are build-time substitution stubs swapped in by
 // rollup when a feature flag is off (e.g. ENABLE_CODE_EXEC); tests run with the
 // feature enabled so the stubs are never imported (all-NoCoverage by
 // construction) — they are already coverage-excluded in vitest.config.ts, so
@@ -39,7 +41,6 @@ function toolDomain(name) {
     `!${dir}/**/*.test.ts`,
     `!${dir}/**/tests/**`,
     `!${dir}/**/*-test-helpers.ts`,
-    `!${dir}/**/*-mock-helpers.ts`,
     `!${dir}/**/*.def.ts`,
     `!${dir}/**/*-disabled.ts`,
     `!${dir}/**/types.ts`,
@@ -64,7 +65,7 @@ const NOTATION_GLOBS = [
 // server and the V8 Max runtime. It is NOT under src/tools/, so toolDomain()
 // can't build its globs; and its scope key can't be `shared` — that already
 // means src/tools/shared — hence `sharedRuntime`. Same exclusions as a tool
-// domain (tests, test/mock helpers, types-only) minus `.def.ts`/`*-disabled.ts`
+// domain (tests, test helpers, types-only) minus `.def.ts`/`*-disabled.ts`
 // (no tool defs or feature-flag stubs live here); all are future-proofing —
 // src/shared currently has none of them.
 const SHARED_RUNTIME_GLOBS = [
@@ -72,7 +73,6 @@ const SHARED_RUNTIME_GLOBS = [
   "!src/shared/**/*.test.ts",
   "!src/shared/**/tests/**",
   "!src/shared/**/*-test-helpers.ts",
-  "!src/shared/**/*-mock-helpers.ts",
   "!src/shared/**/types.ts",
 ];
 
@@ -81,7 +81,7 @@ const SHARED_RUNTIME_GLOBS = [
 // stores, and the RPC protocol to the V8 runtime. It is NOT under src/tools/ so
 // toolDomain() can't build its globs; its scope key is `mcpServer` (camelCase,
 // non-colliding with any tool domain). Same exclusions as sharedRuntime (tests,
-// test/mock helpers, types-only) minus `.def.ts`/`*-disabled.ts` (no tool defs
+// test helpers, types-only) minus `.def.ts`/`*-disabled.ts` (no tool defs
 // or feature-flag stubs live here). `library-types.ts` is intentionally NOT
 // excluded — it carries real logic (clampLibraryLimit + limit constants), not
 // just type aliases.
@@ -90,7 +90,6 @@ const MCP_SERVER_GLOBS = [
   "!src/mcp-server/**/*.test.ts",
   "!src/mcp-server/**/tests/**",
   "!src/mcp-server/**/*-test-helpers.ts",
-  "!src/mcp-server/**/*-mock-helpers.ts",
   "!src/mcp-server/**/types.ts",
   // mcp-server.ts is the Node-for-Max bundle entry point: importing it runs
   // module-load side effects (imports `max-api`, registers Node routes, binds
@@ -115,7 +114,6 @@ const V8_ADAPTER_GLOBS = [
   "!src/live-api-adapter/**/*.test.ts",
   "!src/live-api-adapter/**/tests/**",
   "!src/live-api-adapter/**/*-test-helpers.ts",
-  "!src/live-api-adapter/**/*-mock-helpers.ts",
   "!src/live-api-adapter/**/types.ts",
   // live-api-adapter.ts is the V8 bundle entry point: importing it runs
   // module-load side effects (emits `outlet(0, "started")`, registers Max

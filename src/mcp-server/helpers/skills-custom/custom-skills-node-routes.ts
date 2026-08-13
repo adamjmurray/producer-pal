@@ -10,7 +10,7 @@
  * reach ~/.producer-pal/skills-custom/. Imported for side effects from
  * mcp-server.ts so the routes exist before V8 issues its first node_request.
  *
- * Sibling of global-memory-node-routes.ts: same index-derived collection shape,
+ * Sibling of memory-node-routes.ts: same index-derived collection shape,
  * but user-authored instruction packs rather than remembered facts. Enable and
  * disable is a user action (webui / hand-edit), not an assistant one, so these
  * routes never flip the `enabled` flag — `remember` preserves it. Every mutating

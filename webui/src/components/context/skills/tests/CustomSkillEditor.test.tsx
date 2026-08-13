@@ -8,6 +8,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import {
   type CustomSkillView,
@@ -116,42 +117,61 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("CustomSkillEditor autosave on close", () => {
-  it("persists a new draft on unmount so closing before Create doesn't lose it", () => {
-    const saveEntry = vi.fn().mockResolvedValue({
-      name: "jazz-voicings",
-      description: "",
-      enabled: true,
-      body: "Voice with 3rds.",
-    });
-    const collection: UseCustomSkillsCollectionReturn = {
-      status: { kind: "ready", entries: [] },
-      saveStatus: "idle",
-      saveError: null,
-      saveEntry,
-      renameEntry: vi.fn(),
-      deleteEntry: vi.fn(),
-      resetSaveStatus: vi.fn(),
-      refresh: vi.fn(),
-    };
-
-    const { unmount } = renderEditor({ collection, entry: null });
-
+describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
+  /**
+   * Fill the create form with a complete new-skill draft.
+   */
+  function fillCreateForm(): void {
     fireEvent.input(screen.getByRole("textbox", { name: /Name/ }), {
       target: { value: "jazz-voicings" },
     });
     fireEvent.input(screen.getByRole("textbox", { name: /Instructions/ }), {
       target: { value: "Voice with 3rds." },
     });
+  }
+
+  it("never persists a new draft on unmount — Create is the only create path", () => {
+    // Even a complete draft is created ONLY by the explicit Create button; a
+    // navigate-away confirms a discard instead of silently saving, matching the
+    // memory editor.
+    const collection = stubCollection(vi.fn());
+
+    collection.saveEntry = vi.fn();
+
+    const { unmount } = renderEditor({ collection, entry: null });
+
+    fillCreateForm();
 
     // Close the overlay (Escape / backdrop / ×) WITHOUT clicking Create.
     unmount();
 
-    expect(saveEntry).toHaveBeenCalledWith(
-      "jazz-voicings",
-      { description: "", content: "Voice with 3rds.", enabled: true },
-      true,
+    expect(collection.saveEntry).not.toHaveBeenCalled();
+  });
+
+  it("registers a discard confirm while a dirty new draft is open", () => {
+    const collection = stubCollection(vi.fn());
+    let registered: (() => boolean) | null = null;
+    const guard = {
+      register: (next: (() => boolean) | null) => {
+        registered = next;
+      },
+      confirmLeave: () => registered == null || registered(),
+    };
+
+    render(
+      <LeaveGuardContext.Provider value={guard}>
+        {editorElement({ collection, entry: null })}
+      </LeaveGuardContext.Provider>,
     );
+
+    // Blank form: nothing to lose, so navigating away is silent.
+    expect(guard.confirmLeave()).toBe(true);
+
+    fillCreateForm();
+
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    expect(guard.confirmLeave()).toBe(false);
+    expect(window.confirm).toHaveBeenCalledOnce();
   });
 });
 

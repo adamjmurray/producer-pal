@@ -17,6 +17,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsPreviewScreen } from "#webui/components/context/skills/SkillsPreviewScreen";
 
 const CONFIG_URL = "http://localhost:3000/config";
+
+/** Preview response fields beyond the blob itself. */
+interface PreviewExtras {
+  warnings?: string[];
+  dropped?: string[];
+}
+
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
 const VIEW_SLOT = <div data-testid="view-toggle">toggle</div>;
 
@@ -37,13 +44,13 @@ function jsonResponse(body: unknown): Response {
  * requested combination so assertions can key off the selected values.
  * @param config - Live config to return, or "fail" for a non-ok response
  * @param preview - "ok" echoes the combo; "fail" returns a non-ok response
- * @param previewWarnings - Assembly warnings to include in the preview response
+ * @param extras - Extra preview fields (assembly warnings, gated-out fragments)
  * @returns The fetch mock
  */
 function stubFetch(
   config: { notation: string; smallModelMode: boolean } | "fail",
   preview: "ok" | "fail" = "ok",
-  previewWarnings: string[] = [],
+  extras: PreviewExtras = {},
 ): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn((input: unknown) => {
     const url = String(input);
@@ -67,7 +74,8 @@ function stubFetch(
         head: notation,
         driver: small ? "basic" : "standard",
         skills: `S:${notation}:${small}`,
-        warnings: previewWarnings,
+        warnings: extras.warnings ?? [],
+        dropped: extras.dropped ?? [],
       }),
     );
   });
@@ -81,18 +89,18 @@ function stubFetch(
  * Stub `fetch` and render the screen with the standard slots.
  * @param config - Live config to return, or "fail" for a non-ok response
  * @param preview - "ok" echoes the combo; "fail" returns a non-ok response
- * @param previewWarnings - Assembly warnings to include in the preview response
+ * @param extras - Extra preview fields (assembly warnings, gated-out fragments)
  * @returns The fetch mock
  */
 function renderPreview(
   config?: { notation: string; smallModelMode: boolean } | "fail",
   preview: "ok" | "fail" = "ok",
-  previewWarnings: string[] = [],
+  extras: PreviewExtras = {},
 ): ReturnType<typeof vi.fn> {
   const fetchMock = stubFetch(
     config ?? { notation: "barbeat", smallModelMode: false },
     preview,
-    previewWarnings,
+    extras,
   );
 
   render(<SkillsPreviewScreen tabSlot={TAB_SLOT} viewSlot={VIEW_SLOT} />);
@@ -105,13 +113,15 @@ describe("SkillsPreviewScreen", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the header note, active fragments, and the blob size", async () => {
+  it("shows the header note, the active slots, and the blob size", async () => {
     renderPreview();
 
     expect(screen.getByText("Read-only preview")).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: barbeat/),
+      ).toBeTruthy();
     });
 
     // "S:barbeat:false" is 15 chars → ceil(15/4) = 4 tokens.
@@ -139,7 +149,9 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ stark/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: stark/),
+      ).toBeTruthy();
     });
     expect(screen.queryByText("★ Current settings")).toBeNull();
   });
@@ -148,7 +160,9 @@ describe("SkillsPreviewScreen", () => {
     renderPreview();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: standard \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: standard · Notation: barbeat/),
+      ).toBeTruthy();
     });
 
     fireEvent.change(screen.getByLabelText("Preview model size"), {
@@ -156,7 +170,9 @@ describe("SkillsPreviewScreen", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments: basic \+ barbeat/)).toBeTruthy();
+      expect(
+        screen.getByText(/Driver: basic · Notation: barbeat/),
+      ).toBeTruthy();
     });
   });
 
@@ -185,9 +201,9 @@ describe("SkillsPreviewScreen", () => {
   });
 
   it("surfaces override assembly warnings above the blob", async () => {
-    renderPreview({ notation: "barbeat", smallModelMode: false }, "ok", [
-      "skills include cycle refused: standard → standard",
-    ]);
+    renderPreview({ notation: "barbeat", smallModelMode: false }, "ok", {
+      warnings: [`skills include names an unknown fragment: "core-devices"`],
+    });
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeTruthy();
@@ -195,14 +211,58 @@ describe("SkillsPreviewScreen", () => {
     expect(
       screen.getByText(/This override didn't fully assemble/),
     ).toBeTruthy();
-    expect(screen.getByText(/cycle refused/)).toBeTruthy();
+    expect(screen.getByText(/unknown fragment/)).toBeTruthy();
+  });
+
+  it("names the fragments the toolset left out", async () => {
+    renderPreview({ notation: "barbeat", smallModelMode: false }, "ok", {
+      dropped: ["library", "devices"],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/no enabled tool uses them/)).toBeTruthy();
+    });
+    expect(screen.getByText("library, devices")).toBeTruthy();
+  });
+
+  it("gates on the enabled tools until the checkbox is cleared", async () => {
+    const fetchMock = renderPreview();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Driver: standard/)).toBeTruthy();
+    });
+
+    const checkbox = screen.getByLabelText(
+      "Enabled tools only",
+    ) as HTMLInputElement;
+
+    expect(checkbox.checked).toBe(true);
+
+    fireEvent.click(checkbox);
+
+    await waitFor(() => {
+      const previews = fetchMock.mock.calls
+        .map(([input]) => String(input))
+        .filter((url) => !url.startsWith(CONFIG_URL));
+
+      expect(previews.at(-1)).toContain("allTools=true");
+    });
+  });
+
+  it("says nothing about gating when the toolset dropped nothing", async () => {
+    renderPreview();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Driver: standard/)).toBeTruthy();
+    });
+    expect(screen.queryByText(/no enabled tool uses them/)).toBeNull();
   });
 
   it("shows no warning banner when the blob assembled cleanly", async () => {
     renderPreview();
 
     await waitFor(() => {
-      expect(screen.getByText(/Fragments:/)).toBeTruthy();
+      expect(screen.getByText(/Driver: /)).toBeTruthy();
     });
     expect(screen.queryByRole("alert")).toBeNull();
   });

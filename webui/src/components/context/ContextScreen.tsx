@@ -8,9 +8,9 @@ import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
   type DocDrift,
-  type DocMemoryStatus,
-  type UseDocMemoryReturn,
-} from "#webui/hooks/context/use-doc-memory";
+  type DocStatus,
+  type UseDocReturn,
+} from "#webui/hooks/context/use-doc";
 import { CharTokenCount } from "./collection/CharTokenCount";
 import { makeContextIoHandlers } from "./context-io";
 import { ContextIoButtons } from "./ContextIoButtons";
@@ -47,11 +47,11 @@ export interface ContextEditorLabels {
    */
   description?: string;
   /**
-   * Optional read-only built-in reference. When set, the editor renders
-   * side-by-side (editable override | built-in with a Copy button) so a user
-   * can fork the shipped default instead of starting from a blank slate. Used
-   * by the custom-instructions tab; the plain context tabs (no shipped default)
-   * omit it and stay single-pane.
+   * Optional built-in default. When set, the editor seeds from it rather than
+   * from a blank slate — typing forks it into an override — and the default can
+   * then be revealed side-by-side (override | built-in with a Copy button) for
+   * comparison. Used by the custom-instructions tab; the plain context tabs (no
+   * shipped default) omit it and stay single-pane.
    */
   builtIn?: string;
   /**
@@ -62,8 +62,8 @@ export interface ContextEditorLabels {
 }
 
 interface ContextScreenProps {
-  /** Document memory hook return for this editor (project or global). */
-  memory: UseDocMemoryReturn;
+  /** Doc hook return for this editor (project, global, or instructions). */
+  doc: UseDocReturn;
   /** Copy for this document type. */
   labels: ContextEditorLabels;
   /**
@@ -91,15 +91,16 @@ interface ContextScreenProps {
  * @returns Screen element
  */
 export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
-  const { memory, labels, tabSlot, onClose } = props;
-  const editor = useContextEditorState(memory, labels.clearConfirmMessage);
+  const { doc, labels, tabSlot, onClose } = props;
+  const editor = useContextEditorState(doc, labels.clearConfirmMessage);
   const importNotice = useImportNotice();
-  const io = makeContextIoHandlers(
+  const io = makeContextIoHandlers({
     editor,
-    labels.exportBasename,
-    importNotice.showNotice,
-    importNotice.clearNotice,
-  );
+    exportBasename: labels.exportBasename,
+    builtIn: labels.builtIn,
+    onImportError: importNotice.showNotice,
+    onImportSuccess: importNotice.clearNotice,
+  });
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Cap the editable region so it lines up with the chat column instead of
   // sprawling across a wide monitor. At rest the editor matches the chat width;
@@ -116,26 +117,26 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         title={labels.title}
         tabSlot={tabSlot}
         closeAriaLabel={labels.closeAriaLabel}
-        status={memory.status}
-        saveStatus={memory.saveStatus}
+        status={doc.status}
+        saveStatus={doc.saveStatus}
         dirty={editor.dirty}
         onClose={onClose}
       />
       <ContextControls
-        status={memory.status}
+        status={doc.status}
         description={labels.description}
         widthClass={widthClass}
         charCount={editor.charCount}
         builtIn={labels.builtIn}
         hasOverride={editor.hasOverride}
-        drift={memory.drift}
+        drift={doc.drift}
         onClear={() => void editor.handleClear()}
         onImport={io.onImport}
         onExport={io.onExport}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
-          status={memory.status}
+          status={doc.status}
           loadingLabel={labels.loadingLabel}
           externalUpdateMessage={labels.externalUpdateMessage}
           builtIn={labels.builtIn}
@@ -148,7 +149,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
           externalUpdate={editor.externalUpdate}
           onReload={editor.handleReload}
           onReset={editor.handleClear}
-          onCustomize={() => void editor.handleImport(labels.builtIn ?? "")}
+          onBeginOverride={editor.beginOverride}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
           onImportText={io.onImportText}
@@ -175,13 +176,13 @@ export const SINGLE_WIDTH = "max-w-5xl";
 export const DOUBLE_PANE_WIDTH = "max-w-7xl";
 
 interface ContextControlsProps {
-  status: DocMemoryStatus;
+  status: DocStatus;
   description?: string;
   widthClass: string;
   charCount: number;
   /**
    * The document's built-in default, when it has one (custom instructions). Its
-   * presence hides the strip Clear (reset lives in the revealed built-in header)
+   * presence hides the strip Clear (reset lives beside the editor's pane label)
    * and, with no override yet, makes the size readout reflect the built-in shown
    * on screen rather than the empty override.
    */
@@ -208,7 +209,7 @@ interface ContextControlsProps {
  * Controls strip below the header with an optional explainer, a live char/token
  * size readout (labelled "Default" while an un-customized default is shown, so
  * the count matches what's on screen), and (for documents without a built-in
- * default) a destructive clear action. Hidden until memory has loaded so we
+ * default) a destructive clear action. Hidden until the doc has loaded so we
  * don't flash a control whose state we haven't fetched yet. The border spans
  * full width while the content is centered to `widthClass` so it lines up with
  * the editor below. The explainer shrinks and wraps (`min-w-0 flex-1`) while the
@@ -268,7 +269,7 @@ function ContextControls(
 }
 
 interface ContextBodyProps {
-  status: DocMemoryStatus;
+  status: DocStatus;
   loadingLabel: string;
   externalUpdateMessage: string;
   builtIn?: string;
@@ -282,7 +283,8 @@ interface ContextBodyProps {
   onReload: () => void;
   /** See {@link OverridePanes}: resolves whether the reset actually happened. */
   onReset: () => Promise<boolean>;
-  onCustomize: () => void;
+  /** See {@link OverridePanes}: latch into override mode on the first edit. */
+  onBeginOverride: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
   onImportText: (text: string) => void;
@@ -297,7 +299,8 @@ interface ContextBodyProps {
  * the server has changed under us) or a status message for loading/error.
  * The editor is mounted once per `ready` session; bumping `editorKey`
  * forces a remount (used by Clear and Reload). When `builtIn` is supplied the
- * editor renders side-by-side with the read-only default (see OverridePanes).
+ * editor seeds from that default and forks it on the first edit, revealing it
+ * side-by-side on demand (see OverridePanes).
  * @param props - Body props
  * @returns Body element
  */
@@ -316,7 +319,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     externalUpdate,
     onReload,
     onReset,
-    onCustomize,
+    onBeginOverride,
     onChange,
     onBlur,
     onImportText,
@@ -366,7 +369,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={onToggleBuiltIn}
             onReset={onReset}
-            onCustomize={onCustomize}
+            onBeginOverride={onBeginOverride}
             onChange={onChange}
             onBlur={onBlur}
           />

@@ -18,10 +18,11 @@
  *
  * Grading is outcome-based but path-independent: an invalid target, source,
  * amount, or unparseable action all warn-and-skip, and `console.warn` is relayed
- * into the tool result as a `WARNING:` block (see v8-max-console). So an
- * ACCEPTED action = an update-device call carrying a `setModulation(...)` action
- * whose result has no `WARNING`. We don't pin the device path (the model names
- * its own track), we inspect what it sent and whether the engine took it.
+ * into the tool result as its own `WARNING:` block (see v8-max-console), which
+ * the transports record on the call's `warnings`. So an ACCEPTED action = an
+ * update-device call carrying a `setModulation(...)` action that relayed no
+ * warning. We don't pin the device path (the model names its own track), we
+ * inspect what it sent and whether the engine took it.
  *
  * The LLM judge is ADVISORY here: it reads the transcript, not Live state, and
  * is fooled by a confident-but-false claim. (First run, 2026-06-02,
@@ -95,17 +96,18 @@ export const deviceSoundDesign: EvalScenario = {
   ],
 };
 
-/** Action-failure fragments the relay surfaces when setModulation is rejected. */
-const MODULATION_FAILURE =
-  /could not parse action|unknown action|requires 3 arguments|source ".*" is invalid|amount must be|is not a (valid )?modulation target|warning/i;
-
 /**
  * Build a custom assertion that a `setModulation(...)` action emitted in `turn`
  * was ACCEPTED by the Wavetable matrix: at least one update-device call in that
- * turn carries a `setModulation` action AND its tool result has no failure
- * `WARNING` (an invalid target/source/amount or unparseable action would warn
- * and skip). Path-independent — grades the emitted call + its result, not a
- * hardcoded device location.
+ * turn carries a `setModulation` action AND that call relayed no `WARNING` (an
+ * invalid target/source/amount or unparseable action would warn and skip).
+ * Path-independent — grades the emitted call + its result, not a hardcoded
+ * device location.
+ *
+ * Any warning on the call counts as a rejection. An earlier version matched a
+ * list of failure fragments instead, which drifted out of sync with the actual
+ * warning texts — a target rejection ("parameter not found", "parameter is not
+ * modulatable") matched none of them.
  *
  * @param turn - Turn index to inspect
  * @param label - Human-readable route label for failure messages
@@ -134,13 +136,13 @@ function acceptedModulationAssertion(
         );
       }
 
-      const accepted = modCalls.some(
-        (c) => !MODULATION_FAILURE.test(String(c.result ?? "")),
-      );
+      const accepted = modCalls.some((c) => (c.warnings?.length ?? 0) === 0);
 
       if (!accepted) {
+        const warnings = modCalls.flatMap((c) => c.warnings ?? []).join("; ");
+
         throw new Error(
-          `${label}: setModulation was emitted but the engine rejected it (target/source/amount invalid — see WARNING in the tool result)`,
+          `${label}: setModulation was emitted but the engine rejected it — ${warnings}`,
         );
       }
 

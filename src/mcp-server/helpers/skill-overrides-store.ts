@@ -15,28 +15,57 @@
 // "the default changed since you forked" drift. Provenance is stamped here on
 // save — never authored by hand — keeping all filesystem + hashing logic
 // Node-side.
+//
+// A slot also carries an `enabled` flag, the second and independent axis: OFF
+// resolves the fragment to "" with no fallback, which is what an empty override
+// body can never mean (that one falls back to the built-in). The two axes cross,
+// so a file may hold a body, a flag, or both — and "reset to default" clears the
+// body while leaving the switch alone.
 
 import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
+  fragmentGate,
+  type FragmentGate,
+} from "#src/skills/fragment-tool-gates.ts";
+import {
+  isDisableableSkillSlot,
   SKILL_SLOT_NAMES,
   SKILL_SLOTS,
   type SkillSlotName,
+  SPLIT_SKILL_SLOTS,
 } from "#src/skills/skill-slots.ts";
+import { staleSplitLines } from "#src/skills/stale-split-lines.ts";
 import {
   deleteConfigMarkdown,
   listConfigMarkdownFilesRecursive,
   readConfigMarkdown,
   writeConfigMarkdown,
-} from "./markdown-store/config-markdown-store.ts";
-import { parseFrontmatter } from "./markdown-store/frontmatter.ts";
+} from "./config-store/config-markdown-store.ts";
 import {
+  parseFrontmatter,
+  type ParsedFrontmatter,
+  serializeFrontmatter,
+} from "./config-store/frontmatter.ts";
+import {
+  freshProvenance,
   hashBuiltIn,
   isDrifted,
   type OverrideProvenance,
   PROVENANCE_FRONTMATTER_KEYS,
   readProvenance,
-  stampProvenance,
 } from "./override-provenance.ts";
+
+/**
+ * The frontmatter keys a skills override file carries: fork-time provenance
+ * plus the per-slot on/off flag. `enabled` is STORED rather than derived from
+ * the file's presence because the two axes are independent — a slot can be
+ * switched off while still tracking the built-in, and that file holds the flag
+ * and nothing else.
+ */
+const SKILL_FRONTMATTER_KEYS = [
+  ...PROVENANCE_FRONTMATTER_KEYS,
+  "enabled",
+] as const;
 
 // Built-in fragments are static module imports, so their hashes never change at
 // runtime. Precompute them once: GET /skill-overrides is polled every 5s and
@@ -48,6 +77,14 @@ const BUILT_IN_HASHES: Record<SkillSlotName, string> = Object.fromEntries(
     hashBuiltIn(SKILL_SLOTS[name].builtIn),
   ]),
 ) as Record<SkillSlotName, string>;
+
+/** A pre-split override's overlap with the `-write` sibling it duplicates. */
+export interface SplitStaleness {
+  /** The `-write` sibling that ships this text now. */
+  sibling: SkillSlotName;
+  /** How many of the override's lines are still the sibling's, word for word. */
+  sharedLines: number;
+}
 
 /** Full state of one override slot, for the webui editor. */
 export interface SkillSlotState {
@@ -61,24 +98,57 @@ export interface SkillSlotState {
   builtIn: string;
   /** The user's override body ("" when the slot tracks the built-in). */
   override: string;
+  /** Whether this fragment is assembled at all (off ⇒ it resolves to ""). */
+  enabled: boolean;
+  /** Whether the editor may offer an off switch (false for the drivers). */
+  canDisable: boolean;
+  /**
+   * The tools (any-of) that keep this fragment, or `"always"` /
+   * `"conversation-only"`; null for the drivers. Sent so the editor can state
+   * the rule — a fragment's conditional behavior was only ever described in its
+   * prose description, which drifts.
+   */
+  gate: FragmentGate | null;
   /** Whether the built-in changed since this override was forked. */
   drifted: boolean;
+  /**
+   * Set when this override predates the slot's `-write` split and still carries
+   * the sibling's text (null otherwise). Separate from `drifted`: that one is
+   * "the default moved under you", this one is "your fork ships text twice".
+   */
+  splitStale: SplitStaleness | null;
   /** Fork-time provenance (null when there is no override). */
   provenance: OverrideProvenance | null;
 }
 
 /**
- * Read every override fragment for buildSkills. EVERY `.md` in the skills dir is
- * read, not just the curated slots: a fork may override a driver, a notation
- * head, or include a fragment of the user's own. `resolveIncludes` only pulls
- * the names its graph references, and the readdir scope here plus the resolver's
- * ref validation keep resolution inside the dir. Empty or whitespace-only bodies
- * are dropped so that name falls back to the built-in.
+ * A write to one override slot. Either axis may be omitted to leave it exactly
+ * as stored, so the editor's body autosave and its on/off toggle never clobber
+ * each other.
+ */
+export interface SkillSlotWrite {
+  /** New override body (blank clears it); omitted keeps the stored one. */
+  content?: string;
+  /** New on/off flag; omitted keeps the stored one. */
+  enabled?: boolean;
+}
+
+/**
+ * Read the user's whole skills customization for buildSkills: override bodies
+ * and the names switched off. EVERY `.md` in the skills dir is read, not just
+ * the curated slots: a fork may override a driver, a notation head, or include a
+ * fragment of the user's own. `resolveIncludes` only pulls the names its graph
+ * references, and the readdir scope here plus the resolver's ref validation keep
+ * resolution inside the dir. Empty or whitespace-only bodies are dropped so that
+ * name falls back to the built-in — a file that carries only `enabled: false`
+ * therefore contributes a switch-off and no body, which is the whole point of
+ * storing the flag separately.
  *
- * @returns Fragment name → override body (only files the user has added)
+ * @returns The override bodies and the disabled fragment names
  */
 export function readSkillOverrides(): SkillOverrides {
-  const overrides: SkillOverrides = {};
+  const fragments: Record<string, string> = {};
+  const disabled: string[] = [];
 
   // Read EVERY .md under the skills dir (nested included), not just the curated
   // slots: an override may be a driver, a wrapper, or a fragment of the user's
@@ -86,17 +156,20 @@ export function readSkillOverrides(): SkillOverrides {
   // "drums/backbeat". `resolveIncludes` only pulls names the graph references,
   // and its ref validation + this readdir scope keep resolution inside the dir.
   for (const file of listConfigMarkdownFilesRecursive("skills")) {
-    const body = readFragmentBody(`skills/${file}`);
+    const name = file.slice(0, -".md".length);
+    const { data, body } = readSlotFile(`skills/${file}`);
+    const override = body.trim();
 
-    if (body) overrides[file.slice(0, -".md".length)] = body;
+    if (override) fragments[name] = override;
+    if (!isEnabled(data)) disabled.push(name);
   }
 
-  return overrides;
+  return { fragments, disabled };
 }
 
 /**
- * Full state of every override slot (built-in default, current override, and
- * drift), for the webui editor's list + diff.
+ * Full state of every override slot (built-in default, current override, on/off
+ * flag, and drift), for the webui editor's list + diff.
  *
  * @returns One state entry per registered slot, in registry order
  */
@@ -108,14 +181,11 @@ export function listSkillSlotStates(): SkillSlotState[] {
  * Full state of a single override slot.
  *
  * @param name - The slot to read
- * @returns The slot's built-in, override, provenance, and drift state
+ * @returns The slot's built-in, override, on/off flag, provenance, and drift
  */
 export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
   const slot = SKILL_SLOTS[name];
-  const { data, body } = parseFrontmatter(
-    readConfigMarkdown(filenameFor(name)),
-    PROVENANCE_FRONTMATTER_KEYS,
-  );
+  const { data, body } = readSlotFile(filenameFor(name));
   const override = body.trim();
   const provenance = override ? readProvenance(data) : null;
 
@@ -125,49 +195,101 @@ export function readSkillSlotState(name: SkillSlotName): SkillSlotState {
     description: slot.description,
     builtIn: slot.builtIn,
     override,
+    enabled: isEnabled(data),
+    canDisable: isDisableableSkillSlot(name),
+    gate: fragmentGate(name),
     drifted: isDrifted(provenance, BUILT_IN_HASHES[name]),
+    splitStale: splitStaleness(name, override),
     provenance,
   };
 }
 
 /**
- * Save an override for a slot, stamping fork-time provenance in frontmatter.
- * Blank content resets the slot to the built-in (deletes the file), matching
- * the editor's "reset to default".
+ * Write one slot's override body and/or its on/off flag, stamping fork-time
+ * provenance when the BODY is written. An omitted field keeps what is stored, so
+ * toggling a slot off preserves its override (and its drift flag — re-stamping
+ * provenance on a toggle would silently re-fork content the user hasn't looked
+ * at). A slot with no body that is switched back on has nothing left to store,
+ * so its file is deleted.
  *
- * @param name - The slot to override
- * @param content - The override body (blank resets to built-in)
+ * @param name - The slot to write
+ * @param write - The body and/or flag to change ({@link SkillSlotWrite})
  * @returns The slot's new state
  */
 export function writeSkillOverride(
   name: SkillSlotName,
-  content: string,
+  write: SkillSlotWrite,
 ): SkillSlotState {
-  const body = content.trim();
+  const filename = filenameFor(name);
+  const { data, body: stored } = readSlotFile(filename);
+  const body = (write.content ?? stored).trim();
+  const enabled = write.enabled ?? isEnabled(data);
 
-  if (!body) return deleteSkillOverride(name);
+  if (!body && enabled) {
+    deleteConfigMarkdown(filename);
+  } else {
+    const provenance =
+      write.content == null
+        ? readProvenance(data)
+        : freshProvenance(BUILT_IN_HASHES[name]);
 
-  writeConfigMarkdown(
-    filenameFor(name),
-    stampProvenance(`${body}\n`, BUILT_IN_HASHES[name]),
-  );
+    writeConfigMarkdown(
+      filename,
+      serializeFrontmatter(
+        slotFrontmatter(provenance, body, enabled),
+        body ? `${body}\n` : "",
+      ),
+    );
+  }
 
   return readSkillSlotState(name);
 }
 
 /**
- * Reset a slot to the built-in default (delete its override file).
+ * Reset a slot's override to the built-in default. The on/off flag is the
+ * independent axis and survives: a disabled slot stays disabled, its file kept
+ * for the flag alone.
  *
  * @param name - The slot to reset
  * @returns The slot's new state (override cleared)
  */
 export function deleteSkillOverride(name: SkillSlotName): SkillSlotState {
-  deleteConfigMarkdown(filenameFor(name));
-
-  return readSkillSlotState(name);
+  return writeSkillOverride(name, { content: "" });
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether a slot's override predates its `-write` split and still holds the
+ * sibling's text — the same check buildSkills warns about (warnSplitOverrides),
+ * reported per slot so the editor can say it where the editing happens. An
+ * override of the sibling, or switching it off, means the user has already met
+ * the split, so both stay quiet.
+ *
+ * Tool gating is deliberately left out: whether the sibling ships is a property
+ * of the CALLER's toolset, not of the slot, and the editor states that gate
+ * separately.
+ *
+ * @param name - The slot being read
+ * @param override - Its override body ("" when the slot tracks the built-in)
+ * @returns The overlap, or null when there is nothing stale to report
+ */
+function splitStaleness(
+  name: SkillSlotName,
+  override: string,
+): SplitStaleness | null {
+  const sibling = SPLIT_SKILL_SLOTS[name];
+
+  if (!override || sibling == null) return null;
+
+  const { data, body } = readSlotFile(filenameFor(sibling));
+
+  if (body.trim() || !isEnabled(data)) return null;
+
+  const shared = staleSplitLines(override, SKILL_SLOTS[sibling].builtIn);
+
+  return shared.length === 0 ? null : { sibling, sharedLines: shared.length };
+}
 
 /**
  * The override filename for a slot, under the skills/ subfolder of the config
@@ -181,15 +303,49 @@ function filenameFor(name: SkillSlotName): string {
 }
 
 /**
- * The trimmed body of a skills override file, with any frontmatter stripped
- * ("" when absent/empty), for {@link readSkillOverrides}.
+ * Read and split one skills file into its frontmatter and body. A missing file
+ * (the common untouched case) yields empty fields, which read as "tracks the
+ * built-in, switched on".
  *
  * @param filename - Config-relative path (e.g. "skills/barbeat-standard.md")
- * @returns The override body to feed buildSkills
+ * @returns The parsed frontmatter and body
  */
-function readFragmentBody(filename: string): string {
-  return parseFrontmatter(
-    readConfigMarkdown(filename),
-    PROVENANCE_FRONTMATTER_KEYS,
-  ).body.trim();
+function readSlotFile(filename: string): ParsedFrontmatter {
+  return parseFrontmatter(readConfigMarkdown(filename), SKILL_FRONTMATTER_KEYS);
+}
+
+/**
+ * Whether a slot's stored frontmatter leaves it switched on. Only an explicit
+ * `enabled: false` turns a fragment off, so a hand-authored file with no
+ * frontmatter at all is on — the same default the custom-skills store uses.
+ *
+ * @param data - The slot file's parsed frontmatter
+ * @returns True unless the file says exactly `enabled: false`
+ */
+function isEnabled(data: Record<string, string>): boolean {
+  return data.enabled !== "false";
+}
+
+/**
+ * The frontmatter block for a stored slot file: fork-time provenance (which
+ * describes a forked BODY, so a flag-only file carries none) plus the off flag.
+ * `enabled: true` is never written — absence is the default, which keeps a
+ * hand-authored file free of metadata it never asked for.
+ *
+ * @param provenance - Fork-time provenance, or null when there is none
+ * @param body - The override body being stored ("" for a flag-only file)
+ * @param enabled - Whether the slot is switched on
+ * @returns The flat key/value block to serialize
+ */
+function slotFrontmatter(
+  provenance: OverrideProvenance | null,
+  body: string,
+  enabled: boolean,
+): Record<string, string> {
+  const data: Record<string, string> = {};
+
+  if (body && provenance) Object.assign(data, provenance);
+  if (!enabled) data.enabled = "false";
+
+  return data;
 }

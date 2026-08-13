@@ -4,15 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  type MemoryResult,
+  type ContentResult,
   handleDeleteMemoryEntry,
-  handleReadGlobalMemory,
-  handleReadMemory,
+  handleReadGlobalContext,
   handleReadMemoryEntry,
   handleReadMemoryIndex,
-  handleWriteGlobalMemory,
-  handleWriteMemory,
+  handleReadProjectContext,
+  handleWriteGlobalContext,
   handleWriteMemoryEntry,
+  handleWriteProjectContext,
 } from "./context-helpers.ts";
 
 interface ContextArgs {
@@ -21,6 +21,7 @@ interface ContextArgs {
   scope?: string;
   name?: string;
   description?: string;
+  force?: boolean;
 }
 
 /**
@@ -42,13 +43,14 @@ interface ContextArgs {
  * @param args.scope - Which context to target (project | global | memory; default project)
  * @param args.name - Memory entry name (read/write/delete, memory scope)
  * @param args.description - One-line recall hook (memory write)
+ * @param args.force - Replace a project/global document the write keeps none of
  * @param toolContext - The context object
- * @returns Memory result
+ * @returns Content result
  */
 export async function context(
-  { action, content, scope, name, description }: ContextArgs = {},
+  { action, content, scope, name, description, force }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
-): Promise<MemoryResult> {
+): Promise<ContentResult> {
   if (scope === "memory") {
     switch (action) {
       case "read":
@@ -69,9 +71,9 @@ export async function context(
   if (scope === "global") {
     switch (action) {
       case "read":
-        return await handleReadGlobalMemory();
+        return await handleReadGlobalContext();
       case "write":
-        return await handleWriteGlobalMemory(content);
+        return await handleWriteGlobalContext(content, force);
       default:
         throw new Error(`Unknown action for scope:global: ${action}`);
     }
@@ -79,9 +81,9 @@ export async function context(
 
   switch (action) {
     case "read":
-      return handleReadMemory(toolContext);
+      return handleReadProjectContext(toolContext);
     case "write":
-      return handleWriteMemory(content, toolContext);
+      return handleWriteProjectContext(content, toolContext, force);
     default:
       throw new Error(`Unknown action for scope:project: ${action}`);
   }

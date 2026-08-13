@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 export interface RoutingType {
   display_name: string;
@@ -115,7 +115,7 @@ export function findRoutingOptionForDuplicateNames(
       `Could not find source track in duplicate name list for "${sourceTrackName}"`,
     );
 
-    return;
+    return undefined;
   }
 
   // Return the routing option at the same position

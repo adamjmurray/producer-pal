@@ -22,6 +22,8 @@ describe("PreferencesTab", () => {
     setShowHelpLinks: vi.fn(),
     showTokenUsage: false,
     setShowTokenUsage: vi.fn(),
+    autoUpdateCheck: true,
+    setAutoUpdateCheck: vi.fn(),
     onDeleteAllConversations: vi.fn(),
     onDeleteUnbookmarkedConversations: vi.fn(),
   };
@@ -120,6 +122,20 @@ describe("PreferencesTab", () => {
 
     fireEvent.click(checkboxes[2]!);
     expect(setShowTokenUsage).toHaveBeenCalled();
+  });
+
+  it("calls setAutoUpdateCheck when checkbox toggled", () => {
+    const setAutoUpdateCheck = vi.fn();
+    const { container } = render(
+      <PreferencesTab
+        {...defaultProps}
+        setAutoUpdateCheck={setAutoUpdateCheck}
+      />,
+    );
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
+    fireEvent.click(checkboxes[3]!);
+    expect(setAutoUpdateCheck).toHaveBeenCalledWith(false);
   });
 
   it("renders cleanup buttons", () => {

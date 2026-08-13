@@ -61,9 +61,13 @@ export function withProjectContext(
  * here (not in the store) so the raw file stays byte-faithful for the editor's
  * GET/PUT round-trip while the injected block is clean.
  *
+ * Exported for the subagent briefing, which composes the same labeled blocks
+ * into a worker's system prompt instead of a connect result — the label is what
+ * tells the model which layer it is reading, so the two paths must not drift.
+ *
  * @returns The labeled global-context text, or null to skip
  */
-function globalContextBlock(): string | null {
+export function globalContextBlock(): string | null {
   const globalContext = readGlobalContext().trim();
 
   if (!globalContext) return null;
@@ -72,12 +76,13 @@ function globalContextBlock(): string | null {
 }
 
 /**
- * The project-context block to append, or null when the blob is empty.
+ * The project-context block to append, or null when the blob is empty. Exported
+ * alongside {@link globalContextBlock} for the subagent briefing.
  *
  * @param projectContext - The raw per-project context blob
  * @returns The labeled project-context text, or null to skip
  */
-function projectContextBlock(projectContext: string): string | null {
+export function projectContextBlock(projectContext: string): string | null {
   const trimmed = projectContext.trim();
 
   if (!trimmed) return null;

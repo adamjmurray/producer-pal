@@ -60,8 +60,6 @@ export function installTrackingTask(scheduleCalls: number[]): () => void {
     schedule = (ms: number): void => {
       scheduleCalls.push(ms);
     };
-
-    constructor(_callback: () => void) {}
   }
 
   return installTask(TrackingTask);

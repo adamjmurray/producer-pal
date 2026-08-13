@@ -9,9 +9,9 @@
  * These scenarios grade BEHAVIOR — does the model follow what's in context, and
  * does it reach for the right layer when writing? The mechanics of each scope
  * (read/write/delete over the MCP protocol) are already pinned by
- * e2e/mcp/workflow/ppal-context-memory.test.ts; nothing here re-tests those.
+ * e2e/mcp/workflow/ppal-context.test.ts; nothing here re-tests those.
  *
- * Seeding note: the project layer is a config value (`config.memoryContent`),
+ * Seeding note: the project layer is a config value (`config.projectContext`),
  * which the runner reverts via resetConfig(). The global and memory layers are
  * REAL FILES under ~/.producer-pal/ on the machine running Live, and the eval
  * process (which talks to that server over HTTP) cannot redirect them with
@@ -19,16 +19,18 @@
  * `setup` and restored in `teardown` — see `seedContext`.
  */
 
+import { argText } from "../arg-text.ts";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText, parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
+import { CONNECT_MESSAGE } from "../../helpers/seed-connect/seed-connect.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
   type ScenarioRequirements,
 } from "../../types.ts";
-import { clearSessionSlots } from "../clip/clip-scenario-helpers.ts";
+import { clearSessionSlots } from "../clip/helpers/clip-scenario-helpers.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";
@@ -37,7 +39,7 @@ export const TOOL_CONNECT = "ppal-connect";
 export const TOOL_CONTEXT = "ppal-context";
 
 /** Standard turn-0 message that opens a connection to Live. */
-export const MSG_CONNECT = "Connect to Ableton Live";
+export const MSG_CONNECT = CONNECT_MESSAGE;
 
 /** The Live Set every context scenario shares, so they can reuse one open. */
 export const CONTEXT_LIVE_SET = "basic-midi-4-track";
@@ -128,10 +130,15 @@ export function seedContext(seed: {
       // "whatever this developer happens to have". Global context is injected on
       // every connect and instructs behavior directly, so inheriting the real
       // one makes results depend on the machine the eval ran on.
+      // `force` on both the seed and the restore below: these REPLACE the
+      // document wholesale, which is exactly what the tool's clobber guard
+      // skips for a model. Setup/teardown are the deliberate case it exists to
+      // let through.
       await callContext(mcpClient, {
         action: "write",
         scope: "global",
         content: seed.global ?? "",
+        force: true,
       });
 
       for (const memory of memories) {
@@ -171,6 +178,7 @@ export function seedContext(seed: {
           action: "write",
           scope: "global",
           content: originalGlobal,
+          force: true,
         });
       }
 
@@ -269,7 +277,7 @@ async function assertMemoryNameFree(
  * @returns The targeted scope
  */
 function scopeOf(args: Record<string, unknown>): string {
-  return String(args.scope ?? "project");
+  return argText(args.scope, "project");
 }
 
 /**
@@ -279,7 +287,7 @@ function scopeOf(args: Record<string, unknown>): string {
  * @returns The action taken
  */
 function actionOf(args: Record<string, unknown>): string {
-  return String(args.action ?? "read");
+  return argText(args.action, "read");
 }
 
 /**
@@ -332,7 +340,7 @@ export function assertContextWrite(opts: {
 
       if (opts.name != null) {
         const wrongNames = writes
-          .map((args) => String(args.name ?? ""))
+          .map((args) => argText(args.name))
           .filter((name) => name !== opts.name);
 
         writes = writes.filter((args) => args.name === opts.name);
@@ -396,7 +404,7 @@ export function assertContextWritePreserves(opts: {
       }
 
       // The LAST write is what the document ends up as.
-      const content = String(writes.at(-1)?.content ?? "");
+      const content = argText(writes.at(-1)?.content);
       const dropped = opts.mustContain.filter((s) => !content.includes(s));
 
       if (dropped.length > 0) {
@@ -496,7 +504,7 @@ export function assertMemoryRead(
       const reads = contextCalls(turns, turn, "read", "memory");
 
       if (!reads.some((args) => args.name === name)) {
-        const seen = reads.map((args) => String(args.name ?? "(index)"));
+        const seen = reads.map((args) => argText(args.name, "(index)"));
         const detail =
           seen.length > 0 ? `read ${seen.join(", ")} instead` : "read nothing";
 
@@ -523,7 +531,7 @@ export function assertNoMemoryRead(turn: number | "any"): EvalAssertion {
     description: "did not load any memory bodies",
     assert: (turns) => {
       const bodies = contextCalls(turns, turn, "read", "memory")
-        .map((args) => String(args.name ?? ""))
+        .map((args) => argText(args.name))
         .filter((name) => name !== "");
 
       if (bodies.length > 0) {

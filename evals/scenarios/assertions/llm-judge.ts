@@ -152,8 +152,11 @@ function formatTranscript(turns: EvalTurnResult[]): string {
               .map((tc) => {
                 const call = `  - ${tc.name}(${JSON.stringify(tc.args)})`;
                 const result = tc.result ? `    → ${tc.result}` : "";
+                // Warnings are the tool's warn-and-skip signal; without them the
+                // judge reads a refused operation as a successful one.
+                const warnings = (tc.warnings ?? []).map((w) => `    ${w}`);
 
-                return result ? `${call}\n${result}` : call;
+                return [call, result, ...warnings].filter(Boolean).join("\n");
               })
               .join("\n")
           : "  (no tool calls)";

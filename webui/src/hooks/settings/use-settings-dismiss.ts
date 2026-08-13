@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useState } from "preact/hooks";
+import {
+  type BackdropClickHandlers,
+  useBackdropClick,
+} from "#webui/hooks/use-backdrop-click";
 
 interface UseSettingsDismissOptions {
   showSettings: boolean;
@@ -17,12 +21,20 @@ interface UseSettingsDismissOptions {
    * keystroke. The click-outside dismiss path is unaffected.
    */
   blockEscape?: boolean;
+  /**
+   * When true, dismissing shakes instead of closing even with no unsaved
+   * settings — a sub-form inside the dialog (the Presets tab's create form)
+   * holds work that closing would throw away.
+   */
+  blockDismiss?: boolean;
 }
 
 interface UseSettingsDismissReturn {
   shake: boolean;
   clearShake: () => void;
   handleSettingsDismiss: () => void;
+  /** Spread onto the overlay element — press, release, and click all matter. */
+  overlayHandlers: BackdropClickHandlers;
 }
 
 /**
@@ -38,6 +50,7 @@ export function useSettingsDismiss({
   hasUnsavedChanges,
   handleCancelSettings,
   blockEscape = false,
+  blockDismiss = false,
 }: UseSettingsDismissOptions): UseSettingsDismissReturn {
   const [shake, setShake] = useState(false);
   const clearShake = useCallback(() => setShake(false), []);
@@ -45,7 +58,7 @@ export function useSettingsDismiss({
   const handleSettingsDismiss = useCallback(() => {
     if (!settingsConfigured || settingsClosing) return;
 
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || blockDismiss) {
       setShake(true);
     } else {
       handleCancelSettings();
@@ -54,16 +67,19 @@ export function useSettingsDismiss({
     settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
+    blockDismiss,
     handleCancelSettings,
   ]);
+
+  const overlayHandlers = useBackdropClick(handleSettingsDismiss);
 
   // Escape key handler. When `blockEscape` is set, Esc is ceded to whichever
   // overlay has priority (e.g. Context, which renders on top in the DOM) so
   // both overlays don't dismiss simultaneously when the user reloads with
   // contextOpen=true and !settingsConfigured.
   useEffect(() => {
-    if (!showSettings) return;
-    if (blockEscape) return;
+    if (!showSettings) return undefined;
+    if (blockEscape) return undefined;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -76,5 +92,10 @@ export function useSettingsDismiss({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showSettings, handleSettingsDismiss, blockEscape]);
 
-  return { shake, clearShake, handleSettingsDismiss };
+  return {
+    shake,
+    clearShake,
+    handleSettingsDismiss,
+    overlayHandlers,
+  };
 }

@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { VERSION } from "#src/shared/config";
+import { BUILD_SHA, VERSION } from "#src/shared/config";
+import { type UpdateInfo } from "#src/shared/version-check";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { HeaderActions, type HeaderInfo } from "./header/HeaderActions";
@@ -23,7 +24,8 @@ interface ChatHeaderProps {
   mcpStatus: McpStatus;
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
-  latestVersion: string | null;
+  update: UpdateInfo | null;
+  onDismissUpdate: () => void;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
@@ -40,7 +42,8 @@ interface ChatHeaderProps {
  * @param props.mcpStatus - MCP connection status
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
- * @param props.latestVersion - Latest available version, or null if up to date
+ * @param props.update - Available update, or null if up to date
+ * @param props.onDismissUpdate - Hide this version's update notification for good
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
@@ -55,7 +58,8 @@ export function ChatHeader({
   mcpStatus,
   isHistoryOpen,
   isActiveBookmarked,
-  latestVersion,
+  update,
+  onDismissUpdate,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
@@ -114,7 +118,12 @@ export function ChatHeader({
           Producer Pal Chat
         </h1>
       </a>
-      <VersionDisplay version={VERSION} latestVersion={latestVersion} />
+      <VersionDisplay
+        version={VERSION}
+        build={BUILD_SHA}
+        update={update}
+        onDismissUpdate={onDismissUpdate}
+      />
 
       <div className="flex gap-1 text-xs">
         <HeaderStatus mcpStatus={mcpStatus} />

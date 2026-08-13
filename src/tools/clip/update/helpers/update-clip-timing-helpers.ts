@@ -9,7 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 
 interface BeatPositions {
@@ -27,6 +27,9 @@ interface CalculateBeatPositionsArgs {
   timeSigDenominator: number;
   clip: LiveAPI;
   isLooping: boolean;
+  wasLooping: boolean;
+  beatsPerMarkerUnit: number;
+  markerClampSeconds: number;
 }
 
 interface TimeSignature {
@@ -74,7 +77,10 @@ function determineStartMarker(
  * @param args.timeSigNumerator - Time signature numerator
  * @param args.timeSigDenominator - Time signature denominator
  * @param args.clip - The clip to read defaults from
- * @param args.isLooping - Whether clip is looping
+ * @param args.isLooping - Whether the clip loops after this update
+ * @param args.wasLooping - Whether the clip looped before this update
+ * @param args.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
+ * @param args.markerClampSeconds - Sample duration to clamp markers to (see markerClampSeconds)
  * @returns Beat positions
  */
 export function calculateBeatPositions({
@@ -85,10 +91,32 @@ export function calculateBeatPositions({
   timeSigDenominator,
   clip,
   isLooping,
+  wasLooping,
+  beatsPerMarkerUnit,
+  markerClampSeconds,
 }: CalculateBeatPositionsArgs): BeatPositions {
   let startBeats: number | null = null;
   let endBeats: number | null = null;
   let firstStartBeats: number | null = null;
+
+  // Everything below is in beats, but the clip's markers may be seconds — read
+  // them through this so an unwarped audio clip lands on the same scale. The
+  // clamp matters as much as the factor: read-clip reports a clamped length, so
+  // handing that length straight back has to derive from the same number.
+  const markerBeats = (property: string) => {
+    const raw = clip.getProperty(property) as number;
+    const bounded =
+      markerClampSeconds > 0 ? Math.min(raw, markerClampSeconds) : raw;
+
+    return bounded * beatsPerMarkerUnit;
+  };
+
+  // Live keeps two regions per clip and `looping` picks which one plays:
+  // start_marker/end_marker while it is off, loop_start/loop_end while it is
+  // on. Read the pair that is playing BEFORE this update — on a loop toggle the
+  // other pair still holds whatever it was last left with.
+  const currentStart = markerBeats(wasLooping ? "loop_start" : "start_marker");
+  const currentEnd = markerBeats(wasLooping ? "loop_end" : "end_marker");
 
   // Convert start to beats if provided. Validate the standalone position first
   // so a 0-indexed/zero-bar position gets the 1-indexing steer (matching
@@ -112,29 +140,35 @@ export function calculateBeatPositions({
 
     // If start not provided, read current value from clip
     if (startBeats == null) {
-      if (isLooping) {
-        startBeats = clip.getProperty("loop_start") as number;
+      if (wasLooping) {
+        startBeats = currentStart;
       } else {
         // For non-looping clips, derive from end_marker - length
-        const currentEndMarker = clip.getProperty("end_marker") as number;
-        const currentStartMarker = clip.getProperty("start_marker") as number;
         const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
 
-        startBeats = currentEndMarker - lengthBeats;
+        startBeats = currentEnd - lengthBeats;
 
         // Sanity check for MIDI clips only - audio clips have length based on sample duration
         if (
           isMidiClip &&
-          Math.abs(startBeats - currentStartMarker) > SAME_TIME_EPSILON
+          Math.abs(startBeats - currentStart) > SAME_TIME_EPSILON
         ) {
           console.warn(
-            `Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
+            `Derived start (${startBeats}) differs from current start_marker (${currentStart})`,
           );
         }
       }
     }
 
     endBeats = startBeats + lengthBeats;
+  }
+
+  // A loop toggle swaps which pair plays, and Live reveals the other pair's old
+  // values instead of carrying the region over. Restate the region that was
+  // playing, so `looping` changes the loop flag and nothing else (ADR-0020).
+  if (isLooping !== wasLooping) {
+    startBeats ??= currentStart;
+    endBeats ??= currentEnd;
   }
 
   // Handle firstStart for looping clips
@@ -147,12 +181,13 @@ export function calculateBeatPositions({
     );
   }
 
-  // Determine start_marker value (must be < end_marker content boundary)
-  const endMarker = clip.getProperty("end_marker") as number;
+  // Determine start_marker value (must be < end_marker content boundary).
+  // Bound it by the end this update is writing rather than the stale one — an
+  // expanding write moves the end first (see buildClipPropertiesToSet).
   const startMarkerBeats = determineStartMarker(
     firstStartBeats,
     startBeats,
-    endMarker,
+    endBeats ?? markerBeats("end_marker"),
   );
 
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };

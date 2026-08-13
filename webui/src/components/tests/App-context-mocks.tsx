@@ -5,7 +5,7 @@
 
 // Shared payloads for the App tests' context-dependency mocks. Any test that
 // renders the real <App> MUST mock these two: App mounts ContextTabs, whose
-// use-doc-memory hooks fetch a same-origin endpoint on mount AND on a 5s poll
+// use-doc hooks fetch a same-origin endpoint on mount AND on a 5s poll
 // interval. Left unmocked under happy-dom (origin http://localhost:3000) those
 // fire real network requests that surface as unhandled ECONNREFUSED errors —
 // only under the slower coverage run, where the poll interval has time to fire.
@@ -16,13 +16,13 @@
 
 import { useEffect } from "preact/hooks";
 import { vi } from "vitest";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 /**
- * Ready useSystemPromptMemory value so App tests don't fetch /system-prompt.
- * @returns A stable, no-op doc-memory hook return in the "ready" state
+ * Ready useSystemPrompt value so App tests don't fetch /system-prompt.
+ * @returns A stable, no-op use-doc hook return in the "ready" state
  */
-export function systemPromptMemoryMock(): UseDocMemoryReturn {
+export function systemPromptDocMock(): UseDocReturn {
   return {
     status: { kind: "ready", content: "" },
     saveStatus: "idle",
@@ -71,7 +71,7 @@ export function ContextTabsStub(
   // Publish the test-set guard upward while mounted, as the real ContextTabs
   // does in an effect (setting a ref during render is disallowed).
   useEffect(() => {
-    if (confirmLeaveRef == null) return;
+    if (confirmLeaveRef == null) return undefined;
     confirmLeaveRef.current = stubLeaveGuard;
 
     return () => {

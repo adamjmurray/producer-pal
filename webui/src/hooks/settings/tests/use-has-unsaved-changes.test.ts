@@ -31,8 +31,6 @@ function makeSettings(
     apiKey: "k",
     smallModelMode: false,
     thinking: "Default",
-    temperature: 1,
-    showThoughts: true,
     enabledTools: {},
     realtimeVoice: "marin",
     voiceSpeed: 1,
@@ -163,6 +161,13 @@ describe("useHasUnsavedChanges", () => {
 
     // A subsequent real edit IS detected.
     update(makeSettings({ apiKey: "user-typed", settingsLoaded: true }));
+    expect(result.current).toBe(true);
+  });
+
+  it("detects a subagent preset change", () => {
+    const { result, update } = renderWithOpenModal(makeSettings());
+
+    update(makeSettings({ subagentPresetId: "cheap-worker" }));
     expect(result.current).toBe(true);
   });
 

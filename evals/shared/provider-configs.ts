@@ -28,6 +28,14 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
   defaultModel: "claude-sonnet-4-5-20250929",
 };
 
+/** Claude Code CLI subscription provider configuration */
+export const CLAUDE_CODE_CONFIG: ProviderConfig = {
+  apiKeyEnvVar: "",
+  providerName: "Claude Code CLI",
+  defaultModel: "sonnet",
+  apiKeyOptional: true,
+};
+
 /** Codex CLI subscription provider configuration */
 export const CODEX_CODE_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "",
@@ -86,6 +94,7 @@ export function validateApiKey(config: ProviderConfig): string {
 /** All provider configs keyed by provider id (registry order) */
 export const PROVIDER_CONFIGS: Record<EvalProvider, ProviderConfig> = {
   anthropic: ANTHROPIC_CONFIG,
+  "claude-code": CLAUDE_CODE_CONFIG,
   "codex-code": CODEX_CODE_CONFIG,
   google: GEMINI_CONFIG,
   local: LOCAL_CONFIG,

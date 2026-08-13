@@ -120,8 +120,6 @@ describe("conversation-db", () => {
       model: null,
       modelLabel: null,
       thinking: null,
-      temperature: null,
-      showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
       sessionType: "text",
@@ -246,21 +244,14 @@ describe("conversation-db", () => {
    * @returns The saved record
    */
   async function saveRecordWithMissingFields(): Promise<ConversationRecord> {
-    return await saveRecordWithoutFields([
-      "thinking",
-      "temperature",
-      "showThoughts",
-      "smallModelMode",
-    ]);
+    return await saveRecordWithoutFields(["thinking", "smallModelMode"]);
   }
 
-  it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
+  it("defaults missing thinking/smallModelMode to null on load", async () => {
     const record = await saveRecordWithMissingFields();
     const loaded = await loadConversation(record.id);
 
     expect(loaded?.thinking).toBeNull();
-    expect(loaded?.temperature).toBeNull();
-    expect(loaded?.showThoughts).toBeNull();
     expect(loaded?.smallModelMode).toBeNull();
   });
 
@@ -308,8 +299,6 @@ describe("conversation-db", () => {
     const list = await listConversations();
 
     expect(list[0]?.thinking).toBeNull();
-    expect(list[0]?.temperature).toBeNull();
-    expect(list[0]?.showThoughts).toBeNull();
     expect(list[0]?.smallModelMode).toBeNull();
   });
 
@@ -389,7 +378,7 @@ describe("conversation-db", () => {
         // are all skipped without throwing.
         null,
         { type: "function_call", name: "ppal-create-clip", arguments: "{}" },
-        { type: "message", role: "system", content: "not-an-array" },
+        { type: "message", role: "user", content: "not-an-array" },
         // A system message IS skipped even with valid array content: search
         // mirrors the transcript, which doesn't render system text.
         {

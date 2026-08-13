@@ -39,6 +39,7 @@ import {
   REQUIRES_MEMORY,
   TOOL_CONNECT,
   assertContextWrite,
+  assertNoContextWrite,
   assertNoUnconfirmedWrite,
   seedContext,
 } from "./context-scenario-helpers.ts";
@@ -61,7 +62,7 @@ export const contextWriteLayerProject: EvalScenario = {
   // Non-empty on purpose — see the file header. Also seeds global (via
   // seedContext) so this Set doesn't look like a brand-new user, which would
   // trigger the connect onboarding prompt and muddy the turn-1 signal.
-  config: { memoryContent: EXISTING_PROJECT },
+  config: { projectContext: EXISTING_PROJECT },
 
   ...seedContext({ global: EXISTING_GLOBAL }),
 
@@ -80,6 +81,17 @@ export const contextWriteLayerProject: EvalScenario = {
     // turn 2 would collapse both into one failure when a model saves eagerly —
     // hiding the fact that it still chose the right layer.
     assertContextWrite({ scope: "project", turn: "any" }),
+
+    // One scope, not both. A fact copied into the other user-owned layer (the
+    // small-model tier's "layer smear") burns context on every turn — both
+    // layers are always injected — and goes stale the moment one is updated.
+    //
+    // Deliberately NOT `count: 1`. These scenarios seed a non-empty document,
+    // so the tool's clobber guard is live: a model that restructures the seed
+    // prose enough to trip it re-sends a merged write, which is the guard
+    // working — two writes, one document, right layer. Counting writes would
+    // score that as a failure.
+    assertNoContextWrite({ scope: "global", turn: "any" }),
 
     // A write REPLACES the user's whole document — it must be offered, not
     // assumed.
@@ -122,6 +134,12 @@ export const contextWriteLayerGlobal: EvalScenario = {
     // "everything I make, not just this track" is the tell for global over
     // project. Turn-agnostic; the confirm check below is the separate signal.
     assertContextWrite({ scope: "global", turn: "any" }),
+
+    // The observed small-model failure: it saved the universal preference to
+    // global (right) and ALSO copied it into project (wrong). See the project
+    // scenario's note on why a duplicated fact is worse than it looks — and on
+    // why the write is not counted.
+    assertNoContextWrite({ scope: "project", turn: "any" }),
 
     assertNoUnconfirmedWrite(1),
 

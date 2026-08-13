@@ -3,19 +3,42 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+// `/releases/latest` excludes anything marked as a pre-release, and we depend on
+// that: there is no opt-in beta track, so people on the current stable release
+// must never be nudged toward a pre-release. Do not swap this for `/releases`
+// and take [0] — that offers every stable user the in-testing pre-release.
+//
+// A tester running an `-rcN` build therefore gets the older stable release back
+// as "latest", and is never prompted to install it: `isNewerVersion` is strictly
+// directional, so the older version fails and this returns null. A downgrade
+// prompt is not reachable.
+//
+// That same tester IS prompted the moment the pre-release is promoted, because
+// `2.1.0-rc1` and `2.1.0` are genuinely different versions — the version string
+// alone answers it, in one request. Pre-release versions used to be git tags
+// only, so every build of a cycle called itself `2.1.0` and a second request
+// (resolving the tag to a commit) was needed to tell re-cut builds apart. Real
+// `-rcN` versions in the artifact removed that need; keep it at one request.
 const RELEASES_URL =
   "https://api.github.com/repos/adamjmurray/producer-pal/releases/latest";
 
 const TIMEOUT_MS = 5000;
 
+export interface UpdateInfo {
+  /** The version published as the latest release */
+  version: string;
+}
+
 /**
- * Checks GitHub for a newer release of Producer Pal.
+ * Checks GitHub for a newer release of Producer Pal. Makes exactly one request;
+ * callers must make it exactly once per process (see
+ * mcp-server/helpers/http/update-check.ts).
  * @param currentVersion - The current version string
- * @returns The latest version info, or null if no update or on any error
+ * @returns The available update, or null if up to date or on any error
  */
 export async function checkForUpdate(
   currentVersion: string,
-): Promise<{ version: string } | null> {
+): Promise<UpdateInfo | null> {
   try {
     const response = await fetch(RELEASES_URL, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -35,11 +58,7 @@ export async function checkForUpdate(
 
     const latest = tagName.startsWith("v") ? tagName.slice(1) : tagName;
 
-    if (isNewerVersion(currentVersion, latest)) {
-      return { version: latest };
-    }
-
-    return null;
+    return isNewerVersion(currentVersion, latest) ? { version: latest } : null;
   } catch {
     return null;
   }

@@ -10,7 +10,7 @@ import {
   ConversationPanel,
   type ConversationPanelProps,
 } from "#webui/components/chat/ConversationPanel";
-import { useUpdateCheck } from "#webui/hooks/use-update-check";
+import { useUpdateCheck } from "#webui/hooks/connection/use-update-check";
 
 /** State and handlers for the conversation history panel.
  * Extends ConversationPanelProps with renamed callbacks and panel toggle state. */
@@ -58,7 +58,7 @@ export function AppShell({
   onOpenContext,
   children,
 }: AppShellProps) {
-  const latestVersion = useUpdateCheck();
+  const { update, dismissUpdate } = useUpdateCheck();
 
   const activeConv = conversationPanel.activeConversationId
     ? conversationPanel.conversations.find(
@@ -73,7 +73,8 @@ export function AppShell({
         mcpStatus={mcpStatus}
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
-        latestVersion={latestVersion}
+        update={update}
+        onDismissUpdate={dismissUpdate}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}

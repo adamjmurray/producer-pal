@@ -5,12 +5,28 @@
 
 // Shared, cross-cutting configuration constants used across the codebase
 // (notation layer, tools layer, server, portal, and web UI).
+//
+// Deliberately import-free: the web UI compiles this file under a tsconfig
+// without allowImportingTsExtensions, so a `#src/...ts` import here breaks that
+// build. The third per-request header (NOTATION_HEADER / resolveNotation) lives
+// in notation.ts with the Notation union it validates against, for that reason
+// and because that module already owns notation identity.
 
 // Semantic versioning: major.minor.patch
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.0.0";
+export const VERSION = "2.1.0";
+
+// The short commit SHA this build came from, or "" when unknown (running from
+// source, tests). Substituted at build time by config/build-sha.mjs — read via
+// process.env so it survives as a plain literal in the Max V8 runtime and the
+// browser bundle, neither of which has a `process` global. The narrowed local
+// declaration below is what lets this file type-check under both the Node-typed
+// src project and the DOM-only webui project.
+declare const process: { env: Record<string, string | undefined> };
+
+export const BUILD_SHA = process.env.BUILD_SHA ?? "";
 
 // Minimum required Ableton Live version (no "v" prefix)
 export const MIN_LIVE_VERSION = "12.3.0";
@@ -68,3 +84,118 @@ Be creative and focus on the user's musical goals.`;
 export function resolveSystemInstruction(override?: string | null): string {
   return override?.trim() ? override : SYSTEM_INSTRUCTION;
 }
+
+// --- Per-request small-model mode (MCP transport) ---
+
+/**
+ * HTTP header that carries a per-request small-model-mode override on POST /mcp.
+ *
+ * Small-model mode drives BOTH tool-schema shrinking (create-mcp-server.ts) and
+ * the skills variant (basic vs standard, enrich-connect.ts). It is otherwise a
+ * single server-side global (`config.smallModelMode`), which means every caller
+ * shares one value. This header lets an individual caller — the built-in chat,
+ * or a spawned subagent worker — drive its own value for its own requests, so a
+ * full-strength orchestrator can delegate to cheap small-model workers without
+ * clobbering the global (which a POST /config would).
+ *
+ * Absent ⇒ the server falls back to `config.smallModelMode`. External MCP
+ * clients (Claude Desktop, MCP Inspector) and the device toggle never send it
+ * and keep using the global default. Sent lowercase; HTTP header names are
+ * case-insensitive and Express's `req.get` matches accordingly.
+ */
+export const SMALL_MODEL_MODE_HEADER = "x-producer-pal-small-model-mode";
+
+/**
+ * Resolve the effective small-model mode for one request from its header value,
+ * falling back to the global default when the header is absent or unrecognized.
+ * The client sends the string "true" or "false"; anything else is treated as
+ * absent so a stray value can't force a mode.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param fallback - The global `config.smallModelMode` to use when no header
+ * @returns The small-model mode to apply for this request
+ */
+export function resolveSmallModelMode(
+  headerValue: string | undefined,
+  fallback: boolean,
+): boolean {
+  if (headerValue === "true") return true;
+  if (headerValue === "false") return false;
+
+  return fallback;
+}
+
+// --- Per-request tool subsetting (MCP transport) ---
+
+/**
+ * HTTP header that narrows one request's toolset: a comma-separated list of
+ * tools to withhold from the server's configured set.
+ *
+ * A SUBTRACTION rather than a whitelist, for two reasons. The client-side
+ * toggles it carries are themselves a sparse map where absent means enabled, and
+ * the header has to be set when the transport is built — before `listTools`
+ * could tell the caller what the full catalog even is. Subtracting needs no
+ * catalog: a name the server doesn't know is simply a no-op, and a tool added in
+ * a later release stays enabled by default.
+ *
+ * It drives BOTH tool registration (the caller's `listTools` shrinks, so it
+ * isn't paying for schemas it disabled) and the skills variant — a fragment
+ * teaching only withheld tools is dropped from the ppal-connect blob. Absent ⇒
+ * the server's global `config.tools`, so external MCP clients are unaffected;
+ * same contract as {@link SMALL_MODEL_MODE_HEADER}.
+ */
+export const DISABLED_TOOLS_HEADER = "x-producer-pal-disabled-tools";
+
+/**
+ * Resolve the tools available to one request: the server's configured set minus
+ * anything the request's header withholds. An absent or empty header leaves the
+ * configured set untouched.
+ *
+ * NOTHING IS RESERVED HERE, and that is deliberate — `ppal-connect` included.
+ * `validateTools` (create-mcp-server.ts) does require it, which looks like an
+ * inconsistency worth "fixing"; it is not. The two guard different things:
+ * `validateTools` guards the server's GLOBAL config, where dropping the entry
+ * point would leave an external MCP client with no way in. This guards ONE
+ * request's subtraction, and a subagent worker withholds `ppal-connect` on
+ * purpose: it is briefed up front instead of connecting, so reserving the name
+ * here would hand every worker back the one tool it is meant not to have.
+ *
+ * A worker withholds `ppal-context` alongside it, and THAT is what trims the
+ * context guidance from its briefing. No fragment is gated on `ppal-connect`
+ * itself — withholding it saves the tool schema, not skills text.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param configuredTools - The server's global `config.tools`
+ * @returns The tools to register and to gate skills fragments on
+ */
+export function resolveEnabledTools(
+  headerValue: string | undefined,
+  configuredTools: readonly string[],
+): string[] {
+  const disabled = new Set(
+    (headerValue ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name !== ""),
+  );
+
+  if (disabled.size === 0) return [...configuredTools];
+
+  return configuredTools.filter((name) => !disabled.has(name));
+}
+
+// --- Subagent briefing ---
+
+/**
+ * Header GET /subagent-briefing requires, as a CSRF guard.
+ *
+ * The origin gate alone isn't enough for this one: it passes Origin-less
+ * requests (non-browser clients need that), and a browser sends no Origin for
+ * `<img>`, `<script>`, or a navigation — so any page the user has open could
+ * reach the one read endpoint that dispatches a Live API call. A custom header
+ * closes that: markup can't set one, and a cross-origin `fetch` that does forces
+ * a preflight the gate then answers.
+ *
+ * Any value passes; presence is the whole signal.
+ */
+export const BRIEFING_REQUEST_HEADER = "x-producer-pal-briefing";

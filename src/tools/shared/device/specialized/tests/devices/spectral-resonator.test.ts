@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
 
 /**
  * Register a mock Spectral Resonator device and return its LiveAPI.
@@ -165,43 +166,7 @@ describe("Spectral Resonator pseudo-params", () => {
     });
   });
 
-  describe("write monoPoly", () => {
-    it("maps the enum label 'mono' to index 0", () => {
-      const device = registerSpectralResonator({ mono_poly: 1 });
-
-      applySpecializedParamWrite(device, "monoPoly", "mono", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 0);
-    });
-
-    it("maps the enum label 'poly' to index 1", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "monoPoly", "poly", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
-    });
-
-    it("is case-insensitive on the param name", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "monopoly", "poly", "updateDevice");
-
-      expect(device.set).toHaveBeenCalledWith("mono_poly", 1);
-    });
-
-    it("warns and skips an invalid monoPoly label", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
-
-      expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("not a valid monoPoly"),
-      );
-    });
-  });
+  registerMonoPolyWriteTests(registerSpectralResonator);
 
   describe("write pitchBendRange", () => {
     it("sets pitch_bend_range when value is in range", () => {

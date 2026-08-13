@@ -12,8 +12,8 @@ import { ChatScreen } from "#webui/components/chat/ChatScreen";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 
-vi.mock(import("#webui/hooks/use-update-check"), () => ({
-  useUpdateCheck: () => null,
+vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
+  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
 }));
 
 const defaultHeaderInfo: HeaderInfo = {
@@ -23,6 +23,7 @@ const defaultHeaderInfo: HeaderInfo = {
   provider: "gemini",
   enabledToolsCount: 20,
   totalToolsCount: 20,
+  defaultToolsCount: 20,
   smallModelMode: false,
   defaultSmallModelMode: false,
   showHelpLinks: true,

@@ -8,6 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
@@ -15,7 +16,7 @@ import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-hel
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
   const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
-    await import("#webui/components/settings/connection-tab-helpers");
+    await import("#webui/components/settings/helpers/connection-tab-helpers");
 
   return {
     ConnectionTab: ({
@@ -112,6 +113,9 @@ vi.mock(import("#webui/components/settings/controls/ToolToggles"), () => ({
 }));
 
 describe("SettingsScreen", () => {
+  // useGlobalSettings GETs /settings on mount; nothing here asserts on it.
+  installJsonFetchMock({ autoUpdateCheck: true });
+
   const defaultSettings = {
     provider: "gemini" as const,
     setProvider: vi.fn(),
@@ -127,10 +131,7 @@ describe("SettingsScreen", () => {
     thinking: "Default",
     setThinking: vi.fn(),
     savedThinking: "Default",
-    temperature: 1,
-    setTemperature: vi.fn(),
-    showThoughts: false,
-    setShowThoughts: vi.fn(),
+    applyPreset: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasApiKey: false,
@@ -140,15 +141,17 @@ describe("SettingsScreen", () => {
     enabledTools: {} as Record<string, boolean>,
     setEnabledTools: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
-    isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    subagentPresetId: null,
+    setSubagentPresetId: vi.fn(),
     liveApiEnabled: false,
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),
     seedLiveApiEnabled: vi.fn(),
     notation: "barbeat" as const,
     notationDirty: false,
+    notationKnown: true,
     setNotation: vi.fn(),
     seedNotation: vi.fn(),
     realtimeVoice: "marin",
@@ -193,12 +196,16 @@ describe("SettingsScreen", () => {
     shake: false,
     onShakeEnd: vi.fn(),
     hasUnsavedChanges: false,
+    presetDraftOpen: false,
+    onPresetDraftOpenChange: vi.fn(),
     onDeleteAllConversations: vi.fn(),
     onDeleteUnbookmarkedConversations: vi.fn(),
     conversationLock: {
       activeModel: null,
       activeProvider: null,
       activeSmallModelMode: null,
+      activeNotation: null,
+      activeEnabledTools: null,
     },
     liveApiForcedOn: false,
     activeVoice: null,

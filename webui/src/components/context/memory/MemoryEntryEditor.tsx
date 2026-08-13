@@ -11,8 +11,8 @@ import {
 } from "#webui/components/context/collection/collection-editor-parts";
 import { useDraftLeaveGuard } from "#webui/components/context/collection/leave-guard";
 import { ExternalUpdateBanner } from "#webui/components/context/ContextScreen";
+import { type SaveStatus } from "#webui/hooks/context/use-doc";
 import { useCollectionEntryAutosave } from "#webui/hooks/context/use-doc-collection";
-import { type SaveStatus } from "#webui/hooks/context/use-doc-memory";
 import {
   type MemoryEntryView,
   type UseMemoryCollectionReturn,
@@ -25,12 +25,20 @@ interface MemoryEntryEditorProps {
   entry: MemoryEntryView | null;
   /** Called after a successful save with the stored entry's slug. */
   onSaved: (name: string) => void;
+  /**
+   * Called after a successful rename with the old and new slugs. Distinct from
+   * `onSaved` because it must NOT remount this editor — the live draft is only
+   * here (see {@link CollectionEditorRenderArgs.onRenamed}).
+   */
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
  * Right-pane form for one memory: an editable name (rename in place, or the new
  * draft's slug), a one-line description, and a markdown body. Keyed by the
- * selected entry in the parent so the local draft re-seeds on selection change.
+ * selection in the parent so the local draft re-seeds when another memory is
+ * picked — but NOT by a rename, which keeps this instance (and its draft) alive
+ * while the entry changes slug underneath it (see {@link useMemoryRename}).
  *
  * An existing memory autosaves — there is no Save button; the save state shows
  * in the header (see {@link CollectionScreen}). A new memory is created only by
@@ -43,7 +51,7 @@ interface MemoryEntryEditorProps {
 export function MemoryEntryEditor(
   props: MemoryEntryEditorProps,
 ): preact.JSX.Element {
-  const { collection, entry, onSaved } = props;
+  const { collection, entry, onSaved, onRenamed } = props;
   const isNew = entry == null;
   const [name, setName] = useState(entry?.name ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
@@ -56,14 +64,16 @@ export function MemoryEntryEditor(
   const validation = useMemoryValidation(isNew, name, description, body);
   // Autosave/create only when name (new only), description, and body are all
   // non-empty — clearing a required field blocks the write and shows its error.
-  const canSave = validation.isValid && collection.saveStatus !== "saving";
+  // Deliberately not gated on an in-flight save: the autosave hook chains
+  // overlapping writes, and gating here would drop its unmount flush mid-save.
+  const canSave = validation.isValid;
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
   const doSave = (): Promise<MemoryEntryView | null> =>
     collection.saveEntry(targetName, { description, content: body }, isNew);
 
-  const { noteSaved, externalUpdate, adoptExternal } =
+  const { noteSaved, externalUpdate, adoptExternal, settlePendingSave } =
     useCollectionEntryAutosave({
       canSave,
       draftKey: memoryEntryKey({ name: targetName, description, body }),
@@ -100,7 +110,8 @@ export function MemoryEntryEditor(
     body,
     requiredError: validation.errors.name,
     noteSaved,
-    onSaved,
+    settlePendingSave,
+    onRenamed,
   });
 
   const handleSave = async (): Promise<void> => {
@@ -204,10 +215,12 @@ interface MemoryRenameParams {
   body: string;
   /** The client-side required-name error; it takes priority over a rename error. */
   requiredError?: string;
-  /** Advance the autosave baseline for the OLD name after a successful rename. */
+  /** Advance the autosave baseline to the renamed entry's echo. */
   noteSaved: (echoKey: string) => void;
-  /** Navigate to the renamed entry's new slug. */
-  onSaved: (name: string) => void;
+  /** Settle the idle autosave (which targets the OLD slug) before renaming. */
+  settlePendingSave: () => Promise<void>;
+  /** Follow the entry to its new slug, keeping this editor mounted. */
+  onRenamed: (from: string, to: string) => void;
 }
 
 /**
@@ -216,9 +229,20 @@ interface MemoryRenameParams {
  * a server-rejected slug) — read fresh from the collection each render, not off
  * the stale rename closure — cleared as soon as the user edits the name. An
  * emptied/unchanged name never renames (an emptied one keeps its required error
- * visible; an unchanged one just normalizes whitespace). On success, the OLD
- * name's draft is marked saved so the navigation's unmount flush can't re-create
- * the old slug; the current draft fields ride along so a dirty body isn't lost.
+ * visible; an unchanged one just normalizes whitespace). The current draft
+ * fields ride along on the write so a dirty body isn't lost.
+ *
+ * On success the editor stays MOUNTED and follows the entry to its new slug
+ * (`onRenamed`): remounting would re-seed the fields from the server's echo,
+ * silently dropping anything typed during the rename's round trip. The name
+ * field adopts the server's slug, and the baseline advances to that echo, so a
+ * draft that did diverge mid-rename is left dirty for the autosave to persist
+ * under the NEW name — and a clean one doesn't re-save.
+ *
+ * The idle autosave is settled BEFORE the rename is dispatched
+ * ({@link CollectionEntryAutosaveReturn.settlePendingSave}): both writes target
+ * the current slug, and a save still racing the rename can re-create the entry
+ * the rename just moved away from.
  * Extracted so the editor body stays within the line limit.
  * @param params - The live draft + collection the rename needs
  * @returns The name field's error and its change/rename handlers
@@ -229,7 +253,7 @@ function useMemoryRename(params: MemoryRenameParams): {
   onRename: (raw: string) => void;
 } {
   const { collection, entry, setName, description, body } = params;
-  const { requiredError, noteSaved, onSaved } = params;
+  const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
   const [renameFailed, setRenameFailed] = useState(false);
 
   const nameError =
@@ -243,6 +267,28 @@ function useMemoryRename(params: MemoryRenameParams): {
   };
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
+  const commitRename = async (oldName: string, to: string): Promise<void> => {
+    // Never leave an autosave of the OLD slug racing the rename.
+    await settlePendingSave();
+
+    const renamed = await collection.renameEntry(oldName, to, {
+      description,
+      content: body,
+    });
+
+    if (renamed == null) {
+      setRenameFailed(true);
+      setName(oldName);
+
+      return;
+    }
+
+    setRenameFailed(false);
+    setName(renamed.name);
+    noteSaved(memoryEntryKey(renamed));
+    onRenamed(oldName, renamed.name);
+  };
+
   const onRename = (raw: string): void => {
     if (entry == null) return;
     const trimmed = raw.trim();
@@ -253,20 +299,7 @@ function useMemoryRename(params: MemoryRenameParams): {
       return;
     }
 
-    void collection
-      .renameEntry(entry.name, trimmed, { description, content: body })
-      .then((renamed) => {
-        if (renamed == null) {
-          setRenameFailed(true);
-          setName(entry.name);
-
-          return;
-        }
-
-        setRenameFailed(false);
-        noteSaved(memoryEntryKey({ name: entry.name, description, body }));
-        onSaved(renamed.name);
-      });
+    void commitRename(entry.name, trimmed);
   };
 
   return { nameError, onNameChange, onRename };

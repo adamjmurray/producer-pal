@@ -8,7 +8,7 @@ import {
   normalizeIdLike,
   registerPathMappedObjects,
   resolveMappedObjectProperties,
-} from "#src/test/helpers/path-mapped-mock-helpers.ts";
+} from "#src/test/helpers/path-mapped-test-helpers.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -53,7 +53,7 @@ export function setupLiveSetPathMappedMocks({
     normalizeIdLike(pathIdMap[liveSetPath] ?? liveSetId);
   const liveSetProperties = {
     ...createDefaultLiveSetProperties(),
-    ...(objects.LiveSet ?? {}),
+    ...objects.LiveSet,
     ...resolveMappedObjectProperties(objects, resolvedLiveSetId, liveSetPath),
   };
 

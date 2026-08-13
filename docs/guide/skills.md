@@ -1,5 +1,5 @@
 ---
-title: Ableton Live Agent Skill
+title: Ableton Live Agent Skills
 description:
   Producer Pal ships a portable Agent Skill for Ableton Live — works as a Claude
   Skill, Codex Skill, Gemini Skill, or any coding agent that supports the
@@ -15,7 +15,7 @@ head:
         Ableton AI agent, AI music production skill, Producer Pal skill
   - - meta
     - property: og:title
-      content: Ableton Live Agent Skill — Producer Pal
+      content: Ableton Live Agent Skills — Producer Pal
   - - meta
     - property: og:description
       content:
@@ -24,29 +24,39 @@ head:
         no MCP client required.
 ---
 
-# Ableton Live Agent Skill
+# Ableton Live Agent Skills
 
 Producer Pal ships a portable Agent Skill that lets coding agents control
 Ableton Live through Producer Pal's [REST API](/guide/rest-api) — no MCP client
 required.
+
+::: warning Not the same as Producer Pal Skills
+
+Two different things are called "skills" around here. An **Agent Skill** — this
+page — is an integration package that teaches a coding agent how to connect to
+Producer Pal. The [**Producer Pal Skills**](/guide/customizing-skills) are
+instructions the model receives after connecting, whichever route it took.
+
+:::
 
 Agent Skills are a small, open convention shared across the major coding-agent
 CLIs: a folder containing a `SKILL.md` (with frontmatter describing when to use
 it) plus optional scripts and resources. The folder is loaded lazily when the
 agent decides the skill is relevant. The same folder works across all three:
 
-| Tool                                                              | Skills location                    |
+| Tool                                                              | Global skills location             |
 | ----------------------------------------------------------------- | ---------------------------------- |
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/skills) | `~/.claude/skills/<name>/SKILL.md` |
 | [Codex CLI](https://developers.openai.com/codex/skills/)          | `~/.codex/skills/<name>/SKILL.md`  |
 | [Gemini CLI](https://geminicli.com/docs/cli/skills/)              | `~/.gemini/skills/<name>/SKILL.md` |
 
-::: info When to use this vs MCP
+::: info When to use this vs MCP or REST
 
-Both paths give the AI the same thing. The skill's bootstrap discovers the tools
-and their schemas (`--list-tools`) and calls `ppal-connect`, which returns the
-same Producer Pal Skills and [context](/guide/context) that MCP clients receive
-at session start — so neither route is "more automatic" than the other.
+Both agent paths give the AI the same thing. The skill's bootstrap discovers the
+tools and their schemas (`--list-tools`) and calls `ppal-connect`, which returns
+the same Producer Pal Skills and [context](/guide/context) an MCP client gets
+from its own `ppal-connect` call — so neither route is "more automatic" than the
+other.
 
 Use **MCP** when your client speaks it and isn't a coding agent: chat apps like
 [Claude Desktop](/installation/claude-desktop), the [Chat UI](/guide/chat-ui),
@@ -54,28 +64,42 @@ and web clients. Tools appear natively in the client and nothing has to shell
 out.
 
 Use the **skill** with coding agents that can run commands. Because it drives
-the [REST API](/guide/rest-api) directly, it can change device settings
-mid-session — flip the [notation](/features/midi-notation), turn on
-[Direct Live API](/features#ppal-live-api), toggle small-model mode — and then
-re-read the schemas, all with `--set-config`. MCP clients bake the tool
-descriptions at the start of a conversation and have no tool for changing these
-settings, so the same switch means editing the device and starting a new
-conversation. It's also the answer for scripts and pipelines that don't run an
-MCP client at all.
+the [REST API](/guide/rest-api) directly, it can pick its own
+[notation](/features/midi-notation), toolset, and small-model mode per request
+and re-read the schemas mid-session — without moving your Chat UI or any other
+client off theirs. MCP clients bake the tool descriptions at the start of a
+conversation, so the same switch means starting a new one.
+
+For scripts and pipelines with no agent involved, skip both and use the
+[REST API](/guide/rest-api) directly.
 
 :::
 
 ## Install
 
-Copy the
-[`examples/skills/producer-pal/`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal)
-folder from the Producer Pal repo into your agent's skills directory.
+Download
+<a href="/downloads/producer-pal-skill.zip" download>producer-pal-skill.zip</a>
+and unzip it into your agent's skills directory:
 
 ```bash
-# Clone (or download) the repo, then copy the skill folder
+curl -L https://producer-pal.org/downloads/producer-pal-skill.zip -o /tmp/ppal-skill.zip
+unzip -o /tmp/ppal-skill.zip -d ~/.claude/skills/
+# or ~/.codex/skills/, or ~/.gemini/skills/
+```
+
+The zip holds one folder, `producer-pal/`, so it lands in the right place with
+no reshuffling. It tracks the repo's `main` branch, same as this site.
+
+Those paths install it **globally**, for every project. Most agents also read a
+skills folder inside a project — for Claude Code that's `.claude/skills/` in the
+project root — which keeps the skill to that one project. Consult your coding
+agent's docs for its exact project-local path.
+
+To take it from a git checkout instead:
+
+```bash
 git clone --depth 1 https://github.com/adamjmurray/producer-pal.git
 cp -r producer-pal/examples/skills/producer-pal ~/.claude/skills/
-# or ~/.codex/skills/, or ~/.gemini/skills/
 ```
 
 The skill folder contains a `SKILL.md` (frontmatter + instructions for the
@@ -87,21 +111,22 @@ When the user asks the agent something Producer-Pal-shaped ("set tempo to 120",
 "what's in track 2", "make a 4-bar drum loop"), the agent loads `SKILL.md` and
 follows its bootstrap:
 
-1. **Set the notation** —
-   `node ppal.mjs --set-config '{"notation":"midi-json"}'`. The active notation
-   is baked into every tool and argument description, so the skill sets it
-   _before_ listing tools. Coding agents get `midi-json` (MIDI notes as a JSON
-   array) because they can generate and parse it programmatically.
-2. **List tools** — `node ppal.mjs --list-tools` returns the full tool catalog
-   with input schemas, so the agent knows what's available without baking it
-   into the skill.
-3. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
-   Skills (the note syntax for the active notation,
+1. **List tools** — `node ppal.mjs --list-tools --notation midi-json` returns
+   the full tool catalog with input schemas, so the agent knows what's available
+   without baking it into the skill. The notation is baked into every tool and
+   argument description, so it rides on this first call already. Coding agents
+   get `midi-json` (MIDI notes as a JSON array) because they can generate and
+   parse it programmatically.
+2. **Call `ppal-connect`** — its response includes the up-to-date Producer Pal
+   Skills (the note syntax for the notation it asked for,
    [transforms](/features/midi-notation#transforms), conventions) — the same
-   instructions Producer Pal's MCP clients receive at session start. The skill
+   instructions an MCP client gets from its own `ppal-connect` call. The skill
    stays small; the heavy guidance comes from Producer Pal itself.
-4. **Use the other tools** per those instructions, via
-   `node ppal.mjs <tool> [json-args]`.
+3. **Use the other tools** per those instructions, via
+   `node ppal.mjs <tool> [json-args] --notation midi-json`.
+
+`--notation` applies to the one request that carries it, so the skill passes it
+every time.
 
 Because the skill is just a thin pointer + bootstrap, it stays correct as
 Producer Pal evolves: new tools, schema changes, and skill updates land in
@@ -110,25 +135,44 @@ Producer Pal evolves: new tools, schema changes, and skill updates land in
 ### Notation and small-model mode
 
 Producer Pal encodes MIDI notes in one of three
-[notations](/features/midi-notation), chosen by a **global device setting**:
+[notations](/features/midi-notation):
 [`bar|beat`](/features/midi-notation#bar-beat) (the default — compact
 human-readable text), [`midi-json`](/features/midi-notation#midi-json) (notes as
 a JSON array), and [`stark`](/features/midi-notation#stark) (a literal
-`type: content` format with event-based drum hits). The setting changes the note
-syntax in every tool/argument description and in the `ppal-connect` Skills, and
-it also applies to the Chat UI and any connected MCP clients. The skill sets
-`midi-json` because coding agents generate and parse JSON directly, rather than
-composing text notation by hand.
+`type: content` format with event-based drum hits). The choice changes the note
+syntax in every tool/argument description and in the `ppal-connect` Skills. The
+skill asks for `midi-json` because coding agents generate and parse JSON
+directly, rather than composing text notation by hand.
+
+It asks **per request**, with `--notation`, rather than writing the device
+setting. That's the important part: your Chat UI and any connected MCP clients
+keep whatever notation they were using while the agent works in its own.
 
 The skill also assumes **small-model mode is off** — coding agents generally run
 capable models that handle the full tool descriptions, so it's left at the
 default. If you drive Producer Pal from a _local_ coding agent on a smaller
-model, edit the notation step in `SKILL.md` to enable small-model mode (which
-trims the tool descriptions) and consider `stark` instead of `midi-json`:
+model, edit `SKILL.md` to pass small-model mode (which trims the tool
+descriptions) and consider `stark` instead of `midi-json`:
 
 ```bash
-node ppal.mjs --set-config '{"notation":"stark","smallModelMode":true}'
+node ppal.mjs --list-tools --notation stark --small-model-mode
 ```
+
+### Narrowing the toolset
+
+`--disable-tools <names>` withholds tools from a request. The withheld tools
+vanish from `--list-tools`, and — the point — `ppal-connect` comes back without
+the parts of the Skills that teach them, so the agent stops paying for guidance
+it will never use. See [Choosing a Toolset](/features#toolset).
+
+```bash
+node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
+```
+
+`SKILL.md` tells the agent to decide once and pass the same list on every call,
+since the header applies per request — same as `--notation`, and equally
+invisible to the Chat UI and your MCP clients. [Optimizing](/guide/optimizing)
+has the numbers.
 
 ### Direct Live API (advanced)
 
@@ -177,6 +221,47 @@ available, but a zero-dependency Python equivalent is also maintained — see th
 into the skill folder.
 
 :::
+
+## Companion skills
+
+The `producer-pal` skill is the connection. Two more skills build on it:
+
+- **`ableton-audio-generator`** — synthesize audio from scratch with plain
+  Node.js DSP and place it in Live: drum kits and Drum Racks, samples for
+  Simpler, wavetables, reverb impulse responses, and open-ended clips like
+  drones and textures. The agent writes the DSP for what you asked for; a shared
+  library handles WAV encoding so custom algorithms are cheap to try.
+- **`ableton-analyze-audio`** — get audio back out of Live, in two halves that
+  work independently. **Render** the mix, a single track, or one Session clip to
+  a file: macOS only, but no API key needed, which also makes it the way to get
+  a plain bounce or stem on disk. **Analyze** any audio file with Google's
+  Gemini API for feedback on timbre, mix, and arrangement: any platform, no
+  Ableton involved, needs a `GEMINI_API_KEY`. The analysis is one short script
+  against one HTTP endpoint — swapping in a different audio-capable model or
+  service is a small edit.
+
+<a href="/downloads/producer-pal-all-skills.zip" download>producer-pal-all-skills.zip</a>
+has all three — unzip it the same way:
+
+```bash
+curl -L https://producer-pal.org/downloads/producer-pal-all-skills.zip -o /tmp/ppal-skills.zip
+unzip -o /tmp/ppal-skills.zip -d ~/.claude/skills/
+```
+
+Same global-vs-project choice as above — unzip into a project's own skills
+folder (`.claude/skills/`) to scope all three to that project.
+
+::: warning One part needs macOS
+
+`ableton-analyze-audio`'s **render** step drives Live's Export dialog with
+AppleScript, since Live has no render API. Everything else in the bundle — audio
+generation and the Gemini analysis — runs anywhere Node does.
+
+:::
+
+See the
+[skills README](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills)
+for the full list.
 
 ## Source
 

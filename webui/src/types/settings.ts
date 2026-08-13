@@ -32,6 +32,52 @@ export type Provider =
   | "custom";
 
 /**
+ * A named, reusable bundle of everything a chat conversation runs with — the
+ * saved twin of what {@link UseSettingsReturn} exposes — EXCEPT the per-provider
+ * apiKey/baseUrl (resolved live from the encrypted provider store via
+ * getProviderConnection, so a preset only *names* which provider to use) and UI
+ * preferences (theme/timestamps). A preset bundles the client-side localStorage
+ * layer: provider + model + inference + toolset. The server-side content layer
+ * (skills / system-instruction) is a future "persona" that wraps a preset.
+ *
+ * The stable `id` is the handle a subagent worker persists to say "run with
+ * preset X" by reference, so renaming a preset never breaks that link.
+ */
+export interface ChatPreset extends PresetFields {
+  /** Stable id (survives renames); the handle a subagent config references. */
+  id: string;
+  /** Unique, user-facing label shown in the preset picker. */
+  name: string;
+  /** Optional freeform note. Currently informational only — reserved for the
+   * future "orchestrator picks a preset per spawn" feature, where a spawned
+   * worker matches its task against this text. Absent/blank until then. */
+  description?: string;
+}
+
+/** The settings a preset captures (everything but its identity/metadata). */
+export interface PresetFields {
+  provider: Provider;
+  model: string;
+  thinking: string;
+  smallModelMode: boolean;
+  /** Captured tool-enablement map (the client-side toolset). Additive/optional:
+   * localStorage is schemaless, so a preset saved before toolsets existed omits
+   * it, meaning "inherit the current toolset" (applying such a preset leaves the
+   * tools untouched). A present map is applied verbatim; a missing key within it
+   * falls back to that tool's own default (all on except the opt-in Subagent). */
+  enabledTools?: Record<string, boolean>;
+  /** Captured notation (how the AI reads and writes clip notes). Additive/
+   * optional on the same terms as `enabledTools`: a preset saved before this
+   * omits it, meaning "inherit the current notation" (applying such a preset
+   * leaves notation untouched and its dirty flag clear). Applying a preset that
+   * carries one writes the live buffer, so Saving posts it as the device global
+   * — the same reach the Notation dropdown already has. A subagent worker
+   * running under the preset gets it per-request instead, via its own notation
+   * header, so a stark worker can serve a bar|beat orchestrator. */
+  notation?: Notation;
+}
+
+/**
  * Voice-mode settings fields shared between the full settings hook
  * (UseSettingsReturn) and the voice-only hook (UseVoiceModeSettingsReturn).
  * The voice session reads these at connect time; the in-modal / saved split
@@ -127,10 +173,15 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * mid-session edit doesn't leak into the active session — applied on the next
    * Stop → Talk, matching savedRealtimeVoice/savedVoiceSpeed/savedTurnDetection. */
   savedThinking: string;
-  temperature: number;
-  setTemperature: (temp: number) => void;
-  showThoughts: boolean;
-  setShowThoughts: (show: boolean) => void;
+  /** Load a saved preset into the live editable buffer: writes the preset's
+   * model/thinking into that preset's *own* provider
+   * slice (a functional update, so it's correct even when the preset switches
+   * provider — the per-field setters otherwise target only the active slice),
+   * switches the active provider, sets the global small-model mode, and applies
+   * the captured toolset and notation (each skipped when the preset carries
+   * none, so a legacy preset inherits the current tools/notation). The
+   * provider's apiKey/baseUrl are left untouched. The user then Saves normally. */
+  applyPreset: (preset: ChatPreset) => void;
   /** Persists in-modal settings and resolves only after the at-rest envelope
    * has landed. Returns true on durable success, false on failure (saveError
    * is set in that case). Callers (e.g. use-save-settings-handler) gate the
@@ -152,9 +203,15 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
   resetBehaviorToDefaults: () => void;
-  isToolEnabled: (toolId: string) => boolean;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  /** The preset a spawned subagent runs under: its model/inference and, when the
+   * preset saved them, its toolset and notation (a preset without them keeps the
+   * orchestrator's). The system instruction always inherits. Null = "inherit current
+   * settings", the shipped phase-1 behavior. A global preference (not locked per
+   * conversation) and a modal-local buffer persisted on Save. */
+  subagentPresetId: string | null;
+  setSubagentPresetId: (id: string | null) => void;
   // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
   // state. Source of truth is the server (which mirrors the device Setup-tab
   // toggle) — not localStorage. The dirty flag distinguishes "user toggled
@@ -175,6 +232,14 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
   // handler only POSTs on real intent.
   notation: Notation;
   notationDirty: boolean;
+  /**
+   * False until `notation` holds a real answer — server-seeded or user-chosen —
+   * instead of the provisional mount-time default. The chat's first-send gate
+   * waits on this: a new conversation locks its notation at the first send, and
+   * DEFAULT_NOTATION is a legitimate choice, so the value alone can't say
+   * whether it was chosen or merely assumed.
+   */
+  notationKnown: boolean;
   setNotation: (notation: Notation) => void;
   seedNotation: (notation: Notation) => void;
 }

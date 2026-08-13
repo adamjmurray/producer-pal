@@ -7,26 +7,87 @@
  * @vitest-environment happy-dom
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VersionDisplay } from "./VersionDisplay";
 
 describe("VersionDisplay", () => {
   it("renders current version", () => {
-    render(<VersionDisplay version="1.2.3" latestVersion={null} />);
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+      />,
+    );
     expect(screen.getByText("v1.2.3")).toBeDefined();
   });
 
   it("does not show update link when up to date", () => {
-    render(<VersionDisplay version="1.2.3" latestVersion={null} />);
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+      />,
+    );
     expect(screen.queryByText("(update)")).toBeNull();
   });
 
+  it("shows the build on hover when known", () => {
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        build="1a2b3c4"
+        update={null}
+        onDismissUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("v1.2.3").getAttribute("title")).toBe(
+      "Build 1a2b3c4",
+    );
+  });
+
+  it("omits the build tooltip when unknown", () => {
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={null}
+        onDismissUpdate={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("v1.2.3").getAttribute("title")).toBeNull();
+  });
+
   it("shows update link when newer version is available", () => {
-    render(<VersionDisplay version="1.2.3" latestVersion="1.3.0" />);
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={{ version: "1.3.0" }}
+        onDismissUpdate={vi.fn()}
+      />,
+    );
     const link = screen.getByText("(update)");
 
     expect(link).toBeDefined();
     expect(link.getAttribute("href")).toContain("upgrading");
+    expect(link.getAttribute("title")).toContain("v1.3.0 available");
+  });
+
+  it("dismisses the update notification", () => {
+    const onDismissUpdate = vi.fn();
+
+    render(
+      <VersionDisplay
+        version="1.2.3"
+        update={{ version: "1.3.0" }}
+        onDismissUpdate={onDismissUpdate}
+      />,
+    );
+    fireEvent.click(
+      screen.getByLabelText("Dismiss the v1.3.0 update notification"),
+    );
+
+    expect(onDismissUpdate).toHaveBeenCalledOnce();
   });
 
   it("stops propagation on update link click", () => {
@@ -34,7 +95,11 @@ describe("VersionDisplay", () => {
 
     render(
       <div onClick={() => (parentClicked = true)}>
-        <VersionDisplay version="1.2.3" latestVersion="1.3.0" />
+        <VersionDisplay
+          version="1.2.3"
+          update={{ version: "1.3.0" }}
+          onDismissUpdate={vi.fn()}
+        />
       </div>,
     );
     fireEvent.click(screen.getByText("(update)"));

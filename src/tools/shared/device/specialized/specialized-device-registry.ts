@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { compressorSpec } from "./devices/compressor.ts";
 import { driftSpec } from "./devices/drift.ts";
 import { eqEightSpec } from "./devices/eq-eight.ts";
@@ -119,7 +119,26 @@ export function readSpecializedParams(
   device: LiveAPI,
   search?: string,
 ): Record<string, unknown>[] {
-  return readParamEntries(device, () => true, search);
+  const spec = getSpecForDevice(device);
+
+  if (!spec?.params) {
+    return [];
+  }
+
+  const entries: Record<string, unknown>[] = [];
+
+  for (const param of spec.params) {
+    const value = param.read(device);
+
+    // !== undefined (not != null): a meaningful null — e.g. Compressor's "No
+    // Input" sidechain source — must still be emitted; only an absent/N/A param
+    // (undefined) is skipped.
+    if (value !== undefined) {
+      entries.push({ name: param.name, value });
+    }
+  }
+
+  return filterBySearch(entries, search);
 }
 
 /**
@@ -259,44 +278,6 @@ export function readSpecializedModulations(
   const spec = getSpecForDevice(device);
 
   return spec?.readModulations ? spec.readModulations(device) : undefined;
-}
-
-/**
- * Read the pseudo-params matching a predicate into {name, value} entries.
- * @param device - LiveAPI device object
- * @param predicate - Selects which params to read
- * @param search - Optional case-insensitive name filter
- * @returns Array of {name, value} entries
- */
-function readParamEntries(
-  device: LiveAPI,
-  predicate: (param: PseudoParam) => boolean,
-  search?: string,
-): Record<string, unknown>[] {
-  const spec = getSpecForDevice(device);
-
-  if (!spec?.params) {
-    return [];
-  }
-
-  const entries: Record<string, unknown>[] = [];
-
-  for (const param of spec.params) {
-    if (!predicate(param)) {
-      continue;
-    }
-
-    const value = param.read(device);
-
-    // !== undefined (not != null): a meaningful null — e.g. Compressor's "No
-    // Input" sidechain source — must still be emitted; only an absent/N/A param
-    // (undefined) is skipped.
-    if (value !== undefined) {
-      entries.push({ name: param.name, value });
-    }
-  }
-
-  return filterBySearch(entries, search);
 }
 
 /**

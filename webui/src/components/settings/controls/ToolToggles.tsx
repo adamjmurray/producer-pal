@@ -10,14 +10,17 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import {
-  ensureLiveApiTool,
-  LIVE_API_TOOL_ID,
-  type GroupedTools,
-  groupTools,
-} from "./helpers/tool-toggles-helpers";
+import { CONNECT_TOOL_ID, LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { isToolEnabled } from "#webui/lib/utils/enabled-tools";
+import { fullToolCatalog } from "#webui/lib/utils/tool-catalog";
+import { type GroupedTools, groupTools } from "./helpers/tool-toggles-helpers";
 import { NotationSelector } from "./NotationSelector";
 import { Tooltip } from "./Tooltip";
+
+// Rendered width of an unstyled checkbox. The Edit Context icon matches it so
+// the CTA's icon and text line up with the checkboxes and labels above it.
+// Restyle the checkboxes and this has to move with them.
+const CHECKBOX_PX = 13;
 
 interface ToolTogglesProps {
   tools: McpTool[] | null;
@@ -34,9 +37,9 @@ interface ToolTogglesProps {
   // makes the device-side toggle a no-op. We disable the checkbox here so
   // the UI doesn't silently snap back after a click.
   liveApiForcedOn: boolean;
-  // Global notation setting, rendered as a dropdown in the Advanced group cell
-  // (under the Live API toggle). Mirrors server config.notation, same as the
-  // liveApiEnabled toggle above.
+  // Global notation setting, rendered as a dropdown at the bottom of the Clip
+  // group cell. Mirrors server config.notation, same as the liveApiEnabled
+  // toggle above.
   notation: Notation;
   setNotation: (notation: Notation) => void;
   // Opens the context editor from an "Edit Context" shortcut under the Core
@@ -77,7 +80,7 @@ export function ToolToggles({
         <label className="block text-sm font-medium mb-3">
           Available Tools
         </label>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-500 dark:text-zinc-300">
           {mcpStatus === "error"
             ? "Tools cannot be loaded"
             : "Loading tools..."}
@@ -85,8 +88,6 @@ export function ToolToggles({
       </div>
     );
   }
-
-  const isAlwaysEnabled = (toolId: string) => toolId === "ppal-connect";
 
   const isToolDisabled = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return true;
@@ -103,6 +104,16 @@ export function ToolToggles({
     return undefined;
   };
 
+  const isToolChecked = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    // Live API binds to the device flag, not the map (see the prop comment).
+    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+
+    // Shared with the MCP layer and preset/transfer code, so the checkbox can't
+    // drift from what the model is actually offered.
+    return isToolEnabled(enabledTools, toolId);
+  };
+
   const handleToggle = (toolId: string) => {
     if (isToolDisabled(toolId)) return;
 
@@ -114,15 +125,11 @@ export function ToolToggles({
 
     setEnabledTools({
       ...enabledTools,
-      [toolId]: !enabledTools[toolId],
+      // Invert what the checkbox SHOWS, not the raw map entry: the map is sparse
+      // (an absent tool is enabled), so `!enabledTools[toolId]` re-wrote
+      // "enabled" and the first click on a never-touched tool did nothing.
+      [toolId]: !isToolChecked(toolId),
     });
-  };
-
-  const isToolChecked = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return true;
-    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
-
-    return enabledTools[toolId] ?? true;
   };
 
   const enableDefaultTools = () => {
@@ -152,12 +159,17 @@ export function ToolToggles({
     if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
-  const groups = groupTools(ensureLiveApiTool(tools));
-  // Rendered as the Advanced group's footer (bottom-aligned under the Live API
-  // toggle); see ToolGroupSection.
+  const groups = groupTools(fullToolCatalog(tools));
+  // Rendered as the Clip group's footer (bottom-aligned under the clip
+  // toggles); see ToolGroupSection.
   const notationFooter = (
     <NotationSelector notation={notation} setNotation={setNotation} />
   );
+  // Fall back to the last group if the server returned no clip tools, so the
+  // notation setting can't vanish from the UI.
+  const notationGroupLabel = groups.some((g) => g.label === "Clip")
+    ? "Clip"
+    : groups.at(-1)?.label;
 
   return (
     <div>
@@ -175,7 +187,9 @@ export function ToolToggles({
             isToolDisabled={isToolDisabled}
             getDisabledReason={getDisabledReason}
             onToggle={handleToggle}
-            footer={group.label === "Advanced" ? notationFooter : undefined}
+            footer={
+              group.label === notationGroupLabel ? notationFooter : undefined
+            }
             cta={
               group.label === "Core" && onEditContext ? (
                 <EditContextButton
@@ -239,7 +253,7 @@ interface ToolGroupSectionProps {
   getDisabledReason: (toolId: string) => string | undefined;
   onToggle: (toolId: string) => void;
   // Optional control rendered at the bottom of the cell (the Notation dropdown
-  // in the Advanced group). `mt-auto` + the cell's `h-full` bottom-aligns it
+  // in the Clip group). `mt-auto` + the cell's `h-full` bottom-aligns it
   // within the grid row.
   footer?: VNode;
   // Optional call-to-action rendered directly under the tool list (the Edit
@@ -259,7 +273,7 @@ function ToolGroupSection({
 }: ToolGroupSectionProps) {
   return (
     <div className="flex flex-col h-full">
-      <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
+      <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-300 uppercase tracking-wide mb-1.5">
         {group.label}
       </h4>
       <div className="space-y-1">
@@ -297,7 +311,10 @@ function ToolGroupSection({
           );
         })}
       </div>
-      {cta && <div className="mt-2.5">{cta}</div>}
+      {/* 5px sets the CTA a hair clear of the rows, which sit 4px apart — it
+          used to be 10px. `flex` so the inline-flex button doesn't pick up
+          baseline leading and drift down. */}
+      {cta && <div className="mt-1.25 flex">{cta}</div>}
       {footer && <div className="mt-auto pt-3">{footer}</div>}
     </div>
   );
@@ -329,8 +346,18 @@ function EditContextButton({
       title={disabled ? "Configure settings first" : undefined}
       className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline disabled:hover:text-blue-600 dark:disabled:hover:text-blue-400"
     >
-      <ContextIcon />
+      <ContextIcon size={CHECKBOX_PX} />
       Edit Context
     </button>
   );
+}
+
+/**
+ * ppal-connect is mandatory — every session needs it, so its checkbox is
+ * always checked and always disabled.
+ * @param toolId - MCP tool identifier
+ * @returns True when the tool cannot be turned off
+ */
+function isAlwaysEnabled(toolId: string): boolean {
+  return toolId === CONNECT_TOOL_ID;
 }

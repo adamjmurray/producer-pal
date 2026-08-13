@@ -8,10 +8,14 @@
  * transposition using scale steps.
  */
 
+import { argText } from "../arg-text.ts";
 import { parseToolResult } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
+import {
+  assertNotesRead,
+  getTransforms,
+} from "./helpers/clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -53,8 +57,8 @@ export const melodyTransforms: EvalScenario = {
 
         // Must have notes param with bar-copy syntax, or noteCount showing
         // more notes than the original 12
-        const notes = String(updateCall.args.notes ?? "");
-        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+        const notes = argText(updateCall.args.notes);
+        const result = parseToolResult(updateCall.result ?? "{}") as {
           noteCount?: number;
         };
         const noteCount = result.noteCount;
@@ -82,7 +86,7 @@ export const melodyTransforms: EvalScenario = {
         if (!updateCall)
           throw new Error("ppal-update-clip not found in turn 3");
 
-        const transforms = String(updateCall.args.transforms ?? "");
+        const transforms = argText(updateCall.args.transforms);
 
         if (!transforms) {
           throw new Error("transforms parameter missing in turn 3");
@@ -121,7 +125,7 @@ export const melodyTransforms: EvalScenario = {
         }
 
         // Verify notes were actually transformed (not 0)
-        const result = parseToolResult(String(updateCall.result ?? "{}")) as {
+        const result = parseToolResult(updateCall.result ?? "{}") as {
           transformed?: number;
         };
         const transformed = result.transformed;

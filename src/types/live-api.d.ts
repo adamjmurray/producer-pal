@@ -23,11 +23,31 @@ declare global {
      */
     constructor(path: string);
 
-    /** The object ID in "id X" format */
+    /**
+     * The object ID as a integer string (e.g. "1"), or "0" when the object
+     * does not exist. Always a string — never a number, and never the "id X"
+     * form the LOM uses in child-id lists. Verified against Live 12.4.3 (v8)
+     * for a valid object, a nonexistent path, a nonexistent nested path, and a
+     * nonexistent id. Callers may treat this as a string unconditionally;
+     * guard on exists() to tell "0" from a real id.
+     */
     readonly id: string;
 
-    /** The canonical path of the object */
+    /**
+     * The canonical path of the object, or "" when the object does not exist.
+     * Always a string. Verified alongside `id` on Live 12.4.3 (v8).
+     *
+     * Declared readonly on purpose: Max allows assigning it, but retargeting a
+     * live instance is a footgun everywhere except the ppal-live-api tool,
+     * which casts this away deliberately.
+     */
     readonly path: string;
+
+    /**
+     * What the object tracks when the Live Set changes: 0 (the default)
+     * follows the path, 1 follows the object the path resolved to.
+     */
+    mode: number;
 
     /** The type of the Live object (e.g., "Track", "Clip", "Device") */
     readonly type: LiveObjectType;
@@ -43,6 +63,12 @@ declare global {
 
     /** Navigate to a different Live Object Model path */
     goto(path: string): void;
+
+    /** Count the object's children in the named collection */
+    getcount(name: string): number;
+
+    /** Get a property value as a string */
+    getstring(property: string): string;
 
     /** Get information about the current object (properties, children, etc.) */
     readonly info: string;

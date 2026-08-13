@@ -35,14 +35,16 @@ export interface FakeSkillSlot {
   description: string;
   builtIn: string;
   override: string;
+  enabled: boolean;
+  canDisable: boolean;
   drifted: boolean;
   provenance: { producerPalVersion: string } | null;
 }
 
 /** The in-memory backend state behind the five `/context` REST endpoints. */
 export interface ContextBackend {
-  /** Project context memory blob (via `/config` `memoryContent`). */
-  memoryContent: string;
+  /** Project context blob (via `/config` `projectContext`). */
+  projectContext: string;
   /** Machine-global context (`/global-context`). */
   globalContext: string;
   /** Custom system prompt (`/system-prompt`); "" means use the built-in. */
@@ -63,7 +65,7 @@ export function makeContextBackend(
   overrides: Partial<ContextBackend> = {},
 ): ContextBackend {
   return {
-    memoryContent: "",
+    projectContext: "",
     globalContext: "",
     systemPrompt: "",
     slots: [
@@ -192,21 +194,28 @@ export async function typeInPrimaryEditor(
 }
 
 /**
- * Fork the current built-in into an editable override (the "Customize" button on
- * the Instructions / Skills tabs) and wait for the editable pane to appear (the
- * "Reset to default" affordance only shows once there is an override).
+ * Fork the built-in into an override by typing over it — the only way in, on the
+ * Instructions / Skills tabs. Waits for the override chrome to appear (the
+ * "Reset to default" affordance only shows once there is an override), which
+ * doubles as the assertion that the editor was NOT remounted out from under the
+ * typing: a remount would re-seed from the built-in and lose `text`.
  * @param page - Playwright page
+ * @param text - Replacement text to type over the built-in
  */
-export async function customizeOverride(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Customize" }).click();
+export async function forkByTyping(page: Page, text: string): Promise<void> {
+  await typeInPrimaryEditor(page, text, true);
   await expect(
     page.getByRole("button", { name: "Reset to default" }),
   ).toBeVisible();
+  await expect(primaryEditor(page)).toHaveText(text);
 }
+
+/** Pane label shown while a built-in has not been forked into an override. */
+export const UNFORKED_LABEL = "Default — start typing to customize";
 
 // --- Endpoint handlers below main exports ---
 
-/** Standard config fields the webui reads (only `memoryContent` is exercised). */
+/** Standard config fields the webui reads (only `projectContext` is exercised). */
 const BASE_CONFIG = {
   smallModelMode: false,
   liveApiEnabled: false,
@@ -214,8 +223,8 @@ const BASE_CONFIG = {
 };
 
 /**
- * `/config`: GET echoes the config (incl. project `memoryContent`); a partial
- * POST merges `memoryContent` and echoes the full config.
+ * `/config`: GET echoes the config (incl. project `projectContext`); a partial
+ * POST merges `projectContext` and echoes the full config.
  * @param route - The intercepted route
  * @param state - The mutable backend
  */
@@ -226,14 +235,14 @@ async function handleConfig(
   if (route.request().method() === "POST") {
     const body = readJsonBody(route);
 
-    if (typeof body.memoryContent === "string") {
-      state.memoryContent = body.memoryContent;
+    if (typeof body.projectContext === "string") {
+      state.projectContext = body.projectContext;
     }
   }
 
   await fulfillJson(route, {
     ...BASE_CONFIG,
-    memoryContent: state.memoryContent,
+    projectContext: state.projectContext,
   });
 }
 
@@ -257,8 +266,9 @@ async function handleContentDoc(
 }
 
 /**
- * `/skill-overrides/:slot`: PUT stores that slot's override; DELETE resets it to
- * the built-in. Both echo the updated slot.
+ * `/skill-overrides/:slot`: PUT stores that slot's override and/or its on/off
+ * flag (an omitted field is left alone, as the real route does); DELETE resets
+ * the override to the built-in, keeping the flag. Both echo the updated slot.
  * @param route - The intercepted route
  * @param state - The mutable backend
  */
@@ -277,8 +287,12 @@ async function handleSkillSlot(
 
   const method = route.request().method();
 
-  if (method === "PUT") slot.override = readJsonBody(route).content ?? "";
-  else if (method === "DELETE") slot.override = "";
+  if (method === "PUT") {
+    const body = readJsonBody(route);
+
+    if (body.content != null) slot.override = body.content;
+    if (body.enabled != null) slot.enabled = body.enabled;
+  } else if (method === "DELETE") slot.override = "";
 
   await fulfillJson(route, { slot });
 }
@@ -371,6 +385,8 @@ function makeSlot(name: string, builtIn: string): FakeSkillSlot {
     description: `Fragment ${name}.`,
     builtIn,
     override: "",
+    enabled: true,
+    canDisable: true,
     drifted: false,
     provenance: null,
   };
@@ -379,7 +395,8 @@ function makeSlot(name: string, builtIn: string): FakeSkillSlot {
 /** The parsed shape of the JSON bodies these endpoints receive. */
 interface RequestBody {
   content?: string;
-  memoryContent?: string;
+  enabled?: boolean;
+  projectContext?: string;
   description?: string;
   newName?: string;
   createOnly?: boolean;

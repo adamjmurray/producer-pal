@@ -20,10 +20,10 @@
 //
 // This test feeds one corpus through every site and asserts they accept/reject
 // the same language and compute matching values where they overlap. It is the
-// single source of truth that keeps the sites from silently diverging again
-// (the intent stated in the skills' Time & Note Values section,
-// skills/core/core-standard.ts: "same `n` fraction grammar everywhere"), and it
-// pins the deliberate, documented rules:
+// single source of truth that keeps the sites from silently diverging again —
+// the promise the skills make to the AI, in
+// skills/fragments/transforms/transforms-generative.ts: "Same `n` fraction
+// grammar as everywhere". It also pins the deliberate, documented rules:
 //   - `Nbar` is a note value on every surface (closed by allowing it in the
 //     transform grammar);
 //   - a bare number / bare fraction is never a note-value duration;
@@ -416,7 +416,7 @@ describe("note-value grammar parity across all parse sites", () => {
     // `d` and `t` are mutually exclusive and non-stacking — the atom's
     // `("d"/"t")?` matches at most one. A doubled or mixed suffix leaves a stray
     // letter that no site can consume, so it is a parse error everywhere (the
-    // "no stacking / mutually exclusive" contract from AGENTS.md note-value rules).
+    // "no stacking / mutually exclusive" contract from the note-value grammar).
     for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
       it(`duration "${token}" is rejected by every duration site`, () => {
         for (const site of DURATION_SITES) {

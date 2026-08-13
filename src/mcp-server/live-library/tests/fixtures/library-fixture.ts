@@ -102,12 +102,47 @@ export function createBrokenLibraryDb(): {
   dbPath: string;
   cleanup: () => void;
 } {
-  const dir = mkdtempSync(join(tmpdir(), "ppal-lib-broken-"));
-  const dbPath = join(dir, "Live-files-12300.db");
+  // `files` (and friends) deliberately omitted → "no such table" on query.
+  return createPartialSchemaDb(
+    "ppal-lib-broken-",
+    "CREATE TABLE unrelated (id INTEGER PRIMARY KEY);",
+  );
+}
+
+/**
+ * A `files` table and nothing else — enough for the DB to open, so a query
+ * against any other table fails on that table rather than on the file.
+ */
+export const FILES_ONLY_SCHEMA = `
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      name TEXT
+    );
+  `;
+
+/**
+ * Create a temp Live-files DB holding only `schemaSql`, so a SELECT against any
+ * omitted table throws. Each degrade-path test names the tables it wants missing
+ * by supplying the partial schema it does want.
+ *
+ * @param prefix - Temp-dir prefix, naming the case under test
+ * @param schemaSql - The tables to create; everything else is absent
+ * @param dbName - Live-files DB filename (the number is the Live schema version)
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+export function createPartialSchemaDb(
+  prefix: string,
+  schemaSql: string,
+  dbName = "Live-files-12300.db",
+): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  const dbPath = join(dir, dbName);
   const db = new DatabaseSync(dbPath);
 
-  // `files` (and friends) deliberately omitted → "no such table" on query.
-  db.exec("CREATE TABLE unrelated (id INTEGER PRIMARY KEY);");
+  db.exec(schemaSql);
   db.close();
 
   return {

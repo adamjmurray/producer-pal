@@ -6,7 +6,7 @@
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type ExpressionNode,
   type NoteOp,
@@ -68,7 +68,8 @@ export interface TransformResult {
 type ProcessAssignmentResult = { skip: true } | { skip?: false; value: number };
 
 export type TimeRangeResult =
-  { skip: true } | { skip?: false; timeRange: TimeRange };
+  | { skip: true }
+  | { skip?: false; timeRange: TimeRange };
 
 /**
  * Type guard: distinguish a note-count operation from a parameter assignment.
@@ -318,7 +319,24 @@ function evaluateBinaryOp(node: BinaryOpNode, ctx: EvalContext): number {
     noteProperties,
   );
 
-  switch (node.type) {
+  return applyBinaryOp(node.type, left, right);
+}
+
+/**
+ * Apply a binary arithmetic operator to two already-evaluated operands. Shared
+ * by the note and audio evaluators, whose operand evaluation differs but whose
+ * arithmetic (including the divide/modulo-by-zero rules) must not.
+ * @param type - The operator
+ * @param left - Left operand
+ * @param right - Right operand
+ * @returns Result of the operation
+ */
+export function applyBinaryOp(
+  type: BinaryOpNode["type"],
+  left: number,
+  right: number,
+): number {
+  switch (type) {
     case "add":
       return left + right;
     case "subtract":
@@ -332,6 +350,14 @@ function evaluateBinaryOp(node: BinaryOpNode, ctx: EvalContext): number {
       // Modulo by zero yields 0 (same as division)
       // Use wraparound behavior: ((val % n) + n) % n
       return right === 0 ? 0 : ((left % right) + right) % right;
+
+    // Unreachable: every operator is handled above, and the `never` keeps it
+    // that way if a new one is added.
+    default: {
+      const exhaustive: never = type;
+
+      return exhaustive;
+    }
   }
 }
 

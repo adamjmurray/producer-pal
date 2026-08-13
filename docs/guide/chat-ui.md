@@ -1,3 +1,7 @@
+---
+outline: [2, 3]
+---
+
 # Chat UI
 
 The built-in Chat UI provides a browser-based interface for chatting with AI
@@ -50,6 +54,11 @@ The header is organized into two areas:
 Toggle the history panel using the panel icon in the header. On mobile it takes
 the full width; on larger screens it appears as a sidebar.
 
+### Search
+
+The search box filters the list by title, message text, and voice transcripts.
+Clear it with the ✕ to bring the full list back.
+
 ### Bookmarks
 
 Star a conversation to pin it to the **Bookmarks** section at the top of the
@@ -67,10 +76,10 @@ Each conversation in the list has action buttons that appear on hover:
 - **Delete** - Remove the conversation from history
 
 Conversations are stored in your browser's built-in database (IndexedDB), and
-settings (including API keys) are stored in local storage. This means all your
-data lives in that specific browser and user profile — it won't be available if
-you switch browsers or profiles. Use [Export & Import](#export-import) to move
-conversations between browsers.
+settings are stored in local storage, with API keys [encrypted](#settings). This
+means all your data lives in that specific browser and user profile — it won't
+be available if you switch browsers or profiles. Use
+[Export & Import](#export-import) to move conversations between browsers.
 
 Up to 200 conversations are kept; when the limit is reached, the oldest
 non-bookmarked conversations are automatically removed.
@@ -163,13 +172,53 @@ Pressing **Stop** clears the queue along with the response in progress. If a
 response fails, your queued messages are kept (not lost) and go out with your
 next send.
 
+## Subagents
+
+The AI can hand a self-contained subtask to a nested assistant working in the
+same Live Set. Turn it on with the experimental **Subagent** checkbox under
+**Advanced** on the [Tools tab](#tools), and pick what the workers run under
+with **Subagent preset** on the [Presets tab](#presets).
+
+Each subagent is numbered and appears as its own card in the transcript — expand
+it for the result it reported back, and expand the card inside that for its full
+work log. When the AI delegates several independent subtasks at once, the
+subagents run in parallel.
+
+![Parallel subagents](/img/producer-pal-chat-subagents.png)
+
+A subagent can be given more work later instead of being replaced by a fresh
+one. The AI does this on its own when it makes sense — that run's card is marked
+**resumed** and carries the same subagent number, because it is the same
+subagent picking up with everything it already did and knows. Asking for a
+change to a subagent's work ("subagent 2's bassline is too busy — thin it out")
+is usually enough for the AI to continue that subagent rather than start over.
+
+::: tip Resuming is the cheap option
+
+A fresh subagent has to be briefed from scratch and re-reads the Live Set before
+it can start. Resuming skips all of that, so follow-up work on the same material
+costs much less.
+
+:::
+
+Pressing **Stop** while a subagent is working no longer throws its work away.
+The card reads **stopped** and keeps the work log it got through, and the AI can
+resume that subagent to finish the job — you may have to say which one, since a
+run stopped before it reported back doesn't hand the AI its number.
+
+If a provider rate-limits a subagent, its card shows a **rate limited**
+countdown and the subagent retries on its own instead of failing. Subagents
+running in parallel share that backoff: when one hits a limit the others show
+**waiting** and pause with it, rather than piling more requests onto the
+provider.
+
 ## Voice Mode
 
 Producer Pal includes an experimental hands-free voice mode for talking with the
 AI out loud. It's available on two providers, each requiring that provider's API
 key:
 
-- **OpenAI** — the **GPT Realtime 2 (Voice)** model
+- **OpenAI** — the **GPT Realtime 2.1 (Voice)** model
 - **Google** — the **Gemini 3.1 Flash Live (Voice)** model
 
 To enter voice mode, open [Settings](#settings), set the **Provider**, and
@@ -241,8 +290,10 @@ there are unsaved changes, the dialog will shake as a reminder to save or
 cancel).
 
 Settings are stored in your browser so you don't have to redo the setup every
-time. If entering an AI cloud provider's API key concerns you, use a private
-browser or clear your settings after use.
+time. API keys are encrypted at rest, so they never sit in local storage as
+plain text — but that's not a substitute for OS-level protection, since anything
+running code in your browser can still decrypt them. If that concerns you, use a
+private browser or clear your settings after use.
 
 When an active conversation was started with a different model or provider than
 the current defaults, a notice appears indicating that changes apply to new
@@ -301,8 +352,9 @@ below live on this **Connection** tab, and only appear once a voice model is
 selected. Producer Pal includes an experimental voice mode for spoken
 conversations with the AI, available on **OpenAI** and **Google (Gemini)**. To
 use it, set the **Provider** and select that provider's voice model — **GPT
-Realtime 2 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for Google.
-The **Voice** dropdown and a collapsible **Voice Settings** section then appear.
+Realtime 2.1 (Voice)** for OpenAI or **Gemini 3.1 Flash Live (Voice)** for
+Google. The **Voice** dropdown and a collapsible **Voice Settings** section then
+appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
@@ -348,7 +400,62 @@ setting).
 - **Enable barge-in** - When on, speaking interrupts the assistant while it's
   still talking. **Off by default for OpenAI, on by default for Gemini.** Use
   headphones — without them, the assistant's own voice can trigger
-  interruptions.
+  interruptions. With it off, your mic is muted until the assistant has actually
+  finished speaking, not just finished generating — the two are seconds apart,
+  and that tail is exactly when people talk over it.
+
+### Presets
+
+A preset is a named, one-click bundle of a full chat setup: **provider**,
+**model**, **thinking** level, **small model mode**, the **enabled toolset**,
+and the **notation**. Because a preset spans both the Connection and Tools tabs,
+it gets its own home here.
+
+<img src="/img/producer-pal-chat-settings-presets.png" alt="Presets" width="500"/>
+
+The preset buttons save the moment you click them — unlike everything else in
+this dialog, they don't wait for the footer **Save**.
+
+- **Preset** dropdown - Select a saved preset to load its whole bundle into the
+  form. It doesn't take effect until you **Save** the settings, so you can
+  review or tweak it first.
+- **New…** - Capture the current settings as a new named preset. Fill in the
+  name and click **Create preset**. You can add an optional **Description** to
+  note what it's for (e.g. "cheap bulk-edit worker"). While this form is open
+  the dialog won't close out from under it: the footer **Save** is disabled, and
+  clicking outside or pressing <kbd>Esc</kbd> shakes the dialog instead of
+  dismissing it. Click **Cancel** to drop the draft.
+- **Update** / **Delete** - Overwrite or remove the selected preset. A note
+  appears when the form has drifted from the selected preset. Editing a selected
+  preset's **Description** saves as you type — no **Update** needed, so a
+  wording fix won't re-capture your settings.
+- **Subagent preset** - Choose what a spawned subagent runs under when the
+  experimental **Subagent** tool is enabled (on the Tools tab). Leave it on
+  **Inherit current settings** and each subagent clones your current chat
+  config. Pick a preset instead and every subagent runs on that preset's
+  **model**, **thinking**, **small model mode**, **toolset**, and **notation** —
+  so you can pair a strong planner with uniform, cheaper workers, or send a
+  Stark-speaking subagent to do drum work while your own chat stays on bar|beat.
+  (A preset that never saved a toolset or notation keeps the current
+  conversation's.) Subagents can never spawn their own subagents, whatever a
+  preset's toolset enables.
+
+Configure the model and inference on the **Connection** tab and the toolset and
+notation on the **Tools** tab, then come here to save them together. API keys
+(kept per-provider) and appearance preferences are never part of a preset — a
+preset only _names_ which provider to use and resolves its key from your stored
+settings.
+
+::: warning Loading a preset can change the device notation
+
+Unlike the rest of a preset, notation also lives on the device. Loading a preset
+that carries one and Saving changes the default notation for MCP clients and the
+device Setup pane too, the same as setting it directly on the Tools tab.
+Conversations already open are unaffected — each keeps the notation it started
+with — and a preset used as the **Subagent preset** applies its notation only to
+its own worker, never to the device.
+
+:::
 
 ### Tools
 
@@ -358,6 +465,30 @@ Ollama or LM Studio provider). For local models, only enable the tools you need.
 For state-of-the-art cloud providers (Gemini, OpenAI, etc), you generally want
 to keep everything enabled to make full use of Producer Pal's capabilities. If
 you want to prevent the AI from using a specific tool, you can disable it here.
+
+Disabling a tool also drops the part of the
+[Producer Pal Skills](/guide/customizing-skills) that teaches it — turn off
+library search and the AI stops being told how to search a library it can't
+reach. The saving is therefore bigger than the tool's own schema, and you don't
+have to trim skills by hand to match your toolset.
+
+The header's count is out of all 23 tools, so it reads **21/23** out of the box:
+the two experimental ones — **Live API** and **Subagent**, both under
+**Advanced** — are off until you switch them on. The denominator stays put as
+they move, so the fraction always means how much of the full set you're running.
+
+Like the notation below, each conversation is pinned to the toolset it ran with,
+so a change here takes effect in a **new conversation**. Switching a tool off
+doesn't withdraw it from a chat that has already been calling it, and reopening
+an old conversation brings back the tools it ran with rather than today's
+selection — a transcript full of successful calls to a tool is itself an
+instruction to keep calling it.
+
+When your current selection has moved on from the open conversation's, the
+header's tools count turns amber (hover it for the conversation's locked count
+and what the default is now), and the settings dialog says which
+conversation-specific settings are in play. Conversations saved before 2.1.0
+have no pinned toolset and reconnect on the current selection.
 
 Consult [the Features page](/features) for more info on what each tool does.
 
@@ -370,12 +501,17 @@ project context, global context, and the memory index are attached when AI
 connects either way, so to stop it reading a layer, empty that layer. **Edit
 Context** below the checkbox opens the context editor.
 
+The experimental **Subagent** checkbox under **Advanced** lets the AI delegate
+work to nested assistants — see [Subagents](#subagents).
+
 The **Live API** checkbox under **Advanced** behaves differently from the other
 toggles. The rest only filter which tools the Chat UI's AI can see, but this one
 mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
 also turns the tool on at the device level (MCP clients and the
 [REST API](/guide/rest-api) will see it too). It is off by default; see
-[Direct Live API](/features#ppal-live-api) for why.
+[Direct Live API](/features/tools#ppal-live-api) for why. It is still pinned to
+the conversation like the rest of the toolset, so flipping the device flag
+doesn't add or remove the tool mid-chat.
 
 The **Notation** dropdown under **Advanced** chooses how the AI reads and writes
 clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),
@@ -383,12 +519,14 @@ clip notes — **[bar|beat](/features/midi-notation#bar-beat)** (the default),
 **[Stark](/features/midi-notation#stark)** (a literal, round-trippable notation
 with chord symbols, friendly to small/local models). See
 [MIDI Notation](/features/midi-notation) for the tradeoffs. Like the Live API
-toggle, this is a global device setting rather than a per-conversation one: it
-mirrors the device's Setup pane and applies to MCP clients and the REST API too.
-Because the AI's notation instructions are fixed at the start of a conversation,
-the switch takes full effect in a **new conversation** — changing it mid-chat
-re-parses your notes under the new notation but the AI keeps writing the old one
-until then.
+toggle, this mirrors the device's Setup pane, so changing it here also changes
+the default for MCP clients and the [REST API](/guide/rest-api).
+
+Each chat conversation locks the notation it started with, so the switch takes
+effect in a **new conversation**. An open chat keeps reading and writing the
+notation it has been using all along, and reopening an old conversation resumes
+in whatever notation its notes were written in — the AI is never taught one
+notation and then handed notes in another.
 
 ### Preferences
 
@@ -402,11 +540,21 @@ The Preferences tab controls visual preferences and conversation management:
   header and settings
 - **Show message token usage** - Display token counts after each AI response
   (see [Token Usage](#token-usage) below)
+- **Automatically check for new versions** - On by default. Producer Pal asks
+  GitHub once per device load whether a newer release exists, and shows an
+  `(update)` link next to the version number when there is one. Turn this off
+  and it never contacts GitHub.
 - **Cleanup Conversations** - Bulk-delete conversations:
   - **Delete unstarred** - Remove all non-bookmarked conversations
   - **Delete all** - Remove every conversation
 
 Both delete actions ask for confirmation and cannot be undone.
+
+Unlike the other settings on this tab, the update-check setting applies
+immediately (no Save) and is machine-wide: it is stored in
+`~/.producer-pal/settings.json` and also governs the Max for Live device's own
+update notification. The `×` beside the `(update)` link dismisses that version's
+notification in both places; a later release brings it back.
 
 ## Token Usage
 

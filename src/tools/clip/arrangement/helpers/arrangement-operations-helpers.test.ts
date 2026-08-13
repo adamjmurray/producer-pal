@@ -128,13 +128,11 @@ describe("arrangement-operations-helpers", () => {
       );
 
       // Should tile to expose hidden content with adjustPreRoll: false
-      expect(tile).toHaveBeenCalledWith(
+      expectTiled(
+        tile,
         clip,
-        expect.anything(),
         4, // currentEndTime
         8, // remainingLength = 12 - 4
-        40000,
-        expect.anything(),
         expect.objectContaining({
           adjustPreRoll: false,
           startOffset: 4, // currentOffset (0) + currentArrangementLength (4)
@@ -162,13 +160,11 @@ describe("arrangement-operations-helpers", () => {
       );
 
       // Should call tileClipToRange with adjustPreRoll: true
-      expect(tile).toHaveBeenCalledWith(
+      expectTiled(
+        tile,
         clip,
-        expect.anything(),
         4, // currentEndTime
         12, // remainingLength = 16 - 4
-        40000,
-        expect.anything(),
         expect.objectContaining({
           adjustPreRoll: true,
           startOffset: 6, // currentOffset (2) + currentArrangementLength (4)
@@ -196,13 +192,11 @@ describe("arrangement-operations-helpers", () => {
         },
       );
 
-      expect(tile).toHaveBeenCalledWith(
+      expectTiled(
+        tile,
         clip,
-        expect.anything(),
         4,
         3,
-        40000,
-        expect.anything(),
         expect.objectContaining({ adjustPreRoll: true }),
       );
 
@@ -223,13 +217,11 @@ describe("arrangement-operations-helpers", () => {
         },
       );
 
-      expect(tile).toHaveBeenCalledWith(
+      expectTiled(
+        tile,
         clip,
-        expect.anything(),
         4,
         4,
-        40000,
-        expect.anything(),
         expect.objectContaining({ adjustPreRoll: true }),
       );
 
@@ -251,13 +243,11 @@ describe("arrangement-operations-helpers", () => {
         },
       );
 
-      expect(tile).toHaveBeenCalledWith(
+      expectTiled(
+        tile,
         clip,
-        expect.anything(),
         4,
         8,
-        40000,
-        expect.anything(),
         expect.objectContaining({
           adjustPreRoll: false,
           startOffset: 7,
@@ -285,15 +275,7 @@ describe("arrangement-operations-helpers", () => {
         },
       );
 
-      expect(tile).toHaveBeenCalledWith(
-        clip,
-        expect.anything(),
-        10,
-        12,
-        40000,
-        expect.anything(),
-        { adjustPreRoll: true, tileLength: 8 },
-      );
+      expectTiled(tile, clip, 10, 12, { adjustPreRoll: true, tileLength: 8 });
 
       tile.mockRestore();
     });
@@ -314,15 +296,7 @@ describe("arrangement-operations-helpers", () => {
         },
       );
 
-      expect(tile).toHaveBeenCalledWith(
-        clip,
-        expect.anything(),
-        20,
-        10,
-        40000,
-        expect.anything(),
-        { adjustPreRoll: true, tileLength: 20 },
-      );
+      expectTiled(tile, clip, 20, 10, { adjustPreRoll: true, tileLength: 20 });
 
       tile.mockRestore();
     });
@@ -347,15 +321,7 @@ describe("arrangement-operations-helpers", () => {
       const track = requireMockObject(livePath.track(0));
 
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", 7, 4);
-      expect(tile).toHaveBeenCalledWith(
-        clip,
-        expect.anything(),
-        7,
-        14,
-        40000,
-        expect.anything(),
-        { adjustPreRoll: true, tileLength: 6 },
-      );
+      expectTiled(tile, clip, 7, 14, { adjustPreRoll: true, tileLength: 6 });
 
       tile.mockRestore();
     });
@@ -478,6 +444,34 @@ interface RunLengtheningArgs {
  * @param args.isAudioClip - Whether the clip is audio (default false)
  * @returns The tileClipToRange spy, the mock clip, and the returned clip ids
  */
+/**
+ * Assert tileClipToRange was called for `clip` at `position` with `remaining`
+ * beats of space. The holding area and the temp-clip argument are fixed across
+ * every lengthening case, so only the position, span, and options vary.
+ * @param tile - The tileClipToRange spy from runLengthening
+ * @param clip - The mock clip expected as the tiling source
+ * @param position - Expected arrangement position of the first tile
+ * @param remaining - Expected remaining space in beats
+ * @param options - Expected options (an exact object, or an objectContaining matcher)
+ */
+function expectTiled(
+  tile: ReturnType<typeof vi.spyOn>,
+  clip: LiveAPI,
+  position: number,
+  remaining: number,
+  options: unknown,
+): void {
+  expect(tile).toHaveBeenCalledWith(
+    clip,
+    expect.anything(),
+    position,
+    remaining,
+    40000,
+    expect.anything(),
+    options,
+  );
+}
+
 function runLengthening(
   clipProps: Record<string, number>,
   args: RunLengtheningArgs,

@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Command } from "commander";
+import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {
   LIST_MODELS_HINT,
@@ -110,6 +111,20 @@ program
     }
 
     const { provider, model } = spec;
+
+    // The agent-CLI providers run through a spawned subprocess, not the AI SDK
+    // this CLI streams from. Without this the provider factory throws past
+    // commander's handler as a raw stack trace.
+    if (getAgentCliTransport(provider) != null) {
+      program.error(
+        `Provider "${provider}" is only supported by the eval CLI, which drives ` +
+          `a spawned agent CLI instead of the AI SDK. ` +
+          `Try: scripts/eval -m ${provider}/${model} -t <scenario>`,
+      );
+
+      return;
+    }
+
     const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
     const options: ChatOptions = {
       ...rawOptions,

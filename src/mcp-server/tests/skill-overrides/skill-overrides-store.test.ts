@@ -15,6 +15,10 @@ import {
 } from "#src/mcp-server/helpers/skill-overrides-store.ts";
 import { VERSION } from "#src/shared/config.ts";
 import { buildSkills } from "#src/skills/build-skills.ts";
+import {
+  barbeatStandard,
+  barbeatStandardWrite,
+} from "#src/skills/notation/barbeat-standard.ts";
 import { SKILL_SLOT_NAMES, SKILL_SLOTS } from "#src/skills/skill-slots.ts";
 import { useTempConfigDir } from "../config-dir-test-helpers.ts";
 
@@ -41,14 +45,15 @@ function writeRaw(name: string, contents: string): void {
 
 describe("readSkillOverrides", () => {
   it("returns no overrides when the folder is empty", () => {
-    expect(readSkillOverrides()).toStrictEqual({});
+    expect(readSkillOverrides()).toStrictEqual({ fragments: {}, disabled: [] });
   });
 
   it("returns only overridden slots, with frontmatter stripped and trimmed", () => {
-    writeSkillOverride("barbeat-standard", "  My core.  ");
+    writeSkillOverride("barbeat-standard", { content: "  My core.  " });
 
     expect(readSkillOverrides()).toStrictEqual({
-      "barbeat-standard": "My core.",
+      fragments: { "barbeat-standard": "My core." },
+      disabled: [],
     });
   });
 
@@ -57,9 +62,9 @@ describe("readSkillOverrides", () => {
     // is surfaced (not ignored) — a forked driver can @include it. The resolver
     // only expands names the graph actually references, so unused ones are inert.
     writeRaw("my-notation", "custom fragment");
-    writeSkillOverride("stark-standard", "custom stark");
+    writeSkillOverride("stark-standard", { content: "custom stark" });
 
-    expect(readSkillOverrides()).toStrictEqual({
+    expect(readSkillOverrides().fragments).toStrictEqual({
       "my-notation": "custom fragment",
       "stark-standard": "custom stark",
     });
@@ -68,7 +73,7 @@ describe("readSkillOverrides", () => {
   it("reads a hand-authored override that has no frontmatter", () => {
     writeRaw("midi-json", "hand written, no provenance");
 
-    expect(readSkillOverrides()).toStrictEqual({
+    expect(readSkillOverrides().fragments).toStrictEqual({
       "midi-json": "hand written, no provenance",
     });
   });
@@ -82,14 +87,36 @@ describe("readSkillOverrides", () => {
       "---\nproducerPalVersion: 0.0.1\nbuiltInHash: h\n---\n\n   \n",
     );
 
-    expect(readSkillOverrides()).toStrictEqual({});
+    expect(readSkillOverrides()).toStrictEqual({ fragments: {}, disabled: [] });
+  });
+
+  it("reports a switched-off slot as disabled, body or no body", () => {
+    writeSkillOverride("library", { enabled: false });
+    writeSkillOverride("arrangement", { content: "mine", enabled: false });
+
+    expect(readSkillOverrides()).toStrictEqual({
+      fragments: { arrangement: "mine" },
+      disabled: ["arrangement", "library"],
+    });
+  });
+
+  it("reads a hand-authored `enabled: false` on a nested fragment", () => {
+    // The flag is frontmatter like any other, so it works on files that have no
+    // editor slot at all.
+    mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
+    writeFileSync(
+      join(getDir(), "skills", "drums", "backbeat.md"),
+      "---\nenabled: false\n---\n\nboom bap",
+    );
+
+    expect(readSkillOverrides().disabled).toStrictEqual(["drums/backbeat"]);
   });
 
   it("surfaces a nested fragment file, keyed by its relative path", () => {
     mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
     writeFileSync(join(getDir(), "skills", "drums", "backbeat.md"), "boom bap");
 
-    expect(readSkillOverrides()).toStrictEqual({
+    expect(readSkillOverrides().fragments).toStrictEqual({
       "drums/backbeat": "boom bap",
     });
   });
@@ -97,7 +124,9 @@ describe("readSkillOverrides", () => {
   it("lets a forked driver @include a nested fragment end to end", () => {
     // The point of nesting: a user can group their own fragments in folders and
     // pull one into a forked driver with a relative include.
-    writeSkillOverride("standard", 'HEAD\n\n@include "./drums/backbeat.md"');
+    writeSkillOverride("standard", {
+      content: 'HEAD\n\n@include "./drums/backbeat.md"',
+    });
     mkdirSync(join(getDir(), "skills", "drums"), { recursive: true });
     writeFileSync(join(getDir(), "skills", "drums", "backbeat.md"), "BOOM BAP");
 
@@ -107,17 +136,20 @@ describe("readSkillOverrides", () => {
 
 describe("writeSkillOverride", () => {
   it("stamps fork-time provenance and returns the new state", () => {
-    const state = writeSkillOverride("barbeat-basic", "custom basic core");
+    const state = writeSkillOverride("barbeat-basic", {
+      content: "custom basic core",
+    });
 
     expect(state.name).toBe("barbeat-basic");
     expect(state.override).toBe("custom basic core");
+    expect(state.enabled).toBe(true);
     expect(state.drifted).toBe(false);
     expect(state.provenance?.producerPalVersion).toBe(VERSION);
     expect(state.provenance?.builtInHash).toMatch(/^[\da-f]{64}$/);
   });
 
   it("persists frontmatter above the body on disk", () => {
-    writeSkillOverride("midi-json", "custom notes");
+    writeSkillOverride("midi-json", { content: "custom notes" });
     const raw = readFileSync(slotPath("midi-json"), "utf8");
 
     expect(raw.startsWith("---\n")).toBe(true);
@@ -127,12 +159,71 @@ describe("writeSkillOverride", () => {
   });
 
   it("resets the slot (deletes the file) when given blank content", () => {
-    writeSkillOverride("stark-standard", "temporary");
-    const state = writeSkillOverride("stark-standard", "   \n  ");
+    writeSkillOverride("stark-standard", { content: "temporary" });
+    const state = writeSkillOverride("stark-standard", { content: "   \n  " });
 
     expect(state.override).toBe("");
     expect(state.provenance).toBeNull();
-    expect(readSkillOverrides()).toStrictEqual({});
+    expect(readSkillOverrides()).toStrictEqual({ fragments: {}, disabled: [] });
+  });
+
+  it("stores a flag-only file when a slot with no override is switched off", () => {
+    const state = writeSkillOverride("library", { enabled: false });
+
+    expect(state.enabled).toBe(false);
+    expect(state.override).toBe("");
+    expect(readFileSync(slotPath("library"), "utf8")).toBe(
+      "---\nenabled: false\n---\n\n",
+    );
+  });
+
+  it("keeps the override body when the slot is switched off and back on", () => {
+    writeSkillOverride("library", { content: "my library notes" });
+    writeSkillOverride("library", { enabled: false });
+
+    expect(readSkillSlotState("library").override).toBe("my library notes");
+
+    const state = writeSkillOverride("library", { enabled: true });
+
+    expect(state.enabled).toBe(true);
+    expect(state.override).toBe("my library notes");
+  });
+
+  it("deletes the file when a switched-off slot with no body is re-enabled", () => {
+    writeSkillOverride("library", { enabled: false });
+    const state = writeSkillOverride("library", { enabled: true });
+
+    expect(state.enabled).toBe(true);
+    expect(readSkillOverrides()).toStrictEqual({ fragments: {}, disabled: [] });
+  });
+
+  it("does not re-fork provenance when only the flag changes", () => {
+    // Re-stamping here would clear a drift flag the user has not looked at, by
+    // claiming they forked the CURRENT built-in when they only flipped a switch.
+    writeRaw(
+      "arrangement",
+      "---\nproducerPalVersion: 0.0.1\nbuiltInHash: stalehash\n---\n\nmy fork",
+    );
+
+    const state = writeSkillOverride("arrangement", { enabled: false });
+
+    expect(state.drifted).toBe(true);
+    expect(state.provenance).toStrictEqual({
+      producerPalVersion: "0.0.1",
+      builtInHash: "stalehash",
+    });
+  });
+
+  it("keeps a hand-authored body that has no provenance to preserve", () => {
+    writeRaw("arrangement", "hand written");
+
+    const state = writeSkillOverride("arrangement", { enabled: false });
+
+    expect(state.override).toBe("hand written");
+    expect(state.provenance).toBeNull();
+    expect(readFileSync(slotPath("arrangement"), "utf8")).toBe(
+      "---\nenabled: false\n---\n\nhand written\n",
+    );
   });
 });
 
@@ -144,8 +235,15 @@ describe("readSkillSlotState", () => {
     expect(state.title).toBe(SKILL_SLOTS["barbeat-standard"].title);
     expect(state.description).toBe(SKILL_SLOTS["barbeat-standard"].description);
     expect(state.override).toBe("");
+    expect(state.enabled).toBe(true);
     expect(state.drifted).toBe(false);
     expect(state.provenance).toBeNull();
+  });
+
+  it("reports the drivers as the only slots that cannot be switched off", () => {
+    expect(readSkillSlotState("standard").canDisable).toBe(false);
+    expect(readSkillSlotState("basic").canDisable).toBe(false);
+    expect(readSkillSlotState("library").canDisable).toBe(true);
   });
 
   it("flags drift when the stored hash differs from the current built-in", () => {
@@ -166,7 +264,7 @@ describe("readSkillSlotState", () => {
   });
 
   it("does not flag drift for an override forked from the current built-in", () => {
-    writeSkillOverride("barbeat-standard", "fresh fork");
+    writeSkillOverride("barbeat-standard", { content: "fresh fork" });
 
     expect(readSkillSlotState("barbeat-standard").drifted).toBe(false);
   });
@@ -188,13 +286,61 @@ describe("readSkillSlotState", () => {
   });
 });
 
+describe("readSkillSlotState — overrides that predate a -write split", () => {
+  /** A pre-split fork of `barbeat-standard`: the whole guide, both halves. */
+  const preSplitFork = `${barbeatStandard}\n\n${barbeatStandardWrite}`;
+
+  it("names the sibling that now ships the copied text, and counts the lines", () => {
+    writeSkillOverride("barbeat-standard", { content: preSplitFork });
+
+    const { splitStale } = readSkillSlotState("barbeat-standard");
+
+    expect(splitStale?.sibling).toBe("barbeat-standard-write");
+    expect(splitStale?.sharedLines).toBeGreaterThan(0);
+  });
+
+  it("stays quiet once the sibling is overridden or switched off", () => {
+    // Either one means the user has already met the split.
+    writeSkillOverride("barbeat-standard", { content: preSplitFork });
+    writeSkillOverride("barbeat-standard-write", { content: "mine" });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+
+    deleteSkillOverride("barbeat-standard-write");
+    writeSkillOverride("barbeat-standard-write", { enabled: false });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+  });
+
+  it("stays quiet for a fork made after the split, and for slots that never split", () => {
+    writeSkillOverride("barbeat-standard", { content: barbeatStandard });
+    writeSkillOverride("library", { content: "my library notes" });
+
+    expect(readSkillSlotState("barbeat-standard").splitStale).toBeNull();
+    expect(readSkillSlotState("library").splitStale).toBeNull();
+    expect(readSkillSlotState("midi-json").splitStale).toBeNull();
+  });
+});
+
 describe("deleteSkillOverride", () => {
   it("resets a slot to the built-in and is a no-op when already absent", () => {
-    writeSkillOverride("midi-json", "temp");
+    writeSkillOverride("midi-json", { content: "temp" });
 
     expect(deleteSkillOverride("midi-json").override).toBe("");
     // Second delete must not throw on a missing file.
     expect(deleteSkillOverride("midi-json").override).toBe("");
+  });
+
+  it("leaves the on/off flag alone — the two axes are independent", () => {
+    // "Reset to default" is about the BODY. A switched-off fragment that came
+    // back on because its override was reset would be a surprise with nothing
+    // on screen to explain it.
+    writeSkillOverride("library", { content: "temp", enabled: false });
+
+    const state = deleteSkillOverride("library");
+
+    expect(state.override).toBe("");
+    expect(state.enabled).toBe(false);
   });
 });
 

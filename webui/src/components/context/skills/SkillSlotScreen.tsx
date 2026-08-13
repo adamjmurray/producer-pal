@@ -19,12 +19,14 @@ import {
   useImportNotice,
 } from "#webui/components/context/MarkdownDropZone";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 import {
   type SkillSlotView,
   type UseSkillOverridesReturn,
 } from "#webui/hooks/context/use-skill-overrides";
+import { SkillGateNote } from "./SkillGateNote";
 import { SkillSlotSelect } from "./SkillSlotSelect";
+import { SplitOverrideNote } from "./SplitOverrideNote";
 
 const RESET_CONFIRM =
   "Reset this skill fragment to Producer Pal's default? This deletes your override.";
@@ -51,13 +53,13 @@ interface SkillSlotScreenProps {
 
 /**
  * Editor for one skills-fragment override. With no override the built-in is
- * shown read-only with a "Customize" button; once customized, the editable
- * override shows and the built-in is revealed on demand (see
+ * shown in the editor as its starting text — typing forks it into an override —
+ * after which the built-in is revealed on demand for comparison (see
  * {@link OverridePanes}). Keyed by the selected slot so the uncontrolled editor
  * re-seeds on slot switch. Reuses the context-editor autosave lifecycle by
- * adapting the selected slot to a single-document {@link UseDocMemoryReturn}:
- * save writes the override, clear resets it to the built-in (deleting the file),
- * and Customize forks the built-in into the override via the import handler.
+ * adapting the selected slot to a single-document {@link UseDocReturn}:
+ * save writes the override and clear resets it to the built-in (deleting the
+ * file), so a fork is just the first edit's autosave.
  * @param props - Screen props
  * @returns Screen element
  */
@@ -66,15 +68,16 @@ export function SkillSlotScreen(
 ): preact.JSX.Element {
   const { overrides, slots, slot, onSelectSlot, tabSlot, viewSlot, onClose } =
     props;
-  const memory = useSlotDocMemory(overrides, slot);
-  const editor = useContextEditorState(memory, RESET_CONFIRM);
+  const doc = useSlotDoc(overrides, slot);
+  const editor = useContextEditorState(doc, RESET_CONFIRM);
   const importNotice = useImportNotice();
-  const io = makeContextIoHandlers(
+  const io = makeContextIoHandlers({
     editor,
-    `producer-pal-skill-${slot.name}`,
-    importNotice.showNotice,
-    importNotice.clearNotice,
-  );
+    exportBasename: `producer-pal-skill-${slot.name}`,
+    builtIn: slot.builtIn,
+    onImportError: importNotice.showNotice,
+    onImportSuccess: importNotice.clearNotice,
+  });
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   // Match the other doc tabs at rest; widen to two columns only when the
   // built-in reference is revealed. Resetting collapses the reveal (see
@@ -87,7 +90,7 @@ export function SkillSlotScreen(
         title="Skills"
         tabSlot={tabSlot}
         closeAriaLabel={CLOSE_ARIA_LABEL}
-        status={memory.status}
+        status={doc.status}
         saveStatus={overrides.saveStatus}
         dirty={editor.dirty}
         onClose={onClose}
@@ -98,12 +101,26 @@ export function SkillSlotScreen(
         onSelectSlot={onSelectSlot}
         slot={slot}
         widthClass={widthClass}
+        viewSlot={viewSlot}
         onImport={io.onImport}
         onExport={io.onExport}
+        // Routed through the editor's ordered-write dispatcher: the toggle PUTs
+        // the same slot file the editor autosaves, so an unordered one can land
+        // ahead of an in-flight body save and echo the pre-edit body.
+        onSetEnabled={(enabled) =>
+          void editor.dispatchWrite(() =>
+            overrides.setSlotEnabled(slot.name, enabled),
+          )
+        }
       />
       <div
         className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
       >
+        <SplitOverrideNote
+          slots={slots}
+          slot={slot}
+          onSelectSlot={onSelectSlot}
+        />
         {editor.externalUpdate && (
           <ExternalUpdateBanner
             message={EXTERNAL_UPDATE_MESSAGE}
@@ -122,11 +139,10 @@ export function SkillSlotScreen(
             value={slot.override}
             builtIn={slot.builtIn}
             overrideLabel="Your override"
-            centerControl={viewSlot}
             showBuiltIn={showBuiltIn}
             onToggleBuiltIn={setShowBuiltIn}
             onReset={editor.handleClear}
-            onCustomize={() => void editor.handleImport(slot.builtIn)}
+            onBeginOverride={editor.beginOverride}
             onChange={editor.handleChange}
             onBlur={editor.handleBlur}
           />
@@ -139,7 +155,7 @@ export function SkillSlotScreen(
 // --- Helpers below main export ---
 
 /**
- * Adapt one slot of the collection hook to the single-document memory shape
+ * Adapt one slot of the collection hook to the single-document doc shape
  * `useContextEditorState` expects. The screen is keyed by slot, so this is
  * rebuilt (and re-seeded) on every slot switch.
  *
@@ -150,18 +166,18 @@ export function SkillSlotScreen(
  * autosave, and risking a Reload that adopts the stale pre-echo value.
  * @param overrides - The collection hook
  * @param slot - The slot being edited
- * @returns A document-memory view of that slot
+ * @returns A doc view of that slot
  */
-function useSlotDocMemory(
+function useSlotDoc(
   overrides: UseSkillOverridesReturn,
   slot: SkillSlotView,
-): UseDocMemoryReturn {
-  const status = useMemo<UseDocMemoryReturn["status"]>(
+): UseDocReturn {
+  const status = useMemo<UseDocReturn["status"]>(
     () => ({ kind: "ready", content: slot.override }),
     [slot.override],
   );
 
-  return useMemo<UseDocMemoryReturn>(
+  return useMemo<UseDocReturn>(
     () => ({
       status,
       saveStatus: overrides.saveStatus,
@@ -181,40 +197,95 @@ interface SkillControlsProps {
   slot: SkillSlotView;
   /** Content width — tracks the editor below so the strip stays aligned. */
   widthClass: string;
+  /** The Preview/Source view toggle, at the end of the strip. */
+  viewSlot: preact.JSX.Element;
   onImport: () => void;
   onExport: () => void;
+  /** Switch the selected fragment on or off. */
+  onSetEnabled: (enabled: boolean) => void;
 }
 
 /**
- * Controls strip: the slot dropdown, a one-line explainer for the selected slot,
- * and a drift note. The border spans full width while the content is centered to
- * match the editor below. The Preview/Source view toggle sits in the editor's
- * pane header (see OverridePanes), and resetting an override to the built-in
- * lives in the revealed built-in header there — neither belongs here.
+ * Controls strip: the slot dropdown, the include toggle, the selected slot's
+ * human title and one-line explainer, a drift note, and the Import/Export +
+ * view-toggle icons, over a second line naming the tools that gate the fragment
+ * ({@link SkillGateNote}). The title lives here rather than in the dropdown,
+ * which lists fragments by filename so it reads the way an `@include` line does
+ * (see {@link SkillSlotSelect}).
+ *
+ * The border spans full width while the content is centered to match the editor
+ * below. Resetting an override to the built-in lives in the revealed built-in
+ * header (see OverridePanes), not here.
  * @param props - Controls props
  * @returns Controls element
  */
 function SkillControls(props: SkillControlsProps): preact.JSX.Element {
-  const { slots, selected, onSelectSlot, slot } = props;
-  const { widthClass, onImport, onExport } = props;
+  const { slots, selected, onSelectSlot, slot, viewSlot } = props;
+  const { widthClass, onImport, onExport, onSetEnabled } = props;
 
   return (
     <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
-        <SkillSlotSelect
-          slots={slots}
-          selected={selected}
-          onSelect={onSelectSlot}
-        />
-        <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
-          {slot.description}
-        </span>
-        <DriftNote
-          drifted={slot.drifted}
-          forkedFromVersion={slot.forkedFromVersion}
-        />
-        <ContextIoButtons onImport={onImport} onExport={onExport} />
+      <div className={`mx-auto w-full ${widthClass} flex flex-col gap-1`}>
+        <div className="flex items-center gap-3">
+          <SkillSlotSelect
+            slots={slots}
+            selected={selected}
+            onSelect={onSelectSlot}
+          />
+          <IncludeToggle slot={slot} onSetEnabled={onSetEnabled} />
+          <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              {slot.title}
+            </span>
+            {" — "}
+            {slot.description}
+          </span>
+          <DriftNote
+            drifted={slot.drifted}
+            forkedFromVersion={slot.forkedFromVersion}
+          />
+          <ContextIoButtons onImport={onImport} onExport={onExport} />
+          {viewSlot}
+        </div>
+        <SkillGateNote gate={slot.gate} />
       </div>
     </div>
+  );
+}
+
+interface IncludeToggleProps {
+  slot: SkillSlotView;
+  onSetEnabled: (enabled: boolean) => void;
+}
+
+/**
+ * Checkbox switching the selected fragment in or out of the assembled skills —
+ * the one-click form of deleting its `@include` line, and unlike an emptied
+ * override it keeps the body for when it goes back on. Rendered as nothing for
+ * the whole-document drivers, which have no line to drop (see
+ * SkillSlotDef.alwaysOn).
+ * @param props - Toggle props
+ * @returns Toggle element, or null when the slot can't be switched off
+ */
+function IncludeToggle(props: IncludeToggleProps): preact.JSX.Element | null {
+  const { slot, onSetEnabled } = props;
+
+  if (!slot.canDisable) return null;
+
+  return (
+    <label
+      className="shrink-0 flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
+      title="Off: this section is left out of the skills the AI receives. Your override is kept."
+    >
+      <input
+        type="checkbox"
+        checked={slot.enabled}
+        onChange={(event) =>
+          onSetEnabled((event.target as HTMLInputElement).checked)
+        }
+        className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-600"
+      />
+      Include
+    </label>
   );
 }

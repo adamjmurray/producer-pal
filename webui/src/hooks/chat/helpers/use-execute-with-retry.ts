@@ -15,6 +15,7 @@ import {
   MAX_RETRY_ATTEMPTS,
   shouldRetry,
 } from "#webui/lib/rate-limit";
+import { abortableSleep } from "#webui/lib/utils/abortable-sleep";
 import { type UIMessage } from "#webui/types/messages";
 import { handleMessageStream } from "./streaming-helpers";
 
@@ -31,14 +32,39 @@ interface UseExecuteWithRetryDeps<
 }
 
 interface ExecuteWithRetryArgs<TMessage> {
-  executeStream: (message: string) => AsyncIterable<TMessage[]>;
+  /** Runs the turn's FIRST attempt, sending the user's message. */
+  executeStream: () => AsyncIterable<TMessage[]>;
+  /**
+   * Re-runs the turn after a rate limit, resuming from history rather than
+   * re-sending the message — which is already in it. Whether the resume needs a
+   * synthetic "continue" turn to be a valid request is the client's call.
+   */
+  resumeStream: () => AsyncIterable<TMessage[]>;
   getHistory: () => TMessage[];
-  originalMessage: string;
+  /**
+   * Whether the turn that started this still holds the current ticket —
+   * runChatTurn dispenses it and hands it down through the turn's setup.
+   *
+   * Stop re-enables the composer while the stopped turn is still unwinding, so a
+   * newer turn can take the shared refs below — the abort controller AND
+   * retryAbortRef — out from under this one. Once that happens the
+   * aborted-signal checks are reading the NEW turn's controllers and stop
+   * protecting anything, so everything that paints or persists checks the ticket
+   * instead.
+   */
+  stillCurrent: () => boolean;
 }
 
 /**
  * Hook that wraps a streaming chat call with rate-limit-aware retry logic.
  * Owns the retry AbortController and exposes a way to cancel pending retries.
+ *
+ * NOTE: subagent workers stream below this hook (inside the spawn tool's
+ * execute), so they carry their own copy of this strategy in
+ * chat/sdk/subagent/subagent-rate-limit.ts. A change to the budget or the delay
+ * schedule has to be made in both. The resume rule is NOT duplicated — both
+ * layers hand that to the client, which is the only place that knows whether the
+ * conversation is already a valid request to resume from.
  * @param deps - Adapter, autoSave ref, parent abort ref, and state setters
  * @returns executeWithRetry function and abortRetry canceler
  */
@@ -58,8 +84,9 @@ export function useExecuteWithRetry<
   const executeWithRetry = useCallback(
     async ({
       executeStream,
+      resumeStream,
       getHistory,
-      originalMessage,
+      stillCurrent,
     }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
@@ -70,8 +97,10 @@ export function useExecuteWithRetry<
       retryAbortRef.current = new AbortController();
 
       const onMessageUpdate = (msgs: UIMessage[]) => {
-        // Skip updates after abort (e.g. user switched conversations)
-        if (abortControllerRef.current?.signal.aborted) return;
+        // Skip updates after abort (e.g. user switched conversations), and once
+        // a newer turn owns the transcript.
+        if (!stillCurrent() || abortControllerRef.current?.signal.aborted)
+          return;
 
         const hadAssistant = contentState.hasAssistantContent;
 
@@ -94,12 +123,12 @@ export function useExecuteWithRetry<
 
       while (shouldRetry(attempt)) {
         try {
-          const msg = contentState.hasAssistantContent
-            ? "continue"
-            : originalMessage;
-
+          // Only the first attempt sends the user's message. A retry resumes the
+          // same turn from history, so the message is never replayed — replaying
+          // it duplicated the instruction in the transcript AND on the wire,
+          // since consecutive user turns are concatenated for the model.
           await handleMessageStream(
-            executeStream(msg),
+            attempt === 0 ? executeStream() : resumeStream(),
             adapter.formatMessages,
             onMessageUpdate,
           );
@@ -107,6 +136,12 @@ export function useExecuteWithRetry<
 
           return true;
         } catch (error) {
+          // Checked before the abort signal, which by now may belong to the
+          // newer turn: a superseded turn's failure is stale, and rendering it
+          // would drop an error into the turn currently streaming (and autosave
+          // it there).
+          if (!stillCurrent()) return false;
+
           if (retryAbortRef.current.signal.aborted) return false;
 
           const rateLimitInfo = detectRateLimit(error);
@@ -131,24 +166,14 @@ export function useExecuteWithRetry<
             delayMs,
           });
 
-          // Wait before retrying
-          await new Promise<void>((resolve, reject) => {
-            const signal = retryAbortRef.current?.signal;
-            const timer: { id: ReturnType<typeof setTimeout> | null } = {
-              id: null,
-            };
-
-            const onAbort = () => {
-              if (timer.id != null) clearTimeout(timer.id);
-              reject(new Error("Retry cancelled"));
-            };
-
-            timer.id = setTimeout(() => {
-              signal?.removeEventListener("abort", onAbort);
-              resolve();
-            }, delayMs);
-            signal?.addEventListener("abort", onAbort, { once: true });
-          });
+          // Wait before retrying. Rejecting on abort is load-bearing: the
+          // rejection propagates out of executeWithRetry so the canceled turn is
+          // recorded as a failure upstream.
+          await abortableSleep(
+            delayMs,
+            retryAbortRef.current.signal,
+            "Retry cancelled",
+          );
           // Clear the indicator now that the wait is over. If the next attempt
           // also rate-limits, the catch block above will re-set it. Without
           // this, the indicator stays visible during the entire retry response
@@ -168,9 +193,16 @@ export function useExecuteWithRetry<
 
 /**
  * Detect whether the formatted UI history contains real assistant output
- * (text, reasoning, or tool activity). Used to decide whether a 429 retry
- * should resume with "continue" or replay the original message — the user
- * echo alone must not count as content.
+ * (text, reasoning, or tool activity). Drives WHEN the first autosave fires: the
+ * turn is persisted as soon as the model says something, rather than waiting for
+ * the stream to finish. The user echo alone must not count — saving on it would
+ * persist a turn with no response in it.
+ *
+ * It no longer has anything to do with retries. Choosing between resuming and
+ * re-asking used to hinge on this, which was wrong twice over: it reads the whole
+ * formatted history rather than this turn's output, so on any turn after the
+ * first it was already true from the PREVIOUS turn's response. A retry now
+ * resumes unconditionally — see resumeStream.
  * @param msgs - Formatted UI messages
  * @returns True if any model message has substantive content
  */

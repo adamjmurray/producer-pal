@@ -9,6 +9,7 @@ import {
   deriveVoiceTitle,
   mergeVoiceHistory,
 } from "#webui/hooks/voice/helpers/use-voice-persistence-helpers";
+import { VOICE_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   isGeminiRealtimeModelId,
   OPENAI_REALTIME_MODEL,
@@ -25,8 +26,6 @@ import {
   saveConversation,
   setBookmark,
 } from "#webui/lib/conversation-db";
-
-const AUTOSAVE_DEBOUNCE_MS = 600;
 
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
@@ -189,7 +188,7 @@ export function useVoicePersistence(
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
-    if (liveHistory.length === 0) return;
+    if (liveHistory.length === 0) return undefined;
 
     const id =
       activeIdRef.current ?? (pendingNewIdRef.current ??= crypto.randomUUID());
@@ -228,7 +227,7 @@ export function useVoicePersistence(
 
         void refreshList();
       });
-    }, AUTOSAVE_DEBOUNCE_MS);
+    }, VOICE_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [liveHistory, model, refreshList, setActiveId]);
@@ -465,8 +464,6 @@ async function saveVoiceRecord(
     model: existing?.model ?? ctx.model,
     modelLabel: existing?.modelLabel ?? ctx.model,
     thinking: null,
-    temperature: null,
-    showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
     sessionType: "voice",

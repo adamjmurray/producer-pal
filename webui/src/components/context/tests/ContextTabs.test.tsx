@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContextTabs } from "#webui/components/context/ContextTabs";
-import { type UseDocMemoryReturn } from "#webui/hooks/context/use-doc-memory";
+import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 // The MarkdownEditor wires CodeMirror; stub it to a plain node that echoes the
 // seeded initialValue so we can assert which document the active tab shows.
@@ -20,11 +20,11 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 }));
 
 /**
- * Build a ready document-memory value with the given content.
+ * Build a ready doc value with the given content.
  * @param content - The document body the editor should seed from
- * @returns A UseDocMemoryReturn stub
+ * @returns A UseDocReturn stub
  */
-function readyMemory(content: string): UseDocMemoryReturn {
+function readyDoc(content: string): UseDocReturn {
   return {
     status: { kind: "ready", content },
     saveStatus: "idle",
@@ -35,16 +35,16 @@ function readyMemory(content: string): UseDocMemoryReturn {
   };
 }
 
-vi.mock(import("#webui/hooks/context/use-context-memory"), () => ({
-  useContextMemory: () => readyMemory("PROJECT-DOC"),
+vi.mock(import("#webui/hooks/context/use-project-context"), () => ({
+  useProjectContext: () => readyDoc("PROJECT-DOC"),
 }));
 
-vi.mock(import("#webui/hooks/context/use-global-context-memory"), () => ({
-  useGlobalContextMemory: () => readyMemory("GLOBAL-DOC"),
+vi.mock(import("#webui/hooks/context/use-global-context"), () => ({
+  useGlobalContext: () => readyDoc("GLOBAL-DOC"),
 }));
 
-vi.mock(import("#webui/hooks/context/use-system-prompt-memory"), () => ({
-  useSystemPromptMemory: () => readyMemory("INSTRUCTIONS-DOC"),
+vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
+  useSystemPrompt: () => readyDoc("INSTRUCTIONS-DOC"),
 }));
 
 vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
@@ -58,7 +58,11 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
           description: "Slot description.",
           builtIn: "CORE-BUILTIN",
           override: "",
+          enabled: true,
+          canDisable: true,
+          gate: null,
           drifted: false,
+          splitStale: null,
           forkedFromVersion: null,
         },
       ],
@@ -66,6 +70,7 @@ vi.mock(import("#webui/hooks/context/use-skill-overrides"), () => ({
     saveStatus: "idle",
     saveError: null,
     saveSlot: vi.fn(),
+    setSlotEnabled: vi.fn(),
     resetSlot: vi.fn(),
     refresh: vi.fn(),
     resetSaveStatus: vi.fn(),
@@ -171,11 +176,13 @@ describe("ContextTabs", () => {
         .getByRole("button", { name: "Skills" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
-    // The slot dropdown renders; with no override the built-in shows directly,
-    // read-only, offered with a Customize fork.
+    // The slot dropdown renders; with no override the built-in seeds the
+    // editor directly, labelled as the fork invitation.
     expect(screen.getByLabelText("Skill fragment")).toBeTruthy();
     expect(screen.getByText("CORE-BUILTIN")).toBeTruthy();
-    expect(screen.getByText("Customize")).toBeTruthy();
+    expect(
+      screen.getByText("Default — start typing to customize"),
+    ).toBeTruthy();
   });
 
   it("switches to the Memory tab and shows the collection manager", () => {

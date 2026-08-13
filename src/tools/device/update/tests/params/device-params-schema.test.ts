@@ -32,4 +32,22 @@ describe("paramsInputSchema", () => {
 
     expect(result).toStrictEqual([{ name: "3", value: "1" }]);
   });
+
+  it("coerces an object field to JSON so the setter can warn and skip it", () => {
+    // A structured name/value can never resolve, but it must reach the setter
+    // as a string: setParamValues warns and skips the one bad entry, where a
+    // validation failure here would reject every other param in the call.
+    const result = paramsInputSchema.parse([
+      { name: { oops: 1 }, value: ["a"] },
+    ]);
+
+    expect(result).toStrictEqual([{ name: '{"oops":1}', value: '["a"]' }]);
+  });
+
+  it("rejects a missing or null field", () => {
+    expect(() =>
+      paramsInputSchema.parse([{ name: null, value: "1" }]),
+    ).toThrow();
+    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow();
+  });
 });

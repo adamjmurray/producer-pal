@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { registerSystemPromptRoutes } from "#src/mcp-server/routes/system-prompt-route.ts";
+import { registerSystemPromptRoutes } from "#src/mcp-server/routes/config/system-prompt-route.ts";
 import { VERSION } from "#src/shared/config.ts";
 import {
   type MarkdownRouteServer,

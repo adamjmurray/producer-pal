@@ -5,7 +5,11 @@
 
 import { renderHook, act } from "@testing-library/preact";
 import { vi } from "vitest";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
+import { type Notation } from "#src/shared/notation";
+import {
+  type UseConversationsReturn,
+  useConversations,
+} from "#webui/hooks/chat/use-conversations";
 import {
   type ConversationRecord,
   getConversationDb,
@@ -30,16 +34,23 @@ export function createConversationsProps() {
         activeModel: null as string | null,
         activeProvider: null as Provider | null,
         activeThinking: null as string | null,
-        activeTemperature: null as number | null,
-        activeShowThoughts: null as boolean | null,
         activeSmallModelMode: null as boolean | null,
         activeSystemInstruction: null as string | null,
+        activeNotation: null as Notation | null,
+        activeEnabledTools: null as Record<string, boolean> | null,
       },
       onForeignRecord: undefined as
-        ((record: ConversationRecord) => void) | undefined,
+        | ((record: ConversationRecord) => void)
+        | undefined,
     },
   };
 }
+
+/** The mutable chat-history state createConversationsProps hands back. */
+export type ConversationsState = { chatHistory: unknown[] };
+
+/** renderHook's result ref for a rendered useConversations. */
+export type ConversationsResult = { current: UseConversationsReturn };
 
 /** Wait for async effects to settle. */
 export async function waitForEffects(): Promise<void> {
@@ -70,12 +81,10 @@ export async function setupConversationsHook() {
  * @param content - Message content (default "hello")
  */
 export async function saveWithMessage(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
-  state: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
-  result: any,
+  state: ConversationsState,
+  result: ConversationsResult,
   content = "hello",
-) {
+): Promise<void> {
   state.chatHistory = [{ role: "user", content }];
   await act(() => result.current.saveCurrentConversation());
 }
@@ -88,15 +97,16 @@ export async function saveWithMessage(
  * @returns The conversation ID
  */
 export async function saveAndRename(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
-  state: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
-  result: any,
+  state: ConversationsState,
+  result: ConversationsResult,
   title: string,
 ): Promise<string> {
   await saveWithMessage(state, result);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test helper assumes conversation was saved
-  const id = result.current.activeConversationId!;
+  const id = result.current.activeConversationId;
+
+  if (id == null) {
+    throw new Error("saveAndRename: the save did not set a conversation id");
+  }
 
   await act(async () => {
     await result.current.renameConversation(id, title);

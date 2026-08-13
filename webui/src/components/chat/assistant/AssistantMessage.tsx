@@ -3,21 +3,27 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { Fragment } from "preact";
+import { type ComponentChildren, Fragment } from "preact";
 import { useMemo } from "preact/hooks";
+import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { type TokenUsage } from "#webui/chat/sdk/types";
-import { type UIPart, type UIStepUsagePart } from "#webui/types/messages";
+import {
+  type UIMessage,
+  type UIPart,
+  type UIStepUsagePart,
+} from "#webui/types/messages";
 import { AssistantError } from "./AssistantError";
 import { AssistantText } from "./AssistantText";
 import { AssistantThought } from "./AssistantThought";
-import { AssistantToolCall } from "./AssistantToolCall";
-import { AssistantToolGroup } from "./AssistantToolGroup";
 import {
   type SingleRenderItem,
   type ToolGroupRenderItem,
   groupToolParts,
 } from "./helpers/group-tool-parts";
 import { StepUsageLabel, calcStepNewContent } from "./StepUsageLabel";
+import { AssistantSubagentCall } from "./tool-calls/AssistantSubagentCall";
+import { AssistantToolCall } from "./tool-calls/AssistantToolCall";
+import { AssistantToolGroup } from "./tool-calls/AssistantToolGroup";
 
 interface AssistantMessageProps {
   parts: UIPart[];
@@ -129,6 +135,22 @@ function renderSinglePart(
       />
     );
   } else if (part.type === "tool") {
+    if (part.name === SPAWN_SUBAGENT_TOOL_NAME) {
+      return (
+        <AssistantSubagentCall
+          key={i}
+          task={typeof part.args.task === "string" ? part.args.task : ""}
+          result={part.result}
+          isError={part.isError}
+          isResponding={isResponding}
+          toolCallId={part.id}
+          transcript={renderSubagentTranscript(part.subagentMessages)}
+          index={part.subagentIndex}
+          resumed={part.args.resumeFrom != null}
+        />
+      );
+    }
+
     return (
       <AssistantToolCall
         key={i}
@@ -154,6 +176,44 @@ function renderSinglePart(
 
   // TypeScript has narrowed this to UIErrorPart
   return <AssistantError key={i} content={part.content} />;
+}
+
+/**
+ * Render a subagent's worker transcript for the card's deep-dive tier: user
+ * turns as compact bubbles, assistant turns through the same AssistantMessage
+ * component the main chat uses. Workers can't spawn, so this never recurses into
+ * another subagent card.
+ * @param messages - The formatted worker transcript, if any
+ * @returns Rendered transcript nodes, or undefined when there is nothing to show
+ */
+function renderSubagentTranscript(
+  messages: UIMessage[] | undefined,
+): ComponentChildren {
+  if (!messages || messages.length === 0) return undefined;
+
+  return messages.map((m, idx) =>
+    m.role === "user" ? (
+      <div
+        key={idx}
+        className="text-xs bg-blue-100 dark:bg-blue-900/60 rounded px-2 py-1 whitespace-pre-wrap wrap-break-word"
+      >
+        {userTranscriptText(m)}
+      </div>
+    ) : (
+      <AssistantMessage key={idx} parts={m.parts} />
+    ),
+  );
+}
+
+/**
+ * Concatenate a transcript user message's text parts into a plain string.
+ * @param message - A user UIMessage from a worker transcript
+ * @returns The joined text content
+ */
+function userTranscriptText(message: UIMessage): string {
+  return message.parts
+    .map((part) => ("content" in part ? part.content : ""))
+    .join("");
 }
 
 /**

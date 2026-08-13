@@ -29,10 +29,28 @@ export interface UIThoughtPart {
 
 export interface UIToolPart {
   type: "tool";
+  /**
+   * The provider's tool-call id. Carried through so a still-running call can be
+   * matched to out-of-band live status (see chat/sdk/subagent/subagent-rate-limit.ts).
+   * Optional because pre-existing persisted history may predate it.
+   */
+  id?: string;
   name: string;
   args: Record<string, unknown>;
   result: string | null;
   isError?: boolean;
+  /**
+   * For a spawn_subagent call: the worker's full transcript, formatted for the
+   * deep-dive tier of the subagent card. UI-only — the orchestrator model never
+   * sees it (only the compact `result`). Absent for ordinary tool calls.
+   */
+  subagentMessages?: UIMessage[];
+  /**
+   * For a spawn_subagent call: which subagent ran, 1-based. Titles the card, so
+   * the runs of a resumed worker read as one worker rather than several. Absent
+   * for ordinary tool calls and for spawns predating worker numbering.
+   */
+  subagentIndex?: number;
 }
 
 export interface UIStepUsagePart {
@@ -80,13 +98,8 @@ export interface MessageFormatter<TRawMessage> {
   format: (history: TRawMessage[]) => UIMessage[];
 }
 
-// Chat Client Interface
-// Manages chat sessions with AI providers
-
-export interface ChatClient<TRawMessage> {
-  chatHistory: TRawMessage[];
-  initialize: () => Promise<void>;
-  sendMessage: (
-    message: string,
-  ) => AsyncGenerator<TRawMessage[], void, unknown>;
-}
+// The live chat-client interface is ChatClient in hooks/chat/use-chat-types.ts.
+// A second, unused copy lived here with a one-argument sendMessage; it was
+// deleted rather than kept, because a same-named type that no longer describes
+// the real client is worse than no type at all — the next person grepping
+// ChatClient finds two and has to work out which one anything implements.

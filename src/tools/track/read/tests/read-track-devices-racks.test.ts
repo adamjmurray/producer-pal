@@ -9,8 +9,8 @@ import {
   createDeviceMockProperties,
   setupDrumRackMocks,
   setupEmptyRackMocks,
-} from "../helpers/read-track-device-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+} from "./helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";

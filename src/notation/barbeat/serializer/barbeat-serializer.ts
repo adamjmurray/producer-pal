@@ -6,7 +6,7 @@
 import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isValidMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { formatDrumNotation } from "./helpers/barbeat-serializer-drum.ts";
 import { formatBeatPosition } from "./helpers/barbeat-serializer-fractions.ts";
 import {

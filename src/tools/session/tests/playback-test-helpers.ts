@@ -5,7 +5,7 @@
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-mock-helpers.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,

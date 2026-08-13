@@ -9,7 +9,7 @@ import { type NoteEvent } from "../types.ts";
 import {
   drumPatternNotation,
   drumPatternNotes,
-} from "./barbeat-test-fixtures.ts";
+} from "./barbeat-test-helpers.ts";
 import { formatNotation } from "./barbeat-format-notation.ts";
 import { interpretNotation } from "./interpreter/barbeat-interpreter.ts";
 

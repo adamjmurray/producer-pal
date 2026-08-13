@@ -11,7 +11,7 @@ updates:
       - "/claude-desktop-extension"
       - "/npm"
     target-branch: "dev"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 20
     schedule:
       interval: "weekly"
     versioning-strategy: "increase"
@@ -39,14 +39,20 @@ updates:
           - "rollup"
           - "@rollup/*"
           - "rollup-plugin-*"
-      eslint:
+      # oxlint replaced eslint, but four eslint plugins remain: oxlint runs them
+      # through its jsPlugins bridge, natively implementing none of their rules
+      # (unicorn is the partial case — see dev/Linting.md).
+      lint-plugins:
         patterns:
-          - "eslint"
-          - "eslint-*"
+          - "eslint-plugin-*"
           - "@eslint-community/*"
-          - "@typescript-eslint/*"
           - "@stylistic/eslint-plugin"
-          - "@vitest/eslint-plugin"
+      # oxlint pins an exact tsgolint build, so the two must move together or
+      # `npm ci` resolves a mismatched pair.
+      oxlint:
+        patterns:
+          - "oxlint"
+          - "oxlint-*"
       vite:
         patterns:
           - "vite"

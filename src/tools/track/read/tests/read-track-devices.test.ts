@@ -19,9 +19,9 @@ import {
   createRackDeviceMockProperties,
   setupDrumRackWithReverbMocks,
   setupInstrumentRackOnTrack0,
-} from "../helpers/read-track-device-test-helpers.ts";
-import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
-import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
+} from "./helpers/read-track-device-test-helpers.ts";
+import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 describe("readTrack", () => {

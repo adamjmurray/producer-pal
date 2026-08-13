@@ -19,7 +19,7 @@ import {
   type ContextEditorLabels,
   ContextScreen,
 } from "#webui/components/context/ContextScreen";
-import { type DocMemoryStatus } from "#webui/hooks/context/use-doc-memory";
+import { type DocStatus } from "#webui/hooks/context/use-doc";
 
 const editorChange = vi.fn();
 const editorFocus = vi.fn();
@@ -85,24 +85,24 @@ const TEST_LABELS: ContextEditorLabels = {
   title: "Project Context",
   loadingLabel: "Loading project context…",
   closeAriaLabel: "Close context editor",
-  clearConfirmMessage: "Clear all project memory? This cannot be undone.",
-  externalUpdateMessage: "Memory was updated outside the editor.",
+  clearConfirmMessage: "Clear all project context? This cannot be undone.",
+  externalUpdateMessage: "Project context was updated outside the editor.",
   exportBasename: "producer-pal-project-context",
 };
 
 /**
- * ContextScreen receives its document memory as a prop (ContextTabs supplies
+ * ContextScreen receives its doc as a prop (ContextTabs supplies
  * the real hook). This harness rebuilds the mock hook value from the mutable
  * mock* state on every render, so a `rerender(<Harness />)` reflects flipped
  * status the way re-calling the hook used to.
  * @param props - Optional onClose passthrough
  * @param props.onClose - Close handler forwarded to the screen
- * @returns A ContextScreen bound to the mock memory + project labels
+ * @returns A ContextScreen bound to the mock doc + project labels
  */
 function Harness(props: { onClose?: () => void } = {}): preact.JSX.Element {
   return (
     <ContextScreen
-      memory={buildHookValue()}
+      doc={buildHookValue()}
       labels={TEST_LABELS}
       onClose={props.onClose}
     />
@@ -110,7 +110,7 @@ function Harness(props: { onClose?: () => void } = {}): preact.JSX.Element {
 }
 
 function buildHookValue() {
-  let status: DocMemoryStatus;
+  let status: DocStatus;
 
   if (mockStatus.kind === "ready") {
     status = {
@@ -198,7 +198,7 @@ describe("ContextScreen", () => {
     expect(matches).toHaveLength(2);
   });
 
-  it("shows editor with content when memory is ready", () => {
+  it("shows editor with content when the doc is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "# hello";
     render(<Harness />);
@@ -207,7 +207,7 @@ describe("ContextScreen", () => {
     expect(lastEditorProps?.readOnly).toBe(false);
   });
 
-  it("renders the controls strip when memory is ready", () => {
+  it("renders the controls strip when the doc is ready", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "x";
     render(<Harness />);
@@ -286,7 +286,7 @@ describe("ContextScreen", () => {
   it("Clear remounts the editor with cleared content (not the pre-clear stale doc)", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old content";
-    // Real useContextMemory only flips status.content to "" AFTER the POST
+    // Real useProjectContext only flips status.content to "" AFTER the POST
     // round-trips. Use a controllable promise so we can interleave the editor
     // remount and the status update the way the bug does in production.
     let resolveClear: (ok: boolean) => void = () => {};
@@ -313,7 +313,7 @@ describe("ContextScreen", () => {
 
     // Server completes the clear: status.content flips, then clear() resolves
     // and the fixed handler bumps `editorKey` → remount with "". The rerender
-    // stands in for the owner (ContextTabs) re-rendering with fresh memory when
+    // stands in for the owner (ContextTabs) re-rendering with fresh doc when
     // the underlying hook's status flips; it precedes the editorKey bump so the
     // remount reads the cleared content, not the stale doc.
     mockStatus.content = "";
@@ -649,9 +649,9 @@ describe("ContextScreen", () => {
 
     // Pre-fix this banner did not exist — the user would never know an
     // AI/device write happened, and their next keystroke would clobber it.
-    expect(screen.queryByText("Memory was updated outside the editor.")).toBe(
-      null,
-    );
+    expect(
+      screen.queryByText("Project context was updated outside the editor."),
+    ).toBe(null);
 
     // Status flips because focus refresh fetched the server's new content.
     await act(async () => {
@@ -660,7 +660,7 @@ describe("ContextScreen", () => {
     });
 
     expect(
-      screen.getByText("Memory was updated outside the editor."),
+      screen.getByText("Project context was updated outside the editor."),
     ).toBeTruthy();
     // Clicking Reload remounts the editor with the new content as initialValue.
     await act(() => {
@@ -683,9 +683,7 @@ describe("ContextScreen", () => {
     function renderWithBuiltIn(): void {
       mockStatus.kind = "ready";
       mockStatus.content = "MY DRAFT";
-      render(
-        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
-      );
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
     }
 
     it("hides the built-in by default, showing the override editor", () => {
@@ -743,32 +741,47 @@ describe("ContextScreen", () => {
       expect(saveMock).toHaveBeenCalledWith("edited");
     });
 
-    it("shows only the built-in with a Customize fork when there is no override", async () => {
+    it("seeds the editor with the built-in when there is no override", () => {
       mockStatus.kind = "ready";
       mockStatus.content = "";
-      render(
-        <ContextScreen memory={buildHookValue()} labels={BUILTIN_LABELS} />,
-      );
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
 
-      // Built-in-only view: the default is shown read-only with a Customize
-      // button; the editable pane and its reveal affordance are absent.
-      expect(screen.getByText("Customize")).toBeTruthy();
+      // The default IS the editor's content — editable, so typing forks it —
+      // and no override chrome is offered until it does.
+      expect(lastEditorProps?.initialValue).toBe("SHIPPED DEFAULT");
+      expect(lastEditorProps?.readOnly).toBe(false);
+      expect(
+        screen.getByText("Default — start typing to customize"),
+      ).toBeTruthy();
       expect(screen.queryByText("Your instructions")).toBeNull();
       expect(screen.queryByText("Show default")).toBeNull();
-      expect(lastEditorProps?.readOnly).toBe(true);
-      expect(editorMountedValues).toContain("SHIPPED DEFAULT");
       // The size readout reflects the 15-char default that's on screen,
       // labelled so it isn't mistaken for the (empty) override.
       expect(screen.getByText(/Default: 15 chars · ≈4 tokens/)).toBeTruthy();
+    });
 
-      // Customize forks the built-in into the override (persists it via the
-      // import path so the view flips to editing).
+    it("forks the built-in into an override on the first keystroke", async () => {
+      mockStatus.kind = "ready";
+      mockStatus.content = "";
+      render(<ContextScreen doc={buildHookValue()} labels={BUILTIN_LABELS} />);
+
+      // The editor already holds the default, so an edit's ordinary autosave
+      // persists default+edit as the override — no separate fork write.
+      await act(() => {
+        editorChange("SHIPPED DEFAULT + MINE");
+      });
+
+      expect(screen.getByText("Your instructions")).toBeTruthy();
+      expect(screen.getByLabelText("Reset to default")).toBeTruthy();
+      // The seeded editor is NOT remounted by the fork, so the keystroke lives.
+      expect(editorMountedValues).toStrictEqual(["SHIPPED DEFAULT"]);
+
       await act(async () => {
-        fireEvent.click(screen.getByText("Customize"));
+        vi.advanceTimersByTime(800);
         await Promise.resolve();
       });
 
-      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT");
+      expect(saveMock).toHaveBeenCalledWith("SHIPPED DEFAULT + MINE");
     });
 
     it("shows the drift note when the built-in changed since the user forked", () => {
@@ -776,7 +789,7 @@ describe("ContextScreen", () => {
       mockStatus.content = "MY DRAFT";
       render(
         <ContextScreen
-          memory={{
+          doc={{
             ...buildHookValue(),
             drift: { drifted: true, forkedFromVersion: "1.4.0" },
           }}
@@ -794,7 +807,7 @@ describe("ContextScreen", () => {
       mockStatus.content = "MY DRAFT";
       render(
         <ContextScreen
-          memory={{
+          doc={{
             ...buildHookValue(),
             drift: { drifted: false, forkedFromVersion: "1.5.0" },
           }}

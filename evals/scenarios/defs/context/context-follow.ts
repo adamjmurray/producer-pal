@@ -12,7 +12,7 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
-import { clipStateAssertion } from "../clip/clip-scenario-helpers.ts";
+import { clipStateAssertion } from "../clip/helpers/clip-scenario-helpers.ts";
 import {
   CONTEXT_LIVE_SET,
   LEAD_SLOT,
@@ -47,63 +47,82 @@ const PROJECT_CONTEXT = [
   "- Every clip in this set is exactly 2 bars long. Never write a longer one.",
 ].join("\n");
 
-export const contextFollowProject: EvalScenario = {
+/** The parts that vary between the "seed a layer, grade the clip" scenarios. */
+interface ContextFollowSpec {
+  id: string;
+  description: string;
+  /** Seeding for the layer under test. */
+  seed: Pick<EvalScenario, "setup" | "teardown">;
+  /** Project context is the one layer seeded by plain config. */
+  config?: EvalScenario["config"];
+  /** The turn-1 request. */
+  ask: string;
+  /** Passes when the written clip obeys the seeded rule. */
+  clipCheck: Parameters<typeof clipStateAssertion>[2];
+  judgePrompt: string;
+}
+
+/**
+ * Build a context-following scenario: seed a layer, ask for one clip on the
+ * Lead track, grade the clip.
+ *
+ * @param spec - The varying parts
+ * @returns The assembled scenario
+ */
+function contextFollowScenario(spec: ContextFollowSpec): EvalScenario {
+  return {
+    id: spec.id,
+    description: spec.description,
+    kind: "capability",
+    liveSet: CONTEXT_LIVE_SET,
+    reuseLiveSet: true,
+    judgeAdvisory: true,
+    ...(spec.config == null ? {} : { config: spec.config }),
+    ...spec.seed,
+
+    messages: [MSG_CONNECT, spec.ask],
+
+    assertions: [
+      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+      clipStateAssertion(LEAD_SLOT, "4/4", spec.clipCheck),
+      { type: "llm_judge", prompt: spec.judgePrompt },
+    ],
+  };
+}
+
+export const contextFollowProject: EvalScenario = contextFollowScenario({
   id: "context-follow-project",
   description: "Honors the house-style rules in project context",
-  kind: "capability",
-  liveSet: CONTEXT_LIVE_SET,
-  reuseLiveSet: true,
-  judgeAdvisory: true,
 
-  // The project layer is the one scope seeded by plain config — resetConfig()
-  // reverts it, so no teardown is needed for it.
-  config: { memoryContent: PROJECT_CONTEXT },
+  // resetConfig() reverts the project layer, so it needs no teardown.
+  config: { projectContext: PROJECT_CONTEXT },
+  seed: seedContext({ clearSlots: [LEAD_SLOT] }),
 
-  ...seedContext({ clearSlots: [LEAD_SLOT] }),
+  ask: "Add a bassline to the Lead track in the first session slot.",
 
-  messages: [
-    MSG_CONNECT,
-    "Add a bassline to the Lead track in the first session slot.",
-  ],
+  clipCheck: (events) =>
+    events.length > 0 &&
+    // The downbeat is silent: nothing starts at beat 1 of the clip.
+    events.every((n) => n.start_time > 0.001) &&
+    events.every((n) => n.start_time + n.duration <= TWO_BARS + 0.001),
 
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-
-    clipStateAssertion(
-      LEAD_SLOT,
-      "4/4",
-      (events) =>
-        events.length > 0 &&
-        // The downbeat is silent: nothing starts at beat 1 of the clip.
-        events.every((n) => n.start_time > 0.001) &&
-        events.every((n) => n.start_time + n.duration <= TWO_BARS + 0.001),
-    ),
-
-    {
-      type: "llm_judge",
-      prompt: `The project context said every clip in this project starts with a rest
+  judgePrompt: `The project context said every clip in this project starts with a rest
 (never a note on beat 1) and that clips are never longer than 2 bars. Evaluate
 whether the assistant:
 1. Left beat 1 of the clip empty
 2. Kept the clip to 2 bars or fewer
 3. Did so WITHOUT the user restating either rule — i.e. it applied the project
    context on its own`,
-    },
-  ],
-};
+});
 
-export const contextFollowGlobal: EvalScenario = {
+export const contextFollowGlobal: EvalScenario = contextFollowScenario({
   id: "context-follow-global",
   description: "Honors a cross-project rule pinned in global context",
-  kind: "capability",
-  liveSet: CONTEXT_LIVE_SET,
-  reuseLiveSet: true,
-  judgeAdvisory: true,
 
   // A velocity ceiling BELOW the notation default (100) — following it takes a
   // deliberate act, so passing can't happen by writing notes the lazy way.
-  ...seedContext({
+  seed: seedContext({
     global: [
       "# How I work",
       "",
@@ -113,29 +132,15 @@ export const contextFollowGlobal: EvalScenario = {
     clearSlots: [LEAD_SLOT],
   }),
 
-  messages: [
-    MSG_CONNECT,
-    "Create a 1-bar chord progression on the Lead track in the first session slot.",
-  ],
+  ask: "Create a 1-bar chord progression on the Lead track in the first session slot.",
 
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+  clipCheck: (events) =>
+    events.length > 0 && events.every((n) => n.velocity <= 80),
 
-    clipStateAssertion(
-      LEAD_SLOT,
-      "4/4",
-      (events) => events.length > 0 && events.every((n) => n.velocity <= 80),
-    ),
-
-    {
-      type: "llm_judge",
-      prompt: `Global context said to never write a note velocity above 80.
+  judgePrompt: `Global context said to never write a note velocity above 80.
 Evaluate whether the assistant wrote the requested chord progression with every
 velocity at or below 80, without being reminded.`,
-    },
-  ],
-};
+});
 
 /**
  * Three plausible memories, only one of which bears on writing a bass part. The

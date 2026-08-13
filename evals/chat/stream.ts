@@ -5,7 +5,7 @@
 
 /**
  * CLI stream processor for AI SDK streamText() results.
- * Processes fullStream events and prints to terminal with formatting.
+ * Processes stream events and prints to terminal with formatting.
  */
 
 import { type streamText } from "ai";
@@ -20,6 +20,7 @@ import {
   formatWarning,
   startThought,
 } from "./shared/formatting.ts";
+import { mcpResultText, mcpResultWarnings } from "./shared/mcp-result-text.ts";
 import { type TurnResult } from "./shared/types.ts";
 
 /** Mutable state tracked during stream processing */
@@ -37,7 +38,7 @@ interface StreamState {
 }
 
 /**
- * Process a streamText fullStream and print events to the terminal.
+ * Process a streamText result stream and print events to the terminal.
  * Returns a TurnResult with the collected text and tool calls for assertions.
  *
  * @param result - The streamText result to process
@@ -59,7 +60,7 @@ export async function processCliStream(
     sawReasoning: false,
   };
 
-  for await (const part of result.fullStream) {
+  for await (const part of result.stream) {
     handleStreamPart(part, state);
   }
 
@@ -71,7 +72,7 @@ export async function processCliStream(
 /**
  * Handle a single stream part, updating state and printing to terminal
  *
- * @param part - Stream part from fullStream
+ * @param part - Stream part from the streamText result
  * @param part.type - Stream part type identifier
  * @param state - Mutable stream state
  */
@@ -206,7 +207,9 @@ function handleToolResult(
   attachToolResult(state.toolCalls, toolName, toolCallId, output);
 
   if (!isQuietMode()) {
-    process.stdout.write(formatToolResult(formatOutput(output)));
+    process.stdout.write(
+      formatToolResult(formatOutput(output), mcpResultWarnings(output)),
+    );
   }
 }
 
@@ -242,7 +245,7 @@ function finishStream(state: StreamState): void {
 
   if (state.inThought) process.stdout.write(endThought());
 
-  // Skip trailing newline when usage is shown — onStepFinish adds its own
+  // Skip trailing newline when usage is shown — onStepEnd adds its own
   if (!state.showUsage) process.stdout.write("\n");
 }
 
@@ -312,7 +315,7 @@ function attachToolResult(
     : undefined;
 
   if (byId != null) {
-    byId.result = formatOutput(output);
+    recordOutput(byId, output);
 
     return;
   }
@@ -322,11 +325,30 @@ function attachToolResult(
     const tc = toolCalls[i] as TurnResult["toolCalls"][number];
 
     if (tc.name === toolName && tc.result == null) {
-      tc.result = formatOutput(output);
+      recordOutput(tc, output);
 
       return;
     }
   }
+}
+
+/**
+ * Store a tool's output on its call: the payload string plus any relayed
+ * `WARNING:` blocks, which sit in later content blocks and would otherwise be
+ * dropped by the payload-only unwrapping.
+ *
+ * @param toolCall - The call the output belongs to
+ * @param output - Raw tool output
+ */
+function recordOutput(
+  toolCall: TurnResult["toolCalls"][number],
+  output: unknown,
+): void {
+  toolCall.result = formatOutput(output);
+
+  const warnings = mcpResultWarnings(output);
+
+  if (warnings.length > 0) toolCall.warnings = warnings;
 }
 
 /**
@@ -340,11 +362,5 @@ function formatOutput(output: unknown): string {
   if (output == null) return "";
 
   // MCP content array format: [{ type: "text", text: "..." }]
-  if (Array.isArray(output)) {
-    const first = output[0] as { text?: string } | undefined;
-
-    if (first?.text) return first.text;
-  }
-
-  return JSON.stringify(output);
+  return mcpResultText(output) || JSON.stringify(output);
 }

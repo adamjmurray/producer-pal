@@ -171,6 +171,82 @@ values return **400**. Combinable with `?format=`:
 POST /api/tools/{name}?format=json&timeoutMs=10000
 ```
 
+### Per-request settings {#per-request-settings}
+
+Three headers let one client run its own profile. They work on both REST
+endpoints and on the MCP endpoint, so a script, an agent, and the
+[Chat UI](/guide/chat-ui) can each use a different notation at the same time
+without a `POST /config` changing everyone else's:
+
+| Header                            | Value                           | Overrides                                      |
+| --------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
+| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
+| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
+
+Absent or unrecognized values fall back to the device's global setting, so
+clients that send nothing are unaffected. Nothing is remembered between requests
+— **send the headers on every request**, `GET /api/tools` included, so the
+schemas you read match what you send.
+
+#### Notation {#per-request-notation}
+
+`x-producer-pal-notation` picks the [MIDI notation](/features/midi-notation) for
+one request. It decides the note syntax in the tool and argument descriptions
+`GET /api/tools` serves, the syntax the [Skills](/features#skills) teach, and —
+unlike the other two — how notes in your arguments are parsed and how notes in
+the response are formatted.
+
+```bash
+# Read a clip's notes as a JSON array, whatever the device is set to
+curl -X POST http://localhost:3350/api/tools/ppal-read-clip \
+  -H 'Content-Type: application/json' \
+  -H 'x-producer-pal-notation: midi-json' \
+  -d '{"clipId": "123", "include": ["notes"]}'
+```
+
+This is the header to reach for in a coding agent: `midi-json` gives you notes
+you can build and parse programmatically, without forcing the user's Chat UI off
+`barbeat` mid-session.
+
+#### Toolset {#per-request-toolset}
+
+`x-producer-pal-disabled-tools` withholds tools from a single request. A
+withheld tool disappears from `GET /api/tools` and **404**s from
+`POST /api/tools/{name}`.
+
+The reason to bother is `ppal-connect`: withholding a tool also drops the part
+of the [Skills](/features#skills) it returns that teaches that tool, so a client
+that only needs a few tools stops paying for the rest in every session. See
+[Choosing a Toolset](/features#toolset).
+
+```bash
+# A read-only session: no writers, and no note-writing instructions either
+curl -X POST http://localhost:3350/api/tools/ppal-connect \
+  -H 'Content-Type: application/json' \
+  -H 'x-producer-pal-disabled-tools: ppal-create-clip,ppal-update-clip,ppal-delete' \
+  -d '{}'
+```
+
+Unrecognized names are ignored. `ppal-connect` itself can be withheld — nothing
+is reserved here, unlike the `npx producer-pal` flags.
+
+#### Small model mode {#per-request-small-model-mode}
+
+`x-producer-pal-small-model-mode: true` shrinks the tool schemas
+`GET /api/tools` serves and switches the Skills to the shorter variant. It's
+aimed at local and lightweight models; see
+[Small Model Mode](/features#small-model-mode).
+
+::: tip Output format and timeout are REST-only
+
+`?format=` and `?timeoutMs=` above have no MCP equivalent, on purpose. Query
+params aren't something MCP clients send, `/mcp` is built to return the one
+MCP-shaped response, and the timeout exists for slow machines — a fact about the
+device, not about one call. Set it on the device's **Setup** tab.
+
+:::
+
 ## Quick Start with curl
 
 ```bash
@@ -213,7 +289,7 @@ Works with Python 3.6+ (no dependencies).
 
 Use the [list tools endpoint](#list-tools) to discover all available tools and
 their input schemas at runtime. You can also browse the full tool documentation
-on the [Features](/features) page.
+in the [Tool Reference](/features/tools).
 
 ## Live API
 
@@ -248,18 +324,37 @@ object mid-sequence.
 
 Available operation types:
 
-| Type                   | Properties used             | Description                                                                                                                             |
-| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_property` / `get` | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                 |
-| `set_property` / `set` | `property`, `value`         | Write a property value                                                                                                                  |
-| `call_method` / `call` | `method`, `args` (optional) | Call a method                                                                                                                           |
-| `goto`                 | `value` (path)              | Navigate to a different object                                                                                                          |
-| `info`                 | —                           | Get object info                                                                                                                         |
-| `getProperty`          | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get`/`get_property` for the full array |
-| `getChildIds`          | `property` (child type)     | Get child object IDs                                                                                                                    |
-| `exists`               | —                           | Check if the object exists                                                                                                              |
-| `getColor`             | —                           | Read object color                                                                                                                       |
-| `setColor`             | `value` (hex string)        | Write object color                                                                                                                      |
+| Type           | Properties used             | Description                                                                                                                      |
+| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                          |
+| `set`          | `property`, `value`         | Write a property value; returns Live's status code                                                                               |
+| `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                          |
+| `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                 |
+| `goto`         | `value` (path)              | Navigate to a different object                                                                                                   |
+| `info`         | —                           | Get object info                                                                                                                  |
+| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array         |
+| `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                             |
+| `exists`       | —                           | Check if the object exists                                                                                                       |
+| `getColor`     | —                           | Read object color                                                                                                                |
+| `setColor`     | `value` (hex string)        | Write object color                                                                                                               |
+| `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property |
+| `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method              |
+| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                               |
+| `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                 |
+| `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                      |
+| `getstring`    | `property`                  | Read a property as a string                                                                                                      |
+
+The last group operates on the JavaScript wrapper, not the Live object it points
+at. Despite the names, `get`/`get_property` and `call`/`call_method` are **not**
+aliases — `call get_current_beats_song_time` works, while
+`call_method get_current_beats_song_time` fails because that method lives on the
+Live object, not the wrapper. Only `set` and `set_property` perform the same
+write, and even they report different results.
+
+You don't need to call `set_path ""` yourself for cleanup. Live arms a path
+listener on every collection along a path-based object's path and never takes
+them down, so the tool clears the path of the object it created at the end of
+every call, whether or not the call succeeded.
 
 ### Examples
 

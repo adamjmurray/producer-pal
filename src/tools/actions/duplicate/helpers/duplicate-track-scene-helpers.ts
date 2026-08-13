@@ -5,7 +5,8 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
@@ -313,9 +314,7 @@ export function calculateSceneLength(sceneIndex: number): number {
   let maxLength = 4; // Default minimum scene length
 
   forEachClipInScene(sceneIndex, trackIds, (clip) => {
-    const clipLength = clip.getProperty("length") as number;
-
-    maxLength = Math.max(maxLength, clipLength);
+    maxLength = Math.max(maxLength, clipLengthBeats(clip));
   });
 
   return maxLength;

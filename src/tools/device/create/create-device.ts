@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
@@ -172,11 +173,20 @@ function createDeviceAtPath(
     );
   }
 
-  // Fallback to append when inserting at position 0 on empty container
-  // (Live API fails with position=0 on empty device chains)
+  // Live rejects any position past the end of the chain, including position 0
+  // on an empty one. Append instead of failing.
   const deviceCount = container.getChildren("devices").length;
+  const pastEnd = position != null && position > deviceCount;
+
+  if (pastEnd) {
+    console.warn(
+      `createDevice: path "${path}" is past the end of the device chain ` +
+        `(${deviceCount} device${deviceCount === 1 ? "" : "s"}), appending "${deviceName}" instead`,
+    );
+  }
+
   const effectivePosition =
-    position === 0 && deviceCount === 0 ? null : position;
+    pastEnd || (position === 0 && deviceCount === 0) ? null : position;
 
   const result =
     effectivePosition != null

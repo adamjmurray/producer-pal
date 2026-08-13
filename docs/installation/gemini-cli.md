@@ -13,9 +13,11 @@ experience.
 :::
 
 If you feel comfortable with the command line, this is an option for using
-Producer Pal. Also consider using Gemini with Producer Pal's
-[built-in chat UI](./gemini) (but probably via OpenRouter as noted on that
-page).
+Producer Pal. Also consider [Antigravity](./antigravity), Google's desktop agent
+app, or using Gemini with Producer Pal's [built-in chat UI](./gemini) (but
+probably via OpenRouter as noted on that page).
+
+<!--@include: ../_partials/agent-skill-callout.md-->
 
 ## Requirements
 
@@ -33,7 +35,15 @@ page).
 
 Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
-**Option A: With npx (recommended)** - Allows flexible startup order and
+::: warning Not the same file as Antigravity
+
+[Antigravity](./antigravity) reads `~/.gemini/config/mcp_config.json` instead.
+Same folder, separate configs — adding Producer Pal to one does not add it to
+the other.
+
+:::
+
+**Option A: With npx** (recommended for MCP) - Allows flexible startup order and
 auto-reconnection:
 
 ```json
@@ -49,9 +59,10 @@ auto-reconnection:
 
 ::: tip Scripting or building against Producer Pal?
 
-If you'll have the agent **write code that generates or parses** Producer Pal
-data — building MIDI programmatically, or piping tool output through JSON
-tooling — add `--format json` and `--notation midi-json` to the args:
+If you're using MCP and will have the agent **write code that generates or
+parses** Producer Pal data — building MIDI programmatically, or piping tool
+output through JSON tooling — add `--format json` and `--notation midi-json` to
+the args:
 
 ```json
 {
@@ -72,6 +83,25 @@ tooling — add `--format json` and `--notation midi-json` to the args:
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
+
+:::
+
+::: tip Only need some of the tools?
+
+Narrow the toolset and every conversation gets smaller:
+
+```json
+{
+  "mcpServers": {
+    "producer-pal": {
+      "command": "npx",
+      "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+    }
+  }
+}
+```
+
+<!--@include: ../_partials/toolset-tip.md-->
 
 :::
 

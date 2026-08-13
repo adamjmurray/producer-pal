@@ -80,7 +80,7 @@ function freeSlotSourceParam(
       // emits the source as a phantom active route. Dual of the raw-index
       // guards added in 93ddd434.
       if (targetLabel == null || targetLabel === "None") {
-        return;
+        return undefined;
       }
 
       return readEnumByIndex(device, sourceProperty, SOURCES);

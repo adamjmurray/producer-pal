@@ -11,7 +11,7 @@ import {
   warnExtraNames,
 } from "../name-utils.ts";
 
-vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
@@ -86,7 +86,7 @@ describe("name-utils", () => {
     it("does nothing when parsedNames is null", async () => {
       vi.clearAllMocks();
       warnExtraNames(null, 3, "testTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(console.warn).not.toHaveBeenCalled();
     });
@@ -94,7 +94,7 @@ describe("name-utils", () => {
     it("does nothing when names count matches item count", async () => {
       vi.clearAllMocks();
       warnExtraNames(["A", "B"], 2, "testTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(console.warn).not.toHaveBeenCalled();
     });
@@ -102,7 +102,7 @@ describe("name-utils", () => {
     it("does nothing when fewer names than items", async () => {
       vi.clearAllMocks();
       warnExtraNames(["A"], 3, "testTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(console.warn).not.toHaveBeenCalled();
     });
@@ -110,7 +110,7 @@ describe("name-utils", () => {
     it("warns when more names than items", async () => {
       vi.clearAllMocks();
       warnExtraNames(["A", "B", "C"], 2, "testTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(console.warn).toHaveBeenCalledWith(
         "testTool: 3 names provided but only 2 items — ignoring extra",
@@ -122,7 +122,7 @@ describe("name-utils", () => {
     it("parses names and warns on extras in one call", async () => {
       vi.clearAllMocks();
       const result = parseNames("A,B,C", 2, "myTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(result).toStrictEqual(["A", "B", "C"]);
       expect(console.warn).toHaveBeenCalledWith(
@@ -133,7 +133,7 @@ describe("name-utils", () => {
     it("returns null when no splitting needed", async () => {
       vi.clearAllMocks();
       const result = parseNames("Lead", 1, "myTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(result).toBeNull();
       expect(console.warn).not.toHaveBeenCalled();
@@ -142,7 +142,7 @@ describe("name-utils", () => {
     it("warns when fewer names than items", async () => {
       vi.clearAllMocks();
       parseNames("A,B", 5, "myTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(console.warn).toHaveBeenCalledWith(
         "myTool: 2 names provided for 5 items — extras will keep default names",
@@ -152,7 +152,7 @@ describe("name-utils", () => {
     it("returns parsed names without warning when count matches", async () => {
       vi.clearAllMocks();
       const result = parseNames("A,B", 2, "myTool");
-      const console = await import("#src/shared/v8-max-console.ts");
+      const console = await import("#src/shared/max/v8-max-console.ts");
 
       expect(result).toStrictEqual(["A", "B"]);
       expect(console.warn).not.toHaveBeenCalled();

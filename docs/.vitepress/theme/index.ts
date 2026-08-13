@@ -42,16 +42,20 @@ function setupImageZoom() {
 
   document.addEventListener("click", (event) => {
     const target = event.target;
+
     if (
       !(target instanceof HTMLImageElement) ||
       !target.matches(".vp-doc img:not(.no-zoom)")
     ) {
       return;
     }
+
     if (target.classList.contains("zoomed")) {
       close();
+
       return;
     }
+
     close();
     target.classList.add("zoomed");
     backdrop = document.createElement("div");

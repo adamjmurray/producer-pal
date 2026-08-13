@@ -106,6 +106,7 @@ default (below); only the chords line reads chord symbols.
 
 ```
 melody: C Eb G' z/2 A/8!
+melody: C3 Eb3 G3/2        # absolute octaves (C3 = 60) instead of octave marks
 melody/8: C D E G          # /N in the header sets the line's default duration
 melody: [C Eb G]/2!        # a bracket stack — notes share the /N and dynamic
 chords: C Am F G7          # chord symbols: bare = major, else a quality suffix
@@ -114,10 +115,18 @@ chords: Cm7 [Eb G C']      # a symbol, then an explicit voicing (chord register)
 
 A **note token** (melody/bass) is, in order: `letter` (`A`–`G`,
 case-insensitive) + **accidental** (`#`/`b`, _immediately after the letter_, so
-`Cb` = C-flat while a lone `b` = note B) + suffix modifiers in **any order**:
+`Cb` = C-flat while a lone `b` = note B) + an optional **absolute octave** +
+suffix modifiers in **any order**:
 
+- **absolute octave** — a number bound right after the accidental (`C3`, `F#1`,
+  `Gb-1`), Ableton convention (C3 = 60). It pins the pitch instead of placing it
+  relative to the register default. Unambiguous because a digit can otherwise
+  only follow `/` or `*`. Out of MIDI range = warn-skipped (time still
+  advances). Accepted but **not taught in the Skills**, and never serialized —
+  models write it unprompted, so the parser tolerates it while the guidance
+  stays on one spelling (ADR-0018).
 - **octave marks** `'` (up) / `,` (down), stackable — shift from the register
-  default.
+  default, or from an absolute octave when both are present (`C3'` = C4).
 - **duration** `/N` — absolute note value (§ Durations). At most one.
 - **dynamic** `!` accent / `?` soft. Omit = normal. At most one.
 
@@ -128,16 +137,19 @@ pitch → accidental → octave → `/duration` → dynamic.
 
 **Rest** = `z` with optional `/N` (`z/4`). **Bracket chord** =
 `[<note> <note> ...]` with optional `/N` and dynamic applied to the whole chord;
-inner notes follow the pitch rules (letter + accidental + octave), no per-note
-duration/dynamic. Brackets are valid on **any** pitched line — melody/bass
-(their register) and chords (the chord register).
+inner notes follow the pitch rules (letter + accidental + absolute octave and/or
+octave marks), no per-note duration/dynamic. Brackets are valid on **any**
+pitched line — melody/bass (their register) and chords (the chord register).
 
 ### Chord symbols (chords line)
 
 On a `chords` line a **bare** token is a chord symbol (never a single note):
 
 - **root** — `letter` (`A`–`G`, case-insensitive) + optional **accidental**
-  `#`/`b` bound immediately, exactly like a note root (`Ebm7`, `Bb7`).
+  `#`/`b` bound immediately, exactly like a note root (`Ebm7`, `Bb7`). No
+  absolute octave here: the digits are qualities (`C7` = dominant seventh, `C9`
+  = ninth), so a symbol places itself with octave marks only. Inside a `[..]`
+  voicing on the same line, absolute octaves work as usual.
 - **quality** — the suffix that names the chord. **Bare root = major triad**
   (`C` = C major); `m`/`min` = minor. The vocabulary (`chord-symbols.ts`'s
   `CHORD_QUALITY_INTERVALS`) covers triads (`maj`/`M`, `m`/`min`, `dim`,
@@ -178,10 +190,10 @@ from here), using the Ableton convention (C3 = MIDI 60):
 | melody | C3          | 60   |
 | chords | C2          | 48   |
 
-> Note the two octave conventions are intentional and separate: pitched lines
-> use **register-relative** marks (no octave numbers; `C` = the register
-> default), while drum pitch-name headers use **absolute Ableton note names**
-> (C3 = 60). They never share syntax, so there is no ambiguity.
+> The register default only sets where a **bare** `C` lands. A note token may
+> instead pin its pitch with an absolute octave (`C3`), the same Ableton
+> convention (C3 = 60) drum pitch-name headers use. The **serializer** always
+> emits the register-relative form, so absolute octaves are input-only spelling.
 
 ---
 

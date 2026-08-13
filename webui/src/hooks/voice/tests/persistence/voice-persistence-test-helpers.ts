@@ -21,15 +21,30 @@ import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
 
+// Shrink the autosave debounce so tests don't sleep out the real 600ms on every
+// save. Importers get this for free — vi.mock is hoisted above their imports.
+vi.mock("#webui/lib/constants/autosave", () => ({
+  VOICE_AUTOSAVE_DEBOUNCE_MS: 1,
+  CONTEXT_EDITOR_SAVE_DEBOUNCE_MS: 1,
+  DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS: 1,
+}));
+
 /**
- * Flush pending effects/timers inside act(). Defaults to 30ms; pass ~800ms to
- * let the autosave debounce fire.
+ * Flush pending effects/timers inside act().
  * @param ms - Milliseconds to advance
  */
 export async function waitForEffects(ms = 30): Promise<void> {
   await act(async () => {
     await new Promise((r) => setTimeout(r, ms));
   });
+}
+
+/**
+ * Flush the debounced autosave and the IDB write it kicks off. The debounce is
+ * mocked to ~0, so this only has to outlast the async save itself.
+ */
+export async function waitForAutosave(): Promise<void> {
+  await waitForEffects(50);
 }
 
 /**
@@ -178,7 +193,7 @@ export async function continueSavedVoiceSession(
 
   await waitForEffects();
   rerender([userTextItem("first turn"), userTextItem("second turn")]);
-  await waitForEffects(800);
+  await waitForAutosave();
 
   return { result, loaded: await loadConversation(record.id) };
 }
@@ -203,7 +218,7 @@ export async function bulkDeleteDuringPendingNewSave(
   expect(result.current.activeConversationId).toBeNull();
 
   await act(() => bulkDelete(result.current));
-  await waitForEffects(800);
+  await waitForAutosave();
 
   return result;
 }

@@ -9,7 +9,7 @@
  * Mirrors the code-exec rails but dispatches by route name instead of eval.
  */
 
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;

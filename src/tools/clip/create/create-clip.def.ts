@@ -5,14 +5,24 @@
 
 import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
+import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
-  description:
-    "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
-    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip.",
+  // The MIDI-only list names the params in play, so small model mode gets its
+  // own — `firstStart` is not one of them there.
+  description: {
+    default:
+      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
+      "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
+    smallModel:
+      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
+      "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
+  },
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -66,7 +76,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. Default: next full bar after latest note",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. MIDI only, default: next full bar after latest note. Audio clip length comes from the sample",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -97,9 +107,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
-          code: param(z.string().max(MAX_CODE_LENGTH).optional(), {
-            default:
-              "JS function body: receives (notes, context), returns notes array (see Skills for properties) - MIDI only",
+          code: param(boundedString(MAX_CODE_LENGTH).optional(), {
+            default: `JS function body (max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array (see Skills for properties) - MIDI only`,
             smallModel: null,
           }),
         }
@@ -110,8 +119,40 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("absolute path to audio file - audio clips only"),
 
+    warping: param(z.boolean().optional(), {
+      default:
+        "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The settled state comes back as `warping`",
+      smallModel: "audio clips only: false plays the file as rendered",
+    }),
+
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(24)
+      .optional()
+      .describe("audio clip gain in decibels (ignored for MIDI)"),
+
+    pitchShift: z.coerce
+      .number()
+      .min(-48)
+      .max(48)
+      .optional()
+      .describe(
+        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
+      ),
+
+    warpMode: z
+      .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])
+      .optional()
+      .describe("audio clip warp mode (ignored for MIDI)"),
+
+    // Carries the recommendation, not just the mechanism: without one the model
+    // reads a neutral option, omits it, and hands back a clip the user has to
+    // click. The skills blob used to say this; it belongs with the param, which
+    // ships only when this tool does.
     auto: param(z.enum(["play-scene", "play-clip"]).optional(), {
-      default: "auto-play session clips (play-scene keeps scene in sync)",
+      default:
+        "auto-play the new session clip(s) — worth setting whenever the user will want to hear what you made. play-scene launches the whole scene so the new clip stays in sync with the others (it restarts them; say so first). play-clip fires the clip alone",
       smallModel: null,
     }),
 

@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -109,10 +110,8 @@ describe("ppal-create-scene", () => {
       name: "ppal-create-scene",
       arguments: { sceneIndex: 5, count: 2 },
     });
-    const batch = parseToolResult<CreateSceneResult[]>(batchResult);
+    const batch = parseBatchResult<CreateSceneResult>(batchResult, 2);
 
-    expect(Array.isArray(batch)).toBe(true);
-    expect(batch).toHaveLength(2);
     expect(batch[0]!.id).toBeDefined();
     expect(batch[1]!.id).toBeDefined();
     expect(batch[0]!.sceneIndex).toBe(5);

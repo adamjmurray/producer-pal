@@ -12,6 +12,8 @@ interface PreferencesTabProps {
   setShowHelpLinks: (show: boolean) => void;
   showTokenUsage: boolean;
   setShowTokenUsage: (show: boolean) => void;
+  autoUpdateCheck: boolean;
+  setAutoUpdateCheck: (enabled: boolean) => void;
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
 }
@@ -27,6 +29,8 @@ interface PreferencesTabProps {
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
  * @param {boolean} props.showTokenUsage - Whether to show per-message token usage
  * @param {Function} props.setShowTokenUsage - Function to toggle token usage
+ * @param {boolean} props.autoUpdateCheck - Whether to check GitHub for new releases
+ * @param {Function} props.setAutoUpdateCheck - Function to toggle update checking
  * @param {Function} props.onDeleteAllConversations - Callback to delete all conversations
  * @param {Function} props.onDeleteUnbookmarkedConversations - Callback to delete unstarred conversations
  * @returns {JSX.Element} Preferences tab component
@@ -40,6 +44,8 @@ export function PreferencesTab({
   setShowHelpLinks,
   showTokenUsage,
   setShowTokenUsage,
+  autoUpdateCheck,
+  setAutoUpdateCheck,
   onDeleteAllConversations,
   onDeleteUnbookmarkedConversations,
 }: PreferencesTabProps) {
@@ -94,8 +100,21 @@ export function PreferencesTab({
         Show message token usage
       </label>
 
+      {/* Machine-wide and shared with the Max for Live device, so it applies
+          on change rather than on Save — like the Delete buttons below. */}
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          checked={autoUpdateCheck}
+          onChange={(e) =>
+            setAutoUpdateCheck((e.target as HTMLInputElement).checked)
+          }
+        />
+        Automatically check for new versions
+      </label>
+
       <div className="border-t border-zinc-300 dark:border-zinc-600 pt-4 mt-4">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+        <p className="text-sm text-zinc-500 dark:text-zinc-300 mb-2">
           Cleanup Conversations
         </p>
         <div className="flex gap-2">

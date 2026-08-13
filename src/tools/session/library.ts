@@ -22,7 +22,7 @@ import {
   type PluginCategory,
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
-import * as console from "#src/shared/v8-max-console.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { runSearchBatch } from "./library-search-batch-helpers.ts";
 import { readSamples } from "./read-samples.ts";
 
