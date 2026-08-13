@@ -98,24 +98,22 @@ export function notationNeutralScenarios(
     `${spec.track + 1}/1`,
   ];
 
-  return notations.map(
-    (notation): EvalScenario => ({
-      id: `${spec.baseId}-${notation}`,
-      description: `${spec.description} (${notation})`,
-      kind: "capability",
-      liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
-      config: { notation },
-      messages: [MSG_CONNECT, spec.prompt],
-      setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
-      assertions: [
-        { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-        { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-        midiJsonNotesAssertion(spec.meter, spec.expected),
-        correctSlotAssertion(correctSlot),
-        { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-      ],
-    }),
-  );
+  return notations.map((notation): EvalScenario => ({
+    id: `${spec.baseId}-${notation}`,
+    description: `${spec.description} (${notation})`,
+    kind: "capability",
+    liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
+    config: { notation },
+    messages: [MSG_CONNECT, spec.prompt],
+    setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
+    assertions: [
+      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+      midiJsonNotesAssertion(spec.meter, spec.expected),
+      correctSlotAssertion(correctSlot),
+      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    ],
+  }));
 }
 
 /**
