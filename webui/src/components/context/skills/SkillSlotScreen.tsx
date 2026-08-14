@@ -14,10 +14,8 @@ import {
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
 import { DriftNote } from "#webui/components/context/editor/DriftNote";
 import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
-import {
-  MarkdownDropZone,
-  useImportNotice,
-} from "#webui/components/context/MarkdownDropZone";
+import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
+import { useImportNotice } from "#webui/hooks/context/use-import-notice";
 import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 import {

@@ -8,10 +8,8 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  MarkdownDropZone,
-  useImportNotice,
-} from "#webui/components/context/MarkdownDropZone";
+import { MarkdownDropZone } from "#webui/components/context/MarkdownDropZone";
+import { useImportNotice } from "#webui/hooks/context/use-import-notice";
 
 const OVERLAY_TEXT = "Drop a .md file to import";
 

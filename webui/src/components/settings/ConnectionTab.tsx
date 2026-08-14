@@ -3,12 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  API_KEY_URLS,
+  DEFAULT_LOCAL_URLS,
+} from "#webui/lib/constants/provider-urls";
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 import {
-  API_KEY_URLS,
-  DEFAULT_LOCAL_URLS,
   ModelDocsLink,
   SmallModelToggle,
   ThinkingSelector,

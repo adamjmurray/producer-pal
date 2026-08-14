@@ -27,6 +27,7 @@ import {
 } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import { useEffect, useRef } from "preact/hooks";
+import { notifyFocusChange } from "./editor/markdown-editor-helpers";
 
 interface MarkdownEditorProps {
   /**
@@ -340,23 +341,3 @@ const bulletMarkerPlugin = ViewPlugin.fromClass(
   },
   { decorations: (plugin) => plugin.decorations },
 );
-
-/**
- * Dispatch a focus or blur callback based on whether the editor has focus.
- * Extracted so it can be unit-tested directly — happy-dom doesn't reliably
- * drive CodeMirror's focus tracking.
- * @param hasFocus - Editor focus state after the update
- * @param onFocus - Focus callback (optional)
- * @param onBlur - Blur callback (optional)
- */
-export function notifyFocusChange(
-  hasFocus: boolean,
-  onFocus: (() => void) | undefined,
-  onBlur: (() => void) | undefined,
-): void {
-  if (hasFocus) {
-    onFocus?.();
-  } else {
-    onBlur?.();
-  }
-}

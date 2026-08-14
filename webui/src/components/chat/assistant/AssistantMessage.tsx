@@ -20,7 +20,8 @@ import {
   type ToolGroupRenderItem,
   groupToolParts,
 } from "./helpers/group-tool-parts";
-import { StepUsageLabel, calcStepNewContent } from "./StepUsageLabel";
+import { calcStepNewContent } from "./helpers/step-usage-helpers";
+import { StepUsageLabel } from "./StepUsageLabel";
 import { AssistantSubagentCall } from "./tool-calls/AssistantSubagentCall";
 import { AssistantToolCall } from "./tool-calls/AssistantToolCall";
 import { AssistantToolGroup } from "./tool-calls/AssistantToolGroup";

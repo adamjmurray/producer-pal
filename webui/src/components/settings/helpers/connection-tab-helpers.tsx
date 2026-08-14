@@ -18,31 +18,9 @@ import {
   isRealtimeSelection,
   REALTIME_VOICES,
 } from "#webui/lib/constants/models";
+import { MODEL_DOCS_URLS } from "#webui/lib/constants/provider-urls";
 import { VOICE_LANGUAGES } from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
-
-export const API_KEY_URLS: Record<string, string | undefined> = {
-  anthropic: "https://console.anthropic.com/settings/keys",
-  gemini: "https://aistudio.google.com/apikey",
-  openai: "https://platform.openai.com/api-keys",
-  mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
-  openrouter: "https://openrouter.ai/settings/keys",
-};
-
-export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
-  anthropic: "https://docs.anthropic.com/en/docs/about-claude/models",
-  gemini: "https://ai.google.dev/gemini-api/docs/models",
-  openai: "https://platform.openai.com/docs/models",
-  mistral: "https://docs.mistral.ai/getting-started/models",
-  openrouter: "https://openrouter.ai/models",
-  lmstudio: "https://lmstudio.ai/models",
-  ollama: "https://ollama.com/search",
-};
-
-export const DEFAULT_LOCAL_URLS: Record<string, string> = {
-  lmstudio: "http://localhost:1234",
-  ollama: "http://localhost:11434",
-};
 
 interface ModelDocsLinkProps {
   provider: Provider;

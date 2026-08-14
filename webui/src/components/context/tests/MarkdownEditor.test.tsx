@@ -9,10 +9,8 @@
 import { EditorView } from "@codemirror/view";
 import { render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  MarkdownEditor,
-  notifyFocusChange,
-} from "#webui/components/context/MarkdownEditor";
+import { notifyFocusChange } from "#webui/components/context/editor/markdown-editor-helpers";
+import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 
 type EditorProps = Partial<{
   initialValue: string;

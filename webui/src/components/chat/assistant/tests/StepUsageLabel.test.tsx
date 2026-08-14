@@ -8,10 +8,8 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import {
-  StepUsageLabel,
-  calcStepNewContent,
-} from "#webui/components/chat/assistant/StepUsageLabel";
+import { StepUsageLabel } from "#webui/components/chat/assistant/StepUsageLabel";
+import { calcStepNewContent } from "#webui/components/chat/assistant/helpers/step-usage-helpers";
 
 describe("StepUsageLabel", () => {
   it("falls back to 0 for every absent token field", () => {

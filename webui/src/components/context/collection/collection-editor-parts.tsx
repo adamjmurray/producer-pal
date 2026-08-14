@@ -15,7 +15,7 @@ import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
 
 /** Shared input styling for the collection editors' text controls. */
-export const INPUT_CLASS =
+const INPUT_CLASS =
   "w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60";
 
 interface FieldProps {
@@ -31,7 +31,7 @@ interface FieldProps {
  * @param error - The field's validation message, if any
  * @returns The input's className
  */
-export function inputClass(error?: string): string {
+function inputClass(error?: string): string {
   return error == null ? INPUT_CLASS : `${INPUT_CLASS} ring-2 ring-red-500/50`;
 }
 

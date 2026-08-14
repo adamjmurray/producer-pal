@@ -64,6 +64,8 @@ const NARROW_OXLINT_TEST_GLOBS = new Set([
   "e2e/mcp/**/*.test.ts", // vitest relaxations for the MCP e2e suites alone
   "webui/**/*.test.tsx", // one tree's suites, one rule
   // (react/jsx-no-constructed-context-values).
+  // One file, one rule (react/only-export-components).
+  "webui/src/components/tests/App-context-mocks.tsx",
   "evals/chat/agent-cli/tests/agent-cli-fixture.mjs", // one file, one rule
   // The typed decode helpers, one file each, one rule
   // (typescript/no-unnecessary-type-parameters).

@@ -17,7 +17,8 @@ import { ContextIoButtons } from "./ContextIoButtons";
 import { ContextHeader } from "./editor/ContextHeader";
 import { DriftNote } from "./editor/DriftNote";
 import { OverridePanes } from "./editor/OverridePanes";
-import { MarkdownDropZone, useImportNotice } from "./MarkdownDropZone";
+import { useImportNotice } from "#webui/hooks/context/use-import-notice";
+import { MarkdownDropZone } from "./MarkdownDropZone";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 /** Copy that distinguishes one document editor (project vs. global context). */

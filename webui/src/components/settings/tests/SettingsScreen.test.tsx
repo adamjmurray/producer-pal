@@ -16,7 +16,7 @@ import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-hel
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
   const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
-    await import("#webui/components/settings/helpers/connection-tab-helpers");
+    await import("#webui/lib/constants/provider-urls");
 
   return {
     ConnectionTab: ({

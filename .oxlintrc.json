@@ -757,7 +757,13 @@
       "rules": {
         "react/rules-of-hooks": "error",
         "react/exhaustive-deps": "error",
-        "react/jsx-no-constructed-context-values": "error"
+        "react/jsx-no-constructed-context-values": "error",
+        "react/only-export-components": [
+          "error",
+          {
+            "allowConstantExport": true
+          }
+        ]
       },
       "plugins": ["react"],
       "env": {
@@ -1349,6 +1355,16 @@
       "plugins": ["react"],
       "rules": {
         "react/jsx-no-constructed-context-values": "off"
+      }
+    },
+    // PERMANENT, 2. A test file mixing mock components with the mock state they
+    // read. The rule exists so a file can hot-update in `ui:dev`; a test helper
+    // is never in that graph.
+    {
+      "files": ["webui/src/components/tests/App-context-mocks.tsx"],
+      "plugins": ["react"],
+      "rules": {
+        "react/only-export-components": "off"
       }
     }
   ]
