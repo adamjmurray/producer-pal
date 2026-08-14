@@ -72,8 +72,9 @@ function releaseTrackedObjects(): void {
 
   for (const api of trackedObjects) {
     try {
-      // `path` is readonly in the type on purpose: this is the one place that
-      // writes it, and it retargets the object rather than the Live Set.
+      // `path` is readonly in the type so ordinary code can't retarget an
+      // object. This is the release; the ppal-live-api set_path operation is
+      // the only other write. Assigning "" retargets the object, not the set.
       (api as unknown as { path: string }).path = "";
     } catch (error) {
       failures++;

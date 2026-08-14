@@ -15,6 +15,20 @@ import {
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
+/**
+ * Track an object whose path can't be cleared, standing in for a Live API
+ * object that has gone away underneath us.
+ *
+ * @param error - The message its path setter throws
+ */
+function trackUnclearable(error: string): void {
+  trackLiveApiObject({
+    set path(_value: string) {
+      throw new Error(error);
+    },
+  } as unknown as LiveAPI);
+}
+
 describe("live-api release", () => {
   it("clears the path of every object built during a request", () => {
     beginLiveApiScope();
@@ -69,19 +83,28 @@ describe("live-api release", () => {
     expect(second.path).toBe("");
   });
 
+  it("forgets the objects it has already released", () => {
+    beginLiveApiScope();
+
+    const track = LiveAPI.from(livePath.track(0));
+
+    endLiveApiScope();
+
+    // Stands in for a later request building its own object at this path.
+    (track as unknown as { path: string }).path = String(livePath.track(0));
+
+    beginLiveApiScope();
+    endLiveApiScope();
+
+    // Keep tracking them and the array grows for the life of the device: every
+    // request re-clears every object ever built, and none of them can be GC'd.
+    expect(track.path).toBe(String(livePath.track(0)));
+  });
+
   it("releases the rest when one object refuses to be cleared", () => {
     beginLiveApiScope();
 
-    const stubborn = {
-      set path(_value: string) {
-        throw new Error("nope");
-      },
-      get path() {
-        return "still here";
-      },
-    };
-
-    trackLiveApiObject(stubborn as unknown as LiveAPI);
+    trackUnclearable("nope");
 
     const track = LiveAPI.from(livePath.track(0));
 
@@ -95,7 +118,24 @@ describe("live-api release", () => {
     ]);
   });
 
-  it("ignores an unmatched end of scope", () => {
+  it("reports the first failure when several objects refuse", () => {
+    beginLiveApiScope();
+
+    trackUnclearable("first");
+    trackUnclearable("second");
+
+    endLiveApiScope();
+
+    expect(vi.mocked(outlet).mock.calls).toContainEqual([
+      1,
+      "Failed to release 2 LiveAPI object(s): first",
+    ]);
+  });
+
+  it("keeps a stray end of scope from breaking the next request", () => {
+    // The count is clamped at 0. Without that it goes negative here, and no
+    // balanced begin/end after it ever reaches 0 again — so from this point on
+    // nothing is released for the life of the device.
     endLiveApiScope();
     beginLiveApiScope();
 

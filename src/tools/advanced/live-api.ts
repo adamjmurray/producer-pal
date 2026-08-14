@@ -211,8 +211,8 @@ function executeObjectOperation(
 
     case "set_path":
       // `path` is readonly in the type declarations so ordinary code can't
-      // retarget an object. This tool is the deliberate exception: assigning ""
-      // is the only way to release the path listeners Live installs.
+      // retarget an object. This debug tool is a deliberate exception; the
+      // other write is the automatic release in live-api-release.ts.
       (api as unknown as { path: string }).path = operation.value as string;
 
       // Read back — Max may normalize or reject the value.

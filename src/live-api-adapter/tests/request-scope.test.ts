@@ -3,11 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// A tool call releases the LiveAPI objects it built, so Live's path listeners
-// don't outlive the request. See live-api-release.ts.
+// Every Max entry point releases the LiveAPI objects it built, so Live's path
+// listeners don't outlive the request. See live-api-release.ts.
 
 import { describe, expect, it, vi } from "vitest";
+import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -19,19 +21,17 @@ vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
 const { backupProjectContextOnEdit } =
   await import("#src/live-api-adapter/project-context-sync.ts");
 
-const { mcp_request, projectContext } =
+const { checkLiveVersion, mcp_request, projectContext } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
 /**
- * Run one request, collecting every LiveAPI object built while it ran.
+ * Collect every LiveAPI object built while `run` executes.
  *
- * @param tool - Tool name to dispatch
- * @param args - Tool arguments
- * @returns The objects the request built
+ * @param run - The work to run
+ * @returns The objects it built
  */
-async function requestBuilding(
-  tool: string,
-  args: object,
+async function objectsBuiltBy(
+  run: () => void | Promise<void>,
 ): Promise<{ path: string }[]> {
   const created: { path: string }[] = [];
   const originalFrom = LiveAPI.from.bind(LiveAPI);
@@ -45,7 +45,7 @@ async function requestBuilding(
   }) as typeof LiveAPI.from;
 
   try {
-    await mcp_request("req-1", tool, JSON.stringify(args));
+    await run();
   } finally {
     LiveAPI.from = originalFrom;
   }
@@ -53,26 +53,69 @@ async function requestBuilding(
   return created;
 }
 
+/**
+ * Assert the run built objects and left every one of them released.
+ *
+ * @param created - The objects the run built
+ */
+function expectAllReleased(created: { path: string }[]): void {
+  expect(created.length).toBeGreaterThan(0);
+  expect(created.map((api) => api.path)).toStrictEqual(created.map(() => ""));
+}
+
+/**
+ * The MCP response the last request sent back out outlet 0.
+ *
+ * @returns The reassembled response JSON
+ */
+function lastResponseJson(): string {
+  const call = vi
+    .mocked(outlet)
+    .mock.calls.findLast(
+      ([outletIndex, message]) =>
+        outletIndex === 0 && message === "mcp_response",
+    );
+
+  // ["mcp_response", requestId, ...chunks, delimiter]
+  return (call ?? []).slice(3, -1).join("");
+}
+
 describe("request scope", () => {
   it("clears the path of every object the tool built", async () => {
-    const created = await requestBuilding("ppal-live-api", {
-      path: String(livePath.track(0)),
-      operations: [{ type: "exists" }],
-    });
+    const created = await objectsBuiltBy(() =>
+      mcp_request(
+        "req-1",
+        "ppal-live-api",
+        JSON.stringify({
+          path: String(livePath.track(0)),
+          operations: [{ type: "exists" }],
+        }),
+      ),
+    );
 
-    expect(created.length).toBeGreaterThan(0);
-    expect(created.map((api) => api.path)).toStrictEqual(created.map(() => ""));
+    expectAllReleased(created);
   });
 
   it("clears them even when the tool call fails", async () => {
-    // A failed call armed the listeners just the same.
-    const created = await requestBuilding("ppal-live-api", {
-      path: String(livePath.track(0)),
-      operations: [{ type: "get_property" }],
-    });
+    // A failed call armed the listeners just the same. `get_property` with no
+    // `property` fails validation — assert the response really is the error,
+    // or a change that stops it throwing turns this into the test above.
+    const created = await objectsBuiltBy(() =>
+      mcp_request(
+        "req-1",
+        "ppal-live-api",
+        JSON.stringify({
+          path: String(livePath.track(0)),
+          operations: [{ type: "get_property" }],
+        }),
+      ),
+    );
 
-    expect(created.length).toBeGreaterThan(0);
-    expect(created.map((api) => api.path)).toStrictEqual(created.map(() => ""));
+    expect(lastResponseJson()).toContain('"isError":true');
+    expect(lastResponseJson()).toContain(
+      "Error executing tool 'ppal-live-api'",
+    );
+    expectAllReleased(created);
   });
 });
 
@@ -96,5 +139,27 @@ describe("project-context setter scope", () => {
     projectContext("a genuine edit");
 
     expect(liveSet?.path).toBe("");
+  });
+});
+
+// The patch bangs this at device load, outside any tool call, so it has to
+// close its own scope too.
+describe("live-version check scope", () => {
+  it("clears the path of the live_app object it built", async () => {
+    registerMockObject("live_app", {
+      path: "live_app",
+      type: "Application",
+      methods: { get_version_string: () => "12.2" },
+    });
+
+    const created = await objectsBuiltBy(() => checkLiveVersion());
+
+    expect(vi.mocked(outlet).mock.calls).toContainEqual([
+      0,
+      "min_live_version_not_met",
+      "12.2",
+      MIN_LIVE_VERSION,
+    ]);
+    expectAllReleased(created);
   });
 });
