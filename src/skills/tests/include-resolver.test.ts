@@ -289,6 +289,35 @@ describe("resolveIncludes - blank line collapse", () => {
 
     expect(result).toBe("a\n\nbody\n\nb");
   });
+
+  it("tidies the seam when a fragment body starts with its own newline", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n\n@include "./x.md"\n\nb`, x: "\nbody" }),
+    );
+
+    expect(result).toBe("a\n\nbody\n\nb");
+  });
+
+  it("keeps a paragraph break when a dropped fragment held the only one", () => {
+    // The include line has no blank line in front of it, so its own is all that
+    // separates a from b. Taking it would merge two paragraphs into one.
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n@include "./gone.md"\n\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("a\n\nb");
+  });
+
+  it("drops a dropped fragment's line whole when nothing followed it", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n@include "./gone.md"\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("a\nb");
+  });
 });
 
 describe("resolveIncludes - path safety", () => {

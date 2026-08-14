@@ -42,6 +42,9 @@ const INCLUDE_LINE_PATTERN = /@include\s+"([^\n"]*)"(\n*)/g;
 /** A 3+ newline run at the join between an expansion and what followed it. */
 const SEAM_BLANK_RUN = /\n{3,}$/;
 
+/** An expansion's own leading newlines, which join what came before it. */
+const LEADING_NEWLINES = /^\n+/;
+
 /** Injected context for {@link resolveIncludes}. */
 export interface ResolveIncludesOptions {
   /** Active notation, interpolated into `{notation}` in include refs. */
@@ -83,8 +86,14 @@ export function resolveIncludes(
 
   return body.replaceAll(
     INCLUDE_LINE_PATTERN,
-    (_match, rawRef: string, trailing: string) =>
-      joinExpansion(expandInclude(rawRef, options), trailing),
+    (_match, rawRef: string, trailing: string, offset: number) =>
+      joinExpansion(
+        expandInclude(rawRef, options),
+        trailing,
+        // Read from the original body, not from what's been emitted, so a run of
+        // adjacent include lines still sees the blank line each one sits after.
+        offset < 2 || body.startsWith("\n\n", offset - 2),
+      ),
   );
 }
 
@@ -120,24 +129,40 @@ function expandInclude(
 }
 
 /**
- * Put an expansion back where its include line was, tidying only the seam.
+ * Put an expansion back where its include line was, tidying only the seams.
  *
  * An expansion of nothing takes the blank line that framed the directive with
  * it, so an emptied override (or a release build's absent code-transforms)
- * reads as a clean section break. Anything else keeps its own text verbatim —
- * collapsing blank runs across the whole document would rewrite a 3+ newline
- * run INSIDE a user's fragment, e.g. inside a fenced example.
+ * reads as a clean section break — but only when the text before the directive
+ * has a blank line of its own to fall back on. Take the last separator and the
+ * paragraphs on either side merge into one.
+ *
+ * Otherwise the expansion keeps its own text verbatim, apart from newlines at
+ * the two seams. Collapsing blank runs across the whole document would rewrite
+ * a 3+ newline run INSIDE a user's fragment, e.g. inside a fenced example.
  *
  * @param expansion - The fragment body, or "" when nothing resolved
  * @param trailing - The newline run that followed the include line
+ * @param blankBefore - Whether the text before the include line already ends in
+ *   a blank line, or there is no text before it
  * @returns The text to substitute for the directive and its trailing newlines
  */
-function joinExpansion(expansion: string, trailing: string): string {
-  if (expansion === "") return "";
+function joinExpansion(
+  expansion: string,
+  trailing: string,
+  blankBefore: boolean,
+): string {
+  if (expansion === "") {
+    return blankBefore || trailing.length < 2 ? "" : "\n";
+  }
 
-  if (trailing === "") return expansion;
+  // Trim the expansion's own leading newlines against what sits in front of the
+  // directive, so the two can't add up to a double blank line.
+  const body = expansion.replace(LEADING_NEWLINES, blankBefore ? "" : "\n");
 
-  return (expansion + trailing).replace(SEAM_BLANK_RUN, "\n\n");
+  if (trailing === "") return body;
+
+  return (body + trailing).replace(SEAM_BLANK_RUN, "\n\n");
 }
 
 /**
