@@ -8,11 +8,17 @@
  */
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  MAX_TOOL_STEPS_LIMIT,
+  MIN_TOOL_STEPS,
+} from "#webui/chat/sdk/step-budget";
 import { encryptApiKey, isEncrypted } from "#webui/lib/api-key-crypto";
 import {
   checkHasApiKey,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadMaxToolSteps,
   loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
@@ -20,6 +26,7 @@ import {
   loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
+  saveMaxToolSteps,
   saveSubagentPresetId,
   saveProviderSettings,
   saveVoiceLanguage,
@@ -291,6 +298,41 @@ describe("settings-helpers", () => {
 
       expect(loadSubagentPresetId()).toBeNull();
       expect(localStorage.getItem("producer_pal_subagent_preset")).toBeNull();
+    });
+  });
+
+  describe("tool-step budget persistence", () => {
+    it("returns the shipped default when nothing is stored", () => {
+      expect(loadMaxToolSteps()).toBe(DEFAULT_MAX_TOOL_STEPS);
+    });
+
+    it("round-trips a budget through localStorage", () => {
+      saveMaxToolSteps(40);
+      expect(loadMaxToolSteps()).toBe(40);
+    });
+
+    it.each([
+      ["below the floor", MIN_TOOL_STEPS - 1],
+      ["above the ceiling", MAX_TOOL_STEPS_LIMIT + 1],
+      ["fractional", 12.5],
+    ])("clears the key rather than storing a %s value", (_label, steps) => {
+      saveMaxToolSteps(40);
+      saveMaxToolSteps(steps);
+
+      expect(loadMaxToolSteps()).toBe(DEFAULT_MAX_TOOL_STEPS);
+      expect(localStorage.getItem("producer_pal_max_tool_steps")).toBeNull();
+    });
+
+    it.each([
+      ["garbage", "not-a-number"],
+      ["out of range", "5000"],
+      ["empty", ""],
+    ])("falls back to the default on a %s stored value", (_label, raw) => {
+      // A hand-edited localStorage must not strand a turn at one step or let it
+      // run away — the load path re-validates rather than trusting the save.
+      localStorage.setItem("producer_pal_max_tool_steps", raw);
+
+      expect(loadMaxToolSteps()).toBe(DEFAULT_MAX_TOOL_STEPS);
     });
   });
 

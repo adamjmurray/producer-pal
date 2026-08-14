@@ -7,6 +7,7 @@ import { type ClipContext } from "#src/notation/transform/helpers/transform-eval
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  markerBeats,
   markerBeatsPerUnit,
   markerClampSeconds,
 } from "#src/tools/clip/helpers/audio-clip-timing.ts";
@@ -270,7 +271,10 @@ function writeClipProperties(
     firstStart,
     looping,
   } = params;
-  const beatsPerMarkerUnit = markerBeatsPerUnit(clip);
+  const markerScale = {
+    beatsPerMarkerUnit: markerBeatsPerUnit(clip),
+    markerClampSeconds: markerClampSeconds(clip),
+  };
 
   // Includes the end_marker bounds check for start_marker
   const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
@@ -282,14 +286,13 @@ function writeClipProperties(
     clip,
     isLooping,
     wasLooping,
-    beatsPerMarkerUnit,
-    markerClampSeconds: markerClampSeconds(clip),
+    ...markerScale,
   });
 
   // Both ends: loop_start and start_marker are bounded by different properties,
   // and one call can write both.
-  const markerBeats = (property: string) =>
-    (clip.getProperty(property) as number) * beatsPerMarkerUnit;
+  const readMarker = (property: string) =>
+    markerBeats(clip, property, markerScale);
 
   clip.setAll(
     buildClipPropertiesToSet({
@@ -303,9 +306,9 @@ function writeClipProperties(
       isLooping,
       startBeats,
       endBeats,
-      currentLoopEnd: markerBeats("loop_end"),
-      currentEndMarker: markerBeats("end_marker"),
-      beatsPerMarkerUnit,
+      currentLoopEnd: readMarker("loop_end"),
+      currentEndMarker: readMarker("end_marker"),
+      beatsPerMarkerUnit: markerScale.beatsPerMarkerUnit,
     }),
   );
 

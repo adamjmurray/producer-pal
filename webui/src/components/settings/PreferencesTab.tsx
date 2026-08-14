@@ -3,6 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useEffect, useState } from "preact/hooks";
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  MAX_TOOL_STEPS_LIMIT,
+  MIN_TOOL_STEPS,
+} from "#webui/chat/sdk/step-budget";
+
 interface PreferencesTabProps {
   theme: string;
   setTheme: (theme: string) => void;
@@ -14,6 +21,8 @@ interface PreferencesTabProps {
   setShowTokenUsage: (show: boolean) => void;
   autoUpdateCheck: boolean;
   setAutoUpdateCheck: (enabled: boolean) => void;
+  maxToolSteps: number;
+  setMaxToolSteps: (steps: number) => void;
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
 }
@@ -31,6 +40,8 @@ interface PreferencesTabProps {
  * @param {Function} props.setShowTokenUsage - Function to toggle token usage
  * @param {boolean} props.autoUpdateCheck - Whether to check GitHub for new releases
  * @param {Function} props.setAutoUpdateCheck - Function to toggle update checking
+ * @param {number} props.maxToolSteps - Tool steps one turn may spend
+ * @param {Function} props.setMaxToolSteps - Function to set the step budget
  * @param {Function} props.onDeleteAllConversations - Callback to delete all conversations
  * @param {Function} props.onDeleteUnbookmarkedConversations - Callback to delete unstarred conversations
  * @returns {JSX.Element} Preferences tab component
@@ -46,6 +57,8 @@ export function PreferencesTab({
   setShowTokenUsage,
   autoUpdateCheck,
   setAutoUpdateCheck,
+  maxToolSteps,
+  setMaxToolSteps,
   onDeleteAllConversations,
   onDeleteUnbookmarkedConversations,
 }: PreferencesTabProps) {
@@ -67,51 +80,39 @@ export function PreferencesTab({
         </select>
       </div>
 
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={showTimestamps}
-          onChange={(e) =>
-            setShowTimestamps((e.target as HTMLInputElement).checked)
-          }
-        />
-        Show message timestamps
-      </label>
-
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={showHelpLinks}
-          onChange={(e) =>
-            setShowHelpLinks((e.target as HTMLInputElement).checked)
-          }
-        />
-        Show help links
-      </label>
-
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={showTokenUsage}
-          onChange={(e) =>
-            setShowTokenUsage((e.target as HTMLInputElement).checked)
-          }
-        />
-        Show message token usage
-      </label>
-
-      {/* Machine-wide and shared with the Max for Live device, so it applies
+      {/* Rendered from one list so the four stay identical; the tests index
+          them by position, so the order here is the order on screen. The last
+          is machine-wide and shared with the Max for Live device, so it applies
           on change rather than on Save — like the Delete buttons below. */}
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={autoUpdateCheck}
-          onChange={(e) =>
-            setAutoUpdateCheck((e.target as HTMLInputElement).checked)
-          }
-        />
-        Automatically check for new versions
-      </label>
+      {(
+        [
+          ["Show message timestamps", showTimestamps, setShowTimestamps],
+          ["Show help links", showHelpLinks, setShowHelpLinks],
+          ["Show message token usage", showTokenUsage, setShowTokenUsage],
+          [
+            "Automatically check for new versions",
+            autoUpdateCheck,
+            setAutoUpdateCheck,
+          ],
+        ] as const
+      ).map(([label, checked, setChecked]) => (
+        <label
+          key={label}
+          className="flex cursor-pointer items-center gap-2 text-sm"
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked((e.target as HTMLInputElement).checked)}
+          />
+          {label}
+        </label>
+      ))}
+
+      <StepBudgetField
+        maxToolSteps={maxToolSteps}
+        setMaxToolSteps={setMaxToolSteps}
+      />
 
       <div className="mt-4 border-t border-zinc-300 pt-4 dark:border-zinc-600">
         <p className="mb-2 text-sm text-zinc-500 dark:text-zinc-300">
@@ -147,6 +148,89 @@ export function PreferencesTab({
         </div>
       </div>
       <div className="border-b border-zinc-300 dark:border-zinc-600" />
+    </div>
+  );
+}
+
+// --- Helpers below main export ---
+
+interface StepBudgetFieldProps {
+  maxToolSteps: number;
+  setMaxToolSteps: (steps: number) => void;
+}
+
+/**
+ * "Tool steps per turn": how much tool work one turn may do before it stops and
+ * hands control back. Local to this tab rather than a controls/ component
+ * because that directory is at its folder-size cap.
+ *
+ * The field keeps its own draft string so a half-typed budget ("", or "1" on
+ * the way to "15") isn't fought back as you type. Only an in-range whole number
+ * reaches the settings buffer; leaving the field snaps the display back to
+ * what's actually committed, so it can never sit there showing a number Save
+ * won't write.
+ *
+ * @param {StepBudgetFieldProps} props - Component props
+ * @param {number} props.maxToolSteps - The current budget
+ * @param {Function} props.setMaxToolSteps - Commits a new budget to the buffer
+ * @returns {JSX.Element} The step-budget field
+ */
+function StepBudgetField({
+  maxToolSteps,
+  setMaxToolSteps,
+}: StepBudgetFieldProps) {
+  const [draft, setDraft] = useState(String(maxToolSteps));
+
+  // Follow the buffer when it moves under us — a Cancel reverts it, and the
+  // post-mount load can replace the mount-time default.
+  useEffect(() => {
+    setDraft(String(maxToolSteps));
+  }, [maxToolSteps]);
+
+  return (
+    <div className="mt-4 border-t border-zinc-300 pt-4 dark:border-zinc-600">
+      <label htmlFor="max-tool-steps" className="mb-1 block text-sm">
+        Tool steps per turn
+      </label>
+      <input
+        id="max-tool-steps"
+        data-testid="max-tool-steps"
+        type="number"
+        min={MIN_TOOL_STEPS}
+        max={MAX_TOOL_STEPS_LIMIT}
+        step={1}
+        value={draft}
+        // Commit only an in-range whole number: an empty field and a half-typed
+        // "1" both parse to something a turn would then run on, and this field
+        // is saved with everything else rather than confirmed on its own.
+        onInput={(e) => {
+          const value = (e.target as HTMLInputElement).value;
+
+          setDraft(value);
+
+          const next = Number(value);
+
+          if (
+            value.trim() !== "" &&
+            Number.isInteger(next) &&
+            next >= MIN_TOOL_STEPS &&
+            next <= MAX_TOOL_STEPS_LIMIT
+          ) {
+            setMaxToolSteps(next);
+          }
+        }}
+        // Snap back to what's committed, so an abandoned draft can't sit there
+        // reading like a budget the next turn will use.
+        onBlur={() => setDraft(String(maxToolSteps))}
+        className="w-24 rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
+      />
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
+        How much tool work one turn may do before it stops and hands back
+        control ({MIN_TOOL_STEPS}–{MAX_TOOL_STEPS_LIMIT}, default{" "}
+        {DEFAULT_MAX_TOOL_STEPS}). Raise it for long arrangement tasks that keep
+        stopping early; lower it to keep a looping model on a shorter leash.
+        Subagent orchestrators and workers scale with it.
+      </p>
     </div>
   );
 }

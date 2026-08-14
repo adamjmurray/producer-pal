@@ -212,6 +212,11 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * conversation) and a modal-local buffer persisted on Save. */
   subagentPresetId: string | null;
   setSubagentPresetId: (id: string | null) => void;
+  /** Tool steps one turn may spend before the run stops and hands back control.
+   * The orchestrator and worker budgets derive from it (see step-budget.ts), so
+   * this is the only knob. A modal-local buffer persisted on Save. */
+  maxToolSteps: number;
+  setMaxToolSteps: (steps: number) => void;
   // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
   // state. Source of truth is the server (which mirrors the device Setup-tab
   // toggle) — not localStorage. The dirty flag distinguishes "user toggled

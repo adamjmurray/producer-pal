@@ -46,6 +46,16 @@ Chat UI (`ui-test-helpers.ts`, IndexedDB-backed):
 - `conversation-branching.spec.ts`, `assistant-markdown.spec.ts` — edit/retry
   forks and assistant markdown rendering.
 
+Settings modal (`settings/settings-test-helpers.ts`, localStorage-backed):
+
+- `settings/presets.spec.ts` — the Presets tab: create → persists across reload
+  → re-select, blank/duplicate-name rejection, delete, description edits, and
+  the Subagent-preset picker. Presets write to localStorage on click rather than
+  through the footer Save, so every assertion reads the stored list back.
+
+  The live `../webui/settings.spec.ts` covers the save/restore round-trip that
+  needs a real device; it never covered presets, so nothing moved here.
+
 Context editor (`context-test-helpers.ts`, REST-backed) — the `/context` app
 (Project | Global | Instructions | Skills | Memory tabs):
 
@@ -78,8 +88,8 @@ chat UI, whose state lives client-side in IndexedDB).
 ## Adding tests
 
 Use `setupUiTest` for the chat "configured app + seeded history" starting point,
-or `setupContextTest` for the `/context` editor, then drive the UI with
-role/test-id locators. Conversation rows expose
-`data-testid="conversation-item"`; row actions use their accessible labels
-(`Rename conversation`, `Delete conversation`, `Bookmark conversation` /
+`setupSettingsTest` for the settings modal, or `setupContextTest` for the
+`/context` editor, then drive the UI with role/test-id locators. Conversation
+rows expose `data-testid="conversation-item"`; row actions use their accessible
+labels (`Rename conversation`, `Delete conversation`, `Bookmark conversation` /
 `Remove bookmark`, `Export conversation`).

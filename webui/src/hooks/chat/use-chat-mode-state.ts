@@ -201,6 +201,9 @@ export function useChatModeState(params: UseChatModeStateParams) {
       // send is gated below until this is a real answer rather than the
       // provisional mount-time default.
       notation: settings.notation,
+      // Not locked per conversation — see buildConfig. The next turn of any
+      // conversation runs on whatever budget is set now.
+      maxToolSteps: settings.maxToolSteps,
       [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
     autoSaveRef,

@@ -224,7 +224,7 @@ function hasUsableMessages(messages: unknown[]): boolean {
 function isValidImportedMessage(message: unknown): boolean {
   return (
     typeof message === "object" &&
-    message !== null &&
+    message != null &&
     typeof (message as { content?: unknown }).content === "string"
   );
 }
@@ -363,11 +363,11 @@ function sanitizeToolField(
  * @returns The entry, with `args` an object
  */
 function sanitizeToolCall(entry: unknown): unknown {
-  if (typeof entry !== "object" || entry === null) return entry;
+  if (typeof entry !== "object" || entry == null) return entry;
 
   const { args } = entry as { args?: unknown };
 
-  if (typeof args === "object" && args !== null && !Array.isArray(args)) {
+  if (typeof args === "object" && args != null && !Array.isArray(args)) {
     return entry;
   }
 
@@ -388,7 +388,7 @@ function sanitizeToolCall(entry: unknown): unknown {
  * @returns The entry with unusable subagent fields removed
  */
 function sanitizeToolResult(entry: unknown): unknown {
-  if (typeof entry !== "object" || entry === null) return entry;
+  if (typeof entry !== "object" || entry == null) return entry;
 
   const { subagentTranscript, subagentIndex, ...rest } = entry as {
     subagentTranscript?: unknown;

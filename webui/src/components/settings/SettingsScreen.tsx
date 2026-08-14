@@ -224,6 +224,8 @@ function SettingsTabContent(
           setShowTokenUsage={display.setShowTokenUsage}
           autoUpdateCheck={globalSettings.autoUpdateCheck}
           setAutoUpdateCheck={globalSettings.setAutoUpdateCheck}
+          maxToolSteps={settings.maxToolSteps}
+          setMaxToolSteps={settings.setMaxToolSteps}
           onDeleteAllConversations={props.onDeleteAllConversations}
           onDeleteUnbookmarkedConversations={
             props.onDeleteUnbookmarkedConversations

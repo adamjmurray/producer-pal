@@ -106,6 +106,37 @@ describe("updateClip - unwarped audio clip region", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 0);
   });
 
+  it("clamps the stale end_marker the write-order heuristic reads too", async () => {
+    setTempo(120);
+    setupAudioClipMock(mocks.clip123, {
+      warping: 0,
+      looping: 0,
+      start_marker: 0,
+      // Stale on both ends: 10 was beats while warped, now reads as 10 s on a
+      // 2 s sample.
+      end_marker: 10,
+      loop_end: 10,
+      sample_rate: 44100,
+      sample_length: 88200, // 2 s = 4 beats
+    });
+
+    // Beat 6 is past the clamped boundary (4 beats) but well inside the stale
+    // one (20 beats), so the two readings disagree about whether this write
+    // expands the region.
+    await updateClip({ ids: "123", start: "2|3", length: "n/4" });
+
+    const props = mocks.clip123.set.mock.calls.map(([prop]) => prop);
+
+    // Live silently ignores a start_marker past end_marker, so an expanding
+    // write has to move the end first. Reading the markers unclamped here made
+    // this look like a shrink and wrote the start into a region that couldn't
+    // hold it — no error, just a partly applied region.
+    expect(props.indexOf("end_marker")).toBeGreaterThanOrEqual(0);
+    expect(props.indexOf("start_marker")).toBeGreaterThan(
+      props.indexOf("end_marker"),
+    );
+  });
+
   it("still writes beats when the audio clip is warped", async () => {
     setTempo(120);
     setupAudioClipMock(mocks.clip123, {

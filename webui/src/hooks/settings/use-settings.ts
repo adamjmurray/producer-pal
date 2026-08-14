@@ -20,6 +20,7 @@ import {
   DEFAULT_SETTINGS,
   loadAllProviderSettingsAsync,
   loadCurrentProvider,
+  loadMaxToolSteps,
   loadSubagentPresetId,
   loadEnabledTools,
   loadProviderSettings,
@@ -28,6 +29,7 @@ import {
   type ProviderSettingsApplier,
   type ProviderStateSetters,
   saveCurrentSettings,
+  saveMaxToolSteps,
   saveSubagentPresetId,
   saveSmallModelMode,
 } from "./settings-helpers";
@@ -108,6 +110,9 @@ export function useSettings(): UseSettingsReturn {
   const [subagentPresetId, setSubagentPresetId] = useState<string | null>(
     loadSubagentPresetId,
   );
+  // How many tool steps one turn may spend. Same buffered lifecycle as the two
+  // above: persisted on Save, reverted on Cancel.
+  const [maxToolSteps, setMaxToolSteps] = useState<number>(loadMaxToolSteps);
   // False until the post-mount async decrypt has applied the real apiKeys.
   // saveSettings gates on this — saving the placeholder blanks would wipe
   // every stored encrypted key.
@@ -230,6 +235,7 @@ export function useSettings(): UseSettingsReturn {
         providerSettings,
         smallModelMode,
         subagentPresetId,
+        maxToolSteps,
       );
     } catch (err) {
       console.error("Failed to save provider settings", err);
@@ -253,6 +259,7 @@ export function useSettings(): UseSettingsReturn {
     enabledTools,
     smallModelMode,
     subagentPresetId,
+    maxToolSteps,
     voiceModeSettings,
     providerSettings,
   ]);
@@ -262,6 +269,7 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
     setSubagentPresetId(loadSubagentPresetId());
+    setMaxToolSteps(loadMaxToolSteps());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
     // tick later, mirroring the post-mount load). Pass the same onLoaded as the
@@ -336,6 +344,8 @@ export function useSettings(): UseSettingsReturn {
     setSmallModelMode: setSmallModelModeState,
     subagentPresetId,
     setSubagentPresetId,
+    maxToolSteps,
+    setMaxToolSteps,
     saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
@@ -394,6 +404,7 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * @param {AllProviderSettings} allSettings - Settings for every provider
  * @param {boolean} smallModelMode - Small-model-mode flag
  * @param {string | null} subagentPresetId - Subagent preset id (null = inherit)
+ * @param {number} maxToolSteps - Per-turn tool-step budget
  */
 async function persistAllSettings(
   provider: Provider,
@@ -401,10 +412,12 @@ async function persistAllSettings(
   allSettings: AllProviderSettings,
   smallModelMode: boolean,
   subagentPresetId: string | null,
+  maxToolSteps: number,
 ): Promise<void> {
   await saveCurrentSettings(provider, enabledTools, allSettings);
   saveSmallModelMode(smallModelMode);
   saveSubagentPresetId(subagentPresetId);
+  saveMaxToolSteps(maxToolSteps);
 }
 
 /**

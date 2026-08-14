@@ -3,6 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  MAX_TOOL_STEPS_LIMIT,
+  MIN_TOOL_STEPS,
+} from "#webui/chat/sdk/step-budget";
 import { THINKING_LEVELS } from "#webui/components/settings/controls/helpers/thinking-levels";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import {
@@ -507,6 +512,52 @@ export function loadSmallModelMode(): boolean {
  */
 export function saveSmallModelMode(enabled: boolean): void {
   localStorage.setItem("producer_pal_small_model_mode", String(enabled));
+}
+
+const MAX_TOOL_STEPS_KEY = "producer_pal_max_tool_steps";
+
+/**
+ * Loads the per-turn tool-step budget from localStorage, falling back to the
+ * shipped default. Anything unparseable or out of range falls back too, so a
+ * hand-edited value can't strand a turn at one step or run away.
+ * @returns {number} The configured budget, clamped to the supported range
+ */
+export function loadMaxToolSteps(): number {
+  const raw = localStorage.getItem(MAX_TOOL_STEPS_KEY);
+
+  if (raw == null) return DEFAULT_MAX_TOOL_STEPS;
+
+  return clampToolSteps(Number(raw)) ?? DEFAULT_MAX_TOOL_STEPS;
+}
+
+/**
+ * Saves the per-turn tool-step budget. An out-of-range or non-numeric value
+ * clears the key instead of storing it, so the default applies.
+ * @param {number} steps - The budget to store
+ */
+export function saveMaxToolSteps(steps: number): void {
+  const valid = clampToolSteps(steps);
+
+  if (valid == null) {
+    localStorage.removeItem(MAX_TOOL_STEPS_KEY);
+
+    return;
+  }
+
+  localStorage.setItem(MAX_TOOL_STEPS_KEY, String(valid));
+}
+
+/**
+ * A tool-step budget if it is a whole number in the supported range, else null.
+ * @param {number} steps - Candidate budget
+ * @returns {number | null} The budget, or null when it isn't usable
+ */
+function clampToolSteps(steps: number): number | null {
+  if (!Number.isInteger(steps)) return null;
+
+  return steps >= MIN_TOOL_STEPS && steps <= MAX_TOOL_STEPS_LIMIT
+    ? steps
+    : null;
 }
 
 const SUBAGENT_PRESET_KEY = "producer_pal_subagent_preset";

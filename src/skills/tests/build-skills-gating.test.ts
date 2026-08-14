@@ -162,16 +162,20 @@ describe("buildSkills - tool gating", () => {
     }
   });
 
-  it("keeps the merge rule for update-clip, in every notation", () => {
+  it("keeps the editing pipeline for update-clip, in every notation", () => {
     // The other half of the move: it left three notation heads, so it has to
-    // arrive exactly once for anyone who can actually merge into a clip.
+    // arrive exactly once for anyone who can actually merge into a clip. The
+    // merge rule itself is the `notes` param's now — what stays here is the
+    // pipeline, which no single schema can state.
     for (const notation of ["barbeat", "stark", "midi-json"] as const) {
       const result = buildSkills({ notation, tools: ["ppal-update-clip"] });
 
       expect(result, `${notation} lost the editing section`).toContain(
         "### Editing Notes Already in a Clip",
       );
-      expect(result, `${notation} lost the merge rule`).toContain("MERGES");
+      expect(result, `${notation} lost the pipeline`).toContain(
+        "preTransforms → notes (merge) → transforms",
+      );
     }
   });
 

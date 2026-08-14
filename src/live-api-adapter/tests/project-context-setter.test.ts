@@ -7,6 +7,7 @@
 // distinction, and applying a restore without losing a write that raced it.
 
 import { describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -130,5 +131,24 @@ describe("applying a restored blob around a concurrent write", () => {
     expect(restoreOutlets()).toStrictEqual([
       [0, "update_project_context", "notes from the sidecar"],
     ]);
+  });
+
+  it("stays quiet when a concurrent restore already applied the same blob", async () => {
+    projectContext("");
+    vi.mocked(outlet).mockClear();
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    // Two session starts racing on the same sidecar. The second one's snapshot
+    // no longer matches, but the param already holds exactly what it carries —
+    // that is agreement, not the divergence the warning is for.
+    await requestWithPendingSync("notes from the sidecar", () => {
+      projectContext("notes from the sidecar");
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(restoreOutlets()).toStrictEqual([]);
+
+    warnSpy.mockRestore();
   });
 });

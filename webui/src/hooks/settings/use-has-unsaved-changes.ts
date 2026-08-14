@@ -33,6 +33,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
     subagentPresetId: s.subagentPresetId,
+    maxToolSteps: s.maxToolSteps,
     realtimeVoice: s.realtimeVoice,
     voiceSpeed: s.voiceSpeed,
     voiceVolume: s.voiceVolume,

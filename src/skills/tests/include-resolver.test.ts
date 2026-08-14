@@ -266,6 +266,29 @@ describe("resolveIncludes - blank line collapse", () => {
 
     expect(result).toBe("a\n\nb");
   });
+
+  it("leaves a blank-line run inside a fragment alone", () => {
+    // Only reachable through a user override today, and only cosmetic unless
+    // the spacing means something — which inside a fenced block it does.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n\nb`,
+        x: "```\nfirst\n\n\nlast\n```",
+      }),
+    );
+
+    expect(result).toBe("a\n\n```\nfirst\n\n\nlast\n```\n\nb");
+  });
+
+  it("tidies the seam when a fragment body ends with its own newline", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n\n@include "./x.md"\n\nb`, x: "body\n" }),
+    );
+
+    expect(result).toBe("a\n\nbody\n\nb");
+  });
 });
 
 describe("resolveIncludes - path safety", () => {

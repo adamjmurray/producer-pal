@@ -5,6 +5,13 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
+export interface MarkerScale {
+  /** Beats per marker unit (see markerBeatsPerUnit) */
+  beatsPerMarkerUnit: number;
+  /** Sample duration to clamp markers to (see markerClampSeconds) */
+  markerClampSeconds: number;
+}
+
 export interface AudioClipTiming {
   /** Whether Live is time-stretching the sample to the Set tempo */
   warping: boolean;
@@ -131,6 +138,32 @@ export function markerBeatsPerUnit(clip: LiveAPI): number {
  */
 export function markerClampSeconds(clip: LiveAPI): number {
   return markersAreSeconds(clip) ? audioClipSampleSeconds(clip) : 0;
+}
+
+/**
+ * Read one of a clip's marker properties as beats.
+ *
+ * Applies both corrections a raw `getProperty` misses: the unit factor and the
+ * sample clamp. Everything that reads a marker has to go through this, or a
+ * stale far-out `end_marker` on an externally-unwarped clip leaks into the
+ * comparison unclamped.
+ *
+ * @param clip - The clip whose marker is being read
+ * @param property - Marker property name (start_marker, loop_end, …)
+ * @param scale - The clip's marker unit factor and clamp
+ * @param scale.beatsPerMarkerUnit - Beats per marker unit (see markerBeatsPerUnit)
+ * @param scale.markerClampSeconds - Sample duration to clamp to (see markerClampSeconds)
+ * @returns The marker position in real beats
+ */
+export function markerBeats(
+  clip: LiveAPI,
+  property: string,
+  scale: MarkerScale,
+): number {
+  const raw = clip.getProperty(property) as number;
+  const clamp = scale.markerClampSeconds;
+
+  return (clamp > 0 ? Math.min(raw, clamp) : raw) * scale.beatsPerMarkerUnit;
 }
 
 /**

@@ -10,16 +10,23 @@ import {
   isToolEnabled,
   SPAWN_SUBAGENT_TOOL_NAME,
 } from "#webui/lib/utils/enabled-tools";
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  workerSteps,
+} from "#webui/chat/sdk/step-budget";
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
 
 /**
- * A worker's nested tool-step budget. Higher than the plain-chat default
- * (MAX_TOOL_STEPS) so a delegated subtask — reading what it needs, then
+ * A worker's nested tool-step budget at the DEFAULT base budget. Higher than a
+ * plain chat turn's so a delegated subtask — reading what it needs, then
  * multi-step editing — has room to finish. Not lowered when a briefing removes
  * the connect step: a worker that runs out of steps strands the orchestrator,
  * and the unused headroom of a short task costs nothing.
+ *
+ * A user who raised their budget gets a worker budget derived from it
+ * (see workerSteps); this is the shipped number.
  */
-export const MAX_WORKER_STEPS = 30;
+export const MAX_WORKER_STEPS = workerSteps(DEFAULT_MAX_TOOL_STEPS);
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
@@ -315,7 +322,7 @@ export function buildWorkerConfig(
     ...rest,
     ...subagentConfig,
     chatHistory: session ?? [],
-    maxSteps: MAX_WORKER_STEPS,
+    maxSteps: workerSteps(config.baseMaxSteps ?? DEFAULT_MAX_TOOL_STEPS),
     enabledTools: {
       // Preset toolset (if the preset saved one), used as-is; otherwise inherit
       // the orchestrator's. It's a sparse map — absent keys stay default-enabled

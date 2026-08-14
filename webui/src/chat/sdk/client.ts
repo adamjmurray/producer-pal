@@ -35,14 +35,17 @@ import {
   highestSubagentIndex,
   isSpawnToolResult,
 } from "./subagent/subagent-session";
+import { DEFAULT_MAX_TOOL_STEPS, orchestratorSteps } from "./step-budget";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 /**
  * Default tool-step budget: a plain chat turn's, and the floor the orchestrator
- * and worker budgets are set above. Exported so tests assert against the real
- * number instead of a copy that can drift.
+ * and worker budgets are set above. Re-exported so callers and tests keep
+ * reading it from here rather than growing a copy that can drift; the number
+ * and the derivations live in step-budget.ts, which the settings layer also
+ * reads. A user who has set their own budget overrides this per config.
  */
-export const MAX_TOOL_STEPS = 25;
+export const MAX_TOOL_STEPS = DEFAULT_MAX_TOOL_STEPS;
 
 /**
  * The user turn a resume appends when, and only when, the conversation would
@@ -50,16 +53,6 @@ export const MAX_TOOL_STEPS = 25;
  * question — see resumeStream.
  */
 const RESUME_MESSAGE = "continue";
-
-/**
- * Orchestrator step budget when subagents are enabled. Widened off the default
- * because context-gathering steps and each SEQUENTIAL spawn share this budget (a
- * spawn costs one step; N parallel spawns in one turn cost just one). So this
- * bounds how many sequential spawns fit alongside a turn's other tool work, while
- * MAX_SPAWNS bounds how many workers the turn may start at all — a parallel burst
- * costs one step but still spends the whole spawn budget.
- */
-const MAX_ORCHESTRATOR_STEPS = 40;
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.
@@ -76,8 +69,9 @@ export class ChatSdkClient {
   private config: ChatClientConfig;
   /**
    * This client's tool-step budget for streamText's stopWhen. Set in
-   * initialize(): MAX_ORCHESTRATOR_STEPS when subagents are enabled, the config's
-   * budget for a worker (MAX_WORKER_STEPS), else the shared MAX_TOOL_STEPS.
+   * initialize(): the orchestrator budget derived from the user's base when
+   * subagents are enabled, the config's own budget for a worker (already
+   * derived), else the user's base.
    */
   private maxSteps = MAX_TOOL_STEPS;
   /**
@@ -149,8 +143,12 @@ export class ChatSdkClient {
       // Orchestrator with subagents enabled: add the client-side spawn tool and
       // widen the step budget so sequential spawns and context-gathering steps
       // share enough headroom. A worker never reaches here — its cloned config
-      // sets spawn_subagent false (the recursion guard).
-      this.maxSteps = MAX_ORCHESTRATOR_STEPS;
+      // sets spawn_subagent false (the recursion guard). Derived from the
+      // config's base so a user who raised their budget widens this with it;
+      // a worker's own maxSteps arrives pre-derived on the cloned config.
+      this.maxSteps = orchestratorSteps(
+        this.config.baseMaxSteps ?? DEFAULT_MAX_TOOL_STEPS,
+      );
       this.spawnState.nextIndex = highestSubagentIndex(this.chatHistory);
       this.tools = {
         ...tools,
@@ -164,9 +162,12 @@ export class ChatSdkClient {
         }),
       };
     } else {
-      // Worker (config.maxSteps = MAX_WORKER_STEPS) or a subagents-off
-      // orchestrator (undefined → shared default; behavior unchanged).
-      this.maxSteps = this.config.maxSteps ?? MAX_TOOL_STEPS;
+      // A worker carries its own already-derived budget in maxSteps; a
+      // subagents-off chat has none and runs on the user's base.
+      this.maxSteps =
+        this.config.maxSteps ??
+        this.config.baseMaxSteps ??
+        DEFAULT_MAX_TOOL_STEPS;
       this.tools = tools;
     }
   }

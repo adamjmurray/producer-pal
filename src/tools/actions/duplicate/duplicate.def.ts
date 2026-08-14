@@ -85,7 +85,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     routeToSource: param(z.boolean().optional(), {
       default:
-        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
+        "tracks only (errors otherwise): the copy gets no clips or devices of its own and plays the source track's instrument (for MIDI layering/polyrhythms)",
       smallModel: null,
     }),
 

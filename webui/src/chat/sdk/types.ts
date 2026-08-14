@@ -180,11 +180,19 @@ export interface ChatClientConfig {
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: ChatMessage[];
   /**
-   * Tool-step budget for streamText's stopWhen. Defaults to the shared
-   * MAX_TOOL_STEPS in client.ts. A subagent worker sets MAX_WORKER_STEPS; an
-   * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
+   * Tool-step budget for streamText's stopWhen. Defaults to
+   * DEFAULT_MAX_TOOL_STEPS. A subagent worker sets its derived worker budget;
+   * an orchestrator with subagents enabled derives a wider one from
+   * baseMaxSteps instead of reading this.
    */
   maxSteps?: number;
+  /**
+   * The user's configured per-turn budget, before any orchestrator/worker
+   * derivation. Carried separately from `maxSteps` because a worker's config
+   * already holds its own derived budget there, and the orchestrator branch
+   * needs the base it was derived from. Absent = the shipped default.
+   */
+  baseMaxSteps?: number;
   /**
    * Preset-derived config a spawned worker runs under (model/inference + the
    * preset's toolset when it saved one). Set on the orchestrator config when the
