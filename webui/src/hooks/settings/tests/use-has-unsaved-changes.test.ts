@@ -171,6 +171,15 @@ describe("useHasUnsavedChanges", () => {
     expect(result.current).toBe(true);
   });
 
+  it("detects a tool-step budget change", () => {
+    // Buffered like the two above, so leaving it out of the snapshot would
+    // discard an edited budget on Esc with no unsaved-changes warning.
+    const { result, update } = renderWithOpenModal(makeSettings());
+
+    update(makeSettings({ maxToolSteps: 40 }));
+    expect(result.current).toBe(true);
+  });
+
   it("flags a notation change via its dirty flag (notation is not serialized)", () => {
     const { result, update } = renderWithOpenModal(makeSettings());
 

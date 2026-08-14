@@ -187,6 +187,39 @@ describe("PreferencesTab", () => {
     expect(setMaxToolSteps).not.toHaveBeenCalled();
   });
 
+  it("lets a rejected value stay visible while the field has focus", () => {
+    // Typing "1" on the way to "15" must not be yanked out from under the
+    // cursor; it just hasn't reached the settings buffer yet.
+    const { container } = render(<PreferencesTab {...defaultProps} />);
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.input(input, { target: { value: "1" } });
+
+    expect(input.value).toBe("1");
+  });
+
+  it.each([
+    ["below the floor", String(MIN_TOOL_STEPS - 1)],
+    ["blank", ""],
+    ["fractional", "12.5"],
+  ])("snaps a %s draft back to the committed budget on blur", (_l, value) => {
+    // Otherwise the field sits there reading like a budget the next turn will
+    // use, while Save writes the old one.
+    const { container } = render(
+      <PreferencesTab {...defaultProps} maxToolSteps={30} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.input(input, { target: { value } });
+    fireEvent.blur(input);
+
+    expect(input.value).toBe("30");
+  });
+
   it("renders cleanup buttons", () => {
     render(<PreferencesTab {...defaultProps} />);
     expect(

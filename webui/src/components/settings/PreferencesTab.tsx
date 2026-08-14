@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useEffect, useState } from "preact/hooks";
 import {
   DEFAULT_MAX_TOOL_STEPS,
   MAX_TOOL_STEPS_LIMIT,
@@ -162,6 +163,13 @@ interface StepBudgetFieldProps {
  * "Tool steps per turn": how much tool work one turn may do before it stops and
  * hands control back. Local to this tab rather than a controls/ component
  * because that directory is at its folder-size cap.
+ *
+ * The field keeps its own draft string so a half-typed budget ("", or "1" on
+ * the way to "15") isn't fought back as you type. Only an in-range whole number
+ * reaches the settings buffer; leaving the field snaps the display back to
+ * what's actually committed, so it can never sit there showing a number Save
+ * won't write.
+ *
  * @param {StepBudgetFieldProps} props - Component props
  * @param {number} props.maxToolSteps - The current budget
  * @param {Function} props.setMaxToolSteps - Commits a new budget to the buffer
@@ -171,6 +179,14 @@ function StepBudgetField({
   maxToolSteps,
   setMaxToolSteps,
 }: StepBudgetFieldProps) {
+  const [draft, setDraft] = useState(String(maxToolSteps));
+
+  // Follow the buffer when it moves under us — a Cancel reverts it, and the
+  // post-mount load can replace the mount-time default.
+  useEffect(() => {
+    setDraft(String(maxToolSteps));
+  }, [maxToolSteps]);
+
   return (
     <div className="mt-4 border-t border-zinc-300 pt-4 dark:border-zinc-600">
       <label htmlFor="max-tool-steps" className="mb-1 block text-sm">
@@ -183,14 +199,19 @@ function StepBudgetField({
         min={MIN_TOOL_STEPS}
         max={MAX_TOOL_STEPS_LIMIT}
         step={1}
-        value={maxToolSteps}
+        value={draft}
         // Commit only an in-range whole number: an empty field and a half-typed
         // "1" both parse to something a turn would then run on, and this field
         // is saved with everything else rather than confirmed on its own.
         onInput={(e) => {
-          const next = Number((e.target as HTMLInputElement).value);
+          const value = (e.target as HTMLInputElement).value;
+
+          setDraft(value);
+
+          const next = Number(value);
 
           if (
+            value.trim() !== "" &&
             Number.isInteger(next) &&
             next >= MIN_TOOL_STEPS &&
             next <= MAX_TOOL_STEPS_LIMIT
@@ -198,6 +219,9 @@ function StepBudgetField({
             setMaxToolSteps(next);
           }
         }}
+        // Snap back to what's committed, so an abandoned draft can't sit there
+        // reading like a budget the next turn will use.
+        onBlur={() => setDraft(String(maxToolSteps))}
         className="w-24 rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
       />
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
