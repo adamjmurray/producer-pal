@@ -173,6 +173,33 @@ describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
     expect(guard.confirmLeave()).toBe(false);
     expect(window.confirm).toHaveBeenCalledOnce();
   });
+
+  it("guards a draft with a body but no name yet", () => {
+    // The draft can't be saved without a name, which is exactly why losing it is
+    // unrecoverable: nothing on disk to go back to. New/select/tab-switch all
+    // route through confirmLeave, so guarding here covers all of them.
+    const collection = stubCollection(vi.fn());
+    let registered: (() => boolean) | null = null;
+    const guard = {
+      register: (next: (() => boolean) | null) => {
+        registered = next;
+      },
+      confirmLeave: () => registered == null || registered(),
+    };
+
+    render(
+      <LeaveGuardContext.Provider value={guard}>
+        {editorElement({ collection, entry: null })}
+      </LeaveGuardContext.Provider>,
+    );
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Instructions/ }), {
+      target: { value: "Voice with 3rds." },
+    });
+
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    expect(guard.confirmLeave()).toBe(false);
+  });
 });
 
 describe("CustomSkillEditor save", () => {
