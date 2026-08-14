@@ -7,19 +7,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { mcpRequests, neverRespondToMcp } from "#src/test/mocks/mock-max.ts";
 import { setTimeoutForTesting } from "../../max-api-adapter.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
-
-// Type for mock Max module with test-specific properties
-type MockMax = typeof Max & {
-  handlers: Map<string, (input: unknown) => void>;
-  mcpResponseHandler: ((requestId: string, ...chunks: string[]) => void) | null;
-  defaultMcpResponseHandler:
-    | ((requestId: string, ...chunks: string[]) => void)
-    | null;
-};
-const mockMax = Max as MockMax;
 
 interface TestState {
   client: Client | null;
@@ -229,35 +219,8 @@ describe("MCP Express App", () => {
 
     it("should call ppal-read-track tool", async () => {
       const { client } = testState;
-      // For this test, we need the mock response handler from test-setup.js
-      // The real handleLiveApiResult would try to actually handle the response
-      // but we want the mock to provide a fake response
-      const mockHandler = vi.fn(
-        (
-          message: string,
-          requestId: string,
-          _tool: string,
-          _argsJSON: string,
-        ) => {
-          if (message === "mcp_request") {
-            // Simulate the response from Max after a short delay
-            setTimeout(() => {
-              // Call the real handleLiveApiResult with mock data in chunked format
-              mockMax.defaultMcpResponseHandler!(
-                requestId,
-                JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
-                MAX_ERROR_DELIMITER,
-              );
-            }, 1);
-          }
-
-          return Promise.resolve();
-        },
-      );
-
-      // Replace Max.outlet with our mock for this test
-      Max.outlet = mockHandler as typeof Max.outlet;
-
+      // The default Max mock already answers with a bare success, which is all
+      // this test needs — the point is the round trip, not the payload.
       const result = await client!.callTool({
         name: "ppal-read-track",
         arguments: { trackIndex: 1 },
@@ -276,13 +239,14 @@ describe("MCP Express App", () => {
       // this is hard-coded in our mock response above:
       expect(mockReturnValue).toStrictEqual({});
 
-      expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
-        "mcp_request",
-        expect.stringMatching(/^[\da-f-]{36}$/), // requestId (UUID format)
-        "ppal-read-track", // tool name
-        '{"trackIndex":1,"include":[]}', // argsJSON
-        expect.stringContaining("silenceWavPath"), // contextJSON
-      );
+      expect(mcpRequests).toStrictEqual([
+        {
+          requestId: expect.stringMatching(/^[\da-f-]{36}$/), // UUID format
+          tool: "ppal-read-track",
+          argsJSON: '{"trackIndex":1,"include":[]}',
+          contextJSON: expect.stringContaining("silenceWavPath"),
+        },
+      ]);
     });
 
     it("should call list-tracks tool and timeout appropriately", async () => {
@@ -293,10 +257,8 @@ describe("MCP Express App", () => {
       // Set a short timeout for fast testing
       setTimeoutForTesting(2);
 
-      // Remove the mcp_response handler to cause a timeout on the request calling side of the flow:
-      mockMax.mcpResponseHandler = null;
-      // Also replace Max.outlet with a simple mock that doesn't auto-respond
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
+      // Accept the request but never answer, so the request side times out
+      neverRespondToMcp();
 
       const result = await client!.callTool({
         name: "ppal-read-live-set",
@@ -345,29 +307,21 @@ describe("MCP Express App", () => {
       // caught and returned as MCP error responses with isError: true
       const errorMessage = "Simulated tool error";
 
-      // Save the original mock to restore it after
-      const originalOutlet = Max.outlet;
-
-      // Replace Max.outlet to reject with an error instead of responding
+      // A rejecting outlet is past what the responder API covers, so replace it
+      // outright — resetMaxMock() puts the default back before the next test.
       Max.outlet = vi.fn().mockRejectedValue(new Error(errorMessage));
 
-      try {
-        const result = await client!.callTool({
-          name: "ppal-read-track",
-          arguments: { trackIndex: 0 },
-        });
-        const content = result.content as Array<{ type: string; text: string }>;
+      const result = await client!.callTool({
+        name: "ppal-read-track",
+        arguments: { trackIndex: 0 },
+      });
+      const content = result.content as Array<{ type: string; text: string }>;
 
-        expect(result).toBeDefined();
-        expect(result.isError).toBe(true);
-        expect(result.content).toBeDefined();
-        expect(content[0]!.type).toBe("text");
-        expect(content[0]!.text).toContain(errorMessage);
-      } finally {
-        // Always restore the original mock
-        // eslint-disable-next-line require-atomic-updates -- safe in synchronous finally block
-        Max.outlet = originalOutlet;
-      }
+      expect(result).toBeDefined();
+      expect(result.isError).toBe(true);
+      expect(result.content).toBeDefined();
+      expect(content[0]!.type).toBe("text");
+      expect(content[0]!.text).toContain(errorMessage);
     });
   });
 

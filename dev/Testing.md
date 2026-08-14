@@ -50,6 +50,21 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 
+## MCP server tests
+
+`test-setup.ts` installs the `max-api` mock from `src/test/mocks/mock-max.ts`,
+which answers every tool call with a bare success. Don't build your own
+`Max.outlet` — use:
+
+- `setMcpResponse(payload)` to answer with a specific MCP response body.
+- `neverRespondToMcp()` to accept the request and never reply, so the adapter's
+  timeout path fires.
+- `mcpRequests` / `lastMcpContext()` to read what reached V8 — the seam
+  per-request overrides (notation, `compactOutput`, `timeoutMs`) travel through.
+
+`beforeEach` resets all of it, including `Max.outlet` itself, so a test that
+does need to replace the outlet outright doesn't leak into the next one.
+
 ## Webui tests
 
 Colocated with the source, using vitest + @testing-library/preact

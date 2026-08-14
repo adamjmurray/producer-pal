@@ -12,7 +12,6 @@ import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
   listToolNames,
-  mockMaxSuccess,
   SKILLS_HEADER,
 } from "./mcp-header-test-helpers.ts";
 
@@ -145,8 +144,6 @@ describe("REST API per-request disabled-tools header", () => {
     toolName: string,
     requestHeaders: Record<string, string>,
   ): Promise<Response> {
-    mockMaxSuccess();
-
     return fetch(`${appState.baseUrl}/api/tools/${toolName}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...requestHeaders },
@@ -280,8 +277,6 @@ describe("GET /subagent-briefing tool gating", () => {
   it("gates a worker's briefing on the same header its tool calls send", async () => {
     // The briefing route reads the device config through a getter, exactly as
     // POST /mcp does, so the two can't drift on what a worker is allowed.
-    mockMaxSuccess();
-
     const response = await fetch(`${appState.baseUrl}/subagent-briefing`, {
       headers: {
         ...headers("ppal-library"),

@@ -3,19 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import Max from "max-api";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import {
+  lastMcpContext,
+  neverRespondToMcp,
+  setMcpResponse,
+} from "#src/test/mocks/mock-max.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
-
-// Type for mock Max module with test-specific properties
-type MockMax = typeof Max & {
-  defaultMcpResponseHandler:
-    | ((requestId: string, ...chunks: string[]) => void)
-    | null;
-};
-const mockMax = Max as MockMax;
 
 // Parsed body of a REST tool-call response. Every field is optional because
 // which ones appear depends on the route outcome and the ?format mode.
@@ -26,56 +21,6 @@ type ToolCallBody = {
   warnings?: string[];
   appended?: string[];
 };
-
-/**
- * Stub Max.outlet to resolve MCP requests with a given response payload.
- * Returns a holder whose `.lastContext` field is populated with the parsed
- * contextJSON of the most recent mcp_request call.
- * @param payload - JSON-serializable MCP response body
- * @returns Holder for inspecting the most recent contextJSON
- */
-function stubMaxOutlet(payload: Record<string, unknown>): {
-  lastContext: Record<string, unknown> | null;
-} {
-  const holder: { lastContext: Record<string, unknown> | null } = {
-    lastContext: null,
-  };
-
-  Max.outlet = ((
-    message: string,
-    requestId: string,
-    _tool?: string,
-    _argsJSON?: string,
-    contextJSON?: string,
-  ): Promise<void> => {
-    if (message === "mcp_request") {
-      if (typeof contextJSON === "string") {
-        holder.lastContext = JSON.parse(contextJSON) as Record<string, unknown>;
-      }
-
-      setTimeout(() => {
-        mockMax.defaultMcpResponseHandler!(
-          requestId,
-          JSON.stringify(payload),
-          MAX_ERROR_DELIMITER,
-        );
-      }, 1);
-    }
-
-    return Promise.resolve();
-  }) as typeof Max.outlet;
-
-  return holder;
-}
-
-/**
- * Stub Max.outlet so it accepts the request but never sends a response,
- * forcing the adapter's timeout path to fire. Used to exercise the REST
- * route's timeout → HTTP 504 mapping end-to-end through the real adapter.
- */
-function stubMaxOutletNeverResponds(): void {
-  Max.outlet = ((): Promise<void> => Promise.resolve()) as typeof Max.outlet;
-}
 
 describe("REST API Routes", () => {
   const appState = setupExpressAppServer();
@@ -147,7 +92,7 @@ describe("REST API Routes", () => {
     response: Response;
     body: ToolCallBody;
   }> {
-    stubMaxOutlet({
+    setMcpResponse({
       content: [{ type: "text", text }],
       isError: true,
     });
@@ -309,7 +254,7 @@ describe("REST API Routes", () => {
     });
 
     it("should call tool and return unwrapped result", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "track data here" }],
       });
 
@@ -360,7 +305,7 @@ describe("REST API Routes", () => {
     async function readTrackJsonWithExtraBlocks(
       extraTexts: string[],
     ): Promise<ToolCallBody> {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [
           { type: "text", text: '{"ok":true}' },
           ...extraTexts.map((text) => ({ type: "text", text })),
@@ -373,18 +318,18 @@ describe("REST API Routes", () => {
     }
 
     it("should default to compactOutput: false (json) when format is omitted", async () => {
-      const holder = stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: '{"ok":true}' }],
       });
 
       await callTool("ppal-connect");
 
-      expect(holder.lastContext).not.toBeNull();
-      expect(holder.lastContext).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).not.toBeNull();
+      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
     });
 
     it("should parse the result as JSON when format is omitted (json default)", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [
           { type: "text", text: '{"tempo":120}' },
           { type: "text", text: "WARNING: heads up" },
@@ -399,18 +344,18 @@ describe("REST API Routes", () => {
     });
 
     it("should pass compactOutput: false when format=json", async () => {
-      const holder = stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: '{"ok":true}' }],
       });
 
       const response = await callToolWithFormat("ppal-connect", "json");
 
       expect(response.status).toBe(200);
-      expect(holder.lastContext).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
     });
 
     it("should return parsed object as result when format=json", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: '{"tempo":120,"scale":"C Major"}' }],
       });
 
@@ -423,7 +368,7 @@ describe("REST API Routes", () => {
     });
 
     it("should expose warnings as an array when format=json", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [
           { type: "text", text: '{"ok":true}' },
           { type: "text", text: "WARNING: quantize ignored" },
@@ -442,7 +387,7 @@ describe("REST API Routes", () => {
     });
 
     it("should keep error responses as a joined string even when format=json", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "Error: bad input" }],
         isError: true,
       });
@@ -455,7 +400,7 @@ describe("REST API Routes", () => {
     });
 
     it("should fall back to raw text when format=json receives malformed JSON", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "{ malformed: not-json" }],
       });
 
@@ -492,7 +437,7 @@ describe("REST API Routes", () => {
       // End-to-end guard: the withConnectAppend wiring pushes the skills block
       // and JSON mode must surface it, not drop it (regression for the bug
       // where JSON mode silently discarded connect's appended content).
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: '{"connected":true}' }],
       });
 
@@ -515,7 +460,7 @@ describe("REST API Routes", () => {
     it("should join content as a string when format=compact", async () => {
       // Use a non-connect tool: ppal-connect now gets a Node-side skills block
       // appended (see skills-inject.ts), which would pollute the join under test.
-      stubMaxOutlet({
+      setMcpResponse({
         content: [
           { type: "text", text: "{ok:true}" },
           { type: "text", text: "WARNING: heads up" },
@@ -532,7 +477,7 @@ describe("REST API Routes", () => {
     it("appends the Node-side skills block to ppal-connect (compact)", async () => {
       // Guards the create-express-app wiring: withSkills is composed into the
       // REST/MCP call path, so ppal-connect's joined output carries the skills.
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "{connected:true}" }],
       });
 
@@ -544,14 +489,14 @@ describe("REST API Routes", () => {
     });
 
     it("should pass compactOutput: true when format=compact", async () => {
-      const holder = stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "ok" }],
       });
 
       const response = await callToolWithFormat("ppal-connect", "compact");
 
       expect(response.status).toBe(200);
-      expect(holder.lastContext).toMatchObject({ compactOutput: true });
+      expect(lastMcpContext()).toMatchObject({ compactOutput: true });
     });
 
     it("should return 400 for invalid format value", async () => {
@@ -567,7 +512,7 @@ describe("REST API Routes", () => {
 
   describe("?timeoutMs query param", () => {
     it("should pass timeoutMs into context when provided", async () => {
-      const holder = stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "ok" }],
       });
 
@@ -577,11 +522,11 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(holder.lastContext).toMatchObject({ timeoutMs: 5000 });
+      expect(lastMcpContext()).toMatchObject({ timeoutMs: 5000 });
     });
 
     it("should combine ?format and ?timeoutMs in the same call", async () => {
-      const holder = stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: '{"ok":true}' }],
       });
 
@@ -591,7 +536,7 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(holder.lastContext).toMatchObject({
+      expect(lastMcpContext()).toMatchObject({
         compactOutput: false,
         timeoutMs: 2500,
       });
@@ -642,7 +587,7 @@ describe("REST API Routes", () => {
     it("should return HTTP 504 when the tool call times out", async () => {
       // Max accepts the request but never responds, so the adapter's real
       // timeout path fires and tags the response with errorCode: "timeout".
-      stubMaxOutletNeverResponds();
+      neverRespondToMcp();
 
       const response = await callToolWithQuery("ppal-connect", "timeoutMs=1");
 
@@ -668,7 +613,7 @@ describe("REST API Routes", () => {
     });
 
     it("should keep returning HTTP 200 on success", async () => {
-      stubMaxOutlet({
+      setMcpResponse({
         content: [{ type: "text", text: "ok" }],
       });
 

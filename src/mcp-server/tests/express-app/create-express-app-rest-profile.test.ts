@@ -15,7 +15,8 @@ import { describe, expect, it } from "vitest";
 import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
-import { mockMaxSuccess, SKILLS_HEADER } from "./mcp-header-test-helpers.ts";
+import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
+import { SKILLS_HEADER } from "./mcp-header-test-helpers.ts";
 
 // The harness leaves the globals at their defaults: barbeat, small-model off.
 const appState = setupExpressAppServer();
@@ -70,15 +71,13 @@ async function callToolRequestContext(
   toolName: string,
   headers: Record<string, string>,
 ): Promise<Record<string, unknown>> {
-  const contextBlobs = mockMaxSuccess();
-
   await fetch(`${appState.baseUrl}/api/tools/${toolName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body: "{}",
   });
 
-  return JSON.parse(contextBlobs[0] ?? "{}") as Record<string, unknown>;
+  return lastMcpContext() ?? {};
 }
 
 /**
@@ -92,8 +91,6 @@ async function callToolRequestContext(
 async function connectSkillsBlock(
   headers: Record<string, string>,
 ): Promise<string> {
-  mockMaxSuccess();
-
   const response = await fetch(`${appState.baseUrl}/api/tools/ppal-connect`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
@@ -215,8 +212,6 @@ describe("REST API per-request small-model-mode header", () => {
     it("still accepts a param the shrunk catalog hides", async () => {
       // The catalog shrinks; validation stays on the full schema, so a caller
       // that ignores the smaller catalog isn't 400ed off a supported param.
-      mockMaxSuccess();
-
       const response = await fetch(
         `${appState.baseUrl}/api/tools/ppal-create-track`,
         {
