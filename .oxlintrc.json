@@ -756,7 +756,8 @@
       "files": ["webui/**/*.{ts,tsx}"],
       "rules": {
         "react/rules-of-hooks": "error",
-        "react/exhaustive-deps": "error"
+        "react/exhaustive-deps": "error",
+        "react/jsx-no-constructed-context-values": "error"
       },
       "plugins": ["react"],
       "env": {
@@ -1336,6 +1337,18 @@
       "rules": {
         "oxc/approx-constant": "off",
         "oxc/no-async-endpoint-handlers": "off"
+      }
+    },
+    // PERMANENT, 5. Every violation is a test rendering a provider once to
+    // assert what a consumer receives. The rule guards against a value that is
+    // rebuilt on each re-render; these never re-render, and hoisting the value
+    // out would stop each case from getting a fresh guard. No production
+    // component violates it, which is where the rule earns its keep.
+    {
+      "files": ["webui/**/*.test.tsx"],
+      "plugins": ["react"],
+      "rules": {
+        "react/jsx-no-constructed-context-values": "off"
       }
     }
   ]
