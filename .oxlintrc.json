@@ -109,7 +109,7 @@
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin"
       ],
-      "plugins": ["import"],
+      "plugins": ["import", "oxc"],
       "rules": {
         "constructor-super": "error",
         "for-direction": "error",
@@ -242,6 +242,7 @@
         ],
         "max-depth": ["error", 4],
         "complexity": ["error", 20],
+        "oxc/no-accumulating-spread": "error",
         "import/first": "error",
         "import/no-commonjs": "error",
         "import/no-cycle": "error",
@@ -1301,6 +1302,40 @@
       "plugins": ["typescript"],
       "rules": {
         "typescript/no-unnecessary-type-parameters": "off"
+      }
+    },
+    // Enabling the oxc plugin (for `no-accumulating-spread`) turns its whole
+    // category on, and two of its rules are wrong here.
+    //
+    // PERMANENT, 5. `no-async-endpoint-handlers` is an Express 4 rule: it
+    // exists because Express 4 drops a rejected promise from an async handler.
+    // Express 5 forwards it to the error middleware, and this repo is on 5.
+    //
+    // PERMANENT, 1. `approx-constant` reports `3.14159` in a serializer test
+    // asserting that literal round-trips to the string "3.14159". `Math.PI`
+    // would serialize to "3.141592653589793" and break the case.
+    {
+      "files": [
+        "webui/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "evals/**/*.ts",
+        "src/**/*.ts",
+        "config/**/*.ts",
+        "vitest.config.ts",
+        "config/**/*.{js,mjs}",
+        "evals/**/*.mjs",
+        "examples/**/*.{js,mjs}",
+        "e2e/docs/**/*.{js,mjs}",
+        "e2e/webui/**/*.ts",
+        "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
+        "e2e/mcp/**/*.ts"
+      ],
+      "plugins": ["oxc"],
+      "rules": {
+        "oxc/approx-constant": "off",
+        "oxc/no-async-endpoint-handlers": "off"
       }
     }
   ]
