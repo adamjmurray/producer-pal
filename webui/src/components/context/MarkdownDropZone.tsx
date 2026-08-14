@@ -8,6 +8,7 @@ import {
   classifyDroppedFile,
   dragHasFiles,
   NOT_MARKDOWN_MESSAGE,
+  READ_ERROR_MESSAGE,
   TOO_LARGE_MESSAGE,
 } from "#webui/utils/text-file-io";
 
@@ -68,7 +69,14 @@ export function MarkdownDropZone(
     const result = classifyDroppedFile(event.dataTransfer);
 
     if (result.kind === "file") {
-      void result.file.text().then((text) => onImportText(text));
+      // The read can still fail after the file passed classification — it may
+      // have moved, been deleted, or sit on an unreachable volume. Say so, the
+      // way the file-picker path's "read-error" result does, instead of leaving
+      // the drop looking ignored (and the rejection unhandled).
+      void result.file.text().then(
+        (text) => onImportText(text),
+        () => onReject(READ_ERROR_MESSAGE),
+      );
     } else if (result.kind === "not-markdown") {
       onReject(NOT_MARKDOWN_MESSAGE);
     } else if (result.kind === "too-large") {

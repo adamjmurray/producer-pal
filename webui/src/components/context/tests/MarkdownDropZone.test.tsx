@@ -146,6 +146,26 @@ describe("MarkdownDropZone", () => {
     expect(screen.getByText(/File too large/)).toBeTruthy();
   });
 
+  it("rejects a dropped file that fails to read with a notice", async () => {
+    const { child, onImportText } = renderZone();
+    // Classification passes, then the read fails — the file moved, was deleted,
+    // or sits on an unreachable volume. The drop must say so rather than look
+    // ignored (and leave the rejection unhandled).
+    const unreadable = {
+      name: "gone.md",
+      type: "text/markdown",
+      size: 0,
+      text: () => Promise.reject(new Error("NotFoundError")),
+    } as unknown as File;
+
+    fireEvent.drop(child, { dataTransfer: fileTransfer([unreadable]) });
+
+    await vi.waitFor(() =>
+      expect(screen.getByText("Couldn't read that file")).toBeTruthy(),
+    );
+    expect(onImportText).not.toHaveBeenCalled();
+  });
+
   it("says nothing when a drop carries no file at all", () => {
     const { child, onImportText } = renderZone();
 
