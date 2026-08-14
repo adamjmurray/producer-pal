@@ -23,6 +23,7 @@ npm/licenses
 max-for-live-device/*.js
 max-for-live-device/*.mjs
 max-for-live-device/*.html
+max-for-live-device/chat-ui.inputs.json
 max-for-live-device/LICENSE
 max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
