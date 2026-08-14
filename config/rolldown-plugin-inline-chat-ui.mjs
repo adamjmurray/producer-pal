@@ -41,12 +41,13 @@ function chatUIPath() {
 }
 
 /**
- * The files the last Vite build read, as recorded by its record-build-inputs
- * plugin. This is how src/shared gets into the staleness check: the chat UI
- * imports it, but nothing under webui/ changes when it does.
- * @returns Absolute paths, or null when there is no usable record
+ * What the last Vite build read, and when it started, as recorded by its
+ * record-build-inputs plugin. The input list is how src/shared gets into the
+ * staleness check: the chat UI imports it, but nothing under webui/ changes
+ * when it does.
+ * @returns The record, or null when there is none for this build's SHA
  */
-function recordedBuildInputs() {
+function recordedBuild() {
   let record;
 
   try {
@@ -58,23 +59,29 @@ function recordedBuildInputs() {
   }
 
   // A commit moves the SHA baked into the UI without touching a single file.
-  return record.buildSha === BUILD_SHA ? record.inputs : null;
+  // Comparing against the SHA this process resolved (which is also the one it
+  // passes down to the Vite build) rather than a freshly-computed one: in watch
+  // mode ours is frozen at config load, and a commit would otherwise leave the
+  // two disagreeing for good — every rebuild a cache miss.
+  return record.buildSha === BUILD_SHA ? record : null;
 }
 
 /**
- * Decide whether chat-ui.html needs rebuilding, by comparing it against
- * everything the Vite build reads.
+ * Decide whether chat-ui.html needs rebuilding, by comparing the sources
+ * against when the last Vite build started.
  * @param htmlPath - Path to the built chat-ui.html
  * @param sources - Source files the build depends on
+ * @param startedAt - When the recorded build began (ms), 0 if unrecorded
  * @returns True when the build output is missing or older than a source
  */
-function isChatUIStale(htmlPath, sources) {
-  const builtAt = mtimeOf(htmlPath);
+function isChatUIStale(htmlPath, sources, startedAt) {
+  if (mtimeOf(htmlPath) == null) return true;
 
-  if (builtAt == null) return true;
-
+  // Against the build's START, not the output's mtime: the output is written
+  // when the build finishes, so a source saved mid-build reads as older than an
+  // output that never saw it, and stays invisible for good.
   // A source that has since been deleted is a change too, hence Infinity.
-  return sources.some((file) => (mtimeOf(file) ?? Infinity) > builtAt);
+  return sources.some((file) => (mtimeOf(file) ?? Infinity) > startedAt);
 }
 
 /**
@@ -94,12 +101,12 @@ export function inlineChatUI() {
   return {
     name: "inline-chat-ui",
     buildStart() {
-      const recorded = recordedBuildInputs();
+      const recorded = recordedBuild();
       const sources = [
         // The whole tree, not just what the last build imported, so a new file
         // and a Tailwind class scan both count.
         ...getFilesRecursively(join(rootDir, "webui")),
-        ...(recorded ?? []),
+        ...(recorded?.inputs ?? []),
         join(__dirname, "vite.config.ts"),
         join(__dirname, "build-sha.mjs"),
         join(rootDir, "package.json"),
@@ -115,8 +122,17 @@ export function inlineChatUI() {
       // it when its output is actually out of date. This also keeps `npm run
       // build` from building the chat UI twice — the build script runs
       // ui:build before rolldown starts.
-      if (recorded == null || isChatUIStale(chatUIPath(), sources)) {
-        execSync("npm run ui:build", { stdio: "inherit" });
+      if (
+        recorded == null ||
+        isChatUIStale(chatUIPath(), sources, recorded.startedAt ?? 0)
+      ) {
+        // Hand our SHA down so the UI bakes in (and records) the same one the
+        // other bundles carry. Without it the child resolves its own from git,
+        // which a commit moves out from under a long-lived watch process.
+        execSync("npm run ui:build", {
+          stdio: "inherit",
+          env: { ...process.env, BUILD_SHA },
+        });
       }
     },
     resolveId(id) {
