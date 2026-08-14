@@ -70,9 +70,10 @@ Click "Save".
 ::: tip Ollama Model Aliases
 
 If Producer Pal says a model like `muse-glimmer` is not installed but you
-downloaded `muse-glimmer:30b-mlx`, that's because Ollama aliases work one way:
-`muse-glimmer` resolves to `muse-glimmer:30b`, but not vice versa. Install
-`muse-glimmer` in Ollama to create the alias. It won't re-download the model.
+downloaded `muse-glimmer:30b-mlx`, enter the full name with the tag. A bare
+`muse-glimmer` is short for `muse-glimmer:latest`, which is a different build —
+the shorthand doesn't find the tagged one you have. Run `ollama list` to see the
+exact names.
 
 :::
 
