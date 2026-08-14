@@ -6,7 +6,7 @@
 // Releasing the path listeners Live arms behind every LiveAPI object: what gets
 // tracked, and when the release actually fires.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   beginLiveApiScope,
   endLiveApiScope,
@@ -30,6 +30,13 @@ function trackUnclearable(error: string): void {
 }
 
 describe("live-api release", () => {
+  // Outside Max, v8-max-console.error falls back to the Node console.
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
   it("clears the path of every object built during a request", () => {
     beginLiveApiScope();
 
@@ -111,11 +118,11 @@ describe("live-api release", () => {
     endLiveApiScope();
 
     expect(track.path).toBe("");
-    // console.warn() reaches the MCP response through outlet 1.
-    expect(vi.mocked(outlet).mock.calls).toContainEqual([
-      1,
+    expect(errorSpy).toHaveBeenCalledWith(
       "Failed to release 1 LiveAPI object(s): nope",
-    ]);
+    );
+    // The Max console, not outlet 1 — outlet 1 is what reaches the model.
+    expect(vi.mocked(outlet)).not.toHaveBeenCalled();
   });
 
   it("reports the first failure when several objects refuse", () => {
@@ -126,10 +133,9 @@ describe("live-api release", () => {
 
     endLiveApiScope();
 
-    expect(vi.mocked(outlet).mock.calls).toContainEqual([
-      1,
+    expect(errorSpy).toHaveBeenCalledWith(
       "Failed to release 2 LiveAPI object(s): first",
-    ]);
+    );
   });
 
   it("keeps a stray end of scope from breaking the next request", () => {

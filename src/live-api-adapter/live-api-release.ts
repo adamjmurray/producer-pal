@@ -85,7 +85,11 @@ function releaseTrackedObjects(): void {
   trackedObjects.length = 0;
 
   if (failures > 0) {
-    console.warn(
+    // Max console, not the tool response. warn() would put this in front of the
+    // model, which can do nothing about a leaked path listener — and the release
+    // runs after the response is already out, so it would land on some later
+    // tool call. Reloading the device is the only fix, so tell the user.
+    console.error(
       `Failed to release ${String(failures)} LiveAPI object(s): ${firstError}`,
     );
   }
