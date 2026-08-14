@@ -198,6 +198,21 @@ describe("v:0 deletes", () => {
     ).toStrictEqual([]);
   });
 
+  it("deletes with an explicit d:0 marker (duration is meaningless on a marker)", () => {
+    // d:0 used to be dropped by the zero-duration check before the marker logic
+    // ran, so the delete silently did nothing.
+    expect(
+      interpretMidiJson("[{p:60,t:0,d:1,v:100},{p:60,t:0,d:0,v:0}]"),
+    ).toStrictEqual([]);
+    expect(
+      interpretMidiJson("[{p:60,t:0,d:1,v:100},{p:60,t:0,d:-1,v:0}]"),
+    ).toStrictEqual([]);
+  });
+
+  it("still drops a zero-duration NOTE", () => {
+    expect(interpretMidiJson("[{p:60,t:0,d:0,v:100}]")).toStrictEqual([]);
+  });
+
   it("keeps the markers when keepV0Deletes is set (update-clip's merge)", () => {
     const result = interpretMidiJson(
       "[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:0}]",

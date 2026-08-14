@@ -147,15 +147,7 @@ export function validateAndSanitizeNote(
 
   const n = note as Record<string, unknown>;
 
-  // Check required properties exist and are numbers
-  if (typeof n.pitch !== "number" || typeof n.start !== "number") {
-    return { valid: false };
-  }
-
-  // Reject non-finite pitch/start. A MIDI JSON div-by-zero ratio (p:5/0 →
-  // Infinity, p:0/0 → NaN) is typeof "number" but would otherwise survive
-  // clamping (Math.max/min pass NaN through) and reach add_new_notes.
-  if (!Number.isFinite(n.pitch) || !Number.isFinite(n.start)) {
+  if (!hasPitchAndStart(n)) {
     return { valid: false };
   }
 
@@ -173,7 +165,6 @@ export function validateAndSanitizeNote(
   // already coerced with `|| 0` below.)
   if (
     !Number.isFinite(duration) ||
-    duration <= 0 ||
     !Number.isFinite(velocity) ||
     !Number.isFinite(probability)
   ) {
@@ -183,6 +174,13 @@ export function validateAndSanitizeNote(
   // Tested on the RAW velocity, before rounding: a quiet fractional velocity
   // (v:0.4, or a v:1/3 ratio) must stay a note, not round down into a deletion.
   const isDeleteMarker = options.allowVelocityZero === true && velocity <= 0;
+
+  // A zero/negative duration is only meaningless for a real note. A marker names
+  // a note that already exists, so `d:0` must still delete instead of being
+  // dropped here — the marker is filtered out before the write either way.
+  if (!isDeleteMarker && duration <= 0) {
+    return { valid: false };
+  }
 
   // A marker names a note that already exists, so an out-of-range pitch names
   // nothing — clamping it into 0-127 would delete a note the caller never
@@ -211,4 +209,23 @@ export function validateAndSanitizeNote(
   };
 
   return { valid: true, note: sanitized };
+}
+
+/**
+ * Whether a raw note object carries the two required fields as usable numbers.
+ * Non-finite is rejected too: a MIDI JSON div-by-zero ratio (p:5/0 → Infinity,
+ * p:0/0 → NaN) is typeof "number" but would survive clamping (Math.max/min pass
+ * NaN through) and reach add_new_notes.
+ * @param n - Raw note object
+ * @returns True when pitch and start are both finite numbers
+ */
+function hasPitchAndStart(
+  n: Record<string, unknown>,
+): n is Record<string, unknown> & { pitch: number; start: number } {
+  return (
+    typeof n.pitch === "number" &&
+    typeof n.start === "number" &&
+    Number.isFinite(n.pitch) &&
+    Number.isFinite(n.start)
+  );
 }
