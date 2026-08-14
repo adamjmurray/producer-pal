@@ -138,6 +138,7 @@
         "no-fallthrough": "error",
         "no-func-assign": "error",
         "no-global-assign": "error",
+        "no-implicit-globals": "error",
         "no-import-assign": "error",
         "no-invalid-regexp": "error",
         // oxlint skips comments, templates, regexes and JSX by default; eslint
@@ -157,6 +158,7 @@
         "no-new-native-nonconstructor": "error",
         "no-nonoctal-decimal-escape": "error",
         "no-obj-calls": "error",
+        "no-proto": "error",
         "no-prototype-builtins": "error",
         "no-redeclare": "error",
         "no-regex-spaces": "error",
@@ -241,6 +243,7 @@
         "max-depth": ["error", 4],
         "complexity": ["error", 20],
         "import/first": "error",
+        "import/no-commonjs": "error",
         "import/no-cycle": "error",
         "import/no-self-import": "error",
         "import/no-duplicates": [
@@ -352,6 +355,7 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn/no-abusive-eslint-disable": "error",
         "unicorn-js/no-accidental-bitwise-operator": "error",
         "unicorn-js/no-array-sort-for-min-max": "error",
         "unicorn-js/no-async-promise-finally": "error",
