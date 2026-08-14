@@ -47,6 +47,7 @@ import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
@@ -387,6 +388,30 @@ export async function mcp_request(
   argsJSON: string,
   contextJSON?: string | null,
 ): Promise<void> {
+  beginLiveApiScope();
+
+  try {
+    await handleRequest(requestId, tool, argsJSON, contextJSON);
+  } finally {
+    endLiveApiScope();
+  }
+}
+
+/**
+ * Run one tool call and send its response. Split out of mcp_request so the
+ * LiveAPI release scope there wraps the whole request, response included.
+ *
+ * @param requestId - Request identifier
+ * @param tool - Tool name to execute
+ * @param argsJSON - JSON string of arguments
+ * @param contextJSON - JSON string of context
+ */
+async function handleRequest(
+  requestId: string,
+  tool: string,
+  argsJSON: string,
+  contextJSON?: string | null,
+): Promise<void> {
   let result;
 
   try {
@@ -473,12 +498,18 @@ outlet(0, "started");
  * Called by the Max patch after the device is fully loaded (LiveAPI is not available at top-level).
  */
 export function checkLiveVersion(): void {
-  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
-  const liveVersion = String(
-    LiveAPI.from("live_app").call("get_version_string"),
-  );
+  beginLiveApiScope();
 
-  if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
-    outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);
+  try {
+    // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
+    const liveVersion = String(
+      LiveAPI.from("live_app").call("get_version_string"),
+    );
+
+    if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
+      outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);
+    }
+  } finally {
+    endLiveApiScope();
   }
 }

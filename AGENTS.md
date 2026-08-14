@@ -93,7 +93,9 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   not raw `.get("property")?.[0]`. Build paths with `livePath` from
   `src/shared/live-api-path-builders.ts` — never hardcode a path string. On a
   runtime `LiveAPI`, reach child objects with `api.child("name")` (chainable),
-  never by concatenating onto `api.path`.
+  never by concatenating onto `api.path`. Never call `new LiveAPI()` — only
+  `LiveAPI.from()` tracks the object for release, and an untracked one leaves a
+  Live path listener armed for the life of the device.
 
 - **Update tools never throw** for a bad param combo or an operation that
   doesn't apply. `console.warn()`, skip that operation, and keep going, so the

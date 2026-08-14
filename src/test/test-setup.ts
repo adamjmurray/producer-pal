@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, vi } from "vitest";
+import { resetLiveApiTracking } from "#src/live-api-adapter/live-api-release.ts";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
 import { LiveAPI } from "./mocks/mock-live-api.ts";
 import { clearMockRegistry } from "./mocks/mock-registry.ts";
@@ -93,4 +94,8 @@ beforeEach(() => {
 
   // Clear registered mock objects
   clearMockRegistry();
+
+  // Drop LiveAPI objects left tracked by the previous test, so a test that
+  // closes a request scope doesn't clear their paths out from under it.
+  resetLiveApiTracking();
 });

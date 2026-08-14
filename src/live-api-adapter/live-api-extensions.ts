@@ -9,6 +9,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
+import { trackLiveApiObject } from "./live-api-release.ts";
 
 if (typeof LiveAPI !== "undefined") {
   /**
@@ -19,7 +20,7 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.from = function (
     idOrPath: string | number | [string, string | number] | PathLike,
   ): LiveAPI {
-    return new LiveAPI(parseIdOrPath(idOrPath));
+    return trackLiveApiObject(new LiveAPI(parseIdOrPath(idOrPath)));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
@@ -182,7 +183,9 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     name: string,
   ): LiveAPI[] {
-    return this.getChildIds(name).map((id) => new LiveAPI(id));
+    return this.getChildIds(name).map((id) =>
+      trackLiveApiObject(new LiveAPI(id)),
+    );
   };
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {
