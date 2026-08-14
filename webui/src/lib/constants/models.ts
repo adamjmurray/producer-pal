@@ -219,15 +219,13 @@ export const OPENROUTER_MODELS = [
 
 export const OLLAMA_MODELS = [
   { value: "gemma4", label: "gemma4" },
-  { value: "qwen3.6", label: "qwen3.6" },
-  { value: "qwen3.5", label: "qwen3.5" },
-  { value: "qwen3-coder", label: "qwen3-coder" },
-  { value: "mistral", label: "mistral" },
-  { value: "devstral-small-2", label: "devstral-small-2" },
-  { value: "muse-glimmer:30b-mlx", label: "muse-glimmer:30b-mlx" },
-  { value: "lfm2.5", label: "lfm2.5" },
-  { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
+  { value: "muse-glimmer", label: "muse-glimmer" },
+  { value: "qwen3.6", label: "qwen3.6" },
+  { value: "nemotron-3.5-lightning", label: "nemotron-3.5-lightning" },
+  { value: "laguna-xs-2.1", label: "laguna-xs-2.1" },
+  { value: "mistral-small3.2", label: "mistral-small3.2" },
+  { value: "lfm2.5", label: "lfm2.5" },
   OTHER_MODEL_OPTION,
 ];
 

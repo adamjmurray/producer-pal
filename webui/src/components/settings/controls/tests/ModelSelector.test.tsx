@@ -202,7 +202,9 @@ describe("ModelSelector", () => {
   describe("ollama provider", () => {
     it("renders Ollama models", () => {
       renderModelSelector({ provider: "ollama", model: "ministral-3" });
-      expect(screen.getByRole("option", { name: "mistral" })).toBeDefined();
+      expect(
+        screen.getByRole("option", { name: "mistral-small3.2" }),
+      ).toBeDefined();
       expect(screen.getByRole("option", { name: "qwen3.6" })).toBeDefined();
       expect(screen.getByRole("option", { name: /glm/ })).toBeDefined();
     });
@@ -210,7 +212,7 @@ describe("ModelSelector", () => {
     it("calls setModel when Ollama model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "ollama",
-        model: "mistral",
+        model: "mistral-small3.2",
       });
 
       expectModelSelected("qwen3.6", setModel);
