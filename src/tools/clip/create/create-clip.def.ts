@@ -122,7 +122,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     warping: param(z.boolean().optional(), {
       default:
         "audio clips only. Omit and Live decides per its Loop/Warp Short Samples setting, often time-stretching the file to the tempo. false = play the file as rendered. The settled state comes back as `warping`",
-      smallModel: "audio clips only: false plays the file as rendered",
+      smallModel:
+        "audio clips only: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
     }),
 
     gainDb: z.coerce
@@ -130,7 +131,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .min(-70)
       .max(24)
       .optional()
-      .describe("audio clip gain in decibels (ignored for MIDI)"),
+      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
 
     pitchShift: z.coerce
       .number()

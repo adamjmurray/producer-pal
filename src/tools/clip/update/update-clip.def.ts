@@ -86,7 +86,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .min(-70)
       .max(24)
       .optional()
-      .describe("audio clip gain in decibels (ignored for MIDI)"),
+      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
     pitchShift: z.coerce
       .number()
       .min(-48)
