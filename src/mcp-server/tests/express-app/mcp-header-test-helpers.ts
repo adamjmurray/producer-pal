@@ -11,17 +11,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import Max from "max-api";
-import { vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
-
-type MockMax = typeof Max & {
-  defaultMcpResponseHandler:
-    | ((requestId: string, ...chunks: string[]) => void)
-    | null;
-};
-
-const mockMax = Max as MockMax;
+import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
 
 /** Prefix identifying the skills block among a connect result's text blocks. */
 export const SKILLS_HEADER = "# Producer Pal Skills";
@@ -74,42 +64,6 @@ export async function listToolNames(
 }
 
 /**
- * Mock Max so every tool call resolves with a bare success, and record the
- * contextJSON blob each one carried to V8 (where the per-request overrides —
- * timeoutMs, compactOutput, notation — arrive).
- *
- * @returns The array the mock appends each call's contextJSON to, in order
- */
-export function mockMaxSuccess(): string[] {
-  const contextBlobs: string[] = [];
-
-  Max.outlet = vi.fn(
-    (
-      message: string,
-      requestId: string,
-      _tool?: string,
-      _argsJSON?: string,
-      contextJSON?: string,
-    ) => {
-      if (message === "mcp_request") {
-        contextBlobs.push(contextJSON ?? "");
-        setTimeout(() => {
-          mockMax.defaultMcpResponseHandler?.(
-            requestId,
-            JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
-            MAX_ERROR_DELIMITER,
-          );
-        }, 1);
-      }
-
-      return Promise.resolve();
-    },
-  ) as typeof Max.outlet;
-
-  return contextBlobs;
-}
-
-/**
  * Call a tool with the given headers and return the per-request context V8
  * received for it — the seam a notation override has to travel through to reach
  * note parsing/formatting.
@@ -124,13 +78,12 @@ export async function callToolRequestContext(
   headers: Record<string, string>,
   toolName: string,
 ): Promise<Record<string, unknown>> {
-  const contextBlobs = mockMaxSuccess();
   const { client, transport } = await connectWithHeaders(serverUrl, headers);
 
   try {
     await client.callTool({ name: toolName, arguments: {} });
 
-    return JSON.parse(contextBlobs[0] ?? "{}") as Record<string, unknown>;
+    return lastMcpContext() ?? {};
   } finally {
     await transport.close();
   }
@@ -139,7 +92,7 @@ export async function callToolRequestContext(
 /**
  * Call ppal-connect with the given headers and return the injected skills block
  * — the text block starting with the skills heading, which enrich-connect
- * appends Node-side. Max is mocked to return a bare success so the connect
+ * appends Node-side. The default Max mock returns a bare success, so the connect
  * handler resolves and enrichment runs.
  *
  * @param serverUrl - The running server's /mcp URL
@@ -150,8 +103,6 @@ export async function connectSkillsBlock(
   serverUrl: string,
   headers: Record<string, string>,
 ): Promise<string> {
-  mockMaxSuccess();
-
   const { client, transport } = await connectWithHeaders(serverUrl, headers);
 
   try {

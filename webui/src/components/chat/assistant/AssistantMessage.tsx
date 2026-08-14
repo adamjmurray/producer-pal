@@ -6,6 +6,7 @@
 import { type ComponentChildren, Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
+import { isResumeRequest } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   type UIMessage,
@@ -147,7 +148,7 @@ function renderSinglePart(
           toolCallId={part.id}
           transcript={renderSubagentTranscript(part.subagentMessages)}
           index={part.subagentIndex}
-          resumed={part.args.resumeFrom != null}
+          resumed={isResumeRequest(part.args.resumeFrom)}
         />
       );
     }

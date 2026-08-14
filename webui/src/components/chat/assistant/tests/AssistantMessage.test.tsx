@@ -199,6 +199,30 @@ describe("AssistantMessage", () => {
       expect(container.textContent).toContain("delegated task text");
       expect(container.textContent).toContain("worker reply text");
     });
+
+    it.each([
+      ["omitted", {}, false],
+      ["null", { resumeFrom: null }, false],
+      // Worker indices are 1-based, so 0 names nobody. The tool takes it as
+      // "omitted" (GPT-5.6 sends it for an empty optional number) and spawns a
+      // fresh worker, so the card must not claim a resume happened.
+      ["0", { resumeFrom: 0 }, false],
+      ['"0"', { resumeFrom: "0" }, false],
+      ["a real worker number", { resumeFrom: 2 }, true],
+    ])("shows the resumed badge for %s: %s", (_label, extraArgs, expected) => {
+      const parts: UIPart[] = [
+        {
+          type: "tool",
+          name: "spawn_subagent",
+          args: { task: "more work", ...extraArgs },
+          result: JSON.stringify("done"),
+        },
+      ];
+
+      const { container } = render(<AssistantMessage parts={parts} />);
+
+      expect(container.textContent.includes("resumed")).toBe(expected);
+    });
   });
 
   describe("error parts", () => {

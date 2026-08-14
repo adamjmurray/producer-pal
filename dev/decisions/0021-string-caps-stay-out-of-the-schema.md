@@ -24,7 +24,7 @@ A cap at or above 2000 characters is enforced with `boundedString()`
 (`src/tools/shared/tool-framework/bounded-string.ts`) — a refinement, which
 validates identically and emits no `maxLength` — and stated in the param's
 description so the model still knows the limit. Below 2000, plain
-`z.string().max()` is fine. `src/test/meta/tool-schema-grammar-safety.test.ts`
+`z.string().max()` is fine. `src/test/meta/tool-schemas/grammar-safety.test.ts`
 holds the line for every tool.
 
 ## Alternatives rejected
