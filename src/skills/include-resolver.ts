@@ -30,12 +30,10 @@
 
 import { type Notation } from "#src/shared/notation.ts";
 
-/** Matches a single `@include "<ref>"` directive; ref is captured group 1. */
-const INCLUDE_PATTERN = /@include\s+"([^\n"]*)"/g;
-
 /**
- * The same directive plus the newline run after it (group 2), so an expansion
- * can take the blank line that framed its include line with it.
+ * Matches a single `@include "<ref>"` directive (ref is group 1) plus the
+ * newline run after it (group 2), so an expansion can take the blank line that
+ * framed its include line with it.
  */
 const INCLUDE_LINE_PATTERN = /@include\s+"([^\n"]*)"(\n*)/g;
 
@@ -84,20 +82,54 @@ export function resolveIncludes(
 ): string {
   const body = readFragment(root, options) ?? "";
 
-  return body.replaceAll(
-    INCLUDE_LINE_PATTERN,
-    (_match, rawRef: string, trailing: string, offset: number) =>
-      joinExpansion(
-        expandInclude(rawRef, options),
-        trailing,
-        // Read from the original body, not from what's been emitted, so a run of
-        // adjacent include lines still sees the blank line each one sits after.
-        offset < 2 || body.startsWith("\n\n", offset - 2),
-      ),
-  );
+  return expandDirectives(body, (rawRef) => expandInclude(rawRef, options));
 }
 
 // --- Helpers below main export ---
+
+/** Where an include line sits relative to the text already emitted before it. */
+interface Seam {
+  /** Nothing but a line break (or nothing at all) precedes the directive. */
+  atLineStart: boolean;
+  /** A blank line (or nothing at all) precedes the directive. */
+  blankBefore: boolean;
+}
+
+/**
+ * Replace every `@include` line in `text` with what `expand` returns for it,
+ * tidying only the seams (see {@link joinExpansion}). Shared by the driver pass
+ * and the depth-1 refusal pass, so refusing a nested include leaves the same
+ * clean section break an expansion of nothing does.
+ *
+ * Each seam is read from what has been EMITTED so far, not from the original
+ * text: a run of adjacent include lines that expanded to nothing has to look
+ * like the blank line it collapsed to, or every one after the first re-adds a
+ * separator for a line that is no longer there.
+ *
+ * @param text - The text to expand directives in
+ * @param expand - What one directive's ref expands to ("" for nothing)
+ * @returns The text with every directive replaced
+ */
+function expandDirectives(
+  text: string,
+  expand: (rawRef: string) => string,
+): string {
+  let out = "";
+  let cursor = 0;
+
+  for (const match of text.matchAll(INCLUDE_LINE_PATTERN)) {
+    const [directive, rawRef = "", trailing = ""] = match;
+
+    out += text.slice(cursor, match.index);
+    cursor = match.index + directive.length;
+    out += joinExpansion(expand(rawRef), trailing, {
+      atLineStart: out === "" || out.endsWith("\n"),
+      blankBefore: out === "" || out.endsWith("\n\n"),
+    });
+  }
+
+  return out + text.slice(cursor);
+}
 
 /**
  * Expand one directive to the fragment body it names, or "" when the ref is
@@ -143,22 +175,29 @@ function expandInclude(
  *
  * @param expansion - The fragment body, or "" when nothing resolved
  * @param trailing - The newline run that followed the include line
- * @param blankBefore - Whether the text before the include line already ends in
- *   a blank line, or there is no text before it
+ * @param seam - Where the include line sat in the text emitted so far
  * @returns The text to substitute for the directive and its trailing newlines
  */
 function joinExpansion(
   expansion: string,
   trailing: string,
-  blankBefore: boolean,
+  seam: Seam,
 ): string {
   if (expansion === "") {
-    return blankBefore || trailing.length < 2 ? "" : "\n";
+    // A mid-line directive never owned a line, so there is no framing blank
+    // line to take: eating one would pull the next paragraph up into whatever
+    // else the line held (a list item, say).
+    if (!seam.atLineStart) return trailing;
+
+    return seam.blankBefore || trailing.length < 2 ? "" : "\n";
   }
 
   // Trim the expansion's own leading newlines against what sits in front of the
   // directive, so the two can't add up to a double blank line.
-  const body = expansion.replace(LEADING_NEWLINES, blankBefore ? "" : "\n");
+  const body = expansion.replace(
+    LEADING_NEWLINES,
+    seam.blankBefore ? "" : "\n",
+  );
 
   if (trailing === "") return body;
 
@@ -198,7 +237,7 @@ function readFragment(
  * Drop any `@include` directives inside an already-included fragment — the
  * depth-1 rule. Each one is warned about rather than expanded, so a user
  * override that nests gets told instead of silently changing what its parent
- * costs.
+ * costs. Removed line and all, like any other expansion of nothing.
  *
  * @param body - The included fragment's body
  * @param name - That fragment's name, for the warning message
@@ -210,7 +249,7 @@ function stripNestedIncludes(
   name: string,
   options: ResolveIncludesOptions,
 ): string {
-  return body.replaceAll(INCLUDE_PATTERN, (_match, rawRef: string) => {
+  return expandDirectives(body, (rawRef) => {
     options.onWarn?.(
       `skills include nesting refused: "${name}" includes "${rawRef}" (fragments cannot include other fragments)`,
     );

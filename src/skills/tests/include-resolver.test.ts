@@ -318,6 +318,47 @@ describe("resolveIncludes - blank line collapse", () => {
 
     expect(result).toBe("a\nb");
   });
+
+  it("collapses a run left by empty includes on consecutive lines", () => {
+    // The second include sits after a line that is no longer there, so its seam
+    // has to be read from what was emitted, not from where it started out.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n@include "./y.md"\n\nb`,
+        x: "",
+        y: "",
+      }),
+    );
+
+    expect(result).toBe("a\n\nb");
+  });
+
+  it("leaves a mid-line dropped fragment's paragraph break alone", () => {
+    // The directive never owned a line, so taking one of the newlines after it
+    // would pull the next paragraph up into the list item.
+    const result = resolveIncludes(
+      "root",
+      options({ root: `- item @include "./gone.md"\n\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("- item \n\nb");
+  });
+
+  it("takes the line of a refused nested include with it", () => {
+    // Same tidying an expansion of nothing gets — otherwise the refusal leaves
+    // the blank lines that framed it on both sides.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n\nb`,
+        x: `p\n\n@include "./nested.md"\n\nq`,
+        nested: "N",
+      }),
+    );
+
+    expect(result).toBe("a\n\np\n\nq\n\nb");
+  });
 });
 
 describe("resolveIncludes - path safety", () => {
