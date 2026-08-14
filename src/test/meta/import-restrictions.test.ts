@@ -159,7 +159,9 @@ describe("import restrictions", () => {
 
   it("should construct LiveAPI through LiveAPI.from()", () => {
     // LiveAPI.from() prefixes a bare id with "id "; the constructor requires the
-    // caller to have done that already, a recurring source of bugs.
+    // caller to have done that already, a recurring source of bugs. It is also
+    // where objects get tracked for release, so a direct constructor call leaks
+    // a Live path listener (see live-api-release.ts).
     const exempt = new Set([
       "src/live-api-adapter/live-api-extensions.ts", // defines LiveAPI.from()
       "src/test/mocks/mock-live-api.ts", // mirrors live-api-extensions.ts

@@ -165,11 +165,12 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 - **Max operations**: 50 operations per tool call to prevent performance issues
 - **Full access**: This tool provides unrestricted Live API access - use with
   caution
-- **Object lifetime**: the tool builds one LiveAPI object per call and clears
-  its path when the call ends, success or failure. Live arms a path listener on
-  every collection along a path-based object's path and never takes them down,
-  so an unreleased object costs ~4,900 bytes of Ableton log on every later
-  structural change to the Live Set. Don't add `set_path ""` yourself.
+- **Object lifetime**: every LiveAPI object a tool call builds has its path
+  cleared when the call ends, success or failure (see `live-api-release.ts`).
+  Live arms a path listener on every collection along a path-based object's path
+  and never takes them down, so an unreleased object costs ~5 KB of Ableton log
+  on every later structural change to the Live Set, and slows down every later
+  LiveAPI creation. Don't add `set_path ""` yourself.
 
 ## MCP Inspector
 

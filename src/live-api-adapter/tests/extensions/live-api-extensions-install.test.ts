@@ -5,7 +5,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
-import "../live-api-extensions.ts";
+import "../../live-api-extensions.ts";
 
 // How the extensions module INSTALLS itself onto the global LiveAPI, as opposed
 // to what the installed members do (covered by the sibling files). Two contracts
@@ -32,7 +32,7 @@ describe("LiveAPI extensions - installation", () => {
     delete g.LiveAPI;
     vi.resetModules();
 
-    await expect(import("../live-api-extensions.ts")).resolves.toBeDefined();
+    await expect(import("../../live-api-extensions.ts")).resolves.toBeDefined();
   });
 
   it("re-importing does not redefine the index getters", async () => {
@@ -40,12 +40,12 @@ describe("LiveAPI extensions - installation", () => {
     // property the first install already created.
     vi.resetModules();
 
-    await expect(import("../live-api-extensions.ts")).resolves.toBeDefined();
+    await expect(import("../../live-api-extensions.ts")).resolves.toBeDefined();
   });
 
   it("keeps the index getters working after a re-import", async () => {
     vi.resetModules();
-    await import("../live-api-extensions.ts");
+    await import("../../live-api-extensions.ts");
 
     expect(LiveAPI.from("live_set tracks 3").trackIndex).toBe(3);
   });
