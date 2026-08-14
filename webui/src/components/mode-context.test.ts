@@ -14,6 +14,7 @@ describe("DEFAULT_MODE_CONTEXT", () => {
       activeSmallModelMode: null,
       activeNotation: null,
       activeEnabledTools: null,
+      activeMaxToolSteps: null,
     });
   });
 

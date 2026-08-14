@@ -7,7 +7,6 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { ChatSdkClient } from "#webui/chat/sdk/client";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
-import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import {
   type ChatClientConfig,
   type ChatMessage,
@@ -16,6 +15,7 @@ import {
 import {
   resolveLockedNotation,
   resolveLockedSmallModelMode,
+  resolveMaxToolSteps,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
@@ -281,9 +281,7 @@ export const chatAdapter: ChatAdapter<
     // was written; a brand-new one takes the current setting. Null when neither
     // exists: no header, device global wins, external MCP clients unaffected.
     const notation = resolveLockedNotation(extraParams ?? {});
-    const maxToolSteps =
-      (extraParams?.maxToolSteps as number | undefined) ??
-      DEFAULT_MAX_TOOL_STEPS;
+    const maxToolSteps = resolveMaxToolSteps(extraParams ?? {});
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
@@ -310,11 +308,9 @@ export const chatAdapter: ChatAdapter<
         buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
       subagentConfig,
-      // The user's per-turn step budget. Deliberately NOT locked per
-      // conversation the way notation and small-model mode are: those change
-      // what the model is told, so an open conversation has to keep its own;
-      // this only bounds how long a turn runs, and the setting the user can see
-      // should be the one the next turn obeys.
+      // The user's per-turn step budget, pinned for the life of this client:
+      // client.initialize() derives maxSteps from it once. Changing the setting
+      // takes effect on the next conversation, which the settings notice says.
       baseMaxSteps: maxToolSteps,
       // Conditional: ChatClientConfig.notation is optional and a present-but-
       // undefined key would still be read as "the caller has an opinion".

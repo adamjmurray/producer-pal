@@ -31,6 +31,7 @@ describe("useChatModeReporting", () => {
           activeSmallModelMode: null,
           activeNotation: null,
           activeEnabledTools: null,
+          activeMaxToolSteps: null,
         },
         settings: {
           model: "gemini-1.5-flash",
@@ -74,6 +75,7 @@ describe("useChatModeReporting", () => {
           activeSmallModelMode: true,
           activeNotation: "stark",
           activeEnabledTools: enabledTools,
+          activeMaxToolSteps: 40,
         },
         settings: {
           model: "gemini-1.5-flash",
@@ -97,6 +99,7 @@ describe("useChatModeReporting", () => {
 
     expect(lock.activeNotation).toBe("stark");
     expect(lock.activeEnabledTools).toStrictEqual(enabledTools);
+    expect(lock.activeMaxToolSteps).toBe(40);
     expect(lock.activeSmallModelMode).toBe(true);
     expect(lock.activeModel).toBe("claude-opus-4");
     expect(lock.activeProvider).toBe("anthropic");

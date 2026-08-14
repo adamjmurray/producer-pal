@@ -33,6 +33,9 @@ const withTools = {
   enabledTools: { "ppal-library": true },
 };
 
+// A chat whose Preferences currently set a raised per-turn step budget.
+const withBudget = { ...defaultProps, extraParams: { maxToolSteps: 60 } };
+
 /**
  * The `lockedNotation` carried by the init the adapter last built a config from.
  * @returns The locked notation, or undefined when the init carried no key
@@ -239,5 +242,46 @@ describe("useChat toolset locking", () => {
     const { result } = renderHook(() => useChat(withTools));
 
     expect(result.current.activeEnabledTools).toBeNull();
+  });
+});
+
+describe("useChat step budget locking", () => {
+  it("pins the budget in force when the client is built", async () => {
+    // client.initialize() derives maxSteps once, so this is the number the
+    // conversation runs on until it builds a new client.
+    const { result } = renderHook(() => useChat(withBudget));
+
+    await act(async () => {
+      await result.current.handleSend("hello");
+    });
+
+    expect(result.current.activeMaxToolSteps).toBe(60);
+  });
+
+  it("pins nothing until a conversation connects", () => {
+    const { result } = renderHook(() => useChat(withBudget));
+
+    expect(result.current.activeMaxToolSteps).toBeNull();
+  });
+
+  it("re-pins a restored conversation on the current budget", async () => {
+    // Unlike notation and the toolset, no snapshot rides on the record: the
+    // budget doesn't change what the model is told, only how long a turn runs.
+    const { result } = renderHook(() => useChat(withBudget));
+
+    await act(async () => {
+      result.current.restoreChatHistory(
+        [{ role: "user", content: "hi" }],
+        lockedSettings(),
+      );
+    });
+
+    expect(result.current.activeMaxToolSteps).toBeNull();
+
+    await act(async () => {
+      await result.current.handleSend("continue");
+    });
+
+    expect(result.current.activeMaxToolSteps).toBe(60);
   });
 });

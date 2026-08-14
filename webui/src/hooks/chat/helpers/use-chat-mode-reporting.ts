@@ -16,6 +16,7 @@ interface ChatLike {
   activeSmallModelMode: boolean | null;
   activeNotation: Notation | null;
   activeEnabledTools: Record<string, boolean> | null;
+  activeMaxToolSteps: number | null;
 }
 
 interface UseChatModeReportingParams {
@@ -75,6 +76,7 @@ export function useChatModeReporting(
         activeSmallModelMode: chat.activeSmallModelMode,
         activeNotation: chat.activeNotation,
         activeEnabledTools: chat.activeEnabledTools,
+        activeMaxToolSteps: chat.activeMaxToolSteps,
       },
       onDeleteAllConversations: () => handlersRef.current.handleDeleteAll(),
       onDeleteUnbookmarkedConversations: () =>
@@ -87,6 +89,7 @@ export function useChatModeReporting(
     chat.activeSmallModelMode,
     chat.activeNotation,
     chat.activeEnabledTools,
+    chat.activeMaxToolSteps,
     setModeContext,
   ]);
 

@@ -225,6 +225,7 @@ export function useChat<
         // toolset it ran with, so the model never loses a tool it has already
         // used (or gains one its transcript never mentions).
         enabledTools: init.enabledTools,
+        maxToolSteps: init.maxToolSteps,
       });
     },
     [

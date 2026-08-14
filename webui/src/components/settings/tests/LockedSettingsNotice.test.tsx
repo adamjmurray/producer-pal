@@ -25,6 +25,7 @@ describe("LockedSettingsNotice", () => {
     notation: "barbeat",
     enabledTools: {},
     liveApiEnabled: false,
+    maxToolSteps: 25,
   };
 
   /** A lock whose every field already agrees with defaultProps. */
@@ -34,6 +35,7 @@ describe("LockedSettingsNotice", () => {
     activeSmallModelMode: false,
     activeNotation: "barbeat",
     activeEnabledTools: null,
+    activeMaxToolSteps: 25,
   };
 
   /**
@@ -185,6 +187,23 @@ describe("LockedSettingsNotice", () => {
     const { container } = renderNotice(
       { activeEnabledTools: { [LIVE_API_TOOL_ID]: true } },
       { liveApiEnabled: true },
+    );
+
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("reports a step budget the conversation was pinned to", () => {
+    renderNotice({ activeMaxToolSteps: 25 }, { maxToolSteps: 60 });
+
+    expect(screen.getByText(/Current conversation uses/)).toBeTruthy();
+    expect(screen.getByText(/25 step budget/)).toBeTruthy();
+  });
+
+  it("stays quiet about the budget before a conversation pins one", () => {
+    // Null until the client is built, so there is nothing to have drifted from.
+    const { container } = renderNotice(
+      { activeMaxToolSteps: null },
+      { maxToolSteps: 60 },
     );
 
     expect(container.innerHTML).toBe("");

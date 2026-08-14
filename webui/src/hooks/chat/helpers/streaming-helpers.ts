@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isNotation, type Notation } from "#src/shared/notation";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -320,6 +321,8 @@ export interface InitConnection {
   smallModelMode: boolean;
   /** The toolset to lock and connect with for this init. */
   enabledTools: Record<string, boolean>;
+  /** The per-turn tool-step budget to lock for this init. */
+  maxToolSteps: number;
 }
 
 /**
@@ -398,7 +401,26 @@ export function resolveInitConnection(
     notation: resolveLockedNotation(mergedExtraParams),
     smallModelMode: resolveLockedSmallModelMode(mergedExtraParams),
     enabledTools: locked.activeEnabledTools ?? fallback.enabledTools,
+    maxToolSteps: resolveMaxToolSteps(mergedExtraParams),
   };
+}
+
+/**
+ * The per-turn tool-step budget for an init. Unlike the other locked values
+ * there is no saved snapshot to prefer: the budget doesn't change what the model
+ * is told, only how long a turn runs, so a restored conversation takes whatever
+ * is set now. It is still pinned once the client exists — client.maxSteps is
+ * derived in initialize() — which is what the settings notice reports.
+ *
+ * @param extraParams - The init's extra params
+ * @returns The effective step budget
+ */
+export function resolveMaxToolSteps(
+  extraParams: Record<string, unknown>,
+): number {
+  return (
+    (extraParams.maxToolSteps as number | undefined) ?? DEFAULT_MAX_TOOL_STEPS
+  );
 }
 
 /**

@@ -117,6 +117,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           notation={settings.notation}
           enabledTools={settings.enabledTools}
           liveApiEnabled={settings.liveApiEnabled}
+          maxToolSteps={settings.maxToolSteps}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>

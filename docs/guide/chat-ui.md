@@ -548,7 +548,8 @@ The Preferences tab controls visual preferences and conversation management:
   and hands control back (5-100, default 25). Raise it if long arrangement tasks
   keep stopping partway; lower it to keep a looping model on a shorter leash.
   Subagent orchestrators and workers get proportionally larger budgets, so this
-  one setting moves all three.
+  one setting moves all three. A change applies to new conversations — the open
+  one keeps the budget it started with.
 - **Cleanup Conversations** - Bulk-delete conversations:
   - **Delete unstarred** - Remove all non-bookmarked conversations
   - **Delete all** - Remove every conversation

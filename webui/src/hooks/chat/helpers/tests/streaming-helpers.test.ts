@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
@@ -264,6 +265,20 @@ describe("streaming-helpers", () => {
       const init = resolveInitConnection(locked, fallback, resolveConnection);
 
       expect(init.enabledTools).toStrictEqual({ "ppal-library": false });
+    });
+
+    it("locks the step budget in force when the client is built", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection, {
+        maxToolSteps: 60,
+      });
+
+      expect(init.maxToolSteps).toBe(60);
+    });
+
+    it("falls back to the default budget when the caller sets none", () => {
+      const init = resolveInitConnection(locked, fallback, resolveConnection);
+
+      expect(init.maxToolSteps).toBe(DEFAULT_MAX_TOOL_STEPS);
     });
   });
 
