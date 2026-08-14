@@ -31,6 +31,7 @@ import {
 import { type NoteEvent } from "#src/notation/types.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 
 const DEFAULT_DENOMINATOR = 4;
 
@@ -61,6 +62,10 @@ export interface MidiJsonInterpretOptions extends MidiJsonOptions {
  * `keepV0Deletes` defers that to the caller. Unlike bar|beat's inline `v0` it is
  * per-note; nothing in MIDI JSON is sticky.
  *
+ * A malformed note is skipped rather than thrown on (matching the update tools'
+ * warn-and-keep-going rule), but never silently: {@link warnDroppedNotes}
+ * reports the count and reasons so the caller can fix its input.
+ *
  * @param input - MIDI JSON array string
  * @param options - Interpretation options
  * @returns Array of note events
@@ -86,6 +91,7 @@ export function interpretMidiJson(
 
   const timeSigDenominator = options.timeSigDenominator ?? DEFAULT_DENOMINATOR;
   const events: NoteEvent[] = [];
+  const dropped: string[] = [];
 
   for (const raw of parsed) {
     const validated = validateAndSanitizeNote(normalizeMidiJsonNote(raw), {
@@ -94,11 +100,53 @@ export function interpretMidiJson(
 
     if (validated.valid) {
       events.push(codeNoteToNoteEvent(validated.note, timeSigDenominator));
+    } else {
+      dropped.push(validated.reason);
     }
-    // Invalid notes (e.g. missing pitch/start) are silently filtered out.
   }
 
+  warnDroppedNotes(dropped);
+
   return options.keepV0Deletes === true ? events : applyV0Deletions(events);
+}
+
+// At most this many distinct reasons are named; the rest collapse into a count.
+// A model only needs to see what KIND of thing it got wrong, and the warning
+// spends the user's context window.
+const MAX_REPORTED_REASONS = 3;
+
+/**
+ * Warn once about notes dropped during interpretation, naming each distinct
+ * reason with its count. Silence here is the failure mode worth avoiding: a
+ * dropped note used to leave the tool reporting plain success, so a model that
+ * wrote 8 notes and got 7 had nothing to notice, let alone correct.
+ *
+ * @param reasons - One reason per dropped note, in input order
+ */
+function warnDroppedNotes(reasons: string[]): void {
+  if (reasons.length === 0) {
+    return;
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const reason of reasons) {
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+
+  const listed = [...counts.entries()]
+    .slice(0, MAX_REPORTED_REASONS)
+    .map(([reason, count]) => (count > 1 ? `${reason} (${count})` : reason));
+
+  const hidden = counts.size - listed.length;
+  const detail =
+    hidden > 0 ? `${listed.join(", ")}, and ${hidden} more` : listed.join(", ");
+
+  console.warn(
+    `ignoring ${reasons.length} invalid MIDI JSON ${
+      reasons.length === 1 ? "note" : "notes"
+    }: ${detail}`,
+  );
 }
 
 /**
