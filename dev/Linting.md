@@ -241,7 +241,7 @@ stay inside that window. Dropping sonarjs would cost 27 configured rules,
 including `sonarjs/no-identical-functions`, this repo's DRY enforcement.
 
 So `package.json` uses the upstream-recommended side-by-side aliasing: the
-`typescript` name resolves to `@typescript/typescript6` (full 6.0.3 API, for the
+`typescript` name resolves to `@typescript/typescript6` (full 6.0.2 API, for the
 bridge), and TypeScript 7 is installed as `@typescript/native`, whose `tsc` is
 what `npm run typecheck` runs. Nothing needs the two to agree —
 `oxlint-tsgolint` carries its own typescript-go checker, so type-aware linting

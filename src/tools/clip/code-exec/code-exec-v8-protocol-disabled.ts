@@ -8,8 +8,8 @@
  * Substituted by rolldown when ENABLE_CODE_EXEC is not set.
  * Exports the same interface but always returns errors or no-ops.
  *
- * IMPORTANT: If this file is renamed or moved, update the alias entry in
- * config/rolldown.config.mjs (codeExecAliases) to match.
+ * IMPORTANT: If this file is renamed or moved, update its entry in
+ * config/rolldown-plugin-stub-code-exec.mjs (STUBS) to match.
  */
 
 import {

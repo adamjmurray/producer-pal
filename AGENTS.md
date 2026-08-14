@@ -177,8 +177,8 @@ aliasing:
 The practical consequences:
 
 - `tsc` is **TypeScript 7** — this is what `npm run typecheck` runs. `tsc6` is
-  the 6.0.3 compiler, kept only so the bridge resolves; don't typecheck with it.
-- `import ts from "typescript"` gets the **6.0.3 API**, which is why
+  the 6.0.2 compiler, kept only so the bridge resolves; don't typecheck with it.
+- `import ts from "typescript"` gets the **6.0.2 API**, which is why
   `scripts/stats/loc.ts` and `src/test/helpers/vi-mock-scan-test-helpers.ts`
   still use the compiler API normally.
 - TS 7 reports overload-mismatch errors on the **failing argument**, not the
