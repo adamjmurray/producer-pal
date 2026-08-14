@@ -135,14 +135,14 @@ export function MarkdownDropZone(
     >
       {children}
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-blue-500/70 bg-blue-500/10 dark:bg-blue-400/10 text-sm font-medium text-blue-700 dark:text-blue-200">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-blue-500/70 bg-blue-500/10 text-sm font-medium text-blue-700 dark:bg-blue-400/10 dark:text-blue-200">
           Drop a .md file to import
         </div>
       )}
       {notice != null && !dragging && (
         <div
           role="alert"
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-red-500/70 bg-red-500/10 dark:bg-red-400/10 text-sm font-medium text-red-700 dark:text-red-200"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-red-500/70 bg-red-500/10 text-sm font-medium text-red-700 dark:bg-red-400/10 dark:text-red-200"
         >
           {notice}
         </div>

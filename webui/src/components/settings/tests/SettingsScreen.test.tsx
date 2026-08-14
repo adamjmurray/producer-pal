@@ -39,7 +39,7 @@ vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
       <div>
         {/* Provider selector mock */}
         <div>
-          <label className="block text-sm mb-2">Provider</label>
+          <label className="mb-2 block text-sm">Provider</label>
           <select>
             <option value={provider}>{providerLabel}</option>
           </select>

@@ -59,7 +59,7 @@ export function CompactionDivider({
         <div className="flex-1 border-t border-zinc-200 dark:border-zinc-700" />
       </div>
       {showSummary && (
-        <div className="mt-2 rounded bg-zinc-50 dark:bg-zinc-800 p-3 text-sm">
+        <div className="mt-2 rounded bg-zinc-50 p-3 text-sm dark:bg-zinc-800">
           <SafeMarkdown content={summary} />
         </div>
       )}

@@ -263,7 +263,7 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
         type="button"
         onClick={onSave}
         disabled={!canSave}
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isNew ? createLabel : "Save"}
       </button>
@@ -273,7 +273,7 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
           onClick={onDelete}
           aria-label="Delete"
           title="Delete"
-          className="rounded p-1 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+          className="rounded p-1 text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
         >
           <TrashIcon />
         </button>

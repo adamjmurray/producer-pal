@@ -41,11 +41,11 @@ export function AssistantToolCall({
 
   return (
     <details
-      className={`disclosure text-xs p-2 font-mono bg-zinc-200/70 dark:bg-zinc-700 rounded-lg ${
+      className={`disclosure rounded-lg bg-zinc-200/70 p-2 font-mono text-xs dark:bg-zinc-700 ${
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
-      <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />🔧{" "}
         {!result ? (
           "using tool: "
@@ -56,13 +56,13 @@ export function AssistantToolCall({
         )}
         {toolNames[name] ?? name}
         {effectiveIsError && (
-          <span className="text-red-700 dark:text-red-400 font-normal">
+          <span className="font-normal text-red-700 dark:text-red-400">
             {" "}
             — {truncateString(errorSummary ?? "error", 80)}
           </span>
         )}
         {hasWarnings && (
-          <span className="text-yellow-700 dark:text-yellow-400 font-normal">
+          <span className="font-normal text-yellow-700 dark:text-yellow-400">
             {" — warning: "}
             {truncateString(warnings[0], 80)}
             {warnings.length > 1 &&
@@ -75,9 +75,9 @@ export function AssistantToolCall({
       </div>
       {result && (
         <details className="disclosure">
-          <summary className="px-2 my-1 overflow-hidden text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <summary className="my-1 flex list-none items-center gap-1 overflow-hidden px-2 text-zinc-600 dark:text-zinc-400 [&::-webkit-details-marker]:hidden">
             <DisclosureChevron />
-            <span className="truncate min-w-0">
+            <span className="min-w-0 truncate">
               ↳ {truncateString(result, 300)}
             </span>
           </summary>

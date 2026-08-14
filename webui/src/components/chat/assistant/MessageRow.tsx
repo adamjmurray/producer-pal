@@ -80,7 +80,7 @@ function UserRow({
     <>
       {timestamp}
       <div
-        className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3"
+        className="min-w-0 rounded-lg bg-blue-100 px-3 py-0.5 text-black shadow-sm dark:border dark:border-blue-700/40 dark:bg-blue-900/80 dark:text-white dark:shadow-white/10"
         data-message-index={originalIdx}
       >
         {isEditing ? (
@@ -146,7 +146,7 @@ function AssistantRow({
   return (
     <>
       <div
-        className="col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-white/10 dark:border dark:border-zinc-700 min-w-0 rounded-lg py-0.5 px-3"
+        className="col-span-2 min-w-0 rounded-lg bg-zinc-50 px-3 py-0.5 shadow-sm dark:border dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-white/10"
         data-testid="assistant-message-bubble"
         data-message-index={originalIdx}
       >
@@ -274,7 +274,7 @@ function ModelMismatchLabel({
   if (!isModelMismatch(requestedModel, responseModel)) return null;
 
   return (
-    <div className="text-xs text-zinc-400 dark:text-zinc-500 pt-1 text-right">
+    <div className="pt-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
       responded as {responseModel}
     </div>
   );
@@ -303,7 +303,7 @@ function TokenUsageLabel({
   );
 
   return (
-    <div className="text-xs text-zinc-400 dark:text-zinc-500 pb-1 text-right">
+    <div className="pb-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
       tokens: {compactNumber(usage.inputTokens ?? 0)}
       {newContent != null && ` (${compactNumber(newContent)} new)`}
       {(usage.cacheReadTokens ?? 0) > 0 &&
@@ -324,7 +324,7 @@ function TokenUsageLabel({
 function renderTimestamp(timestamp: number, visible: boolean) {
   return (
     <div
-      className={`text-[9px] leading-tight text-zinc-400 dark:text-zinc-600 whitespace-nowrap ${visible ? "" : "invisible"}`}
+      className={`text-[9px] leading-tight whitespace-nowrap text-zinc-400 dark:text-zinc-600 ${visible ? "" : "invisible"}`}
       data-testid="message-timestamp"
     >
       <div>{formatTimestampDate(timestamp)}</div>

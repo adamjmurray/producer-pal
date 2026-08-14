@@ -45,10 +45,10 @@ export function VoiceTranscript({
   providerName,
 }: VoiceTranscriptProps) {
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 flex flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 sm:px-6">
       {isUnsupportedBrowser && (
-        <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700 p-4 text-sm">
-          <p className="font-medium mb-1">
+        <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm dark:border-red-700 dark:bg-red-950/30">
+          <p className="mb-1 font-medium">
             Firefox is not supported for this voice provider.
           </p>
           <p>
@@ -60,8 +60,8 @@ export function VoiceTranscript({
       )}
 
       {!hasVoiceKey && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4 text-sm">
-          <p className="font-medium mb-1">{providerName} API key required.</p>
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+          <p className="mb-1 font-medium">{providerName} API key required.</p>
           <p>
             Open Settings, select the {providerName} provider, and paste your
             API key.
@@ -70,7 +70,7 @@ export function VoiceTranscript({
       )}
 
       {messages.length === 0 ? (
-        <div className="text-sm text-zinc-500 text-center py-8">
+        <div className="py-8 text-center text-sm text-zinc-500">
           Conversation will appear here once you start talking.
         </div>
       ) : (

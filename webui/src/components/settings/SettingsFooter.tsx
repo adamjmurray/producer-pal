@@ -47,7 +47,7 @@ export function SettingsFooter({
   return (
     <>
       {!settingsConfigured && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-6">
+        <p className="mt-6 text-xs text-zinc-500 dark:text-zinc-300">
           Settings will be stored in this web browser.
         </p>
       )}
@@ -56,20 +56,20 @@ export function SettingsFooter({
           can't leave yet", and only this one is actionable. A saveError is a
           separate failure and still shows. */}
       {hasUnsavedChanges && !saveError && !blockedMessage && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-4">
+        <p className="mt-4 text-xs text-red-600 dark:text-red-400">
           You have unsaved changes. Save or cancel to dismiss.
         </p>
       )}
 
       {saveError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mt-4" role="alert">
+        <p className="mt-4 text-xs text-red-600 dark:text-red-400" role="alert">
           Failed to save settings: {saveError}
         </p>
       )}
 
       {blockedMessage && (
         <p
-          className="text-xs text-amber-600 dark:text-amber-400 mt-4"
+          className="mt-4 text-xs text-amber-600 dark:text-amber-400"
           data-testid="settings-save-blocked"
         >
           {blockedMessage}
@@ -80,7 +80,7 @@ export function SettingsFooter({
         {settingsConfigured && (
           <button
             onClick={cancelSettings}
-            className={`px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-700${pulseClass}`}
+            className={`rounded-lg border border-zinc-300 bg-zinc-200 px-4 py-2 hover:bg-zinc-300 dark:border-zinc-600 dark:bg-zinc-600 dark:hover:bg-zinc-700${pulseClass}`}
           >
             Cancel
           </button>
@@ -88,7 +88,7 @@ export function SettingsFooter({
         <button
           onClick={saveSettings}
           disabled={blockedMessage != null}
-          className={`flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed${pulseClass}`}
+          className={`flex-1 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed${pulseClass}`}
         >
           Save
         </button>

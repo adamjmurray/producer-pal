@@ -26,7 +26,7 @@ export function StepUsageLabel({
   newContentTokens,
 }: StepUsageLabelProps) {
   return (
-    <div className="text-xs text-zinc-400 dark:text-zinc-500 text-right -mt-1">
+    <div className="-mt-1 text-right text-xs text-zinc-400 dark:text-zinc-500">
       tokens: {compactNumber(usage.inputTokens ?? 0)}
       {newContentTokens != null && ` (${compactNumber(newContentTokens)} new)`}
       {(usage.cacheReadTokens ?? 0) > 0 &&

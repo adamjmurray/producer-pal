@@ -52,14 +52,14 @@ export function PreferencesTab({
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="theme-select" className="block text-sm mb-2">
+        <label htmlFor="theme-select" className="mb-2 block text-sm">
           Theme
         </label>
         <select
           id="theme-select"
           value={theme}
           onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
-          className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+          className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         >
           <option value="system">System</option>
           <option value="light">Light</option>
@@ -67,7 +67,7 @@ export function PreferencesTab({
         </select>
       </div>
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={showTimestamps}
@@ -78,7 +78,7 @@ export function PreferencesTab({
         Show message timestamps
       </label>
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={showHelpLinks}
@@ -89,7 +89,7 @@ export function PreferencesTab({
         Show help links
       </label>
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={showTokenUsage}
@@ -102,7 +102,7 @@ export function PreferencesTab({
 
       {/* Machine-wide and shared with the Max for Live device, so it applies
           on change rather than on Save — like the Delete buttons below. */}
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={autoUpdateCheck}
@@ -113,8 +113,8 @@ export function PreferencesTab({
         Automatically check for new versions
       </label>
 
-      <div className="border-t border-zinc-300 dark:border-zinc-600 pt-4 mt-4">
-        <p className="text-sm text-zinc-500 dark:text-zinc-300 mb-2">
+      <div className="mt-4 border-t border-zinc-300 pt-4 dark:border-zinc-600">
+        <p className="mb-2 text-sm text-zinc-500 dark:text-zinc-300">
           Cleanup Conversations
         </p>
         <div className="flex gap-2">
@@ -129,7 +129,7 @@ export function PreferencesTab({
                 onDeleteUnbookmarkedConversations();
               }
             }}
-            className="px-3 py-1.5 text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+            className="rounded-lg border border-red-600 px-3 py-1.5 text-sm text-red-600 transition-colors hover:bg-red-600 hover:text-white"
           >
             Delete unstarred
           </button>
@@ -140,7 +140,7 @@ export function PreferencesTab({
                 onDeleteAllConversations();
               }
             }}
-            className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            className="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-red-700"
           >
             Delete all
           </button>

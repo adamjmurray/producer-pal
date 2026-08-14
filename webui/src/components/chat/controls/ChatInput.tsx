@@ -76,7 +76,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="relative z-10 border-t border-zinc-300 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)]">
       <div className="p-4">
         <div className="flex gap-3">
           <textarea
@@ -91,14 +91,14 @@ export function ChatInput({
                   : "Type a message... (Shift+Enter for new line)"
             }
             disabled={disabled}
-            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500 disabled:opacity-50"
+            className="flex-1 resize-none rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 shadow-inner placeholder:text-zinc-500 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 placeholder:dark:text-zinc-400"
             rows={2}
           />
           <div className="flex flex-col gap-2">
             {canStop ? (
               <button
                 onClick={onStop}
-                className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"
+                className="rounded-lg bg-orange-600 px-4 py-1 text-sm text-white hover:bg-orange-700"
               >
                 Stop
               </button>
@@ -111,7 +111,7 @@ export function ChatInput({
             <button
               onClick={submitMessage}
               disabled={disabled || !input.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {isAssistantResponding ? "Queue" : "Send"}
             </button>

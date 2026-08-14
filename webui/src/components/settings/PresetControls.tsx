@@ -114,7 +114,7 @@ export function PresetControls({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm mb-1" htmlFor="preset-select">
+      <label className="mb-1 block text-sm" htmlFor="preset-select">
         Preset
       </label>
       <PresetPickerRow

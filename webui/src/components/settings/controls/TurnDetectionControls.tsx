@@ -56,7 +56,7 @@ export function TurnDetectionControls({
   return (
     <>
       <div>
-        <label htmlFor="turn-detection-mode" className="block text-sm mb-2">
+        <label htmlFor="turn-detection-mode" className="mb-2 block text-sm">
           Turn detection
         </label>
         <select
@@ -84,7 +84,7 @@ export function TurnDetectionControls({
         <ServerVadSliders settings={settings} update={update} />
       )}
 
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           id="turn-detection-barge-in"
@@ -118,7 +118,7 @@ interface SubControlProps {
 function EagernessSelect({ settings, update }: SubControlProps) {
   return (
     <div>
-      <label htmlFor="turn-detection-eagerness" className="block text-xs mb-1">
+      <label htmlFor="turn-detection-eagerness" className="mb-1 block text-xs">
         Eagerness
       </label>
       <select
@@ -214,14 +214,14 @@ export function LabeledSlider({
 }: LabeledSliderProps) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="mb-1 flex items-center justify-between">
         <label htmlFor={testId} className="text-xs">
           {label}
         </label>
         <button
           type="button"
           onClick={() => onChange(defaultValue)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
+          className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
           data-testid={`${testId}-reset`}
         >
           Reset

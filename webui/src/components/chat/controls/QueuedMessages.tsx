@@ -48,12 +48,12 @@ export function QueuedMessages({
       {queuedMessages.map((qm) => (
         <Fragment key={qm.id}>
           <div />
-          <div className="text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40 min-w-0 rounded-lg py-0.5 px-3 opacity-60">
+          <div className="min-w-0 rounded-lg bg-blue-100 px-3 py-0.5 text-black opacity-60 shadow-sm dark:border dark:border-blue-700/40 dark:bg-blue-900/80 dark:text-white dark:shadow-white/10">
             <div className="flex items-start justify-between gap-2">
               <p className="whitespace-pre-wrap">{qm.text}</p>
               <button
                 onClick={() => onRemove(qm.id)}
-                className="shrink-0 mt-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 text-xs leading-none"
+                className="mt-0.5 shrink-0 text-xs leading-none text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                 aria-label="Remove queued message"
               >
                 ✕

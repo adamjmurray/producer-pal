@@ -68,7 +68,7 @@ export function CustomSkillsList(
  */
 function OffTag(): preact.JSX.Element {
   return (
-    <span className="rounded bg-zinc-200 dark:bg-zinc-700 px-1 text-[9px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+    <span className="rounded bg-zinc-200 px-1 text-[9px] tracking-wide text-zinc-500 uppercase dark:bg-zinc-700 dark:text-zinc-400">
       off
     </span>
   );

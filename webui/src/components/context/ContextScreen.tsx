@@ -112,7 +112,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
     labels.builtIn != null && showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+    <div className="flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200">
       <ContextHeader
         title={labels.title}
         tabSlot={tabSlot}
@@ -134,7 +134,7 @@ export function ContextScreen(props: ContextScreenProps): preact.JSX.Element {
         onImport={io.onImport}
         onExport={io.onExport}
       />
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <ContextBody
           status={doc.status}
           loadingLabel={labels.loadingLabel}
@@ -233,14 +233,14 @@ function ContextControls(
   const builtInShown = builtIn != null && !hasOverride;
 
   return (
-    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
+    <div className="border-b border-zinc-200 px-4 py-2 text-sm dark:border-zinc-700">
       <div className={`mx-auto w-full ${widthClass} flex items-center gap-3`}>
         {description != null && (
           <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
             {description}
           </span>
         )}
-        <div className="ml-auto shrink-0 flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           <DriftNote
             drifted={drift?.drifted ?? false}
             forkedFromVersion={drift?.forkedFromVersion ?? null}
@@ -257,7 +257,7 @@ function ContextControls(
               onClick={onClear}
               aria-label="Clear"
               title="Clear"
-              className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+              className="shrink-0 rounded p-0.5 text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
             >
               <TrashIcon />
             </button>
@@ -329,7 +329,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
 
   if (status.kind === "error") {
     return (
-      <div className="flex items-center justify-center h-full text-red-600 dark:text-red-400 px-8 text-center">
+      <div className="flex h-full items-center justify-center px-8 text-center text-red-600 dark:text-red-400">
         {status.message}
       </div>
     );
@@ -337,7 +337,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
 
   if (status.kind === "loading") {
     return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
+      <div className="flex h-full items-center justify-center text-zinc-500">
         {loadingLabel}
       </div>
     );
@@ -345,7 +345,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
 
   return (
     <div
-      className={`mx-auto w-full ${widthClass} flex flex-col h-full p-4 gap-3 overflow-hidden`}
+      className={`mx-auto w-full ${widthClass} flex h-full flex-col gap-3 overflow-hidden p-4`}
     >
       {externalUpdate && (
         <ExternalUpdateBanner
@@ -357,7 +357,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
         onImportText={onImportText}
         notice={notice}
         onReject={onReject}
-        className="flex-1 min-h-0 flex flex-col"
+        className="flex min-h-0 flex-1 flex-col"
       >
         {builtIn != null ? (
           <OverridePanes
@@ -380,7 +380,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
             readOnly={false}
             onChange={onChange}
             onBlur={onBlur}
-            className="flex-1 min-h-0"
+            className="min-h-0 flex-1"
           />
         )}
       </MarkdownDropZone>
@@ -404,12 +404,12 @@ export function ExternalUpdateBanner(props: {
   onReload: () => void;
 }): preact.JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-700/60 text-sky-800 dark:text-sky-200 text-sm">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-200">
       <span>{props.message}</span>
       <button
         type="button"
         onClick={props.onReload}
-        className="px-2 py-1 rounded bg-sky-200 dark:bg-sky-800/70 hover:bg-sky-300 dark:hover:bg-sky-700 text-sky-900 dark:text-sky-100 text-xs font-medium transition-colors"
+        className="rounded bg-sky-200 px-2 py-1 text-xs font-medium text-sky-900 transition-colors hover:bg-sky-300 dark:bg-sky-800/70 dark:text-sky-100 dark:hover:bg-sky-700"
       >
         Reload
       </button>

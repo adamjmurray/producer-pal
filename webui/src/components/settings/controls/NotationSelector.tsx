@@ -52,7 +52,7 @@ export function NotationSelector({
         onChange={(e) =>
           setNotation((e.target as HTMLSelectElement).value as Notation)
         }
-        className="w-full px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded text-sm"
+        className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="notation-select"
       >
         {NOTATIONS.map((value) => (

@@ -51,7 +51,7 @@ export function SkillsPreviewScreen(
   const preview = useSkillsPreview();
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+    <div className="flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200">
       <ContextHeader
         title="Skills"
         tabSlot={tabSlot}
@@ -73,7 +73,7 @@ export function SkillsPreviewScreen(
         onSmallModel={preview.setSmallModelMode}
         onEnabledToolsOnly={preview.setEnabledToolsOnly}
       />
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <PreviewBody status={preview.status} />
       </div>
     </div>
@@ -106,7 +106,7 @@ function PreviewControls(props: PreviewControlsProps): preact.JSX.Element {
   const { onNotation, onSmallModel, onEnabledToolsOnly } = props;
 
   return (
-    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+    <div className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
       <div
         className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-wrap items-center gap-x-3 gap-y-2`}
       >
@@ -146,7 +146,7 @@ function EnabledToolsToggle(
 
   return (
     <label
-      className="shrink-0 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"
+      className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"
       title="On: leaves out the sections no enabled tool uses, like a new conversation would. Off: shows every section."
     >
       <input
@@ -282,7 +282,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
   if (status.kind === "loading") {
     return (
       <PreviewFrame>
-        <div className="flex-1 flex items-center justify-center text-zinc-500">
+        <div className="flex flex-1 items-center justify-center text-zinc-500">
           Assembling preview…
         </div>
       </PreviewFrame>
@@ -292,7 +292,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
   if (status.kind === "error") {
     return (
       <PreviewFrame>
-        <div className="flex-1 flex items-center justify-center px-8 text-center text-red-600 dark:text-red-400">
+        <div className="flex flex-1 items-center justify-center px-8 text-center text-red-600 dark:text-red-400">
           {status.message}
         </div>
       </PreviewFrame>
@@ -320,7 +320,7 @@ function PreviewBody(props: PreviewBodyProps): preact.JSX.Element {
         initialValue={skills}
         readOnly={true}
         onChange={noop}
-        className="flex-1 min-h-0"
+        className="min-h-0 flex-1"
       />
     </PreviewFrame>
   );
@@ -346,9 +346,9 @@ function PreviewFrame(props: PreviewFrameProps): preact.JSX.Element {
 
   return (
     <div
-      className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex flex-col h-full p-4 gap-2 overflow-hidden`}
+      className={`mx-auto w-full ${DOUBLE_PANE_WIDTH} flex h-full flex-col gap-2 overflow-hidden p-4`}
     >
-      <div className="flex items-center justify-between h-7 gap-3">
+      <div className="flex h-7 items-center justify-between gap-3">
         <div className="min-w-0">{left}</div>
         <div>{right}</div>
       </div>
@@ -372,7 +372,7 @@ function DroppedNote(props: DroppedNoteProps): preact.JSX.Element {
   const { dropped } = props;
 
   return (
-    <div className="shrink-0 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-2 text-xs text-zinc-600 dark:text-zinc-400">
+    <div className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
       <span className="font-medium">Left out — no enabled tool uses them:</span>{" "}
       <span className="font-mono">{dropped.join(", ")}</span>
     </div>
@@ -396,7 +396,7 @@ function PreviewWarnings(props: PreviewWarningsProps): preact.JSX.Element {
   return (
     <div
       role="alert"
-      className="shrink-0 rounded-md border border-amber-400 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300"
+      className="shrink-0 rounded-md border border-amber-400 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-300"
     >
       <span className="font-medium">
         ⚠ This override didn't fully assemble:

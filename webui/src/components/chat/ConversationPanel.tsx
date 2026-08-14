@@ -69,10 +69,10 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   return (
     <div
-      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-64 sm:min-w-64 sm:max-w-5xl" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
+      className={`h-full shrink-0 overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:max-w-5xl sm:min-w-64 sm:grow sm:basis-64" : "w-0 sm:w-auto sm:min-w-0 sm:grow-0 sm:basis-0"}`}
     >
       <div
-        className={`w-full min-w-screen sm:min-w-64 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10 transition-transform duration-200 ${isOpen ? "" : "-translate-x-full"}`}
+        className={`relative z-10 flex h-full w-full min-w-screen flex-col border-r border-zinc-400 bg-zinc-200 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] transition-transform duration-200 sm:min-w-64 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] ${isOpen ? "" : "-translate-x-full"}`}
       >
         <PanelToolbar
           onNewConversation={onNewConversation}
@@ -124,9 +124,9 @@ function SearchBar({
   onChange: (query: string) => void;
 }) {
   return (
-    <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700">
+    <div className="border-b border-zinc-300 px-2 py-2 dark:border-zinc-700">
       <div className="relative">
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none">
+        <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500">
           <SearchIcon />
         </span>
 
@@ -136,14 +136,14 @@ function SearchBar({
           onInput={(e) => onChange((e.target as HTMLInputElement).value)}
           placeholder="Search conversations"
           aria-label="Search conversations"
-          className="w-full text-xs pl-7 pr-7 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-zinc-300 bg-white py-1.5 pr-7 pl-7 text-xs text-zinc-800 placeholder:text-zinc-400 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500"
         />
 
         {value && (
           <button
             onClick={() => onChange("")}
             aria-label="Clear search"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-200 transition-colors"
+            className="absolute top-1/2 right-1.5 -translate-y-1/2 p-0.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-200"
           >
             <svg
               width="10"
@@ -181,17 +181,17 @@ function PanelToolbar({
   onImport: () => void;
 }) {
   return (
-    <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 border-b border-zinc-300 px-2 py-2 dark:border-zinc-700">
       <button
         onClick={onNewConversation}
-        className="max-w-48 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap"
+        className="flex max-w-48 items-center justify-center gap-1 rounded-lg bg-blue-500 px-3 py-1.5 text-xs whitespace-nowrap text-white transition-colors hover:bg-blue-600"
       >
         <NewConversationIcon /> New Conversation
       </button>
       <div className="flex-1" />
       <button
         onClick={onExport}
-        className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
+        className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-blue-500 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-blue-400"
         aria-label="Export conversations"
         title="Export conversations"
       >
@@ -199,7 +199,7 @@ function PanelToolbar({
       </button>
       <button
         onClick={onImport}
-        className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
+        className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-blue-500 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-blue-400"
         aria-label="Import conversations"
         title="Import conversations"
       >

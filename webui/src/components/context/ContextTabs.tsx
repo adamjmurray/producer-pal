@@ -251,10 +251,10 @@ function TabButton(props: TabButtonProps): preact.JSX.Element {
       type="button"
       aria-pressed={active}
       onClick={onSelect}
-      className={`shrink-0 whitespace-nowrap px-2 py-1 text-base rounded transition-colors ${
+      className={`shrink-0 rounded px-2 py-1 text-base whitespace-nowrap transition-colors ${
         active
           ? "font-semibold text-zinc-900 dark:text-zinc-100"
-          : "font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+          : "font-medium text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
       }`}
     >
       {label}

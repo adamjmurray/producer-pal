@@ -67,7 +67,7 @@ export function AppShell({
     : undefined;
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-100 dark:bg-zinc-950">
+    <div className="flex h-screen flex-col bg-zinc-100 dark:bg-zinc-950">
       <ChatHeader
         headerInfo={headerInfo}
         mcpStatus={mcpStatus}
@@ -91,7 +91,7 @@ export function AppShell({
         }
       />
 
-      <div className="flex flex-1 min-h-0 justify-center">
+      <div className="flex min-h-0 flex-1 justify-center">
         <ConversationPanel
           isOpen={conversationPanel.isOpen}
           conversations={conversationPanel.conversations}
@@ -112,9 +112,9 @@ export function AppShell({
         />
 
         <div
-          className={`flex flex-col flex-9999 min-w-0 max-w-5xl ${conversationPanel.isOpen ? "hidden sm:flex" : ""}`}
+          className={`flex max-w-5xl min-w-0 flex-9999 flex-col ${conversationPanel.isOpen ? "hidden sm:flex" : ""}`}
         >
-          <div className="flex flex-col flex-1 min-h-0 w-full border-x border-zinc-300 dark:border-zinc-700 shadow-lg dark:shadow-black/40 bg-white dark:bg-zinc-900">
+          <div className="flex min-h-0 w-full flex-1 flex-col border-x border-zinc-300 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40">
             {children}
           </div>
         </div>

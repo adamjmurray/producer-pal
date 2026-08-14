@@ -70,7 +70,7 @@ function BranchArrow({
       disabled={onClick == null}
       title={label}
       aria-label={label}
-      className="size-5 flex items-center justify-center rounded text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default"
+      className="flex size-5 items-center justify-center rounded text-sm hover:bg-zinc-200 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-zinc-700"
     >
       {children}
     </button>

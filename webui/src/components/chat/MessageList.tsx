@@ -127,7 +127,7 @@ export function MessageList({
   return (
     <div
       ref={containerRef}
-      className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
+      className="grid grid-cols-[auto_1fr_auto] items-start gap-x-2 gap-y-4 p-4"
       data-testid="message-list"
     >
       {systemInstruction != null && (
@@ -324,7 +324,7 @@ function BranchNavRow({
 
   return (
     <div
-      className="col-span-3 flex justify-end pr-1 -mt-2"
+      className="col-span-3 -mt-2 flex justify-end pr-1"
       data-message-index={point.anchorIndex}
     >
       <BranchNav
@@ -457,7 +457,7 @@ function StreamingFooter({
   return (
     <>
       {status && (
-        <div className="col-span-3 text-center text-sm text-zinc-400 animate-pulse">
+        <div className="col-span-3 animate-pulse text-center text-sm text-zinc-400">
           {status}
         </div>
       )}

@@ -117,7 +117,7 @@ export function LockedSettingsNotice({
   }
 
   return (
-    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
       <p>Changes apply to new conversations only.</p>
 
       {/* Every divergence above contributes a part, so this line always has

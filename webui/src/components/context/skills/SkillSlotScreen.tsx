@@ -85,7 +85,7 @@ export function SkillSlotScreen(
   const widthClass = showBuiltIn ? DOUBLE_PANE_WIDTH : SINGLE_WIDTH;
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+    <div className="flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200">
       <ContextHeader
         title="Skills"
         tabSlot={tabSlot}
@@ -114,7 +114,7 @@ export function SkillSlotScreen(
         }
       />
       <div
-        className={`mx-auto w-full ${widthClass} flex-1 min-h-0 flex flex-col p-4 gap-3 overflow-hidden`}
+        className={`mx-auto w-full ${widthClass} flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4`}
       >
         <SplitOverrideNote
           slots={slots}
@@ -131,7 +131,7 @@ export function SkillSlotScreen(
           onImportText={io.onImportText}
           notice={importNotice.notice}
           onReject={importNotice.showNotice}
-          className="flex-1 min-h-0 flex flex-col"
+          className="flex min-h-0 flex-1 flex-col"
         >
           <OverridePanes
             editorKey={editor.editorKey}
@@ -224,7 +224,7 @@ function SkillControls(props: SkillControlsProps): preact.JSX.Element {
   const { widthClass, onImport, onExport, onSetEnabled } = props;
 
   return (
-    <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+    <div className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
       <div className={`mx-auto w-full ${widthClass} flex flex-col gap-1`}>
         <div className="flex items-center gap-3">
           <SkillSlotSelect
@@ -274,7 +274,7 @@ function IncludeToggle(props: IncludeToggleProps): preact.JSX.Element | null {
 
   return (
     <label
-      className="shrink-0 flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
+      className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"
       title="Off: this section is left out of the skills the AI receives. Your override is kept."
     >
       <input

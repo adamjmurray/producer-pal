@@ -58,16 +58,16 @@ export function VoiceControls({
   const displayVoice = activeVoice ?? savedVoice;
 
   return (
-    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="relative z-10 border-t border-zinc-300 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)]">
       <div className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <VoiceLabel
               displayVoice={displayVoice}
               voiceDiverges={voiceDiverges}
               savedVoice={savedVoice}
             />
-            <div className="flex-1 flex justify-center min-w-0">
+            <div className="flex min-w-0 flex-1 justify-center">
               <StatusBadge
                 status={voice.status}
                 assistantSpeaking={voice.assistantSpeaking}
@@ -81,7 +81,7 @@ export function VoiceControls({
               <button
                 type="button"
                 onClick={voice.interrupt}
-                className="text-sm px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium shadow"
+                className="rounded-full bg-amber-500 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-amber-600"
               >
                 Interrupt
               </button>
@@ -90,7 +90,7 @@ export function VoiceControls({
               <button
                 type="button"
                 onClick={() => void voice.toggleMute()}
-                className="text-sm px-3 py-1 rounded border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="rounded border border-zinc-300 px-3 py-1 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
               >
                 {voice.isMuted ? "Unmute" : "Mute"}
               </button>
@@ -108,10 +108,10 @@ export function VoiceControls({
               disabled={
                 isBusy || isUnsupportedBrowser || (!isConnected && !voiceKey)
               }
-              className={`px-6 py-2 rounded-lg text-base font-semibold transition-colors shadow disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`rounded-lg px-6 py-2 text-base font-semibold shadow transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                 isConnected
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
             >
               {isBusy ? "..." : isConnected ? "Stop" : "Talk"}
@@ -198,7 +198,7 @@ function StatusBadge({
   return (
     <div className="flex items-center gap-2 text-base text-zinc-600 dark:text-zinc-400">
       <span
-        className={`inline-block w-3 h-3 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
+        className={`inline-block h-3 w-3 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
       />
       {label}
     </div>

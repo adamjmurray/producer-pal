@@ -27,14 +27,14 @@ export interface VoiceSpeedSliderProps {
 export function VoiceSpeedSlider({ speed, setSpeed }: VoiceSpeedSliderProps) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <label htmlFor="voice-speed-slider" className="text-sm">
           Speed ({speed.toFixed(2)}x)
         </label>
         <button
           type="button"
           onClick={() => setSpeed(VOICE_SPEED_DEFAULT)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
+          className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
         >
           Reset
         </button>

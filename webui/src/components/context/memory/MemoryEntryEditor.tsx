@@ -151,7 +151,7 @@ export function MemoryEntryEditor(
   };
 
   return (
-    <div className="flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {externalUpdate && (
         <ExternalUpdateBanner
           message="This memory was changed elsewhere (the assistant or another tab)."
@@ -325,7 +325,7 @@ function CreateMemoryFooter(props: {
         type="button"
         onClick={props.onCreate}
         disabled={props.saveStatus === "saving"}
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Create memory
       </button>

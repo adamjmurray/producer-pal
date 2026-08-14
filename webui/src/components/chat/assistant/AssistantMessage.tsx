@@ -195,7 +195,7 @@ function renderSubagentTranscript(
     m.role === "user" ? (
       <div
         key={idx}
-        className="text-xs bg-blue-100 dark:bg-blue-900/60 rounded px-2 py-1 whitespace-pre-wrap wrap-break-word"
+        className="rounded bg-blue-100 px-2 py-1 text-xs wrap-break-word whitespace-pre-wrap dark:bg-blue-900/60"
       >
         {userTranscriptText(m)}
       </div>

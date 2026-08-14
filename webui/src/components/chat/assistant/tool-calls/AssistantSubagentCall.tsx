@@ -91,7 +91,7 @@ export function AssistantSubagentCall({
         isError ? "border-red-500" : ""
       }`}
     >
-      <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />🤖{" "}
         <span className="font-semibold">
           {index == null ? "subagent" : `subagent ${index}`}
@@ -101,7 +101,7 @@ export function AssistantSubagentCall({
             resumed
           </span>
         )}
-        <span className="truncate min-w-0 text-zinc-600 dark:text-zinc-400">
+        <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-400">
           {truncateString(task, 80)}
         </span>
         <span className={`ml-auto shrink-0 ${statusColor(isError, waiting)}`}>
@@ -115,7 +115,7 @@ export function AssistantSubagentCall({
         </div>
       ) : (
         <div
-          className="mt-2 prose dark:prose-invert prose-sm max-w-none wrap-break-word"
+          className="prose dark:prose-invert prose-sm mt-2 max-w-none wrap-break-word"
           dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(returnValue) }}
         />
       )}
@@ -124,10 +124,10 @@ export function AssistantSubagentCall({
 
       {transcript != null && (
         <details className="disclosure mt-2">
-          <summary className="text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <summary className="flex list-none items-center gap-1 text-zinc-600 dark:text-zinc-400 [&::-webkit-details-marker]:hidden">
             <DisclosureChevron />↳ subagent transcript
           </summary>
-          <div className="mt-2 flex flex-col gap-2 border-l-2 border-zinc-300 dark:border-zinc-600 pl-2">
+          <div className="mt-2 flex flex-col gap-2 border-l-2 border-zinc-300 pl-2 dark:border-zinc-600">
             {transcript}
           </div>
         </details>

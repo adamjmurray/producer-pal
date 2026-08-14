@@ -73,28 +73,28 @@ export function ConnectionTab({
       {/* API Key Input (not for local providers) */}
       {provider !== "lmstudio" && provider !== "ollama" && (
         <div>
-          <label className="block text-sm mb-2">{providerLabel} API Key</label>
+          <label className="mb-2 block text-sm">{providerLabel} API Key</label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
             placeholder={`Enter your ${providerLabel} API key`}
-            className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+            className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
             data-testid="api-key-input"
           />
           {API_KEY_URLS[provider] && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
               <a
                 href={API_KEY_URLS[provider]}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-blue-600 hover:underline dark:text-blue-400"
               >
                 {providerLabel} API keys
               </a>
             </p>
           )}
-          <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
             API keys are encrypted at rest in your browser; this is not a
             substitute for OS-level protection.
           </p>
@@ -107,7 +107,7 @@ export function ConnectionTab({
         provider === "custom") &&
         setBaseUrl && (
           <div>
-            <label className="block text-sm mb-2">URL</label>
+            <label className="mb-2 block text-sm">URL</label>
             <input
               type="text"
               value={baseUrl ?? ""}
@@ -115,9 +115,9 @@ export function ConnectionTab({
               placeholder={
                 DEFAULT_LOCAL_URLS[provider] ?? "https://api.example.com/v1"
               }
-              className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+              className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
             />
-            <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
               {DEFAULT_LOCAL_URLS[provider]
                 ? `Default: ${DEFAULT_LOCAL_URLS[provider]}`
                 : "OpenAI-compatible API endpoint"}

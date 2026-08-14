@@ -97,13 +97,13 @@ export function ModelSelector({
 
     return (
       <div>
-        <label className="block text-sm mb-2">Model</label>
+        <label className="mb-2 block text-sm">Model</label>
         <input
           type="text"
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+          className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />
       </div>
     );
@@ -124,13 +124,13 @@ export function ModelSelector({
 
   return (
     <div>
-      <label className="block text-sm mb-2">Model</label>
+      <label className="mb-2 block text-sm">Model</label>
       <select
         value={dropdownValue}
         onChange={(e) =>
           handleDropdownChange((e.target as HTMLSelectElement).value)
         }
-        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="model-select"
       >
         {presetModels.map(({ value, label }) => (
@@ -147,7 +147,7 @@ export function ModelSelector({
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
           placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
-          className="w-full px-3 py-2 mt-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+          className="mt-2 w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         />
       )}
     </div>

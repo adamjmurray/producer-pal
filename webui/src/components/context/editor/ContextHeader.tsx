@@ -58,12 +58,12 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
     // horizontally instead when they outgrow a narrow viewport. The brand title
     // hides below `lg` (logo alone), mirroring the chat header, so it never crowds
     // the tabs on a narrow window.
-    <header className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-800 border-b border-zinc-400 dark:border-zinc-700 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] relative z-20">
+    <header className="relative z-20 grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b border-zinc-400 bg-zinc-200 px-4 py-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)]">
       <a
         href="https://producer-pal.org"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative flex items-center pl-7 lg:pl-9 min-w-0 hover:opacity-80 transition-opacity no-underline"
+        className="relative flex min-w-0 items-center pl-7 no-underline transition-opacity hover:opacity-80 lg:pl-9"
         title="Producer Pal website"
       >
         <img
@@ -71,7 +71,7 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
           alt="Producer Pal"
           className="absolute left-0 h-5 scale-200"
         />
-        <h1 className="hidden lg:inline text-base font-semibold truncate">
+        <h1 className="hidden truncate text-base font-semibold lg:inline">
           Producer Pal Context
         </h1>
       </a>
@@ -106,7 +106,7 @@ export function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
             onClick={onClose}
             aria-label={closeAriaLabel}
             title="Close (Esc)"
-            className="p-1 -mr-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            className="-mr-1 rounded p-1 text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
           >
             <svg
               width="18"
