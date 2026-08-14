@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import {
   DEFAULT_MAX_TOOL_STEPS,
   MAX_TOOL_STEPS_LIMIT,
@@ -170,6 +170,12 @@ interface StepBudgetFieldProps {
  * what's actually committed, so it can never sit there showing a number Save
  * won't write.
  *
+ * An out-of-range entry puts the budget back where the edit started rather than
+ * leaving the last in-range prefix it was typed through: "150" (over the cap)
+ * passes through "15", and keeping that would silently LOWER the budget the
+ * user was trying to raise. Refusing on the way out (blur) alone isn't enough —
+ * Save may be clicked with the field still focused.
+ *
  * @param {StepBudgetFieldProps} props - Component props
  * @param {number} props.maxToolSteps - The current budget
  * @param {Function} props.setMaxToolSteps - Commits a new budget to the buffer
@@ -180,12 +186,27 @@ function StepBudgetField({
   setMaxToolSteps,
 }: StepBudgetFieldProps) {
   const [draft, setDraft] = useState(String(maxToolSteps));
+  // The budget as it stood before the current edit — what a refused entry
+  // reverts to.
+  const baselineRef = useRef(maxToolSteps);
+  // The last value this field pushed up, so the sync below can tell an outside
+  // change from its own echo and leave the draft alone for the latter.
+  const echoRef = useRef(maxToolSteps);
 
   // Follow the buffer when it moves under us — a Cancel reverts it, and the
   // post-mount load can replace the mount-time default.
   useEffect(() => {
+    if (maxToolSteps === echoRef.current) return;
+    echoRef.current = maxToolSteps;
+    baselineRef.current = maxToolSteps;
     setDraft(String(maxToolSteps));
   }, [maxToolSteps]);
+
+  const commit = (steps: number): void => {
+    if (steps === maxToolSteps) return;
+    echoRef.current = steps;
+    setMaxToolSteps(steps);
+  };
 
   return (
     <div className="mt-4 border-t border-zinc-300 pt-4 dark:border-zinc-600">
@@ -203,6 +224,7 @@ function StepBudgetField({
         // Commit only an in-range whole number: an empty field and a half-typed
         // "1" both parse to something a turn would then run on, and this field
         // is saved with everything else rather than confirmed on its own.
+        // Anything else refuses back to the baseline (see the doc above).
         onInput={(e) => {
           const value = (e.target as HTMLInputElement).value;
 
@@ -210,14 +232,11 @@ function StepBudgetField({
 
           const next = Number(value);
 
-          if (
-            value.trim() !== "" &&
-            Number.isInteger(next) &&
-            next >= MIN_TOOL_STEPS &&
-            next <= MAX_TOOL_STEPS_LIMIT
-          ) {
-            setMaxToolSteps(next);
-          }
+          commit(isStepBudget(value, next) ? next : baselineRef.current);
+        }}
+        // The edit starts here, so this is the budget a refused entry restores.
+        onFocus={() => {
+          baselineRef.current = maxToolSteps;
         }}
         // Snap back to what's committed, so an abandoned draft can't sit there
         // reading like a budget the next turn will use.
@@ -232,5 +251,21 @@ function StepBudgetField({
         Subagent orchestrators and workers scale with it.
       </p>
     </div>
+  );
+}
+
+/**
+ * Whether a draft is a budget worth committing: a non-blank, in-range whole
+ * number. `raw` is checked separately because Number("") is 0, not NaN.
+ * @param {string} raw - The draft string as typed
+ * @param {number} parsed - That draft run through Number()
+ * @returns {boolean} True when the draft may reach the settings buffer
+ */
+function isStepBudget(raw: string, parsed: number): boolean {
+  return (
+    raw.trim() !== "" &&
+    Number.isInteger(parsed) &&
+    parsed >= MIN_TOOL_STEPS &&
+    parsed <= MAX_TOOL_STEPS_LIMIT
   );
 }

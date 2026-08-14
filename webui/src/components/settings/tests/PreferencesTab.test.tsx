@@ -220,6 +220,43 @@ describe("PreferencesTab", () => {
     expect(input.value).toBe("30");
   });
 
+  it("leaves the budget alone when an over-cap number is typed through an in-range prefix", () => {
+    // "150" passes through "15" on the way. Committing that prefix would
+    // silently LOWER the budget the user was trying to raise — and blur alone
+    // can't undo it, since Save may be clicked with the field still focused.
+    let committed = 25;
+    const setMaxToolSteps = vi.fn((steps: number) => {
+      committed = steps;
+      rerender();
+    });
+    const view = (): preact.JSX.Element => (
+      <PreferencesTab
+        {...defaultProps}
+        maxToolSteps={committed}
+        setMaxToolSteps={setMaxToolSteps}
+      />
+    );
+    const { container, rerender: rerenderWith } = render(view());
+    const rerender = (): void => rerenderWith(view());
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.focus(input);
+
+    for (const value of ["1", "15", "150"]) {
+      fireEvent.input(input, { target: { value } });
+    }
+
+    // The rejected draft stays visible while focused, but the budget is back
+    // where the edit started.
+    expect(input.value).toBe("150");
+    expect(committed).toBe(25);
+
+    fireEvent.blur(input);
+    expect(input.value).toBe("25");
+  });
+
   it("renders cleanup buttons", () => {
     render(<PreferencesTab {...defaultProps} />);
     expect(
