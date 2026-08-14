@@ -16,7 +16,10 @@ vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   resetProjectContextSyncMemo: vi.fn(),
 }));
 
-const { mcp_request } =
+const { backupProjectContextOnEdit } =
+  await import("#src/live-api-adapter/project-context-sync.ts");
+
+const { mcp_request, projectContext } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
 /**
@@ -70,5 +73,28 @@ describe("request scope", () => {
 
     expect(created.length).toBeGreaterThan(0);
     expect(created.map((api) => api.path)).toStrictEqual(created.map(() => ""));
+  });
+});
+
+// A device-UI or webui context edit reaches V8 through the param setter, never
+// through a tool call, so it has to close its own scope. Otherwise every
+// autosave arms another live_set listener that only some later tool call sweeps.
+describe("project-context setter scope", () => {
+  it("clears the path of the object the on-disk backup built", () => {
+    let liveSet: { path: string } | undefined;
+
+    // Stands in for the real backup's readLiveSetFilePath(), which builds this
+    // object before the first await — so the setter's scope covers it.
+    vi.mocked(backupProjectContextOnEdit).mockImplementation(async () => {
+      liveSet = LiveAPI.from(livePath.liveSet) as unknown as { path: string };
+
+      await Promise.resolve();
+    });
+
+    // The session's first set is the device's load echo and never backs up.
+    projectContext("the blob the device loaded with");
+    projectContext("a genuine edit");
+
+    expect(liveSet?.path).toBe("");
   });
 });

@@ -241,25 +241,34 @@ let expectLoadEcho = true;
  * @param content - Project context content
  */
 export function projectContext(content: unknown): void {
-  const value = textEditParamToString(content);
-  const isLoadEcho = expectLoadEcho;
+  // Scoped like a tool call: the backup below reads the Live Set's file path,
+  // and that LiveAPI object's listener has to come down too. It is built before
+  // the backup's first await, so the sync scope covers it.
+  beginLiveApiScope();
 
-  expectLoadEcho = false;
+  try {
+    const value = textEditParamToString(content);
+    const isLoadEcho = expectLoadEcho;
 
-  // A set that changes nothing can't be an edit: it's another load-time echo of
-  // the blob we already hold (Live's textedit restore and the two -started
-  // resync bangs all re-emit the same content, in no guaranteed order).
-  const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
+    expectLoadEcho = false;
 
-  sessionState.projectContext.content = value;
+    // A set that changes nothing can't be an edit: it's another load-time echo
+    // of the blob we already hold (Live's textedit restore and the two -started
+    // resync bangs all re-emit the same content, in no guaranteed order).
+    const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
 
-  if (isLoadEcho) noteProjectContextLoaded(value);
+    sessionState.projectContext.content = value;
 
-  // Device-UI and webui edits reach us only through this setter (never an MCP
-  // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
-  // forget: the write is Node-side and must not block the param update, and
-  // requestNode never rejects so this can't throw.
-  if (isEdit) void backupProjectContextOnEdit(value);
+    if (isLoadEcho) noteProjectContextLoaded(value);
+
+    // Device-UI and webui edits reach us only through this setter (never an MCP
+    // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
+    // forget: the write is Node-side and must not block the param update, and
+    // requestNode never rejects so this can't throw.
+    if (isEdit) void backupProjectContextOnEdit(value);
+  } finally {
+    endLiveApiScope();
+  }
 }
 
 /**
