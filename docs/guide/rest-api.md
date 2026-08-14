@@ -353,8 +353,8 @@ write, and even they report different results.
 
 You don't need to call `set_path ""` yourself for cleanup. Live arms a path
 listener on every collection along a path-based object's path and never takes
-them down, so the tool clears the path of the object it created at the end of
-every call, whether or not the call succeeded.
+them down, so every LiveAPI object a request creates has its path cleared once
+the request ends, whether or not it succeeded.
 
 ### Examples
 
@@ -364,7 +364,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
-    "operations": [{"type": "get_property", "property": "tempo"}]
+    "operations": [{"type": "getProperty", "property": "tempo"}]
   }'
 
 # Set the tempo to 140 BPM
