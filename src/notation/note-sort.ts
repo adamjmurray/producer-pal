@@ -29,8 +29,8 @@ export function sortNotes<T extends { start_time: number; pitch: number }>(
 }
 
 /**
- * Collapse notes that share a pitch and start_time (within SAME_TIME_EPSILON,
- * since round-tripped notes can drift) down to the LAST occurrence in the array.
+ * Collapse notes that share a slot ({@link isSameSlot}) down to the LAST
+ * occurrence in the array.
  *
  * Both clip write paths need this: a transform can mutate pitch/start_time and
  * push two distinct notes onto the same pitch+exact-onset, which Live's
@@ -46,9 +46,7 @@ export function dedupeNotesKeepingLast<
 >(notes: T[]): T[] {
   return notes.reduce<T[]>((result, note) => {
     const withoutCollision = result.filter(
-      (existing) =>
-        existing.pitch !== note.pitch ||
-        Math.abs(existing.start_time - note.start_time) >= SAME_TIME_EPSILON,
+      (existing) => !isSameSlot(existing, note),
     );
 
     withoutCollision.push(note);
@@ -76,4 +74,27 @@ export function dedupeAndSortNotes<
     notes: sortNotes(deduped),
     collisions: notes.length - deduped.length,
   };
+}
+
+/**
+ * Whether two notes occupy the same slot: same pitch, same onset within
+ * SAME_TIME_EPSILON (round-tripped notes drift, so onsets get a tolerance
+ * instead of an equality check).
+ *
+ * One definition on purpose. A `v0` delete marker, the keep-last dedupe above,
+ * and the repeat-collision warning must agree on what "the same note" means — if
+ * they drift, a `v0` can fail to delete a note that a restated note would still
+ * overwrite. Generic so it takes any note-like type.
+ * @param a - A note-like object with start_time and pitch
+ * @param b - The note-like object to compare it against
+ * @returns True when both land on the same pitch and onset
+ */
+export function isSameSlot(
+  a: { start_time: number; pitch: number },
+  b: { start_time: number; pitch: number },
+): boolean {
+  return (
+    a.pitch === b.pitch &&
+    Math.abs(a.start_time - b.start_time) < SAME_TIME_EPSILON
+  );
 }
