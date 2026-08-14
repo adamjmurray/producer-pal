@@ -61,8 +61,8 @@ Set **Type** to **STDIO** and fill in:
 
 - **Name:** `Producer Pal`
 - **Command to launch:** `npx`
-- **Arguments:** `-y` and `producer-pal` as separate entries (click "+ Add
-  argument" for each one)
+- **Arguments:** `-y` and `producer-pal@latest` as separate entries (click "+
+  Add argument" for each one)
 
 <img src="/img/chatgpt-app-add-mcp-stdio.png" alt="STDIO MCP configuration for Producer Pal" width="650"/><br>
 

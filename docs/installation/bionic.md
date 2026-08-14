@@ -68,7 +68,7 @@ auto-reconnection:
 - **Connection:** **On this computer**
 - **Command:** `npx`
 - Turn on **Show advanced options**, then use **+ Add argument** to add `-y` and
-  `producer-pal` as two separate arguments
+  `producer-pal@latest` as two separate arguments
 
 <img src="/img/bionic-mcp-server-setup.png" alt="Adding Producer Pal as a custom MCP server in Bionic" width="650"/>
 

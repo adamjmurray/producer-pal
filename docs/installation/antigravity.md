@@ -48,7 +48,7 @@ auto-reconnection:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal@latest"]
     }
   }
 }
@@ -63,7 +63,7 @@ Narrow the toolset and every conversation gets smaller:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+      "args": ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
     }
   }
 }

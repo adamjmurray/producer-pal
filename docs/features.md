@@ -182,8 +182,9 @@ Where you set it depends on the client:
 - **[Chat UI](/guide/chat-ui#tools)** — the Tools tab, per conversation and per
   [preset](/guide/chat-ui#presets).
 - **MCP clients via [`npx producer-pal`](/guide/npx-cli#toolset)** — the
-  `--tools` and `--disable-tools` flags. Run `npx producer-pal --list-tools` for
-  the group names and the tools your device currently offers.
+  `--tools` and `--disable-tools` flags. Run
+  `npx producer-pal@latest --list-tools` for the group names and the tools your
+  device currently offers.
 - **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
   and **Disable tools** settings.
 - **[REST API](/guide/rest-api#per-request-toolset)** — the

@@ -30,8 +30,13 @@ particular client, see the [installation guides](/installation) — e.g.
 [other MCP clients](/installation/other-mcp).
 
 ```bash
-npx -y producer-pal [flags]
+npx -y producer-pal@latest [flags]
 ```
+
+Keep the `@latest`. Without a version tag, `npx` runs any `producer-pal` already
+installed globally or in the current project's `node_modules` instead of
+fetching — which is how the bridge ends up older than the device. See
+[`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version).
 
 ## Flags
 
@@ -67,7 +72,7 @@ The toolset flags are the exception — see [Choosing tools](#toolset) below.
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+  "args": ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
 }
 ```
 
@@ -82,7 +87,7 @@ falls back to the bridge's own catalog when Ableton isn't running. Combine it
 with a toolset flag to see exactly what a session would get:
 
 ```bash
-npx producer-pal --tools clip,track --list-tools
+npx producer-pal@latest --tools clip,track --list-tools
 ```
 
 ```

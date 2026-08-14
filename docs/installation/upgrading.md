@@ -67,20 +67,16 @@ you replace it.
 
 ### For Other Setups
 
-- **Using `npx producer-pal`:** `npx` usually fetches the latest version
-  automatically, so no action is needed. But it can also serve a **stale cached
-  copy** — or skip fetching entirely if you once ran
-  `npm install -g producer-pal` (it runs your global copy instead). If Producer
-  Pal stops working after an upgrade — often with a misleading error like
-  "cannot connect to MCP server" — force the latest version:
+- **Using `npx producer-pal@latest`:** no action needed — the `@latest` makes
+  `npx` fetch the current version on every launch.
 
-  ```bash
-  npm install -g producer-pal@latest
-  ```
-
-  Then restart your AI app. See
-  [`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version)
-  for details.
+- **Using plain `npx producer-pal`:** change your MCP config to
+  `producer-pal@latest`. Without a version tag, `npx` runs any `producer-pal`
+  already installed globally or in your project's `node_modules`, skipping the
+  fetch — so the bridge can stay on an old version while the device moves
+  forward. That mismatch usually shows up as a misleading error like "cannot
+  connect to MCP server". See
+  [`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version).
 
 ## 4. Restart Your AI App
 

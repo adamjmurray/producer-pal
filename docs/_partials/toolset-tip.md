@@ -1,8 +1,8 @@
 `--tools` keeps only what you list; `--disable-tools` drops what you list. Both
 take tool names (`read-clip` or `ppal-read-clip`) and group names: `core`,
 `session`, `actions`, `live-set`, `track`, `scene`, `clip`, `device`,
-`advanced`, and `read-only`. Run `npx producer-pal --list-tools` to print the
-groups plus the tools the running device currently offers.
+`advanced`, and `read-only`. Run `npx producer-pal@latest --list-tools` to print
+the groups plus the tools the running device currently offers.
 
 Withholding a tool also drops the part of the
 [Producer Pal Skills](/features#skills) that teaches it, so you stop paying for

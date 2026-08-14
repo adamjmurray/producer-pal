@@ -22,7 +22,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 auto-reconnection:
 
 ```bash
-claude mcp add producer-pal npx producer-pal
+claude mcp add producer-pal npx producer-pal@latest
 ```
 
 ::: tip Scripting or building against Producer Pal?
@@ -33,7 +33,7 @@ output through JSON tooling — add `--format json --notation midi-json` (the `-
 separates them from `claude mcp add`'s own options):
 
 ```bash
-claude mcp add producer-pal -- npx producer-pal --format json --notation midi-json
+claude mcp add producer-pal -- npx producer-pal@latest --format json --notation midi-json
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
@@ -45,7 +45,7 @@ claude mcp add producer-pal -- npx producer-pal --format json --notation midi-js
 Narrow the toolset and every conversation gets smaller:
 
 ```bash
-claude mcp add producer-pal -- npx producer-pal --tools core,clip,track
+claude mcp add producer-pal -- npx producer-pal@latest --tools core,clip,track
 ```
 
 <!--@include: ../_partials/toolset-tip.md-->

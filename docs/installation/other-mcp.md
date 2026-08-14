@@ -30,7 +30,7 @@ Allows flexible startup order and auto-reconnection. Configure your LLM MCP to
 use:
 
 ```bash
-npx -y producer-pal
+npx -y producer-pal@latest
 ```
 
 This option requires [Node.js 20+](https://nodejs.org/en/download).
@@ -45,7 +45,7 @@ the device when connected:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "--small-model-mode"]
+  "args": ["-y", "producer-pal@latest", "--small-model-mode"]
 }
 ```
 
@@ -59,7 +59,7 @@ ones you don't:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "--tools", "core,clip,track"]
+  "args": ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
 }
 ```
 
@@ -77,7 +77,7 @@ to the device:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal", "--live-api"]
+  "args": ["-y", "producer-pal@latest", "--live-api"]
 }
 ```
 
@@ -123,7 +123,7 @@ use Producer Pal in its `cline_mcp_settings.json` config file:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal@latest"]
     },
     // OR use HTTP:
     "producer-pal-http": {

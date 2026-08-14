@@ -161,5 +161,5 @@ behavior.
 - **Show message token usage** in [Preferences](/guide/chat-ui#preferences)
   prints input, output, and reasoning tokens under every response. See
   [Token Usage](/guide/chat-ui#token-usage).
-- **`npx producer-pal --list-tools`** confirms which tools a client is actually
-  getting. See [the CLI reference](/guide/npx-cli#list-tools).
+- **`npx producer-pal@latest --list-tools`** confirms which tools a client is
+  actually getting. See [the CLI reference](/guide/npx-cli#list-tools).
