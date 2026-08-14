@@ -407,26 +407,38 @@ export function labelWorkerResult(index: number, result: string): string {
 }
 
 /**
+ * Whether a raw `resumeFrom` argument actually asks to continue an existing
+ * worker. Absent, empty, and `0` all mean "spawn a fresh one".
+ *
+ * `0` is the interesting one, and treating it as omitted is deliberate. Worker
+ * indices are 1-based, so 0 names no worker, but it is exactly what a model
+ * sends for an optional number it means to leave empty — observed repeatedly
+ * from GPT-5.6, which kept sending it after being told to omit the field.
+ * Treating it as "omitted" costs nothing (there is no worker it could have
+ * meant) and turns a whole failed turn into a normal spawn.
+ *
+ * Exported because the subagent card reads the RAW tool args to decide whether
+ * to show its "resumed" badge, so it has to apply the same rule this tool does —
+ * otherwise a `resumeFrom: 0` spawn renders as a resume that never happened.
+ * @param value - The raw argument value
+ * @returns Whether this asks to resume an existing worker
+ */
+export function isResumeRequest(value: unknown): boolean {
+  return value != null && value !== "" && Number(value) !== 0;
+}
+
+/**
  * Validate the `resumeFrom` argument, coercing the numeric string LLMs often
  * send. Anything else present but unusable throws rather than silently starting
  * a fresh worker — a resume that quietly becomes a new spawn would re-do work
  * and lose the context the caller was trying to reuse.
- *
- * `0` is the exception, and it is deliberate. Worker indices are 1-based, so 0
- * names no worker, but it is exactly what a model sends for an optional number
- * it means to leave empty — observed repeatedly from GPT-5.6, which kept sending
- * it after being told to omit the field. Treating it as "omitted" costs nothing
- * (there is no worker it could have meant) and turns a whole failed turn into a
- * normal spawn.
  * @param value - The raw argument value
  * @returns The worker index to resume, or undefined when not resuming
  */
 function parseResumeFrom(value: unknown): number | undefined {
-  if (value == null || value === "") return undefined;
+  if (!isResumeRequest(value)) return undefined;
 
   const index = Number(value);
-
-  if (index === 0) return undefined;
 
   if (!Number.isInteger(index) || index < 1) {
     throw new Error(
