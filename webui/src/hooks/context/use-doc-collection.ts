@@ -278,23 +278,27 @@ export interface CollectionEntryAutosaveReturn {
   adoptExternal: () => void;
   /**
    * Settle the idle autosave before a write that MOVES this entry (a rename):
-   * cancel the armed debounce, and resolve once any already-dispatched save has
-   * landed. Both target the entry's CURRENT slug, so a rename issued on top of
-   * one leaves two writes racing for the same file — and if the rename lands
-   * first, the save re-creates the entry it just moved away from (a duplicate
-   * under the old name). Cancelling loses nothing: the rename carries the same
-   * live draft to the new slug.
+   * cancel the armed debounce, resolve once any already-dispatched save has
+   * landed, and hold further autosaves off until
+   * {@link CollectionEntryAutosaveReturn.resumePendingSave}. Both writes target
+   * the entry's CURRENT slug, so a rename issued on top of one leaves two
+   * racing for the same file — and if the rename lands first, the save
+   * re-creates the entry it just moved away from (a duplicate under the old
+   * name). The hold covers the whole round trip: `draftKey` still names the old
+   * slug until the rename lands, so typing during it would otherwise re-arm the
+   * debounce on the very slug being moved. Cancelling loses nothing — the
+   * rename carries the same live draft to the new slug.
    */
   settlePendingSave: () => Promise<void>;
   /**
-   * Put a still-dirty draft back on the autosave clock after a move that did
-   * NOT happen (a rename the server refused). {@link settlePendingSave} already
-   * cancelled the debounce, and a failed rename leaves `draftKey` exactly where
-   * it was — it derives from the entry's slug, not the name field — so nothing
-   * re-arms until the next keystroke. No-op when the draft is clean, unsavable,
-   * doesn't autosave, or something already re-armed it.
+   * Release {@link CollectionEntryAutosaveReturn.settlePendingSave}'s hold once
+   * the move is over, landed or refused, and put a still-dirty draft back on
+   * the autosave clock. Needed on both outcomes because neither necessarily
+   * moves `draftKey` (it derives from the entry's slug, not the name field), so
+   * nothing re-arms on its own until the next keystroke. No-op when the draft is
+   * clean, unsavable, doesn't autosave, or something already re-armed it.
    */
-  rearmPendingSave: () => void;
+  resumePendingSave: () => void;
 }
 
 /**
@@ -333,6 +337,9 @@ export function useCollectionEntryAutosave(
   const deletedExternallyRef = useRef(false);
   const lastSavedRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set while a move (a rename) is on the wire: no autosave may arm, because
+  // every draft change still names the slug the move is leaving.
+  const heldRef = useRef(false);
   // Tail of the save chain: the last flush registered, so the next one queues
   // behind it (see flush) and a rename can wait the whole chain out (see
   // settlePendingSave). Null whenever no save is outstanding.
@@ -453,12 +460,18 @@ export function useCollectionEntryAutosave(
       return undefined;
     }
 
-    if (!autosaveOnIdle || !canSave || draftKey === lastSavedRef.current) {
-      return undefined;
+    if (
+      !heldRef.current &&
+      autosaveOnIdle &&
+      canSave &&
+      draftKey !== lastSavedRef.current
+    ) {
+      timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
     }
 
-    timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
-
+    // Unconditional, so every later run re-decides from scratch — including
+    // over a timer resumePendingSave armed, which would otherwise stay on the
+    // clock beside the one this run arms.
     return () => clearTimer(timerRef);
   }, [canSave, draftKey, autosaveOnIdle, flush]);
 
@@ -522,22 +535,25 @@ export function useCollectionEntryAutosave(
     setExternalUpdate(false);
   }, []);
 
-  // Cancel the armed debounce (the rename carries the same draft onward), then
-  // wait out any save already dispatched — it can only be resolved by letting it
-  // land, since the request is gone. Awaiting the chain's tail covers a queued
-  // flush too: its PUT hasn't gone out yet, but it still targets the old slug.
-  // See the interface doc for why.
+  // Hold off further autosaves, cancel the armed debounce (the rename carries
+  // the same draft onward), then wait out any save already dispatched — it can
+  // only be resolved by letting it land, since the request is gone. Awaiting the
+  // chain's tail covers a queued flush too: its PUT hasn't gone out yet, but it
+  // still targets the old slug. See the interface doc for why.
   const settlePendingSave = useCallback(async (): Promise<void> => {
+    heldRef.current = true;
     clearTimer(timerRef);
     await inFlightRef.current;
   }, []);
 
-  // The undo for settlePendingSave when the move it cleared the way for didn't
-  // happen. Reads the same three conditions the arming effect does — that effect
-  // can't help here, because a failed rename changes none of its deps. A timer
-  // already armed means a keystroke during the rename's round trip beat us to
-  // it; leave the user's own debounce alone rather than pushing it out.
-  const rearmPendingSave = useCallback((): void => {
+  // The undo for settlePendingSave, once the move it cleared the way for is
+  // over. Reads the same three conditions the arming effect does — that effect
+  // can't help here, because neither rename outcome necessarily changes its
+  // deps. A timer already armed means the effect beat us to it (the draft moved
+  // to the new slug); leave that debounce alone rather than pushing it out.
+  const resumePendingSave = useCallback((): void => {
+    heldRef.current = false;
+
     if (timerRef.current != null) return;
 
     if (
@@ -556,7 +572,7 @@ export function useCollectionEntryAutosave(
     externalUpdate,
     adoptExternal,
     settlePendingSave,
-    rearmPendingSave,
+    resumePendingSave,
   };
 }
 

@@ -473,6 +473,65 @@ describe("MemoryEntryEditor — rename", () => {
     ).toBeNull();
   });
 
+  it("holds the autosave off for the whole rename round trip, then saves under the new slug", async () => {
+    // draftKey still names the OLD slug until the rename lands, so a body edit
+    // typed during the round trip would re-arm the debounce on the slug being
+    // moved — that PUT re-creates the entry the rename just left (a duplicate
+    // under the old name, holding the pre-edit body).
+    vi.useFakeTimers();
+
+    let landRename: (entry: MemoryEntryView) => void = () => {};
+    const renameEntry = vi.fn(
+      () =>
+        new Promise<MemoryEntryView>((resolve) => {
+          landRename = resolve;
+        }),
+    );
+    const saveEntry = vi.fn().mockResolvedValue(RENAMED);
+    const onRenamed = vi.fn();
+    const collection = fakeCollection({ renameEntry, saveEntry });
+    const { rerender } = renderEditor({
+      collection,
+      entry: EXISTING,
+      onRenamed,
+    });
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "new-slug" } });
+    fireEvent.blur(nameInput);
+
+    await vi.waitFor(() => {
+      expect(renameEntry).toHaveBeenCalled();
+    });
+
+    // Keep typing while the rename PUT is still in flight.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "typed during the rename" },
+    });
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS * 2);
+
+    expect(saveEntry).not.toHaveBeenCalled();
+
+    // The rename lands and the parent follows the entry to its new slug (the
+    // editor stays mounted, so the body typed above is still the live draft).
+    landRename(RENAMED);
+    await vi.waitFor(() => {
+      expect(onRenamed).toHaveBeenCalledWith("prefers-c-minor", "new-slug");
+    });
+    rerender(editorElement({ collection, entry: RENAMED, onRenamed }));
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+
+    expect(saveEntry).toHaveBeenCalledWith(
+      "new-slug",
+      {
+        description: "default key & genre",
+        content: "typed during the rename",
+      },
+      false,
+    );
+  });
+
   it("keeps a pending body edit on the autosave clock when the rename fails", async () => {
     // The rename settles the armed autosave before dispatching, so the old slug
     // isn't racing it. On failure the name reverts — but the revert doesn't move

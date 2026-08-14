@@ -81,7 +81,7 @@ export function MemoryEntryEditor(
     externalUpdate,
     adoptExternal,
     settlePendingSave,
-    rearmPendingSave,
+    resumePendingSave,
   } = useCollectionEntryAutosave({
     canSave,
     draftKey: memoryEntryKey({ name: targetName, description, body }),
@@ -119,7 +119,7 @@ export function MemoryEntryEditor(
     requiredError: validation.errors.name,
     noteSaved,
     settlePendingSave,
-    rearmPendingSave,
+    resumePendingSave,
     onRenamed,
   });
 
@@ -228,8 +228,8 @@ interface MemoryRenameParams {
   noteSaved: (echoKey: string) => void;
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
-  /** Put a dirty draft back on the autosave clock when the rename is refused. */
-  rearmPendingSave: () => void;
+  /** Put a dirty draft back on the autosave clock once the rename is over. */
+  resumePendingSave: () => void;
   /** Follow the entry to its new slug, keeping this editor mounted. */
   onRenamed: (from: string, to: string) => void;
 }
@@ -250,10 +250,10 @@ interface MemoryRenameParams {
  * draft that did diverge mid-rename is left dirty for the autosave to persist
  * under the NEW name — and a clean one doesn't re-save.
  *
- * The idle autosave is settled BEFORE the rename is dispatched
- * ({@link CollectionEntryAutosaveReturn.settlePendingSave}): both writes target
- * the current slug, and a save still racing the rename can re-create the entry
- * the rename just moved away from.
+ * The idle autosave is settled BEFORE the rename is dispatched and held off
+ * until it returns ({@link CollectionEntryAutosaveReturn.settlePendingSave}):
+ * both writes target the current slug, and a save still racing the rename can
+ * re-create the entry the rename just moved away from.
  * Extracted so the editor body stays within the line limit.
  * @param params - The live draft + collection the rename needs
  * @returns The name field's error and its change/rename handlers
@@ -265,7 +265,7 @@ function useMemoryRename(params: MemoryRenameParams): {
 } {
   const { collection, entry, setName, description, body } = params;
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
-  const { rearmPendingSave } = params;
+  const { resumePendingSave } = params;
   const [renameFailed, setRenameFailed] = useState(false);
 
   const nameError =
@@ -280,7 +280,8 @@ function useMemoryRename(params: MemoryRenameParams): {
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
   const commitRename = async (oldName: string, to: string): Promise<void> => {
-    // Never leave an autosave of the OLD slug racing the rename.
+    // Never leave an autosave of the OLD slug racing the rename — this holds the
+    // autosave off for the whole round trip, not just the debounce armed now.
     await settlePendingSave();
 
     const renamed = await collection.renameEntry(oldName, to, {
@@ -288,15 +289,15 @@ function useMemoryRename(params: MemoryRenameParams): {
       content: body,
     });
 
+    // The move is over either way, so put the draft back on the clock: nothing
+    // here moves draftKey (it follows entry.name, not the name field), so a body
+    // edit typed before or during the rename would otherwise sit off the clock
+    // until the next keystroke.
+    resumePendingSave();
+
     if (renamed == null) {
       setRenameFailed(true);
       setName(oldName);
-      // The entry never moved, so the draft still belongs to the old slug — and
-      // settlePendingSave cancelled its debounce on the way in. Reverting the
-      // name doesn't re-arm it (draftKey follows entry.name, not the field), so
-      // a body edit typed before the rename would sit off the clock until the
-      // next keystroke.
-      rearmPendingSave();
 
       return;
     }
