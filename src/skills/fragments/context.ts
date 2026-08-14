@@ -49,8 +49,9 @@ Managing memory:
  * small-model mode's ppal-context is blobs-only (no memory scope), so this
  * covers the project/global documents and nothing else.
  *
- * Two rules here are a deliberate token spend in the tier that can least afford
- * it, because both defects they fix are invisible to the tool schema:
+ * What each scope holds is the `scope` param's job — this states only the two
+ * rules that are a deliberate token spend in the tier that can least afford it,
+ * because both defects they fix are invisible to the tool schema:
  *  - **Exactly one scope.** Small models wrote an always-applies preference to
  *    global AND copied it into project. A duplicated fact burns context on every
  *    turn (both layers are always injected) and goes stale as soon as one side
@@ -67,7 +68,7 @@ Managing memory:
  */
 export const contextBasic = `## Context
 
-\`ppal-context\` scope:project stores facts about THIS Live Set; scope:global stores who the user is (style, preferences, goals). Put a fact in exactly ONE scope, never both.
+Put a fact in exactly ONE \`ppal-context\` scope, never both.
 
 Writing replaces the whole document — read the same scope first. Already has content? Propose what you'd add and wait for a yes. Empty? Just write it. Either way, say what you saved.
 

@@ -90,11 +90,9 @@ Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple sl
  * `quantizeGrid` appear in no other schema, so a create-clip or duplicate caller
  * was paying ~1.1k characters it could never use.
  *
- * The merge rule leads because it is the same gate and the same subject: only
- * update-clip merges (create-clip replaces the slot outright), and each notation
- * head used to state it separately — three copies, all shipping to read-only and
- * create-clip-only callers who have nothing to merge into and, without this
- * fragment, no definition of the `preTransforms` those copies pointed at.
+ * The merge rule itself is the `notes` param's job in every notation — this
+ * carries only what a schema can't say: the
+ * `preTransforms → notes → transforms` pipeline.
  *
  * Notation-neutral like tier 1: merge keys on pitch+start in every notation, so
  * nothing here may name a notation's syntax for deleting inline.
@@ -104,11 +102,7 @@ Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple sl
  */
 export const transformsEditing = `### Editing Notes Already in a Clip (update-clip only)
 
-\`notes\` MERGES into an existing clip — a new note overwrites the existing note at the *same* pitch+start (restate it with the length or velocity you want); every other note is untouched. So **don't rewrite the whole clip to change a few notes** — restate just those.
-
-\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a region (\`1|1-2|1: delete\`), a lane (\`C1: delete\`), everything (\`delete\`), or remap (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.
-
-\`quantizeGrid\` uses Live's native grid enum (\`1/4\`,\`1/8\`,\`1/8T\`,\`1/16\`,\`1/16T\`,\`1/32\`) but also accepts the equivalent \`n/N\` note value (\`n/12\`=\`1/8T\`, \`n/24\`=\`1/16T\`, etc.); the mixed grids \`1/8+1/8T\`/\`1/16+1/16T\` are enum-only.`;
+\`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. It runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: delete\`), a span (\`1|1-2|1: delete\`), one pitch (\`C1: delete\`), a pitch range (\`C1-C5: delete\`), everything (\`delete\`), or remap a drum lane (\`C1: C4\`); the \`delete\` shorthand (alias \`v0\`) is preferred for clearing (\`velocity = 0\` is the longhand equivalent). Prefer it over deleting inline in \`notes\`. Works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. To *replace* a region rather than edit it in place, clear it first (\`preTransforms: "1|1-2|1: delete"\`) or the notes you didn't restate stay behind. \`transforms\` then mutates the merged result — also the efficient way to *thin* density: generate densely in \`notes\`, then prune with a selector instead of scattering \`delete\`s.`;
 
 /**
  * The transforms fragment at basic (small-model) depth: the merge rule and
