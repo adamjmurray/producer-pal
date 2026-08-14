@@ -363,6 +363,7 @@
         "unicorn-js/no-invalid-argument-count": "error",
         "unicorn-js/no-mismatched-map-key": "error",
         "unicorn-js/no-misrefactored-assignment": "error",
+        "unicorn-js/no-multiple-promise-resolver-calls": "error",
         "unicorn-js/no-unsafe-promise-all-settled-values": "error",
         "unicorn/no-array-for-each": "error"
       }

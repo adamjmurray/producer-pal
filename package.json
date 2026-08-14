@@ -151,7 +151,7 @@
     "chokidar-cli": "3.0.0",
     "commander": "15.0.0",
     "eslint-plugin-sonarjs": "4.2.0",
-    "eslint-plugin-unicorn": "71.1.0",
+    "eslint-plugin-unicorn": "72.0.0",
     "fake-indexeddb": "6.2.5",
     "happy-dom": "20.11.1",
     "jscpd": "5.0.14",

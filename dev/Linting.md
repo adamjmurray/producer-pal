@@ -98,7 +98,7 @@ its rules carry a distinct prefix:
 "rules": { "unicorn-js/no-duplicate-logical-operands": "error" }
 ```
 
-oxlint's native unicorn covers 22 of the 34 rules we use; 12 run through the
+oxlint's native unicorn covers 22 of the 35 rules we use; 13 run through the
 bridge as `unicorn-js/*`, every one a bug detector rather than a style
 preference. Drop each as oxlint implements it natively — the native name wins.
 
