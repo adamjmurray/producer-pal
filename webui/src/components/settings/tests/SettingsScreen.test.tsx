@@ -8,6 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
@@ -145,6 +146,8 @@ describe("SettingsScreen", () => {
     setSmallModelMode: vi.fn(),
     subagentPresetId: null,
     setSubagentPresetId: vi.fn(),
+    maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
+    setMaxToolSteps: vi.fn(),
     liveApiEnabled: false,
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),

@@ -8,6 +8,11 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  MAX_TOOL_STEPS_LIMIT,
+  MIN_TOOL_STEPS,
+} from "#webui/chat/sdk/step-budget";
 import { PreferencesTab } from "#webui/components/settings/PreferencesTab";
 
 describe("PreferencesTab", () => {
@@ -24,6 +29,8 @@ describe("PreferencesTab", () => {
     setShowTokenUsage: vi.fn(),
     autoUpdateCheck: true,
     setAutoUpdateCheck: vi.fn(),
+    maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
+    setMaxToolSteps: vi.fn(),
     onDeleteAllConversations: vi.fn(),
     onDeleteUnbookmarkedConversations: vi.fn(),
   };
@@ -136,6 +143,48 @@ describe("PreferencesTab", () => {
 
     fireEvent.click(checkboxes[3]!);
     expect(setAutoUpdateCheck).toHaveBeenCalledWith(false);
+  });
+
+  it("shows the step budget with the supported range on the input", () => {
+    const { container } = render(
+      <PreferencesTab {...defaultProps} maxToolSteps={40} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    );
+
+    expect(input?.value).toBe("40");
+    expect(input?.min).toBe(String(MIN_TOOL_STEPS));
+    expect(input?.max).toBe(String(MAX_TOOL_STEPS_LIMIT));
+  });
+
+  it("commits an in-range step budget", () => {
+    const setMaxToolSteps = vi.fn();
+    const { container } = render(
+      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
+    );
+    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+
+    fireEvent.input(input, { target: { value: "40" } });
+
+    expect(setMaxToolSteps).toHaveBeenCalledWith(40);
+  });
+
+  it.each([
+    ["blank while retyping", ""],
+    ["below the floor", String(MIN_TOOL_STEPS - 1)],
+    ["above the ceiling", String(MAX_TOOL_STEPS_LIMIT + 1)],
+    ["fractional", "12.5"],
+  ])("ignores a %s value rather than running a turn on it", (_label, value) => {
+    const setMaxToolSteps = vi.fn();
+    const { container } = render(
+      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
+    );
+    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+
+    fireEvent.input(input, { target: { value } });
+
+    expect(setMaxToolSteps).not.toHaveBeenCalled();
   });
 
   it("renders cleanup buttons", () => {

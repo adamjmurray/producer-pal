@@ -56,6 +56,37 @@ export async function openPresetsTab(page: Page): Promise<void> {
 }
 
 /**
+ * Switch to the Preferences tab and wait for its first control.
+ * @param page - Playwright page
+ */
+export async function openPreferencesTab(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Preferences" }).click();
+  await expect(page.getByTestId("max-tool-steps")).toBeVisible();
+}
+
+/**
+ * Commit the buffered settings through the footer Save and wait for the modal
+ * to close.
+ * @param page - Playwright page
+ */
+export async function saveSettings(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByTestId("max-tool-steps")).toBeHidden();
+}
+
+/**
+ * Read the stored tool-step budget. Null when the user has never set one, which
+ * is not the same as storing the default — the chat falls back instead.
+ * @param page - Playwright page
+ * @returns The stored value verbatim, or null when unset
+ */
+export async function readMaxToolSteps(page: Page): Promise<string | null> {
+  return page.evaluate(() =>
+    localStorage.getItem("producer_pal_max_tool_steps"),
+  );
+}
+
+/**
  * Read the stored preset list back out of localStorage. Presets persist on
  * click rather than on the footer Save, so this is what the assertions check.
  * @param page - Playwright page
