@@ -52,6 +52,9 @@ const outputBase = {
   minify: false,
 };
 
+// Rolldown's re-export trailer, always the last statement in the chunk.
+const EXPORT_TRAILER = /\nexport\s*\{[^{}]*\};?\s*$/;
+
 const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
@@ -79,8 +82,26 @@ export default defineConfig([
       ...codeExecPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       {
+        // Max's V8 runs this as a plain script, not a module, so rolldown's
+        // export trailer is a SyntaxError at device load. Match it anchored to
+        // the END of the chunk: an unanchored /\nexport.*/ eats the FIRST line
+        // starting with "export", which a bundled string can supply (a JS
+        // example in a tool description), leaving the real trailer behind.
+        // Nothing downstream parses the result, so a miss has to throw here.
         name: "strip-top-level-exports",
-        renderChunk: (code) => code.replace(/\nexport.*/, ""),
+        renderChunk: (code) => {
+          const stripped = code.replace(EXPORT_TRAILER, "\n");
+
+          if (stripped === code) {
+            throw new Error(
+              "strip-top-level-exports: no `export { … };` trailer at the end " +
+                "of live-api-adapter.js — check what rolldown emitted before " +
+                "shipping it to Max.",
+            );
+          }
+
+          return stripped;
+        },
       },
       addLicenseHeader(),
     ],
