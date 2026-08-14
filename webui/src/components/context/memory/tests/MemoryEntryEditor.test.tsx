@@ -298,26 +298,34 @@ describe("MemoryEntryEditor — existing entry", () => {
     expect(screen.getByText("Memory contents are required.")).toBeTruthy();
   });
 
-  it("flags a cleared name and blocks the save, like the other fields", () => {
+  it("flags a cleared name but still autosaves the body under the existing slug", () => {
     const collection = fakeCollection({
       saveEntry: vi.fn().mockResolvedValue(EXISTING),
     });
 
     const { unmount } = renderEditor({ collection, entry: EXISTING });
 
-    // Emptying the name surfaces its error (existing entries are pre-touched),
-    // and a later body edit can't autosave while the form is invalid.
+    // The name field renames; it isn't part of the write (which targets
+    // entry.name). So emptying it surfaces its error and refuses the rename,
+    // but must not swallow the body edit — in either order.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "typed before the name was cleared" },
+    });
     fireEvent.input(screen.getByRole("textbox", { name: "Rename" }), {
       target: { value: "" },
     });
     expect(screen.getByText("Name is required.")).toBeTruthy();
 
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "edited while name is blank" },
-    });
     unmount();
 
-    expect(collection.saveEntry).not.toHaveBeenCalled();
+    expect(collection.saveEntry).toHaveBeenCalledWith(
+      "prefers-c-minor",
+      {
+        description: "default key & genre",
+        content: "typed before the name was cleared",
+      },
+      false,
+    );
   });
 });
 

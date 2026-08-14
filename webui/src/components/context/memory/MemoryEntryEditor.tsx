@@ -62,11 +62,14 @@ export function MemoryEntryEditor(
 
   const targetName = isNew ? name : entry.name;
   const validation = useMemoryValidation(isNew, name, description, body);
-  // Autosave/create only when name (new only), description, and body are all
-  // non-empty — clearing a required field blocks the write and shows its error.
+  // Gate the write on the fields it actually writes. Creating, that's all three.
+  // Editing, the name field is a rename control and the write targets
+  // entry.name, so an emptied name must only refuse the rename — gating the
+  // autosave on it too would silently discard a body/description edit typed
+  // before the name was cleared.
   // Deliberately not gated on an in-flight save: the autosave hook chains
   // overlapping writes, and gating here would drop its unmount flush mid-save.
-  const canSave = validation.isValid;
+  const canSave = isNew ? validation.isValid : validation.contentValid;
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
@@ -362,6 +365,12 @@ interface MemoryValidation {
   errors: Partial<Record<MemoryField, string>>;
   /** Whether every required field (name, description, body) is non-empty. */
   isValid: boolean;
+  /**
+   * Whether the two fields an existing memory's write carries (description,
+   * body) are non-empty. Excludes the name, which is that mode's rename
+   * control rather than part of the write.
+   */
+  contentValid: boolean;
   /** Mark a field touched so its error can surface (on blur). */
   markTouched: (field: MemoryField) => void;
   /** Reveal every field's error (a failed Create). */
@@ -374,14 +383,15 @@ interface MemoryValidation {
  * attempted, while an existing memory starts "touched" so an already-empty
  * required field (e.g. an assistant-made memory with no description) is flagged
  * immediately. All three fields (name, description, body) are required in both
- * modes: emptying an existing memory's name shows the error and blocks the save
- * (the rename control keeps the field empty until a valid name is typed) just
- * like the description and body.
+ * modes, but they don't block the same things: emptying an existing memory's
+ * name shows the error and refuses the rename (the field stays empty until a
+ * valid name is typed) while its description and body keep autosaving —
+ * see `contentValid`.
  * @param isNew - Whether this is a new (create) draft
  * @param name - The current name draft (or the rename value for an existing one)
  * @param description - The current description draft
  * @param body - The current body draft
- * @returns The per-field errors, overall validity, and touch controls
+ * @returns The per-field errors, both validity flags, and touch controls
  */
 function useMemoryValidation(
   isNew: boolean,
@@ -415,10 +425,10 @@ function useMemoryValidation(
         ? "Memory contents are required."
         : undefined,
   };
-  const isValid =
-    !nameMissing && description.trim() !== "" && body.trim() !== "";
+  const contentValid = description.trim() !== "" && body.trim() !== "";
+  const isValid = !nameMissing && contentValid;
 
-  return { errors, isValid, markTouched, revealAll };
+  return { errors, isValid, contentValid, markTouched, revealAll };
 }
 
 /**
