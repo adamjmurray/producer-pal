@@ -11,6 +11,7 @@ import { replacePlugin } from "rolldown/plugins";
 import { BUILD_SHA } from "./build-sha.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
+import { stubCodeExec } from "./rolldown-plugin-stub-code-exec.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -32,35 +33,13 @@ const envVarReplacements = {
   ),
 };
 
-// When code execution is disabled, substitute the real code-exec modules with
-// lightweight stubs that export the same interface but always return errors/no-ops.
-// This eliminates the node:vm import and all execution logic from production bundles.
-// IMPORTANT: If the stub files in src/tools/clip/code-exec/*-disabled.ts are renamed
-// or moved, update the replacement paths below to match.
-const codeExecAliases =
-  process.env.ENABLE_CODE_EXEC !== "true"
-    ? {
-        "#src/live-api-adapter/code-exec-v8-protocol.ts": join(
-          rootDir,
-          "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
-        ),
-        "./code-exec-v8-protocol.ts": join(
-          rootDir,
-          "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
-        ),
-        "./code-executor.ts": join(
-          rootDir,
-          "src/tools/clip/code-exec/code-executor-disabled.ts",
-        ),
-        "./code-exec-protocol.ts": join(
-          rootDir,
-          "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
-        ),
-      }
-    : {};
+// Substitute the code-exec modules with do-nothing stubs unless the build asked
+// for code execution. See config/rolldown-plugin-stub-code-exec.mjs.
+const codeExecPlugins =
+  process.env.ENABLE_CODE_EXEC !== "true" ? [stubCodeExec()] : [];
 
 const resolveOptions = {
-  alias: { ...codeExecAliases, "#src": join(rootDir, "src") },
+  alias: { "#src": join(rootDir, "src") },
   extensions: [".mjs", ".js", ".json", ".node", ".ts"],
 };
 
@@ -97,6 +76,7 @@ export default defineConfig([
     resolve: resolveOptions,
     transform: { target: "es2023" },
     plugins: [
+      ...codeExecPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       {
         name: "strip-top-level-exports",
@@ -116,6 +96,7 @@ export default defineConfig([
     resolve: resolveOptions,
     transform: { target: "es2023" },
     plugins: [
+      ...codeExecPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       addLicenseHeader({ includeThirdPartyLicenses: true }),

@@ -10,7 +10,7 @@ import {
   findSourceFiles,
   projectRoot,
 } from "#src/test/helpers/meta-test-helpers.ts";
-import packageJson from "../../../package.json" with { type: "json" };
+import packageJson from "../../../../package.json" with { type: "json" };
 
 // Build flags gate code out of release bundles: rolldown substitutes their value
 // at build time, so every flag needs a documented way to switch it ON —
