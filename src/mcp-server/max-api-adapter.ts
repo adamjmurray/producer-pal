@@ -179,7 +179,12 @@ function handleLiveApiResult(...args: unknown[]): void {
       );
       let errorMessageLength = 0;
 
-      // Add any Max errors as warnings
+      // Add any Max errors as warnings, collapsing repeats. A tool that loops
+      // over N clips re-runs the same interpretation N times, so one bad note
+      // relays N identical warnings; the copies cost the model context without
+      // telling it anything the count doesn't.
+      const warningCounts = new Map<string, number>();
+
       for (const err of maxErrors) {
         let msg = String(err);
 
@@ -190,11 +195,16 @@ function handleLiveApiResult(...args: unknown[]): void {
 
         // Only add if there's actual content after cleaning
         if (msg.length > 0) {
-          const errorText = `WARNING: ${msg}`;
-
-          result.content.push({ type: "text", text: errorText });
-          errorMessageLength += errorText.length;
+          warningCounts.set(msg, (warningCounts.get(msg) ?? 0) + 1);
         }
+      }
+
+      for (const [msg, count] of warningCounts) {
+        const repeats = count > 1 ? ` (x${count})` : "";
+        const errorText = `WARNING: ${msg}${repeats}`;
+
+        result.content.push({ type: "text", text: errorText });
+        errorMessageLength += errorText.length;
       }
 
       console.info(

@@ -422,6 +422,29 @@ describe("Max API Adapter", () => {
       });
     });
 
+    it("should collapse repeats of the same warning into one, with a count", async () => {
+      const { promise, requestId } = setupPendingRequest();
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+        "v8: ignoring 1 invalid note",
+        "v8: ignoring 1 invalid note",
+        "v8: something else",
+        "v8: ignoring 1 invalid note",
+      );
+
+      const result = await promise;
+
+      expect(result.content).toStrictEqual([
+        { type: "text", text: "success" },
+        { type: "text", text: "WARNING: ignoring 1 invalid note (x3)" },
+        { type: "text", text: "WARNING: something else" },
+      ]);
+    });
+
     it("should handle error messages without v8: prefix", async () => {
       const { promise, requestId } = setupPendingRequest();
       const mockResult = { content: [{ type: "text", text: "success" }] };
