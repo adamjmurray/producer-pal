@@ -51,7 +51,7 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
   return { ...actual, calculateRetryDelay: vi.fn(() => 10) };
 });
 
-import { ChatSdkClient } from "#webui/chat/sdk/client";
+import { ChatSdkClient, MAX_TOOL_STEPS } from "#webui/chat/sdk/client";
 import {
   MAX_SPAWNS,
   labelWorkerResult,
@@ -230,20 +230,21 @@ describe("ChatSdkClient step budget", () => {
     return parts;
   };
 
-  it("does not flag the tool-step limit at 10 steps for an orchestrator", async () => {
+  it("does not flag the tool-step limit at the default budget for an orchestrator", async () => {
     const client = new ChatSdkClient(
       "key",
       createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
     );
 
     await client.initialize();
-    mockStreamParts(steppedStream(10, "tool-calls"));
+    // The limit for a plain client, but not for an orchestrator, whose budget
+    // is widened to MAX_ORCHESTRATOR_STEPS.
+    mockStreamParts(steppedStream(MAX_TOOL_STEPS, "tool-calls"));
 
     for await (const _ of client.sendMessage("hi")) {
       /* consume */
     }
 
-    // Orchestrator budget is widened above 10, so 10 steps is not the limit.
     expect(client.toolLimitReached).toBe(false);
   });
 

@@ -11,7 +11,7 @@ import {
   scrubAgentCliEnv,
 } from "./agent-cli-transport.ts";
 
-const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 /** Grace period between SIGTERM and SIGKILL when a turn is cut off. */
 const SIGKILL_GRACE_MS = 2000;
 

@@ -37,7 +37,12 @@ import {
 } from "./subagent/subagent-session";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
-const MAX_TOOL_STEPS = 10;
+/**
+ * Default tool-step budget: a plain chat turn's, and the floor the orchestrator
+ * and worker budgets are set above. Exported so tests assert against the real
+ * number instead of a copy that can drift.
+ */
+export const MAX_TOOL_STEPS = 25;
 
 /**
  * The user turn a resume appends when, and only when, the conversation would
@@ -54,7 +59,7 @@ const RESUME_MESSAGE = "continue";
  * MAX_SPAWNS bounds how many workers the turn may start at all — a parallel burst
  * costs one step but still spends the whole spawn budget.
  */
-const MAX_ORCHESTRATOR_STEPS = 25;
+const MAX_ORCHESTRATOR_STEPS = 40;
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.

@@ -13,13 +13,13 @@ import {
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
 
 /**
- * A worker's nested tool-step budget. Higher than the orchestrator's default so
- * a delegated subtask — reading what it needs, then multi-step editing — has
- * room to finish. Not lowered when a briefing removes the connect step: a worker
- * that runs out of steps strands the orchestrator, and the unused headroom of a
- * short task costs nothing.
+ * A worker's nested tool-step budget. Higher than the plain-chat default
+ * (MAX_TOOL_STEPS) so a delegated subtask — reading what it needs, then
+ * multi-step editing — has room to finish. Not lowered when a briefing removes
+ * the connect step: a worker that runs out of steps strands the orchestrator,
+ * and the unused headroom of a short task costs nothing.
  */
-export const MAX_WORKER_STEPS = 20;
+export const MAX_WORKER_STEPS = 30;
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,

@@ -28,13 +28,15 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { generateText, streamText } from "ai";
-import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
+import {
+  ChatSdkClient,
+  MAX_TOOL_STEPS,
+  detectToolLimitReached,
+} from "#webui/chat/sdk/client";
 import {
   createConfig,
   mockStreamParts,
 } from "#webui/chat/sdk/tests/client-test-helpers";
-
-const MAX_TOOL_STEPS = 10;
 
 /**
  * Send a message through a new client with mocked stream parts and return the
