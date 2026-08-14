@@ -286,6 +286,15 @@ export interface CollectionEntryAutosaveReturn {
    * live draft to the new slug.
    */
   settlePendingSave: () => Promise<void>;
+  /**
+   * Put a still-dirty draft back on the autosave clock after a move that did
+   * NOT happen (a rename the server refused). {@link settlePendingSave} already
+   * cancelled the debounce, and a failed rename leaves `draftKey` exactly where
+   * it was — it derives from the entry's slug, not the name field — so nothing
+   * re-arms until the next keystroke. No-op when the draft is clean, unsavable,
+   * doesn't autosave, or something already re-armed it.
+   */
+  rearmPendingSave: () => void;
 }
 
 /**
@@ -316,6 +325,7 @@ export function useCollectionEntryAutosave(
   const flushOnLeave = params.flushOnLeave ?? true;
   const flushOnLeaveRef = useRef(flushOnLeave);
   const canSaveRef = useRef(canSave);
+  const autosaveOnIdleRef = useRef(autosaveOnIdle);
   const draftKeyRef = useRef(draftKey);
   const persistRef = useRef(persist);
   const externalKeyRef = useRef(externalKey);
@@ -337,6 +347,7 @@ export function useCollectionEntryAutosave(
   // these gate the resurrect-on-unmount decision, so deferred timing is fine.
   useEffect(() => {
     canSaveRef.current = canSave;
+    autosaveOnIdleRef.current = autosaveOnIdle;
     draftKeyRef.current = draftKey;
     persistRef.current = persist;
     externalKeyRef.current = externalKey;
@@ -521,7 +532,32 @@ export function useCollectionEntryAutosave(
     await inFlightRef.current;
   }, []);
 
-  return { noteSaved, externalUpdate, adoptExternal, settlePendingSave };
+  // The undo for settlePendingSave when the move it cleared the way for didn't
+  // happen. Reads the same three conditions the arming effect does — that effect
+  // can't help here, because a failed rename changes none of its deps. A timer
+  // already armed means a keystroke during the rename's round trip beat us to
+  // it; leave the user's own debounce alone rather than pushing it out.
+  const rearmPendingSave = useCallback((): void => {
+    if (timerRef.current != null) return;
+
+    if (
+      !autosaveOnIdleRef.current ||
+      !canSaveRef.current ||
+      draftKeyRef.current === lastSavedRef.current
+    ) {
+      return;
+    }
+
+    timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+  }, [flush]);
+
+  return {
+    noteSaved,
+    externalUpdate,
+    adoptExternal,
+    settlePendingSave,
+    rearmPendingSave,
+  };
 }
 
 // --- Helpers below main export ---

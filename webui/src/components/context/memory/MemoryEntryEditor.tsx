@@ -73,22 +73,27 @@ export function MemoryEntryEditor(
   const doSave = (): Promise<MemoryEntryView | null> =>
     collection.saveEntry(targetName, { description, content: body }, isNew);
 
-  const { noteSaved, externalUpdate, adoptExternal, settlePendingSave } =
-    useCollectionEntryAutosave({
-      canSave,
-      draftKey: memoryEntryKey({ name: targetName, description, body }),
-      autosaveOnIdle: !isNew,
-      // A new draft is created only by the explicit Create button — never
-      // silently flushed on navigate-away. Leaving a dirty new draft is guarded
-      // by a discard confirm (useNewMemoryLeaveGuard) instead.
-      flushOnLeave: !isNew,
-      persist: async () => {
-        const saved = await doSave();
+  const {
+    noteSaved,
+    externalUpdate,
+    adoptExternal,
+    settlePendingSave,
+    rearmPendingSave,
+  } = useCollectionEntryAutosave({
+    canSave,
+    draftKey: memoryEntryKey({ name: targetName, description, body }),
+    autosaveOnIdle: !isNew,
+    // A new draft is created only by the explicit Create button — never
+    // silently flushed on navigate-away. Leaving a dirty new draft is guarded
+    // by a discard confirm (useNewMemoryLeaveGuard) instead.
+    flushOnLeave: !isNew,
+    persist: async () => {
+      const saved = await doSave();
 
-        return saved ? memoryEntryKey(saved) : null;
-      },
-      externalKey: entry != null ? memoryEntryKey(entry) : undefined,
-    });
+      return saved ? memoryEntryKey(saved) : null;
+    },
+    externalKey: entry != null ? memoryEntryKey(entry) : undefined,
+  });
 
   // A new draft with any field filled guards against silent loss: leaving it
   // (select another memory, switch tabs, close, or close the browser tab)
@@ -111,6 +116,7 @@ export function MemoryEntryEditor(
     requiredError: validation.errors.name,
     noteSaved,
     settlePendingSave,
+    rearmPendingSave,
     onRenamed,
   });
 
@@ -219,6 +225,8 @@ interface MemoryRenameParams {
   noteSaved: (echoKey: string) => void;
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
+  /** Put a dirty draft back on the autosave clock when the rename is refused. */
+  rearmPendingSave: () => void;
   /** Follow the entry to its new slug, keeping this editor mounted. */
   onRenamed: (from: string, to: string) => void;
 }
@@ -254,6 +262,7 @@ function useMemoryRename(params: MemoryRenameParams): {
 } {
   const { collection, entry, setName, description, body } = params;
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
+  const { rearmPendingSave } = params;
   const [renameFailed, setRenameFailed] = useState(false);
 
   const nameError =
@@ -279,6 +288,12 @@ function useMemoryRename(params: MemoryRenameParams): {
     if (renamed == null) {
       setRenameFailed(true);
       setName(oldName);
+      // The entry never moved, so the draft still belongs to the old slug — and
+      // settlePendingSave cancelled its debounce on the way in. Reverting the
+      // name doesn't re-arm it (draftKey follows entry.name, not the field), so
+      // a body edit typed before the rename would sit off the clock until the
+      // next keystroke.
+      rearmPendingSave();
 
       return;
     }

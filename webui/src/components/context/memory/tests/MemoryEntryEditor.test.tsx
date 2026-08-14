@@ -16,6 +16,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
+import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   type MemoryEntryInput,
   type MemoryEntryView,
@@ -86,6 +87,7 @@ const EXISTING: MemoryEntryView = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -461,6 +463,46 @@ describe("MemoryEntryEditor — rename", () => {
     expect(
       screen.queryByText('A memory named "taken" already exists'),
     ).toBeNull();
+  });
+
+  it("keeps a pending body edit on the autosave clock when the rename fails", async () => {
+    // The rename settles the armed autosave before dispatching, so the old slug
+    // isn't racing it. On failure the name reverts — but the revert doesn't move
+    // draftKey (it derives from entry.name), so nothing re-arms on its own and a
+    // pending body edit would sit off the clock until the next keystroke.
+    vi.useFakeTimers();
+
+    const saveEntry = vi.fn().mockResolvedValue(EXISTING);
+    const collection = fakeCollection({
+      saveEntry,
+      renameEntry: vi.fn().mockResolvedValue(null),
+    });
+
+    renderEditor({ collection, entry: EXISTING });
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "taken" } });
+    fireEvent.blur(nameInput);
+
+    await vi.waitFor(() => {
+      expect(collection.renameEntry).toHaveBeenCalled();
+    });
+
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+
+    expect(saveEntry).toHaveBeenCalledWith(
+      "prefers-c-minor",
+      {
+        description: "default key & genre",
+        content: "Composes in C minor and F minor.",
+      },
+      false,
+    );
   });
 });
 
