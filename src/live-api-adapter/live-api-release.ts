@@ -50,7 +50,12 @@ export function beginLiveApiScope(): void {
 
 /** Mark the end of a request, releasing every tracked object once none remain. */
 export function endLiveApiScope(): void {
-  openScopes = Math.max(0, openScopes - 1);
+  // A stray end (an entry point that forgot its begin) closes nothing, so it
+  // must not release either: with no scope open the objects it would free
+  // belong to whatever request is actually running.
+  if (openScopes === 0) return;
+
+  openScopes--;
 
   if (openScopes === 0) {
     releaseTrackedObjects();
@@ -68,7 +73,7 @@ export function resetLiveApiTracking(): void {
  */
 function releaseTrackedObjects(): void {
   let failures = 0;
-  let firstError = "";
+  let firstError: string | null = null;
 
   for (const api of trackedObjects) {
     try {
@@ -78,7 +83,9 @@ function releaseTrackedObjects(): void {
       (api as unknown as { path: string }).path = "";
     } catch (error) {
       failures++;
-      firstError ||= errorMessage(error);
+      // ??= not ||=: a failure with an empty message is still the first one,
+      // and ||= would report the second one's message in its place.
+      firstError ??= errorMessage(error);
     }
   }
 
@@ -90,7 +97,7 @@ function releaseTrackedObjects(): void {
     // runs after the response is already out, so it would land on some later
     // tool call. Reloading the device is the only fix, so tell the user.
     console.error(
-      `Failed to release ${String(failures)} LiveAPI object(s): ${firstError}`,
+      `Failed to release ${String(failures)} LiveAPI object(s): ${firstError ?? ""}`,
     );
   }
 }

@@ -139,7 +139,7 @@ describe("live-api release", () => {
   });
 
   it("keeps a stray end of scope from breaking the next request", () => {
-    // The count is clamped at 0. Without that it goes negative here, and no
+    // The count never goes below 0. Without that it goes negative here, and no
     // balanced begin/end after it ever reaches 0 again — so from this point on
     // nothing is released for the life of the device.
     endLiveApiScope();
@@ -150,6 +150,30 @@ describe("live-api release", () => {
     endLiveApiScope();
 
     expect(track.path).toBe("");
+  });
+
+  it("releases nothing on a stray end of scope", () => {
+    // A stray end closes no scope, so it must not release either. Whatever is
+    // tracked with none open belongs to a caller that never opened one, and a
+    // cleared path reports id "0" — the object silently stops existing.
+    const track = LiveAPI.from(livePath.track(0));
+
+    endLiveApiScope();
+
+    expect(track.path).toBe(String(livePath.track(0)));
+  });
+
+  it("reports a first failure that has no message, not the next one's", () => {
+    beginLiveApiScope();
+
+    trackUnclearable("");
+    trackUnclearable("second");
+
+    endLiveApiScope();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to release 2 LiveAPI object(s): ",
+    );
   });
 
   it("forgets tracked objects without touching them on reset", () => {
