@@ -283,6 +283,10 @@ function applyRestoredProjectContext(
 ): void {
   if (restored == null) return;
 
+  // Two session starts applying the SAME restore is not a divergence, even
+  // though the second one's snapshot no longer matches. Nothing left to do.
+  if (sessionState.projectContext.content === restored) return;
+
   if (sessionState.projectContext.content !== snapshot) {
     console.warn(
       "Project context changed while the backup restore was in flight; " +

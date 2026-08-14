@@ -382,7 +382,8 @@ export function App() {
  * Counted against the full catalog rather than the MCP response, so the
  * denominator holds still while the Live API flag moves and so the Subagent
  * toggle registers in it at all. All zero until the server answers — a fraction
- * of a catalog we haven't loaded would be a made-up number.
+ * of a catalog we haven't loaded would be a made-up number, and so would a
+ * divergence reported against it.
  *
  * @param mcpTools - The server's tool catalog, or null before it loads
  * @param lockedTools - The conversation's pinned toolset, or null when unpinned
@@ -415,6 +416,10 @@ function toolIndicatorState(
     totalToolsCount: catalog.length,
     enabledToolsCount: count(locked ?? settings),
     defaultToolsCount: count(settings),
-    enabledToolsDiverge: locked != null && toolsetsDiffer(locked, settings),
+    // Not flagged before the catalog lands either: every count is 0, so an
+    // amber "Locked: 0/0 tools enabled (default is a different set)" names a
+    // difference in nothing, then corrects itself when /tools answers.
+    enabledToolsDiverge:
+      mcpTools != null && locked != null && toolsetsDiffer(locked, settings),
   };
 }

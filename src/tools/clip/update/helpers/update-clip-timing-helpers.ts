@@ -10,6 +10,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 
 interface BeatPositions {
@@ -103,20 +104,15 @@ export function calculateBeatPositions({
   // them through this so an unwarped audio clip lands on the same scale. The
   // clamp matters as much as the factor: read-clip reports a clamped length, so
   // handing that length straight back has to derive from the same number.
-  const markerBeats = (property: string) => {
-    const raw = clip.getProperty(property) as number;
-    const bounded =
-      markerClampSeconds > 0 ? Math.min(raw, markerClampSeconds) : raw;
-
-    return bounded * beatsPerMarkerUnit;
-  };
+  const readMarker = (property: string) =>
+    markerBeats(clip, property, { beatsPerMarkerUnit, markerClampSeconds });
 
   // Live keeps two regions per clip and `looping` picks which one plays:
   // start_marker/end_marker while it is off, loop_start/loop_end while it is
   // on. Read the pair that is playing BEFORE this update — on a loop toggle the
   // other pair still holds whatever it was last left with.
-  const currentStart = markerBeats(wasLooping ? "loop_start" : "start_marker");
-  const currentEnd = markerBeats(wasLooping ? "loop_end" : "end_marker");
+  const currentStart = readMarker(wasLooping ? "loop_start" : "start_marker");
+  const currentEnd = readMarker(wasLooping ? "loop_end" : "end_marker");
 
   // Convert start to beats if provided. Validate the standalone position first
   // so a 0-indexed/zero-bar position gets the 1-indexing steer (matching
@@ -187,7 +183,7 @@ export function calculateBeatPositions({
   const startMarkerBeats = determineStartMarker(
     firstStartBeats,
     startBeats,
-    endBeats ?? markerBeats("end_marker"),
+    endBeats ?? readMarker("end_marker"),
   );
 
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };

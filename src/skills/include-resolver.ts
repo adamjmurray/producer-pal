@@ -33,8 +33,14 @@ import { type Notation } from "#src/shared/notation.ts";
 /** Matches a single `@include "<ref>"` directive; ref is captured group 1. */
 const INCLUDE_PATTERN = /@include\s+"([^\n"]*)"/g;
 
-/** Runs of 3+ newlines left by a fragment that resolved to nothing. */
-const BLANK_LINE_RUN = /\n{3,}/g;
+/**
+ * The same directive plus the newline run after it (group 2), so an expansion
+ * can take the blank line that framed its include line with it.
+ */
+const INCLUDE_LINE_PATTERN = /@include\s+"([^\n"]*)"(\n*)/g;
+
+/** A 3+ newline run at the join between an expansion and what followed it. */
+const SEAM_BLANK_RUN = /\n{3,}$/;
 
 /** Injected context for {@link resolveIncludes}. */
 export interface ResolveIncludesOptions {
@@ -75,34 +81,64 @@ export function resolveIncludes(
 ): string {
   const body = readFragment(root, options) ?? "";
 
-  const expanded = body.replaceAll(
-    INCLUDE_PATTERN,
-    (_match, rawRef: string) => {
-      const name = normalizeIncludeRef(rawRef, options.notation);
-
-      if (name == null) {
-        options.onWarn?.(`skills include rejected unsafe path: "${rawRef}"`);
-
-        return "";
-      }
-
-      const included = readFragment(name, options);
-
-      if (included == null) return "";
-
-      options.onFragment?.(name, included);
-
-      return stripNestedIncludes(included, name, options);
-    },
+  return body.replaceAll(
+    INCLUDE_LINE_PATTERN,
+    (_match, rawRef: string, trailing: string) =>
+      joinExpansion(expandInclude(rawRef, options), trailing),
   );
-
-  // A fragment that resolved to nothing leaves the blank lines that framed its
-  // include line stacked up. Collapse them so an emptied override (or a
-  // release build's absent code-transforms) reads as a clean section break.
-  return expanded.replaceAll(BLANK_LINE_RUN, "\n\n");
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Expand one directive to the fragment body it names, or "" when the ref is
+ * unsafe, the name unknown, or the fragment resolved to nothing.
+ *
+ * @param rawRef - The ref exactly as written in the directive
+ * @param options - Injected notation, lookup, and sinks
+ * @returns The fragment's body, with any nested directives stripped
+ */
+function expandInclude(
+  rawRef: string,
+  options: ResolveIncludesOptions,
+): string {
+  const name = normalizeIncludeRef(rawRef, options.notation);
+
+  if (name == null) {
+    options.onWarn?.(`skills include rejected unsafe path: "${rawRef}"`);
+
+    return "";
+  }
+
+  const included = readFragment(name, options);
+
+  if (included == null) return "";
+
+  options.onFragment?.(name, included);
+
+  return stripNestedIncludes(included, name, options);
+}
+
+/**
+ * Put an expansion back where its include line was, tidying only the seam.
+ *
+ * An expansion of nothing takes the blank line that framed the directive with
+ * it, so an emptied override (or a release build's absent code-transforms)
+ * reads as a clean section break. Anything else keeps its own text verbatim —
+ * collapsing blank runs across the whole document would rewrite a 3+ newline
+ * run INSIDE a user's fragment, e.g. inside a fenced example.
+ *
+ * @param expansion - The fragment body, or "" when nothing resolved
+ * @param trailing - The newline run that followed the include line
+ * @returns The text to substitute for the directive and its trailing newlines
+ */
+function joinExpansion(expansion: string, trailing: string): string {
+  if (expansion === "") return "";
+
+  if (trailing === "") return expansion;
+
+  return (expansion + trailing).replace(SEAM_BLANK_RUN, "\n\n");
+}
 
 /**
  * Look up one fragment's body, warning when the name resolves to nothing.
