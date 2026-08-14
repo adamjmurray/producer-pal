@@ -160,7 +160,6 @@
     "oxlint-tsgolint": "7.0.2001",
     "peggy": "5.1.0",
     "rolldown": "1.2.1",
-    "rollup-plugin-copy": "3.5.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "vite": "8.2.1",
     "vite-plugin-singlefile": "2.3.3",

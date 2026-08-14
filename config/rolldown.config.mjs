@@ -8,8 +8,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "rolldown";
 import { replacePlugin } from "rolldown/plugins";
-import copy from "rollup-plugin-copy";
 import { BUILD_SHA } from "./build-sha.mjs";
+import { copyFiles } from "./rolldown-plugin-copy.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -152,28 +152,26 @@ export default defineConfig([
         shebang: "#!/usr/bin/env node",
       }),
       replacePlugin(envVarReplacements, { preventAssignment: true }),
-      copy({
-        targets: [
-          { src: licensePath, dest: "claude-desktop-extension" },
-          {
-            src: thirdPartyLicensesFolder,
-            dest: "claude-desktop-extension",
-          },
-          { src: licensePath, dest: "npm" },
-          {
-            src: [
-              join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
-              join(thirdPartyLicensesFolder, "zod-license"),
-              join(thirdPartyLicensesFolder, "README.md"),
-            ],
-            dest: "npm/licenses",
-          },
-          {
-            src: join(rootDir, "assets/image/producer-pal-logo.svg"),
-            dest: "npm",
-          },
-        ],
-      }),
+      copyFiles([
+        { src: licensePath, dest: "claude-desktop-extension" },
+        {
+          src: thirdPartyLicensesFolder,
+          dest: "claude-desktop-extension",
+        },
+        { src: licensePath, dest: "npm" },
+        {
+          src: [
+            join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
+            join(thirdPartyLicensesFolder, "zod-license"),
+            join(thirdPartyLicensesFolder, "README.md"),
+          ],
+          dest: "npm/licenses",
+        },
+        {
+          src: join(rootDir, "assets/image/producer-pal-logo.svg"),
+          dest: "npm",
+        },
+      ]),
     ],
   },
 ]);
