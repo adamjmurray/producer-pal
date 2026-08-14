@@ -42,7 +42,7 @@ or above — killing every tool call, not just the one tool.
 So for a cap of 2000 or more, use `boundedString(max)` from
 `src/tools/shared/tool-framework/bounded-string.ts` and put the limit in the
 param description. It validates the same and emits no keyword. Smaller caps can
-stay as `z.string().max()`. `src/test/meta/tool-schema-grammar-safety.test.ts`
+stay as `z.string().max()`. `src/test/meta/tool-schemas/grammar-safety.test.ts`
 checks every tool. Background: ADR-0021.
 
 ## Coercion
