@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  MAX_POOLED_OBJECTS,
   beginLiveApiScope,
   endLiveApiScope,
   resetLiveApiTracking,
@@ -273,6 +274,34 @@ describe("live-api release", () => {
     const next = LiveAPI.from(livePath.track(0));
 
     expect(next.path).toBe(String(livePath.track(0)));
+
+    endLiveApiScope();
+  });
+
+  it("stops pooling once the free list is full", () => {
+    // Without a ceiling the pool grows forever: a request returns everything it
+    // built but only takes back what it needed for a path, and an id target
+    // always builds. The surplus is every id-built object, every request.
+    const overflow = 10;
+
+    beginLiveApiScope();
+
+    const built = new Set<LiveAPI>();
+
+    for (let i = 0; i < MAX_POOLED_OBJECTS + overflow; i++) {
+      built.add(LiveAPI.from(i + 1));
+    }
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    let reused = 0;
+
+    for (let i = 0; i < MAX_POOLED_OBJECTS + overflow; i++) {
+      if (built.has(LiveAPI.from(livePath.track(i)))) reused++;
+    }
+
+    expect(reused).toBe(MAX_POOLED_OBJECTS);
 
     endLiveApiScope();
   });

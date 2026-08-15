@@ -14,6 +14,22 @@
  * So objects are tracked as they are built and released when the request that
  * built them ends. Identity and lifetime *within* a request are untouched.
  *
+ * ============================================================================
+ * NOTHING MAY HOLD A LiveAPI OBJECT ACROSS REQUESTS.
+ *
+ * Not in module state, not in a cache, not captured in a callback that outlives
+ * the call. Every object a request builds is released when it ends, and reused
+ * by a later one.
+ *
+ * A stale reference fails quietly. Straight after release it at least reads as
+ * nonexistent — cleared path, id "0". Once the object is recycled it points at
+ * something else entirely, and reads and writes land on the wrong Live object
+ * with no error anywhere.
+ *
+ * Build objects where you use them. Nothing in the codebase holds one across
+ * requests today; keep it that way.
+ * ============================================================================
+ *
  * Clearing the path is not the whole story, which is why released objects are
  * pooled rather than dropped. Construction also registers a context in MxDCore
  * that clearing the path does not take back, and that registration makes every
@@ -37,6 +53,22 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 
 const trackedObjects: LiveAPI[] = [];
+
+/**
+ * Ceiling on the free list.
+ *
+ * Without one it grows forever. A request returns every object it built, but
+ * only takes back the ones it needed for a path — an "id N" target can't
+ * retarget an existing object, so getChildren always builds. Every request
+ * therefore hands back more than it took, and the surplus is exactly the
+ * id-built objects. A read-track loop would pile up tens of thousands.
+ *
+ * Anything over the ceiling is released and dropped. A request that needs more
+ * than this builds the difference, which is what it did before pooling existed.
+ * Set high enough to cover an ordinary request and low enough to stay
+ * negligible memory.
+ */
+export const MAX_POOLED_OBJECTS = 512;
 
 /**
  * Released objects with a cleared path, waiting to be retargeted.
@@ -133,7 +165,9 @@ function releaseTrackedObjects(): void {
       // Only after the clear succeeds. An object that refused is in an unknown
       // state, so reusing it would hand a request something still pointing at
       // the last request's target.
-      freeObjects.push(api);
+      if (freeObjects.length < MAX_POOLED_OBJECTS) {
+        freeObjects.push(api);
+      }
     } catch (error) {
       failures++;
       // ??= not ||=: a failure with an empty message is still the first one,
