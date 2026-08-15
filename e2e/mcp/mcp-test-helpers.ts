@@ -16,6 +16,7 @@ import {
   type McpConnection,
 } from "#evals/chat/mcp.ts";
 import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
+import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
   resetConfig,
@@ -261,6 +262,40 @@ export async function readClipWithNotes(
   });
 
   return parseToolResult<ReadClipResult>(result);
+}
+
+/**
+ * The skills overrides the server under test will apply, read from its own
+ * ~/.producer-pal via GET /skill-overrides.
+ *
+ * E2E deliberately runs against a config dir that is NOT inert (open-live-set.ts
+ * strips VITEST before launching Live), so a developer with a saved override
+ * gets a blob a bare `buildSkills()` can't reproduce. Pass this as its second
+ * argument to expect what this machine actually serves. Reading it off the
+ * server rather than the local disk also keeps a remote MCP_URL honest.
+ *
+ * Slot files only: a fork's own non-slot fragment (skills/my/frag.md) isn't
+ * listed by this route, so a slot override that includes one still diverges.
+ *
+ * @returns Override bodies and disabled names, keyed by fragment include name
+ */
+export async function fetchSkillOverrides(): Promise<SkillOverrides> {
+  const response = await fetch(MCP_URL.replace("/mcp", "/skill-overrides"));
+
+  expect(response.ok).toBe(true);
+
+  const { slots } = (await response.json()) as {
+    slots: Array<{ name: string; override: string; enabled: boolean }>;
+  };
+  const fragments: Record<string, string> = {};
+  const disabled: string[] = [];
+
+  for (const slot of slots) {
+    if (slot.override) fragments[slot.name] = slot.override;
+    if (!slot.enabled) disabled.push(slot.name);
+  }
+
+  return { fragments, disabled };
 }
 
 // ============================================================================

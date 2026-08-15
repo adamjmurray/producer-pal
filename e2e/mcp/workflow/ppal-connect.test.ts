@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
+  fetchSkillOverrides,
   parseToolResult,
   setConfig,
   setupMcpTestContext,
@@ -99,12 +100,15 @@ describe("ppal-connect", () => {
         /^\d+\/\d+$/.test(parsed.liveSet.timeSignature),
     ).toBe(true);
 
-    // Standard mode injects the assembled standard skills verbatim (no user
-    // overrides expected on the dev machine during e2e). Asserting equality with
-    // buildSkills() (rather than hand-picked content markers like section
-    // headings) means any future skills reorg flows through automatically — this
-    // test can never silently drift out of sync with the skills.
-    expect(extractSkills(result)).toBe(buildSkills({ notation: "barbeat" }));
+    // Standard mode injects the assembled standard skills verbatim. Asserting
+    // equality with buildSkills() (rather than hand-picked content markers like
+    // section headings) means any future skills reorg flows through
+    // automatically — this test can never silently drift out of sync with the
+    // skills. The dev machine's own ~/.producer-pal overrides go in too: e2e
+    // runs against a live config dir, so they're part of what the server serves.
+    expect(extractSkills(result)).toBe(
+      buildSkills({ notation: "barbeat" }, await fetchSkillOverrides()),
+    );
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -120,11 +124,12 @@ describe("ppal-connect", () => {
     // crucially, something different from standard mode, proving the mode
     // switch actually changed what the live server serves.
     const skills = extractSkills(result);
+    const overrides = await fetchSkillOverrides();
 
     expect(skills).toBe(
-      buildSkills({ notation: "barbeat", smallModelMode: true }),
+      buildSkills({ notation: "barbeat", smallModelMode: true }, overrides),
     );
-    expect(skills).not.toBe(buildSkills({ notation: "barbeat" }));
+    expect(skills).not.toBe(buildSkills({ notation: "barbeat" }, overrides));
   });
 
   describe("project context", () => {
