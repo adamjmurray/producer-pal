@@ -222,7 +222,7 @@ export default defineConfig({
               },
               { text: "ChatGPT App", link: "/installation/chatgpt-app" },
               { text: "Antigravity", link: "/installation/antigravity" },
-              { text: "Bionic (LM Studio)", link: "/installation/bionic" },
+              { text: "LM Studio Bionic", link: "/installation/bionic" },
             ],
           },
           {

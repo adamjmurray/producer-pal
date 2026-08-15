@@ -16,10 +16,13 @@ Download and install [Ollama](https://ollama.com/) for your operating system.
 
 Download a model that supports tools. Some good options include:
 
+- `qwen3.8`
 - `gemma4`
-- `glm-4.7-flash`
 - `muse-glimmer`
 - `mistral-small3.2`
+
+And the others listed in Producer Pal's built-in chat UI settings. If your
+computer can handle it, use the larger variants of a model.
 
 Browse [models with tool support](https://ollama.com/search?c=tools) on the
 Ollama website.
@@ -59,9 +62,9 @@ In the chat UI settings:
 - URL: `http://localhost:11434`
   - Use this default URL when everything runs on the same computer. Change
     `localhost` to run Ollama on a different computer. Consult
-    [the user guide](/guide/chat-ui#local-ai-settings-ollama-lm-studio) for more
+    [the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic) for more
     info.
-- Model: Your model name (e.g., `gemma4` or `glm-4.7-flash`)
+- Model: Your model name (e.g., `qwen3.8` or `gemma4`)
 
 Click "Save".
 

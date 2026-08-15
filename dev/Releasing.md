@@ -244,13 +244,13 @@ in CI — see `e2e/ui/README.md`.
       Quick Connect (free models are excluded from E2E tests due to rate limits)
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
-- [ ] **LM Studio** - With LM Studio running its local server, select the LM
+- [ ] **Bionic** - With Bionic running its local server, select the Bionic / LM
       Studio provider in the chat UI, enter a loaded model id, and run a simple
-      task. This exercises the webui → LM Studio path (OpenAI-compatible **Chat
-      Completions** API), which is distinct from using LM Studio as an MCP
-      client (Step 4). Regression-prone: the OpenAI-compatible providers must
-      use the Chat Completions API, not the Responses API (`.chat()` in
-      `provider-factories.ts`), or LM Studio returns a 400 "Invalid type for
+      task. This exercises the webui → Bionic path (OpenAI-compatible **Chat
+      Completions** API), which is distinct from using Bionic as an MCP client
+      (Step 4). Regression-prone: the OpenAI-compatible providers must use the
+      Chat Completions API, not the Responses API (`.chat()` in
+      `provider-factories.ts`), or the server returns a 400 "Invalid type for
       'input'".
 
 ## Step 4: Test the npm portal locally
@@ -270,8 +270,7 @@ tar -tzf producer-pal-*.tgz           # inspect contents
 npm install -g ./producer-pal-*.tgz
 ```
 
-Then point an MCP client (LM Studio or similar) at the globally installed
-command:
+Then point an MCP client (Bionic or similar) at the globally installed command:
 
 ```json
 "producer-pal": {

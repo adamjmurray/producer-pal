@@ -237,13 +237,13 @@ describe("ConnectionTab", () => {
   });
 
   describe("local providers - base URL input", () => {
-    it("renders base URL input for LM Studio", () => {
+    it("renders base URL input for Bionic", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
           baseUrl="http://localhost:1234"
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
       expect(screen.getByText("URL")).toBeDefined();
@@ -266,13 +266,13 @@ describe("ConnectionTab", () => {
       ).toBeDefined();
     });
 
-    it("does not render API key input for LM Studio", () => {
+    it("does not render API key input for Bionic", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
           baseUrl="http://localhost:1234"
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
       expect(screen.queryByPlaceholderText(/API key/)).toBeNull();
@@ -290,7 +290,7 @@ describe("ConnectionTab", () => {
       expect(screen.queryByPlaceholderText(/API key/)).toBeNull();
     });
 
-    it("calls setBaseUrl when URL input changes for LM Studio", () => {
+    it("calls setBaseUrl when URL input changes for Bionic", () => {
       const setBaseUrl = vi.fn();
 
       render(
@@ -299,7 +299,7 @@ describe("ConnectionTab", () => {
           provider="lmstudio"
           baseUrl="http://localhost:1234"
           setBaseUrl={setBaseUrl}
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
 
@@ -334,13 +334,13 @@ describe("ConnectionTab", () => {
       expect(setBaseUrl).toHaveBeenCalledWith("http://192.168.1.100:11434");
     });
 
-    it("displays default URL hint for LM Studio", () => {
+    it("displays default URL hint for Bionic", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
           baseUrl="http://localhost:1234"
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
       expect(screen.getByText("Default: http://localhost:1234")).toBeDefined();
@@ -364,7 +364,7 @@ describe("ConnectionTab", () => {
           {...defaultProps}
           provider="lmstudio"
           baseUrl="http://192.168.1.50:1234"
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
       const input = screen.getByPlaceholderText(
@@ -381,7 +381,7 @@ describe("ConnectionTab", () => {
           provider="lmstudio"
           baseUrl="http://localhost:1234"
           setBaseUrl={undefined}
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
       expect(screen.queryByPlaceholderText("http://localhost:1234")).toBeNull();
@@ -552,16 +552,16 @@ describe("ConnectionTab", () => {
       expect(link.href).toBe("https://openrouter.ai/models");
     });
 
-    it("shows LM Studio models link", () => {
+    it("shows Bionic models link", () => {
       render(
         <ConnectionTab
           {...defaultProps}
           provider="lmstudio"
           baseUrl="http://localhost:1234"
-          providerLabel="LM Studio"
+          providerLabel="Bionic"
         />,
       );
-      const link = screen.getByText("LM Studio models") as HTMLAnchorElement;
+      const link = screen.getByText("Bionic models") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://lmstudio.ai/models");
     });

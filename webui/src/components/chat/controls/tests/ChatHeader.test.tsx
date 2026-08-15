@@ -439,7 +439,7 @@ describe("ChatHeader", () => {
       expect(screen.getByText(/OpenRouter \|/)).toBeDefined();
     });
 
-    it("shows LM Studio for lmstudio provider", () => {
+    it("shows Bionic for lmstudio provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
@@ -449,7 +449,7 @@ describe("ChatHeader", () => {
           })}
         />,
       );
-      expect(screen.getByText(/LM Studio \|/)).toBeDefined();
+      expect(screen.getByText(/Bionic \|/)).toBeDefined();
     });
 
     it("shows Ollama for ollama provider", () => {

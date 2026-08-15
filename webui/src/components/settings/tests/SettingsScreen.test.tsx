@@ -507,7 +507,7 @@ describe("SettingsScreen", () => {
     );
 
     it.each([
-      ["LM Studio", lmstudioSettings],
+      ["Bionic", lmstudioSettings],
       ["Ollama", ollamaSettings],
       ["custom", customSettings],
     ])("does not show API key link for %s", (_label, settings) => {
@@ -617,7 +617,7 @@ describe("SettingsScreen", () => {
         "https://docs.mistral.ai/getting-started/models",
       ],
       ["OpenRouter", "openrouter", undefined, "https://openrouter.ai/models"],
-      ["LM Studio", "lmstudio", lmstudioSettings, "https://lmstudio.ai/models"],
+      ["Bionic", "lmstudio", lmstudioSettings, "https://lmstudio.ai/models"],
       ["Ollama", "ollama", ollamaSettings, "https://ollama.com/search"],
     ] as const)(
       "shows %s models link with correct URL",

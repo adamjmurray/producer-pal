@@ -188,6 +188,7 @@ export const OPENROUTER_MODELS = [
   },
   { value: "openai/gpt-5.6-terra", label: "[Paid] OpenAI GPT-5.6 Terra" },
   { value: "openai/gpt-5.6-sol", label: "[Paid] OpenAI GPT-5.6 Sol" },
+  { value: "qwen/qwen3.8-max", label: "[Paid] Qwen 3.8 Max" },
   {
     value: "deepseek/deepseek-v4-flash-0731",
     label: "[Paid] DeepSeek V4 Flash",
@@ -195,8 +196,6 @@ export const OPENROUTER_MODELS = [
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "moonshotai/kimi-k3", label: "[Paid] Moonshot AI Kimi K3" },
   { value: "z-ai/glm-5.2", label: "[Paid] Z.ai GLM 5.2" },
-  { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
-  { value: "qwen/qwen3.7-max", label: "[Paid] Qwen 3.7 Max" },
   // Free models
   {
     value: "google/gemma-4-31b-it:free",
@@ -218,10 +217,10 @@ export const OPENROUTER_MODELS = [
 ];
 
 export const OLLAMA_MODELS = [
+  { value: "qwen3.8", label: "qwen3.8" },
   { value: "gemma4", label: "gemma4" },
   { value: "glm-4.7-flash", label: "glm-4.7-flash" },
   { value: "muse-glimmer", label: "muse-glimmer" },
-  { value: "qwen3.6", label: "qwen3.6" },
   { value: "nemotron-3.5-lightning", label: "nemotron-3.5-lightning" },
   { value: "laguna-xs-2.1", label: "laguna-xs-2.1" },
   { value: "mistral-small3.2", label: "mistral-small3.2" },

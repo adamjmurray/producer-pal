@@ -205,7 +205,7 @@ describe("ModelSelector", () => {
       expect(
         screen.getByRole("option", { name: "mistral-small3.2" }),
       ).toBeDefined();
-      expect(screen.getByRole("option", { name: "qwen3.6" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "qwen3.8" })).toBeDefined();
       expect(screen.getByRole("option", { name: /glm/ })).toBeDefined();
     });
 
@@ -215,7 +215,7 @@ describe("ModelSelector", () => {
         model: "mistral-small3.2",
       });
 
-      expectModelSelected("qwen3.6", setModel);
+      expectModelSelected("qwen3.8", setModel);
     });
   });
 

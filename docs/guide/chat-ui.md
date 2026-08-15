@@ -309,7 +309,7 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
+  Bionic / LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -317,9 +317,9 @@ The Connection tab is where you choose and configure your AI provider and model:
   Max). Can also be overridden per-message using the thinking toggle in the
   message input area
 - **Small model mode** - Reduces tool descriptions to save context for local
-  models. Recommended when using Ollama or LM Studio
+  models. Recommended when using Ollama or Bionic
 
-#### Local AI settings (Ollama, LM Studio)
+#### Local AI settings (Ollama, Bionic)
 
 <img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
@@ -330,7 +330,7 @@ Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
 
 - **URL** - Server address (default: `http://localhost:11434` for Ollama,
-  `http://localhost:1234` for LM Studio)
+  `http://localhost:1234` for Bionic)
 - **Model** - Select from installed models
 
 In most cases, you should use the default URL. This is an advanced configuration
@@ -338,12 +338,12 @@ option.
 
 You may need to change the URL if:
 
-- You've modified the port in your Ollama or LM Studio installation
-- You're running Ollama or LM Studio on a different computer on your local
-  network (or anywhere on the Internet). This allows another computer to handle
-  the resource-intensive language model processing while your main computer
-  focuses on running Ableton Live. Replace `localhost` with the other computer's
-  network address (e.g., `http://192.168.1.100:11434`)
+- You've modified the port in your Ollama or Bionic installation
+- You're running Ollama or Bionic on a different computer on your local network
+  (or anywhere on the Internet). This allows another computer to handle the
+  resource-intensive language model processing while your main computer focuses
+  on running Ableton Live. Replace `localhost` with the other computer's network
+  address (e.g., `http://192.168.1.100:11434`)
 
 #### Voice
 
@@ -461,7 +461,7 @@ its own worker, never to the device.
 
 The Tools tab controls which tools are available to the AI when using the chat
 UI. This is important for reducing context size for local models (when using the
-Ollama or LM Studio provider). For local models, only enable the tools you need.
+Ollama or Bionic provider). For local models, only enable the tools you need.
 For state-of-the-art cloud providers (Gemini, OpenAI, etc), you generally want
 to keep everything enabled to make full use of Producer Pal's capabilities. If
 you want to prevent the AI from using a specific tool, you can disable it here.
