@@ -39,18 +39,21 @@
  * ============================================================================
  *
  * Clearing the path is not the whole story, which is why released objects are
- * pooled rather than dropped. Construction also registers a context in MxDCore
- * that clearing the path does not take back, and that registration makes every
- * later construction slower — 2,500 read-track calls took the next one from
- * 27 ms to 90 ms on 12.4.3, and only a device reload clears it. So a released
- * object goes on a free list and the next request retargets it instead of
- * building another one.
+ * pooled rather than dropped. Construction registers a context in MxDCore that
+ * clearing the path does not take back, and only a device reload clears it. So
+ * a released object goes on a free list and the next request retargets it.
+ *
+ * That costs two ways, and pooling avoids both. Building an object runs about
+ * 14 ms slower than retargeting a pooled one, and each build also slows every
+ * later read a little. Measured on 12.4.3 over 2,500 read-track calls: pooled,
+ * a read went from 54 ms to 90 ms; unpooled, from 534 ms to 1.1 s. Same work
+ * either way — 90,006 objects, 92% of them reused when the pool is on.
  *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency
- * still rises while a session reaches new corners of the Live Set. The
- * difference is that the path cost is paid once per path and saturates, while
- * the construction cost never does.
+ * still rises while a session reaches new corners of the Live Set — that 54 to
+ * 90 ms is the pool working, not failing. The difference is that the path cost
+ * is paid once per path and saturates, while the construction cost never does.
  *
  * Don't reach for freepeer(), and don't count on the garbage collector. Both
  * free the JS peer and leave the listener armed, and the slowdown then never
