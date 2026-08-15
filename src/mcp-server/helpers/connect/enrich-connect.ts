@@ -69,6 +69,7 @@ export function enrichConnect(
     () => ({
       smallModelMode: getConfig().smallModelMode,
       projectContext: getConfig().projectContext,
+      tools: getConfig().tools,
     }),
   );
 }

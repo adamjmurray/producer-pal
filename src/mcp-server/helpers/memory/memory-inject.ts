@@ -3,15 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { CONTEXT_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import {
   withConnectAppend,
   type WrappedCallLiveApi,
 } from "../connect/connect-append.ts";
 import { listMemoryEntries, renderMemoryIndex } from "./memory-store.ts";
-
-/** The tool the index tells the model to load a memory body with. */
-const CONTEXT_TOOL = "ppal-context";
 
 /** What the memory index injection depends on. */
 export interface MemoryInjectConfig {
@@ -68,7 +66,7 @@ function memoryBlock({
 }: MemoryInjectConfig): string | null {
   if (smallModelMode) return null;
 
-  if (tools != null && !tools.includes(CONTEXT_TOOL)) return null;
+  if (tools != null && !tools.includes(CONTEXT_TOOL_ID)) return null;
 
   const entries = listMemoryEntries();
 

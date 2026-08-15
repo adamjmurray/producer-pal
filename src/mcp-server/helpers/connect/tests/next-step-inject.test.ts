@@ -208,5 +208,25 @@ describe("withNextStep", () => {
       expect(block).not.toContain(ASKS);
       expect(block).toContain("wait for their instructions");
     });
+
+    // Same reasoning, harder: with no ppal-context at all there is nowhere to
+    // put the answer OR the decline, so the ask would repeat forever.
+    it("never asks when the caller has no ppal-context", async () => {
+      const block = await nextStep({
+        tools: ["ppal-connect", "ppal-read-track"],
+      });
+
+      expect(block).not.toContain(ASKS);
+      expect(block).not.toContain("ppal-context");
+      expect(block).toContain("wait for their instructions");
+    });
+
+    it("asks when the toolset keeps ppal-context", async () => {
+      const block = await nextStep({
+        tools: ["ppal-connect", "ppal-context"],
+      });
+
+      expect(block).toContain(ASKS);
+    });
   });
 });
