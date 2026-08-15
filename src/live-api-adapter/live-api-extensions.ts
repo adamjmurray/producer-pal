@@ -9,7 +9,41 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
-import { trackLiveApiObject } from "./live-api-release.ts";
+import { acquirePooledObject, trackLiveApiObject } from "./live-api-release.ts";
+
+/**
+ * Point a pooled object at a target, or build one when the pool is empty.
+ *
+ * Construction is what registers a context in MxDCore, and nothing takes that
+ * back short of a device reload, so reuse is much cheaper than a fresh object.
+ * See live-api-release.ts for what pooling does and doesn't buy.
+ *
+ * Only a path can retarget an object, so an "id N" target always builds. The
+ * constructor is the only thing that accepts that form — measured on 12.4.3,
+ * goto("id 2") returns 1 as though it worked and leaves the object nonexistent
+ * (path "", id "0"), and assigning it to path is ignored outright. Both fail
+ * silently, so this can't be relaxed on the strength of it looking fine.
+ *
+ * Objects built this way still go on the free list when released: once the path
+ * is cleared they retarget by path like any other.
+ *
+ * @param target - Path or "id N" string, already normalized
+ * @returns A tracked object pointing at the target
+ */
+function buildOrReuse(target: string): LiveAPI {
+  const pooled = target.startsWith("id ") ? undefined : acquirePooledObject();
+
+  if (pooled == null) {
+    return trackLiveApiObject(new LiveAPI(target));
+  }
+
+  // Track before retargeting: an object that throws mid-goto is off the free
+  // list already, and leaving it untracked too would strand whatever it armed.
+  trackLiveApiObject(pooled);
+  pooled.goto(target);
+
+  return pooled;
+}
 
 if (typeof LiveAPI !== "undefined") {
   /**
@@ -20,7 +54,7 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.from = function (
     idOrPath: string | number | [string, string | number] | PathLike,
   ): LiveAPI {
-    return trackLiveApiObject(new LiveAPI(parseIdOrPath(idOrPath)));
+    return buildOrReuse(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
@@ -183,9 +217,7 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     name: string,
   ): LiveAPI[] {
-    return this.getChildIds(name).map((id) =>
-      trackLiveApiObject(new LiveAPI(id)),
-    );
+    return this.getChildIds(name).map((id) => buildOrReuse(id));
   };
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {

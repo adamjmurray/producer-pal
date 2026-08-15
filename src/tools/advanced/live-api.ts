@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { untrackLiveApiObject } from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   MAX_OPERATIONS,
@@ -229,6 +230,13 @@ function executeObjectOperation(
 
       if (typeof methodFn !== "function") {
         throw new Error(`Method "${method}" not found on LiveAPI object`);
+      }
+
+      // freepeer() frees the JS peer and leaves the path listener armed — bad
+      // enough on its own, and it's what the probes here are for. Pooling the
+      // result would be worse: a later request would be handed a freed object.
+      if (method === "freepeer") {
+        untrackLiveApiObject(api);
       }
 
       return methodFn.apply(api, args);

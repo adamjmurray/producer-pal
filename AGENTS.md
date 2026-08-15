@@ -97,6 +97,12 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   `LiveAPI.from()` tracks the object for release, and an untracked one leaves a
   Live path listener armed for the life of the device.
 
+- **Never hold a `LiveAPI` across requests** — not in module state, not in a
+  cache, not in a callback that outlives the call. Objects are released when the
+  request ends and reused by the next one, so a stale reference silently points
+  at a different Live object. Build them where you use them. See
+  `src/live-api-adapter/live-api-release.ts`.
+
 - **Update tools never throw** for a bad param combo or an operation that
   doesn't apply. `console.warn()`, skip that operation, and keep going, so the
   rest of a multi-item call still succeeds. Warnings are not silent — they're

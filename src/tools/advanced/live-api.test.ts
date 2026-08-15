@@ -4,6 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+  resetLiveApiTracking,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -205,6 +210,34 @@ describe("liveApi", () => {
           ],
         }),
       ).toThrow('Method "nonExistentMethod" not found on LiveAPI object');
+    });
+
+    it("should forget an object whose peer it just freed", () => {
+      // A freed peer on the free list would be handed to a later request.
+      const freed: LiveAPI[] = [];
+      const prototype = LiveAPI.prototype as unknown as {
+        freepeer?: (this: LiveAPI) => void;
+      };
+
+      prototype.freepeer = function (this: LiveAPI) {
+        freed.push(this);
+      };
+
+      try {
+        resetLiveApiTracking();
+        beginLiveApiScope();
+
+        liveApi({ operations: [{ type: "call_method", method: "freepeer" }] });
+
+        endLiveApiScope();
+        beginLiveApiScope();
+
+        expect(LiveAPI.from(livePath.liveSet)).not.toBe(freed[0]);
+
+        endLiveApiScope();
+      } finally {
+        delete prototype.freepeer;
+      }
     });
   });
 

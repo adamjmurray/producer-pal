@@ -163,4 +163,104 @@ describe("Mock LiveAPI Infrastructure", () => {
       expect(mock.call).toHaveBeenCalledWith("duplicate_clip_to", 1, 2);
     });
   });
+
+  // A retargeted object has to land where a fresh one at that path would. Only
+  // the constructor used to bind get/set/call and copy the registered
+  // properties, so retargeting left both pointing at the previous target.
+  describe("retargeting", () => {
+    it("rebinds get, set, and call to the new target", () => {
+      const first = registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+      const second = registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+      });
+
+      const api = new LiveAPI(String(livePath.track(0)));
+
+      api.goto(String(livePath.track(1)));
+      api.get("name");
+      api.set("name", "New Name");
+      api.call("duplicate_clip_to");
+
+      expect(second.get).toHaveBeenCalledWith("name");
+      expect(second.set).toHaveBeenCalledWith("name", "New Name");
+      expect(second.call).toHaveBeenCalledWith("duplicate_clip_to");
+      expect(first.get).not.toHaveBeenCalled();
+      expect(first.set).not.toHaveBeenCalled();
+      expect(first.call).not.toHaveBeenCalled();
+    });
+
+    it("drops a property the new target doesn't define", () => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+        properties: { customProp: "first" },
+      });
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+      });
+
+      const api = new LiveAPI(String(livePath.track(0)));
+
+      api.goto(String(livePath.track(1)));
+
+      expect(
+        (api as unknown as Record<string, unknown>).customProp,
+      ).toBeUndefined();
+    });
+
+    it("replaces a property both targets define", () => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+        properties: { trackIndex: 0 },
+      });
+      registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { trackIndex: 1 },
+      });
+
+      const api = new LiveAPI(String(livePath.track(0)));
+
+      api.goto(String(livePath.track(1)));
+
+      expect(api.trackIndex).toBe(1);
+    });
+
+    it("falls back to the default mocks when retargeted off the registry", () => {
+      const mock = registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      const api = new LiveAPI(String(livePath.track(0)));
+
+      api.goto(String(livePath.track(9)));
+      api.get("name");
+
+      expect(api.mock).toBeUndefined();
+      expect(mock.get).not.toHaveBeenCalled();
+    });
+
+    it("retargets through a path write the same way as through goto", () => {
+      const second = registerMockObject("track-1", {
+        path: livePath.track(1),
+        type: "Track",
+        properties: { trackIndex: 1 },
+      });
+
+      const api = new LiveAPI(String(livePath.track(0)));
+
+      api.path = String(livePath.track(1));
+      api.get("name");
+
+      expect(second.get).toHaveBeenCalledWith("name");
+      expect(api.trackIndex).toBe(1);
+    });
+  });
 });

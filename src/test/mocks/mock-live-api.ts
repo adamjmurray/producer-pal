@@ -50,15 +50,38 @@ export class LiveAPI {
   _path?: string;
   _id?: string;
   _registered?: RegisteredMockObject;
-  get: Mock;
-  set: Mock;
-  call: Mock;
+  /** Keys copied off the registration, so a retarget can take them back off. */
+  _copiedKeys: string[] = [];
+  get!: Mock;
+  set!: Mock;
+  call!: Mock;
 
   get mock(): RegisteredMockObject | undefined {
     return this._registered;
   }
 
   constructor(path?: string) {
+    this._retarget(path);
+  }
+
+  /**
+   * Point this object at a path and rebind everything derived from it.
+   *
+   * Construction and retargeting share this. The real LiveAPI rebinds on goto
+   * and on a path write, so an object that gets reused instead of rebuilt has
+   * to land where a fresh one would — otherwise it keeps answering get/set/call
+   * for whatever it used to point at.
+   *
+   * @param path - Path or "id N" string to point at
+   */
+  _retarget(path?: string): void {
+    // Properties copied for the previous target would shadow the new one's, and
+    // outlive a registration that doesn't define them at all.
+    for (const key of this._copiedKeys) {
+      delete (this as unknown as Record<string, unknown>)[key];
+    }
+
+    this._copiedKeys = [];
     this._path = path;
     this._id = deriveId(path);
 
@@ -84,6 +107,7 @@ export class LiveAPI {
           enumerable: true,
           configurable: true,
         });
+        this._copiedKeys.push(key);
       }
     } else {
       // Use getters (this.type/this.path) so defaults stay correct after goto
@@ -147,9 +171,15 @@ export class LiveAPI {
 
   /** Retarget the object, mirroring the real LiveAPI's writable path */
   set path(value: string) {
-    this._path = value;
-    this._id = deriveId(value);
-    this._registered = lookupMockObject(this._id, this._path);
+    this._retarget(value);
+  }
+
+  /**
+   * Retarget the object, mirroring the real LiveAPI's goto
+   * @param path - Path to point at
+   */
+  goto(path: string): void {
+    this._retarget(path);
   }
 
   get unquotedpath(): string {
@@ -206,7 +236,9 @@ export class LiveAPI {
   }
 
   // Built-in Max methods with no mock implementation — suites that exercise
-  // them stub the prototype themselves, the way they already do for goto.
+  // them stub the prototype themselves. goto used to be one of these; it now
+  // retargets for real, because reuse depends on it landing where a fresh
+  // object would.
   declare getcount: (name: string) => number;
   declare getstring: (property: string) => string;
 
