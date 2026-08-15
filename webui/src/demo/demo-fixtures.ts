@@ -312,7 +312,7 @@ export const demoMessages: UIMessage[] = [
         name: TOOL_READ_TRACK,
         args: { trackIndex: 0, include: ["arrangement-clips"] },
         result: JSON.stringify(
-          "Tool call 'ppal-read-track' timed out after 30000ms",
+          "Tool call 'ppal-read-track' timed out after 30000ms. Live may still be applying it — wait, then re-read before acting.",
         ),
         isError: true,
       },

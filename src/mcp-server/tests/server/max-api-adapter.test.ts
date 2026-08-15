@@ -162,7 +162,9 @@ describe("Max API Adapter", () => {
         content: [
           {
             type: "text",
-            text: "Tool call 'test-tool' timed out after 2ms",
+            text:
+              "Tool call 'test-tool' timed out after 2ms. " +
+              "Live may still be applying it — wait, then re-read before acting.",
           },
         ],
         isError: true,
@@ -246,7 +248,12 @@ describe("Max API Adapter", () => {
 
       expect(result).toStrictEqual({
         content: [
-          { type: "text", text: "Tool call 'test-tool' timed out after 2ms" },
+          {
+            type: "text",
+            text:
+              "Tool call 'test-tool' timed out after 2ms. " +
+              "Live may still be applying it — wait, then re-read before acting.",
+          },
         ],
         isError: true,
         errorCode: "timeout",

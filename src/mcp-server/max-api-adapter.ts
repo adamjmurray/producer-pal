@@ -126,9 +126,13 @@ function callLiveApi(
           // Always resolve (not reject) with the standard error format.
           // Tag with the "timeout" discriminator so the REST route can map it
           // to HTTP 504 (other formatErrorResponse calls stay untagged).
+          // The message must not read as "nothing happened": V8 runs the tool
+          // synchronously with no cancellation channel, so the Set is likely
+          // still being mutated as this resolves.
           resolve(
             formatErrorResponse(
-              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
+              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms. ` +
+                `Live may still be applying it — wait, then re-read before acting.`,
               "timeout",
             ),
           );
