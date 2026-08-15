@@ -9,13 +9,21 @@
  * Live installs a listener on each collection along a path-based object's path
  * (live_set.tracks, track.devices, ...) and never takes them down. Assigning an
  * empty path is the only thing that does. An unreleased object costs ~5 KB of
- * Ableton log on every later structural change to the Live Set, and makes every
- * later LiveAPI creation slower: measured on 12.4.3, 2,500 read-track calls'
- * worth of leaked objects made the next call 3x slower, and it stays slow until
- * the device is reloaded.
+ * Ableton log on every later structural change to the Live Set.
  *
  * So objects are tracked as they are built and released when the request that
  * built them ends. Identity and lifetime *within* a request are untouched.
+ *
+ * This does not fix the other cost of a LiveAPI object. Construction also
+ * registers a context in MxDCore, and clearing the path only retargets the
+ * object — the registration stays, so every later construction is slower for
+ * it. Measured on 12.4.3, 2,500 read-track calls took the next one from 27 ms
+ * to 90 ms, and the slope is unchanged by this release. Only a device reload
+ * clears it; pooling objects instead of building new ones is the open fix.
+ *
+ * Don't reach for freepeer(): it frees the JS peer and leaves the listener
+ * armed. 500 read-track calls still armed 6,002 listeners and the next track
+ * delete still wrote 30 MB of log — the state the SendMessage errors come from.
  */
 
 import { errorMessage } from "#src/shared/error-utils.ts";
