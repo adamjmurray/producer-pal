@@ -66,25 +66,26 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 
 ## Index
 
-| ADR                                                  | Decision                                                              |
-| ---------------------------------------------------- | --------------------------------------------------------------------- |
-| [0003](0003-notation-grammar-duplication.md)         | Deliberately duplicate the note-value grammar                         |
-| [0004](0004-tool-input-schema-shapes.md)             | Arrays over `string \| array` unions in tool schemas                  |
-| [0005](0005-automation-via-live-api.md)              | Automation goes through the Live API, not offline `.als` rewriting    |
-| [0006](0006-encrypted-keys-no-backend-proxy.md)      | Provider keys encrypted at rest in the browser; no backend proxy      |
-| [0007](0007-no-native-ableton-extension.md)          | Do not build a native Ableton extension                               |
-| [0008](0008-device-disable-not-a-kill-switch.md)     | Disabling the M4L device is not a server kill switch (won't fix)      |
-| [0009](0009-warn-and-skip-error-handling.md)         | Update tools warn-and-skip instead of throwing                        |
-| [0010](0010-user-content-overrides-layer.md)         | `~/.producer-pal` is a content-override layer, not a settings mirror  |
-| [0011](0011-dotted-triplet-note-value-suffixes.md)   | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
-| [0012](0012-no-chord-symbols-in-bar-beat.md)         | No chord symbols in bar\|beat; they stay Stark-only                   |
-| [0013](0013-config-override-gate.md)                 | Config-override env vars are opt-in (gated), not opt-out              |
-| [0014](0014-subagent-resume-from-transcript.md)      | A subagent resumes from its recorded transcript, not a live session   |
-| [0015](0015-project-context-param-rename.md)         | Rename the project-context device parameter in 2.1.0, while it's free |
-| [0016](0016-notation-head-gating-granularity.md)     | One fragment per notation is the tool-gating floor (superseded)       |
-| [0017](0017-oxlint-category-baseline.md)             | oxlint runs on categories, with an opt-out list                       |
-| [0018](0018-tolerated-but-untaught-syntax.md)        | Accept the syntax models already write, without teaching it           |
-| [0019](0019-notation-head-read-write-split.md)       | A notation head may split off a `-write` sibling                      |
-| [0020](0020-looping-preserves-the-region.md)         | `looping` changes the loop flag and nothing else                      |
-| [0021](0021-string-caps-stay-out-of-the-schema.md)   | String caps over 2000 never reach the JSON Schema                     |
-| [0022](0022-audio-work-lives-in-companion-skills.md) | Audio generation and analysis live in companion skills                |
+| ADR                                                     | Decision                                                              |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| [0003](0003-notation-grammar-duplication.md)            | Deliberately duplicate the note-value grammar                         |
+| [0004](0004-tool-input-schema-shapes.md)                | Arrays over `string \| array` unions in tool schemas                  |
+| [0005](0005-automation-via-live-api.md)                 | Automation goes through the Live API, not offline `.als` rewriting    |
+| [0006](0006-encrypted-keys-no-backend-proxy.md)         | Provider keys encrypted at rest in the browser; no backend proxy      |
+| [0007](0007-no-native-ableton-extension.md)             | Do not build a native Ableton extension                               |
+| [0008](0008-device-disable-not-a-kill-switch.md)        | Disabling the M4L device is not a server kill switch (won't fix)      |
+| [0009](0009-warn-and-skip-error-handling.md)            | Update tools warn-and-skip instead of throwing                        |
+| [0010](0010-user-content-overrides-layer.md)            | `~/.producer-pal` is a content-override layer, not a settings mirror  |
+| [0011](0011-dotted-triplet-note-value-suffixes.md)      | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
+| [0012](0012-no-chord-symbols-in-bar-beat.md)            | No chord symbols in bar\|beat; they stay Stark-only                   |
+| [0013](0013-config-override-gate.md)                    | Config-override env vars are opt-in (gated), not opt-out              |
+| [0014](0014-subagent-resume-from-transcript.md)         | A subagent resumes from its recorded transcript, not a live session   |
+| [0015](0015-project-context-param-rename.md)            | Rename the project-context device parameter in 2.1.0, while it's free |
+| [0016](0016-notation-head-gating-granularity.md)        | One fragment per notation is the tool-gating floor (superseded)       |
+| [0017](0017-oxlint-category-baseline.md)                | oxlint runs on categories, with an opt-out list                       |
+| [0018](0018-tolerated-but-untaught-syntax.md)           | Accept the syntax models already write, without teaching it           |
+| [0019](0019-notation-head-read-write-split.md)          | A notation head may split off a `-write` sibling                      |
+| [0020](0020-looping-preserves-the-region.md)            | `looping` changes the loop flag and nothing else                      |
+| [0021](0021-string-caps-stay-out-of-the-schema.md)      | String caps over 2000 never reach the JSON Schema                     |
+| [0022](0022-audio-work-lives-in-companion-skills.md)    | Audio generation and analysis live in companion skills                |
+| [0023](0023-live-api-objects-are-pooled-per-request.md) | LiveAPI objects are released and pooled, never held across requests   |
