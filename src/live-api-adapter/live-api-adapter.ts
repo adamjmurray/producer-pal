@@ -125,7 +125,10 @@ Exception: ppal-connect takes args only — its signature intentionally dropped 
 (see the `connect(args)` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
-const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
+const toolDispatch: Record<
+  string,
+  (args: unknown, ctx: ToolContext) => unknown
+> = {
   "ppal-connect": (args) => connect(args as any),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
@@ -165,7 +168,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
  * (STANDARD_TOOL_DEFS + the opt-in ppal-live-api) — a missing entry would make a
  * shipped tool fail at runtime with "Unknown tool".
  */
-export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(tools);
+export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(toolDispatch);
 
 /**
  * Call a tool by name with the given arguments and per-request context.
@@ -176,7 +179,7 @@ export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(tools);
  * @returns Tool execution result
  */
 function callTool(toolName: string, args: object, ctx: ToolContext): unknown {
-  const tool = tools[toolName];
+  const tool = toolDispatch[toolName];
 
   if (!tool) {
     throw new Error(`Unknown tool: ${toolName}`);
@@ -319,6 +322,25 @@ export function sampleFolder(path: unknown): void {
 
   sessionState.sampleFolder = value;
 }
+
+// The device fans the server's whole config outlet at both V8 and the Setup
+// tab, so keys only the UI needs still arrive here. Max logs "no function <key>"
+// for a config message V8 doesn't export, so each one needs a setter even when
+// V8 ignores the value. Don't delete these as dead code — see the parity test in
+// tests/config-key-parity.test.ts.
+
+/**
+ * Ignore the Direct Live API flag. The tool gate is entirely server-side: the
+ * server decides whether to register ppal-live-api and rejects the name when
+ * it's off, so anything reaching V8 has already passed that gate.
+ */
+export function liveApiEnabled(): void {}
+
+/**
+ * Ignore the enabled-tools whitelist. The server filters tool calls against it
+ * before they reach V8.
+ */
+export function tools(): void {}
 
 /**
  * Send a response back to the MCP server
