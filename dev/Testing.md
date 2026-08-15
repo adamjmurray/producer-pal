@@ -124,3 +124,7 @@ approval.
 `e2e/mcp/` drives a real Ableton Live; see `e2e/mcp/README.md`. Always ask
 before running these, and always run a single file — the full suite takes
 minutes.
+
+`e2e/portal/` drives the built portal binary against a stub device, so it needs
+neither Live nor a network — just `npm run build` first. See
+`e2e/portal/README.md`.

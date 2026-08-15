@@ -66,6 +66,12 @@ jobs:
       - name: Build documentation site
         run: npm run docs:build
 
+      # Lives here because it drives the portal bundle the build step just
+      # produced. It needs no Ableton and no browser, so it costs this job a
+      # second rather than an `npm ci` of its own.
+      - name: Test the portal binary end to end
+        run: npm run e2e:portal
+
       - name: Verify all build artifacts exist
         id: summary
         run: |

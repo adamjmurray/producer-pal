@@ -200,6 +200,8 @@ Quick commands:
 - `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live; the code-exec
   suite is skipped unless `ENABLE_CODE_EXEC=true` is set —
   `ENABLE_CODE_EXEC=true npm run e2e:mcp`)
+- `npm run e2e:portal` - Run the portal e2e tests (needs `npm run build`, but no
+  Ableton Live)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you
