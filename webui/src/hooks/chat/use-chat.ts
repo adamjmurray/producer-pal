@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
+  connectClient,
   filterOverrides,
   resolveInitConnection,
   runChatTurn,
@@ -69,6 +70,11 @@ export function useChat<
   } = useMessageQueue();
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
+  // The in-flight client.initialize() of whichever turn built the current
+  // client, or null once it settles. clientRef is assigned before that connect
+  // resolves, so a turn that finds a client still has to wait on this before
+  // streaming; see the send path below.
+  const pendingInitRef = useRef<Promise<void> | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   // Bootstraps a client from pending history when compaction is requested on a
   // restored-but-not-yet-sent conversation. Held in a ref because useCompaction
@@ -213,7 +219,7 @@ export function useChat<
       // can already be here.
       clientRef.current?.dispose?.();
       clientRef.current = adapter.createClient(init.apiKey, config);
-      await clientRef.current.initialize();
+      await connectClient(clientRef.current, pendingInitRef);
       lockSettings({
         model: init.model,
         provider: init.provider,
@@ -321,6 +327,12 @@ export function useChat<
 
             pendingHistoryRef.current = null;
             await initializeChat(pendingHistory, sendOptions, stillCurrent);
+          } else if (pendingInitRef.current) {
+            // A client is here but another turn is still connecting it — the
+            // user stopped that turn mid-connect (which re-enables the composer)
+            // and re-sent. Adopt the client, but wait for its connect: streaming
+            // now would send before the MCP tool catalog has landed.
+            await pendingInitRef.current;
           }
 
           // Superseded while setting up: the user stopped this turn mid-connect

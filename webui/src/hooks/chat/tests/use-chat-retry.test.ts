@@ -815,6 +815,49 @@ describe("useChat", () => {
       await stoppedSend;
     });
 
+    it("waits for the in-flight connect before streaming on an adopted client", async () => {
+      // The newer turn finds a client and skips its own init, but that client's
+      // initialize() — the MCP connect — hasn't resolved yet. Streaming there
+      // would send before the tool catalog landed, so the turn waits it out.
+      let releaseInit!: () => void;
+      let releaseStreams!: () => void;
+      const connecting = new Promise<void>((resolve) => {
+        releaseInit = resolve;
+      });
+      const gate = new Promise<void>((resolve) => {
+        releaseStreams = resolve;
+      });
+      const clients: MockChatClient[] = [];
+      const sent: string[] = [];
+      const adapter = trackingAdapter({ clients, sent, gate }, (c) => {
+        if (clients.length === 1) {
+          c.initialize = vi.fn(async () => await connecting);
+        }
+      });
+      const { result } = renderChat(propsWith(adapter));
+      const stoppedSend = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await tick();
+      await stopResponse(result);
+      void act(() => {
+        void result.current.handleSend("second");
+      });
+      await tick();
+
+      expect(clients).toHaveLength(1);
+      expect(sent).toStrictEqual([]);
+
+      releaseInit();
+      await tick();
+
+      expect(sent).toStrictEqual(["second"]);
+
+      releaseStreams();
+      await stoppedSend;
+    });
+
     it("doesn't let a superseded turn's setup dispose the newer turn's client", async () => {
       // Stop lands during the connection check, so the newer turn runs its own
       // init and streams. The stopped turn's setup resumes afterward: replacing
