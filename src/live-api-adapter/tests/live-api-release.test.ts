@@ -13,6 +13,7 @@ import {
   endLiveApiScope,
   resetLiveApiTracking,
   trackLiveApiObject,
+  untrackLiveApiObject,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
@@ -28,6 +29,28 @@ function trackUnclearable(error: string): void {
       throw new Error(error);
     },
   } as unknown as LiveAPI);
+}
+
+/**
+ * Track an object whose path setter silently does nothing, standing in for a
+ * path write Live ignores rather than rejects.
+ *
+ * @returns The tracked object, still pointing where it started
+ */
+function trackSilentlyUnclearable(): LiveAPI {
+  const api = {
+    mode: 0,
+
+    get path(): string {
+      return String(livePath.track(0));
+    },
+
+    set path(_value: string) {
+      // Live ignoring the write.
+    },
+  };
+
+  return trackLiveApiObject(api as unknown as LiveAPI);
 }
 
 describe("live-api release", () => {
@@ -257,7 +280,9 @@ describe("live-api release", () => {
 
     const reused = LiveAPI.from(livePath.track(0));
 
-    expect([liveSet, ...children]).toContain(reused);
+    // The children, not liveSet: an id target always builds, so these are the
+    // objects the pool would drop if id-built ones weren't put back.
+    expect(children).toContain(reused);
 
     endLiveApiScope();
   });
@@ -276,6 +301,53 @@ describe("live-api release", () => {
     expect(next.path).toBe(String(livePath.track(0)));
 
     endLiveApiScope();
+  });
+
+  it("does not reuse an object whose clear was silently ignored", () => {
+    beginLiveApiScope();
+
+    const stuck = trackSilentlyUnclearable();
+
+    endLiveApiScope();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("path did not clear"),
+    );
+
+    beginLiveApiScope();
+
+    expect(LiveAPI.from(livePath.track(1))).not.toBe(stuck);
+
+    endLiveApiScope();
+  });
+
+  it("neither releases nor pools an object it was told to forget", () => {
+    beginLiveApiScope();
+
+    const forgotten = LiveAPI.from(livePath.track(0));
+
+    untrackLiveApiObject(forgotten);
+    endLiveApiScope();
+
+    // Untouched by the release, so it never reaches the free list either.
+    expect(forgotten.path).toBe(String(livePath.track(0)));
+
+    beginLiveApiScope();
+
+    expect(LiveAPI.from(livePath.track(1))).not.toBe(forgotten);
+
+    endLiveApiScope();
+  });
+
+  it("ignores an object it was never tracking", () => {
+    beginLiveApiScope();
+
+    const tracked = LiveAPI.from(livePath.track(0));
+
+    untrackLiveApiObject({} as unknown as LiveAPI);
+    endLiveApiScope();
+
+    expect(tracked.path).toBe("");
   });
 
   it("stops pooling once the free list is full", () => {

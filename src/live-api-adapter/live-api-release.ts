@@ -118,6 +118,24 @@ export function trackLiveApiObject(api: LiveAPI): LiveAPI {
 }
 
 /**
+ * Forget a tracked object, so the release skips it and it never reaches the
+ * free list.
+ *
+ * For an object whose peer is gone: releasing it would throw, and pooling it
+ * would hand a freed peer to a later request. Dropping it leaks the path
+ * listener, which is the lesser of the two and unavoidable either way.
+ *
+ * @param api - The object to forget
+ */
+export function untrackLiveApiObject(api: LiveAPI): void {
+  const index = trackedObjects.indexOf(api);
+
+  if (index !== -1) {
+    trackedObjects.splice(index, 1);
+  }
+}
+
+/**
  * Take an idle object off the free list, if there is one.
  *
  * The caller retargets it and tracks it. Returns undefined when the pool is
@@ -164,19 +182,29 @@ function releaseTrackedObjects(): void {
 
   for (const api of trackedObjects) {
     try {
+      // Mode first, so the clear below always runs against a path-following
+      // object. Reusing without resetting would carry a mode of 1 into the next
+      // request; the ppal-live-api set_mode operation is what can leave it
+      // there. (Clearing from mode 1 works on 12.4.3 — this is just the order
+      // that doesn't depend on that.)
+      api.mode = 0;
+
       // `path` is readonly in the type so ordinary code can't retarget an
       // object. This is the release; the ppal-live-api set_path operation is
       // the only other write. Assigning "" retargets the object, not the set.
       (api as unknown as { path: string }).path = "";
 
-      // The only writable state on the wrapper, and the ppal-live-api set_mode
-      // operation can leave it at 1 (follow the object, not the path). Reusing
-      // the object without resetting would carry that into the next request.
-      api.mode = 0;
+      // Live ignores some path writes without saying so — an id string is
+      // ignored outright — and a throw is not the only way this fails. A
+      // cleared path reads back "" on 12.4.3, so anything else means the
+      // listener is still armed and the object still points at this request's
+      // target. Pooling it would hand that to the next request.
+      if (api.path !== "") {
+        failures++;
+        firstError ??= `path did not clear: ${api.path}`;
+        continue;
+      }
 
-      // Only after the clear succeeds. An object that refused is in an unknown
-      // state, so reusing it would hand a request something still pointing at
-      // the last request's target.
       if (freeObjects.length < MAX_POOLED_OBJECTS) {
         freeObjects.push(api);
       }

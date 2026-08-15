@@ -37,9 +37,12 @@ function buildOrReuse(target: string): LiveAPI {
     return trackLiveApiObject(new LiveAPI(target));
   }
 
+  // Track before retargeting: an object that throws mid-goto is off the free
+  // list already, and leaving it untracked too would strand whatever it armed.
+  trackLiveApiObject(pooled);
   pooled.goto(target);
 
-  return trackLiveApiObject(pooled);
+  return pooled;
 }
 
 if (typeof LiveAPI !== "undefined") {
