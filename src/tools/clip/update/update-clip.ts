@@ -181,9 +181,8 @@ export async function updateClip(
     const clip = mutableClips[i] as LiveAPI;
 
     if (isDeadlineExceeded(deadline)) {
-      // Name the ones that didn't run. Without them the caller only knows the
-      // batch was cut short, not where the gap is — the whole complaint in the
-      // report that prompted this.
+      // Name the ones that didn't run: without them the caller knows the batch
+      // was cut short but not where the gap is.
       const skipped = mutableClips.slice(i).map((c) => c.id);
 
       console.warn(

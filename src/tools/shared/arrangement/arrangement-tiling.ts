@@ -12,20 +12,17 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { type TilingContext } from "./arrangement-tiling-helpers.ts";
+import { EPSILON, type TilingContext } from "./arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,
   createShortenedClipInHolding,
 } from "./arrangement-tiling-holding.ts";
 import {
-  clearArrangementRange,
   clearClipAtDuplicateTarget,
   moveClipFromHolding,
+  preClearTiledSpan,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
-
-/** Beat tolerance for length comparisons, matching the tiling remainder check. */
-const EPSILON = 0.001;
 
 interface TileClipOptions {
   /** Whether to adjust pre-roll on subsequent tiles */
@@ -40,6 +37,15 @@ interface CreatedClip {
   id: string;
 }
 
+interface PartialTileOptions {
+  /** Whether to adjust pre-roll on the created tile */
+  adjustPreRoll?: boolean;
+  /** Content offset in beats for start_marker */
+  contentOffset?: number;
+  /** Caller guarantees the target span is already clear */
+  targetIsEmpty?: boolean;
+}
+
 /**
  * Creates a partial tile of a clip at a target position.
  * Combines: create shortened clip in holding → move to target → optionally adjust pre-roll.
@@ -51,9 +57,12 @@ interface CreatedClip {
  * @param holdingAreaStart - Start position of holding area in beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Context object with silenceWavPath for audio clips
- * @param adjustPreRoll - Whether to adjust pre-roll on the created tile
- * @param contentOffset - Content offset in beats for start_marker
- * @param targetIsEmpty - Caller guarantees the target span is already clear
+ * @param options - Configuration options
+ * @param options.adjustPreRoll - Whether to adjust pre-roll on the created tile
+ * @param options.contentOffset - Content offset in beats for start_marker
+ * @param options.targetIsEmpty - Caller guarantees nothing occupies the target,
+ *   skipping the clear that exists to stop Ableton crashing on an overlap. Only
+ *   pass true for a span already cleared or just vacated.
  * @returns The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
@@ -64,9 +73,11 @@ export function createPartialTile(
   holdingAreaStart: number,
   isMidiClip: boolean,
   context: TilingContext,
-  adjustPreRoll = true,
-  contentOffset = 0,
-  targetIsEmpty = false,
+  {
+    adjustPreRoll = true,
+    contentOffset = 0,
+    targetIsEmpty = false,
+  }: PartialTileOptions = {},
 ): LiveAPI {
   // Create shortened clip in holding area
   const { holdingClipId } = createShortenedClipInHolding(
@@ -102,61 +113,6 @@ export function createPartialTile(
   }
 
   return partialTile;
-}
-
-/**
- * Clear the whole span about to be tiled, in one pass, when that's equivalent to
- * clearing it tile by tile.
- *
- * Per-tile clearing scanned every arrangement clip on the track and built a
- * LiveAPI per clip, so a long stretch cost O(tiles x clips) object builds — the
- * superlinear blowup that timed big arrangementLength calls out. One wide pass
- * removes exactly the same clips (see clearArrangementRange).
- *
- * Two cases keep the per-tile clear, because a wide pass would get them wrong: a
- * source longer than the tile spacing (a tile is a copy of the source, so it
- * would land on the previous tile, and only the per-tile clear trims that), and
- * a source sitting inside the span (a wide clear would trim the very clip being
- * copied). Neither happens today — every caller tiles forward from the source's
- * end at exactly the source's length.
- *
- * @param sourceClip - LiveAPI clip instance being tiled
- * @param track - LiveAPI track instance
- * @param startPosition - Start of the span to be tiled, in beats
- * @param totalLength - Length of the span to be tiled, in beats
- * @param arrangementTileLength - Spacing between tiles, in beats
- * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param context - Context object with silenceWavPath for audio clips
- * @returns true if the span was cleared and per-tile clears can be skipped
- */
-function preClearTiledSpan(
-  sourceClip: LiveAPI,
-  track: LiveAPI,
-  startPosition: number,
-  totalLength: number,
-  arrangementTileLength: number,
-  isMidiClip: boolean,
-  context: TilingContext,
-): boolean {
-  const sourceStart = sourceClip.getProperty("start_time") as number;
-  const sourceEnd = sourceClip.getProperty("end_time") as number;
-
-  if (
-    sourceEnd - sourceStart > arrangementTileLength + EPSILON ||
-    sourceOverlapsTarget(sourceClip.id, startPosition, totalLength)
-  ) {
-    return false;
-  }
-
-  clearArrangementRange(
-    track,
-    startPosition,
-    startPosition + totalLength,
-    isMidiClip,
-    context,
-  );
-
-  return true;
 }
 
 /**
@@ -215,7 +171,7 @@ interface CreateFullTilesArgs {
 interface FullTilesResult {
   /** True when the deadline cut the run short */
   stoppedEarly: boolean;
-  /** Beat position after the last tile, where a partial tile would go */
+  /** Beat position after the last tile placed */
   endPosition: number;
   /** Content offset after the last tile */
   endContentOffset: number;
@@ -232,20 +188,33 @@ interface FullTilesResult {
  * @returns Where tiling got to, and whether the deadline stopped it
  */
 function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
-  const { createdClips, context, sourceClipId, trackIndex, isMidiClip } = args;
-  const { canPreClear, fullTiles, startPosition, totalLength } = args;
-  const { arrangementTileLength, clipLoopStart, clipLoopEnd } = args;
-  const { clipLength, adjustPreRoll } = args;
+  const {
+    createdClips,
+    context,
+    sourceClipId,
+    trackIndex,
+    isMidiClip,
+    canPreClear,
+    fullTiles,
+    startPosition,
+    totalLength,
+    arrangementTileLength,
+    startOffset,
+    clipLoopStart,
+    clipLoopEnd,
+    clipLength,
+    adjustPreRoll,
+  } = args;
 
   let currentPosition = startPosition;
-  let currentContentOffset = args.startOffset;
+  let currentContentOffset = startOffset;
 
   for (let i = 0; i < fullTiles; i++) {
     if (
       outOfTime(
         context,
         sourceClipId,
-        i,
+        createdClips.length,
         fullTiles,
         currentPosition,
         startPosition + totalLength,
@@ -261,9 +230,9 @@ function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
     // Create fresh track object for each iteration to avoid staleness issues
     const freshTrack = LiveAPI.from(livePath.track(trackIndex));
 
-    // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
-    // After a pre-clear the span is already empty, so all that's left is the
-    // source's own self-overlap check — three property reads, no track scan.
+    // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength).
+    // After a pre-clear the span is already empty, so only the source's own
+    // overlap can block a tile — and checking that needs no track scan.
     const safeToTile = canPreClear
       ? !sourceOverlapsTarget(
           sourceClipId,
@@ -278,9 +247,8 @@ function createFullTiles(args: CreateFullTilesArgs): FullTilesResult {
           context,
         );
 
-    // Source overlaps this tile position (the source clip already occupies it):
-    // skip this tile rather than corrupt the source or crash Ableton. Tiling
-    // fills the range around the source, so a self-overlapping tile is expected.
+    // A false safeToTile means the source itself occupies this position, so
+    // the tile is skipped rather than corrupting the source or crashing Live.
     if (safeToTile) {
       const placed = placeTile({
         freshTrack,
@@ -328,8 +296,18 @@ interface PlaceTileArgs {
  * @returns The created tile, or null if Ableton refused the duplicate
  */
 function placeTile(args: PlaceTileArgs): CreatedClip | null {
-  const { freshTrack, sourceClipId, currentPosition, context } = args;
-  const { clipLoopStart, clipLoopEnd, clipLength, isMidiClip } = args;
+  const {
+    freshTrack,
+    sourceClipId,
+    currentPosition,
+    currentContentOffset,
+    clipLoopStart,
+    clipLoopEnd,
+    clipLength,
+    isMidiClip,
+    adjustPreRoll,
+    context,
+  } = args;
 
   const result = freshTrack.call(
     "duplicate_clip_to_arrangement",
@@ -355,8 +333,7 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
   const freshClip = LiveAPI.from(toLiveApiId(clipId));
 
   // Set start_marker to show correct portion of clip content
-  let tileStartMarker =
-    clipLoopStart + (args.currentContentOffset % clipLength);
+  let tileStartMarker = clipLoopStart + (currentContentOffset % clipLength);
 
   // Wrap start_marker if it would equal or exceed loop_end
   if (tileStartMarker >= clipLoopEnd) {
@@ -367,7 +344,7 @@ function placeTile(args: PlaceTileArgs): CreatedClip | null {
   freshClip.set("start_marker", tileStartMarker);
 
   // Adjust pre-roll for subsequent tiles if requested
-  if (args.adjustPreRoll) {
+  if (adjustPreRoll) {
     adjustClipPreRoll(freshClip, freshTrack, isMidiClip, context);
   }
 
@@ -433,7 +410,18 @@ export function tileClipToRange(
   const fullTiles = Math.floor(totalLength / arrangementTileLength);
   const remainder = totalLength % arrangementTileLength;
 
-  const canPreClear = preClearTiledSpan(
+  // Check the deadline BEFORE clearing. The clear empties the whole span in one
+  // go, so bailing out after it would leave the caller with a hole and no tiles
+  // to show for it — worse than not having started.
+  const tileTarget = startPosition + totalLength;
+
+  if (
+    outOfTime(context, sourceClipId, 0, fullTiles, startPosition, tileTarget)
+  ) {
+    return createdClips;
+  }
+
+  const spanPreCleared = preClearTiledSpan(
     sourceClip,
     track,
     startPosition,
@@ -453,7 +441,7 @@ export function tileClipToRange(
     sourceClipId,
     trackIndex: trackIndex as number,
     isMidiClip,
-    canPreClear,
+    canPreClear: spanPreCleared,
     fullTiles,
     startPosition,
     totalLength,
@@ -468,7 +456,7 @@ export function tileClipToRange(
   if (stoppedEarly) return createdClips;
 
   // Handle partial final tile if remainder exists
-  if (remainder > 0.001) {
+  if (remainder > EPSILON) {
     // The partial tile routes through the holding area, where
     // clearClipAtDuplicateTarget runs against the holding clip (not the source)
     // and would trim the source if it overlapped this position. Today every
@@ -488,9 +476,11 @@ export function tileClipToRange(
         holdingAreaStart,
         isMidiClip,
         context,
-        adjustPreRoll,
-        currentContentOffset,
-        canPreClear,
+        {
+          adjustPreRoll,
+          contentOffset: currentContentOffset,
+          targetIsEmpty: spanPreCleared,
+        },
       );
 
       createdClips.push({ id: partialTile.id });

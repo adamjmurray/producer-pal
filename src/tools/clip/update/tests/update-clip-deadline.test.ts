@@ -77,8 +77,7 @@ describe("updateClip - deadline exceeded", () => {
 
     await updateClip({ ids: "123, 456", name: "Updated" }, { timeoutMs: 100 });
 
-    // The gap is the whole point: "3 of 4 succeeded" doesn't say which one to
-    // re-run, which is what the bug report asked for.
+    // A bare count doesn't say which id to re-run.
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("Not updated: 456. Re-run for those ids."),

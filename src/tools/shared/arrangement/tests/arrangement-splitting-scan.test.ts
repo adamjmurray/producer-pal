@@ -6,7 +6,6 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -76,17 +75,15 @@ function countTrackScans(splitPoints: number[]): number {
   });
 
   return callState.trackMock.get.mock.calls.filter(
-    ([property]) => property === "arrangement_clips",
+    ([property]: unknown[]) => property === "arrangement_clips",
   ).length;
 }
 
 describe("performSplitting track scanning", () => {
   it("does not scan the track once per segment", () => {
-    // Every segment used to move through the crash workaround's clear, which
-    // scans the whole track and builds a LiveAPI per clip. On a busy
-    // arrangement that made splitting O(segments x clips) and froze Live. The
-    // segments land in the span the right-trim just vacated, so there is
-    // nothing to clear and nothing to scan for.
+    // Segments land in the span the right-trim just vacated, so there is
+    // nothing to clear and nothing to scan for. See clearArrangementRange for
+    // why the per-segment scan was the freeze.
     const twoSegments = countTrackScans([8]);
     const eightSegments = countTrackScans([2, 4, 6, 8, 10, 12, 14]);
 
@@ -98,17 +95,23 @@ describe("performSplitting track scanning", () => {
     expect(countTrackScans([4, 8, 12])).toBe(1);
   });
 
-  it("registers the split's own clips as arrangement clips", () => {
-    // Guards the setup above: if duplicates stop reporting
-    // is_arrangement_clip the scan assertions go vacuous.
-    setupClipSplittingMocks(SPLIT_CLIP_ID, { endTime: 16.0 });
-    const trackMock = lookupMockObject("track_0", livePath.track(0));
+  it("actually performs the split the counts are taken from", () => {
+    // Without this, a count of 1 could just mean the split bailed out early and
+    // never reached a move at all.
+    const { callState } = setupClipSplittingMocks(SPLIT_CLIP_ID, {
+      endTime: 16.0,
+    });
 
-    registerDuplicatesAsArrangementClips(trackMock as RegisteredMockObject);
-    performSplitting([LiveAPI.from(`id ${SPLIT_CLIP_ID}`)], [8], [], {
+    registerDuplicatesAsArrangementClips(callState.trackMock);
+    performSplitting([LiveAPI.from(`id ${SPLIT_CLIP_ID}`)], [4, 8, 12], [], {
       holdingAreaStartBeats: 40000,
     });
 
-    expect(lookupMockObject("dup_1")?.properties.is_arrangement_clip).toBe(1);
+    const duplicates = callState.trackMock.call.mock.calls.filter(
+      ([method]: unknown[]) => method === "duplicate_clip_to_arrangement",
+    );
+
+    // One copy to holding, then one per segment moved out of it.
+    expect(duplicates.length).toBeGreaterThan(3);
   });
 });
