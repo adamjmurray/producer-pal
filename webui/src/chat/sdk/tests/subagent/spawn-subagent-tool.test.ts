@@ -333,6 +333,19 @@ describe("createSpawnSubagentTool", () => {
     expect(workerConfig.chatHistory).toStrictEqual([]);
   });
 
+  it("withholds ppal-context even with no briefing to fetch", async () => {
+    // Nothing about the context store's write race depends on the briefing, so
+    // the tool withholds it on every path — here, one with no getBriefing dep.
+    const { tool, runWorker } = setup();
+
+    await tool.execute!({ task: "x" }, options());
+
+    const workerConfig = await firstCall(runWorker).resolveConfig();
+
+    expect(workerConfig.enabledTools?.["ppal-context"]).toBe(false);
+    expect(workerConfig.enabledTools?.["ppal-connect"]).toBeUndefined();
+  });
+
   it("forwards the tool-call id and abort signal to the worker", async () => {
     const { tool, runWorker } = setup();
     const controller = new AbortController();

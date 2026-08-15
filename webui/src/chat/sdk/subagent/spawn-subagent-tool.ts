@@ -10,7 +10,11 @@ import {
   isToolEnabled,
   SPAWN_SUBAGENT_TOOL_NAME,
 } from "#webui/lib/utils/enabled-tools";
-import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
+import {
+  alwaysWithheldApplied,
+  withBriefing,
+  withheldToolsApplied,
+} from "./subagent-briefing";
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
@@ -107,9 +111,9 @@ export interface SpawnSubagentDeps {
   /**
    * Fetch the worker's system-prompt briefing (skills, Live Set, context) for a
    * resolved worker config. Resolving null — or omitting this dep entirely —
-   * leaves the worker to bootstrap itself with ppal-connect, which is the
-   * pre-briefing behavior and the required fallback when the server or Live
-   * can't be reached.
+   * leaves the worker to bootstrap itself with ppal-connect, the required
+   * fallback when the server or Live can't be reached. ppal-context is not
+   * handed back with it; see resolveWorkerConfig.
    */
   getBriefing?: (
     config: ChatClientConfig,
@@ -230,10 +234,11 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * The order matters and is not interchangeable. The withheld tools are applied
  * FIRST because the briefing request reads its toolset off the config — asking
  * for a briefing before withholding ppal-context would ship the worker guidance
- * for a tool it won't have. They are only KEPT when a briefing came back: a
- * worker with neither a briefing nor ppal-connect knows nothing about the Live
- * Set it is about to edit, which is strictly worse than the round-trip this
- * whole path exists to avoid.
+ * for a tool it won't have.
+ *
+ * Without a briefing the worker gets ppal-connect back, since one with neither
+ * knows nothing about the Live Set it is about to edit — but only that one.
+ * ALWAYS_WITHHELD_TOOLS is withheld for a reason the briefing has no bearing on.
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh
@@ -247,12 +252,14 @@ async function resolveWorkerConfig(
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
-  if (!deps.getBriefing) return inherited;
+  if (!deps.getBriefing) return alwaysWithheldApplied(inherited);
 
   const narrowed = withheldToolsApplied(inherited);
   const briefing = await deps.getBriefing(narrowed, abortSignal);
 
-  return briefing == null ? inherited : withBriefing(narrowed, briefing);
+  return briefing == null
+    ? alwaysWithheldApplied(inherited)
+    : withBriefing(narrowed, briefing);
 }
 
 /**

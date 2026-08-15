@@ -339,6 +339,8 @@ Two things move the blob out of message history and into the system prompt:
 Every failure path — server down, Live unreachable (the route answers 502),
 malformed body — resolves to no briefing, and the worker keeps `ppal-connect`
 and bootstraps itself the old way. A worker with neither is blind.
+`ppal-context` is not handed back with it: workers never get that one, briefed
+or not, so a parallel fan-out can't race on the user's context store.
 
 ## Build System
 

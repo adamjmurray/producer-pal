@@ -18,6 +18,10 @@ import {
   savePresets,
 } from "#webui/hooks/settings/presets/preset-storage";
 import { usePresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
+import {
+  loadSubagentPresetId,
+  saveSubagentPresetId,
+} from "#webui/hooks/settings/settings-helpers";
 import { breakStorageWrites } from "#webui/test-utils/dom-test-helpers";
 import { type ChatPreset, type UseSettingsReturn } from "#webui/types/settings";
 
@@ -385,6 +389,98 @@ describe("PresetControls", () => {
     expect(screen.getByTestId("preset-error").textContent).toMatch(
       /quota exceeded/,
     );
+  });
+
+  /**
+   * Select a preset and press Delete.
+   * @param id - The preset to delete
+   */
+  function deletePreset(id: string): void {
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: id },
+    });
+    fireEvent.click(screen.getByTestId("preset-delete"));
+  }
+
+  it("clears the Subagent preset from the buffer and storage", () => {
+    savePresets([seeded]);
+    saveSubagentPresetId("seed");
+    const setSubagentPresetId = vi.fn();
+
+    render(
+      <Controls
+        settings={makeSettings({
+          subagentPresetId: "seed",
+          setSubagentPresetId,
+        })}
+      />,
+    );
+    deletePreset("seed");
+
+    expect(setSubagentPresetId).toHaveBeenCalledWith(null);
+    // Storage too, not just the buffer: Cancel re-reads this value, and would
+    // otherwise restore an id naming a preset that no longer exists.
+    expect(loadSubagentPresetId()).toBeNull();
+  });
+
+  it("clears storage only, when an unsaved pick named another preset", () => {
+    savePresets([seeded, { ...seeded, id: "other", name: "Other" }]);
+    saveSubagentPresetId("seed");
+    const setSubagentPresetId = vi.fn();
+
+    render(
+      <Controls
+        settings={makeSettings({
+          subagentPresetId: "other",
+          setSubagentPresetId,
+        })}
+      />,
+    );
+    deletePreset("seed");
+
+    // The buffer names a preset that still exists, so it survives untouched.
+    expect(setSubagentPresetId).not.toHaveBeenCalled();
+    expect(loadSubagentPresetId()).toBeNull();
+  });
+
+  it("clears the buffer only, when the saved id named another preset", () => {
+    savePresets([seeded, { ...seeded, id: "other", name: "Other" }]);
+    saveSubagentPresetId("other");
+    const setSubagentPresetId = vi.fn();
+
+    render(
+      <Controls
+        settings={makeSettings({
+          subagentPresetId: "seed",
+          setSubagentPresetId,
+        })}
+      />,
+    );
+    deletePreset("seed");
+
+    expect(setSubagentPresetId).toHaveBeenCalledWith(null);
+    expect(loadSubagentPresetId()).toBe("other");
+  });
+
+  it("keeps the Subagent preset when the delete can't be written", () => {
+    savePresets([seeded]);
+    saveSubagentPresetId("seed");
+    const setSubagentPresetId = vi.fn();
+
+    render(
+      <Controls
+        settings={makeSettings({
+          subagentPresetId: "seed",
+          setSubagentPresetId,
+        })}
+      />,
+    );
+    breakStorageWrites();
+    deletePreset("seed");
+
+    // The preset is still there, so the pointer at it is still good.
+    expect(setSubagentPresetId).not.toHaveBeenCalled();
+    expect(loadSubagentPresetId()).toBe("seed");
   });
 
   it("offers Inherit plus every preset in the Subagent preset selector", () => {
