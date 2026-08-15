@@ -64,6 +64,30 @@ export async function validateMcpConnection(
   }
 }
 
+/**
+ * Connect a freshly built client, publishing the in-flight connect so a turn
+ * that adopts the client can await it rather than stream on a client whose MCP
+ * connection hasn't landed. The connecting turn owns the ref: it clears the
+ * promise once it settles, unless a newer init already replaced it.
+ * @param client - The client to connect
+ * @param pendingInitRef - Where to publish the in-flight connect
+ * @param pendingInitRef.current - The published promise, or null when idle
+ */
+export async function connectClient<TMessage>(
+  client: ChatClient<TMessage>,
+  pendingInitRef: { current: Promise<void> | null },
+): Promise<void> {
+  const connecting = client.initialize();
+
+  pendingInitRef.current = connecting;
+
+  try {
+    await connecting;
+  } finally {
+    if (pendingInitRef.current === connecting) pendingInitRef.current = null;
+  }
+}
+
 interface ConversationDefaults {
   thinking: string | null;
 }
