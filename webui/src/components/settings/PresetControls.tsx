@@ -135,6 +135,15 @@ export function PresetControls({
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
           if (selected && deletePreset(selected.id) != null) return;
+
+          // Drop the Subagent-preset pointer with the preset it names, so a
+          // dangling id can't outlive it in storage. Buffered like every other
+          // setting (it lands on the footer Save) even though the delete itself
+          // already hit storage — the split this tab warns about.
+          if (selected?.id === settings.subagentPresetId) {
+            settings.setSubagentPresetId(null);
+          }
+
           setSelectedId("");
           setEditDescription("");
         }}

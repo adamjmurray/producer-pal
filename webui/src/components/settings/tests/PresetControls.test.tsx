@@ -387,6 +387,58 @@ describe("PresetControls", () => {
     );
   });
 
+  it("clears the Subagent preset when the preset it names is deleted", () => {
+    savePresets([seeded]);
+    const setSubagentPresetId = vi.fn();
+
+    render(
+      <Controls
+        settings={makeSettings({
+          subagentPresetId: "seed",
+          setSubagentPresetId,
+        })}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "seed" },
+    });
+    fireEvent.click(screen.getByTestId("preset-delete"));
+
+    expect(setSubagentPresetId).toHaveBeenCalledWith(null);
+  });
+
+  it("keeps the Subagent preset when the delete misses it or fails", () => {
+    savePresets([seeded, { ...seeded, id: "other", name: "Other" }]);
+    const setSubagentPresetId = vi.fn();
+    const settings = { subagentPresetId: "other", setSubagentPresetId };
+
+    const { unmount } = render(<Controls settings={makeSettings(settings)} />);
+
+    // Deleting a different preset leaves the pointer alone.
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "seed" },
+    });
+    fireEvent.click(screen.getByTestId("preset-delete"));
+    expect(setSubagentPresetId).not.toHaveBeenCalled();
+    unmount();
+
+    // And a delete that never reached storage must not clear it either — the
+    // preset it names is still there.
+    render(
+      <Controls
+        settings={makeSettings({ ...settings, subagentPresetId: "other" })}
+      />,
+    );
+    fireEvent.change(screen.getByTestId("preset-select"), {
+      target: { value: "other" },
+    });
+    breakStorageWrites();
+    fireEvent.click(screen.getByTestId("preset-delete"));
+
+    expect(setSubagentPresetId).not.toHaveBeenCalled();
+  });
+
   it("offers Inherit plus every preset in the Subagent preset selector", () => {
     savePresets([seeded]);
     render(<Controls settings={makeSettings({ subagentPresetId: "seed" })} />);
