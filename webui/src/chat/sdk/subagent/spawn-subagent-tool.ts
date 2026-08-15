@@ -111,9 +111,9 @@ export interface SpawnSubagentDeps {
   /**
    * Fetch the worker's system-prompt briefing (skills, Live Set, context) for a
    * resolved worker config. Resolving null — or omitting this dep entirely —
-   * leaves the worker to bootstrap itself with ppal-connect, which is the
-   * pre-briefing behavior and the required fallback when the server or Live
-   * can't be reached.
+   * leaves the worker to bootstrap itself with ppal-connect, the required
+   * fallback when the server or Live can't be reached. ppal-context is not
+   * handed back with it; see resolveWorkerConfig.
    */
   getBriefing?: (
     config: ChatClientConfig,
@@ -238,9 +238,7 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  *
  * Without a briefing the worker gets ppal-connect back, since one with neither
  * knows nothing about the Live Set it is about to edit — but only that one.
- * ppal-context stays withheld either way: it's withheld to keep parallel workers
- * off the user's context store, which has nothing to do with whether the briefing
- * arrived.
+ * ALWAYS_WITHHELD_TOOLS is withheld for a reason the briefing has no bearing on.
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh

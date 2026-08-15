@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import {
+  loadSubagentPresetId,
+  saveSubagentPresetId,
+} from "#webui/hooks/settings/settings-helpers";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
 import { type PresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { usePresetDraft } from "#webui/hooks/settings/presets/use-preset-draft";
@@ -135,15 +139,7 @@ export function PresetControls({
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
           if (selected && deletePreset(selected.id) != null) return;
-
-          // Drop the Subagent-preset pointer with the preset it names, so a
-          // dangling id can't outlive it in storage. Buffered like every other
-          // setting (it lands on the footer Save) even though the delete itself
-          // already hit storage — the split this tab warns about.
-          if (selected?.id === settings.subagentPresetId) {
-            settings.setSubagentPresetId(null);
-          }
-
+          if (selected) clearSubagentPreset(settings, selected.id);
           setSelectedId("");
           setEditDescription("");
         }}
@@ -195,6 +191,31 @@ export function PresetControls({
       />
     </div>
   );
+}
+
+/**
+ * Drop the Subagent-preset pointer at a just-deleted preset, in both places it
+ * lives.
+ *
+ * Storage is written directly rather than left to the footer Save, because the
+ * delete already landed there: buffering the clear alone would let a Cancel —
+ * which re-reads this value from storage — restore an id naming nothing.
+ *
+ * The two are tested separately because they can disagree. With an unsaved pick
+ * in the buffer, storage still holds the last saved one, and deleting either
+ * preset must clear only the copy that named it.
+ * @param settings - The live settings buffer
+ * @param deletedId - The preset that was just deleted
+ */
+function clearSubagentPreset(
+  settings: UseSettingsReturn,
+  deletedId: string,
+): void {
+  if (settings.subagentPresetId === deletedId) {
+    settings.setSubagentPresetId(null);
+  }
+
+  if (loadSubagentPresetId() === deletedId) saveSubagentPresetId(null);
 }
 
 /**

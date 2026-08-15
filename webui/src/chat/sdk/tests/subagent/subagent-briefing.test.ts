@@ -118,7 +118,7 @@ describe("fetchSubagentBriefing", () => {
 });
 
 describe("withheldToolsApplied", () => {
-  it("switches off the tools the briefing replaces", () => {
+  it("switches off everything a briefed worker does without", () => {
     const narrowed = withheldToolsApplied(createConfig());
 
     for (const tool of WORKER_WITHHELD_TOOLS) {
@@ -244,9 +244,8 @@ describe("spawn_subagent briefing wiring", () => {
 
   it("keeps ppal-connect — but not ppal-context — when no briefing came back", async () => {
     // A worker with neither a briefing nor a way to connect knows nothing about
-    // the Live Set it is about to edit. ppal-context is withheld for a different
-    // reason (parallel workers racing on the user's context store), so a failed
-    // briefing must not hand it back.
+    // the Live Set it is about to edit. ppal-context is withheld for a reason
+    // the briefing has no bearing on, so a failure must not hand it back.
     getBriefing.mockResolvedValue(null);
 
     await spawn();

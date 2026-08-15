@@ -99,12 +99,13 @@ export async function fetchSubagentBriefing(
 }
 
 /**
- * The worker config with {@link WORKER_WITHHELD_TOOLS} switched off. Applied
- * BEFORE fetching, because the fetch reads the toolset off this config; applied
- * to the config the worker actually runs under only when a briefing came back.
+ * The worker config with every {@link WORKER_WITHHELD_TOOLS} entry switched off.
+ * Applied BEFORE fetching, because the fetch reads the toolset off this config;
+ * applied to the config the worker actually runs under only when a briefing came
+ * back. Without one, use {@link alwaysWithheldApplied}.
  *
  * @param config - The worker config to narrow
- * @returns A copy with the briefing-replaced tools disabled
+ * @returns A copy with both withheld lists disabled
  */
 export function withheldToolsApplied(
   config: ChatClientConfig,
@@ -114,9 +115,8 @@ export function withheldToolsApplied(
 
 /**
  * The worker config with only {@link ALWAYS_WITHHELD_TOOLS} switched off — what
- * a worker runs under when no briefing came back. It keeps `ppal-connect` to
- * bootstrap itself the old way, but still can't race its siblings writing the
- * user's context.
+ * a worker runs under when no briefing came back, keeping `ppal-connect` to
+ * bootstrap itself the old way.
  *
  * @param config - The worker config to narrow
  * @returns A copy with the always-withheld tools disabled
