@@ -17,7 +17,12 @@ import {
   midiLoopedTestCases,
   midiUnloopedTestCases,
 } from "../helpers/arrangement-clip-test-cases.ts";
-import { ARRANGEMENT_CLIP_TESTS_PATH } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import {
+  ARRANGEMENT_CLIP_TESTS_PATH,
+  EPSILON,
+  parseBarBeat,
+  readClipsOnTrack,
+} from "../helpers/arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
   assertSpanPreserved,
@@ -26,6 +31,7 @@ import {
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
+  getToolWarnings,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
@@ -275,6 +281,103 @@ describe("Behavioral splitting tests", () => {
     const splitClips = parseSplitResult(result);
 
     expect(splitClips.length).toBe(4);
+  });
+
+  // A point within EPSILON of an edge asks for a zero-length segment. Splitting
+  // skips edge trims below that threshold, and the moves that follow assume
+  // every trim ran — they place segments without checking for an occupant. So
+  // accepting one leaves slivers and overlapping clips, and an overlap is what
+  // crashes Live on the next duplicate. Mocks pass either way; these don't.
+  describe("split points hugging a clip edge", () => {
+    /**
+     * Create a 2-bar looped MIDI clip at `startBar`.
+     * @param startBar - Arrangement bar to place the clip at
+     * @returns The new clip's id
+     */
+    async function createTwoBarClip(startBar: number): Promise<string> {
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          trackIndex: dynamicTrackIndex,
+          arrangementStart: `${startBar}|1`,
+          notes: "C3 1|1\nE3 2|1",
+          length: "2bar",
+          looping: true,
+        },
+      });
+
+      return parseToolResult<{ id: string }>(result).id;
+    }
+
+    /**
+     * Read only the clips in one test's own span — the track is shared.
+     * @param startBar - First bar of the span
+     * @param bars - Span length in bars
+     * @returns Clips starting inside the span
+     */
+    async function clipsInSpan(
+      startBar: number,
+      bars: number,
+    ): Promise<ReadClipResult[]> {
+      const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
+      const spanStart = startBar - 1;
+
+      return clips.filter((c) => {
+        const start = c.arrangementStart
+          ? parseBarBeat(c.arrangementStart)
+          : -1;
+
+        return (
+          start >= spanStart - EPSILON && start < spanStart + bars - EPSILON
+        );
+      });
+    }
+
+    // The clip is 8 beats, so 1|1.0005 sits 0.0005 beats past its start and
+    // 2|4.9995 sits 0.0005 beats before its end.
+    it.each([
+      { where: "start", startBar: 300, split: "1|1.0005, 2|1" },
+      { where: "end", startBar: 310, split: "2|1, 2|4.9995" },
+    ])(
+      "ignores a point at the $where and splits at the rest",
+      async ({ startBar, split }) => {
+        const clipId = await createTwoBarClip(startBar);
+
+        await sleep(200);
+        const initialClips = await clipsInSpan(startBar, 2);
+        const result = await splitClip(ctx.client!, clipId, split);
+
+        expect(getToolWarnings(result)).toHaveLength(0);
+
+        await sleep(200);
+        const resultClips = await clipsInSpan(startBar, 2);
+
+        // Two equal halves: the dropped point moved no boundary.
+        expect(resultClips.map((c) => c.arrangementLength)).toStrictEqual([
+          "1bar",
+          "1bar",
+        ]);
+        assertContiguousClips(resultClips);
+        assertSpanPreserved(initialClips, resultClips);
+      },
+    );
+
+    it("leaves the clip alone when every point hugs an edge", async () => {
+      const clipId = await createTwoBarClip(320);
+
+      await sleep(200);
+      const result = await splitClip(ctx.client!, clipId, "1|1.0005");
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "no split points fall inside the clip",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(320, 2);
+
+      expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
+    });
   });
 });
 
