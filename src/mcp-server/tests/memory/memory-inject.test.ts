@@ -7,7 +7,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { rememberMemory } from "#src/mcp-server/helpers/memory/memory-store.ts";
-import { withMemory } from "#src/mcp-server/helpers/memory/memory-inject.ts";
+import {
+  withMemory,
+  type MemoryInjectConfig,
+} from "#src/mcp-server/helpers/memory/memory-inject.ts";
 import {
   connectResponse,
   fakeInnerCall,
@@ -30,16 +33,16 @@ function writeRawMemory(file: string, contents: string): void {
 
 /**
  * Run withMemory over a ppal-connect call and return the appended block text.
- * @param smallModelMode - Whether small-model mode is active
+ * @param config - Small-model mode and toolset overrides (both default to off)
  * @returns The appended memory block, or undefined when none was appended
  */
 async function appendedBlock(
-  smallModelMode = false,
+  config: Partial<MemoryInjectConfig> = {},
 ): Promise<string | undefined> {
-  const result = await withMemory(
-    fakeInnerCall(connectResponse()),
-    () => smallModelMode,
-  )("ppal-connect", {});
+  const result = await withMemory(fakeInnerCall(connectResponse()), () => ({
+    smallModelMode: false,
+    ...config,
+  }))("ppal-connect", {});
 
   return result.content.length > 1 ? result.content[1]?.text : undefined;
 }
@@ -89,21 +92,15 @@ describe("withMemory", () => {
   });
 
   it("does not inject when there are no memories", async () => {
-    const result = await withMemory(
-      fakeInnerCall(connectResponse()),
-      () => false,
-    )("ppal-connect", {});
-
-    expect(result.content).toHaveLength(1);
+    expect(await appendedBlock()).toBeUndefined();
   });
 
   it("leaves non-connect tool responses untouched", async () => {
     rememberMemory({ name: "u", description: "d", body: "b" });
 
-    const result = await withMemory(
-      fakeInnerCall(connectResponse()),
-      () => false,
-    )("ppal-read-track", {});
+    const result = await withMemory(fakeInnerCall(connectResponse()), () => ({
+      smallModelMode: false,
+    }))("ppal-read-track", {});
 
     expect(result.content).toHaveLength(1);
   });
@@ -111,7 +108,7 @@ describe("withMemory", () => {
   it("injects the index when small-model mode is off", async () => {
     rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
 
-    const block = await appendedBlock(false);
+    const block = await appendedBlock({ smallModelMode: false });
 
     expect(block).toContain("prefers-c-minor");
   });
@@ -119,11 +116,34 @@ describe("withMemory", () => {
   it("skips the index when small-model mode is active", async () => {
     rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
 
-    const result = await withMemory(
-      fakeInnerCall(connectResponse()),
-      () => true,
-    )("ppal-connect", {});
+    expect(await appendedBlock({ smallModelMode: true })).toBeUndefined();
+  });
 
-    expect(result.content).toHaveLength(1);
+  it("injects the index when the toolset keeps ppal-context", async () => {
+    rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
+
+    const block = await appendedBlock({
+      tools: ["ppal-connect", "ppal-context"],
+    });
+
+    expect(block).toContain("prefers-c-minor");
+  });
+
+  it("skips the index when the toolset has no ppal-context", async () => {
+    // Context unchecked in the Tools tab, or a subagent worker: the index would
+    // name a tool the caller cannot call.
+    rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
+
+    expect(
+      await appendedBlock({ tools: ["ppal-connect", "ppal-read-track"] }),
+    ).toBeUndefined();
+  });
+
+  it("injects the index when the toolset is unknown", async () => {
+    rememberMemory({ name: "prefers-c-minor", description: "d", body: "b" });
+
+    const block = await appendedBlock({ tools: undefined });
+
+    expect(block).toContain("prefers-c-minor");
   });
 });

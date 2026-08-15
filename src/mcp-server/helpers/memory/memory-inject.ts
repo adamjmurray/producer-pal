@@ -10,6 +10,19 @@ import {
 } from "../connect/connect-append.ts";
 import { listMemoryEntries, renderMemoryIndex } from "./memory-store.ts";
 
+/** The tool the index tells the model to load a memory body with. */
+const CONTEXT_TOOL = "ppal-context";
+
+/** What the memory index injection depends on. */
+export interface MemoryInjectConfig {
+  smallModelMode: boolean;
+  /**
+   * The tools this caller can call — the global whitelist, or one request's
+   * narrowed set. Omitted ⇒ no gating.
+   */
+  tools?: readonly string[];
+}
+
 /**
  * Wrap a callLiveApi so a successful ppal-connect response carries the user's
  * memory INDEX (~/.producer-pal/memory/) as a distinct content block. Injection
@@ -20,33 +33,42 @@ import { listMemoryEntries, renderMemoryIndex } from "./memory-store.ts";
  * assembled Node-side, the only path reaching external MCP clients (Claude
  * Desktop, LM Studio), which have no recall harness of their own.
  *
- * Skipped entirely in small-model mode: `ppal-context`'s small-model surface
- * drops scope=memory (remember/forget/list/read-by-name), so an injected index
- * pointing at those actions would be a dead end.
+ * Skipped when nothing can load a body from it: in small-model mode, because
+ * `ppal-context`'s small-model surface drops scope=memory; and when the caller's
+ * toolset has no `ppal-context` at all (Context unchecked in the chat UI's Tools
+ * tab). Either way an injected index would point at an action the model cannot
+ * take. The briefing route omits it for a worker for the same reason.
  *
  * @param inner - The underlying callLiveApi to wrap
- * @param getSmallModelMode - Reads the current small-model-mode setting
+ * @param getConfig - Reads the current small-model-mode setting and toolset
  * @returns A callLiveApi that appends the memory index to ppal-connect results
  */
 export function withMemory(
   inner: CallLiveApiFunction,
-  getSmallModelMode: () => boolean,
+  getConfig: () => MemoryInjectConfig,
 ): WrappedCallLiveApi {
-  return withConnectAppend(inner, () => memoryBlock(getSmallModelMode()));
+  return withConnectAppend(inner, () => memoryBlock(getConfig()));
 }
 
 // --- Helpers below main export ---
 
 /**
  * The memory index block to append, or null when there are no memories or
- * small-model mode is active. Only the index (flat `name — description` hooks)
- * is injected; bodies load on demand.
+ * nothing could load a body from the index. Only the index (flat
+ * `name — description` hooks) is injected; bodies load on demand.
  *
- * @param smallModelMode - Whether small-model mode is active
+ * @param config - The current small-model-mode setting and toolset
+ * @param config.smallModelMode - Whether small-model mode is active
+ * @param config.tools - The caller's tools (omit for no gating)
  * @returns The memory index text, or null to skip
  */
-function memoryBlock(smallModelMode: boolean): string | null {
+function memoryBlock({
+  smallModelMode,
+  tools,
+}: MemoryInjectConfig): string | null {
   if (smallModelMode) return null;
+
+  if (tools != null && !tools.includes(CONTEXT_TOOL)) return null;
 
   const entries = listMemoryEntries();
 

@@ -22,8 +22,8 @@ export interface ConnectEnrichmentConfig {
   projectContext: string;
   /**
    * The tools this caller can call — the global whitelist, or one request's
-   * narrowed set. Skills fragments teaching only tools that are off are dropped.
-   * Omitted ⇒ no gating (every fragment ships).
+   * narrowed set. Skills fragments teaching only tools that are off are dropped,
+   * as is the memory index when ppal-context is gone. Omitted ⇒ no gating.
    */
   tools?: readonly string[];
 }
@@ -61,7 +61,10 @@ export function enrichConnect(
           () => getConfig().projectContext,
         ),
       ),
-      () => getConfig().smallModelMode,
+      () => ({
+        smallModelMode: getConfig().smallModelMode,
+        tools: getConfig().tools,
+      }),
     ),
     () => ({
       smallModelMode: getConfig().smallModelMode,
