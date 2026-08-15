@@ -624,49 +624,29 @@ describe("performSplitting", () => {
     expect(clips.some((c) => c.id === clipId)).toBe(false);
   });
 
-  it("should skip right-trim when split point is within EPSILON of clip end", () => {
-    // Clip of 8 beats, split at ~8 beats (within EPSILON of clip end)
-    // This means rightTrimLen <= EPSILON, skipping the right-trim step
-    const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
+  // A split point within EPSILON of either clip edge used to survive the bounds
+  // filter and then skip its trim, leaving a span the segment moves assume was
+  // vacated still occupied. Those moves skip the overlap clear, so Live crashed
+  // on the next duplicate. The filter now rejects such points outright.
+  it.each([
+    ["within EPSILON of the clip end", EIGHT_BEAT_LOOPED, [7.9999]],
+    ["within EPSILON of the clip start", EIGHT_BEAT_LOOPED, [0.0005]],
+    ["at both edges", TWELVE_BEAT_LOOPED, [0.0005, 11.9995]],
+  ])("rejects a split point %s", (_label, clipProps, points) => {
+    const { callState, mockClip, clips } = setupSplitTest(clipProps);
 
-    // Split at 7.9999 (almost the full clip length of 8)
-    // rightTrimLen = 8 - 7.9999 = 0.0001 which is <= EPSILON (0.001)
-    performSplitting([mockClip], [7.9999], clips, HOLDING_AREA);
+    performSplitting([mockClip], points, clips, HOLDING_AREA);
 
-    // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
-    // Right-trim skipped (0.0001 <= EPSILON), only left-trim remains.
-    expectSplitTrimCount(callState.trackMock, 1);
+    // Nothing is duplicated or trimmed: the clip is left exactly as it was.
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
   });
 
-  it("should skip left-trim when last segment starts within EPSILON of clip start", () => {
-    // Clip of 8 beats, split very close to the start
+  it("still splits at a point just outside the safety margin", () => {
+    // Guards the margin against being widened into ordinary split positions.
     const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
 
-    // Split at 0.0005 beats (within EPSILON of 0)
-    // lastSegStart = 0.0005 which is <= EPSILON, skipping left-trim for last segment
-    performSplitting([mockClip], [0.0005], clips, HOLDING_AREA);
+    performSplitting([mockClip], [0.002], clips, HOLDING_AREA);
 
-    // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
-    // Left-trim skipped (0.0005 <= EPSILON), only right-trim remains.
-    expectSplitTrimCount(callState.trackMock, 1);
-  });
-
-  it("should skip both trims for middle segment at EPSILON boundaries", () => {
-    const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
-
-    // 3-segment split at boundaries very close to 0 and clip end.
-    // Middle segment: segStart=0.0005 (<=EPSILON), segEnd=11.9995
-    // This exercises: segStart <= EPSILON (skip left-trim) and
-    // rightTrim = 12 - 11.9995 = 0.0005 <= EPSILON (skip right-trim)
-    // for the middle segment extraction.
-    performSplitting([mockClip], [0.0005, 11.9995], clips, HOLDING_AREA);
-
-    // Step 2: seg0 right-trim (11.9995 > EPSILON) → happens
-    // Step 3: middle segment left-trim (0.0005 <= EPSILON) → skipped
-    //         middle segment right-trim (0.0005 <= EPSILON) → skipped
-    // Step 4: last segment left-trim (11.9995 > EPSILON) → happens
-    // Normal 3-segment split would have 4 create_midi_clip calls;
-    // skipping both middle trims leaves 2.
     expectSplitTrimCount(callState.trackMock, 2);
   });
 });

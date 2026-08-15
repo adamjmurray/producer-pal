@@ -90,16 +90,9 @@ describe("createPartialTile", () => {
       holdingEndTime: 1010,
     });
 
-    createPartialTile(
-      sourceClip,
-      track,
-      500,
-      8,
-      1000,
-      true,
-      mockContext,
-      false,
-    );
+    createPartialTile(sourceClip, track, 500, 8, 1000, true, mockContext, {
+      adjustPreRoll: false,
+    });
 
     expect(track.call).toHaveBeenCalledTimes(5);
   });
@@ -141,8 +134,7 @@ describe("createPartialTile", () => {
       1000,
       true,
       mockContext,
-      false,
-      10,
+      { adjustPreRoll: false, contentOffset: 10 },
     );
 
     expect(result.set).toHaveBeenCalledWith("start_marker", 4);
@@ -173,7 +165,7 @@ describe("createPartialTile", () => {
       1000,
       true,
       mockContext,
-      adjustPreRoll,
+      { adjustPreRoll },
     );
   }
 });

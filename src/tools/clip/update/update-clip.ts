@@ -141,6 +141,11 @@ export async function updateClip(
 ): Promise<ClipResult | ClipResult[]> {
   const deadline = computeLoopDeadline(context.timeoutMs);
 
+  // Share it with the arrangement helpers: one clip's tiling can outrun the
+  // whole budget on its own, so the per-clip check below is too coarse to keep
+  // the response from being replaced by a timeout error.
+  context.deadline = deadline;
+
   if (!ids) {
     console.warn("updateClip: ids is required");
 
@@ -176,8 +181,13 @@ export async function updateClip(
     const clip = mutableClips[i] as LiveAPI;
 
     if (isDeadlineExceeded(deadline)) {
+      // Name the ones that didn't run: without them the caller knows the batch
+      // was cut short but not where the gap is.
+      const skipped = mutableClips.slice(i).map((c) => c.id);
+
       console.warn(
-        `Deadline exceeded after updating ${updatedClips.length} of ${mutableClips.length} clips`,
+        `Ran out of time after updating ${i} of ${mutableClips.length} clips. ` +
+          `Not updated: ${skipped.join(", ")}. Re-run for those ids.`,
       );
       break;
     }

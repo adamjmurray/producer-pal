@@ -64,7 +64,23 @@ describe("updateClip - deadline exceeded", () => {
     expect(result).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Deadline exceeded"),
+      expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
+    );
+  });
+
+  it("names the clips a cut-short batch did not reach", async () => {
+    setupTwoMidiClips(mocks);
+
+    vi.mocked(isDeadlineExceeded)
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    await updateClip({ ids: "123, 456", name: "Updated" }, { timeoutMs: 100 });
+
+    // A bare count doesn't say which id to re-run.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Not updated: 456. Re-run for those ids."),
     );
   });
 
@@ -85,7 +101,7 @@ describe("updateClip - deadline exceeded", () => {
     expect(result).toStrictEqual({ id: "123" });
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Deadline exceeded after updating 1 of 2"),
+      expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
     );
   });
 });

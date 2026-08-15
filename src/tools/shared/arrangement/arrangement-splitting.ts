@@ -12,12 +12,11 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
   createAndDeleteTempClip,
+  EPSILON,
   type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
-
-const EPSILON = 0.001;
 
 export interface SplittingContext {
   holdingAreaStartBeats: number;
@@ -182,8 +181,17 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     return false;
   }
 
-  // Filter split points to those within clip bounds
-  const validPoints = splitPoints.filter((p) => p > 0 && p < clipLength);
+  // Filter split points to those within clip bounds.
+  //
+  // The margin is EPSILON, not 0, and it is load-bearing: the trims below are
+  // all guarded by `> EPSILON`, so a point within EPSILON of either edge would
+  // let one of them be skipped, and a skipped trim leaves a span the moves
+  // below assume was vacated still occupied. Those moves skip the overlap
+  // clear, so Live would crash on the next duplicate. Keep the two thresholds
+  // equal. Such a point asks for a zero-length segment anyway.
+  const validPoints = splitPoints.filter(
+    (p) => p > EPSILON && p < clipLength - EPSILON,
+  );
 
   if (validPoints.length === 0) {
     const liveSet = LiveAPI.from(livePath.liveSet);
@@ -234,7 +242,9 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   const sourceClipId = sourceClip.id;
 
-  // Step 2: Right-trim original to keep only segment 0
+  // Step 2: Right-trim original to keep only segment 0. This is what vacates
+  // the rest of the clip's span, which is why the moves below can skip the
+  // overlap clear. The validPoints margin guarantees it runs.
   const seg0End = boundaries[1] as number; // boundaries has >= 3 elements
   const rightTrimLen = clipLength - seg0End;
 
@@ -275,12 +285,15 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     );
   }
 
+  // Same reason as the middle segments: the target is inside the vacated span,
+  // so the scan would find nothing.
   moveClipFromHolding(
     sourceClipId,
     track,
     lastSegFinalPos,
     isMidiClip,
     tilingCtx,
+    true,
   );
 
   return true;
@@ -359,13 +372,17 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
       );
     }
 
-    // Move to final arrangement position
+    // Move to final arrangement position. The target sits in the span step 2
+    // vacated, and segments are placed left to right at exactly their boundary
+    // widths, so nothing can be there — skip the track scan. Both facts depend
+    // on every trim above having run; see the validPoints margin.
     moveClipFromHolding(
       workClipId,
       track,
       clipArrangementStart + segStart,
       isMidiClip,
       context,
+      true,
     );
   }
 }

@@ -13,6 +13,7 @@
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   createAndDeleteTempClip,
+  EPSILON,
   type TilingContext,
 } from "./arrangement-tiling-helpers.ts";
 
@@ -103,10 +104,37 @@ export function clearClipAtDuplicateTarget(
     return false;
   }
 
-  // Clear any *other* arrangement clips overlapping the target range. Arrangement
-  // clips on the same track never overlap each other, so a single pass handles
-  // all overlapping clips without needing to re-fetch IDs. The source can never
-  // match here: it doesn't overlap the target range (the check above returned).
+  clearArrangementRange(track, targetPosition, targetEnd, isMidiClip, context);
+
+  return true;
+}
+
+/**
+ * Clear every arrangement clip overlapping a range, preserving the portions
+ * outside it. One pass handles them all: arrangement clips on a track never
+ * overlap each other, so clearing one can't resurrect another.
+ *
+ * Scanning the track is the expensive part — it builds a `LiveAPI` per clip, and
+ * within a request the pool never refills, so a caller that scans once per
+ * placement pays O(placements x clips) object builds and gets superlinear. Call
+ * this ONCE for the whole span you are about to fill, not once per clip you put
+ * in it. Clearing [a, c) in one pass is also equivalent to clearing [a, b) then
+ * [b, c): both leave the whole span empty and both preserve the same outside
+ * portions, so the wider call is strictly less work.
+ *
+ * @param track - LiveAPI track instance
+ * @param rangeStart - Start of the range to clear (beats)
+ * @param rangeEnd - End of the range to clear (beats)
+ * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
+ */
+export function clearArrangementRange(
+  track: LiveAPI,
+  rangeStart: number,
+  rangeEnd: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): void {
   const clipIds = track.getChildIds("arrangement_clips");
 
   for (const clipId of clipIds) {
@@ -114,18 +142,71 @@ export function clearClipAtDuplicateTarget(
     const clipStart = clip.getProperty("start_time") as number;
     const clipEnd = clip.getProperty("end_time") as number;
 
-    if (clipStart < targetEnd && clipEnd > targetPosition) {
+    if (clipStart < rangeEnd && clipEnd > rangeStart) {
       clearOverlappingClip(
         track,
         clip,
-        targetPosition,
-        targetEnd,
+        rangeStart,
+        rangeEnd,
         clipIds,
         isMidiClip,
         context,
       );
     }
   }
+}
+
+/**
+ * Clear the whole span about to be tiled in one pass, when that is equivalent
+ * to clearing it tile by tile. Returns whether the caller may then skip its
+ * per-tile clears.
+ *
+ * Three cases keep the per-tile path, because one wide pass would get them
+ * wrong: the workaround being off (per-tile clearing is a no-op then, so a wide
+ * clear would delete clips Live is happy to overwrite itself), a source longer
+ * than the tile spacing (a tile is a copy of the source, so it would land on
+ * the previous tile and only the per-tile clear trims that), and a source
+ * sitting inside the span (a wide clear would trim the very clip being copied).
+ * None happens today — every caller tiles forward from the source's end at
+ * exactly the source's length.
+ *
+ * @param sourceClip - LiveAPI clip instance being tiled
+ * @param track - LiveAPI track instance
+ * @param startPosition - Start of the span to be tiled, in beats
+ * @param totalLength - Length of the span to be tiled, in beats
+ * @param tileSpacing - Beats between consecutive tiles
+ * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
+ * @returns true if the span was cleared and per-tile clears can be skipped
+ */
+export function preClearTiledSpan(
+  sourceClip: LiveAPI,
+  track: LiveAPI,
+  startPosition: number,
+  totalLength: number,
+  tileSpacing: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): boolean {
+  if (!arrangementDuplicateCrashWorkaround) return false;
+
+  const sourceStart = sourceClip.getProperty("start_time") as number;
+  const sourceEnd = sourceClip.getProperty("end_time") as number;
+
+  if (
+    sourceEnd - sourceStart > tileSpacing + EPSILON ||
+    sourceOverlapsTarget(sourceClip.id, startPosition, totalLength)
+  ) {
+    return false;
+  }
+
+  clearArrangementRange(
+    track,
+    startPosition,
+    startPosition + totalLength,
+    isMidiClip,
+    context,
+  );
 
   return true;
 }
@@ -174,6 +255,9 @@ export function sourceOverlapsTarget(
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param targetIsEmpty - Caller guarantees nothing occupies the target; skips the
+ *   track scan. Only pass true when the span was just vacated or already cleared
+ *   — a wrong guarantee crashes Ableton, which is what the clear prevents.
  * @returns The moved clip (LiveAPI instance)
  */
 export function moveClipFromHolding(
@@ -182,19 +266,23 @@ export function moveClipFromHolding(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  targetIsEmpty = false,
 ): LiveAPI {
   // Clear any *other* clip at the target before placing the holding copy. The
   // holding clip itself can never overlap the target here: callers position the
   // holding area past the target placement (see holdingAreaStartFromIds's
   // minStartBeats), so clearClipAtDuplicateTarget's self-overlap branch is
   // unreachable for the holding clip and its boolean return is safely ignored.
-  clearClipAtDuplicateTarget(
-    track,
-    holdingClipId,
-    targetPosition,
-    isMidiClip,
-    context,
-  );
+  if (!targetIsEmpty) {
+    clearClipAtDuplicateTarget(
+      track,
+      holdingClipId,
+      targetPosition,
+      isMidiClip,
+      context,
+    );
+  }
+
   const finalResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
