@@ -9,7 +9,29 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
-import { trackLiveApiObject } from "./live-api-release.ts";
+import { acquirePooledObject, trackLiveApiObject } from "./live-api-release.ts";
+
+/**
+ * Point a pooled object at a target, or build one when the pool is empty.
+ *
+ * Construction is what registers a context in MxDCore, and nothing takes that
+ * back short of a device reload, so reuse is much cheaper than a fresh object.
+ * See live-api-release.ts for what pooling does and doesn't buy.
+ *
+ * @param target - Path or "id N" string, already normalized
+ * @returns A tracked object pointing at the target
+ */
+function buildOrReuse(target: string): LiveAPI {
+  const pooled = acquirePooledObject();
+
+  if (pooled == null) {
+    return trackLiveApiObject(new LiveAPI(target));
+  }
+
+  pooled.goto(target);
+
+  return trackLiveApiObject(pooled);
+}
 
 if (typeof LiveAPI !== "undefined") {
   /**
@@ -20,7 +42,7 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.from = function (
     idOrPath: string | number | [string, string | number] | PathLike,
   ): LiveAPI {
-    return trackLiveApiObject(new LiveAPI(parseIdOrPath(idOrPath)));
+    return buildOrReuse(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
@@ -183,9 +205,7 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     name: string,
   ): LiveAPI[] {
-    return this.getChildIds(name).map((id) =>
-      trackLiveApiObject(new LiveAPI(id)),
-    );
+    return this.getChildIds(name).map((id) => buildOrReuse(id));
   };
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {

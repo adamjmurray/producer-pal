@@ -176,6 +176,105 @@ describe("live-api release", () => {
     );
   });
 
+  it("retargets a released object instead of building another", () => {
+    beginLiveApiScope();
+
+    const first = LiveAPI.from(livePath.track(0));
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    const second = LiveAPI.from(livePath.track(1));
+
+    expect(second).toBe(first);
+    expect(second.path).toBe(String(livePath.track(1)));
+
+    endLiveApiScope();
+  });
+
+  it("resets a mode the last request left behind", () => {
+    beginLiveApiScope();
+
+    const first = LiveAPI.from(livePath.track(0));
+
+    // What the ppal-live-api set_mode operation leaves behind: follow the
+    // object rather than the path.
+    first.mode = 1;
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    expect(LiveAPI.from(livePath.track(1)).mode).toBe(0);
+
+    endLiveApiScope();
+  });
+
+  it("hands out a distinct object per call within one request", () => {
+    // The pool only refills once no scope is open, so nothing a request is
+    // still holding can come back to it mid-flight.
+    beginLiveApiScope();
+
+    const first = LiveAPI.from(livePath.track(0));
+    const second = LiveAPI.from(livePath.track(1));
+
+    expect(second).not.toBe(first);
+    expect(first.path).toBe(String(livePath.track(0)));
+    expect(second.path).toBe(String(livePath.track(1)));
+
+    endLiveApiScope();
+  });
+
+  it("reuses the objects getChildren built", () => {
+    beginLiveApiScope();
+
+    const liveSet = LiveAPI.from(livePath.liveSet);
+
+    liveSet.get = vi.fn().mockReturnValue(["id", "1", "id", "2"]);
+
+    const children = liveSet.getChildren("tracks");
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    const reused = LiveAPI.from(livePath.track(0));
+
+    expect([liveSet, ...children]).toContain(reused);
+
+    endLiveApiScope();
+  });
+
+  it("does not reuse an object that refused to be cleared", () => {
+    beginLiveApiScope();
+
+    // Its path setter throws, so the release can't know where it points.
+    trackUnclearable("nope");
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    const next = LiveAPI.from(livePath.track(0));
+
+    expect(next.path).toBe(String(livePath.track(0)));
+
+    endLiveApiScope();
+  });
+
+  it("forgets pooled objects on reset", () => {
+    beginLiveApiScope();
+
+    const first = LiveAPI.from(livePath.track(0));
+
+    endLiveApiScope();
+    resetLiveApiTracking();
+    beginLiveApiScope();
+
+    const second = LiveAPI.from(livePath.track(1));
+
+    expect(second).not.toBe(first);
+
+    endLiveApiScope();
+  });
+
   it("forgets tracked objects without touching them on reset", () => {
     beginLiveApiScope();
 
