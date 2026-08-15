@@ -19,15 +19,28 @@ import {
 // side may ignore a value, but it has to export a setter for it.
 const CONFIG_OUTLET = /Max\.outlet\(\s*"config"\s*,\s*"([^"]+)"/g;
 
+// The scan only sees a literal key spelled inline. A key routed through a
+// helper or a constant would vanish from it and the parity check below would
+// still pass on the rest, which is the drift this test exists to catch — so
+// pin the set. A failure here means either a new key (give V8 a setter and add
+// it) or a call the regex can no longer see (fix the scan).
+const BROADCAST_KEYS = [
+  "compactOutput",
+  "liveApiEnabled",
+  "notation",
+  "projectContext",
+  "sampleFolder",
+  "smallModelMode",
+  "tools",
+];
+
 describe("V8 config key parity", () => {
+  it("finds every config key the server broadcasts", () => {
+    expect(findConfigKeys()).toStrictEqual(BROADCAST_KEYS);
+  });
+
   it("exports a setter for every config key the server broadcasts", () => {
-    const keys = findConfigKeys();
-
-    // Guard against the scan silently matching nothing (a refactor renaming
-    // Max.outlet, say) and passing vacuously.
-    expect(keys.length).toBeGreaterThan(0);
-
-    const missing = keys.filter(
+    const missing = findConfigKeys().filter(
       (key) => typeof (adapter as Record<string, unknown>)[key] !== "function",
     );
 
@@ -48,10 +61,10 @@ describe("V8 config key parity", () => {
 function findConfigKeys(): string[] {
   const keys = new Set<string>();
 
-  for (const file of findSourceFiles(
-    path.join(projectRoot, "src/mcp-server"),
-    true,
-  )) {
+  // All of src/, not just src/mcp-server, so a config outlet added elsewhere
+  // still gets caught. This file's own regex can't self-match (it spells the
+  // call with an escaped paren) and test files are excluded anyway.
+  for (const file of findSourceFiles(path.join(projectRoot, "src"), true)) {
     const source = fs.readFileSync(file, "utf8");
 
     for (const [, key] of source.matchAll(CONFIG_OUTLET)) {
