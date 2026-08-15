@@ -121,6 +121,23 @@ describe("AssistantSubagentCall", () => {
     expect(screen.queryByText("done")).toBeNull();
   });
 
+  it("reads as interrupted when the turn's request failed under the worker", () => {
+    // Not a Stop and not the worker's own failure: the orchestrator's stream
+    // died (a rate limit, a dropped connection) while this worker was running.
+    render(
+      <AssistantSubagentCall
+        task="rename tracks"
+        result={JSON.stringify(
+          "The request failed before this tool finished; it may or may not have run.",
+        )}
+        index={1}
+      />,
+    );
+
+    expect(screen.getByText("interrupted")).toBeDefined();
+    expect(screen.queryByText("done")).toBeNull();
+  });
+
   it("shows a failed status and red border on error", () => {
     const { container } = render(
       <AssistantSubagentCall task="x" result={"boom"} isError />,

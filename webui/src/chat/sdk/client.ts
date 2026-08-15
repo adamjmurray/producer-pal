@@ -461,6 +461,11 @@ export class ChatSdkClient {
 
     let completedSteps = 0;
     let finalFinishReason: FinishReason | undefined;
+    // The default is what labels a real Stop: the AI SDK answers an aborted
+    // signal by emitting an `abort` part and CLOSING the stream, so a Stop ends
+    // this loop normally and never reaches the catch below. Don't invert this to
+    // "failed unless proven otherwise" — that would mislabel every Stop.
+    let streamFailed = false;
 
     try {
       for await (const part of stream) {
@@ -496,12 +501,30 @@ export class ChatSdkClient {
             .finishReason;
         }
       }
+    } catch (error) {
+      // Only reached when the stream ERRORS, which is not the same as being
+      // aborted (see the default above). Both guards are still needed: an abort
+      // that raced the read arrives as a throw with our signal already set, and
+      // an abort raised without our signal — a worker's, or one the caller
+      // didn't route through this call — only says so by its error name.
+      streamFailed = abortSignal?.aborted !== true && !isAbortError(error);
+
+      throw error;
     } finally {
-      // If the user pressed Stop mid-tool, the in-flight assistant message holds
-      // a tool-call with no tool-result. Backfill a "canceled" result so the
-      // history stays valid (providers reject an unmatched tool-call) and the UI
-      // doesn't render the tool as perpetually running. No-op on clean finishes.
-      reconcileDanglingToolCalls(this.chatHistory, historyLengthBefore);
+      // A stream that ended mid-tool leaves the in-flight assistant message
+      // holding a tool-call with no tool-result. Backfill one so the history
+      // stays valid (providers reject an unmatched tool-call) and the UI doesn't
+      // render the tool as perpetually running. No-op on clean finishes.
+      //
+      // The reason matters: a rate limit that lands between a tool-call and its
+      // result is retried by resuming this same history, so labeling it
+      // "canceled by the user" would hand the model a cancellation that never
+      // happened — and it may well tell the user it stopped for that reason.
+      reconcileDanglingToolCalls(
+        this.chatHistory,
+        historyLengthBefore,
+        streamFailed ? "failed" : "canceled",
+      );
       // Wait for any worker still unwinding. On a Stop with parallel spawns this
       // stream can close while a sibling's abort is still in flight — its
       // transcript reaches the stash in its own finally, which may not have run
@@ -510,7 +533,7 @@ export class ChatSdkClient {
       // the workers have actually stopped, not when the orchestrator's socket
       // does.
       await Promise.allSettled(this.spawnRuns);
-      // A stopped subagent's tool-result is one of those synthetic "canceled"
+      // A halted subagent's tool-result is one of those synthetic placeholder
       // entries, so it never passed through the mid-stream attach above. Hang the
       // worker's partial transcript off it here so its work log survives the Stop.
       attachStashedTranscripts(
@@ -548,6 +571,16 @@ export function detectToolLimitReached(
   maxSteps: number = MAX_TOOL_STEPS,
 ): boolean {
   return completedSteps >= maxSteps && finishReason === "tool-calls";
+}
+
+/**
+ * Whether a thrown value is the rejection an aborted stream produces — the same
+ * name check the UI's stream handler uses to tell a Stop from a real error.
+ * @param error - The value the stream threw
+ * @returns True when the stream was aborted rather than failing
+ */
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 /**

@@ -5,7 +5,10 @@
 
 import { type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
+import {
+  CANCELED_TOOL_RESULT_TEXT,
+  FAILED_TOOL_RESULT_TEXT,
+} from "#webui/chat/sdk/build-model-messages";
 import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type SubagentRateLimitStatus,
@@ -69,10 +72,10 @@ export function AssistantSubagentCall({
   // A wait forced by a sibling's backoff (attempt null) is not this worker's own
   // rate limit — the docs promise that shared pause, so name it distinctly.
   const waiting = running && rateLimit != null;
-  // Stop mid-worker leaves the synthetic canceled result here, which is not a
+  // A turn that ended mid-worker leaves a synthetic result here, which is not a
   // failure and certainly not "done" — and the worker is resumable from this
   // card's transcript, so say what actually happened.
-  const stopped = !running && returnValue === CANCELED_TOOL_RESULT_TEXT;
+  const halted = running ? null : haltedStatus(returnValue);
   const status = waiting
     ? rateLimit.attempt == null
       ? "waiting"
@@ -81,9 +84,7 @@ export function AssistantSubagentCall({
       ? "working…"
       : isError
         ? "failed"
-        : stopped
-          ? "stopped"
-          : "done";
+        : (halted ?? "done");
 
   return (
     <details
@@ -210,6 +211,21 @@ function useSecondsUntil(targetMs: number): number {
   }, [targetMs]);
 
   return Math.max(0, Math.ceil(remainingMs / 1000));
+}
+
+/**
+ * Read a finished run's status off the synthetic result the reconcile left
+ * behind: the user stopping the turn and the request failing under it both cut
+ * the worker short, and they say different things.
+ * @param {string} returnValue - The unwrapped tool-result text
+ * @returns {string | null} Status label, or null for a real return value
+ */
+function haltedStatus(returnValue: string): string | null {
+  if (returnValue === CANCELED_TOOL_RESULT_TEXT) return "stopped";
+
+  if (returnValue === FAILED_TOOL_RESULT_TEXT) return "interrupted";
+
+  return null;
 }
 
 /**

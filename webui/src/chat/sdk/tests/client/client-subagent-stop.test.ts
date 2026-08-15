@@ -46,8 +46,10 @@ import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import { fetchSubagentBriefing } from "#webui/chat/sdk/subagent/subagent-briefing";
 import {
   abortError,
-  blockedAfterStream,
   failingAfterStream,
+} from "#webui/chat/sdk/tests/client-test-helpers";
+import {
+  blockedAfterStream,
   findSpawnEntry,
   orchestratorWithSpawnTool,
   streamTextMock,
