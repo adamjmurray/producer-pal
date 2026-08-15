@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Command } from "commander";
+import "#evals/shared/install-fetch-dispatcher.ts";
 import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {

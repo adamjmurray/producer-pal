@@ -10,6 +10,7 @@
 
 import { styleText } from "node:util";
 import { Command } from "commander";
+import "#evals/shared/install-fetch-dispatcher.ts";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {

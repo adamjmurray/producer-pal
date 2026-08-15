@@ -279,6 +279,30 @@ any other agent runtime that reads the `SKILL.md` convention.
   [`examples/skills/producer-pal/ppal.mjs`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal/ppal.mjs)
 - Requires Node.js 18+ (for built-in `fetch`)
 
+::: warning Looping calls with a sleep in between? Node's `fetch` will stall
+
+Node's built-in `fetch` is undici, and the copy Node 26 vendors (8.9.0) leaves a
+request unsent on an idle keep-alive connection until your script's event loop
+wakes for something else. If that something else is your own `sleep`, the gap
+plus the stall snaps to 500ms — or 3 seconds for gaps under 3 seconds. A loop
+sleeping 1s between calls spends ~3s per call instead of ~25ms.
+
+It only affects scripts that sleep between requests; one-shot calls and
+back-to-back loops are fine. Either use `node:http` instead of `fetch`, or
+install a dispatcher from a version without the bug (undici fixed it in 8.10.0;
+7.x predates it — but 8.9.0 itself will not help):
+
+```js
+import { Agent, setGlobalDispatcher } from "undici";
+setGlobalDispatcher(new Agent());
+```
+
+This is a Node client-side issue, not something Producer Pal can fix from the
+device, and it will inflate any latency you measure this way. It goes away on
+its own once Node ships undici 8.10.0 or newer.
+
+:::
+
 ### Python
 
 Works with Python 3.6+ (no dependencies).

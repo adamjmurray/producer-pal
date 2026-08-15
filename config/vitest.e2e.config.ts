@@ -20,7 +20,11 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["e2e/mcp/**/*.test.ts"],
-    // No setupFiles - don't want the Live API mocks
+    // Deliberately NOT the main setup file - don't want the Live API mocks.
+    // This one only swaps in a sane fetch dispatcher; see the file for why.
+    setupFiles: [
+      join(__dirname, "../evals/shared/install-fetch-dispatcher.ts"),
+    ],
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 30000, // Longer timeout for MCP connections
