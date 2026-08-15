@@ -6,7 +6,6 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import {
   MAX_SPAWNS,
-  MAX_WORKER_STEPS,
   type RunWorkerOptions,
   type WorkerRunResult,
   buildWorkerConfig,
@@ -15,6 +14,7 @@ import {
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
@@ -48,14 +48,18 @@ describe("buildWorkerConfig", () => {
     expect(worker.enabledTools?.["ppal-read-live-set"]).toBe(true);
   });
 
-  it("gives the worker its own step budget and a fresh history", () => {
+  it("gives the worker the orchestrator's step budget and a fresh history", () => {
+    // Deliberately not the default: a clone that dropped maxSteps would fall
+    // back to DEFAULT_MAX_TOOL_STEPS downstream and still pass with 25 here.
+    const steps = DEFAULT_MAX_TOOL_STEPS + 12;
     const config = createConfig({
+      maxSteps: steps,
       chatHistory: [{ role: "user", content: "orchestrator turn" }],
     });
 
     const worker = buildWorkerConfig(config);
 
-    expect(worker.maxSteps).toBe(MAX_WORKER_STEPS);
+    expect(worker.maxSteps).toBe(steps);
     expect(worker.chatHistory).toStrictEqual([]);
   });
 

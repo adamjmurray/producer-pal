@@ -10,23 +10,7 @@ import {
   isToolEnabled,
   SPAWN_SUBAGENT_TOOL_NAME,
 } from "#webui/lib/utils/enabled-tools";
-import {
-  DEFAULT_MAX_TOOL_STEPS,
-  workerSteps,
-} from "#webui/chat/sdk/step-budget";
 import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
-
-/**
- * A worker's nested tool-step budget at the DEFAULT base budget. Higher than a
- * plain chat turn's so a delegated subtask — reading what it needs, then
- * multi-step editing — has room to finish. Not lowered when a briefing removes
- * the connect step: a worker that runs out of steps strands the orchestrator,
- * and the unused headroom of a short task costs nothing.
- *
- * A user who raised their budget gets a worker budget derived from it
- * (see workerSteps); this is the shipped number.
- */
-export const MAX_WORKER_STEPS = workerSteps(DEFAULT_MAX_TOOL_STEPS);
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
@@ -272,8 +256,8 @@ async function resolveWorkerConfig(
 }
 
 /**
- * Clone the orchestrator config for a worker: fresh history, the worker step
- * budget, and spawn_subagent disabled. Disabling it is the recursion guard — the
+ * Clone the orchestrator config for a worker: fresh history and spawn_subagent
+ * disabled. Disabling it is the recursion guard — the
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
  *
@@ -300,6 +284,11 @@ async function resolveWorkerConfig(
  * This is the INHERITED config, not the final one: resolveWorkerConfig layers
  * the briefing and its withheld tools on top when a briefing is available.
  *
+ * `maxSteps` rides along in the spread rather than being set here: a worker runs
+ * on the same per-turn budget as the turn that spawned it. If it runs out, the
+ * orchestrator is told to resume it (resumeFrom) rather than the worker being
+ * given headroom up front.
+ *
  * `session` continues an existing worker: it becomes the clone's chatHistory, so
  * the next turn lands on top of everything that worker already did. It must be a
  * copy the worker may mutate freely (collectSubagentTranscript returns one) —
@@ -322,7 +311,6 @@ export function buildWorkerConfig(
     ...rest,
     ...subagentConfig,
     chatHistory: session ?? [],
-    maxSteps: workerSteps(config.baseMaxSteps ?? DEFAULT_MAX_TOOL_STEPS),
     enabledTools: {
       // Preset toolset (if the preset saved one), used as-is; otherwise inherit
       // the orchestrator's. It's a sparse map — absent keys stay default-enabled

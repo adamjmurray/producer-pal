@@ -230,25 +230,25 @@ describe("ChatSdkClient step budget", () => {
     return parts;
   };
 
-  it("does not flag the tool-step limit at the default budget for an orchestrator", async () => {
+  it("runs an orchestrator on the same budget as a plain chat", async () => {
     const client = new ChatSdkClient(
       "key",
       createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
     );
 
     await client.initialize();
-    // The limit for a plain client, but not for an orchestrator, whose budget
-    // is widened to MAX_ORCHESTRATOR_STEPS.
+    // Enabling subagents must not widen the budget: the number the user set is
+    // the number every level of the turn runs on.
     mockStreamParts(steppedStream(MAX_TOOL_STEPS, "tool-calls"));
 
     for await (const _ of client.sendMessage("hi")) {
       /* consume */
     }
 
-    expect(client.toolLimitReached).toBe(false);
+    expect(client.toolLimitReached).toBe(true);
   });
 
-  it("honors an explicit worker step budget from config", async () => {
+  it("honors an explicit step budget from config", async () => {
     const client = new ChatSdkClient("key", createConfig({ maxSteps: 20 }));
 
     await client.initialize();

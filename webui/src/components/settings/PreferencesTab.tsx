@@ -248,7 +248,7 @@ function StepBudgetField({
         control ({MIN_TOOL_STEPS}–{MAX_TOOL_STEPS_LIMIT}, default{" "}
         {DEFAULT_MAX_TOOL_STEPS}). Raise it for long arrangement tasks that keep
         stopping early; lower it to keep a looping model on a shorter leash.
-        Subagent orchestrators and workers scale with it.
+        Subagents get the same budget for their own work.
       </p>
     </div>
   );

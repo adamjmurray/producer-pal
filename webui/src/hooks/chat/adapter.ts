@@ -309,9 +309,9 @@ export const chatAdapter: ChatAdapter<
       chatHistory,
       subagentConfig,
       // The user's per-turn step budget, pinned for the life of this client:
-      // client.initialize() derives maxSteps from it once. Changing the setting
-      // takes effect on the next conversation, which the settings notice says.
-      baseMaxSteps: maxToolSteps,
+      // client.initialize() reads it once. Changing the setting takes effect on
+      // the next conversation, which the settings notice says.
+      maxSteps: maxToolSteps,
       // Conditional: ChatClientConfig.notation is optional and a present-but-
       // undefined key would still be read as "the caller has an opinion".
       ...(notation ? { notation } : {}),
