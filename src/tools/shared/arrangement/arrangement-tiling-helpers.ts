@@ -16,6 +16,13 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */
   silenceWavPath: string;
+  /**
+   * Absolute timestamp the request must finish by, from computeLoopDeadline.
+   * Long tiling runs check it so they stop and report what they placed, instead
+   * of running past the Node-side timeout that replaces the whole response with
+   * an error. Undefined/null means no deadline.
+   */
+  deadline?: number | null;
 }
 
 interface SessionClipResult {

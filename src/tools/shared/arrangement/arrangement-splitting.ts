@@ -275,12 +275,16 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     );
   }
 
+  // Same as the middle segments: the last segment lands where the last middle
+  // segment ended, inside the vacated span, so the target is empty by
+  // construction and the scan would find nothing.
   moveClipFromHolding(
     sourceClipId,
     track,
     lastSegFinalPos,
     isMidiClip,
     tilingCtx,
+    true,
   );
 
   return true;
@@ -359,13 +363,16 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
       );
     }
 
-    // Move to final arrangement position
+    // Move to final arrangement position. The target is inside the span the
+    // right-trim in step 2 just vacated, and segments are placed left to right
+    // without overlapping, so nothing can be there — skip the track scan.
     moveClipFromHolding(
       workClipId,
       track,
       clipArrangementStart + segStart,
       isMidiClip,
       context,
+      true,
     );
   }
 }
