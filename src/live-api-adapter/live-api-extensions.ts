@@ -11,6 +11,32 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
 import { acquirePooledObject, trackLiveApiObject } from "./live-api-release.ts";
 
+/** What `id` reads when the object points at nothing. */
+const NONEXISTENT_ID = "0";
+
+/**
+ * Point a pooled object at an "id N" target.
+ *
+ * Assigning the bare id is the only form that retargets. Measured on 12.4.3, a
+ * cleared object given 106 came back at "live_set tracks 0 clip_slots 0 clip"
+ * with the clip's name and length; the same value as "id 106" wipes the object,
+ * and goto() ignores it either way.
+ *
+ * A bad id doesn't throw — it leaves the object wherever it already was, so the
+ * write is read back. From a cleared object that's "nowhere", which is the right
+ * answer for a bad id and counts as success. Anything else means Live ignored
+ * the write and the object still points at the last request's target.
+ *
+ * @param api - The pooled object, its path already cleared
+ * @param id - The target id, no "id " prefix
+ * @returns Whether the object now points at that id, or at nothing
+ */
+function retargetToId(api: LiveAPI, id: string): boolean {
+  (api as unknown as { id: string }).id = id;
+
+  return api.id === id || api.id === NONEXISTENT_ID;
+}
+
 /**
  * Point a pooled object at a target, or build one when the pool is empty.
  *
@@ -18,31 +44,34 @@ import { acquirePooledObject, trackLiveApiObject } from "./live-api-release.ts";
  * back short of a device reload, so reuse is much cheaper than a fresh object.
  * See live-api-release.ts for what pooling does and doesn't buy.
  *
- * Only a path can retarget an object, so an "id N" target always builds. The
- * constructor is the only thing that accepts that form — measured on 12.4.3,
- * goto("id 2") returns 1 as though it worked and leaves the object nonexistent
- * (path "", id "0"), and assigning it to path is ignored outright. Both fail
- * silently, so this can't be relaxed on the strength of it looking fine.
- *
- * Objects built this way still go on the free list when released: once the path
- * is cleared they retarget by path like any other.
- *
  * @param target - Path or "id N" string, already normalized
  * @returns A tracked object pointing at the target
  */
 function buildOrReuse(target: string): LiveAPI {
-  const pooled = target.startsWith("id ") ? undefined : acquirePooledObject();
+  const pooled = acquirePooledObject();
 
   if (pooled == null) {
     return trackLiveApiObject(new LiveAPI(target));
   }
 
-  // Track before retargeting: an object that throws mid-goto is off the free
-  // list already, and leaving it untracked too would strand whatever it armed.
+  // Track before retargeting: an object that throws partway through is off the
+  // free list already, and leaving it untracked too would strand what it armed.
   trackLiveApiObject(pooled);
-  pooled.goto(target);
 
-  return pooled;
+  if (!target.startsWith("id ")) {
+    pooled.goto(target);
+
+    return pooled;
+  }
+
+  if (retargetToId(pooled, target.slice(3))) {
+    return pooled;
+  }
+
+  // Only reachable if a non-cleared object reached the free list, which the
+  // release guard exists to prevent. Building is what this did before pooling
+  // covered id targets, so the fallback is just the old behavior.
+  return trackLiveApiObject(new LiveAPI(target));
 }
 
 if (typeof LiveAPI !== "undefined") {
@@ -69,7 +98,7 @@ if (typeof LiveAPI !== "undefined") {
     // a path cleared to "" — it describes the wrapper, not the target.
     const id = this.id as string | number;
 
-    return id !== "id 0" && id !== "0" && id !== 0;
+    return id !== "id 0" && id !== NONEXISTENT_ID && id !== 0;
   };
 
   /**

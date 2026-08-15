@@ -53,6 +53,39 @@ function trackSilentlyUnclearable(): LiveAPI {
   return trackLiveApiObject(api as unknown as LiveAPI);
 }
 
+/**
+ * Track an object that clears normally but ignores an id write, standing in for
+ * the way Live drops a bad id without saying so.
+ *
+ * @param id - What it reports afterwards: the target it never left, or "0"
+ * @returns The tracked object
+ */
+function trackIdDeaf(id: string): LiveAPI {
+  let path = String(livePath.track(0));
+
+  const api = {
+    mode: 0,
+
+    get path(): string {
+      return path;
+    },
+
+    set path(value: string) {
+      path = value;
+    },
+
+    get id(): string {
+      return id;
+    },
+
+    set id(_value: string) {
+      // Live ignoring the write.
+    },
+  };
+
+  return trackLiveApiObject(api as unknown as LiveAPI);
+}
+
 describe("live-api release", () => {
   // Outside Max, v8-max-console.error falls back to the Node console.
   let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -248,9 +281,7 @@ describe("live-api release", () => {
     endLiveApiScope();
   });
 
-  it("builds a fresh object for an id target instead of retargeting", () => {
-    // goto can't take the "id N" form. Measured on 12.4.3 it reports success
-    // and leaves the object nonexistent, so an id always builds.
+  it("retargets a released object to an id target too", () => {
     beginLiveApiScope();
 
     const first = LiveAPI.from(livePath.track(0));
@@ -260,8 +291,53 @@ describe("live-api release", () => {
 
     const byId = LiveAPI.from(5);
 
-    expect(byId).not.toBe(first);
+    expect(byId).toBe(first);
     expect(byId.path).toBe("id 5");
+
+    endLiveApiScope();
+  });
+
+  it("builds an object for an id target when the pool is empty", () => {
+    beginLiveApiScope();
+
+    const byId = LiveAPI.from(5);
+
+    expect(byId.path).toBe("id 5");
+
+    endLiveApiScope();
+  });
+
+  it("builds instead of handing back an object that ignored an id write", () => {
+    // A bad id doesn't throw — Live leaves the object on its old target. Only
+    // reachable if the release let an uncleared object into the pool, but the
+    // cost of being wrong is a read or write landing on someone else's object.
+    beginLiveApiScope();
+
+    const deaf = trackIdDeaf("7");
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    const byId = LiveAPI.from(5);
+
+    expect(byId).not.toBe(deaf);
+    expect(byId.path).toBe("id 5");
+
+    endLiveApiScope();
+  });
+
+  it("keeps an object an id write left pointing at nothing", () => {
+    // "0" is not the id that was asked for, but it is a truthful answer: the
+    // object points nowhere, which is what a bad id means. Rebuilding would
+    // land on exactly the same result for more work.
+    beginLiveApiScope();
+
+    const nowhere = trackIdDeaf("0");
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    expect(LiveAPI.from(5)).toBe(nowhere);
 
     endLiveApiScope();
   });
@@ -280,8 +356,8 @@ describe("live-api release", () => {
 
     const reused = LiveAPI.from(livePath.track(0));
 
-    // The children, not liveSet: an id target always builds, so these are the
-    // objects the pool would drop if id-built ones weren't put back.
+    // The children, not liveSet: the free list is LIFO and they were released
+    // last, so this fails if getChildren's objects never reached it.
     expect(children).toContain(reused);
 
     endLiveApiScope();
@@ -351,9 +427,8 @@ describe("live-api release", () => {
   });
 
   it("stops pooling once the free list is full", () => {
-    // Without a ceiling the pool grows forever: a request returns everything it
-    // built but only takes back what it needed for a path, and an id target
-    // always builds. The surplus is every id-built object, every request.
+    // The ceiling bounds memory: one big request can build far more objects
+    // than any later one needs, and without a cap they all stay on the list.
     const overflow = 10;
 
     beginLiveApiScope();

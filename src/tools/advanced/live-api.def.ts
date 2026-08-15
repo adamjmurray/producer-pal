@@ -35,7 +35,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
             .describe(
               "Operation type. Live Object Model: get, set, call, goto, info. set_property writes exactly like set, but reports the value you sent. " +
                 "Producer Pal helpers returning normalized values: getProperty, getChildIds, exists, getColor, setColor. " +
-                "The LiveAPI object itself, not the Live object it points at: get_property (reads a JS field, not a Live property), set_path, set_mode, getcount, getstring, and call_method (calls a JS method, not a Live method)",
+                "The LiveAPI object itself, not the Live object it points at: get_property (reads a JS field, not a Live property), set_path, set_id, set_mode, getcount, getstring, and call_method (calls a JS method, not a Live method)",
             ),
           property: z
             .string()
@@ -56,6 +56,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
             .optional()
             .describe(
               "Value for set/set_property operations, path for goto or set_path operations, " +
+                'id for set_id operations (the bare number — "id 5" points the object at nothing), ' +
                 "mode for set_mode operations (0 follows the path, 1 follows the object), " +
                 'or color for setColor operations (a "#RRGGBB" hex string)',
             ),

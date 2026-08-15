@@ -28,6 +28,7 @@ export const LIVE_API_OPERATION_TYPES = [
   "get_property",
   "set_path",
   "set_mode",
+  "set_id",
   "call_method",
   "getcount",
   "getstring",

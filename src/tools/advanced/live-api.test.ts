@@ -472,6 +472,41 @@ describe("liveApi", () => {
       ).toThrow("set_path operation requires value (path)");
     });
 
+    it("should handle set_id operation", () => {
+      registerMockObject("7", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      const result = liveApi({
+        operations: [{ type: "set_id", value: 7 }],
+      });
+
+      // The result is a read-back of api.id, not an echo of the input: a bad id
+      // is dropped silently and leaves the previous target in place.
+      expect(result.results[0]!.result).toBe("7");
+      expect(result.path).toBe(String(livePath.track(0)));
+    });
+
+    it('should point at nothing for a set_id given the "id N" form', () => {
+      // The bare number is the only form that retargets. Worth pinning down
+      // because it fails the way everything else here does — silently.
+      const result = liveApi({
+        operations: [{ type: "set_id", value: "id 7" }],
+      });
+
+      expect(result.results[0]!.result).toBe("0");
+      expect(result.path).toBe("");
+    });
+
+    it("should throw error for set_id without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_id" }],
+        }),
+      ).toThrow("set_id operation requires value (id)");
+    });
+
     it("should handle set_mode operation", () => {
       const result = liveApi({
         operations: [

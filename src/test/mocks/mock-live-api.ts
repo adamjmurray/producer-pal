@@ -161,6 +161,17 @@ export class LiveAPI {
     return this._id ?? "";
   }
 
+  /**
+   * Retarget the object, mirroring the real LiveAPI's writable id. Takes the
+   * bare id as a number or a string — the "id N" form points the real object at
+   * nothing, so it does the same here.
+   */
+  set id(value: string | number) {
+    const bare = String(value);
+
+    this._retarget(bare.startsWith("id ") ? "" : `id ${bare}`);
+  }
+
   get path(): string {
     if (this._registered) {
       return this._registered.returnPath ?? this._registered.path;

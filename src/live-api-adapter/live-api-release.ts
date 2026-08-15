@@ -47,7 +47,13 @@
  * 14 ms slower than retargeting a pooled one, and each build also slows every
  * later read a little. Measured on 12.4.3 over 2,500 read-track calls: pooled,
  * a read went from 54 ms to 90 ms; unpooled, from 534 ms to 1.1 s. Same work
- * either way — 90,006 objects, 92% of them reused when the pool is on.
+ * either way — 90,006 objects.
+ *
+ * Both target forms retarget, so a warm pool builds nothing. Getting there took
+ * two goes: pooling paths alone still left getChildren building a few objects a
+ * request, because only a path was known to retarget. Assigning `id` turned out
+ * to work as well, and closing that gap took the same read-track loop from 34.8
+ * to 11.6 ms/call.
  *
  * Pooling does not make the cost vanish, and measuring it as though it should
  * will read as failure. Visiting a path registers something too, so latency
@@ -69,11 +75,10 @@ const trackedObjects: LiveAPI[] = [];
 /**
  * Ceiling on the free list.
  *
- * Without one it grows forever. A request returns every object it built, but
- * only takes back the ones it needed for a path — an "id N" target can't
- * retarget an existing object, so getChildren always builds. Every request
- * therefore hands back more than it took, and the surplus is exactly the
- * id-built objects. A read-track loop would pile up tens of thousands.
+ * Both target forms retarget a pooled object now, so a request hands back
+ * exactly what it took and the free list settles at the largest single request
+ * the session has seen. That is bounded, but not small: reading a big Live Set
+ * touches an object per clip.
  *
  * Anything over the ceiling is released and dropped. A request that needs more
  * than this builds the difference, which is what it did before pooling existed.

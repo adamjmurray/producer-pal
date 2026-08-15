@@ -64,6 +64,7 @@ const OPERATION_REQUIREMENTS: Record<OperationType, OperationRequirements> = {
   // valueDefined, not valueTruthy: "" and 0 are the meaningful values here.
   set_path: { valueDefined: true },
   set_mode: { valueDefined: true },
+  set_id: { valueDefined: true },
   getcount: { property: true },
   getstring: { property: true },
 };
@@ -93,6 +94,7 @@ const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
     setColor: { value: "setColor operation requires value (color)" },
     set_path: { value: "set_path operation requires value (path)" },
     set_mode: { value: "set_mode operation requires value (mode)" },
+    set_id: { value: "set_id operation requires value (id)" },
     getcount: { property: "getcount operation requires property (child type)" },
     getstring: { property: "getstring operation requires property" },
   };
@@ -223,6 +225,16 @@ function executeObjectOperation(
       api.mode = operation.value as number;
 
       return api.mode;
+
+    case "set_id":
+      // Retargets by id, the way set_path does by path. Wants the bare number:
+      // the "id N" form points the object at nothing instead.
+      (api as unknown as { id: string | number }).id = operation.value as
+        | string
+        | number;
+
+      // Read back — a bad id is ignored silently, leaving the previous target.
+      return api.id;
 
     case "call_method": {
       const args = operation.args ?? [];
