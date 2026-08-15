@@ -316,5 +316,31 @@ describe("duplicate - clip duplication", () => {
       );
       expect(track0.call).toHaveBeenCalledTimes(3); // 3 duplicates
     });
+
+    it("names the positions a cut-short duplicate did not reach", async () => {
+      // The deadline arrives on the context, set once per request by the V8
+      // adapter; an expired one is what a duplicate sees when an earlier call
+      // in the same request has spent the budget.
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      registerArrangementClip(0, 0, 8);
+
+      const result = await duplicate(
+        { type: "clip", id: "clip1", arrangementStart: "3|1,4|1,5|1" },
+        { deadline: Date.now() - 1 },
+      );
+
+      expect(result).toStrictEqual([]);
+      expect(track0.call).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "Ran out of time after duplicating 0 of 3. " +
+          "Not duplicated: 3|1, 4|1, 5|1. Re-run for those positions.",
+      );
+    });
   });
 });

@@ -10,10 +10,7 @@ import {
   validateAndParseArrangementParams,
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import {
-  computeLoopDeadline,
-  isDeadlineExceeded,
-} from "#src/tools/clip/helpers/loop-deadline.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
   prepareSplitParams,
@@ -139,12 +136,9 @@ export async function updateClip(
   }: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
-  const deadline = computeLoopDeadline(context.timeoutMs);
-
-  // Share it with the arrangement helpers: one clip's tiling can outrun the
-  // whole budget on its own, so the per-clip check below is too coarse to keep
-  // the response from being replaced by a timeout error.
-  context.deadline = deadline;
+  // Set once per request by the V8 adapter, so a nested call (duplicate ->
+  // updateClip) spends the caller's remaining budget instead of restarting it.
+  const deadline = context.deadline ?? null;
 
   if (!ids) {
     console.warn("updateClip: ids is required");

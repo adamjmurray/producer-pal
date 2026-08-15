@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/session/select.ts";
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
@@ -136,7 +135,8 @@ export async function createClip(
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
-  const deadline = computeLoopDeadline(_context.timeoutMs);
+  // Set once per request by the V8 adapter (see buildRequestContext).
+  const deadline = _context.deadline;
   const audio = { warping, gainDb, pitchShift, warpMode };
 
   // Treat a blank/whitespace-only transforms string as "no transform".

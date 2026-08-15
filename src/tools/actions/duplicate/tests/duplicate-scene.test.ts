@@ -479,4 +479,24 @@ describe("duplicate - scene duplication", () => {
     expect(result.id).toBe("live_set/scenes/1");
     expect(result.sceneIndex).toBe(1);
   });
+
+  it("names the positions a cut-short arrangement duplicate did not reach", async () => {
+    // A scene copy places a clip per track, so a few can eat the whole budget.
+    setupArrangementSceneMocks(1);
+
+    const track0 = registerTrackWithArrangementDup(0);
+
+    const result = await duplicate(
+      { type: "scene", id: "scene1", arrangementStart: "5|1,9|1" },
+      { deadline: Date.now() - 1 },
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(track0.call).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Ran out of time after duplicating 0 of 2. " +
+        "Not duplicated: 5|1, 9|1. Re-run for those positions.",
+    );
+  });
 });

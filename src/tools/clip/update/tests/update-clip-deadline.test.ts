@@ -20,7 +20,7 @@ vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
 
 // Dynamic import after mock is set up
 const { updateClip } = await import("#src/tools/clip/update/update-clip.ts");
-const { isDeadlineExceeded } =
+const { computeLoopDeadline, isDeadlineExceeded } =
   await import("#src/tools/clip/helpers/loop-deadline.ts");
 
 /**
@@ -47,6 +47,24 @@ describe("updateClip - deadline exceeded", () => {
   beforeEach(() => {
     mocks = setupUpdateClipMocks();
     vi.mocked(isDeadlineExceeded).mockReturnValue(false);
+    vi.mocked(computeLoopDeadline).mockClear();
+  });
+
+  it("checks the deadline it inherited instead of starting a fresh budget", async () => {
+    // The V8 adapter sets it once per request. Recomputing here from timeoutMs
+    // would give a nested call (duplicate -> updateClip) a full budget of its
+    // own, so N of them could overrun the request timeout together.
+    setupTwoMidiClips(mocks);
+
+    const deadline = Date.now() + 5_000;
+
+    await updateClip(
+      { ids: "123", name: "Updated" },
+      { timeoutMs: 30_000, deadline },
+    );
+
+    expect(isDeadlineExceeded).toHaveBeenCalledWith(deadline);
+    expect(computeLoopDeadline).not.toHaveBeenCalled();
   });
 
   it("should stop updating clips when deadline is exceeded", async () => {

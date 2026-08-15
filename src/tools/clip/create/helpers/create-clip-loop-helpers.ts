@@ -53,7 +53,7 @@ export interface CreateClipsParams {
   songTimeSigDenominator: number;
   length: string | null;
   sampleFile: string | null;
-  deadline: number | null;
+  deadline: number | null | undefined;
   code: string | null;
   /** Take lane to create arrangement clips on, or null for the main lane */
   takeLane: LiveAPI | null;
@@ -95,7 +95,7 @@ export async function createClips(
   };
 
   for (let i = 0; i < count; i++) {
-    if (isDeadlineExceeded(deadline)) {
+    if (isDeadlineExceeded(deadline ?? null)) {
       console.warn(
         `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
       );

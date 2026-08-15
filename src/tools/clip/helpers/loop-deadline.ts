@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
 
 /**
@@ -40,4 +41,26 @@ export function isDeadlineExceeded(deadline: number | null): boolean {
   }
 
   return Date.now() >= deadline;
+}
+
+/**
+ * Whether a loop should stop now, warning about what it did not reach.
+ *
+ * The Node-side timeout replaces the whole response with an error, so a run that
+ * overshoots tells the caller nothing about what landed. Stopping just short
+ * keeps the partial result and names the rest.
+ *
+ * @param deadline - The request deadline from ToolContext
+ * @param describeRemaining - Builds the warning; called only when time is up
+ * @returns true if the deadline has passed and the caller should stop
+ */
+export function stopForDeadline(
+  deadline: number | null | undefined,
+  describeRemaining: () => string,
+): boolean {
+  if (!isDeadlineExceeded(deadline ?? null)) return false;
+
+  console.warn(describeRemaining());
+
+  return true;
 }

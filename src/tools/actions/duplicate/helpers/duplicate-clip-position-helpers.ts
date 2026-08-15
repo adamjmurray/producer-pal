@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   isTakeLaneClip,
   type TakeLaneTarget,
@@ -23,6 +24,7 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
+import { unreachedPositionsWarning } from "./duplicate-position-helpers.ts";
 import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
 import { resolveArrangementPositions } from "./duplicate-validation-helpers.ts";
 
@@ -151,6 +153,21 @@ export async function duplicateClipWithPositions(
     warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
 
     for (let i = 0; i < positionsInBeats.length; i++) {
+      // Each copy can tile a long span, so the budget can run out mid-list.
+      if (
+        stopForDeadline(context.deadline, () =>
+          unreachedPositionsWarning(
+            positionsInBeats.slice(i),
+            i,
+            positionsInBeats.length,
+            songTimeSigNumerator,
+            songTimeSigDenominator,
+          ),
+        )
+      ) {
+        break;
+      }
+
       const result = await duplicateClipToArrangement(
         id,
         positionsInBeats[i] as number,

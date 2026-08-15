@@ -28,6 +28,7 @@ import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
+import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { connect } from "#src/tools/core/connect.ts";
@@ -94,13 +95,21 @@ const sessionState: SessionState = {
  * @returns Fresh ToolContext owned by the calling request
  */
 function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
-  return {
+  const context: ToolContext = {
     projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
+
+  // One deadline for the whole request, set here and not at tool entry: a tool
+  // that calls another (duplicate -> updateClip) would otherwise hand the nested
+  // call a fresh full budget, so N of them can overrun the timeout together and
+  // lose the response to it.
+  context.deadline = computeLoopDeadline(context.timeoutMs);
+
+  return context;
 }
 
 /**
