@@ -8,8 +8,11 @@
  *
  * Live installs a listener on each collection along a path-based object's path
  * (live_set.tracks, track.devices, ...) and never takes them down. Assigning an
- * empty path is the only thing that does. An unreleased object costs ~5 KB of
- * Ableton log on every later structural change to the Live Set.
+ * empty path is the only thing that does. Every armed listener has to be
+ * notified on any later structural change to the Live Set, so unreleased
+ * objects make those changes slower: on 12.4.3, adding and deleting a track
+ * took 120 ms with none held and 630 ms with 7,190 held. Clearing the paths
+ * gives all of it back.
  *
  * So objects are tracked as they are built and released when the request that
  * built them ends. Identity and lifetime *within* a request are untouched.
@@ -28,6 +31,11 @@
  *
  * Build objects where you use them. Nothing in the codebase holds one across
  * requests today; keep it that way.
+ *
+ * Mode 1 (follow the object) is not the way around this — it is the worst case
+ * measured. The same 7,190 held objects at mode 1 took that track add and
+ * delete to 5.7 s, nine times the mode 0 cost. Caching by id across requests
+ * is the most expensive thing you can do here.
  * ============================================================================
  *
  * Clearing the path is not the whole story, which is why released objects are
@@ -44,9 +52,10 @@
  * difference is that the path cost is paid once per path and saturates, while
  * the construction cost never does.
  *
- * Don't reach for freepeer(): it frees the JS peer and leaves the listener
- * armed. 500 read-track calls still armed 6,002 listeners and the next track
- * delete still wrote 30 MB of log — the state the SendMessage errors come from.
+ * Don't reach for freepeer(), and don't count on the garbage collector. Both
+ * free the JS peer and leave the listener armed, and the slowdown then never
+ * comes back: 7,190 objects in that state held a track add and delete at 1.0 s
+ * (freepeer) and 3.5 s (collected) until the device was reloaded.
  */
 
 import { errorMessage } from "#src/shared/error-utils.ts";
