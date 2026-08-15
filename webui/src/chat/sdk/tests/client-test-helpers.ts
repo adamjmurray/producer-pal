@@ -40,3 +40,33 @@ export function mockStreamParts(parts: Record<string, unknown>[]): void {
     stream: iterate(),
   });
 }
+
+/**
+ * A stream that emits `parts` and then fails — how a provider stream ends when
+ * the turn is aborted or the request dies partway through.
+ * @param parts - Stream parts to emit before failing
+ * @param error - The error to throw after the last part
+ * @returns A streamText-shaped result
+ */
+export function failingAfterStream(
+  parts: Record<string, unknown>[],
+  error: unknown,
+): { stream: AsyncIterable<Record<string, unknown>> } {
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    for (const p of parts) yield p;
+
+    throw error;
+  }
+
+  return { stream: iterate() };
+}
+
+/**
+ * The error an aborted fetch/stream rejects with.
+ * @returns An AbortError
+ */
+export function abortError(): Error {
+  return Object.assign(new Error("The operation was aborted."), {
+    name: "AbortError",
+  });
+}
