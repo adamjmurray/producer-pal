@@ -23,18 +23,33 @@ import { type ChatClientConfig } from "#webui/chat/sdk/types";
 import { getSubagentBriefingUrl } from "#webui/utils/mcp-url";
 
 /**
- * The tools a briefed worker does without. `ppal-connect` is what the briefing
- * replaces; `ppal-context` reads and writes the user's context and memory, which
- * is the orchestrator's business — a worker gets the context it needs handed to
- * it, and letting a parallel fan-out of workers write to a
- * whole-document-replacing store is a race with the user's own notes as the
- * stake.
+ * The tools no worker ever gets, briefed or not. `ppal-context` reads and writes
+ * the user's context and memory, which is the orchestrator's business — a worker
+ * gets the context it needs handed to it, and letting a parallel fan-out of
+ * workers write to a whole-document-replacing store is a race with the user's own
+ * notes as the stake. That race has nothing to do with the briefing, so these
+ * stay withheld on the no-briefing path too.
+ */
+export const ALWAYS_WITHHELD_TOOLS = ["ppal-context"] as const;
+
+/**
+ * The tools the briefing replaces, withheld only when one came back: a worker
+ * with neither a briefing nor `ppal-connect` knows nothing about the Live Set it
+ * is about to edit.
+ */
+export const BRIEFING_REPLACED_TOOLS = ["ppal-connect"] as const;
+
+/**
+ * Everything a briefed worker does without.
  *
- * Withholding them also shortens the briefing itself: the server drops the
- * skills fragments that teach a withheld tool, so the same list that removes
+ * Withholding also shortens the briefing itself: the server drops the skills
+ * fragments that teach a withheld tool, so the same list that removes
  * ppal-context removes its guidance.
  */
-export const WORKER_WITHHELD_TOOLS = ["ppal-connect", "ppal-context"] as const;
+export const WORKER_WITHHELD_TOOLS = [
+  ...ALWAYS_WITHHELD_TOOLS,
+  ...BRIEFING_REPLACED_TOOLS,
+] as const;
 
 /**
  * Fetch the briefing for a worker about to run under `config`.
@@ -94,9 +109,37 @@ export async function fetchSubagentBriefing(
 export function withheldToolsApplied(
   config: ChatClientConfig,
 ): ChatClientConfig {
+  return withoutTools(config, WORKER_WITHHELD_TOOLS);
+}
+
+/**
+ * The worker config with only {@link ALWAYS_WITHHELD_TOOLS} switched off — what
+ * a worker runs under when no briefing came back. It keeps `ppal-connect` to
+ * bootstrap itself the old way, but still can't race its siblings writing the
+ * user's context.
+ *
+ * @param config - The worker config to narrow
+ * @returns A copy with the always-withheld tools disabled
+ */
+export function alwaysWithheldApplied(
+  config: ChatClientConfig,
+): ChatClientConfig {
+  return withoutTools(config, ALWAYS_WITHHELD_TOOLS);
+}
+
+/**
+ * Copy the config with `tools` disabled.
+ * @param config - The worker config to narrow
+ * @param tools - The tool ids to switch off
+ * @returns A copy with those tools disabled
+ */
+function withoutTools(
+  config: ChatClientConfig,
+  tools: readonly string[],
+): ChatClientConfig {
   const enabledTools = { ...config.enabledTools };
 
-  for (const tool of WORKER_WITHHELD_TOOLS) enabledTools[tool] = false;
+  for (const tool of tools) enabledTools[tool] = false;
 
   return { ...config, enabledTools };
 }

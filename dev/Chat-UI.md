@@ -376,9 +376,11 @@ overview, the skills for its toolset and notation, and the user's context
 layers, fetched once from `GET /subagent-briefing`
 (`subagent/subagent-briefing.ts`). That replaces the `ppal-connect` call each
 worker used to make, so `ppal-connect` and `ppal-context` are withheld from a
-briefed worker. If the briefing can't be fetched, both stay enabled and the
-worker bootstraps itself as before — see Architecture.md → Subagent briefings
-for why the blob belongs in the system prompt.
+briefed worker. If the briefing can't be fetched, `ppal-connect` comes back and
+the worker bootstraps itself as before; `ppal-context` stays withheld either
+way, since it's withheld to keep parallel workers off the user's context store
+rather than because the briefing replaced it — see Architecture.md → Subagent
+briefings for why the blob belongs in the system prompt.
 
 **Formatting:**
 

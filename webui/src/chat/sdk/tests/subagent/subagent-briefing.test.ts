@@ -13,7 +13,10 @@ import { NOTATION_HEADER } from "#src/shared/notation";
 import { createSpawnSubagentTool } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
+  ALWAYS_WITHHELD_TOOLS,
+  BRIEFING_REPLACED_TOOLS,
   WORKER_WITHHELD_TOOLS,
+  alwaysWithheldApplied,
   fetchSubagentBriefing,
   withBriefing,
   withheldToolsApplied,
@@ -134,6 +137,31 @@ describe("withheldToolsApplied", () => {
   });
 });
 
+describe("alwaysWithheldApplied", () => {
+  it("switches off only the tools no worker ever gets", () => {
+    const narrowed = alwaysWithheldApplied(createConfig());
+
+    for (const tool of ALWAYS_WITHHELD_TOOLS) {
+      expect(narrowed.enabledTools?.[tool]).toBe(false);
+    }
+
+    // The briefing-replaced ones are left alone — that's the whole difference.
+    for (const tool of BRIEFING_REPLACED_TOOLS) {
+      expect(narrowed.enabledTools?.[tool]).toBeUndefined();
+    }
+  });
+
+  it("leaves the rest of the toolset alone and doesn't mutate the input", () => {
+    const config = createConfig({
+      enabledTools: { "ppal-read-clip": true, "ppal-context": true },
+    });
+    const narrowed = alwaysWithheldApplied(config);
+
+    expect(narrowed.enabledTools?.["ppal-read-clip"]).toBe(true);
+    expect(config.enabledTools?.["ppal-context"]).toBe(true);
+  });
+});
+
 describe("withBriefing", () => {
   it("appends to the inherited system instruction rather than replacing it", () => {
     const briefed = withBriefing(
@@ -214,15 +242,18 @@ describe("spawn_subagent briefing wiring", () => {
     }
   });
 
-  it("keeps ppal-connect when no briefing came back", async () => {
+  it("keeps ppal-connect — but not ppal-context — when no briefing came back", async () => {
     // A worker with neither a briefing nor a way to connect knows nothing about
-    // the Live Set it is about to edit.
+    // the Live Set it is about to edit. ppal-context is withheld for a different
+    // reason (parallel workers racing on the user's context store), so a failed
+    // briefing must not hand it back.
     getBriefing.mockResolvedValue(null);
 
     await spawn();
 
     expect(workerConfig?.systemInstruction).toBe("Base prompt.");
     expect(workerConfig?.enabledTools?.["ppal-connect"]).toBeUndefined();
+    expect(workerConfig?.enabledTools?.["ppal-context"]).toBe(false);
   });
 
   it("still applies the recursion guard over a briefed toolset", async () => {

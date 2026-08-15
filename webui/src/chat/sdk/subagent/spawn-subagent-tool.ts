@@ -10,7 +10,11 @@ import {
   isToolEnabled,
   SPAWN_SUBAGENT_TOOL_NAME,
 } from "#webui/lib/utils/enabled-tools";
-import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
+import {
+  alwaysWithheldApplied,
+  withBriefing,
+  withheldToolsApplied,
+} from "./subagent-briefing";
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
@@ -230,10 +234,13 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * The order matters and is not interchangeable. The withheld tools are applied
  * FIRST because the briefing request reads its toolset off the config — asking
  * for a briefing before withholding ppal-context would ship the worker guidance
- * for a tool it won't have. They are only KEPT when a briefing came back: a
- * worker with neither a briefing nor ppal-connect knows nothing about the Live
- * Set it is about to edit, which is strictly worse than the round-trip this
- * whole path exists to avoid.
+ * for a tool it won't have.
+ *
+ * Without a briefing the worker gets ppal-connect back, since one with neither
+ * knows nothing about the Live Set it is about to edit — but only that one.
+ * ppal-context stays withheld either way: it's withheld to keep parallel workers
+ * off the user's context store, which has nothing to do with whether the briefing
+ * arrived.
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh
@@ -247,12 +254,14 @@ async function resolveWorkerConfig(
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
-  if (!deps.getBriefing) return inherited;
+  if (!deps.getBriefing) return alwaysWithheldApplied(inherited);
 
   const narrowed = withheldToolsApplied(inherited);
   const briefing = await deps.getBriefing(narrowed, abortSignal);
 
-  return briefing == null ? inherited : withBriefing(narrowed, briefing);
+  return briefing == null
+    ? alwaysWithheldApplied(inherited)
+    : withBriefing(narrowed, briefing);
 }
 
 /**
