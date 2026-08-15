@@ -153,8 +153,12 @@ describe("subagent-briefing route", () => {
   it("ends with the subagent framing, not the user-facing next step", async () => {
     const briefing = await getBriefing();
 
+    // No block follows it: the framing has to get the last word over the
+    // user-facing instruction it inherits.
     expect(briefing).toContain("## You are a subagent");
-    expect(briefing.trimEnd().endsWith("why.")).toBe(true);
+    expect(briefing.lastIndexOf("\n## ")).toBe(
+      briefing.indexOf("\n## You are a subagent"),
+    );
     expect(briefing).not.toContain("wait for their instructions");
   });
 
