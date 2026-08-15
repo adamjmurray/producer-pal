@@ -28,6 +28,7 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { generateText, streamText } from "ai";
+import { FAILED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import {
   ChatSdkClient,
   MAX_TOOL_STEPS,
@@ -626,17 +627,18 @@ describe("ChatSdkClient", () => {
       });
     });
 
-    it("synthesizes a canceled tool-result for a tool-call stopped mid-execution", async () => {
-      // User pressed Stop after the tool-call streamed but before the result:
-      // toolCalls present, toolResults missing. Sending again must still pair the
-      // tool-call with a result, or Anthropic/OpenAI reject the request (400).
+    it("synthesizes a tool-result for a tool-call left unfinished", async () => {
+      // A history saved mid-tool and reloaded: toolCalls present, toolResults
+      // missing, and the turn's reconcile never ran. Sending again must still
+      // pair the tool-call with a result, or Anthropic/OpenAI reject the request
+      // (400) — and it must not claim a cancellation it can't know about.
       const chatHistory: ChatMessage[] = [
         { role: "user", content: "Connect" },
         {
           role: "assistant",
           content: "Connecting",
           toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-          // no toolResults — stopped mid-tool
+          // no toolResults — persisted mid-tool
         },
       ];
 
@@ -647,13 +649,13 @@ describe("ChatSdkClient", () => {
       expect(callArgs.messages[2].role).toBe("tool");
       expect(callArgs.messages[2].content).toHaveLength(1);
       expect(callArgs.messages[2].content[0].toolCallId).toBe("tc1");
-      expect(callArgs.messages[2].content[0].output.value).toContain(
-        "Canceled",
+      expect(callArgs.messages[2].content[0].output.value).toBe(
+        FAILED_TOOL_RESULT_TEXT,
       );
     });
 
     it("backfills only the missing result when some tool-calls completed", async () => {
-      // Two tools called; first returned, second interrupted by Stop.
+      // Two tools called; first returned, second left unfinished.
       const chatHistory: ChatMessage[] = [
         { role: "user", content: "Do two things" },
         {
@@ -686,14 +688,15 @@ describe("ChatSdkClient", () => {
       expect(toolMsg.content[0].toolCallId).toBe("tc1");
       expect(toolMsg.content[0].output.value).toBe("OK");
       expect(toolMsg.content[1].toolCallId).toBe("tc2");
-      expect(toolMsg.content[1].output.value).toContain("Canceled");
+      expect(toolMsg.content[1].output.value).toBe(FAILED_TOOL_RESULT_TEXT);
     });
 
     it("backfills a canceled result in history when the stream stops mid-tool", async () => {
-      // Stream emits a tool-call then ends with no tool-result (Stop pressed
-      // while the tool was running). The assistant message must not be left with
-      // a dangling tool-call — the in-history reconcile fixes the next send AND
-      // the perpetual-running UI state.
+      // The shape a real Stop takes: the AI SDK answers an aborted signal by
+      // closing the stream, so it simply ENDS after the tool-call with no
+      // tool-result and nothing thrown. The assistant message must not be left
+      // with a dangling tool-call — the in-history reconcile fixes the next send
+      // AND the perpetual-running UI state.
       const last = await sendWithParts([
         {
           type: "tool-call",

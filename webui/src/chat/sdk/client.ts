@@ -461,6 +461,10 @@ export class ChatSdkClient {
 
     let completedSteps = 0;
     let finalFinishReason: FinishReason | undefined;
+    // The default is what labels a real Stop: the AI SDK answers an aborted
+    // signal by emitting an `abort` part and CLOSING the stream, so a Stop ends
+    // this loop normally and never reaches the catch below. Don't invert this to
+    // "failed unless proven otherwise" — that would mislabel every Stop.
     let streamFailed = false;
 
     try {
@@ -498,9 +502,11 @@ export class ChatSdkClient {
         }
       }
     } catch (error) {
-      // An abort throws here too, so the throw alone says nothing about who
-      // ended the turn: the signal, or an AbortError from a stream aborted
-      // without one (a worker's, or a Stop the caller didn't route through us).
+      // Only reached when the stream ERRORS, which is not the same as being
+      // aborted (see the default above). Both guards are still needed: an abort
+      // that raced the read arrives as a throw with our signal already set, and
+      // an abort raised without our signal — a worker's, or one the caller
+      // didn't route through this call — only says so by its error name.
       streamFailed = abortSignal?.aborted !== true && !isAbortError(error);
 
       throw error;

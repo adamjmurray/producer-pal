@@ -150,10 +150,10 @@ function appendAssistantMessages(
   });
 
   // Tool message pairing EVERY tool-call with a result (required by providers
-  // for multi-turn). buildToolResultContent backfills a canceled result for
-  // any call the user stopped before it returned, so a persisted "stopped
-  // mid-tool" history can still be sent without a provider 400. (This runs
-  // before the stream's reconcile, so it must not assume a complete history.)
+  // for multi-turn). buildToolResultContent backfills a placeholder for any call
+  // still missing one, so a history persisted mid-tool can be sent without a
+  // provider 400. (This runs before the stream's reconcile, so it must not
+  // assume a complete history.)
   messages.push({
     role: "tool",
     content: buildToolResultContent(msg),
@@ -240,10 +240,14 @@ export function reconcileDanglingToolCalls(
 
 /**
  * Build tool result content for the tool role message, one part per tool-call
- * (not per recorded result). A call with a recorded result emits it; a call the
- * user stopped before it returned emits a synthetic "canceled" result. This
- * guarantees no assistant tool-call is left without a matching tool-result,
- * which Anthropic/OpenAI reject with a 400.
+ * (not per recorded result). A call with a recorded result emits it; one without
+ * gets a synthetic result, so no assistant tool-call is left unmatched (which
+ * Anthropic/OpenAI reject with a 400).
+ *
+ * The synthetic one says the request failed rather than that the user canceled,
+ * because reaching here means the turn's reconcile never ran — a history saved
+ * mid-tool and reloaded (autosave fires on the first tool-call part), which says
+ * nothing about who ended the turn.
  * @param msg - Assistant message with tool calls
  * @returns Array of ToolResultPart, one per tool-call, in tool-call order
  */
@@ -256,7 +260,7 @@ function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
     const tr = resultsById.get(tc.id);
     const value =
       tr == null
-        ? CANCELED_TOOL_RESULT_TEXT
+        ? FAILED_TOOL_RESULT_TEXT
         : typeof tr.result === "string"
           ? tr.result
           : JSON.stringify(tr.result);

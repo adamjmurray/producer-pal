@@ -42,19 +42,23 @@ const TOOL_CALL_PART = {
 };
 
 /**
- * A stream that emits the tool-call and then aborts the turn — the shape a Stop
- * mid-tool produces, where the signal is what says the user did it.
- * @param controller - Aborted as the stream fails, as a real Stop would
+ * A stream that emits the tool-call and then loses the race with an abort: the
+ * signal is already set when it throws. The AI SDK usually closes cleanly on an
+ * aborted signal instead (covered in client.test.ts), so this is the variant
+ * that reaches the catch with the signal — not the error — carrying the truth.
+ * @param controller - Aborted before the stream fails, as a Stop would
+ * @param error - What the stream throws once aborted
  * @returns A streamText-shaped result
  */
-function stoppedMidTool(controller: AbortController): {
-  stream: AsyncIterable<Record<string, unknown>>;
-} {
+function abortedMidTool(
+  controller: AbortController,
+  error: unknown,
+): { stream: AsyncIterable<Record<string, unknown>> } {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
     yield TOOL_CALL_PART;
     controller.abort();
 
-    throw abortError();
+    throw error;
   }
 
   return { stream: iterate() };
@@ -114,11 +118,23 @@ describe("a stream that dies between a tool-call and its result", () => {
     expect(backfilledResult(client)).toBe(FAILED_TOOL_RESULT_TEXT);
   });
 
-  it("still says canceled when the user pressed Stop", async () => {
+  it("still says canceled when our own signal was aborted", async () => {
+    // A plain Error, so the signal is the only thing saying this was a Stop.
+    // (An AbortError with no signal is the other canceled shape — a worker's
+    // abort, pinned in client-subagent-stop.test.ts.)
     const controller = new AbortController();
     const client = await turnDyingMidTool(
-      stoppedMidTool(controller),
+      abortedMidTool(controller, new Error("stream closed")),
       controller.signal,
+    );
+
+    expect(backfilledResult(client)).toBe(CANCELED_TOOL_RESULT_TEXT);
+  });
+
+  it("still says canceled for an AbortError raised without our signal", async () => {
+    const controller = new AbortController();
+    const client = await turnDyingMidTool(
+      abortedMidTool(controller, abortError()),
     );
 
     expect(backfilledResult(client)).toBe(CANCELED_TOOL_RESULT_TEXT);
