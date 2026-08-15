@@ -149,7 +149,14 @@ async function runArm(
     const started = performance.now();
 
     for (let i = 0; i < callsPerRound; i++) {
-      await client.callTool(callFor(arm, n++));
+      const result = await client.callTool(callFor(arm, n++));
+
+      // Without this a release build reads as a very fast Live: ppal-live-api
+      // isn't there, every call errors, and the timings describe the error
+      // round trip.
+      if (result.isError) {
+        throw new Error(`Tool call failed: ${JSON.stringify(result)}`);
+      }
     }
 
     const mean = (performance.now() - started) / callsPerRound;
@@ -169,6 +176,31 @@ async function runArm(
   );
 }
 
+/**
+ * Read a positive-integer argument, rather than letting a typo become NaN — a
+ * NaN count runs zero rounds, prints nothing, and exits 0.
+ * @param value - The raw argument, if given
+ * @param fallback - Value to use when the argument is absent
+ * @param name - Argument name, for the error message
+ * @returns The count to use
+ */
+function count(
+  value: string | undefined,
+  fallback: number,
+  name: string,
+): number {
+  if (value == null) return fallback;
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    console.error(`Invalid ${name}: ${value}. Expected a positive integer.`);
+    process.exit(1);
+  }
+
+  return parsed;
+}
+
 const [armArg, roundsArg, callsArg] = process.argv.slice(2);
 const arm = (armArg ?? "goto") as Arm;
 
@@ -186,7 +218,12 @@ const client = new Client(
 await client.connect(transport);
 
 try {
-  await runArm(client, arm, Number(roundsArg ?? 5), Number(callsArg ?? 100));
+  await runArm(
+    client,
+    arm,
+    count(roundsArg, 5, "rounds"),
+    count(callsArg, 100, "callsPerRound"),
+  );
 } finally {
   await client.close();
 }
