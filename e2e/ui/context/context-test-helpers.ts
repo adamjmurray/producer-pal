@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Locator, type Page, type Route, expect } from "@playwright/test";
-import { BUILT_UI_PATH } from "./ui-test-helpers";
+import { BUILT_UI_PATH } from "../ui-test-helpers";
 
 // Stubbed, CI-runnable harness for the `/context` webui app (the Project |
 // Global | Instructions | Skills | Memory editor). Unlike the chat UI (whose
@@ -19,7 +19,7 @@ import { BUILT_UI_PATH } from "./ui-test-helpers";
 export {
   expectNoConsoleOutput,
   setupConsoleCapture,
-} from "../webui/webui-test-helpers";
+} from "../../webui/webui-test-helpers";
 
 /** One stored memory, matching the `/memory` collection's entry shape. */
 export interface FakeMemory {

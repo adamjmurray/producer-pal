@@ -62,7 +62,13 @@ export function setupConsoleCapture(): ConsoleLogs {
     });
 
     page.on("pageerror", (error) => {
-      captured.errors.push(error.message);
+      // A stream that dies before emitting anything (a 429, say) rejects one of
+      // streamText's side promises with no one awaiting it, so the failure also
+      // lands here as an unhandled rejection. Benign whenever a retry layer goes
+      // on to succeed, which is exactly what the subagent backoff spec drives.
+      if (!error.message.includes("No output generated")) {
+        captured.errors.push(error.message);
+      }
     });
   });
 
