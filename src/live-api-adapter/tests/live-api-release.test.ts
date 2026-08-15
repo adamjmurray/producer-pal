@@ -224,7 +224,25 @@ describe("live-api release", () => {
     endLiveApiScope();
   });
 
-  it("reuses the objects getChildren built", () => {
+  it("builds a fresh object for an id target instead of retargeting", () => {
+    // goto can't take the "id N" form. Measured on 12.4.3 it reports success
+    // and leaves the object nonexistent, so an id always builds.
+    beginLiveApiScope();
+
+    const first = LiveAPI.from(livePath.track(0));
+
+    endLiveApiScope();
+    beginLiveApiScope();
+
+    const byId = LiveAPI.from(5);
+
+    expect(byId).not.toBe(first);
+    expect(byId.path).toBe("id 5");
+
+    endLiveApiScope();
+  });
+
+  it("pools the objects getChildren built", () => {
     beginLiveApiScope();
 
     const liveSet = LiveAPI.from(livePath.liveSet);
