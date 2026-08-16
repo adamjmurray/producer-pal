@@ -6,11 +6,13 @@
 import { describe, expect, it } from "vitest";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import {
+  findReturnIndex,
   fromLiveApiView,
   parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
   parseTimeSignature,
+  roundPan,
   setAllNonNull,
   toLiveApiView,
   withoutNulls,
@@ -754,5 +756,33 @@ describe("assertDefined", () => {
     expect(() => assertDefined(null, "custom error message")).toThrow(
       "Bug: custom error message",
     );
+  });
+});
+
+describe("roundPan", () => {
+  it("rounds to two decimals", () => {
+    expect(roundPan(-0.30000001192092896)).toBe(-0.3);
+    expect(roundPan(0.125)).toBe(0.13);
+    expect(roundPan(1)).toBe(1);
+    expect(roundPan(0)).toBe(0);
+  });
+});
+
+describe("findReturnIndex", () => {
+  const names = ["A-Reverb", "b Delay", "Chorus"];
+
+  it("matches an exact name", () => {
+    expect(findReturnIndex(names, "Chorus")).toBe(2);
+    expect(findReturnIndex(names, "b Delay")).toBe(1);
+  });
+
+  it("matches a letter prefix before '-' or ' ', ignoring case", () => {
+    expect(findReturnIndex(names, "a")).toBe(0);
+    expect(findReturnIndex(names, "B")).toBe(1);
+  });
+
+  it("does not match a name that merely starts with the letter", () => {
+    expect(findReturnIndex(names, "C")).toBe(-1);
+    expect(findReturnIndex(names, "Rev")).toBe(-1);
   });
 });

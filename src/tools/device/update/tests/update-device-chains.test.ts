@@ -402,15 +402,26 @@ describe("updateDevice - Chain and DrumPad support", () => {
   });
 });
 
-describe("updateDevice - chain mixer (gainDb, pan)", () => {
-  const chainPath = livePath.track(0).device(0).chain(0);
+describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
+  const rackPath = livePath.track(0).device(0);
+  const chainPath = rackPath.chain(0);
   const mixerPath = `${chainPath} mixer_device`;
   let volume: RegisteredMockObject;
   let panning: RegisteredMockObject;
+  let send: RegisteredMockObject;
 
   beforeEach(() => {
     registerMockObject("chain-0", { path: chainPath, type: "DrumChain" });
-    registerMockObject("mixer-0", { path: mixerPath });
+    registerMockObject("mixer-0", {
+      path: mixerPath,
+      properties: { sends: children("send-0") },
+    });
+    send = registerMockObject("send-0");
+    registerMockObject("rack-0", {
+      path: rackPath,
+      properties: { return_chains: children("rc-0") },
+    });
+    registerMockObject("rc-0", { properties: { name: "a Reverb" } });
     volume = registerMockObject("volume-0", {
       path: `${mixerPath} volume`,
       properties: { display_value: 0 },
@@ -429,42 +440,42 @@ describe("updateDevice - chain mixer (gainDb, pan)", () => {
     expect(result).toStrictEqual({ id: "chain-0" });
   });
 
-  it("does not touch the mixer when neither is given", () => {
+  it("sets a chain's send to a rack return chain", () => {
+    updateDevice({ ids: "chain-0", sendGainDb: -12, sendReturn: "a" });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(volume.set).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the mixer when nothing mixer-related is given", () => {
     updateDevice({ ids: "chain-0", mute: true });
 
     expect(volume.set).not.toHaveBeenCalled();
     expect(panning.set).not.toHaveBeenCalled();
+    expect(send.set).not.toHaveBeenCalled();
   });
 
-  it("warns when gainDb or pan is used on a DrumPad", () => {
-    registerMockObject("pad-1", { type: "DrumPad" });
+  it.each(["DrumPad", "SimplerDevice"] as const)(
+    "warns when mixer params are used on a %s",
+    (type) => {
+      registerMockObject("target-1", { type });
 
-    updateDevice({ ids: "pad-1", gainDb: -3, pan: 1 });
+      updateDevice({
+        ids: "target-1",
+        gainDb: -3,
+        pan: 1,
+        sendGainDb: -6,
+        sendReturn: "a",
+      });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateDevice: 'gainDb' not applicable to DrumPad",
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateDevice: 'pan' not applicable to DrumPad",
-    );
-  });
-
-  it("warns when gainDb or pan is used on a device", () => {
-    registerMockObject("simpler-1", { type: "SimplerDevice" });
-
-    updateDevice({ ids: "simpler-1", gainDb: -3, pan: 1 });
-
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateDevice: 'gainDb' not applicable to SimplerDevice",
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateDevice: 'pan' not applicable to SimplerDevice",
-    );
-  });
+      for (const name of ["gainDb", "pan", "sendGainDb", "sendReturn"]) {
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          `updateDevice: '${name}' not applicable to ${type}`,
+        );
+      }
+    },
+  );
 });
 
 describe("updateDevice - moving a device out of a trimmed chain", () => {

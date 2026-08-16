@@ -332,7 +332,7 @@ sounding.
 - Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
-- Set a rack chain's own volume and pan
+- Set a rack chain's own volume, pan, and send levels
 - Change the choke group and output MIDI note of drum chains
 - Move a drum pad to another pad, keeping its chain trim, choke group, and
   devices together

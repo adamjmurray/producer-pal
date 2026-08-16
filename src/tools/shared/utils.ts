@@ -224,3 +224,35 @@ export function stripFields(
     }
   }
 }
+
+/**
+ * Round a pan value to Live's 1% resolution (e.g. "30L"); the raw float
+ * carries noise like -0.30000001192092896.
+ * @param pan - Raw pan value from -1 to 1
+ * @returns Pan rounded to two decimals
+ */
+export function roundPan(pan: number): number {
+  return Math.round(pan * 100) / 100;
+}
+
+/**
+ * Find the return (track or rack chain) a send name refers to: the exact name,
+ * or its letter prefix — "A" matches "A-Reverb" (return tracks) and
+ * "a Reverb" (rack return chains). Case-insensitive.
+ * @param names - Return names in send order
+ * @param sendReturn - Name or letter to match
+ * @returns Index of the match, or -1
+ */
+export function findReturnIndex(names: string[], sendReturn: string): number {
+  const wanted = sendReturn.toLowerCase();
+
+  return names.findIndex((name) => {
+    const lower = name.toLowerCase();
+    const next = lower[wanted.length];
+
+    return (
+      lower === wanted ||
+      (lower.startsWith(wanted) && (next === "-" || next === " "))
+    );
+  });
+}

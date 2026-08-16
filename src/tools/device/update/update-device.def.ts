@@ -97,6 +97,16 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "chain's own pan, -1 (left) to 1 (right) (chains/drum pads only)",
       smallModel: null,
     }),
+    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
+      default:
+        "chain's send level in dB, requires sendReturn (chains/drum pads only)",
+      smallModel: null,
+    }),
+    sendReturn: param(z.string().optional(), {
+      default:
+        'rack return chain: exact name (e.g. "a Reverb") or letter (e.g. "a")',
+      smallModel: null,
+    }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,

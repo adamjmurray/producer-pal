@@ -188,6 +188,101 @@ describe("applyChainMixer", () => {
       expect.stringContaining("has no mixer device"),
     );
   });
+
+  describe("sends", () => {
+    const silent = { value: 0, display_value: -70 };
+
+    /**
+     * Register the chain with two silent sends and name the rack's return chains
+     * @param returnNames - Return chain names in send order
+     * @returns The registered send parameters
+     */
+    function registerChainWithSends(
+      returnNames: string[] = ["a Delay", "b Reverb"],
+    ): RegisteredMockObject[] {
+      registerChainWithMixer({ sends: [silent, silent] });
+      registerMockObject("rack-1", {
+        path: rackPath,
+        type: "RackDevice",
+        properties: {
+          return_chains: children(...returnNames.map((_, i) => `rc-${i}`)),
+        },
+      });
+
+      for (const [i, name] of returnNames.entries()) {
+        registerMockObject(`rc-${i}`, {
+          type: "Chain",
+          properties: { name },
+        });
+      }
+
+      return [
+        registerMockObject("send-0", { type: "DeviceParameter" }),
+        registerMockObject("send-1", { type: "DeviceParameter" }),
+      ];
+    }
+
+    it("sets the send matched by exact return chain name", () => {
+      const [first, second] = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "b Reverb" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+    });
+
+    it("matches a return chain by its letter, ignoring case", () => {
+      const [first] = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: 0, sendReturn: "A" });
+
+      expect(first?.set).toHaveBeenCalledWith("display_value", 0);
+    });
+
+    it("warns when only one of sendGainDb and sendReturn is given", () => {
+      const sends = registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -6 });
+      applyChainMixer(chainApi(), { sendReturn: "a" });
+
+      expect(outlet).toHaveBeenCalledTimes(2);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "sendGainDb and sendReturn must both be specified",
+      );
+      expect(sends[0]?.set).not.toHaveBeenCalled();
+    });
+
+    it("warns with the available returns when none matches", () => {
+      registerChainWithSends();
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "Chorus" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'no return chain matching "Chorus" (returns: a Delay, b Reverb)',
+      );
+    });
+
+    it("warns when the rack has no return chains", () => {
+      registerChainWithSends([]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "a" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'no return chain matching "a" (rack has none)',
+      );
+    });
+
+    it("warns when the chain has fewer sends than the rack has returns", () => {
+      registerChainWithSends(["a Delay", "b Reverb", "c Chorus"]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
+
+      expect(outlet).toHaveBeenCalledWith(1, "chain chain-1 has no send 2");
+    });
+  });
 });
 
 describe("warnIfChainMixerLeftBehind", () => {
@@ -215,7 +310,7 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" mixer {"gainDb":-15} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan) or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" mixer {"gainDb":-15} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan/sendGainDb) or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 
@@ -229,7 +324,7 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" mixer {"pan":0.5} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan)',
+      'chain "Snare" mixer {"pan":0.5} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan/sendGainDb)',
     );
   });
 
