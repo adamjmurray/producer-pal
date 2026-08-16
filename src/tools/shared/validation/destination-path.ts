@@ -10,6 +10,7 @@
 // Parsing only: nothing here touches the Live API, so a bad path fails before
 // anything is created.
 
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 
 export type TrackSegment =
@@ -59,6 +60,15 @@ export function parseDestinationPath(
   }
 
   const segments = trimmed.split("/");
+
+  // "t1/" is a typo, not a device path — without this it falls through to the
+  // device branch and reports a problem with device paths.
+  if (segments.some((segment) => segment === "")) {
+    throw new Error(
+      `invalid ${label} "${trimmed}" - it has an empty segment; drop the stray "/"`,
+    );
+  }
+
   const track = parseTrackSegment(segments[0] as string, label, trimmed);
   const sceneIndex = segments.findIndex(
     (segment, i) => i > 0 && SCENE_SEGMENT.test(segment),
@@ -85,9 +95,31 @@ export function parseDestinationPathList(
   input?: string | null,
   label = "toPath",
 ): DestinationPath[] {
-  return parseCommaSeparatedIds(input).map((entry) =>
-    parseDestinationPath(entry, label),
-  );
+  const entries = parseCommaSeparatedIds(input);
+
+  // Destinations are cycled against a position list, so a dropped entry shifts
+  // every later copy onto the wrong track instead of just making one fewer.
+  if (entries.length > 0 && entries.length < (input ?? "").split(",").length) {
+    console.warn(
+      `${label} "${input}" has empty entries, which were dropped; the remaining paths cycle across the positions`,
+    );
+  }
+
+  return entries.map((entry) => parseDestinationPath(entry, label));
+}
+
+/**
+ * Normalizes a destination param: a blank string names nothing, so it reads the
+ * same as an omitted param rather than as a destination that failed to parse.
+ * @param value - Raw param value
+ * @returns The trimmed value, or undefined when it names nothing
+ */
+export function namedDestination(
+  value: string | undefined,
+): string | undefined {
+  const trimmed = value?.trim();
+
+  return trimmed == null || trimmed === "" ? undefined : trimmed;
 }
 
 /**

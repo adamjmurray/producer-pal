@@ -39,9 +39,23 @@ describe("resolveClipDestinations", () => {
     });
 
     it("throws when toSlot names no slot", () => {
-      expect(() => resolveClipDestinations(undefined, "  ", false)).toThrow(
+      expect(() => resolveClipDestinations(undefined, ",", false)).toThrow(
         "duplicate failed: toSlot is required for session clips",
       );
+    });
+
+    // A blank param names nothing, so it reads as omitted — which is what lets
+    // toSlot: "" alongside a real toPath still honor the toPath.
+    it("reads a blank destination param as omitted", () => {
+      expect(() => resolveClipDestinations(undefined, "  ", false)).toThrow(
+        "duplicate failed: clip requires toPath",
+      );
+
+      expect(resolveClipDestinations("t2/s1", "  ", false)).toStrictEqual({
+        destination: "session",
+        slots: [{ trackIndex: 2, sceneIndex: 1 }],
+        trackIndices: [],
+      });
     });
   });
 

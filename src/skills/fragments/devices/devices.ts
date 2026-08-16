@@ -27,6 +27,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 - \`t0/d0/rc0/d0\` = first device in rack's return chain
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad
 
+Clip destinations speak the same grammar: \`t0\` = that track's arrangement, \`t0/s1\` = a session slot.
+
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
 ### VST/AU Plugins

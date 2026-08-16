@@ -331,6 +331,28 @@ describe("duplicate - clip duplication", () => {
       ).rejects.toThrow(/"t2\/s0" is a session slot/);
     });
 
+    // The point of parsing paths before touching Live: a list whose last entry
+    // is malformed must not leave copies from the earlier entries behind.
+    it("creates nothing when a later toPath entry is malformed", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath: "t2, nonsense",
+        }),
+      ).rejects.toThrow(/"nonsense" is not a track/);
+
+      expect(track2.call).not.toHaveBeenCalled();
+    });
+
     it("rejects toSlot on an arrangement destination", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),

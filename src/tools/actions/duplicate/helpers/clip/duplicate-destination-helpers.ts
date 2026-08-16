@@ -10,6 +10,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  namedDestination,
   parseDestinationPathList,
   requireClipDestination,
 } from "#src/tools/shared/validation/destination-path.ts";
@@ -30,16 +31,21 @@ export interface ClipDestinations {
 
 /**
  * Resolves a clip duplicate's destination from its path params.
- * @param toPath - Destination path(s), comma-separated for multiple
- * @param toSlot - Deprecated session slot(s), trackIndex/sceneIndex format
+ * @param rawToPath - Destination path(s), comma-separated for multiple
+ * @param rawToSlot - Deprecated session slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart or locator was given
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
-  toPath: string | undefined,
-  toSlot: string | undefined,
+  rawToPath: string | undefined,
+  rawToSlot: string | undefined,
   hasArrangementParams: boolean,
 ): ClipDestinations {
+  // A blank param names nothing, so read it as omitted rather than as a
+  // destination that failed to parse.
+  const toPath = namedDestination(rawToPath);
+  const toSlot = namedDestination(rawToSlot);
+
   // Honoring one and dropping the other is exactly the silent-destination bug
   // toPath replaces, so refuse instead of picking.
   if (toPath != null && toSlot != null) {
@@ -72,15 +78,18 @@ export function resolveClipDestinations(
 /**
  * Warns when a destination param was sent for a type that has no destination.
  * @param type - Type of object being duplicated
- * @param toPath - Destination path(s)
- * @param toSlot - Deprecated session slot(s)
+ * @param rawToPath - Destination path(s)
+ * @param rawToSlot - Deprecated session slot(s)
  */
 export function warnUnusedDestination(
   type: string,
-  toPath: string | undefined,
-  toSlot: string | undefined,
+  rawToPath: string | undefined,
+  rawToSlot: string | undefined,
 ): void {
   if (type === "clip") return;
+
+  const toPath = namedDestination(rawToPath);
+  const toSlot = namedDestination(rawToSlot);
 
   if (type !== "device" && toPath != null) {
     console.warn(

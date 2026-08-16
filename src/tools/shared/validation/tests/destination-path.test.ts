@@ -3,9 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type DestinationPath,
+  namedDestination,
   parseDestinationPath,
   parseDestinationPathList,
   parseTrackSegment,
@@ -95,6 +97,14 @@ describe("parseDestinationPath", () => {
     expect(() => parseDestinationPath("7")).toThrow(/did you mean "t7"\?/);
   });
 
+  it("rejects a stray slash instead of reading it as a device path", () => {
+    for (const path of ["t1/", "/t1", "t1//d0"]) {
+      expect(() => parseDestinationPath(path)).toThrow(
+        /has an empty segment; drop the stray "\/"/,
+      );
+    }
+  });
+
   it("rejects a segment that names no track", () => {
     expect(() => parseDestinationPath("x0/d0")).toThrow(
       /"x0" is not a track; expected "t<index>", "rt<index>", or "mt"/,
@@ -148,6 +158,24 @@ describe("parseDestinationPathList", () => {
       /"nope" is not a track/,
     );
   });
+
+  // The list is cycled against a position list, so a dropped entry moves every
+  // later copy onto the wrong track instead of just making one fewer.
+  it("warns when it drops an empty entry", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(parseDestinationPathList("t1,,t2")).toStrictEqual([
+      { kind: "track", trackIndex: 1 },
+      { kind: "track", trackIndex: 2 },
+    ]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('toPath "t1,,t2" has empty entries'),
+    );
+
+    warn.mockClear();
+    parseDestinationPathList("t1,t2");
+    expect(warn).not.toHaveBeenCalled();
+  });
 });
 
 describe("parseTrackSegment", () => {
@@ -195,5 +223,17 @@ describe("requireClipDestination", () => {
     expect(() =>
       requireClipDestination({ kind: "device", path: "mt" }, "destination"),
     ).toThrow(/invalid destination "mt"/);
+  });
+});
+
+describe("namedDestination", () => {
+  it("reads a blank param as naming nothing", () => {
+    expect(namedDestination(undefined)).toBeUndefined();
+    expect(namedDestination("")).toBeUndefined();
+    expect(namedDestination("   ")).toBeUndefined();
+  });
+
+  it("trims a param that names something", () => {
+    expect(namedDestination(" t7/s2 ")).toBe("t7/s2");
   });
 });
