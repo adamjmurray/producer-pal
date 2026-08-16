@@ -40,9 +40,8 @@ export function filterSchemaForSmallModel(
   for (const [key, value] of Object.entries(schema)) {
     if (excludeParams?.includes(key)) continue;
 
-    // describeWithTags, not .describe(): a re-described instance loses its
-    // param()/deprecatedParam() tags otherwise, and a deprecated param that
-    // also has a mode override would get republished.
+    // describeWithTags keeps the param()/deprecatedParam() tags on the
+    // re-described instance.
     filtered[key] =
       descriptionOverrides && key in descriptionOverrides
         ? describeWithTags(value, descriptionOverrides[key] as string)

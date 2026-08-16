@@ -112,10 +112,10 @@ Both MCP registration and `GET /api/tools` build their schemas through
 `resolveToolSchema()` — go through it rather than filtering a schema yourself,
 or the two catalogs drift.
 
-`deprecatedParam()` and `param()` compose in either order. Both tag the schema
-instance `.describe()` returns, so anything that re-describes a param has to
-carry the tags across (`describeWithTags()` in `schema-tags.ts`, never
-`.describe()` directly).
+`deprecatedParam()` and `param()` compose in either order, and their tags follow
+the schema through the Zod builders — `.optional()`, `.nullable()`,
+`.default()`, `.transform()`, `.refine()`, `.meta()` — so wrapping order does
+not matter. Only a schema rebuilt from scratch loses them; see `schema-tags.ts`.
 
 Removing the param for real is a breaking change: bump the minor version, and
 check the shape it enabled is still rejected rather than silently falling
