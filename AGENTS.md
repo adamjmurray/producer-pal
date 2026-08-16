@@ -142,6 +142,12 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   tracked files and your commits on this branch, but only locally, so run it
   before pushing. PR titles and bodies are fine.
 
+- **GitHub issues go in the commit message, not the release PR body** — put
+  `Resolves #NNNN` in the commit that fixes it. `dev -> main` merges onto the
+  default branch, so the issue closes when the release lands. One keyword per
+  issue: extra `Refs #NNNN` on supporting commits just add permanent timeline
+  events to a public issue. Don't name an issue you aren't fixing.
+
 - **Keep the Skills and specs current**: the Producer Pal Skills
   (`src/skills/fragments/`) need updating whenever notation or tool behavior
   changes under them. The grammar specs in `dev/specs/` have no test guarding
