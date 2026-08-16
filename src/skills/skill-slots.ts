@@ -250,9 +250,9 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   },
 
   library: {
-    title: "Library search",
+    title: "Library search results",
     description:
-      "How to find samples, MIDI clips, and plugins with ppal-library.",
+      "Reading ppal-library's results: checking a noisy tag hit against the file's folder, and loading a result's path into a clip or a Simpler. The search filters themselves live in the tool's own schema.",
     builtIn: library,
   },
 

@@ -70,8 +70,8 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     query: param(z.coerce.string().optional(), {
       default:
-        "name substring (search: supports * as a multi-character wildcard; listPlugins: plain case-insensitive substring)",
-      smallModel: "name substring; use * as wildcard",
+        "name substring (search: supports * as a multi-character wildcard, e.g. kick*acoustic; listPlugins: plain case-insensitive substring)",
+      smallModel: "name substring; use * as wildcard, e.g. kick*acoustic",
     }),
 
     tags: param(z.coerce.string().optional(), {
@@ -100,8 +100,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     type: param(z.enum(LIBRARY_TYPE_VALUES).optional(), {
       default:
-        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Also reported per result as `type`.",
-      smallModel: "playback type: loop | oneshot | impulse-response",
+        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
+      smallModel:
+        "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
 
     // listPlugins is discovery-only (like searchBatch); its vendor/format

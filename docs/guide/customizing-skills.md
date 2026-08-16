@@ -51,31 +51,31 @@ release.
 Fragments are cut along the lines of what you're actually doing, so you can drop
 a whole area you never use:
 
-| Fragment                                         | What it teaches                                                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `standard`                                       | The standard skills document — the list of `@include` lines below                                             |
-| `basic`                                          | The much shorter document used in small model mode                                                            |
-| `time-and-values`                                | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                |
-| `transforms-core`                                | Selecting notes and setting values on them                                                                    |
-| `transforms-editing`                             | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only) |
-| `transforms-expressions`                         | Transform variables, math functions, swing and quantize                                                       |
-| `transforms-generative`                          | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                             |
-| `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms` — the whole transforms guide in small model mode  |
-| `library`                                        | Searching Live's browser library and your sample folder                                                       |
-| `devices`                                        | Device paths and VST/AU limits                                                                                |
-| `devices-write`                                  | Building Simpler and Drum Rack instruments — loading samples                                                  |
-| `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                               |
-| `arrangement`                                    | What an Arrangement position means — song meter vs. clip meter                                                |
-| `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                        |
-| `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                     |
-| `context-standard` / `context-basic`             | [Context & Memory](/guide/context) — the project, global, and memory layers                                   |
-| `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                               |
-| `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                   |
-| `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                          |
-| `barbeat-standard-write` / `barbeat-basic-write` | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples                    |
-| `stark-standard` / `stark-basic`                 | The stark note notation guide                                                                                 |
-| `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`) — input only, since read-back returns literal notes                  |
-| `midi-json`                                      | The midi-json note notation guide                                                                             |
+| Fragment                                         | What it teaches                                                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `standard`                                       | The standard skills document — the list of `@include` lines below                                              |
+| `basic`                                          | The much shorter document used in small model mode                                                             |
+| `time-and-values`                                | Beats, note values, bar\|beat positions, clip lengths, and pitch names (C3=60)                                 |
+| `transforms-core`                                | Selecting notes and setting values on them                                                                     |
+| `transforms-editing`                             | Editing a clip that already has notes: how `notes` merges, `preTransforms`, `quantizeGrid` (update-clip only)  |
+| `transforms-expressions`                         | Transform variables, math functions, swing and quantize                                                        |
+| `transforms-generative`                          | ratchet/repeat/split/merge, and the waveforms that modulate a value across a clip                              |
+| `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms` — the whole transforms guide in small model mode   |
+| `library`                                        | Reading library search results — checking a tag hit against the file's folder, and where a result's path loads |
+| `devices`                                        | Device paths and VST/AU limits                                                                                 |
+| `devices-write`                                  | Building Simpler and Drum Rack instruments — loading samples                                                   |
+| `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                |
+| `arrangement`                                    | What an Arrangement position means — song meter vs. clip meter                                                 |
+| `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                         |
+| `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                      |
+| `context-standard` / `context-basic`             | [Context & Memory](/guide/context) — the project, global, and memory layers                                    |
+| `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                |
+| `getting-help-basic`                             | The audio limits worth saying out loud, in small model mode                                                    |
+| `barbeat-standard` / `barbeat-basic`             | The bar\|beat note notation guide (default notation)                                                           |
+| `barbeat-standard-write` / `barbeat-basic-write` | The bar\|beat syntax used only to _write_ notes — repeats, brackets, bar copying, examples                     |
+| `stark-standard` / `stark-basic`                 | The stark note notation guide                                                                                  |
+| `stark-standard-write` / `stark-basic-write`     | Stark chord symbols (`Am`, `G7`, `Ebm7`) — input only, since read-back returns literal notes                   |
+| `midi-json`                                      | The midi-json note notation guide                                                                              |
 
 ::: warning Fragment names changed in 2.1.0
 
