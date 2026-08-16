@@ -20,9 +20,17 @@ import {
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when neither slot nor arrangementStart is provided", async () => {
-    await expect(createClip({ trackIndex: 0 })).rejects.toThrow(
-      "createClip failed: slot or arrangementStart is required",
+  it("should throw error when nothing names a destination", async () => {
+    await expect(createClip({})).rejects.toThrow(
+      "createClip failed: path is required",
+    );
+  });
+
+  // A bare track is half a destination either way — it needs a scene or an
+  // arrangementStart — so the error names both fixes rather than the missing param.
+  it("should throw error when a track is named without a spot on it", async () => {
+    await expect(createClip({ path: "t0" })).rejects.toThrow(
+      'createClip failed: path "t0" names a track but not a spot on it',
     );
   });
 

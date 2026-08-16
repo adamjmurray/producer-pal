@@ -11,6 +11,7 @@ import {
   resolveTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { convertTimingParameters } from "./create-clip-helpers.ts";
 
 export interface ClipTimingContext {
@@ -97,40 +98,41 @@ export function resolveClipTimingContext(
 }
 
 /**
- * Resolve the take lane for arrangement clip creation. Returns the TakeLane to
- * create clips on, or null to use the main lane. Warns (and ignores takeLane)
- * for session-only requests and auto-creates lanes as needed. Like the main
- * lane, creating over an existing clip replaces/truncates it (no overlap guard).
+ * Resolve the take lane per arrangement track. Returns a lane for each track
+ * the request targets; an empty map means the main lane. Warns (and ignores
+ * takeLane) for session-only requests and auto-creates lanes as needed. Like
+ * the main lane, creating over an existing clip replaces/truncates it (no
+ * overlap guard).
  * @param takeLane - Raw takeLane argument (0/null = main, 1+ = lane, "new")
  * @param takeLaneName - Name for a newly created lane
  * @param sessionSlotCount - Number of session slots in this request
- * @param arrangementStarts - Parsed arrangement bar|beat positions
- * @param trackIndex - Arrangement track index
- * @returns The take lane LiveAPI, or null for the main lane
+ * @param arrangementPositions - Resolved arrangement track/position pairs
+ * @returns Take lane LiveAPI keyed by track index, empty for the main lane
  */
-export function resolveCreateClipTakeLane(
+export function resolveCreateClipTakeLanes(
   takeLane: number | string | null,
   takeLaneName: string | null,
   sessionSlotCount: number,
-  arrangementStarts: string[],
-  trackIndex: number | null,
-): LiveAPI | null {
+  arrangementPositions: ArrangementPosition[],
+): Map<number, LiveAPI> {
+  const lanes = new Map<number, LiveAPI>();
+
   // No arrangement positions to target: warn-and-ignore without validating the
   // value. Mirrors duplicate.ts's gate (takeLane is normalized only when it can
   // apply) so an LLM passing garbage on a session-only create doesn't throw.
-  if (arrangementStarts.length === 0 || trackIndex == null) {
+  if (arrangementPositions.length === 0) {
     if (isTakeLaneRequested(takeLane)) {
       console.warn(
         "createClip: takeLane ignored for session clips (arrangement-only)",
       );
     }
 
-    return null;
+    return lanes;
   }
 
   const target = normalizeTakeLaneTarget(takeLane);
 
-  if (target == null) return null;
+  if (target == null) return lanes;
 
   if (sessionSlotCount > 0) {
     console.warn(
@@ -138,14 +140,21 @@ export function resolveCreateClipTakeLane(
     );
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
+  // "new" appends a lane, so resolve once per track rather than once per clip —
+  // otherwise a track with two positions gets two fresh lanes.
+  for (const trackIndex of new Set(
+    arrangementPositions.map((position) => position.trackIndex),
+  )) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
+    const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
 
-  console.warn(
-    `createClip: targeting take lane ${laneNumber}. Expand the take-lanes arrow on the track header in Live to see it.`,
-  );
+    lanes.set(trackIndex, lane);
+    console.warn(
+      `createClip: targeting take lane ${laneNumber} on track ${trackIndex}. Expand the take-lanes arrow on the track header in Live to see it.`,
+    );
+  }
 
-  return lane;
+  return lanes;
 }
 
 /**

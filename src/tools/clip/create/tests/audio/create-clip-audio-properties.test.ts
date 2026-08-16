@@ -6,11 +6,11 @@
 import { describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_WARP_MODE_TEXTURE } from "#src/tools/constants.ts";
-import { createClip } from "../create-clip.ts";
+import { createClip } from "../../create-clip.ts";
 import {
   setupSessionAudioClipMocks,
   setupSessionMocks,
-} from "./create-clip-test-helpers.ts";
+} from "../create-clip-test-helpers.ts";
 
 describe("createClip - audio properties", () => {
   it("should set gainDb on a new audio clip", async () => {

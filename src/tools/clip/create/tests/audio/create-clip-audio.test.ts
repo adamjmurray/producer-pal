@@ -15,8 +15,8 @@ import {
   MAX_ARRANGEMENT_POSITION_BEATS,
   MAX_AUTO_CREATED_SCENES,
 } from "#src/tools/constants.ts";
-import { createClip } from "../create-clip.ts";
-import { createAudioArrangementClip } from "../helpers/create-clip-audio-helpers.ts";
+import { createClip } from "../../create-clip.ts";
+import { createAudioArrangementClip } from "../../helpers/create-clip-audio-helpers.ts";
 import {
   expectNoTimingProperties,
   setupAudioArrangementClipMocks,
@@ -24,7 +24,7 @@ import {
   setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
   setupSessionMocks,
-} from "./create-clip-test-helpers.ts";
+} from "../create-clip-test-helpers.ts";
 
 describe("createClip - audio clips", () => {
   describe("validation", () => {

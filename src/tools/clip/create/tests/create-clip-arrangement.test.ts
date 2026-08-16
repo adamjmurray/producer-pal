@@ -171,13 +171,13 @@ describe("createClip - arrangement view", () => {
     expect(result).toStrictEqual([]);
   });
 
-  it("should throw when arrangementStart is provided without trackIndex", async () => {
+  it("should throw when arrangementStart names no track", async () => {
     await expect(
       createClip({
         arrangementStart: "1|1",
         notes: "C4 1|1",
       }),
-    ).rejects.toThrow("trackIndex is required for arrangement clips");
+    ).rejects.toThrow("createClip failed: arrangementStart needs a track");
   });
 
   it("cycles clipseq() by clip.index across arrangement positions", async () => {

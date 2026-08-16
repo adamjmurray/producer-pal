@@ -50,6 +50,38 @@ describe("hidden params", () => {
     expect(updateClip).not.toContain("toSlot");
   });
 
+  // Publishing any of these three is the bug: an index-shaped param next to a
+  // description naming a track and a scene is what taught models to guess.
+  it("publishes path and hides the index params it replaced on create-clip", () => {
+    const createClip = publishedParams("ppal-create-clip");
+
+    expect(createClip).toContain("path");
+    expect(createClip).not.toContain("slot");
+    expect(createClip).not.toContain("trackIndex");
+    expect(createClip).not.toContain("sceneIndex");
+  });
+
+  it("keeps the create-clip index params as permanent aliases, not deprecations", () => {
+    const def = STANDARD_TOOL_DEFS.find(
+      (td: ToolDefFunction) => td.toolName === "ppal-create-clip",
+    ) as ToolDefFunction;
+    const { validating, hidden } = resolveToolSchema(
+      def.toolOptions.inputSchema,
+      {},
+    );
+
+    expect(Object.keys(validating)).toContain("trackIndex");
+    expect(hidden.trackIndex).toStrictEqual({
+      kind: "alias",
+      canonical: "path",
+      example: "t0/s0",
+    });
+    expect(hidden.slot).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "path",
+    });
+  });
+
   it("still validates the params it stopped publishing", () => {
     for (const toolName of ["ppal-duplicate", "ppal-update-clip"]) {
       const def = STANDARD_TOOL_DEFS.find(

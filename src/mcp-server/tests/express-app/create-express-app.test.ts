@@ -210,7 +210,15 @@ describe("MCP Express App", () => {
 
       expect(createClipTool).toBeDefined();
       expect(createClipTool!.description).toContain("Create MIDI or audio");
-      expect(createClipTool!.inputSchema.properties!.trackIndex).toBeDefined();
+      expect(createClipTool!.inputSchema.properties!.path).toBeDefined();
+      // The whole point of the hidden aliases: accepted end to end, never
+      // published, so the catalog cannot seed the guess it exists to catch.
+      expect(
+        createClipTool!.inputSchema.properties!.trackIndex,
+      ).toBeUndefined();
+      expect(
+        createClipTool!.inputSchema.properties!.sceneIndex,
+      ).toBeUndefined();
     });
   });
 

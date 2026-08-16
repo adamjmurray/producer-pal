@@ -31,11 +31,17 @@ export const arrangement = `## Arrangement
  * read-track's own `include` description already tells a reader that list
  * exists. (The tool-name bleed test can't see it: it scans for `ppal-` names.)
  */
-export const arrangementWrite = `### Moving Clips
+export const arrangementWrite = `### Clip Destinations
 
-\`arrangementStart\` moves arrangement clips; \`toPath\` (\`t<track>/s<scene>\`, both 0-based — scene 1 = \`s0\`) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
+One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in the first scene, \`t2\` is track 2's arrangement (which also needs \`arrangementStart\` or \`locator\`). create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
+
+create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill session positions and drop arrangement clips at the same time.
+
+### Moving Clips
+
+\`arrangementStart\` moves arrangement clips; \`toPath\` moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
-To copy a clip to another track, use duplicate with \`toPath\`: \`t2\` for track 2's arrangement (with \`arrangementStart\` or \`locator\`), \`t2/s0\` for a session slot. A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
+A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 
 ### Take Lanes (Arrangement Variations)
 

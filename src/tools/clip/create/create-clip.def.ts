@@ -7,6 +7,10 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -15,11 +19,11 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   // own — `firstStart` is not one of them there.
   description: {
     default:
-      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
     smallModel:
-      "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
   },
@@ -29,19 +33,31 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   inputSchema: {
-    slot: param(z.coerce.string().optional(), {
+    path: param(z.coerce.string().optional(), {
       default:
-        "session clip slot(s): trackIndex/sceneIndex, both 0-based (scene 1 = index 0), comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
+        "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a session position; " +
+        "'t<track>' is that track's arrangement, which also needs arrangementStart. All indices 0-based, " +
+        "so 't0/s0' is the first track's first scene (e.g., 't0/s0' or 't0/s0,t0/s2' or 't1' with arrangementStart)",
       smallModel:
-        "session clip slot(s): trackIndex/sceneIndex, 0-based — scene 1 = slot 0 (e.g., '0/0')",
+        "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0' = first track's arrangement (also needs arrangementStart)",
     }),
 
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based track index (arrangement clips)"),
+    slot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
+
+    // Models reach for these on their own, well-foundedly: they name a track
+    // and a scene everywhere else in the toolset. Catching the guess costs a
+    // warning; refusing it costs a round trip.
+    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example: "t0/s0",
+    }),
+
+    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example: "t0/s0",
+    }),
 
     arrangementStart: param(z.coerce.string().optional(), {
       default:

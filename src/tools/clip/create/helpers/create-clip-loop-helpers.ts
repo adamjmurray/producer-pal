@@ -19,6 +19,7 @@ import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
 import {
   type ClipTransformInputs,
@@ -28,9 +29,8 @@ import { calculateClipLength } from "./create-clip-validation-helpers.ts";
 
 export interface CreateClipsParams {
   view: string;
-  trackIndex: number;
   sessionSlots: SlotPosition[];
-  arrangementStarts: string[];
+  arrangementPositions: ArrangementPosition[];
   baseName: string | null;
   parsedNames: string[] | null;
   parsedColors: string[] | null;
@@ -55,8 +55,8 @@ export interface CreateClipsParams {
   sampleFile: string | null;
   deadline: number | null | undefined;
   code: string | null;
-  /** Take lane to create arrangement clips on, or null for the main lane */
-  takeLane: LiveAPI | null;
+  /** Take lane per arrangement track; a track with no entry uses the main lane */
+  takeLanes: Map<number, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
@@ -75,10 +75,10 @@ export interface CreateClipsParams {
 export async function createClips(
   params: CreateClipsParams,
 ): Promise<object[]> {
-  const { view, sessionSlots, arrangementStarts, deadline } = params;
+  const { view, sessionSlots, arrangementPositions, deadline } = params;
   const createdClips: object[] = [];
   const count =
-    view === "session" ? sessionSlots.length : arrangementStarts.length;
+    view === "session" ? sessionSlots.length : arrangementPositions.length;
 
   // Constant transform inputs for this view; read the scale mask once (it is a
   // Live Set global). Per-clip context (index/count/position) is applied below.
@@ -142,7 +142,7 @@ async function createClipAtIndex(
   // continuous indexing already used for names/colors below.
   const globalIndex = nameStartIndex + i;
   const totalCount =
-    params.sessionSlots.length + params.arrangementStarts.length;
+    params.sessionSlots.length + params.arrangementPositions.length;
 
   const clipName = getNameForIndex(
     baseName ?? undefined,
@@ -192,7 +192,7 @@ async function createClipAtIndex(
       params.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
-      params.takeLane,
+      params.takeLanes.get(pos.trackIndex) ?? null,
       {
         warping: params.warping,
         gainDb: params.gainDb,
@@ -253,7 +253,9 @@ function resolveIterationPosition(
     };
   }
 
-  const arrangementStart = params.arrangementStarts[i] as string;
+  const { trackIndex, arrangementStart } = params.arrangementPositions[
+    i
+  ] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer (matching the single-clip create path), not
@@ -261,7 +263,7 @@ function resolveIterationPosition(
   validateBarBeatPosition(arrangementStart);
 
   return {
-    trackIndex: params.trackIndex,
+    trackIndex,
     sceneIndex: null,
     arrangementStartBeats: barBeatToAbletonBeats(
       arrangementStart,

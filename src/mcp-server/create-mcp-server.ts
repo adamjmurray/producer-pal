@@ -69,14 +69,16 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
 
 /**
  * Union of params a small model never sees, across all standard tools: the ones
- * its mode hides (`smallModel: null`) plus the deprecated ones no mode
- * publishes. Read off `resolveToolSchema`, the one place that answers "what does
- * the model get", so a retired param can't leak back in. The eval framework
- * consults this to SKIP (not fail) scenarios that depend on such a param —
- * keeping small-model scores apples-to-apples. NOTE: a flat union skips
- * CONSERVATIVELY — a shared param name hidden by only SOME tools (e.g. `name`:
- * hidden on ppal-context along with its memory scope, still live on the
- * create/update tools) skips every scenario requiring that name. If a scenario
+ * its mode hides (`smallModel: null`) plus the hidden ones no mode publishes.
+ * Read off `resolveToolSchema`, the one place that answers "what does the model
+ * get", so a retired param can't leak back in. The eval framework consults this
+ * to SKIP (not fail) scenarios that depend on such a param — keeping
+ * small-model scores apples-to-apples. NOTE: a flat union skips CONSERVATIVELY
+ * — a shared param name hidden by only SOME tools skips every scenario
+ * requiring that name. Two instances today: `name` (hidden on ppal-context
+ * along with its memory scope, still live on the create/update tools) and
+ * `trackIndex`/`sceneIndex` (alias params on ppal-create-clip, still published
+ * on read-track, read-scene, select, create-track, create-scene). If a scenario
  * ever legitimately requires such a param on a tool that keeps it, the skip
  * check must become tool-scoped.
  */
