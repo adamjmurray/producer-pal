@@ -3,7 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import {
   HighlightStyle,
@@ -105,7 +110,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
         doc: initialValue,
         extensions: [
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          // Tab / Shift+Tab indent and outdent. Keyboard users tab out via
+          // Tab-focus mode (Ctrl-m / Alt-Shift-m on macOS, from defaultKeymap).
+          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           markdown(),
           EditorView.lineWrapping,
           ...(ariaLabel != null

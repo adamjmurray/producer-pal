@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { EditorView } from "@codemirror/view";
-import { render } from "@testing-library/preact";
+import { fireEvent, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { notifyFocusChange } from "#webui/components/context/editor/markdown-editor-helpers";
 import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
@@ -116,6 +116,30 @@ describe("MarkdownEditor", () => {
     view.dispatch({ changes: { from: 2, insert: " there" } });
 
     expect(onChange).toHaveBeenCalledWith("hi there");
+  });
+
+  it("indents the current line with Tab and outdents with Shift+Tab", () => {
+    const { container } = renderEditor({ initialValue: "hello" });
+    const view = EditorView.findFromDOM(container as HTMLElement)!;
+
+    fireEvent.keyDown(view.contentDOM, { key: "Tab" });
+    expect(view.state.doc.toString()).toBe("  hello");
+
+    fireEvent.keyDown(view.contentDOM, { key: "Tab", shiftKey: true });
+    expect(view.state.doc.toString()).toBe("hello");
+  });
+
+  it("indents and outdents every line of a multi-line selection", () => {
+    const { container } = renderEditor({ initialValue: "one\ntwo\nthree" });
+    const view = EditorView.findFromDOM(container as HTMLElement)!;
+
+    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+
+    fireEvent.keyDown(view.contentDOM, { key: "Tab" });
+    expect(view.state.doc.toString()).toBe("  one\n  two\n  three");
+
+    fireEvent.keyDown(view.contentDOM, { key: "Tab", shiftKey: true });
+    expect(view.state.doc.toString()).toBe("one\ntwo\nthree");
   });
 
   it("reports focus and blur through the update listener", () => {
