@@ -10,7 +10,7 @@ import {
   isDeadlineExceeded,
   LOOP_DEADLINE_BUFFER_MS,
   stopForDeadline,
-} from "./loop-deadline.ts";
+} from "../loop-deadline.ts";
 
 describe("LOOP_DEADLINE_BUFFER_MS", () => {
   it("is exactly twice the per-clip code execution timeout", () => {

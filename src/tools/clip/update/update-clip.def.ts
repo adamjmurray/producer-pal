@@ -24,7 +24,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    ids: z.coerce.string().describe("comma-separated clip ID(s) to update"),
+    ids: z.coerce
+      .string()
+      .optional()
+      .describe("comma-separated clip ID(s) to update"),
+    path: param(z.coerce.string().optional(), {
+      default:
+        "session position(s) to update instead of ids, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
+      smallModel: "session position to update instead of ids (e.g., 't0/s1')",
+    }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated for each (extras keep existing name)",

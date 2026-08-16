@@ -37,9 +37,11 @@ One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in
 
 create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill session positions and drop arrangement clips at the same time.
 
+\`path\` also names clips to act *on*: update-clip and ppal-delete take a session position instead of \`ids\`, so knowing where a clip is saves reading it first just to learn its id.
+
 ### Moving Clips
 
-\`arrangementStart\` moves arrangement clips; \`toPath\` moves session clips. Moving clips changes their IDs - re-read to get new IDs.
+\`arrangementStart\` moves arrangement clips; \`toPath\` moves session clips, pairing one destination per id (they don't cycle — two clips in one slot means the second overwrites the first). Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 

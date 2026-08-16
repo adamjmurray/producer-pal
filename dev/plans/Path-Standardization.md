@@ -11,19 +11,19 @@ built and what is left.
 Location params only. **bold** = published, _italic_ = hidden (alias or
 deprecated).
 
-| Tool                                                                           | Today                                                                                 | Target                                              |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                                |
-| read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                                           |
-| update-clip                                                                    | **ids**, **toPath**, _toSlot_                                                         | **ids**, **path**, **toPath** (gains `l`, fans out) |
-| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                                |
-| delete                                                                         | **ids**, **path** (devices only)                                                      | **ids**, **path** (clips too)                       |
-| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` tolerates `s3`                    |
-| select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3`                |
-| create-device                                                                  | **path**                                                                              | unchanged                                           |
-| read-device                                                                    | **deviceId**, **path**                                                                | unchanged                                           |
-| update-device                                                                  | **ids**, **path**, **toPath**                                                         | unchanged                                           |
-| read-track, read-scene, update-track, update-scene, create-track, create-scene | index params                                                                          | **unchanged — out of scope**                        |
+| Tool                                                                           | Today                                                                                 | Target                               |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                 |
+| read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                            |
+| update-clip                                                                    | **ids**, **path**, **toPath**, _toSlot_                                               | done                                 |
+| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                 |
+| delete                                                                         | **ids**, **path** (clips and devices)                                                 | done                                 |
+| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` tolerates `s3`     |
+| select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3` |
+| create-device                                                                  | **path**                                                                              | unchanged                            |
+| read-device                                                                    | **deviceId**, **path**                                                                | unchanged                            |
+| update-device                                                                  | **ids**, **path**, **toPath**                                                         | unchanged                            |
+| read-track, read-scene, update-track, update-scene, create-track, create-scene | index params                                                                          | **unchanged — out of scope**         |
 
 ## Phases
 
@@ -65,19 +65,21 @@ Breaking, and the release notes need to say so.
 Still open: `update-clip`'s `toPath` refuses a take-lane clip, and error
 messages that name `trackIndex`/`sceneIndex`.
 
-### Phase 3 — reach
+### Phase 3 — reach ✅
 
-`path` addressing on `update-clip` and `delete` for clips, removing
-read-then-update round trips. Additive; nothing is unpublished.
+`path` addressing on `update-clip` and `delete` for clips, so a caller that
+knows where a clip is doesn't read it first just to learn its id. Session
+positions only: a slot holds one clip, a track's arrangement holds many.
+Additive; nothing was unpublished, and `ids` and `path` compose.
 
-Two behavior fixes land here:
+Two behavior fixes landed with it:
 
 - `update-clip`'s `toPath` fans out (`ids[i] → toPath[i]`) instead of taking the
-  first entry and warning. Today `{ids:"63,72", toPath:"t15/s6,t15/s7"}` puts
-  both clips in one slot and destroys the first.
-- `duplicate` stops throwing on a session slot plus `arrangementStart`. It warns
-  only when **no** entry in `toPath` is an arrangement destination — with a
-  mixed list, `arrangementStart` legitimately applies to the bare-track entries.
+  first entry and warning. `{ids:"63,72", toPath:"t15/s6,t15/s7"}` used to put
+  both clips in one slot and destroy the first. Destinations don't cycle the way
+  name and color do.
+- `duplicate` warns instead of throwing on `toSlot` plus `arrangementStart`,
+  matching what the same conflict on `toPath` already did.
 
 ### Phase 4 — measure and schedule removal
 

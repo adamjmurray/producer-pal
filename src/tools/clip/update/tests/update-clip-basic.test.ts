@@ -42,13 +42,19 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should warn and return empty when ids is missing", async () => {
+  it("should warn and return empty when neither ids nor path is given", async () => {
     expect(await updateClip({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateClip: ids or path is required",
+    );
 
     vi.mocked(outlet).mockClear();
     expect(await updateClip({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateClip: ids or path is required",
+    );
   });
 
   it("should overlay new notes onto existing notes", async () => {
@@ -90,6 +96,31 @@ describe("updateClip - Basic operations", () => {
       1,
       'updateClip: id "nonexistent" does not exist',
     );
+  });
+
+  // Saves a read-then-update round trip: a caller that knows where the clip is
+  // shouldn't have to read it first just to learn its id.
+  it("should update a clip addressed by path", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    // clip456 sits at t1/s1
+    const result = await updateClip({ path: "t1/s1", name: "By Path" });
+
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
+    expect(result).toStrictEqual({ id: "456" });
+  });
+
+  it("should warn and skip a path with no clip, keeping the rest", async () => {
+    setupMidiClipMock(mocks.clip456);
+    mockNonExistentObjects();
+
+    const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateClip: no clip at path "t9/s9"',
+    );
+    expect(result).toStrictEqual({ id: "456" });
   });
 
   it("should update a single session clip by ID", async () => {

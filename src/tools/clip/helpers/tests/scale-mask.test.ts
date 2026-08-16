@@ -6,7 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { describe, expect, it } from "vitest";
-import { readLiveSetScaleMask } from "./scale-mask.ts";
+import { readLiveSetScaleMask } from "../scale-mask.ts";
 
 describe("readLiveSetScaleMask", () => {
   it("returns undefined when scale_mode is 0 (no scale active)", () => {

@@ -118,6 +118,38 @@ describe("deleteObject", () => {
     ]);
   });
 
+  // Saves a read-then-delete round trip: a caller that knows where the clip is
+  // shouldn't have to read it first just to learn its id.
+  it("should delete clips addressed by path", () => {
+    registerMockObject("clip_0_0", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    const track0 = registerMockObject("live_set/tracks/0", {
+      path: livePath.track(0),
+    });
+
+    const result = deleteObject({ path: "t0/s0", type: "clip" });
+
+    expect(track0.call).toHaveBeenCalledWith("delete_clip", "id clip_0_0");
+    expect(result).toStrictEqual({
+      id: "clip_0_0",
+      type: "clip",
+      deleted: true,
+    });
+  });
+
+  it("should warn and skip a clip path with no clip", () => {
+    const consoleWarnSpy = vi.spyOn(console, "warn");
+
+    mockNonExistentObjects();
+
+    expect(deleteObject({ path: "t0/s9", type: "clip" })).toStrictEqual([]);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'delete: no clip at path "t0/s9"',
+    );
+  });
+
   it("should warn and skip take-lane clips (cannot delete via API)", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn");
 

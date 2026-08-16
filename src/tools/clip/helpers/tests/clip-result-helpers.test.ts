@@ -12,7 +12,7 @@ import {
   emitArrangementWarnings,
   prepareSessionClipSlot,
   validateAndParseArrangementParams,
-} from "./clip-result-helpers.ts";
+} from "../clip-result-helpers.ts";
 
 // Mock dependencies
 vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
