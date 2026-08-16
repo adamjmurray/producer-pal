@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -318,7 +319,9 @@ function updateTarget(
   // Handle move operation first (before other updates)
   if (options.toPath != null) {
     if (isDeviceType(type)) {
-      moveDeviceToPath(target, options.toPath);
+      if (!moveDeviceToPath(target, options.toPath)) {
+        console.warn(`move target at path "${options.toPath}" does not exist`);
+      }
     } else if (type === "DrumChain") {
       moveDrumChainToPath(
         target,

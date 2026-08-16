@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -18,15 +19,44 @@ import {
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("moveDeviceToPath", () => {
-  it("blames toPath, the param every caller took the path from", () => {
-    const device = registerMockObject("device-0", {
+  let device: RegisteredMockObject;
+
+  beforeEach(() => {
+    device = registerMockObject("device-0", {
       path: livePath.track(0).device(0),
       type: "Device",
     });
+  });
 
+  it("blames toPath, the param every caller took the path from", () => {
     expect(() => moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toThrow(
       'invalid toPath "x9" - "x9" is not a track',
     );
+  });
+
+  it("returns true after moving the device", () => {
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(true);
+    expect(liveSet.call).toHaveBeenCalledWith(
+      "move_device",
+      "id device-0",
+      "id track-1",
+      0,
+    );
+  });
+
+  it("returns false, without moving, when the destination does not exist", () => {
+    // Callers report this one themselves: update-device warns, duplicate throws.
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    mockNonExistentObjects();
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99")).toBe(false);
+    expect(liveSet.call).not.toHaveBeenCalled();
+    expect(outlet).not.toHaveBeenCalled();
   });
 });
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -27,15 +28,15 @@ function parseDrumPadNoteFromPath(path: string): string | null {
  * Move a device to a new location
  * @param device - LiveAPI device object
  * @param toPath - Target path
+ * @returns false when the destination doesn't exist, so the caller can report
+ *   it in its own terms; true once the device has moved
  */
-export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
+export function moveDeviceToPath(device: LiveAPI, toPath: string): boolean {
   // Every caller here got the path from a `toPath` param, so name it that.
   const { container, position } = resolveInsertionPath(toPath, "toPath");
 
   if (!container?.exists()) {
-    console.warn(`move target at path "${toPath}" does not exist`);
-
-    return;
+    return false;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -46,6 +47,8 @@ export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
     toLiveApiId(container.id),
     position ?? 0,
   );
+
+  return true;
 }
 
 /**

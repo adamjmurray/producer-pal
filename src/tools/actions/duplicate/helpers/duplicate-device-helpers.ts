@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -74,8 +75,13 @@ export function duplicateDevice(
       trackIndex,
     );
 
-    // 7. Move device to destination
-    moveDeviceToPath(tempDevice, adjustedDestination);
+    // 7. Move device to destination. Report a missing one against the caller's
+    // toPath, not the adjusted one — the temp track shifted its track index.
+    if (!moveDeviceToPath(tempDevice, adjustedDestination)) {
+      throw new Error(
+        `duplicate failed: no destination at toPath "${destination}"`,
+      );
+    }
 
     // 8. Set name if provided
     if (name) {

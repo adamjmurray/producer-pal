@@ -16,7 +16,8 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
-    moveDeviceToPath: vi.fn(),
+    // Reports a completed move; tests that need a refused one override it.
+    moveDeviceToPath: vi.fn(() => true),
   }),
 );
 
@@ -236,6 +237,26 @@ describe("duplicate - device duplication", () => {
       duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
     ).rejects.toThrow("nope");
 
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("fails, in the caller's coordinates, when the destination does not exist", async () => {
+    // Without this the temp device's id came back as a success, for a device
+    // that the cleanup was about to delete.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce(false);
+
+    // The path handed to the move is t100 (shifted past the temp track); the
+    // error names the t99 the caller sent.
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "t99" }),
+    ).rejects.toThrow('duplicate failed: no destination at toPath "t99"');
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t100",
+    );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
