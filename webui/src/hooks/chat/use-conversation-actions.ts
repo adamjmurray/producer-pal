@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MutableRef, useCallback } from "preact/hooks";
+import { beginTurn } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -48,6 +49,9 @@ interface ConversationActionsDeps<
   /** Flush any queued follow-ups through the normal send path. Called after a
    *  successful fork so queued messages don't strand until the next manual send. */
   drainQueuedFollowUps: () => Promise<void>;
+  /** Apply a lock a superseded init handed off, if any. Called right before
+   *  streaming so this fork locks to the client it actually talks to. */
+  applyPendingLock: () => void;
 }
 
 interface ConversationActionsReturn {
@@ -82,6 +86,7 @@ export function useConversationActions<
     pendingForkRef,
     autoSaveRef,
     drainQueuedFollowUps,
+    applyPendingLock,
   } = deps;
 
   const forkConversation = useCallback(
@@ -110,6 +115,14 @@ export function useConversationActions<
       const succeeded = await runWithChat(async (stillCurrent) => {
         const slicedHistory = history.slice(0, rawIndex);
 
+        // Taken before init, same as the send path: a fork parked in its MCP
+        // connect otherwise has nothing for Stop to abort, and resumes streaming
+        // as if Stop never happened. See beginTurn.
+        const { controller, stillLive } = beginTurn(
+          abortControllerRef,
+          stillCurrent,
+        );
+
         // Signal the branch BEFORE initializeChat replaces the client. init
         // builds the new client with slicedHistory baked in, so from that point
         // clientRef holds the truncated history while activeId still points at
@@ -132,12 +145,12 @@ export function useConversationActions<
           pendingForkRef.current = { anchorIndex };
         }
 
-        await initializeChat(slicedHistory, undefined, stillCurrent);
+        await initializeChat(slicedHistory, undefined, stillLive);
 
-        // Superseded while init was in flight (Stop mid-connect, then a re-send):
-        // the newer turn owns the abort ref and the client's stream, so this one
-        // must not take either. Same guard as handleSend's send path.
-        if (!stillCurrent()) return false;
+        // Stopped, switched away from, or superseded while init was in flight:
+        // the turn that is live now owns the client's stream, so this one must
+        // not take it. Same guard as handleSend's send path.
+        if (!stillLive()) return false;
 
         // Init succeeded, so the new client now owns the (truncated) history;
         // clear the restored-conversation fallback. Deferred until after init
@@ -150,9 +163,9 @@ export function useConversationActions<
           typeof clientRef.current
         >;
 
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
+        // Same as the send path: the turn that streams owns the lock for the
+        // client it uses, including one handed off by a superseded init.
+        applyPendingLock();
 
         return await executeWithRetry({
           executeStream: () =>
@@ -192,6 +205,7 @@ export function useConversationActions<
       pendingForkRef,
       autoSaveRef,
       drainQueuedFollowUps,
+      applyPendingLock,
     ],
   );
 

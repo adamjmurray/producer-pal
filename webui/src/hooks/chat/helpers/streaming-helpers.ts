@@ -327,6 +327,41 @@ export async function runChatTurn<
   }
 }
 
+/**
+ * Take the turn's abort controller and its liveness check, BEFORE the turn's
+ * setup rather than after it.
+ *
+ * Installing the controller up front is what makes Stop reach a turn parked in
+ * its MCP connect. Install it after the connect instead and a stopped turn wakes
+ * with nothing aborted, builds a fresh controller and streams as if Stop never
+ * happened — tokens spent and tool calls run against the Live Set while the
+ * composer reads idle. The ticket can't cover that on its own: Stop with no
+ * follow-up send never bumps it, and neither does a conversation switch.
+ *
+ * `stillLive` is the check every resume point wants — not superseded by a newer
+ * turn AND not stopped — as opposed to the ticket-only `stillCurrent`, which
+ * still guards the paths where a stopped turn should finish what it was doing
+ * (rendering and persisting its own failure, say).
+ *
+ * @param abortControllerRef - Shared ref the newest turn's controller lives in
+ * @param abortControllerRef.current - The installed controller, or null when idle
+ * @param stillCurrent - This turn's ticket check from runChatTurn
+ * @returns The turn's controller and its liveness check
+ */
+export function beginTurn(
+  abortControllerRef: { current: AbortController | null },
+  stillCurrent: () => boolean,
+): { controller: AbortController; stillLive: () => boolean } {
+  const controller = new AbortController();
+
+  abortControllerRef.current = controller;
+
+  return {
+    controller,
+    stillLive: () => stillCurrent() && !controller.signal.aborted,
+  };
+}
+
 /** Effective connection used to (re)build a chat client at init time. */
 export interface InitConnection {
   provider: Provider;

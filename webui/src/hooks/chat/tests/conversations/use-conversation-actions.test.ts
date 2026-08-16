@@ -66,6 +66,7 @@ function setup(over: DepsOverrides = {}) {
       executeWithRetry: vi.fn(async () => true),
       invalidateCompactionUndo,
       drainQueuedFollowUps: vi.fn(async () => {}),
+      applyPendingLock: vi.fn(),
     }),
   );
 

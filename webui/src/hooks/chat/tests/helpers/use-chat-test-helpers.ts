@@ -196,6 +196,57 @@ export function adapterWithClient(
 }
 
 /**
+ * An adapter whose clients record what they were asked to do: every client
+ * created, every message sent, and every abort signal streamed with. `gate`
+ * holds each stream open after its first yield so a test can keep a turn
+ * in-flight; `customize` mutates each client as it is built (e.g. to hang one
+ * client's initialize() and park a turn in its connect).
+ * @param recorded - Arrays to record into, plus the optional stream gate
+ * @param recorded.clients - Receives every client the adapter builds
+ * @param recorded.sent - Receives every message streamed
+ * @param recorded.signals - Receives every stream's abort signal
+ * @param recorded.gate - Held open after the first yield of each stream
+ * @param customize - Optional mutator applied to each created client
+ * @returns The recording adapter
+ */
+export function trackingAdapter(
+  recorded: {
+    clients: MockChatClient[];
+    sent?: string[];
+    signals?: AbortSignal[];
+    gate?: Promise<void>;
+  },
+  customize?: (client: MockChatClient) => void,
+): ChatAdapter<MockChatClient, TestMessage, TestConfig> {
+  const { clients, sent, signals, gate } = recorded;
+
+  return adapterWithClient((client) => {
+    clients.push(client);
+
+    client.sendMessage = async function* (
+      message: string,
+      signal: AbortSignal,
+    ) {
+      sent?.push(message);
+      signals?.push(signal);
+      client.chatHistory.push({ role: "user", content: message });
+      yield [...client.chatHistory];
+
+      await gate;
+    };
+
+    customize?.(client);
+  });
+}
+
+/**
+ * Let pending microtasks — and the streams they start — settle.
+ */
+export async function tick(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
  * Creates default props for useChat hook tests
  * @param adapter - Mock adapter to use
  * @returns Default hook props
@@ -268,6 +319,7 @@ export async function streamingHelpersMockBody(): Promise<
     // Pure helpers (no streaming side effects) — keep the real implementations
     // so client (re)init still resolves the locked provider/model correctly and
     // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
+    beginTurn: actual.beginTurn,
     resolveInitConnection: actual.resolveInitConnection,
     resolveLockedNotation: actual.resolveLockedNotation,
     resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,

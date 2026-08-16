@@ -28,13 +28,14 @@ import {
 import {
   MockChatClient,
   RATE_LIMIT_ERROR,
-  adapterWithClient,
   createDefaultProps,
   createEchoThenRateLimitAdapter,
   createMockAdapter,
   createScriptedAdapter,
   lockedSettings,
   RESTORED_HISTORY,
+  tick,
+  trackingAdapter,
   type TestMessage,
 } from "./helpers/use-chat-test-helpers";
 
@@ -129,55 +130,6 @@ function createSendMessageFailingAdapter(
       return client;
     }),
   };
-}
-
-/**
- * Build an adapter recording every client it creates. Each client streams one
- * user echo and then holds the turn open until `gate` resolves, so the abort ref
- * stays live while the test asserts on it.
- * @param recorded - Where to record what the clients did
- * @param recorded.clients - Clients the adapter created, in order
- * @param recorded.sent - Messages the clients streamed, in order
- * @param recorded.signals - Abort signal each stream was given, in order
- * @param recorded.gate - Held by every stream after its first chunk
- * @param customize - Applied to each new client
- * @returns The adapter
- */
-function trackingAdapter(
-  recorded: {
-    clients: MockChatClient[];
-    sent?: string[];
-    signals?: AbortSignal[];
-    gate?: Promise<void>;
-  },
-  customize?: (client: MockChatClient) => void,
-): typeof mockAdapter {
-  const { clients, sent, signals, gate } = recorded;
-
-  return adapterWithClient((client) => {
-    clients.push(client);
-
-    client.sendMessage = async function* (
-      message: string,
-      signal: AbortSignal,
-    ) {
-      sent?.push(message);
-      signals?.push(signal);
-      client.chatHistory.push({ role: "user", content: message });
-      yield [...client.chatHistory];
-
-      await gate;
-    };
-
-    customize?.(client);
-  });
-}
-
-/**
- * Let pending microtasks — and the streams they start — settle.
- */
-async function tick(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 const defaultProps: MockChatProps = createDefaultProps(mockAdapter);
