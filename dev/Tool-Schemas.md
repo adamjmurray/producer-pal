@@ -91,3 +91,32 @@ bar|beat in every notation.
 `createMcpServer` runs fresh for each `POST /mcp`. Because overrides are
 co-located, there are no dangling refs to guard — just keep each param's modes
 correct.
+
+## Retiring a param
+
+Deleting a param from `inputSchema` is not enough. `define-tool` derives the
+keys it accepts from that schema, so an old caller's value gets stripped before
+the handler runs and the caller is told it was ignored — a silently dropped
+argument. Wrap it instead:
+
+```typescript
+toSlot: deprecatedParam(z.coerce.string().optional(), { replacedBy: "toPath" }),
+```
+
+The param stays in the schema that validates and leaves the schema that gets
+published, so old callers keep working while the model never learns the name.
+Sending it appends `Warning: <tool> param "toSlot" is deprecated…` to the
+result.
+
+Both MCP registration and `GET /api/tools` build their schemas through
+`resolveToolSchema()` — go through it rather than filtering a schema yourself,
+or the two catalogs drift.
+
+`deprecatedParam()` and `param()` compose in either order. Both tag the schema
+instance `.describe()` returns, so anything that re-describes a param has to
+carry the tags across (`describeWithTags()` in `schema-tags.ts`, never
+`.describe()` directly).
+
+Removing the param for real is a breaking change: bump the minor version, and
+check the shape it enabled is still rejected rather than silently falling
+through to a different destination.

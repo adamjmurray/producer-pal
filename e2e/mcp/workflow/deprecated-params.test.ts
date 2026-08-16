@@ -8,8 +8,9 @@
  *
  * deprecatedParam() keeps a param in the schema that validates and out of the
  * schema that ships, so old callers keep working while the model never learns
- * the old name. Unit tests cover the framework against a mock server; only a
- * real listTools() shows what a client actually receives.
+ * the old name. Unit tests pin the resolved shape; this pins what a live client
+ * actually receives, over both catalogs — MCP and REST each build their own,
+ * and REST once served a param MCP was hiding.
  *
  * The other half — that the retired names still work — is covered where the
  * clips are: ppal-duplicate and ppal-update-clip each pin a toSlot call.
@@ -67,5 +68,22 @@ describe("deprecated params", () => {
 
     expect(updateClip).toContain("toPath");
     expect(updateClip).not.toContain("toSlot");
+  });
+
+  // GET /api/tools builds its own catalog, and it is how a REST agent discovers
+  // the tool surface — so it has to hide the same names MCP does.
+  it("hides them from the REST catalog too", async () => {
+    const response = await fetch(MCP_URL.replace("/mcp", "/api/tools"));
+
+    expect(response.ok).toBe(true);
+
+    const { tools: restTools } = (await response.json()) as {
+      tools: ToolInfo[];
+    };
+    const duplicate = restTools.find((t) => t.name === "ppal-duplicate");
+    const params = Object.keys(duplicate!.inputSchema.properties ?? {});
+
+    expect(params).toContain("toPath");
+    expect(params).not.toContain("toSlot");
   });
 });

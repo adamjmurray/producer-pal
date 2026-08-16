@@ -4,14 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Express, type Request, type Response } from "express";
-import { z } from "zod";
+import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
-  resolveModalDescription,
-  resolveParamModes,
-} from "#src/tools/shared/tool-framework/modal-config.ts";
+  collectDeprecatedParams,
+  deprecatedParamWarning,
+} from "#src/tools/shared/tool-framework/deprecated-param.ts";
+import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -85,12 +86,11 @@ export function registerRestApiRoutes(
     const tools = getActiveToolDefs()
       .filter((td) => enabledSet.has(td.toolName))
       .map((td) => {
-        const resolved = resolveParamModes(td.toolOptions.inputSchema, context);
-        const finalInputSchema = filterSchemaForSmallModel(
+        // Same resolution define-tool.ts registers with, deprecation filter
+        // included, so the REST catalog can't advertise a param MCP hides.
+        const { published } = resolveToolSchema(
           td.toolOptions.inputSchema,
-          resolved.excludeParams,
-          resolved.descriptionOverrides,
-          resolved.excludeEnumValues,
+          context,
         );
 
         return {
@@ -101,7 +101,7 @@ export function registerRestApiRoutes(
             context,
           ),
           annotations: td.toolOptions.annotations,
-          inputSchema: z.toJSONSchema(z.object(finalInputSchema)),
+          inputSchema: z.toJSONSchema(z.object(published)),
         };
       });
 
@@ -193,6 +193,13 @@ export function registerRestApiRoutes(
           return;
         }
 
+        appendDeprecationNotices(
+          mcpResponse,
+          toolName,
+          toolDef.toolOptions.inputSchema,
+          parsed.data,
+        );
+
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
       } catch (error) {
         console.error(`REST API error calling ${toolName}: ${String(error)}`);
@@ -200,6 +207,33 @@ export function registerRestApiRoutes(
       }
     },
   );
+}
+
+/**
+ * Steers a REST caller off a deprecated param, the way define-tool.ts does for
+ * MCP. The catalog no longer lists the param, so this notice is the only signal
+ * a REST caller gets that it is on borrowed time.
+ * @param response - The tool's response, appended to in place
+ * @param toolName - Tool that was called
+ * @param inputSchema - The tool's raw input schema
+ * @param args - The validated arguments
+ */
+function appendDeprecationNotices(
+  response: McpResponse,
+  toolName: string,
+  inputSchema: Record<string, ZodType>,
+  args: Record<string, unknown>,
+): void {
+  for (const [key, info] of Object.entries(
+    collectDeprecatedParams(inputSchema),
+  )) {
+    if (args[key] != null) {
+      response.content.push({
+        type: "text",
+        text: deprecatedParamWarning(toolName, key, info),
+      });
+    }
+  }
 }
 
 /**

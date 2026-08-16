@@ -13,7 +13,8 @@ import {
   deprecatedParamWarning,
   getDeprecatedParam,
 } from "../deprecated-param.ts";
-import { param } from "../modal-config.ts";
+import { getParamModes, param } from "../modal-config.ts";
+import { resolveToolSchema } from "../resolve-tool-schema.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
 
@@ -32,6 +33,54 @@ describe("deprecatedParam", () => {
     expect(
       getDeprecatedParam(param(z.string().optional(), { default: "a param" })),
     ).toBeUndefined();
+  });
+
+  // Both helpers tag the instance `.describe()` returns, so before the tags
+  // carried across, wrapping one in the other silently dropped the inner one —
+  // republishing a deprecated param, or losing a param's modes.
+  it.each([
+    [
+      "deprecatedParam(param(...))",
+      deprecatedParam(
+        param(z.coerce.string().optional(), {
+          default: "a param",
+          smallModel: null,
+        }),
+        { replacedBy: "toPath" },
+      ),
+    ],
+    [
+      "param(deprecatedParam(...))",
+      param(
+        deprecatedParam(z.coerce.string().optional(), {
+          replacedBy: "toPath",
+        }),
+        { default: "a param", smallModel: null },
+      ),
+    ],
+  ])("composes with param() as %s", (_label, schema) => {
+    expect(getDeprecatedParam(schema)).toStrictEqual({ replacedBy: "toPath" });
+    expect(getParamModes(schema)?.smallModel).toBeNull();
+  });
+
+  // filterSchemaForSmallModel re-describes a param when a mode overrides its
+  // text — another instance swap the tag has to survive.
+  it("survives a mode's description override", () => {
+    const schema = {
+      toSlot: deprecatedParam(
+        param(z.coerce.string().optional(), {
+          default: "a param",
+          smallModel: "shorter",
+        }),
+        { replacedBy: "toPath" },
+      ),
+    };
+
+    expect(
+      Object.keys(
+        resolveToolSchema(schema, { smallModelMode: true }).published,
+      ),
+    ).toStrictEqual([]);
   });
 });
 

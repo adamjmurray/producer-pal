@@ -8,16 +8,14 @@ import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
 import {
-  collectDeprecatedParams,
   type DeprecatedParamInfo,
   deprecatedParamWarning,
 } from "#src/tools/shared/tool-framework/deprecated-param.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   type ModalDescription,
   resolveModalDescription,
-  resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -76,36 +74,19 @@ export function defineTool(
     const { smallModelMode = false, notation } = mcpOptions;
     const { inputSchema, description, ...toolConfig } = options;
 
-    // Resolve every param's co-located modes into the flat exclude/override maps
-    // filterSchemaForSmallModel consumes. Notation wins over small-model per
-    // param; a mode's `null` hides the param.
-    const resolved = resolveParamModes(inputSchema, {
-      notation,
-      smallModelMode,
-    });
-
-    // filterSchemaForSmallModel returns the schema unchanged when there is
-    // nothing to exclude or override, so calling it unconditionally is a no-op
-    // for tools/contexts without any active modes.
-    const finalInputSchema = filterSchemaForSmallModel(
-      inputSchema,
-      resolved.excludeParams,
-      resolved.descriptionOverrides,
-      resolved.excludeEnumValues,
-    );
+    // Deprecated params still validate, but are not published — the model never
+    // learns the old name while callers that still send it keep working.
+    const {
+      validating: finalInputSchema,
+      published: publishedSchema,
+      deprecated: deprecatedParams,
+      excludeEnumValues,
+    } = resolveToolSchema(inputSchema, { notation, smallModelMode });
 
     const finalDescription = resolveModalDescription(description, {
       notation,
       smallModelMode,
     });
-
-    // Deprecated params still validate, but are not published — the model never
-    // learns the old name while callers that still send it keep working.
-    const deprecatedParams = collectDeprecatedParams(finalInputSchema);
-    const publishedSchema = omitKeys(
-      finalInputSchema,
-      Object.keys(deprecatedParams),
-    );
 
     // Use loose() so extra args reach our handler (SDK would strip them otherwise)
     const passthroughSchema = z.object(publishedSchema).loose();
@@ -135,8 +116,8 @@ export function defineTool(
         // is the primary gate; this catches hallucinated values). Populated only
         // when a mode trims a param's enum values.
         const finalArgs =
-          Object.keys(resolved.excludeEnumValues).length > 0
-            ? filterExcludedEnumValues(validated, resolved.excludeEnumValues)
+          Object.keys(excludeEnumValues).length > 0
+            ? filterExcludedEnumValues(validated, excludeEnumValues)
             : validated;
 
         const rawResult = (await callLiveApi(
@@ -180,23 +161,6 @@ export function defineTool(
   fn.toolOptions = options;
 
   return fn;
-}
-
-/**
- * Returns a copy of a schema without the given keys.
- * @param schema - Schema to copy
- * @param keys - Param names to leave out
- * @returns Schema without those params
- */
-function omitKeys(
-  schema: Record<string, ZodType>,
-  keys: string[],
-): Record<string, ZodType> {
-  if (keys.length === 0) return schema;
-
-  return Object.fromEntries(
-    Object.entries(schema).filter(([key]) => !keys.includes(key)),
-  );
 }
 
 /**

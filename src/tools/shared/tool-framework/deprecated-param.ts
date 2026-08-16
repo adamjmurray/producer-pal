@@ -15,19 +15,24 @@
 // the old name.
 
 import { type ZodType } from "zod";
+import {
+  describeWithTags,
+  getSchemaTag,
+  tagSchema,
+} from "#src/tools/shared/tool-framework/schema-tags.ts";
 
 export interface DeprecatedParamInfo {
   /** Param name to use instead, named in the warning. */
   replacedBy: string;
 }
 
-// Same WeakMap trick as param(): tags a schema instance without changing its
-// type, so every other consumer still sees an ordinary ZodType.
-const DEPRECATED_PARAMS = new WeakMap<ZodType, DeprecatedParamInfo>();
+// Tags the schema instance without changing its type, so every other consumer
+// still sees an ordinary ZodType. See schema-tags.ts.
+const DEPRECATED_TAG = Symbol("deprecatedParam");
 
 /**
  * Marks a param as deprecated: still accepted and validated, no longer
- * published to the model.
+ * published to the model. Composes with {@link param} in either order.
  * @param schema - The param's Zod schema
  * @param info - What to use instead
  * @returns The schema, tagged as deprecated
@@ -36,11 +41,11 @@ export function deprecatedParam<T extends ZodType>(
   schema: T,
   info: DeprecatedParamInfo,
 ): T {
-  const described = schema.describe(`deprecated: use ${info.replacedBy}`);
-
-  DEPRECATED_PARAMS.set(described, info);
-
-  return described;
+  return tagSchema(
+    describeWithTags(schema, `deprecated: use ${info.replacedBy}`),
+    DEPRECATED_TAG,
+    info,
+  );
 }
 
 /**
@@ -51,7 +56,9 @@ export function deprecatedParam<T extends ZodType>(
 export function getDeprecatedParam(
   schema: ZodType,
 ): DeprecatedParamInfo | undefined {
-  return DEPRECATED_PARAMS.get(schema);
+  return getSchemaTag(schema, DEPRECATED_TAG) as
+    | DeprecatedParamInfo
+    | undefined;
 }
 
 /**
