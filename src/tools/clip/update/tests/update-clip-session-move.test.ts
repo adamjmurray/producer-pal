@@ -32,6 +32,8 @@ vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
  * @param opts.noteResult - Note result to pass
  * @param opts.registerSource - Whether to register the source clip slot
  * @param opts.registerDest - Whether to register destination mocks
+ * @param opts.clipIsMidi - Whether the source clip is MIDI
+ * @param opts.destIsMidi - Whether the destination track takes MIDI
  * @returns Object with mockClip, updatedClips, and source clip slot mock
  */
 function runSessionMove(opts: {
@@ -43,6 +45,8 @@ function runSessionMove(opts: {
   noteResult?: { noteCount: number } | null;
   registerSource?: boolean;
   registerDest?: boolean;
+  clipIsMidi?: number;
+  destIsMidi?: number;
 }) {
   const {
     trackIndex = 0,
@@ -53,14 +57,23 @@ function runSessionMove(opts: {
     noteResult = null,
     registerSource = true,
     registerDest = true,
+    clipIsMidi = 1,
+    destIsMidi = 1,
   } = opts;
 
   const mockClip = {
     id: "123",
     trackIndex,
     sceneIndex,
-    getProperty: vi.fn(),
+    getProperty: vi.fn((prop: string) =>
+      prop === "is_midi_clip" ? clipIsMidi : undefined,
+    ),
   };
+
+  registerMockObject(`live_set/tracks/${toTrackIndex}`, {
+    path: livePath.track(toTrackIndex),
+    properties: { has_midi_input: destIsMidi },
+  });
 
   const sourceSlot = registerSource
     ? registerMockObject(
@@ -269,6 +282,40 @@ describe("handleSessionSlotMove", () => {
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({ id: "123" });
+  });
+
+  // duplicate_clip_to no-ops on a type mismatch and the source is deleted right
+  // after, so without this guard the clip is destroyed and reported as moved.
+  it("should not move (or delete) a MIDI clip to an audio track", () => {
+    const { updatedClips, sourceSlot } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      destIsMidi: 0,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "MIDI clip 123 was not moved: track 1 is audio",
+    );
+    expect(sourceSlot.call).not.toHaveBeenCalled();
+    expect(updatedClips).toHaveLength(1);
+    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).not.toHaveProperty("slot");
+  });
+
+  it("should not move an audio clip to a MIDI track", () => {
+    const { updatedClips, sourceSlot } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      clipIsMidi: 0,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "audio clip 123 was not moved: track 1 is MIDI",
+    );
+    expect(sourceSlot.call).not.toHaveBeenCalled();
+    expect(updatedClips).toHaveLength(1);
   });
 
   it("should warn when overwriting existing clip at destination", () => {
