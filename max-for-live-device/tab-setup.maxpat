@@ -251,7 +251,7 @@
             },
             {
                 "box": {
-                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 30 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
+                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
                     "annotation_name": "Timeout",
                     "id": "obj-68",
                     "maxclass": "live.numbox",
@@ -264,7 +264,7 @@
                     "presentation_rect": [ 55.00000163912773, 62.00000184774399, 44.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
-                            "parameter_initial": [ 30.0 ],
+                            "parameter_initial": [ 45.0 ],
                             "parameter_initial_enable": 1,
                             "parameter_invisible": 1,
                             "parameter_longname": "timeout",
@@ -387,7 +387,7 @@
             {
                 "box": {
                     "angle": 270.0,
-                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 30 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
+                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
                     "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
                     "hint": "",
                     "id": "obj-30",

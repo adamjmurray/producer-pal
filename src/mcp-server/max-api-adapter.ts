@@ -49,7 +49,10 @@ interface PendingRequest {
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
 
-const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
+// Kept under 60s on purpose: that is the MCP SDK's own client-side default, so
+// a 60s server timeout races the client and the user gets a generic client
+// abort instead of our partial results and warnings.
+const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 45_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map<string, PendingRequest>();
