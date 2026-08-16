@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import { readChainMixer } from "./chain-mixer-helpers.ts";
 
 export interface BuildChainInfoOptions {
   path?: string | null;
@@ -20,7 +22,8 @@ export interface DeviceInfo {
  * Build chain info object with standard properties
  * @param chain - Chain Live API object
  * @param options - Build options
- * @returns Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
+ * @returns Chain info object with id, path, type, name, color, mappedPitch,
+ *   chokeGroup, non-default mixer settings (gainDb, pan, sends), and state
  */
 export function buildChainInfo(
   chain: LiveAPI,
@@ -65,6 +68,8 @@ export function buildChainInfo(
       chainInfo.chokeGroup = chokeGroup;
     }
   }
+
+  Object.assign(chainInfo, readChainMixer(chain));
 
   const chainState = computeState(chain);
 

@@ -77,7 +77,7 @@ export function duplicateDevice(
 
     // 7. Move device to destination. Report a missing one against the caller's
     // toPath, not the adjusted one — the temp track shifted its track index.
-    if (!moveDeviceToPath(tempDevice, adjustedDestination)) {
+    if (!moveDeviceToPath(tempDevice, adjustedDestination, device)) {
       throw new Error(
         `duplicate failed: no destination at toPath "${destination}"`,
       );

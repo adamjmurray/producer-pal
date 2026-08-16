@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIfChainMixerLeftBehind } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
@@ -28,16 +29,27 @@ function parseDrumPadNoteFromPath(path: string): string | null {
  * Move a device to a new location
  * @param device - LiveAPI device object
  * @param toPath - Target path
+ * @param source - The device the user is really moving or copying, when
+ *   `device` is a temp copy of it (device duplication); drives the
+ *   left-behind chain mixer warning
  * @returns false when the destination doesn't exist, so the caller can report
  *   it in its own terms; true once the device has moved
  */
-export function moveDeviceToPath(device: LiveAPI, toPath: string): boolean {
+export function moveDeviceToPath(
+  device: LiveAPI,
+  toPath: string,
+  source: LiveAPI = device,
+): boolean {
   // Every caller here got the path from a `toPath` param, so name it that.
   const { container, position } = resolveInsertionPath(toPath, "toPath");
 
   if (!container?.exists()) {
     return false;
   }
+
+  // Device duplication passes the real source alongside a temp copy; a plain
+  // move leaves `source` defaulted to the device itself.
+  warnIfChainMixerLeftBehind(source, container, source.id !== device.id);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -334,4 +346,33 @@ export function updateABCompare(device: LiveAPI, action: string): void {
       device.call("save_preset_to_compare_ab_slot");
       break;
   }
+}
+
+/**
+ * Live prepends a rack return chain's send letter to its name, so writing back
+ * the name read-device reported ("F Pedal") would double it ("F F Pedal").
+ * Strip a leading letter when it matches the chain's own slot.
+ * @param chain - The chain being renamed
+ * @param name - Requested name
+ * @returns Name to write
+ */
+export function stripReturnChainLetter(chain: LiveAPI, name: string): string {
+  const match = /return_chains (\d+)$/.exec(chain.path);
+
+  if (match == null) {
+    return name;
+  }
+
+  const index = Number(match[1]);
+
+  // Past Z we don't know what Live labels the chain, so leave the name alone.
+  if (index > 25) {
+    return name;
+  }
+
+  const prefix = `${String.fromCharCode(65 + index)} `;
+
+  return name.toUpperCase().startsWith(prefix)
+    ? name.slice(prefix.length)
+    : name;
 }

@@ -318,6 +318,7 @@ sounding.
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
+- See a rack chain's own volume, pan, and sends when they're not at default
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
 
@@ -331,7 +332,10 @@ sounding.
 - Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
+- Set a rack chain's own volume, pan, and send levels
 - Change the choke group and output MIDI note of drum chains
+- Move a drum pad to another pad, keeping its chain trim, choke group, and
+  devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
 

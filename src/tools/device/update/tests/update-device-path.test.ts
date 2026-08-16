@@ -146,6 +146,34 @@ describe("updateDevice with path parameter", () => {
       expect(returnChain456.set).toHaveBeenCalledWith("name", "Return Chain");
       expect(result).toStrictEqual({ id: "return-chain-456" });
     });
+
+    it("should drop the send letter when renaming a return chain", () => {
+      // Live re-adds the letter itself. read-device reports the prefixed name,
+      // so writing it back unchanged would store "A A Reverb".
+      updateDevice({ path: "t1/d0/rc0", name: "A Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "Reverb");
+    });
+
+    it("should drop a lower-case send letter too", () => {
+      updateDevice({ path: "t1/d0/rc0", name: "a Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "Reverb");
+    });
+
+    it("should keep a letter that is not the chain's own", () => {
+      // Only the chain's own letter is Live's doing; "B" here is the user's.
+      updateDevice({ path: "t1/d0/rc0", name: "B Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "B Reverb");
+    });
+
+    it("should keep a leading letter on a regular chain", () => {
+      // Live only prefixes return chains, so a normal chain keeps the name.
+      updateDevice({ path: "t1/d0/c0", name: "A Reverb" });
+
+      expect(chain123.set).toHaveBeenCalledWith("name", "A Reverb");
+    });
   });
 
   describe("drum pad paths", () => {
@@ -192,12 +220,15 @@ describe("updateDevice with path parameter", () => {
 
       const chains = new Map<string, RegisteredMockObject>();
 
-      for (const chainId of chainIds) {
+      for (const [chainIndex, chainId] of chainIds.entries()) {
         const chainProps = chainProperties[chainId] ?? {};
 
         chains.set(
           chainId,
           registerMockObject(chainId, {
+            // Drum chains live in the rack's own `chains` list, not under
+            // `drum_pads`.
+            path: `${livePath.track(1).device(0)} chains ${chainIndex}`,
             type: chainProps.type ?? "DrumChain",
             properties: {
               in_note: chainProps.inNote ?? 36,

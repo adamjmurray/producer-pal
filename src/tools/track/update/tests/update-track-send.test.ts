@@ -81,6 +81,16 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).toHaveBeenCalledWith("display_value", -3);
   });
 
+  it("should match a return track letter in lower case", () => {
+    updateTrack({
+      ids: "123",
+      sendGainDb: -6,
+      sendReturn: "a",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
   it("should set send gain to minimum value", () => {
     updateTrack({
       ids: "123",

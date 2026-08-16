@@ -26,6 +26,7 @@ import {
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
+  stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
 import {
@@ -76,6 +77,10 @@ interface ResolvedTarget {
  * @param args.mute - Mute state (chains/drum pads only)
  * @param args.solo - Solo state (chains/drum pads only)
  * @param args.color - Color #RRGGBB (chains only)
+ * @param args.gainDb - Chain gain in dB (chains only)
+ * @param args.pan - Chain pan -1 to 1 (chains only)
+ * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
+ * @param args.sendReturn - Rack return chain name or letter, requires sendGainDb (chains only)
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
@@ -98,6 +103,10 @@ export function updateDevice(
     mute,
     solo,
     color,
+    gainDb,
+    pan,
+    sendGainDb,
+    sendReturn,
     chokeGroup,
     mappedPitch,
     wrapInRack,
@@ -131,6 +140,10 @@ export function updateDevice(
       mute,
       solo,
       color,
+      gainDb,
+      pan,
+      sendGainDb,
+      sendReturn,
       chokeGroup,
       mappedPitch,
     };
@@ -338,7 +351,7 @@ function updateTarget(
     if (type === "DrumPad") {
       console.warn("updateDevice: 'name' is read-only for DrumPad");
     } else {
-      target.set("name", options.name);
+      target.set("name", stripReturnChainLetter(target, options.name));
     }
   }
 

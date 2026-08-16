@@ -18,7 +18,7 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { roundPan, stripFields } from "#src/tools/shared/utils.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
@@ -400,17 +400,17 @@ export function readMixerProperties(
     const rightSplit = mixer.child("right_split_stereo");
 
     if (leftSplit.exists()) {
-      result.leftPan = leftSplit.getProperty("value");
+      result.leftPan = readPan(leftSplit);
     }
 
     if (rightSplit.exists()) {
-      result.rightPan = rightSplit.getProperty("value");
+      result.rightPan = readPan(rightSplit);
     }
   } else {
     const panning = mixer.child("panning");
 
     if (panning.exists()) {
-      result.pan = panning.getProperty("value");
+      result.pan = readPan(panning);
     }
   }
 
@@ -446,6 +446,17 @@ export function readMixerProperties(
   }
 
   return result;
+}
+
+/**
+ * Read a pan parameter, rounded to Live's 1% steps
+ * @param param - Panning DeviceParameter
+ * @returns Pan from -1 to 1
+ */
+function readPan(param: LiveAPI): unknown {
+  const pan = param.getProperty("value");
+
+  return typeof pan === "number" ? roundPan(pan) : pan;
 }
 
 /**

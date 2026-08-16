@@ -4,8 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
-import { setupDrumPadMocks } from "./read-device-test-helpers.ts";
+import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 /** Simpler device props reused across tests */
 const simplerDevice = {
@@ -138,6 +141,68 @@ describe("readDevice with drum pad path", () => {
       chokeGroup: 2,
       devices: [],
     });
+  });
+
+  it("lists the chain's own trim when it is non-default", () => {
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: { "chain-1": { name: "Layer 1", out_note: 48 } },
+    });
+
+    const mixerPath = `${livePath.track(1).device(0)} chains 0 mixer_device`;
+
+    registerMockObject("mixer-1", { path: mixerPath });
+    registerMockObject("volume-1", {
+      path: `${mixerPath} volume`,
+      properties: { display_value: -15 },
+    });
+    registerMockObject("panning-1", {
+      path: `${mixerPath} panning`,
+      properties: { value: 0.25 },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as Record<string, unknown>[];
+
+    expect(chains[0]).toStrictEqual({
+      id: "chain-1",
+      path: "t1/d0/pC1/c0",
+      type: "DrumChain",
+      name: "Layer 1",
+      mappedPitch: "C2",
+      gainDb: -15,
+      pan: 0.25,
+      devices: [],
+    });
+  });
+
+  it("names a drum chain's sends after the rack's return chains", () => {
+    // The send names come from walking up the chain path to its rack. A drum
+    // chain sits at "<rack> chains N", so that walk only lands on the rack when
+    // the path is right — the reason this test exists.
+    setupDrumPadMocks({
+      padIds: ["pad-36"],
+      padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
+      chainProperties: { "chain-1": { name: "Layer 1", out_note: 48 } },
+      returnChainNames: ["A Reverb", "B Delay"],
+    });
+
+    const mixerPath = `${livePath.track(1).device(0)} chains 0 mixer_device`;
+
+    registerMockObject("mixer-1", {
+      path: mixerPath,
+      properties: { sends: children("send-0", "send-1") },
+    });
+    registerMockObject("send-0", { properties: { value: 0 } });
+    registerMockObject("send-1", {
+      properties: { value: 0.5, display_value: -9 },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as Record<string, unknown>[];
+
+    // Only the send that is turned up is listed, named after return chain B.
+    expect(chains[0]!.sends).toStrictEqual([{ return: "B Delay", gainDb: -9 }]);
   });
 
   it("should read drum pad with chains containing devices", () => {

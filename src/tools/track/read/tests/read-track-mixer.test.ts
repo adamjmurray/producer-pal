@@ -53,13 +53,13 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("rightPan");
   });
 
-  it("includes non-zero gain and panning values", () => {
+  it("includes non-zero gain and panning values, rounding pan to Live's 1% steps", () => {
     setupTrackMixerMocks({
       volumeProperties: {
         display_value: -6.5,
       },
       panningProperties: {
-        value: 0.5,
+        value: -0.30000001192092896,
       },
     });
 
@@ -68,7 +68,7 @@ describe("readTrack - mixer properties", () => {
     expect(result).toHaveProperty("gainDb", -6.5);
     // panningMode "stereo" is the default, omitted to save tokens
     expect(result).not.toHaveProperty("panningMode");
-    expect(result).toHaveProperty("pan", 0.5);
+    expect(result).toHaveProperty("pan", -0.3);
   });
 
   it("includes mixer properties for return tracks", () => {
@@ -197,17 +197,17 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("pan");
   });
 
-  it("returns split panning mode with non-default values", () => {
+  it("returns split panning mode with non-default values, rounded", () => {
     setupTrackMixerMocks({
       panningMode: 1,
       volumeProperties: {
         display_value: 0,
       },
       leftSplitProperties: {
-        value: 0.25,
+        value: 0.25000001,
       },
       rightSplitProperties: {
-        value: -0.5,
+        value: -0.49999999,
       },
     });
 

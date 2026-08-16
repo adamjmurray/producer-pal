@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -397,5 +399,153 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumPad.set).not.toHaveBeenCalledWith("name", expect.anything());
       expect(result).toStrictEqual({ id: "790" });
     });
+  });
+});
+
+describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
+  const rackPath = livePath.track(0).device(0);
+  const chainPath = rackPath.chain(0);
+  const mixerPath = `${chainPath} mixer_device`;
+  let volume: RegisteredMockObject;
+  let panning: RegisteredMockObject;
+  let send: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("chain-0", { path: chainPath, type: "DrumChain" });
+    registerMockObject("mixer-0", {
+      path: mixerPath,
+      properties: { sends: children("send-0") },
+    });
+    send = registerMockObject("send-0");
+    registerMockObject("rack-0", {
+      path: rackPath,
+      properties: { return_chains: children("rc-0") },
+    });
+    registerMockObject("rc-0", { properties: { name: "a Reverb" } });
+    volume = registerMockObject("volume-0", {
+      path: `${mixerPath} volume`,
+      properties: { display_value: 0 },
+    });
+    panning = registerMockObject("panning-0", {
+      path: `${mixerPath} panning`,
+      properties: { value: 0 },
+    });
+  });
+
+  it("sets a chain's own gain and pan", () => {
+    const result = updateDevice({ ids: "chain-0", gainDb: -15, pan: -0.3 });
+
+    expect(volume.set).toHaveBeenCalledWith("display_value", -15);
+    expect(panning.set).toHaveBeenCalledWith("value", -0.3);
+    expect(result).toStrictEqual({ id: "chain-0" });
+  });
+
+  it("sets a chain's send to a rack return chain", () => {
+    updateDevice({ ids: "chain-0", sendGainDb: -12, sendReturn: "a" });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+    expect(volume.set).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the mixer when nothing mixer-related is given", () => {
+    updateDevice({ ids: "chain-0", mute: true });
+
+    expect(volume.set).not.toHaveBeenCalled();
+    expect(panning.set).not.toHaveBeenCalled();
+    expect(send.set).not.toHaveBeenCalled();
+  });
+
+  // pan and sendReturn each need their own case: paired with another mixer
+  // param they ride along on the other one's gate check.
+  it("sets pan when it is the only mixer param given", () => {
+    updateDevice({ ids: "chain-0", pan: 0.5 });
+
+    expect(panning.set).toHaveBeenCalledWith("value", 0.5);
+  });
+
+  it("warns when sendReturn is the only mixer param given", () => {
+    updateDevice({ ids: "chain-0", sendReturn: "a" });
+
+    expect(send.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "sendGainDb and sendReturn must both be specified",
+    );
+  });
+
+  it.each(["DrumPad", "SimplerDevice"] as const)(
+    "warns when mixer params are used on a %s",
+    (type) => {
+      registerMockObject("target-1", { type });
+
+      updateDevice({
+        ids: "target-1",
+        gainDb: -3,
+        pan: 1,
+        sendGainDb: -6,
+        sendReturn: "a",
+      });
+
+      for (const name of ["gainDb", "pan", "sendGainDb", "sendReturn"]) {
+        expect(outlet).toHaveBeenCalledWith(
+          1,
+          `updateDevice: '${name}' not applicable to ${type}`,
+        );
+      }
+    },
+  );
+});
+
+describe("updateDevice - moving a device out of a trimmed chain", () => {
+  const rackPath = livePath.track(0).device(0);
+  const sourceChainPath = rackPath.chain(0);
+  const sourceMixerPath = `${sourceChainPath} mixer_device`;
+
+  beforeEach(() => {
+    registerMockObject("live-set", { path: livePath.liveSet });
+    registerMockObject("rack", {
+      path: rackPath,
+      properties: {
+        chains: children("chain-0", "chain-1"),
+        can_have_drum_pads: 0,
+      },
+    });
+    registerMockObject("chain-0", {
+      path: sourceChainPath,
+      type: "Chain",
+      properties: { name: "Trimmed" },
+    });
+    registerMockObject("chain-1", { path: rackPath.chain(1), type: "Chain" });
+    registerMockObject("mixer-0", { path: sourceMixerPath });
+    registerMockObject("volume-0", {
+      path: `${sourceMixerPath} volume`,
+      properties: { display_value: -15 },
+    });
+    registerMockObject("panning-0", {
+      path: `${sourceMixerPath} panning`,
+      properties: { value: 0 },
+    });
+    registerMockObject("device-0", {
+      path: sourceChainPath.device(0),
+      type: "SimplerDevice",
+    });
+  });
+
+  it("warns that the source chain's trim stays behind", () => {
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("stays quiet when the device only moves within its own chain", () => {
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c0/d1" });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("stays behind"),
+    );
   });
 });

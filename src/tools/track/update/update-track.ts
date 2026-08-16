@@ -14,6 +14,7 @@ import {
 } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
+  findReturnIndex,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -180,7 +181,7 @@ function applySendProperties(
     return;
   }
 
-  if (sendGainDb == null) {
+  if (sendGainDb == null || sendReturn == null) {
     return;
   }
 
@@ -201,23 +202,14 @@ function applySendProperties(
     return;
   }
 
-  // Find matching send by return track name
-  // Match exact name OR letter prefix (e.g., "A" matches "A-Reverb")
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const returnTrackIds = liveSet.getChildIds("return_tracks");
-
-  let sendIndex = -1;
-
-  for (let i = 0; i < returnTrackIds.length; i++) {
-    const rt = LiveAPI.from(livePath.returnTrack(i));
-    const name = rt.getProperty("name") as string;
-
-    // Match exact name or single-letter prefix
-    if (name === sendReturn || name.startsWith(sendReturn + "-")) {
-      sendIndex = i;
-      break;
-    }
-  }
+  const names = liveSet
+    .getChildIds("return_tracks")
+    .map(
+      (_, i) =>
+        LiveAPI.from(livePath.returnTrack(i)).getProperty("name") as string,
+    );
+  const sendIndex = findReturnIndex(names, sendReturn);
 
   if (sendIndex === -1) {
     console.warn(`no return track found matching "${sendReturn}"`);
