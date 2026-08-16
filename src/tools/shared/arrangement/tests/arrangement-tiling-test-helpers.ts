@@ -52,6 +52,23 @@ export function setupTrack(
 }
 
 /**
+ * Set up a mock track whose path carries no track index (the selected track),
+ * so its `trackIndex` reads null.
+ * @param options - Optional mock properties/methods
+ * @returns Registered track mock
+ */
+export function setupTrackWithoutIndex(
+  options: Omit<SetupMockOptions, "path" | "type"> = {},
+): RegisteredMockObject {
+  return registerMockObject("selected-track", {
+    path: livePath.view.selectedTrack,
+    type: "Track",
+    properties: options.properties,
+    methods: options.methods,
+  });
+}
+
+/**
  * Set up a mock live_set.
  * @param options - Optional mock properties/methods
  * @returns Registered live_set mock

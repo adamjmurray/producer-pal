@@ -9,6 +9,7 @@ import {
   setupArrangementClip,
   setupClip,
   setupTrack,
+  setupTrackWithoutIndex,
   tilingTrackMethods,
 } from "./arrangement-tiling-test-helpers.ts";
 import {
@@ -499,6 +500,33 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(safe).toBe(true);
     // The destination track's own overlapping clip is still cleared.
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
+  });
+
+  it("treats an unknown TARGET track index as this track", () => {
+    // Same geometry as the cross-track case, but the target track's path
+    // carries no index. With nothing to compare, assume the source is on this
+    // timeline — clearing it would destroy the content being duplicated.
+    setupArrangementClip("100", 1, {
+      is_arrangement_clip: 1,
+      start_time: 8,
+      end_time: 20,
+    });
+
+    const trackMock = setupTrackWithoutIndex({
+      properties: { arrangement_clips: ["id", "100"] },
+      methods: tilingTrackMethods(),
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      12,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(false);
+    expect(trackMock.call).not.toHaveBeenCalled();
   });
 
   it("returns true and clears other clips when the source itself does not overlap the target", () => {

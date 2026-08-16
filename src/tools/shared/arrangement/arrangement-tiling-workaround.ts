@@ -94,20 +94,22 @@ export function clearClipAtDuplicateTarget(
   const sourceEnd = sourceClip.getProperty("end_time") as number;
   const targetEnd = targetPosition + (sourceEnd - sourceStart);
 
-  // The source clip overlapping its own target range is the one clip we must
-  // never clear: trimming/deleting it here would destroy the very content being
-  // duplicated, while leaving it in place would trigger Ableton's "existing clip
-  // overlaps target" crash on the duplicate itself. Neither is safe here, so
-  // report it (return false) and let the caller route through the holding area
-  // (duplicateSelfOverlappingClip) or skip the tile.
+  // The source overlapping its own target is the one clip we must never clear:
+  // trimming it would destroy the content being duplicated, and leaving it in
+  // place would trigger Ableton's overlap crash. Report it (return false) so the
+  // caller routes through the holding area (duplicateSelfOverlappingClip) or
+  // skips the tile.
   //
   // Only a source on THIS track can be in the way — a cross-track source shares
-  // beats with the target but not the timeline being cleared. An unknown source
-  // track counts as this one: skipping the guard when we can't tell risks the
-  // crash it exists to prevent.
+  // beats with the target but not the timeline being cleared. An unknown index
+  // on EITHER side counts as the same track: skipping the guard when we can't
+  // tell risks the crash it exists to prevent.
   const sourceTrackIndex = sourceClip.trackIndex;
+  const targetTrackIndex = track.trackIndex;
   const sourceIsOnThisTrack =
-    sourceTrackIndex == null || sourceTrackIndex === track.trackIndex;
+    sourceTrackIndex == null ||
+    targetTrackIndex == null ||
+    sourceTrackIndex === targetTrackIndex;
 
   if (
     sourceIsOnThisTrack &&
@@ -231,8 +233,15 @@ export function preClearTiledSpan(
  * `clearClipAtDuplicateTarget` is called with the holding clip — not the source
  * — and so would treat an overlapping source as an "other" clip and trim it.
  *
- * Mirrors the self-overlap geometry in `clearClipAtDuplicateTarget`, but scoped
- * to the caller's actual placement length rather than the source's full length.
+ * Same self-overlap geometry as `clearClipAtDuplicateTarget`, scoped to the
+ * caller's placement length rather than the source's full length — but with no
+ * track check, because tiling is same-track: `tileClipToRange` builds the tile
+ * track from the source clip's own `trackIndex`, so a target-track parameter
+ * would equal the source's track at every call site. A cross-track tiling
+ * caller would have to add that parameter and return false when the tracks
+ * differ; without it, a cross-track source reads as a self-overlap and its
+ * tiles are silently skipped.
+ *
  * Returns false (no special handling) when the workaround is disabled or the
  * source is a session clip, matching that function's no-op conditions.
  *
