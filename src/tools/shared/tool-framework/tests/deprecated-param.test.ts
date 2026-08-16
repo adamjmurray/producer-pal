@@ -178,6 +178,22 @@ describe("defineTool with a deprecated param", () => {
     });
   });
 
+  // The warning points the caller at the new name. Firing it for a value the
+  // handler never honored points them at nothing.
+  it.each([
+    ["a JSON null", null],
+    ['the string "null" that coerces into', "null"],
+    ['the string "undefined"', "undefined"],
+    ["an empty string", ""],
+    ["whitespace only", "   "],
+  ])("stays quiet when the deprecated param is %s", (_label, toSlot) => {
+    const { mockServer } = register();
+
+    return handler(mockServer)({ id: "1", toSlot }).then((result) => {
+      expect(result.content.map((c) => c.text)).toStrictEqual(["success"]);
+    });
+  });
+
   it("still reports genuinely unknown params as ignored", () => {
     const { mockServer } = register();
 

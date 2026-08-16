@@ -11,7 +11,10 @@
 // anything is created.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import {
+  deprecatedParamNamesSomething,
+  parseCommaSeparatedIds,
+} from "#src/tools/shared/utils.ts";
 
 export type TrackSegment =
   | { kind: "track"; trackIndex: number }
@@ -119,14 +122,12 @@ export function parseDestinationPathList(
   return entries.map((entry) => parseDestinationPath(entry, label));
 }
 
-// z.coerce.string() turns a JSON null into the string "null" before our handler
-// runs, and a caller sending null means "unset". No destination is ever named
-// this, so reading it as unset costs nothing.
-const UNSET = new Set(["", "null", "undefined"]);
-
 /**
- * Normalizes a destination param: a value that names nothing reads the same as
- * an omitted param rather than as a destination that failed to parse.
+ * Normalizes a destination param: a blank value reads the same as an omitted
+ * param rather than as a destination that failed to parse. Anything else is
+ * kept, including "null" — z.coerce.string() produces that for a JSON null,
+ * and reading it as unset sends the copy to the source's own track without a
+ * word about it.
  * @param value - Raw param value
  * @returns The trimmed value, or undefined when it names nothing
  */
@@ -135,7 +136,22 @@ export function namedDestination(
 ): string | undefined {
   const trimmed = value?.trim();
 
-  return trimmed == null || UNSET.has(trimmed) ? undefined : trimmed;
+  return trimmed == null || trimmed === "" ? undefined : trimmed;
+}
+
+/**
+ * Normalizes a deprecated destination param. Like {@link namedDestination},
+ * except a coerced null also reads as unset: a caller moving off the old param
+ * may send null for it, and that must not count as a second destination.
+ * @param value - Raw param value
+ * @returns The trimmed value, or undefined when it names nothing
+ */
+export function namedDeprecatedDestination(
+  value: string | undefined,
+): string | undefined {
+  return deprecatedParamNamesSomething(value)
+    ? namedDestination(value)
+    : undefined;
 }
 
 /**

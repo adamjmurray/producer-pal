@@ -25,6 +25,7 @@ import {
   setupUpdateClipMocks,
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
 
@@ -355,6 +356,46 @@ describe("updateClip - Basic operations", () => {
       expect(result).not.toHaveProperty("slot");
     },
   );
+
+  // A silent no-op reads as "moved" to the model. Warn, but don't throw: the
+  // rest of the batch still has to land.
+  it("should warn when toPath was sent as null", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    // z.coerce.string() runs before the handler, so a JSON null arrives as "null"
+    const toPath = toolDefUpdateClip.toolOptions.inputSchema.toPath?.parse(
+      null,
+    ) as string;
+
+    expect(toPath).toBe("null");
+
+    const result = await updateClip({ ids: "123", toPath });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('clip not moved: invalid toPath "null"'),
+    );
+    expect(result).not.toHaveProperty("slot");
+  });
+
+  // toSlot is deprecated, so a caller dropping it may still send the key as
+  // null. That is not a destination that failed — it is no destination.
+  it("should ignore a toSlot sent as null without warning", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const toSlot = toolDefUpdateClip.toolOptions.inputSchema.toSlot?.parse(
+      null,
+    ) as string;
+    const result = await updateClip({ ids: "123", toSlot });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("clip not moved"),
+    );
+    expect(result).not.toHaveProperty("slot");
+  });
 
   it("should ignore an empty toSlot instead of moving the clip", async () => {
     setupMidiClipMock(mocks.clip123);

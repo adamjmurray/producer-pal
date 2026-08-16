@@ -13,6 +13,7 @@ import {
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
+  namedDeprecatedDestination,
   namedDestination,
   parseDestinationPathList,
 } from "#src/tools/shared/validation/destination-path.ts";
@@ -39,7 +40,7 @@ export function resolveMoveDestination(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedDestination(rawToPath);
-  const toSlot = namedDestination(rawToSlot);
+  const toSlot = namedDeprecatedDestination(rawToSlot);
 
   // Honoring one and dropping the other would move the clip somewhere the
   // caller didn't ask for, so move it nowhere and say so.

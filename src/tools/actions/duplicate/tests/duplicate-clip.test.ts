@@ -10,6 +10,7 @@ import {
   clearClipAtDuplicateTargetMock,
   duplicateSelfOverlappingClipMock,
 } from "./setup.ts";
+import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerArrangementClip,
@@ -371,6 +372,34 @@ describe("duplicate - clip duplication", () => {
           toPath: ",",
         }),
       ).rejects.toThrow(/toPath "," - it names no destination/);
+
+      expect(track0.call).not.toHaveBeenCalled();
+    });
+
+    // Same failure as ",": toPath was sent, names nothing, and reading it as
+    // omitted puts the copy on the source's own track without a word.
+    it("creates nothing for a toPath sent as null", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track0 = registerTrackWithArrangementDup(0, { has_midi_input: 1 });
+      // z.coerce.string() runs before the handler, so a JSON null arrives as "null"
+      const toPath = toolDefDuplicate.toolOptions.inputSchema.toPath?.parse(
+        null,
+      ) as string;
+
+      expect(toPath).toBe("null");
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath,
+        }),
+      ).rejects.toThrow('invalid toPath "null" - "null" is not a track');
 
       expect(track0.call).not.toHaveBeenCalled();
     });

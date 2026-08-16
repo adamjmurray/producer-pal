@@ -41,6 +41,29 @@ export function withoutNulls(
   return result;
 }
 
+// z.coerce.string() hands the handler the literal string "null" for a JSON null
+// (and "undefined" for undefined) — a value the caller never typed.
+const COERCED_NULLISH = new Set(["null", "undefined"]);
+
+/**
+ * Whether a deprecated param's value names something. Nullish, blank, and the
+ * strings a JSON null coerces into all mean "unset" here, so a caller can stop
+ * sending the old param without it counting as sent. Current params get no
+ * such pass: "null" is not a track, and reading it as unset is how a value
+ * lands somewhere the caller never asked for.
+ * @param value - Raw param value
+ * @returns True when the value names something
+ */
+export function deprecatedParamNamesSomething(value: unknown): boolean {
+  if (value == null) return false;
+
+  if (typeof value !== "string") return true;
+
+  const trimmed = value.trim();
+
+  return trimmed !== "" && !COERCED_NULLISH.has(trimmed);
+}
+
 /**
  * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
  * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")

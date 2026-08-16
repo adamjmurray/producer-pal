@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type DestinationPath,
+  namedDeprecatedDestination,
   namedDestination,
   parseDestinationPath,
   parseDestinationPathList,
@@ -170,6 +171,14 @@ describe("parseDestinationPathList", () => {
     );
   });
 
+  // What a JSON null arrives as. An empty list means the source's own track, so
+  // reading it as omitted is a copy landing somewhere nobody asked for.
+  it("throws for a coerced null instead of reading it as omitted", () => {
+    expect(() => parseDestinationPathList("null")).toThrow(
+      'invalid toPath "null" - "null" is not a track',
+    );
+  });
+
   // The list is cycled against a position list, so a dropped entry moves every
   // later copy onto the wrong track instead of just making one fewer.
   it("warns when it drops an empty entry", () => {
@@ -244,14 +253,34 @@ describe("namedDestination", () => {
     expect(namedDestination("   ")).toBeUndefined();
   });
 
-  // z.coerce.string() turns a JSON null into "null" before the handler sees it,
-  // and a caller sending null means "unset", not "a track called null".
-  it("reads a coerced null as naming nothing", () => {
-    expect(namedDestination("null")).toBeUndefined();
-    expect(namedDestination("undefined")).toBeUndefined();
+  // z.coerce.string() turns a JSON null into "null" before the handler sees it.
+  // Reading that as "unset" is how a copy lands on the source's own track with
+  // nothing said about it, so it has to reach the parser and fail there.
+  it("keeps a coerced null so it fails to parse instead of reading as omitted", () => {
+    expect(namedDestination("null")).toBe("null");
+    expect(namedDestination("undefined")).toBe("undefined");
   });
 
   it("trims a param that names something", () => {
     expect(namedDestination(" t7/s2 ")).toBe("t7/s2");
+  });
+});
+
+describe("namedDeprecatedDestination", () => {
+  // A caller moving off toSlot may send null for it; that must not read as a
+  // second destination alongside a real toPath.
+  it("reads a coerced null as naming nothing", () => {
+    expect(namedDeprecatedDestination("null")).toBeUndefined();
+    expect(namedDeprecatedDestination("undefined")).toBeUndefined();
+  });
+
+  it("reads a blank param as naming nothing", () => {
+    expect(namedDeprecatedDestination(undefined)).toBeUndefined();
+    expect(namedDeprecatedDestination("")).toBeUndefined();
+    expect(namedDeprecatedDestination("   ")).toBeUndefined();
+  });
+
+  it("trims a param that names something", () => {
+    expect(namedDeprecatedDestination(" 2/1 ")).toBe("2/1");
   });
 });

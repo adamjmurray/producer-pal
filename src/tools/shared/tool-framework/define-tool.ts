@@ -16,6 +16,7 @@ import {
   resolveModalDescription,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { deprecatedParamNamesSomething } from "#src/tools/shared/utils.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -105,8 +106,11 @@ export function defineTool(
         const extraKeys = Object.keys(args).filter(
           (key) => !expectedKeys.has(key),
         );
-        const usedDeprecated = Object.keys(deprecatedParams).filter(
-          (key) => args[key] != null,
+        // Only count a deprecated param the handler will actually honor —
+        // warning "use X instead" for a blank or null value steers the caller
+        // over a value that was never used.
+        const usedDeprecated = Object.keys(deprecatedParams).filter((key) =>
+          deprecatedParamNamesSomething(args[key]),
         );
 
         // Parse with strict schema (strips extra keys for callLiveApi)

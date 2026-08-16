@@ -154,6 +154,15 @@ describe("warnUnusedDestination", () => {
     );
   });
 
+  // toSlot is deprecated, so a caller dropping it may send the key as null.
+  it("says nothing about a toSlot sent as null", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnUnusedDestination("scene", undefined, "null");
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
   it("leaves toPath alone for devices but still flags toSlot", () => {
     const warnSpy = vi.spyOn(console, "warn");
 
