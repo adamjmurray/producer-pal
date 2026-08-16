@@ -157,13 +157,14 @@ export function namedDeprecatedDestination(
 /**
  * Parses a leading track segment.
  * @param segment - Track segment (e.g., "t0", "rt0", "mt")
- * @param label - Param name for error messages
+ * @param label - Param name for error messages; required, because a default
+ *   here names the wrong param for half the callers
  * @param input - Full path, for error messages
  * @returns Which track the segment names
  */
 export function parseTrackSegment(
   segment: string,
-  label = "path",
+  label: string,
   input = segment,
 ): TrackSegment {
   if (segment === "mt") {

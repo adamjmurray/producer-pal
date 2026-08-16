@@ -200,20 +200,23 @@ describe("parseDestinationPathList", () => {
 
 describe("parseTrackSegment", () => {
   it("reads each track kind", () => {
-    expect(parseTrackSegment("t3")).toStrictEqual({
+    expect(parseTrackSegment("t3", "toPath")).toStrictEqual({
       kind: "track",
       trackIndex: 3,
     });
-    expect(parseTrackSegment("rt1")).toStrictEqual({
+    expect(parseTrackSegment("rt1", "toPath")).toStrictEqual({
       kind: "return-track",
       returnIndex: 1,
     });
-    expect(parseTrackSegment("mt")).toStrictEqual({ kind: "master-track" });
+    expect(parseTrackSegment("mt", "toPath")).toStrictEqual({
+      kind: "master-track",
+    });
   });
 
-  it("defaults its label and input to the segment itself", () => {
-    expect(() => parseTrackSegment("nope")).toThrow(
-      'invalid path "nope" - "nope" is not a track',
+  // The label has no default, so a caller can't inherit another param's name.
+  it("names the caller's param, and defaults its input to the segment", () => {
+    expect(() => parseTrackSegment("nope", "toPath")).toThrow(
+      'invalid toPath "nope" - "nope" is not a track',
     );
   });
 });

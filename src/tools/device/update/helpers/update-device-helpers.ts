@@ -29,7 +29,8 @@ function parseDrumPadNoteFromPath(path: string): string | null {
  * @param toPath - Target path
  */
 export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
-  const { container, position } = resolveInsertionPath(toPath);
+  // Every caller here got the path from a `toPath` param, so name it that.
+  const { container, position } = resolveInsertionPath(toPath, "toPath");
 
   if (!container?.exists()) {
     console.warn(`move target at path "${toPath}" does not exist`);

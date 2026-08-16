@@ -526,6 +526,17 @@ describe("device-path-helpers", () => {
       expect(() => resolveInsertionPath("/")).toThrow("Invalid path: /");
     });
 
+    it("names the param the path came from", () => {
+      // A device duplicate/move gets its path from `toPath`, so reporting
+      // "invalid path" sends a caller looking for a param it never sent.
+      expect(() => resolveInsertionPath("x9/d0", "toPath")).toThrow(
+        'invalid toPath "x9" - "x9" is not a track',
+      );
+      expect(() => resolveInsertionPath("x9/d0")).toThrow(
+        'invalid path "x9" - "x9" is not a track',
+      );
+    });
+
     it("throws on invalid track segment for single-segment paths", () => {
       // "track0" and "t" used to slip through the old startsWith("t") check and
       // resolve to track NaN; the shared grammar requires t<digits>.

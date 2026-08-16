@@ -11,10 +11,24 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  moveDeviceToPath,
   moveDrumChainToPath,
   updateMacroCount,
 } from "../helpers/update-device-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+
+describe("moveDeviceToPath", () => {
+  it("blames toPath, the param every caller took the path from", () => {
+    const device = registerMockObject("device-0", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+
+    expect(() => moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toThrow(
+      'invalid toPath "x9" - "x9" is not a track',
+    );
+  });
+});
 
 describe("moveDrumChainToPath", () => {
   let chain: RegisteredMockObject;

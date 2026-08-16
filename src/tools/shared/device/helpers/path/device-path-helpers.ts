@@ -28,10 +28,11 @@ export interface InsertionPathResolution {
 /**
  * Resolve a track segment to a LiveAPI track object
  * @param segment - Track segment (e.g., "t0", "rt0", "mt")
+ * @param label - Param name for error messages
  * @returns LiveAPI track object
  */
-function resolveTrack(segment: string): LiveAPI {
-  const track = parseTrackSegment(segment);
+function resolveTrack(segment: string, label: string): LiveAPI {
+  const track = parseTrackSegment(segment, label);
 
   if (track.kind === "master-track") {
     return LiveAPI.from(livePath.masterTrack());
@@ -71,13 +72,14 @@ function resolveDrumPadContainer(path: string): LiveAPI | null {
  * Resolve a container path (track or chain) to a LiveAPI object.
  * Auto-creates missing chains for regular racks. Throws for Drum Racks.
  * @param path - Container path (e.g., "0", "0/0/0", "0/0/pC1")
+ * @param label - Param name for error messages
  * @returns LiveAPI object (Track or Chain)
  */
-function resolveContainer(path: string): LiveAPI | null {
+function resolveContainer(path: string, label: string): LiveAPI | null {
   const segments = path.split("/");
 
   if (segments.length === 1)
-    return resolveTrack(assertDefined(segments[0], "track segment"));
+    return resolveTrack(assertDefined(segments[0], "track segment"), label);
   if (segments.some((s) => s.startsWith("p")))
     return resolveDrumPadContainer(path);
 
@@ -99,9 +101,13 @@ function resolveContainer(path: string): LiveAPI | null {
  * - "rt0/d0" -> return track 0, device 0; "mt/d0" -> master track
  *
  * @param path - Device insertion path
+ * @param label - Param name the path came from, for error messages
  * @returns Container and optional position
  */
-export function resolveInsertionPath(path: string): InsertionPathResolution {
+export function resolveInsertionPath(
+  path: string,
+  label = "path",
+): InsertionPathResolution {
   if (!path || typeof path !== "string") {
     throw new Error("Path must be a non-empty string");
   }
@@ -124,12 +130,12 @@ export function resolveInsertionPath(path: string): InsertionPathResolution {
     }
 
     const containerPath = segments.slice(0, -1).join("/");
-    const container = resolveContainer(containerPath);
+    const container = resolveContainer(containerPath, label);
 
     return { container, position };
   }
 
-  const container = resolveContainer(path);
+  const container = resolveContainer(path, label);
 
   return { container, position: null };
 }
