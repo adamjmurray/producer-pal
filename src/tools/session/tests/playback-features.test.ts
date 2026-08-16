@@ -15,6 +15,55 @@ import {
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
 
+describe("playback path param", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet({ current_song_time: 5 });
+  });
+
+  it("fires the clips a path names", () => {
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("takes a comma-separated list", () => {
+    const first = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
+    const second = registerMockObject(livePath.track(1).clipSlot(1), {
+      path: livePath.track(1).clipSlot(1),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s0,t1/s1" });
+
+    expect(first.call).toHaveBeenCalledWith("fire");
+    expect(second.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A bare track names every clip on it, so firing "the" clip would be a guess.
+  it("rejects a bare track path", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "t0" }),
+    ).toThrow('invalid path "t0" - a track has no one clip');
+  });
+
+  it("rejects the unprefixed spelling with the fix", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "0/1" }),
+    ).toThrow('did you mean "t0/s1"?');
+  });
+
+  it("refuses path and the deprecated slots together", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "t0/s1", slots: "0/1" }),
+    ).toThrow("playback failed: path and slots both name clips");
+  });
+});
+
 describe("transport", () => {
   let liveSet: RegisteredMockObject;
 

@@ -17,6 +17,12 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
+  namedDestination,
+  namedHiddenDestination,
+  parseDestinationPath,
+  requireSessionSlot,
+} from "#src/tools/shared/validation/destination-path.ts";
+import {
   formatSlot,
   parseSlot,
 } from "#src/tools/shared/validation/position-parsing.ts";
@@ -29,14 +35,17 @@ import {
 } from "./helpers/read-clip-helpers.ts";
 
 interface ReadClipArgs {
+  /** Session position, "t<track>/s<scene>" */
+  path?: string | null;
+  /** Deprecated session slot, trackIndex/sceneIndex */
   slot?: string | null;
   clipId?: string | null;
   include?: string[];
   /** @internal Suppress warning for empty clip slots (used by batch readers) */
   suppressEmptyWarning?: boolean;
-  /** @internal Used by batch readers that already have parsed indices */
+  /** Hidden alias for path; also used by batch readers with parsed indices */
   trackIndex?: number | null;
-  /** @internal Used by batch readers that already have parsed indices */
+  /** Hidden alias for path; also used by batch readers with parsed indices */
   sceneIndex?: number | null;
   /** @internal Precomputed drum mode from a batch reader, so N clips of one
    * track don't each re-walk the track's device tree */
@@ -429,7 +438,9 @@ function addClipLocationProperties(
 }
 
 /**
- * Resolve clip location from args, parsing slot if provided
+ * Resolve clip location from args. `path` wins, then the deprecated `slot`,
+ * then the trackIndex/sceneIndex pair — which doubles as the hidden alias and
+ * as how batch readers pass indices they already parsed.
  * @param args - ReadClipArgs
  * @returns Resolved clipId, trackIndex, and sceneIndex
  */
@@ -439,15 +450,23 @@ function resolveClipLocation(args: ReadClipArgs): {
   sceneIndex: number | null;
 } {
   const clipId = args.clipId ?? null;
-  let trackIndex: number | null = args.trackIndex ?? null;
-  let sceneIndex: number | null = args.sceneIndex ?? null;
+  const path = namedDestination(args.path ?? undefined);
 
-  if (args.slot != null) {
-    const parsed = parseSlot(args.slot);
+  if (path != null) {
+    const parsed = requireSessionSlot(parseDestinationPath(path, "path"));
 
-    trackIndex = parsed.trackIndex;
-    sceneIndex = parsed.sceneIndex;
+    return { clipId, ...parsed };
   }
 
-  return { clipId, trackIndex, sceneIndex };
+  const slot = namedHiddenDestination(args.slot ?? undefined);
+
+  if (slot != null) {
+    return { clipId, ...parseSlot(slot) };
+  }
+
+  return {
+    clipId,
+    trackIndex: args.trackIndex ?? null,
+    sceneIndex: args.sceneIndex ?? null,
+  };
 }

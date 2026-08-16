@@ -173,6 +173,44 @@ export function namedHiddenDestination(
 }
 
 /**
+ * Narrows a destination to a session position, for callers that can only act on
+ * one — reading, selecting, or launching a clip in the grid.
+ * @param destination - Parsed destination path
+ * @param label - Param name for error messages
+ * @returns The track and scene the path names
+ */
+export function requireSessionSlot(
+  destination: DestinationPath,
+  label = "path",
+): { trackIndex: number; sceneIndex: number } {
+  const clip = requireClipDestination(destination, label);
+
+  if (clip.kind !== "slot") {
+    throw new Error(
+      `invalid ${label} "t${clip.trackIndex}" - a track has no one clip; ` +
+        `name a session position as "t<track>/s<scene>" (e.g., "t${clip.trackIndex}/s0")`,
+    );
+  }
+
+  return { trackIndex: clip.trackIndex, sceneIndex: clip.sceneIndex };
+}
+
+/**
+ * Parses a comma-separated list of session positions.
+ * @param input - Comma-separated paths (e.g., "t0/s1" or "t0/s1,t2/s3")
+ * @param label - Param name for error messages
+ * @returns One track/scene pair per path, in order
+ */
+export function parseSessionSlotList(
+  input: string | null | undefined,
+  label = "path",
+): Array<{ trackIndex: number; sceneIndex: number }> {
+  return parseDestinationPathList(input, label).map((destination) =>
+    requireSessionSlot(destination, label),
+  );
+}
+
+/**
  * Parses a leading track segment.
  * @param segment - Track segment (e.g., "t0", "rt0", "mt")
  * @param label - Param name for error messages; required, because a default

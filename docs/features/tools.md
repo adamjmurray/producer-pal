@@ -100,8 +100,8 @@ Live, or make sure your standalone Max is up to date. See
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
+  - Select by path: a session position (e.g., `t0/s3`), a device (e.g.,
+    `t0/d1`), or a track (e.g., `t0`)
   - Switch between Session and Arrangement views
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device

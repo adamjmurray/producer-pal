@@ -7,6 +7,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
+  namedDestination,
+  namedHiddenDestination,
+  parseDestinationPath,
+} from "#src/tools/shared/validation/destination-path.ts";
+import {
   applyDetailView,
   applyPluginEditorWindow,
   updateClipSelection,
@@ -38,7 +43,11 @@ interface SelectArgs {
   trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
+  /** Session position "t0/s3", a device "t0/d1", or a bare track "t0" */
+  path?: string;
+  /** Deprecated session slot, trackIndex/sceneIndex */
   slot?: string;
+  /** Deprecated device path */
   devicePath?: string;
   openPluginWindow?: boolean;
 
@@ -79,9 +88,10 @@ export function select(
   _context: Partial<ToolContext> = {},
 ): SelectResult {
   const resolved = resolveArgs(args);
-  const { view, trackType, trackIndex, devicePath, detailView } = args;
+  const { view, trackType, detailView } = args;
   const category = trackType ?? "regular";
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
+  const { trackIndex, devicePath } = resolved;
 
   validateParameters({
     trackId,
@@ -175,7 +185,7 @@ export function select(
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip);
-  addDeviceToResponse(result, resolved, args);
+  addDeviceToResponse(result, resolved);
 
   if (pluginWindowOpen != null && result.selectedDevice != null) {
     result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
@@ -238,7 +248,9 @@ interface ResolvedArgs {
   sceneId?: string;
   clipId?: string;
   deviceId?: string;
+  trackIndex?: number;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  devicePath?: string;
   hasArgs: boolean;
   viewOnly: boolean;
 }
@@ -260,18 +272,18 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     deviceId = resolved.deviceId ?? deviceId;
   }
 
-  const parsedClipSlot =
-    typeof args.slot === "string" ? parseClipSlot(args.slot) : undefined;
+  const { parsedClipSlot, devicePath, pathTrackIndex } = resolvePathParam(args);
+  const trackIndex = args.trackIndex ?? pathTrackIndex;
 
   const hasSelectionArgs =
     trackId != null ||
-    args.trackIndex != null ||
+    trackIndex != null ||
     args.trackType != null ||
     sceneId != null ||
     args.sceneIndex != null ||
     clipId != null ||
     deviceId != null ||
-    args.devicePath != null ||
+    devicePath != null ||
     args.openPluginWindow != null ||
     parsedClipSlot != null;
 
@@ -283,9 +295,60 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     sceneId,
     clipId,
     deviceId,
+    trackIndex,
     parsedClipSlot,
+    devicePath,
     hasArgs,
     viewOnly,
+  };
+}
+
+interface ResolvedPath {
+  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  devicePath?: string;
+  pathTrackIndex?: number;
+}
+
+/**
+ * Resolve `path` and the two params it replaced into what they name. One
+ * grammar covers all three shapes select can act on, so the kind the path
+ * parses to picks the target.
+ * @param args - Raw select arguments
+ * @returns The clip slot, device path, or track the caller named
+ */
+function resolvePathParam(args: SelectArgs): ResolvedPath {
+  const path = namedDestination(args.path);
+  const slot = namedHiddenDestination(args.slot);
+  const devicePath = namedHiddenDestination(args.devicePath);
+
+  if (path == null) {
+    return {
+      parsedClipSlot: slot == null ? undefined : parseClipSlot(slot),
+      devicePath,
+    };
+  }
+
+  // Honoring one and dropping the other is the silent-wrong-target bug path
+  // replaces, so refuse instead of picking.
+  if (slot != null || devicePath != null) {
+    throw new Error(
+      "select failed: path and slot/devicePath both name a target; use path alone (the others are deprecated)",
+    );
+  }
+
+  const destination = parseDestinationPath(path, "path");
+
+  if (destination.kind === "device") return { devicePath: destination.path };
+
+  if (destination.kind === "track") {
+    return { pathTrackIndex: destination.trackIndex };
+  }
+
+  return {
+    parsedClipSlot: {
+      trackIndex: destination.trackIndex,
+      sceneIndex: destination.sceneIndex,
+    },
   };
 }
 
@@ -354,19 +417,17 @@ function addClipToResponse(
  * Add device info to action response if a device was selected
  * @param result - Response being built
  * @param resolved - Resolved args
- * @param args - Original args
  */
 function addDeviceToResponse(
   result: SelectResult,
   resolved: ResolvedArgs,
-  args: SelectArgs,
 ): void {
   if (resolved.deviceId != null) {
     const info = buildDeviceResponseFromId(resolved.deviceId);
 
     if (info) result.selectedDevice = info;
-  } else if (args.devicePath != null) {
-    const info = buildDeviceResponseFromPath(args.devicePath);
+  } else if (resolved.devicePath != null) {
+    const info = buildDeviceResponseFromPath(resolved.devicePath);
 
     if (info) result.selectedDevice = info;
   }

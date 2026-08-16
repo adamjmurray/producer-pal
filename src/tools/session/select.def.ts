@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
@@ -45,19 +46,24 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe("0-based scene index"),
 
-    slot: z.coerce
+    path: z.coerce
       .string()
       .optional()
-      .describe("session clip slot: trackIndex/sceneIndex (e.g., '0/3')"),
+      .describe(
+        "select by path: 't0/s3' a session position (0-based track/scene), 't0/d1' a device",
+      ),
 
-    devicePath: z
-      .string()
-      .optional()
-      .describe("select device by path (e.g. t0/d1)"),
+    slot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
+
+    devicePath: deprecatedParam(z.string().optional(), {
+      replacedBy: "path",
+    }),
 
     openPluginWindow: param(z.boolean().optional(), {
       default:
-        "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or devicePath",
+        "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or path",
       smallModel: null,
     }),
 

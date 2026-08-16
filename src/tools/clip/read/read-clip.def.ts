@@ -5,6 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
@@ -16,13 +20,27 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    clipId: z.coerce.string().optional().describe("provide this or slot"),
-    slot: z.coerce
+    clipId: z.coerce.string().optional().describe("provide this or path"),
+    path: z.coerce
       .string()
       .optional()
       .describe(
-        "session clip slot: trackIndex/sceneIndex (e.g., '0/3'). provide this or clipId",
+        "session position 't<track>/s<scene>', both 0-based (e.g., 't0/s3'). provide this or clipId",
       ),
+
+    slot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
+
+    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example: "t0/s3",
+    }),
+
+    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+      canonical: "path",
+      example: "t0/s3",
+    }),
     include: param(
       z
         .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))

@@ -229,7 +229,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: ids or slots is required for action "play-session-clips"',
+      'playback failed: ids or path is required for action "play-session-clips"',
     );
   });
 
@@ -357,7 +357,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: ids or slots is required for action "stop-session-clips"',
+      'playback failed: ids or path is required for action "stop-session-clips"',
     );
   });
 
@@ -502,7 +502,7 @@ describe("transport", () => {
         ids: "clip1",
         slots: "0/0",
       }),
-    ).toThrow("playback failed: ids and slots are mutually exclusive");
+    ).toThrow("playback failed: ids and path are mutually exclusive");
   });
 
   it("should handle play-session-clips via slots with single slot", () => {

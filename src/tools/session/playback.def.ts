@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
@@ -31,8 +32,8 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `play-arrangement: from startTime
 update-arrangement: modify loop
 play-scene: all clips in scene
-play-session-clips: by id(s) or slot(s)
-stop-session-clips: by id(s) or slot(s)
+play-session-clips: by id(s) or path(s)
+stop-session-clips: by id(s) or path(s)
 stop-all-session-clips: all
 stop: session and arrangement`,
       ),
@@ -60,12 +61,15 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
-    slots: z.coerce
+    path: z.coerce
       .string()
       .optional()
       .describe(
-        "session clip slot(s), trackIndex/sceneIndex format, comma-separated (e.g., '0/1' or '0/1,2/3')",
+        "session position(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
       ),
+    slots: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
     sceneIndex: z.coerce
       .number()
       .int()
