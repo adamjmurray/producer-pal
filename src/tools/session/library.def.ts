@@ -70,8 +70,8 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     query: param(z.coerce.string().optional(), {
       default:
-        "name substring (search: supports * as a multi-character wildcard; listPlugins: plain case-insensitive substring)",
-      smallModel: "name substring; use * as wildcard",
+        "name substring (search: supports * as a multi-character wildcard, e.g. kick*acoustic; listPlugins: plain case-insensitive substring)",
+      smallModel: "name substring; use * as wildcard, e.g. kick*acoustic",
     }),
 
     tags: param(z.coerce.string().optional(), {
@@ -82,10 +82,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     kind: param(z.enum(LIBRARY_KIND_VALUES).optional().default("audio"), {
       default:
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files PLUS MIDI Live clips (.alc), so it covers all MIDI content | live-clip=all .alc Ableton clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries (a DB row type, distinct from source:sampleFolder)",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files PLUS MIDI Live clips (.alc), so it covers all MIDI content — the right kind for melody/chord ideas | live-clip=all .alc Ableton clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries (a DB row type, distinct from source:sampleFolder)",
       smallModel: {
         description:
-          "content kind (default: audio). audio | midi | preset | device-group",
+          "content kind (default: audio). audio | midi (melody/chord ideas) | preset | device-group",
         excludeEnumValues: [
           "live-clip",
           "m4l-device",
@@ -100,8 +100,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
     type: param(z.enum(LIBRARY_TYPE_VALUES).optional(), {
       default:
-        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Also reported per result as `type`.",
-      smallModel: "playback type: loop | oneshot | impulse-response",
+        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Prefer oneshot for hits and loop for grooves. Also reported per result as `type`.",
+      smallModel:
+        "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
 
     // listPlugins is discovery-only (like searchBatch); its vendor/format
