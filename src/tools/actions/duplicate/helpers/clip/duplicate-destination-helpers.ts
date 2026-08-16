@@ -156,23 +156,48 @@ function legacySlotDestinations(
 }
 
 /**
- * Reads arrangement destination tracks off the parsed paths.
+ * Reads arrangement destination tracks off the parsed paths. A session position
+ * here contradicts arrangementStart/locator; warn and drop the weaker of the
+ * two rather than failing the call, the way every other tool handles a position
+ * that doesn't apply.
  * @param paths - Parsed clip destination paths
- * @returns Arrangement destinations
+ * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   const trackIndices: number[] = [];
+  const slots: SlotPosition[] = [];
 
   for (const path of paths) {
     if (path.kind === "slot") {
-      throw new Error(
-        `duplicate failed: toPath "t${path.trackIndex}/s${path.sceneIndex}" is a session slot, but ` +
-          `arrangementStart/locator asks for the arrangement; use "t${path.trackIndex}" for that track's arrangement`,
-      );
+      slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
+    } else {
+      trackIndices.push(path.trackIndex);
     }
-
-    trackIndices.push(path.trackIndex);
   }
+
+  if (slots.length === 0) {
+    return { destination: "arrangement", slots: [], trackIndices };
+  }
+
+  const named = slots
+    .map((slot) => `t${slot.trackIndex}/s${slot.sceneIndex}`)
+    .join(", ");
+
+  // toPath names where the copy goes; arrangementStart only says where on a
+  // track. With nothing but session positions, the position has no track to
+  // apply to, so toPath is the one that survives.
+  if (trackIndices.length === 0) {
+    console.warn(
+      `duplicate: arrangementStart/locator ignored — toPath "${named}" names a session position; ` +
+        'use "t<track>" for that track\'s arrangement',
+    );
+
+    return { destination: "session", slots, trackIndices: [] };
+  }
+
+  console.warn(
+    `duplicate: toPath "${named}" ignored — arrangementStart/locator makes this an arrangement duplicate`,
+  );
 
   return { destination: "arrangement", slots: [], trackIndices };
 }

@@ -90,9 +90,33 @@ describe("resolveClipDestinations", () => {
       );
     });
 
-    it("rejects a session slot paired with an arrangement position", () => {
-      expect(() => resolveClipDestinations("t2/s1", undefined, true)).toThrow(
-        /"t2\/s1" is a session slot.*use "t2" for that track's arrangement/s,
+    // toPath is where the copy goes; arrangementStart only says where on a
+    // track. With no track named, the position has nothing to apply to.
+    it("drops an arrangement position when toPath names only session slots", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual({
+        destination: "session",
+        slots: [{ trackIndex: 2, sceneIndex: 1 }],
+        trackIndices: [],
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("arrangementStart/locator ignored"),
+      );
+    });
+
+    it("drops the session slots when toPath also names a track", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(
+        resolveClipDestinations("t2/s1,t3", undefined, true),
+      ).toStrictEqual({
+        destination: "arrangement",
+        slots: [],
+        trackIndices: [3],
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('toPath "t2/s1" ignored'),
       );
     });
 

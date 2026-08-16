@@ -317,19 +317,29 @@ describe("duplicate - clip duplication", () => {
       ).rejects.toThrow(/"t2" names a track but not a spot on it/);
     });
 
-    it("rejects a session slot in toPath on an arrangement destination", async () => {
+    // A session position and an arrangement position are different places, and
+    // toPath is the one that says where. Warn and make the session copy rather
+    // than failing the call.
+    it("ignores arrangementStart when toPath names a session slot", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
+        properties: { trackIndex: 0, sceneIndex: 0 },
+      });
+      registerMockObject("clipslot-2-0", {
+        path: livePath.track(2).clipSlot(0),
       });
 
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toPath: "t2/s0",
-        }),
-      ).rejects.toThrow(/"t2\/s0" is a session slot/);
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t2/s0",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("arrangementStart/locator ignored"),
+      );
     });
 
     // The point of parsing paths before touching Live: a list whose last entry
