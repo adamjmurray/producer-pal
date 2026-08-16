@@ -7,6 +7,11 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
+import {
+  collectDeprecatedParams,
+  type DeprecatedParamInfo,
+  deprecatedParamWarning,
+} from "#src/tools/shared/tool-framework/deprecated-param.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   type ModalDescription,
@@ -94,8 +99,16 @@ export function defineTool(
       smallModelMode,
     });
 
+    // Deprecated params still validate, but are not published — the model never
+    // learns the old name while callers that still send it keep working.
+    const deprecatedParams = collectDeprecatedParams(finalInputSchema);
+    const publishedSchema = omitKeys(
+      finalInputSchema,
+      Object.keys(deprecatedParams),
+    );
+
     // Use loose() so extra args reach our handler (SDK would strip them otherwise)
-    const passthroughSchema = z.object(finalInputSchema).loose();
+    const passthroughSchema = z.object(publishedSchema).loose();
 
     server.registerTool(
       name,
@@ -105,10 +118,14 @@ export function defineTool(
         inputSchema: passthroughSchema,
       },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
-        // Detect unexpected arguments before stripping them
+        // Detect unexpected arguments before stripping them. Deprecated params
+        // are expected here even though they were not published.
         const expectedKeys = new Set(Object.keys(finalInputSchema));
         const extraKeys = Object.keys(args).filter(
           (key) => !expectedKeys.has(key),
+        );
+        const usedDeprecated = Object.keys(deprecatedParams).filter(
+          (key) => args[key] != null,
         );
 
         // Parse with strict schema (strips extra keys for callLiveApi)
@@ -142,6 +159,18 @@ export function defineTool(
           result.content.push({ type: "text", text: warning });
         }
 
+        // The value was honored; this only steers the caller to the new name.
+        for (const key of usedDeprecated) {
+          result.content.push({
+            type: "text",
+            text: deprecatedParamWarning(
+              name,
+              key,
+              deprecatedParams[key] as DeprecatedParamInfo,
+            ),
+          });
+        }
+
         return result;
       },
     );
@@ -151,6 +180,23 @@ export function defineTool(
   fn.toolOptions = options;
 
   return fn;
+}
+
+/**
+ * Returns a copy of a schema without the given keys.
+ * @param schema - Schema to copy
+ * @param keys - Param names to leave out
+ * @returns Schema without those params
+ */
+function omitKeys(
+  schema: Record<string, ZodType>,
+  keys: string[],
+): Record<string, ZodType> {
+  if (keys.length === 0) return schema;
+
+  return Object.fromEntries(
+    Object.entries(schema).filter(([key]) => !keys.includes(key)),
+  );
 }
 
 /**
