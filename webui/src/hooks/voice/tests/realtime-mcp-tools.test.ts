@@ -121,7 +121,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenCalledWith(
       { name: "ppal-read-live-set", arguments: { foo: "bar" } },
       undefined,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
     expect(out).toBe("Track 1: Drums\nTrack 2: Bass");
   });
@@ -137,7 +137,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenCalledWith(
       { name: "ppal-x", arguments: {} },
       undefined,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
   });
 
@@ -152,7 +152,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenLastCalledWith(
       expect.anything(),
       undefined,
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     );
   });
 

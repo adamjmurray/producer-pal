@@ -425,7 +425,7 @@ the rest of voice mode doesn't branch on provider.
 `realtime-items-to-ui-messages.ts` and rendered with the same `MessageList`;
 conversations persist to the same IndexedDB store with a `sessionType: "voice"`
 discriminant and use the shared `ConversationPanel`; MCP tools are dispatched
-through `voice-mcp-call.ts` (a 30s-timeout wrapper that returns errors as text
+through `voice-mcp-call.ts` (a 60s-timeout wrapper that returns errors as text
 rather than throwing), wrapped per provider by `realtime-mcp-tools.ts` (OpenAI)
 and `gemini-mcp-tools.ts` (Gemini).
 
