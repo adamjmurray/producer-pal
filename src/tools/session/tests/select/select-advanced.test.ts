@@ -332,7 +332,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
       expect(result.selectedClip).toBeDefined();
-      expect(result.selectedClip?.slot).toBe("0/1");
+      expect(result.selectedClip?.path).toBe("t0/s1");
     });
 
     it("only highlights empty slot without opening detail", () => {

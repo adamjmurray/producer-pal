@@ -219,7 +219,10 @@ describe("buildCodeExecutionContext", () => {
       undefined,
     );
 
-    expect(result.location).toStrictEqual({ view: "arrangement" });
+    expect(result.location).toStrictEqual({
+      view: "arrangement",
+      path: "t0",
+    });
   });
 
   it("scales arrangementStart by the song denominator/4", () => {

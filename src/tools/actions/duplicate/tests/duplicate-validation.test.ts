@@ -95,7 +95,7 @@ describe("duplicate - clip session validation", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/1/clip",
-      slot: "0/1",
+      path: "t0/s1",
     });
     expect(outlet).toHaveBeenCalledWith(
       1,

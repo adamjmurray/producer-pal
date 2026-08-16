@@ -365,7 +365,7 @@ describe("code-exec-helpers", () => {
         });
         expect(result.location).toStrictEqual({
           view: "session",
-          slot: "1/2",
+          path: "t1/s2",
         });
         expect(result.liveSet).toStrictEqual({
           tempo: 120,

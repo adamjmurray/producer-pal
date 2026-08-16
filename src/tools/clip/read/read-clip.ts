@@ -18,14 +18,13 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
+  arrangementPath,
   namedPath,
   namedHiddenPath,
   requireSessionSlot,
+  slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
-import {
-  formatSlot,
-  parseSlot,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
@@ -80,11 +79,9 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  slot?: string;
-  trackIndex?: number | null;
-  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
-   * (`0` is the main lane). Only present for clips on a non-main take lane. */
-  takeLane?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
+   * arrangement. Pastes straight back into any path/toPath param. */
+  path?: string;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -397,12 +394,10 @@ function addClipLocationProperties(
   includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    result.trackIndex = clip.trackIndex;
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      result.takeLane = takeLaneIndex + 1;
-    }
+    result.path = arrangementPath(
+      clip.trackIndex as number,
+      clip.takeLaneIndex,
+    );
 
     const startTimeBeats = clip.getProperty("start_time") as number;
 
@@ -430,7 +425,7 @@ function addClipLocationProperties(
       );
     }
   } else {
-    result.slot = formatSlot(
+    result.path = slotPath(
       clip.trackIndex as number,
       clip.sceneIndex as number,
     );

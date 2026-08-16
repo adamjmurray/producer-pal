@@ -192,7 +192,7 @@ function collectArrangementClips(
     const clip = LiveAPI.from(clipId);
 
     if (clip.exists()) {
-      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     }
   }
 }

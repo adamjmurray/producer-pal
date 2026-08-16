@@ -88,7 +88,7 @@ describe("createClip - advanced features", () => {
     expect(clip.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
     });
   });
 
@@ -124,7 +124,7 @@ describe("createClip - advanced features", () => {
 
     expect(singleResult).toMatchObject({
       id: expect.any(String),
-      slot: "0/0",
+      path: "t0/s0",
     });
     expect((singleResult as { length?: unknown }).length).toBeUndefined();
 
@@ -132,11 +132,11 @@ describe("createClip - advanced features", () => {
     expect(arrayResult).toHaveLength(2);
     expect((arrayResult as object[])[0]).toStrictEqual({
       id: expect.any(String),
-      slot: "0/1",
+      path: "t0/s1",
     });
     expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
-      slot: "0/2",
+      path: "t0/s2",
     });
   });
 
@@ -154,7 +154,7 @@ describe("createClip - advanced features", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 2,
       length: "1bar",
     }); // C3 and E3, D3 filtered out
@@ -296,11 +296,11 @@ describe("createClip - advanced features", () => {
       expect(clips).toHaveLength(2);
       expect(clips[0]).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/0/clip",
-        slot: "0/0",
+        path: "t0/s0",
       });
       expect(clips[1]).toStrictEqual({
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "1|1",
       });
     });
@@ -548,6 +548,6 @@ describe("buildClipResult (unit)", () => {
 
     expect(result.length).toBeUndefined();
     expect(result.noteCount).toBe(0);
-    expect(result.slot).toBe("0/0");
+    expect(result.path).toBe("t0/s0");
   });
 });

@@ -40,7 +40,7 @@ describe("ppal-read-clip", () => {
     expect(midiClip.view).toBe("session");
     expect(midiClip.looping).toBe(true);
     expect(midiClip.length).toBe("1bar");
-    expect(midiClip.slot).toBe("0/0");
+    expect(midiClip.path).toBe("t0/s0");
     expect(midiClip.notes).toBeDefined();
 
     // Test 2: Read clip by clipId
@@ -180,7 +180,7 @@ describe("ppal-read-clip", () => {
 
     expect(emptyClip.id).toBeNull();
     expect(emptyClip.type).toBeNull();
-    expect(emptyClip.slot).toBe("8/0");
+    expect(emptyClip.path).toBe("t8/s0");
 
     // Verify warning is emitted for empty slot
     expect(warnings).toHaveLength(1);

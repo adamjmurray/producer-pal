@@ -96,7 +96,7 @@ Live, or make sure your standalone Max is up to date. See
 
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+  - Rich object shapes with IDs, types, and context (path, etc.)
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index

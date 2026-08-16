@@ -154,14 +154,13 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
     expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
-    // The lane number (1-based) is reported so the user can find the new clip.
+    // The lane's path is reported so the user can find the new clip.
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('created on take lane "t0/l0"'),
     );
     expect(result).toMatchObject({
-      trackIndex: 0,
+      path: "t0/l0",
       arrangementStart: "5|1",
-      takeLane: 1,
     });
   });
 
@@ -488,11 +487,15 @@ describe("duplicate take lane", () => {
       toPath: "t1",
       arrangementStart: "5|1, 9|1, 13|1",
       takeLane: "new",
-    })) as Array<{ takeLane: number }>;
+    })) as Array<{ path: string }>;
 
     expect(dest.call).toHaveBeenCalledTimes(1);
     expect(dest.call).toHaveBeenCalledWith("create_take_lane");
-    expect(result.map((copy) => copy.takeLane)).toStrictEqual([1, 1, 1]);
+    expect(result.map((copy) => copy.path)).toStrictEqual([
+      "t1/l0",
+      "t1/l0",
+      "t1/l0",
+    ]);
 
     const lane = lookupMockObject(undefined, livePath.track(1).takeLane(0));
 

@@ -392,21 +392,33 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
  *
  * @param turns - All turn results
  * @param turn - Turn index containing the create-clip call (default 1)
- * @returns The created clip's id and slot (either may be undefined if absent)
+ * @returns The created clip's id and path (either may be undefined if absent)
  */
 export function getCreatedClip(
   turns: EvalTurnResult[],
   turn = 1,
-): { id?: string; slot?: string } {
+): { id?: string; path?: string } {
   const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
   if (!call) return {};
 
-  const slot = typeof call.args.slot === "string" ? call.args.slot : undefined;
   const parsed = parsedToolResult(call);
   const id = parsed?.id == null ? undefined : argText(parsed.id);
 
-  return { id, slot };
+  return { id, path: createdClipPath(call.args) };
+}
+
+/**
+ * The destination a create-clip call named, in the one grammar. Grades a model
+ * that reached for the deprecated `slot` on the same axis as one that used
+ * `path`, since the tool honors both.
+ * @param args - The create-clip call's arguments
+ * @returns The path, or undefined when the call named no destination
+ */
+function createdClipPath(args: Record<string, unknown>): string | undefined {
+  if (typeof args.path === "string") return args.path;
+
+  return typeof args.slot === "string" ? slotToPath(args.slot) : undefined;
 }
 
 /**
@@ -516,13 +528,12 @@ function clipObjectsFrom(parsed: unknown): ClipShape[] {
 
 /**
  * Convert a "trackIndex/sceneIndex" slot string into the path the clip tools
- * take. Scenario definitions and the `slot` field results report both still
- * speak the older format, so the conversion lives here rather than at every
- * call site.
+ * take. Scenario definitions still name slots in the older format, so the
+ * conversion lives here rather than at every call site.
  * @param slot - Slot string, "trackIndex/sceneIndex"
  * @returns The equivalent session path, "t<track>/s<scene>"
  */
-function slotToPath(slot: string): string {
+export function slotToPath(slot: string): string {
   const [trackIndex, sceneIndex] = slot.split("/");
 
   return `t${trackIndex}/s${sceneIndex}`;

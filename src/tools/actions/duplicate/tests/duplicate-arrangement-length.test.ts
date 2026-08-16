@@ -46,6 +46,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
+      path: "t0",
       arrangementStart: "5|1",
     });
 
@@ -167,6 +168,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
+      path: "t0",
       arrangementStart: "5|1",
     });
   });
@@ -308,7 +310,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toMatchObject({
       id: expect.any(String) as string,
-      trackIndex: expect.any(Number) as number,
+      path: expect.any(String) as string,
       arrangementStart: expect.any(String) as string,
     });
   });
@@ -374,6 +376,7 @@ async function expectDuplicateDelegatesLengthening(
 
   expect(result).toStrictEqual({
     id: livePath.track(0).arrangementClip(0),
+    path: "t0",
     arrangementStart: "5|1",
   });
 

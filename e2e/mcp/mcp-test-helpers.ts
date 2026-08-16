@@ -348,8 +348,8 @@ export interface CreateClipResult {
   noteCount?: number;
   transformed?: number;
   length?: string;
-  /** Session clips only: where the clip landed, "trackIndex/sceneIndex" */
-  slot?: string;
+  /** Where the clip landed: "t0/s3", "t0", or "t0/l1" */
+  path?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
 }
@@ -379,9 +379,8 @@ export interface ReadClipResult {
   start?: string;
   end?: string;
   length?: string;
-  slot?: string;
-  trackIndex?: number | null;
-  sceneIndex?: number | null;
+  /** Where the clip is: "t0/s3", "t0", or "t0/l1" */
+  path?: string;
   arrangementStart?: string;
   arrangementLength?: string;
   noteCount?: number;

@@ -13,10 +13,10 @@ deprecated).
 
 | Tool                                                                           | Today                                                                                 | Target                                              |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| create-clip                                                                    | **path**, _slot_, _trackIndex_, _sceneIndex_, **takeLane**                            | **path** (gains `l`), _takeLane_                    |
+| create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                                |
 | read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                                           |
 | update-clip                                                                    | **ids**, **toPath**, _toSlot_                                                         | **ids**, **path**, **toPath** (gains `l`, fans out) |
-| duplicate                                                                      | **id**, **toPath**, _toSlot_, **takeLane**                                            | **id**, **toPath** (gains `l`), _takeLane_          |
+| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                                |
 | delete                                                                         | **ids**, **path** (devices only)                                                      | **ids**, **path** (clips too)                       |
 | playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` tolerates `s3`                    |
 | select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3`                |
@@ -30,36 +30,40 @@ deprecated).
 Order matters: the parser merge unblocks everything, and take lanes must precede
 results or a take-lane clip has no path to report.
 
-### Phase 0 — one parser
+### Phase 0 — one parser ✅
 
-Merge
-[destination-path.ts](../../src/tools/shared/validation/destination-path.ts) and
-[device-path-to-live-api.ts](../../src/tools/shared/device/helpers/path/device-path-to-live-api.ts)
-into a single parse → discriminated union → resolve. Add the `l` / `l+`
-segments, the `s` root, and the tolerant legacy values. No tool changes.
+Merged the clip-side and device-side parsers into
+[object-path.ts](../../src/tools/shared/validation/object-path.ts) +
+[object-path-helpers.ts](../../src/tools/shared/validation/object-path-helpers.ts):
+one parse → discriminated union → resolve. Added the `l` / `l+` segments, the
+`s` root, and the tolerant legacy values.
 
-Fixes by construction: `select path="rt0"` currently answers
+Fixed by construction: `select path="rt0"` used to answer
 `Path must include at least a device index: rt0`, because the return-track case
-falls through to the device parser.
+fell through to the device parser. `select` also stopped silently preferring
+`trackIndex`/`trackType`/`sceneIndex` over a `path` that disagreed.
 
-### Phase 1 — take lanes
+### Phase 1 — take lanes ✅
 
-`t0/l<n>` and `t0/l+` on `create-clip` and `duplicate`; `takeLane` demoted to a
-hidden alias (`N → l(N-1)`, `0 → no segment`); `takeLaneName` stays published.
-`update-clip` can move a take-lane clip via `toPath` — it refuses today.
+`t0/l<n>` and `t0/l+` on `create-clip`'s `path` and `duplicate`'s `toPath`;
+`takeLane` demoted to a hidden alias (`N → l(N-1)`, `0 → no segment`);
+`takeLaneName` stays published. Every arrangement destination carries its own
+lane, so one call can spread copies across lanes.
 
-### Phase 2 — results
+Lane targets are 0-based internally now, matching `take_lanes` and the `l<n>`
+segment.
 
-`formatSlot` → `formatPath`, one chokepoint, six production call sites. Clip
-results emit `path` and drop `slot` and `trackIndex`. code-exec's `location`
-becomes `{ view, path?, arrangementStart? }`. Error messages stop naming
-`trackIndex`/`sceneIndex`.
+### Phase 2 — results ✅
 
-Breaking, and the release notes need to say so. Downstream: `slotToPath()` in
-`evals/scenarios/defs/clip/helpers/clip-scenario-helpers.ts` deletes itself,
-`correctSlotAssertion` in `notation-matrix.ts`, `CreateClipResult.slot` in
-`e2e/mcp/mcp-test-helpers.ts`, the `location` shape in
-`src/skills/fragments/transforms/code-transforms.ts`.
+`formatSlot` → `slotPath`/`arrangementPath`. Clip results emit `path` and drop
+`slot`, `trackIndex`, and `takeLane`; read-track's take lane entries report
+`path` instead of a 1-based `takeLane`. code-exec's `location` is
+`{ view, path?, arrangementStart? }`.
+
+Breaking, and the release notes need to say so.
+
+Still open: `update-clip`'s `toPath` refuses a take-lane clip, and error
+messages that name `trackIndex`/`sceneIndex`.
 
 ### Phase 3 — reach
 

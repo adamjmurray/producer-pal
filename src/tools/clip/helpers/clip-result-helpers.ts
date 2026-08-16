@@ -11,7 +11,7 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export interface MidiNote {
   pitch: number;
@@ -36,8 +36,8 @@ export interface ClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
-  slot?: string;
-  trackIndex?: number;
+  /** Where the clip is, as a path. Pastes back into any path/toPath param. */
+  path?: string;
 }
 
 /**
@@ -122,7 +122,7 @@ export function buildClipResultObject(
   }
 
   if (slot != null) {
-    result.slot = formatSlot(slot.trackIndex, slot.sceneIndex);
+    result.path = slotPath(slot.trackIndex, slot.sceneIndex);
   }
 
   return result;

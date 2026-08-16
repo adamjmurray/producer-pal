@@ -105,7 +105,7 @@ describe("duplicateClipSlot", () => {
       "duplicate_clip_to",
       "id live_set/tracks/1/clip_slots/0",
     );
-    expect(result).toStrictEqual({ id: COPY_ID, slot: "1/0" });
+    expect(result).toStrictEqual({ id: COPY_ID, path: "t1/s0" });
   });
 
   // Live's duplicate_clip_to returns success and copies nothing on a type
@@ -190,7 +190,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       id: COPY_ID,
-      slot: "1/0",
+      path: "t1/s0",
     });
   });
 });
@@ -234,7 +234,7 @@ describe("duplicateClipWithPositions to session slots", () => {
       {},
     );
 
-    expect(result).toStrictEqual([{ id: COPY_ID, slot: "1/0" }]);
+    expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
     expect(outlet).toHaveBeenCalledWith(
       1,
       "MIDI clip 56 was not duplicated: track 2 is frozen",

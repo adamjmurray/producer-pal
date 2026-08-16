@@ -42,7 +42,7 @@ export interface CodeClipContext {
  */
 export interface CodeLocationContext {
   view: "session" | "arrangement";
-  slot?: string; // session only, "trackIndex/sceneIndex"
+  path?: string; // where the clip is: "t0/s3", "t0", or "t0/l1"
   arrangementStart?: number; // arrangement only, in song musical beats
 }
 

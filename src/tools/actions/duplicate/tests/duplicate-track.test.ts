@@ -118,7 +118,7 @@ describe("duplicate - track duplication", () => {
     expect(result).toStrictEqual({
       id: "live_set/tracks/1",
       trackIndex: 1,
-      clips: [{ id: "live_set/tracks/1/clip_slots/0/clip", slot: "1/0" }],
+      clips: [{ id: "live_set/tracks/1/clip_slots/0/clip", path: "t1/s0" }],
     });
   });
 

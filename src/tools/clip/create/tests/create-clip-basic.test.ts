@@ -64,7 +64,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 2,
       length: "2bar",
     });

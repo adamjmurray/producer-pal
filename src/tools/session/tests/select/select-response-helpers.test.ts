@@ -185,7 +185,7 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "clip_1",
-        slot: "0/2",
+        path: "t0/s2",
       });
     });
 
@@ -212,7 +212,7 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "arr_clip_1",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "2|1",
       });
     });
@@ -242,7 +242,7 @@ describe("select-response-helpers", () => {
         sceneIndex: 1,
       });
 
-      expect(result).toStrictEqual({ id: "slot_clip", slot: "0/1" });
+      expect(result).toStrictEqual({ id: "slot_clip", path: "t0/s1" });
     });
 
     it("returns undefined for empty slot", () => {

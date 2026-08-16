@@ -17,7 +17,10 @@ import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arra
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /**
  * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
@@ -58,11 +61,10 @@ export function parseArrangementLength(
 
 export interface MinimalClipInfo {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
+   * arrangement. Pastes straight back into any path/toPath param. */
+  path?: string;
   arrangementStart?: string;
-  /** 1-based take lane number, present only for clips on a take lane */
-  takeLane?: number;
   name?: string;
   noteCount?: number;
   transformed?: number;
@@ -105,19 +107,12 @@ export function getMinimalClipInfo(
       id: clip.id,
     };
 
-    if (!omitFields.includes("trackIndex")) {
-      result.trackIndex = trackIndex;
+    if (!omitFields.includes("path")) {
+      result.path = arrangementPath(trackIndex, clip.takeLaneIndex);
     }
 
     if (!omitFields.includes("arrangementStart")) {
       result.arrangementStart = arrangementStart;
-    }
-
-    // Surface the take lane (1-based) when the clip landed on one
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      result.takeLane = takeLaneIndex + 1;
     }
 
     return result;
@@ -136,8 +131,8 @@ export function getMinimalClipInfo(
     id: clip.id,
   };
 
-  if (!omitFields.includes("slot")) {
-    result.slot = formatSlot(trackIndex, sceneIndex);
+  if (!omitFields.includes("path")) {
+    result.path = slotPath(trackIndex, sceneIndex);
   }
 
   return result;

@@ -169,7 +169,7 @@ describe("createClip - session view", () => {
 
     expect(result).toStrictEqual({
       id: "clip_0_0",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 3,
       length: "1bar",
     });
@@ -247,7 +247,7 @@ describe("createClip - session view", () => {
     expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 1,
       length: "1bar",
     });
@@ -331,9 +331,9 @@ describe("createClip - session view", () => {
     expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
     expect(result).toStrictEqual([
-      { id: "clip_0_1", slot: "0/1" },
-      { id: "clip_0_2", slot: "0/2" },
-      { id: "clip_0_3", slot: "0/3" },
+      { id: "clip_0_1", path: "t0/s1" },
+      { id: "clip_0_2", path: "t0/s2" },
+      { id: "clip_0_3", path: "t0/s3" },
     ]);
   });
 
@@ -426,21 +426,21 @@ describe("createClip - session view - per-clip transforms", () => {
     expect(result).toStrictEqual([
       {
         id: "clip_0_1",
-        slot: "0/1",
+        path: "t0/s1",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
       },
       {
         id: "clip_0_2",
-        slot: "0/2",
+        path: "t0/s2",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
       },
       {
         id: "clip_0_3",
-        slot: "0/3",
+        path: "t0/s3",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -486,7 +486,7 @@ describe("createClip - session view - per-clip transforms", () => {
     });
     expect(result).toStrictEqual({
       id: "clip_0_0",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 1,
       transformed: 1,
       length: "1bar",

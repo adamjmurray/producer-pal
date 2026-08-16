@@ -49,7 +49,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        slot: "0/1",
+        path: "t0/s1",
       });
     });
 
@@ -86,11 +86,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          slot: "0/1",
+          path: "t0/s1",
         },
         {
           id: "live_set/tracks/0/clip_slots/2/clip",
-          slot: "0/2",
+          path: "t0/s2",
         },
       ]);
 
@@ -124,7 +124,7 @@ describe("duplicate - clip duplication", () => {
       );
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        slot: "0/1",
+        path: "t0/s1",
       });
     });
 
@@ -186,7 +186,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "3|1",
       });
     });
@@ -225,7 +225,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(2).arrangementClip(0),
-        trackIndex: 2,
+        path: "t2",
         arrangementStart: "3|1",
       });
     });
@@ -265,12 +265,12 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(2).arrangementClip(0),
-          trackIndex: 2,
+          path: "t2",
           arrangementStart: "3|1",
         },
         {
           id: livePath.track(3).arrangementClip(0),
-          trackIndex: 3,
+          path: "t3",
           arrangementStart: "3|1",
         },
       ]);
@@ -515,7 +515,7 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
-      expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "3|1" });
+      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
@@ -558,17 +558,17 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(0).arrangementClip(0),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "3|1",
         },
         {
           id: livePath.track(0).arrangementClip(1),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "4|1",
         },
         {
           id: livePath.track(0).arrangementClip(2),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "5|1",
         },
       ]);

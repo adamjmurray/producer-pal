@@ -164,6 +164,7 @@ function processSessionClips(
 /**
  * Process arrangement clips for a track
  * @param track - Track object
+ * @param trackIndex - Track index, for the lane paths
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full arrangement clip details
@@ -195,6 +196,7 @@ function processArrangementClips(
  * (with clips) when arrangement clips are included, otherwise just a count.
  * The field is omitted entirely when the track has no take lanes.
  * @param track - Track object
+ * @param trackIndex - Track index, for the lane paths
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full take lane clip details
@@ -204,6 +206,7 @@ function processArrangementClips(
  */
 function processTakeLanes(
   track: LiveAPI,
+  trackIndex: number | null,
   isGroup: boolean,
   category: string,
   includeArrangementClips: boolean,
@@ -222,7 +225,7 @@ function processTakeLanes(
   }
 
   return includeArrangementClips
-    ? { takeLanes: readTakeLanes(track, include, notation) }
+    ? { takeLanes: readTakeLanes(track, trackIndex, include, notation) }
     : { takeLaneCount: count };
 }
 
@@ -352,6 +355,7 @@ export function readTrackGeneric({
     result,
     processTakeLanes(
       track,
+      trackIndex,
       isGroup,
       category,
       includeArrangementClips,

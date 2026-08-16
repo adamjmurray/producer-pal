@@ -83,7 +83,7 @@ describe("readClip - include flag gating", () => {
       id: null,
       type: null,
       name: null,
-      slot: "4/5",
+      path: "t4/s5",
     });
     expect(consoleSpy).not.toHaveBeenCalled();
   });

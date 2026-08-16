@@ -153,7 +153,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
       noteCount: 5,
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -238,7 +238,7 @@ describe("handleSessionSlotMove", () => {
     );
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
-      slot: "2/1",
+      path: "t2/s1",
     });
   });
 
@@ -264,7 +264,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "123",
-      slot: "2/3",
+      path: "t2/s3",
     });
     // No duplicate_clip_to should have been called
     expect(outlet).not.toHaveBeenCalledWith(
@@ -354,7 +354,7 @@ describe("handleSessionSlotMove", () => {
       1,
       expect.stringContaining("is frozen"),
     );
-    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, slot: "1/2" });
+    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, path: "t1/s2" });
   });
 
   it("should not move an audio clip to a MIDI track", () => {
@@ -431,7 +431,7 @@ describe("handleSessionSlotMove", () => {
     // The copy replaced the occupant, so the result is the copy's id.
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
-      slot: "0/1",
+      path: "t0/s1",
     });
   });
 
@@ -444,7 +444,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(updatedClips[0]).toMatchObject({
       noteCount: 12,
-      slot: "0/1",
+      path: "t0/s1",
     });
   });
 

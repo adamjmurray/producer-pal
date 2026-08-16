@@ -58,7 +58,7 @@ describe("ppal-create-clip", () => {
 
     expect(minimalClip.type).toBe("midi");
     expect(minimalClip.view).toBe("session");
-    expect(minimalClip.slot).toBe(`${emptyMidiTrack}/0`);
+    expect(minimalClip.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 2: Create session clip with notes
     const notesResult = await ctx.client!.callTool({
@@ -190,7 +190,7 @@ describe("ppal-create-clip", () => {
       parseToolResultWithWarnings<CreateClipResult>(result);
 
     expect(clip.id).toBeDefined();
-    expect(clip.slot).toBe(`${emptyMidiTrack}/8`);
+    expect(clip.path).toBe(`t${emptyMidiTrack}/s8`);
     expect(warnings.join("\n")).toContain('the parameter is "path"');
   });
 

@@ -18,7 +18,7 @@ import {
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -29,7 +29,7 @@ interface EmptySlotResponse {
   id: null;
   type: null;
   name: null;
-  slot: string;
+  path: string;
 }
 
 /**
@@ -77,7 +77,7 @@ export function resolveClip(
         id: null,
         type: null,
         name: null,
-        slot: formatSlot(trackIndex as number, sceneIndex as number),
+        path: slotPath(trackIndex as number, sceneIndex as number),
       },
     };
   }

@@ -21,7 +21,10 @@ import {
   rawNotesToNoteEvents,
   removeAllClipNotes,
 } from "#src/tools/shared/clip-notes.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   type CodeClipContext,
   type CodeExecutionContext,
@@ -109,9 +112,10 @@ export function buildCodeExecutionContext(
   const clipContext = buildClipContext(clip, clipIndex, clipCount);
   const location = buildLocationContext(
     view,
-    clip.trackIndex as number,
+    clip.trackIndex,
     sceneIndex,
     arrangementStartBeats,
+    clip.takeLaneIndex,
   );
   const liveSet = buildLiveSetContext();
   const beatsPerBar = getBeatsPerBar(clip);
@@ -212,14 +216,21 @@ function buildClipContext(
 
 function buildLocationContext(
   view: "session" | "arrangement",
-  trackIndex: number,
+  trackIndex: number | null,
   sceneIndex?: number,
   arrangementStartBeats?: number,
+  takeLaneIndex?: number | null,
 ): CodeLocationContext {
   const location: CodeLocationContext = { view };
 
-  if (view === "session" && sceneIndex != null) {
-    location.slot = formatSlot(trackIndex, sceneIndex);
+  // Omitted rather than guessed when the clip's own coordinates don't say where
+  // it is — a wrong path here is one user code would act on.
+  if (trackIndex != null) {
+    if (view === "arrangement") {
+      location.path = arrangementPath(trackIndex, takeLaneIndex);
+    } else if (sceneIndex != null) {
+      location.path = slotPath(trackIndex, sceneIndex);
+    }
   }
 
   if (view === "arrangement" && arrangementStartBeats != null) {

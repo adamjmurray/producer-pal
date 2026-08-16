@@ -156,13 +156,13 @@ describe("clip-result-helpers", () => {
       expect(result.transformed).toBeUndefined();
     });
 
-    it("includes slot when slot param is provided", () => {
+    it("includes the slot path when a slot is provided", () => {
       const result = buildClipResultObject("clip300", null, {
         trackIndex: 0,
         sceneIndex: 3,
       });
 
-      expect(result).toStrictEqual({ id: "clip300", slot: "0/3" });
+      expect(result).toStrictEqual({ id: "clip300", path: "t0/s3" });
     });
   });
 

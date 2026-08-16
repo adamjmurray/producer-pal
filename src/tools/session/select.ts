@@ -64,8 +64,8 @@ export interface SelectResult {
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;
-    slot?: string;
-    trackIndex?: number;
+    /** Where the clip is: "t0/s3", "t0", or "t0/l1". */
+    path?: string;
     arrangementStart?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
@@ -372,7 +372,7 @@ function addClipToResponse(
       // A clip selection always switches Live to the clip's required view
       // (session for slotted clips, arrangement otherwise), so report that view
       // even when it overrides an explicitly requested, conflicting view.
-      result.view = info.slot != null ? "session" : "arrangement";
+      result.view = info.arrangementStart == null ? "session" : "arrangement";
     }
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);

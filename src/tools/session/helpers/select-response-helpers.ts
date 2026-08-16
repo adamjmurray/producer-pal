@@ -8,6 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";
 import { type TrackCategory } from "./select-helpers.ts";
@@ -187,7 +191,7 @@ function buildSceneInfo(
 /**
  * Build clip info from a LiveAPI clip reference
  * @param clip - LiveAPI reference to a clip
- * @returns Clip info with slot (session) or arrangementStart (arrangement)
+ * @returns Clip info with its path, plus arrangementStart for arrangement clips
  */
 function buildClipInfo(
   clip: LiveAPI,
@@ -199,7 +203,7 @@ function buildClipInfo(
   if (isSessionClip) {
     return {
       id: clip.id,
-      slot: `${clip.trackIndex}/${clip.clipSlotIndex}`,
+      path: slotPath(clip.trackIndex, clip.clipSlotIndex),
     };
   }
 
@@ -211,7 +215,7 @@ function buildClipInfo(
 
   return {
     id: clip.id,
-    trackIndex: clip.trackIndex ?? undefined,
+    path: arrangementPath(clip.trackIndex as number, clip.takeLaneIndex),
     arrangementStart: abletonBeatsToBarBeat(startTime, num, den),
   };
 }

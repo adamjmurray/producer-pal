@@ -302,7 +302,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -314,7 +314,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -329,7 +329,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -421,7 +421,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 

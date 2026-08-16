@@ -115,6 +115,34 @@ export function namedHiddenPath(value: string | undefined): string | undefined {
 }
 
 /**
+ * The path a session clip's slot spells.
+ * @param trackIndex - 0-based track index
+ * @param sceneIndex - 0-based scene index
+ * @returns The path (e.g. "t0/s3")
+ */
+export function slotPath(trackIndex: number, sceneIndex: number): string {
+  return formatObjectPath({ kind: "slot", trackIndex, sceneIndex });
+}
+
+/**
+ * The path an arrangement clip's lane spells — the track itself for the main
+ * lane, or the take lane it sits on.
+ * @param trackIndex - 0-based track index
+ * @param takeLaneIndex - 0-based take lane index, or null for the main lane
+ * @returns The path (e.g. "t0" or "t0/l1")
+ */
+export function arrangementPath(
+  trackIndex: number,
+  takeLaneIndex?: number | null,
+): string {
+  return formatObjectPath(
+    takeLaneIndex == null
+      ? { kind: "track", trackIndex }
+      : { kind: "take-lane", trackIndex, laneIndex: takeLaneIndex },
+  );
+}
+
+/**
  * Rejects a path a clip can't occupy, so a clip caller gets a message about
  * clips rather than one about devices.
  * @param path - Parsed path

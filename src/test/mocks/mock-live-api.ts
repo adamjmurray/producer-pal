@@ -330,8 +330,7 @@ interface ClipOverrides {
   id?: string;
   type?: string;
   view?: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -352,7 +351,7 @@ export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",
   view: "session",
-  slot: "2/1",
+  path: "t2/s1",
   name: "Test Clip",
   color: "#3DC300",
   // playing, triggered, recording, overdubbing, muted omitted when false
