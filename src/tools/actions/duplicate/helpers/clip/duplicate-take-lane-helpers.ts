@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  assertTakeLaneCapacity,
   resolveTakeLane,
   type ResolvedTakeLane,
   type TakeLaneTarget,
@@ -66,16 +67,24 @@ export function duplicateClipsToTakeLane(
   }
 
   const length = sourceClip.getProperty("length") as number;
+  const destTracks = [...new Set(destTrackIndices)].map((trackIndex) => ({
+    trackIndex,
+    track: LiveAPI.from(livePath.track(trackIndex)),
+  }));
+
+  // Lanes are permanent (Live has no delete), so check every track's capacity
+  // before creating a lane on any of them — otherwise a cap error on the last
+  // track strands an empty lane on all the earlier ones.
+  for (const { track } of destTracks) {
+    assertTakeLaneCapacity(track, target);
+  }
+
   // One lane per destination track, resolved once: with target "new", asking
   // per copy would append a fresh lane for every position.
   const lanes = new Map(
-    [...new Set(destTrackIndices)].map((trackIndex) => [
+    destTracks.map(({ trackIndex, track }) => [
       trackIndex,
-      resolveTakeLane(
-        LiveAPI.from(livePath.track(trackIndex)),
-        target,
-        takeLaneName,
-      ),
+      resolveTakeLane(track, target, takeLaneName),
     ]),
   );
 
