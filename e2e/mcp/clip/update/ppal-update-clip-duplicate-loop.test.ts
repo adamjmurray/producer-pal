@@ -45,7 +45,7 @@ async function createLoopingClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      slot: `${emptyMidiTrack}/${sceneIndex}`,
+      path: `t${emptyMidiTrack}/s${sceneIndex}`,
       notes,
       length,
       looping: true,

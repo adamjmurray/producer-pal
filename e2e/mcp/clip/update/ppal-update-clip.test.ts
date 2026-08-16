@@ -94,7 +94,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
         notes: "C3 D3 1|1",
         looping: true,
         length: "2bar",
@@ -171,7 +171,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/1`,
+        path: `t${emptyMidiTrack}/s1`,
         notes: "C3 D3 1|1",
         length: "2bar",
       },
@@ -294,7 +294,7 @@ describe("ppal-update-clip", () => {
     const arrCreateResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        path: `t${emptyMidiTrack}`,
         arrangementStart: "41|1",
         notes: "C3 1|1",
         length: "2bar",
@@ -353,7 +353,7 @@ describe("ppal-update-clip", () => {
     const createResult1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/2`,
+        path: `t${emptyMidiTrack}/s2`,
         notes: "C3 1|1",
       },
     });
@@ -362,7 +362,7 @@ describe("ppal-update-clip", () => {
     const createResult2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/3`,
+        path: `t${emptyMidiTrack}/s3`,
         notes: "E3 1|1",
       },
     });
@@ -397,7 +397,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/4`,
+        path: `t${emptyMidiTrack}/s4`,
         notes: "C3 D3 1|1",
         name: "Move Me",
       },
@@ -435,7 +435,7 @@ describe("ppal-update-clip", () => {
     // Verify the original slot is now empty
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: `${emptyMidiTrack}/4` },
+      arguments: { path: `t${emptyMidiTrack}/s4` },
     });
     const { data: oldSlot } =
       parseToolResultWithWarnings<ReadClipResult>(verifyOld);
@@ -447,7 +447,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/6`,
+        path: `t${emptyMidiTrack}/s6`,
         notes: "C3 1|1",
         name: "Stay Put",
       },
@@ -485,7 +485,7 @@ describe("ppal-update-clip", () => {
   it("still honors the deprecated toSlot, and says so", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { slot: `${emptyMidiTrack}/6`, notes: "C3 1|1" },
+      arguments: { path: `t${emptyMidiTrack}/s6`, notes: "C3 1|1" },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
 
@@ -517,7 +517,7 @@ describe("ppal-update-clip", () => {
     const audioClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${audioTrack.trackIndex}/0`,
+        path: `t${audioTrack.trackIndex}/s0`,
         sampleFile: SAMPLE_FILE,
       },
     });

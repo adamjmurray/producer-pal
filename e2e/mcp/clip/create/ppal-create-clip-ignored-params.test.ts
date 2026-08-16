@@ -49,7 +49,7 @@ async function createPlainDrumLoop(scene: number): Promise<ReadClipResult> {
     name: "ppal-create-clip",
     arguments: {
       sampleFile: DRUM_LOOP_FILE,
-      slot: `${AUDIO_WARP_TRACK}/${scene}`,
+      path: `t${AUDIO_WARP_TRACK}/s${scene}`,
       warping: false,
     },
   });
@@ -66,7 +66,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
       name: "ppal-create-clip",
       arguments: {
         sampleFile: DRUM_LOOP_FILE,
-        slot: `${AUDIO_WARP_TRACK}/1`,
+        path: `t${AUDIO_WARP_TRACK}/s1`,
         warping: false,
         start: "1|3",
         length: "2bar",
@@ -98,7 +98,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
       name: "ppal-create-clip",
       arguments: {
         sampleFile: DRUM_LOOP_FILE,
-        slot: `${AUDIO_WARP_TRACK}/3`,
+        path: `t${AUDIO_WARP_TRACK}/s3`,
         warping: false,
         length: "2|3",
       },
@@ -115,7 +115,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${MIDI_TRACK}/7`,
+        path: `t${MIDI_TRACK}/s7`,
         notes: "C3 1|1",
         warping: false,
       },

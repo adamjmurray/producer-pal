@@ -39,7 +39,7 @@ async function createClip(
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
-    arguments: { slot: `${emptyMidiTrack}/${sceneIndex}`, notes, length },
+    arguments: { path: `t${emptyMidiTrack}/s${sceneIndex}`, notes, length },
   });
   const clip = parseToolResult<{ id: string }>(result);
 

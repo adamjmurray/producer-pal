@@ -49,7 +49,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     await sleep(50);
 
     const midi = await callTool("ppal-create-clip", {
-      slot: `${MIDI_TRACK}/0`,
+      path: `t${MIDI_TRACK}/s0`,
       notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
       length: "4bar",
     });
@@ -57,7 +57,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     midi4barId = parseToolResult<{ id: string }>(midi).id;
 
     const sample = await callTool("ppal-read-clip", {
-      slot: `${AUDIO_TRACK}/0`,
+      path: `t${AUDIO_TRACK}/s0`,
     });
 
     audioId = parseToolResult<{ id: string }>(sample).id;

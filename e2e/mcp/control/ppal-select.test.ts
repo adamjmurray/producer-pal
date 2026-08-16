@@ -113,7 +113,7 @@ describe("ppal-select", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -157,7 +157,7 @@ describe("ppal-select", () => {
     // Test 11: Select device by path
     const selectDevicePathResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { devicePath: "t0/d0" },
+      arguments: { path: "t0/d0" },
     });
     const withDevicePath = parseToolResult<SelectResult>(
       selectDevicePathResult,
@@ -169,7 +169,7 @@ describe("ppal-select", () => {
     // Test 12: Select clip slot (occupied)
     const clipSlotResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { slot: `${emptyMidiTrack}/0` },
+      arguments: { path: `t${emptyMidiTrack}/s0` },
     });
     const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
 

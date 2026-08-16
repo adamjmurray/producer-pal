@@ -179,7 +179,7 @@ describe("ppal-delete", () => {
     const createClip = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
       },
     });
     const clip = parseToolResult<CreateClipResult>(createClip);
@@ -209,7 +209,7 @@ describe("ppal-delete", () => {
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/1`,
+        path: `t${emptyMidiTrack}/s1`,
       },
     });
     const clip1 = parseToolResult<CreateClipResult>(createClip1);
@@ -217,7 +217,7 @@ describe("ppal-delete", () => {
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/2`,
+        path: `t${emptyMidiTrack}/s2`,
       },
     });
     const clip2 = parseToolResult<CreateClipResult>(createClip2);

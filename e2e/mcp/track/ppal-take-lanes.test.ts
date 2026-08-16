@@ -123,7 +123,7 @@ describe("take lanes", () => {
     const mainResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: MIDI_TRACK,
+        path: `t${MIDI_TRACK}`,
         arrangementStart: "9|1",
         notes: "G3 1|1",
       },
@@ -249,7 +249,7 @@ describe("take lanes", () => {
     const capped = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: MIDI_TRACK,
+        path: `t${MIDI_TRACK}`,
         arrangementStart: "5|1",
         notes: "C3 1|1",
         takeLane: "new",
@@ -327,7 +327,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          trackIndex: MIDI_TRACK,
+          path: `t${MIDI_TRACK}`,
           arrangementStart: "1|1",
           notes: "C3 E3 G3 1|1",
           name: "Original Take",
@@ -398,7 +398,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          trackIndex: audioTrack.trackIndex,
+          path: `t${audioTrack.trackIndex}`,
           arrangementStart: "1|1",
           sampleFile: SAMPLE_FILE,
         },
@@ -463,7 +463,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          trackIndex: MIDI_TRACK,
+          path: `t${MIDI_TRACK}`,
           arrangementStart: "1|1",
           notes: "C3 E3 1|1",
           name: "Take Source",
@@ -501,7 +501,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          trackIndex: MIDI_TRACK,
+          path: `t${MIDI_TRACK}`,
           arrangementStart: "1|1",
           notes: "C3 1|1",
         },

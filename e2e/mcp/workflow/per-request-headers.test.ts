@@ -310,7 +310,7 @@ describe("x-producer-pal-notation", () => {
       await stark.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${EMPTY_MIDI_TRACK}/0`,
+          path: `t${EMPTY_MIDI_TRACK}/s0`,
           notes: "melody: C E G",
           length: "1bar",
         },

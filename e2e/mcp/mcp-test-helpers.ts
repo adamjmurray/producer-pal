@@ -348,6 +348,8 @@ export interface CreateClipResult {
   noteCount?: number;
   transformed?: number;
   length?: string;
+  /** Session clips only: where the clip landed, "trackIndex/sceneIndex" */
+  slot?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
 }

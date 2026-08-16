@@ -28,7 +28,7 @@ describe("ppal-read-clip", () => {
     const midiResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: {
-        slot: "0/0",
+        path: "t0/s0",
         include: ["timing", "notes"],
       },
     });
@@ -56,7 +56,7 @@ describe("ppal-read-clip", () => {
     // Test 3: Read non-looping MIDI clip (t2/s0 "Chords")
     const nonLoopingResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "2/0", include: ["timing"] },
+      arguments: { path: "t2/s0", include: ["timing"] },
     });
     const nonLoopingClip = parseToolResult<ReadClipResult>(nonLoopingResult);
 
@@ -66,7 +66,7 @@ describe("ppal-read-clip", () => {
     // Test 4: Read with include: ["notes"] - verify notes string present
     const withNotesResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "0/0", include: ["notes"] },
+      arguments: { path: "t0/s0", include: ["notes"] },
     });
     const withNotesClip = parseToolResult<ReadClipResult>(withNotesResult);
 
@@ -77,7 +77,7 @@ describe("ppal-read-clip", () => {
     // Test 5: Read with include: ["color"] - verify hex color format
     const withColorResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "0/0", include: ["color"] },
+      arguments: { path: "t0/s0", include: ["color"] },
     });
     const withColorClip = parseToolResult<ReadClipResult>(withColorResult);
 
@@ -89,7 +89,7 @@ describe("ppal-read-clip", () => {
     const warpedResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: {
-        slot: "4/0",
+        path: "t4/s0",
         include: ["timing", "warp"],
       },
     });
@@ -105,7 +105,7 @@ describe("ppal-read-clip", () => {
     const unwarpedResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: {
-        slot: "5/0",
+        path: "t5/s0",
         include: ["timing", "sample", "warp"],
       },
     });
@@ -147,7 +147,7 @@ describe("ppal-read-clip", () => {
     // Test offset loop: t3/s1 has start=2|1, loopStart=1|1
     const offsetResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "3/1", include: ["timing"] },
+      arguments: { path: "t3/s1", include: ["timing"] },
     });
     const offsetClip = parseToolResult<ReadClipResult>(offsetResult);
 
@@ -159,7 +159,7 @@ describe("ppal-read-clip", () => {
     const warpResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: {
-        slot: "4/0",
+        path: "t4/s0",
         include: ["warp", "timing"],
       },
     });
@@ -173,7 +173,7 @@ describe("ppal-read-clip", () => {
     // Test 1: Read empty slot (t8 is empty track with no clips)
     const emptyResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "8/0" },
+      arguments: { path: "t8/s0" },
     });
     const { data: emptyClip, warnings } =
       parseToolResultWithWarnings<ReadClipResult>(emptyResult);
@@ -189,7 +189,7 @@ describe("ppal-read-clip", () => {
     // Test 2: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "0/999" },
+      arguments: { path: "t0/s999" },
     });
 
     expect(isToolError(invalidSceneResult)).toBe(true);
@@ -200,7 +200,7 @@ describe("ppal-read-clip", () => {
     // Test 3: Non-existent track throws error
     const invalidTrackResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "999/0" },
+      arguments: { path: "t999/s0" },
     });
 
     expect(isToolError(invalidTrackResult)).toBe(true);
@@ -215,7 +215,7 @@ describe("ppal-read-clip compact notation", () => {
     // t0/s0 "Beat" — drum pattern: C1 kick on 1,3; D1 snare on 2,4
     const result = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "0/0", include: ["notes"] },
+      arguments: { path: "t0/s0", include: ["notes"] },
     });
     const clip = parseToolResult<ReadClipResult>(result);
     const notes = clip.notes!;
@@ -232,7 +232,7 @@ describe("ppal-read-clip compact notation", () => {
     // t2/s0 "Chords" — Am chord, one note has p=0.69
     const result = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: "2/0", include: ["notes"] },
+      arguments: { path: "t2/s0", include: ["notes"] },
     });
     const clip = parseToolResult<ReadClipResult>(result);
     const notes = clip.notes!;

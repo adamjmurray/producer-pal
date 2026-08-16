@@ -239,7 +239,7 @@ async function createArrClip(
   name: string,
 ): Promise<{ id: string }> {
   const result = await callTool("ppal-create-clip", {
-    trackIndex: SOURCE_TRACK,
+    path: `t${SOURCE_TRACK}`,
     arrangementStart,
     name,
     notes: "C3 D3 E3 F3 1|1",

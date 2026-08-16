@@ -47,7 +47,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${emptyMidiTrack}/0`,
+          path: `t${emptyMidiTrack}/s0`,
           code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
         },
       });
@@ -71,7 +71,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${emptyMidiTrack}/1`,
+          path: `t${emptyMidiTrack}/s1`,
           notes: "C3 D3 E3 1|1",
           length: "2bar",
         },
@@ -141,40 +141,40 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
         {
           label: "syntax error",
           code: "return [{pitch: 60, start: 0}",
-          slot: `${emptyMidiTrack}/2`,
+          path: `t${emptyMidiTrack}/s2`,
         },
         {
           label: "thrown exception",
           code: 'throw new Error("test error")',
-          slot: `${emptyMidiTrack}/3`,
+          path: `t${emptyMidiTrack}/s3`,
         },
         {
           label: "no return (undefined)",
           code: "const x = 1;",
-          slot: `${emptyMidiTrack}/4`,
+          path: `t${emptyMidiTrack}/s4`,
         },
         {
           label: "return null",
           code: "return null",
-          slot: `${emptyMidiTrack}/5`,
+          path: `t${emptyMidiTrack}/s5`,
         },
         {
           label: "return primitive",
           code: "return 42",
-          slot: `${emptyMidiTrack}/6`,
+          path: `t${emptyMidiTrack}/s6`,
         },
         {
           label: "return object (not array)",
           code: "return {pitch: 60, start: 0}",
-          slot: `${emptyMidiTrack}/7`,
+          path: `t${emptyMidiTrack}/s7`,
         },
       ];
 
-      for (const { label, code, slot } of codeErrorCases) {
+      for (const { label, code, path } of codeErrorCases) {
         const createResult = await ctx.client!.callTool({
           name: "ppal-create-clip",
           arguments: {
-            slot,
+            path,
             code,
           },
         });
@@ -207,7 +207,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${emptyMidiTrack}/10`,
+          path: `t${emptyMidiTrack}/s10`,
           code: tooLongCode,
         },
       });
@@ -236,7 +236,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const mixedResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${emptyMidiTrack}/8`,
+          path: `t${emptyMidiTrack}/s8`,
           code: [
             "return [",
             "  {pitch: 60, start: 0, duration: 1, velocity: 100},",
@@ -267,7 +267,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const clampResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${emptyMidiTrack}/9`,
+          path: `t${emptyMidiTrack}/s9`,
           code: [
             "return [",
             "  {pitch: -10, start: 0, duration: 1, velocity: 100},",

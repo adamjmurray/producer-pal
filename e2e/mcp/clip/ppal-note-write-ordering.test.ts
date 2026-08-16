@@ -131,7 +131,7 @@ describe("note write ordering (create + update transforms)", () => {
     const dupResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${trackIndex}/1`,
+        path: `t${trackIndex}/s1`,
         notes: "C1 C1 1|1",
       },
     });

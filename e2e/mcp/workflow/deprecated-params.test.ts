@@ -4,16 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E test for what a deprecated param publishes.
+ * E2E test for what a hidden param publishes.
  *
- * deprecatedParam() keeps a param in the schema that validates and out of the
- * schema that ships, so old callers keep working while the model never learns
- * the old name. Unit tests pin the resolved shape; this pins what a live client
- * actually receives, over both catalogs — MCP and REST each build their own,
- * and REST once served a param MCP was hiding.
+ * deprecatedParam() and aliasParam() both keep a param in the schema that
+ * validates and out of the schema that ships, so old and guessing callers keep
+ * working while the model never learns the hidden name. Unit tests pin the
+ * resolved shape; this pins what a live client actually receives, over both
+ * catalogs — MCP and REST each build their own, and REST once served a param
+ * MCP was hiding.
  *
- * The other half — that the retired names still work — is covered where the
- * clips are: ppal-duplicate and ppal-update-clip each pin a toSlot call.
+ * The other half — that the hidden names still work — is covered where the
+ * clips are: ppal-duplicate and ppal-update-clip each pin a toSlot call, and
+ * ppal-create-clip pins the trackIndex/sceneIndex fallback.
  *
  * Run with: npm run e2e:mcp -- deprecated-params
  */
@@ -54,7 +56,7 @@ function publishedParams(toolName: string): string[] {
   return Object.keys(tool!.inputSchema.properties ?? {});
 }
 
-describe("deprecated params", () => {
+describe("hidden params", () => {
   it("publishes toPath and hides the destination params it replaced", () => {
     const duplicate = publishedParams("ppal-duplicate");
 
@@ -68,6 +70,38 @@ describe("deprecated params", () => {
 
     expect(updateClip).toContain("toPath");
     expect(updateClip).not.toContain("toSlot");
+  });
+
+  // Publishing any of these is the bug path fixed: an index-shaped param
+  // beside a description naming a track and a scene is what taught models to
+  // guess trackIndex/sceneIndex instead of the real param.
+  it("publishes path and hides the index params it replaced", () => {
+    const createClip = publishedParams("ppal-create-clip");
+
+    expect(createClip).toContain("path");
+    expect(createClip).not.toContain("slot");
+    expect(createClip).not.toContain("trackIndex");
+    expect(createClip).not.toContain("sceneIndex");
+
+    const readClip = publishedParams("ppal-read-clip");
+
+    expect(readClip).toContain("path");
+    expect(readClip).not.toContain("slot");
+
+    const select = publishedParams("ppal-select");
+
+    expect(select).toContain("path");
+    expect(select).not.toContain("slot");
+    expect(select).not.toContain("devicePath");
+    // select still names a track and a scene directly — those are real targets,
+    // not clip positions, so they stay published.
+    expect(select).toContain("trackIndex");
+    expect(select).toContain("sceneIndex");
+
+    const playback = publishedParams("ppal-playback");
+
+    expect(playback).toContain("path");
+    expect(playback).not.toContain("slots");
   });
 
   // GET /api/tools builds its own catalog, and it is how a REST agent discovers
