@@ -82,7 +82,9 @@ describe("paramsInputSchema", () => {
   });
 
   it("rejects an entry with a missing name", () => {
-    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow();
+    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow(
+      "Invalid input: expected string, received undefined",
+    );
   });
 
   it("parses a JSON-stringified array (small-model fallback)", () => {
@@ -96,22 +98,26 @@ describe("paramsInputSchema", () => {
   });
 
   it("rejects an entry with a missing value", () => {
-    expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow();
+    expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow(
+      "Invalid input: expected string, received undefined",
+    );
   });
 
   it("rejects an entry with a null value", () => {
     expect(() =>
       paramsInputSchema.parse([{ name: "Freq", value: null }]),
-    ).toThrow();
+    ).toThrow("Invalid input: expected string, received null");
   });
 
   it("rejects a non-JSON string with a clear array error", () => {
-    expect(() => paramsInputSchema.parse("not valid format")).toThrow();
+    expect(() => paramsInputSchema.parse("not valid format")).toThrow(
+      "Invalid input: expected array, received string",
+    );
   });
 
   it("rejects a JSON string that does not parse to an array", () => {
-    expect(() =>
-      paramsInputSchema.parse('{"name":"Freq","value":1}'),
-    ).toThrow();
+    expect(() => paramsInputSchema.parse('{"name":"Freq","value":1}')).toThrow(
+      "Invalid input: expected array, received object",
+    );
   });
 });

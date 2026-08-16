@@ -74,14 +74,22 @@ describe("queriesInputSchema (searchBatch input)", () => {
   });
 
   it("rejects a non-array, non-JSON string", () => {
-    expect(() => queriesInputSchema.parse("not valid")).toThrow();
+    expect(() => queriesInputSchema.parse("not valid")).toThrow(
+      "Invalid input: expected array, received string",
+    );
   });
 
   it("rejects a JSON string that does not parse to an array", () => {
-    expect(() => queriesInputSchema.parse('{"tags":"Kick"}')).toThrow();
+    expect(() => queriesInputSchema.parse('{"tags":"Kick"}')).toThrow(
+      "Invalid input: expected array, received object",
+    );
   });
 
   it("rejects an unknown enum value", () => {
-    expect(() => queriesInputSchema.parse([{ kind: "bogus" }])).toThrow();
+    // Zod's message lands inside a JSON dump, so the quotes around each value
+    // arrive escaped.
+    expect(() => queriesInputSchema.parse([{ kind: "bogus" }])).toThrow(
+      /Invalid option: expected one of .*audio.*folder/,
+    );
   });
 });

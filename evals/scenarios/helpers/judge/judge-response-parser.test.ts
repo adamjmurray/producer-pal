@@ -191,7 +191,9 @@ describe("parseJudgeResponse", () => {
     it("throws error for invalid JSON syntax", () => {
       const input = '{"accuracy": {"score": 5, "reasoning": "missing closing';
 
-      expect(() => parseJudgeResponse(input)).toThrow();
+      expect(() => parseJudgeResponse(input)).toThrow(
+        "Failed to extract JSON from",
+      );
     });
   });
 

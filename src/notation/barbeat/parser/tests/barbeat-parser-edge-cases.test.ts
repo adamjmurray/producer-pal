@@ -59,14 +59,14 @@ describe("BarBeatScript Parser - edge cases", () => {
     });
 
     it("rejects invalid characters with proper error messages", () => {
-      expect(() => parser.parse("1|1 @")).toThrow();
-      expect(() => parser.parse("1|1 $")).toThrow();
-      expect(() => parser.parse("1|1 %")).toThrow();
+      expect(() => parser.parse("1|1 @")).toThrow('but "@" found');
+      expect(() => parser.parse("1|1 $")).toThrow('but "$" found');
+      expect(() => parser.parse("1|1 %")).toThrow('but "%" found');
     });
 
     it("handles control characters in error messages", () => {
-      expect(() => parser.parse("1|1 \x00")).toThrow();
-      expect(() => parser.parse("1|1 \x1F")).toThrow();
+      expect(() => parser.parse("1|1 \x00")).toThrow('but "\\0" found');
+      expect(() => parser.parse("1|1 \x1F")).toThrow('but "\\x1F" found');
     });
   });
 

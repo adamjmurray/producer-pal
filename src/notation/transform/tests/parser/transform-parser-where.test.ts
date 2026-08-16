@@ -431,7 +431,9 @@ describe("Transform Parser - where() predicate", () => {
     });
 
     it("keeps comparison operators illegal on an assignment RHS", () => {
-      expect(() => parser.parse("velocity = note.velocity > 80")).toThrow();
+      expect(() => parser.parse("velocity = note.velocity > 80")).toThrow(
+        'but ">" found',
+      );
     });
   });
 });

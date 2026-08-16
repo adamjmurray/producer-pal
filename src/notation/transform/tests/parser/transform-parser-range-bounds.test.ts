@@ -86,6 +86,8 @@ describe("Transform Parser - half-open range bounds", () => {
   });
 
   it("rejects a mixed wildcard/beat range", () => {
-    expect(() => parser.parse("3|*-4|1: velocity = 0")).toThrow();
+    expect(() => parser.parse("3|*-4|1: velocity = 0")).toThrow(
+      'but "3" found',
+    );
   });
 });

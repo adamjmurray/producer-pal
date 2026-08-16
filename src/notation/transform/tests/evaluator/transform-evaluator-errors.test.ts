@@ -36,9 +36,9 @@ describe("Transform Evaluator Error Handling", () => {
     it("throws on completely malformed transform string", () => {
       const notes = createTestNote();
 
-      expect(() =>
-        applyTransforms(notes, "{ this is not valid", 4, 4),
-      ).toThrow();
+      expect(() => applyTransforms(notes, "{ this is not valid", 4, 4)).toThrow(
+        'but "{" found',
+      );
     });
   });
 

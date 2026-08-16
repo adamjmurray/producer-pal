@@ -403,9 +403,11 @@ describe("defineTool", () => {
     const toolHandler = getRegisteredHandler(mockServer);
 
     // Model hallucinated "timing" — Zod rejects it (primary gate)
-    await expect(
-      toolHandler({ include: ["notes", "timing"] }),
-    ).rejects.toThrow();
+    // Zod's message lands inside a JSON dump, so the quotes around each value
+    // arrive escaped.
+    await expect(toolHandler({ include: ["notes", "timing"] })).rejects.toThrow(
+      /Invalid option: expected one of .*notes.*sample/,
+    );
   });
 
   it("should strip the errorCode discriminator before returning to the MCP SDK", async () => {

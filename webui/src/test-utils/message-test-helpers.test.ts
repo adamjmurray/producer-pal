@@ -120,7 +120,9 @@ describe("expectValidTimestamps", () => {
       },
     ];
 
-    expect(() => expectValidTimestamps(messages)).toThrow();
+    expect(() => expectValidTimestamps(messages)).toThrow(
+      "expected false to be true",
+    );
   });
 
   it("fails when timestamp is undefined", () => {
@@ -133,6 +135,8 @@ describe("expectValidTimestamps", () => {
       },
     ];
 
-    expect(() => expectValidTimestamps(messages)).toThrow();
+    expect(() => expectValidTimestamps(messages)).toThrow(
+      "expected false to be true",
+    );
   });
 });

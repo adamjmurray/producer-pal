@@ -41,8 +41,12 @@ describe("validateIdType", () => {
 
     // Tool-level types must be exact lowercase
     expect(() => validateIdType(id, "track", "testTool")).not.toThrow();
-    expect(() => validateIdType(id, "Track", "testTool")).toThrow();
-    expect(() => validateIdType(id, "TRACK", "testTool")).toThrow();
+    expect(() => validateIdType(id, "Track", "testTool")).toThrow(
+      "is not a Track (found Track)",
+    );
+    expect(() => validateIdType(id, "TRACK", "testTool")).toThrow(
+      "is not a TRACK (found Track)",
+    );
   });
 
   it("should throw error when ID does not exist", () => {

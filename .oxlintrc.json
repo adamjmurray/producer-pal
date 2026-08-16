@@ -1217,11 +1217,7 @@
         // PERMANENT. 1315 in 231 files. Wants a type parameter on every
         // `vi.fn()`; these mocks are typed by the assertion that reads them
         // instead. 1315 hand edits restating types, catching no bugs.
-        "vitest/require-mock-type-parameters": "off",
-        // DEFERRED. 104 in 29 files. Argues every `expect(...).toThrow()`
-        // should assert the message. Worth doing, but it is 104 separate
-        // decisions about what to assert.
-        "vitest/require-to-throw-message": "off"
+        "vitest/require-mock-type-parameters": "off"
       }
     },
     {

@@ -71,8 +71,10 @@ describe("BarBeatScript Parser - duration", () => {
   it("rejects stacked/doubled note-value suffixes (mutually exclusive)", () => {
     // `("d"/"t")?` matches at most one suffix; a doubled or mixed suffix leaves a
     // stray letter that the element separator can't consume.
-    for (const bad of ["n/4dt C3", "n/4dd C3", "n/4td C3", "n/4tt C3"]) {
-      expect(() => parser.parse(bad)).toThrow();
+    for (const bad of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
+      expect(() => parser.parse(`${bad} C3`)).toThrow(
+        `but "${bad.at(-1)}" found`,
+      );
     }
   });
 
@@ -170,13 +172,17 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("rejects bar:beat duration form", () => {
-    expect(() => parser.parse("n2:1.5 C3")).toThrow();
-    expect(() => parser.parse("n1:0 C3")).toThrow();
+    expect(() => parser.parse("n2:1.5 C3")).toThrow(
+      /durations need a denominator.*Got n2/,
+    );
+    expect(() => parser.parse("n1:0 C3")).toThrow(
+      /durations need a denominator.*Got n1/,
+    );
   });
 
   it("rejects malformed denominators (zero or missing)", () => {
-    expect(() => parser.parse("n/0 C3")).toThrow();
-    expect(() => parser.parse("n//4 C3")).toThrow();
+    expect(() => parser.parse("n/0 C3")).toThrow('but "n" found');
+    expect(() => parser.parse("n//4 C3")).toThrow('but "n" found');
     expect(() => parser.parse("n3/0 C3")).toThrow(/denominator/);
   });
 });

@@ -94,12 +94,12 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("provides labeled error for invalid input", () => {
-      expect(() => parser.parse("invalid")).toThrow();
+      expect(() => parser.parse("invalid")).toThrow('but "i" found');
     });
 
     it("provides helpful labels for syntax errors", () => {
       // Labels prevent overwhelming character class lists in error messages
-      expect(() => parser.parse("xyz")).toThrow();
+      expect(() => parser.parse("xyz")).toThrow('but "x" found');
     });
   });
 
@@ -123,10 +123,10 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("handles incomplete input gracefully", () => {
-      expect(() => parser.parse("1:")).toThrow();
-      expect(() => parser.parse("v")).toThrow();
-      expect(() => parser.parse("p")).toThrow();
-      expect(() => parser.parse("n")).toThrow();
+      expect(() => parser.parse("1:")).toThrow("but end of input found");
+      expect(() => parser.parse("v")).toThrow('but "v" found');
+      expect(() => parser.parse("p")).toThrow('but "p" found');
+      expect(() => parser.parse("n")).toThrow('but "n" found');
     });
 
     it("handles zero values correctly (duration via 0/1 fraction)", () => {

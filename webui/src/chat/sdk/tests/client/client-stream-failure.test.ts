@@ -67,11 +67,14 @@ function abortedMidTool(
 /**
  * Drive one turn whose stream dies mid-tool and return the resulting history.
  * @param stream - The failing stream to serve
+ * @param expectedError - The stream's own error message, so the turn rejecting
+ *   for some other reason cannot pass as the failure under test
  * @param abortSignal - Signal the turn runs under, when there is one
  * @returns The client, so callers can read its history or resume it
  */
 async function turnDyingMidTool(
   stream: { stream: AsyncIterable<Record<string, unknown>> },
+  expectedError: string,
   abortSignal?: AbortSignal,
 ): Promise<ChatSdkClient> {
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue(stream);
@@ -82,7 +85,7 @@ async function turnDyingMidTool(
     for await (const _ of client.sendMessage("add a bass", abortSignal)) {
       /* consume */
     }
-  }).rejects.toThrow();
+  }).rejects.toThrow(expectedError);
 
   return client;
 }
@@ -113,6 +116,7 @@ describe("a stream that dies between a tool-call and its result", () => {
     // a statement in it that never happened.
     const client = await turnDyingMidTool(
       failingAfterStream([TOOL_CALL_PART], new Error("429 rate limit")),
+      "429 rate limit",
     );
 
     expect(backfilledResult(client)).toBe(FAILED_TOOL_RESULT_TEXT);
@@ -125,6 +129,7 @@ describe("a stream that dies between a tool-call and its result", () => {
     const controller = new AbortController();
     const client = await turnDyingMidTool(
       abortedMidTool(controller, new Error("stream closed")),
+      "stream closed",
       controller.signal,
     );
 
@@ -135,6 +140,7 @@ describe("a stream that dies between a tool-call and its result", () => {
     const controller = new AbortController();
     const client = await turnDyingMidTool(
       abortedMidTool(controller, abortError()),
+      "The operation was aborted.",
     );
 
     expect(backfilledResult(client)).toBe(CANCELED_TOOL_RESULT_TEXT);
@@ -145,6 +151,7 @@ describe("a stream that dies between a tool-call and its result", () => {
     // is handed this text as the answer to the tool it never saw finish.
     const client = await turnDyingMidTool(
       failingAfterStream([TOOL_CALL_PART], new Error("429 rate limit")),
+      "429 rate limit",
     );
 
     mockStreamParts([{ type: "finish", finishReason: "stop" }]);
