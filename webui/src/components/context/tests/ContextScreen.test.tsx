@@ -34,7 +34,7 @@ let lastEditorProps: {
 // content.
 const editorMountedValues: string[] = [];
 
-vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
     initialValue: string;
     readOnly: boolean;

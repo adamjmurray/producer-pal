@@ -19,7 +19,7 @@ import { DriftNote } from "./editor/DriftNote";
 import { OverridePanes } from "./editor/OverridePanes";
 import { useImportNotice } from "#webui/hooks/context/use-import-notice";
 import { MarkdownDropZone } from "./MarkdownDropZone";
-import { MarkdownEditor } from "./MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 
 /** Copy that distinguishes one document editor (project vs. global context). */
 export interface ContextEditorLabels {

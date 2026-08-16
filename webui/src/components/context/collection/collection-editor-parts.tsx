@@ -11,7 +11,7 @@
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
-import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
 
 /** Shared input styling for the collection editors' text controls. */

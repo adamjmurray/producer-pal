@@ -13,7 +13,7 @@ import { CopyButton } from "#webui/components/context/collection/CopyButton";
 import { DOUBLE_PANE_WIDTH } from "#webui/components/context/ContextScreen";
 import { CHIP_BUTTON_CLASS } from "#webui/components/context/editor/context-buttons";
 import { ContextHeader } from "#webui/components/context/editor/ContextHeader";
-import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
 import {
   type SkillsCombination,

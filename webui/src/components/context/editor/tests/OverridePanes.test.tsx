@@ -18,7 +18,7 @@ import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 // key changed across the fork, the remount would re-seed and lose the edit. The
 // built-in reference pane renders through this same component (read-only), so a
 // shown built-in appears as a second editor node.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
     initialValue: string;
     readOnly: boolean;

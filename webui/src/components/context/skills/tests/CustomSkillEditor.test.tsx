@@ -9,7 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LeaveGuardContext } from "#webui/components/context/collection/leave-guard";
-import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
+import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
@@ -17,7 +17,7 @@ import {
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 

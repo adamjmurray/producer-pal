@@ -8,8 +8,8 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RenderErrorFallback } from "./chat/assistant/helpers/message-list-helpers";
-import { ErrorBoundary } from "./ErrorBoundary";
+import { RenderErrorFallback } from "#webui/components/chat/assistant/helpers/message-list-helpers";
+import { ErrorBoundary } from "#webui/components/ErrorBoundary";
 
 function ThrowingChild(): never {
   throw new Error("render crash");

@@ -6,7 +6,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
-import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
 import { CHIP_BUTTON_CLASS } from "./context-buttons";
 

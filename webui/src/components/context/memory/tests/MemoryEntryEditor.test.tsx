@@ -14,7 +14,7 @@ import {
   waitFor,
 } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
+import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
@@ -25,7 +25,7 @@ import {
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 

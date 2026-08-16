@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { describe, expect, it, type Mock, vi } from "vitest";
-import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
+import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import {
   type Deferred,
   deferred,
@@ -22,7 +22,7 @@ import {
 import { MemoryScreen } from "#webui/components/context/memory/MemoryScreen";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 
