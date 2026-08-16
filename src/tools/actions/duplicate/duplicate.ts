@@ -6,11 +6,11 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import { destinationPathEntries } from "#src/tools/shared/validation/destination-path.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -254,10 +254,12 @@ function duplicateDeviceWithPaths(
   name: string | undefined,
   count: number,
 ): object | object[] {
-  const paths = parseCommaSeparatedIds(toPath);
+  // Reads a blank toPath as omitted the way clips do, and refuses one that
+  // names nothing rather than quietly falling back to the default destination.
+  const paths = destinationPathEntries(toPath);
 
   if (paths.length <= 1) {
-    return duplicateDevice(object, toPath, name, count);
+    return duplicateDevice(object, paths[0], name, count);
   }
 
   const parsedNames = parseCommaSeparatedNames(name, paths.length);

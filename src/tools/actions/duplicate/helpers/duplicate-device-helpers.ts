@@ -49,47 +49,46 @@ export function duplicateDevice(
 
   liveSet.call("duplicate_track", trackIndex);
   const tempTrackIndex = trackIndex + 1;
-
-  // 4. Find the corresponding device on the temp track
   const tempDevicePath = `${livePath.track(tempTrackIndex)} ${devicePathWithinTrack}`;
-  const tempDevice = LiveAPI.from(tempDevicePath);
 
-  if (!tempDevice.exists()) {
-    // Clean up temp track and throw
-    liveSet.call("delete_track", tempTrackIndex);
-    throw new Error(
-      `duplicate failed: device not found in duplicated track at path "${tempDevicePath}"`,
+  // From here on a full copy of the source track — devices, clips and all — is
+  // parked at tempTrackIndex, so every exit deletes it. Anything that throws in
+  // between (a bad destination path, an unreachable chain) used to strand it.
+  try {
+    // 4. Find the corresponding device on the temp track
+    const tempDevice = LiveAPI.from(tempDevicePath);
+
+    if (!tempDevice.exists()) {
+      throw new Error(
+        `duplicate failed: device not found in duplicated track at path "${tempDevicePath}"`,
+      );
+    }
+
+    // 5. Determine destination path
+    const destination =
+      toPath ?? calculateDefaultDestination(device.path, trackIndex);
+
+    // 6. Adjust destination if it references tracks after the source track
+    const adjustedDestination = adjustTrackIndicesForTempTrack(
+      destination,
+      trackIndex,
     );
+
+    // 7. Move device to destination
+    moveDeviceToPath(tempDevice, adjustedDestination);
+
+    // 8. Set name if provided
+    if (name) {
+      tempDevice.set("name", name);
+    }
+
+    // 9. Read the device's id before the temp track goes away
+    return { id: tempDevice.id };
+  } finally {
+    // Moving a device creates and deletes no tracks, so the temp track is still
+    // where duplicate_track put it.
+    liveSet.call("delete_track", tempTrackIndex);
   }
-
-  // 5. Determine destination path
-  const destination =
-    toPath ?? calculateDefaultDestination(device.path, trackIndex);
-
-  // 6. Adjust destination if it references tracks after the source track
-  const adjustedDestination = adjustTrackIndicesForTempTrack(
-    destination,
-    trackIndex,
-  );
-
-  // 7. Move device to destination
-  moveDeviceToPath(tempDevice, adjustedDestination);
-
-  // 8. Set name if provided
-  if (name) {
-    tempDevice.set("name", name);
-  }
-
-  // 9. Get device info before deleting temp track
-  const deviceId = tempDevice.id;
-
-  // 10. Calculate the temp track's current index (may have shifted if device moved before it)
-  const currentTempTrackIndex = recalculateTempTrackIndex(tempTrackIndex);
-
-  // 11. Delete the temporary track
-  liveSet.call("delete_track", currentTempTrackIndex);
-
-  return { id: deviceId };
 }
 
 /**
@@ -183,14 +182,4 @@ function adjustTrackIndicesForTempTrack(
   }
 
   return toPath;
-}
-
-/**
- * Recalculate the temp track's index after the device has been moved.
- * Device movement doesn't create/delete tracks, so temp track index is stable.
- * @param originalTempTrackIndex - Original index of the temp track (sourceTrackIndex + 1)
- * @returns Current index of the temp track
- */
-function recalculateTempTrackIndex(originalTempTrackIndex: number): number {
-  return originalTempTrackIndex;
 }

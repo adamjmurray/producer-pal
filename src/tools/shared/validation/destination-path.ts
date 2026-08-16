@@ -98,6 +98,24 @@ export function parseDestinationPathList(
   input?: string | null,
   label = "toPath",
 ): DestinationPath[] {
+  return destinationPathEntries(input, label).map((entry) =>
+    parseDestinationPath(entry, label),
+  );
+}
+
+/**
+ * Splits a destination param into its entries without parsing them: a blank
+ * value reads as omitted, one that names nothing is refused, and dropped
+ * entries are announced. For destinations with their own grammar (device
+ * paths); everything else goes through {@link parseDestinationPathList}.
+ * @param input - Comma-separated paths (e.g., "t1/d0" or "t1/d0,t2/d0")
+ * @param label - Param name for error messages
+ * @returns One trimmed entry per path, in order
+ */
+export function destinationPathEntries(
+  input?: string | null,
+  label = "toPath",
+): string[] {
   const named = namedDestination(input ?? undefined);
 
   if (named == null) return [];
@@ -105,21 +123,22 @@ export function parseDestinationPathList(
   const entries = parseCommaSeparatedIds(named);
 
   // "," names nothing but was still sent. An empty list means "wherever the
-  // caller didn't say" downstream — the source clip's own track — so accepting
-  // it here is the silent wrong-destination this param exists to prevent.
+  // caller didn't say" downstream — the source's own track — so accepting it
+  // here is the silent wrong-destination this param exists to prevent.
   if (entries.length === 0) {
     throw new Error(`invalid ${label} "${input}" - it names no destination`);
   }
 
-  // Destinations are cycled against a position list, so a dropped entry shifts
-  // every later copy onto the wrong track instead of just making one fewer.
+  // Entries are positional — a clip's are cycled against its positions, a
+  // device's against its names — so a dropped one shifts every later copy
+  // instead of just making one fewer.
   if (entries.length < named.split(",").length) {
     console.warn(
-      `${label} "${input}" has empty entries, which were dropped; the remaining paths cycle across the positions`,
+      `${label} "${input}" has empty entries, which were dropped; later destinations shift up`,
     );
   }
 
-  return entries.map((entry) => parseDestinationPath(entry, label));
+  return entries;
 }
 
 /**

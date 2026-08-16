@@ -222,6 +222,65 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
+  it("deletes the temp track when the move fails", async () => {
+    // duplicate_track parks a full copy of the source track — devices, clips
+    // and all — next to it. A throw between that and the cleanup leaked one
+    // per failed call, and they accumulated.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
+      throw new Error("nope");
+    });
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
+    ).rejects.toThrow("nope");
+
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("reads a blank toPath as omitted, the way clips do", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "",
+    });
+
+    expect(result).toStrictEqual({ id: "live_set/tracks/1/devices/1" });
+    // Omitted means "after the original on the source track".
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t0/d2",
+    );
+  });
+
+  it("refuses a toPath that was sent but names nothing", async () => {
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "," }),
+    ).rejects.toThrow('invalid toPath "," - it names no destination');
+
+    // Refused before anything was created.
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "duplicate_track",
+      expect.anything(),
+    );
+  });
+
+  it("trims a single toPath instead of forwarding it raw", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "  t2/d0  " });
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t3/d0",
+    );
+  });
+
   it("should not adjust non-track destination path (return/master)", async () => {
     setupDeviceDuplicationMocks();
 
