@@ -35,21 +35,21 @@ export function notifyFocusChange(
  * @returns The keymap extension
  */
 export function submitKeymap(onSubmit: () => void): Extension {
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Enter",
-        run: (view) => {
-          // Mid-composition Enter commits IME text; leave it to the browser.
-          if (view.composing) return false;
-          onSubmit();
+  return Prec.highest([
+    // A DOM handler rather than a key binding so Cmd/Ctrl/Alt+Enter submit
+    // too (as the old textarea did) instead of reaching defaultKeymap's
+    // Mod-Enter. No IME guard needed: CodeMirror drops key events while
+    // composing before any handler runs.
+    EditorView.domEventHandlers({
+      keydown(event) {
+        if (event.key !== "Enter" || event.shiftKey) return false;
+        onSubmit();
 
-          return true;
-        },
+        return true;
       },
-      { key: "Shift-Enter", run: insertNewlineContinueMarkup },
-    ]),
-  );
+    }),
+    keymap.of([{ key: "Shift-Enter", run: insertNewlineContinueMarkup }]),
+  ]);
 }
 
 /**

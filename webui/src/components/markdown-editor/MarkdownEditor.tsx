@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
 import {
   type MutableRef,
@@ -12,7 +12,7 @@ import {
   useRef,
 } from "preact/hooks";
 import {
-  chatInputTheme,
+  chatInputExtensions,
   markdownEditorExtensions,
 } from "./markdown-editor-extensions";
 import {
@@ -127,7 +127,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
       state: EditorState.create({
         doc: initialValue,
         extensions: [
-          ...(variant === "chat" ? [chatInputTheme] : []),
+          ...(variant === "chat" ? [chatInputExtensions] : []),
           markdownEditorExtensions,
           ...(ariaLabel != null
             ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
@@ -150,8 +150,10 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
     if (editorRef != null) {
       editorRef.current = {
         clear: () => {
+          // Not undoable: Ctrl+Z after send must not bring the message back.
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: "" },
+            annotations: Transaction.addToHistory.of(false),
           });
         },
         focus: () => view.focus(),

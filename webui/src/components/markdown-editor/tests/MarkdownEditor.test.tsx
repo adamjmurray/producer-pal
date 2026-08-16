@@ -6,6 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
+import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -132,6 +133,19 @@ describe("MarkdownEditor", () => {
     expect(view.state.doc.toString()).toBe("hello");
   });
 
+  it("read-only lets Tab move focus instead of trapping it", () => {
+    const { container } = renderEditor({
+      initialValue: "hello",
+      readOnly: true,
+    });
+    const view = viewIn(container);
+
+    const notPrevented = fireEvent.keyDown(view.contentDOM, { key: "Tab" });
+
+    expect(notPrevented).toBe(true);
+    expect(view.state.doc.toString()).toBe("hello");
+  });
+
   it("indents and outdents every line of a multi-line selection", () => {
     const { container } = renderEditor({ initialValue: "one\ntwo\nthree" });
     const view = viewIn(container);
@@ -193,6 +207,15 @@ describe("MarkdownEditor", () => {
     expect(view.state.readOnly).toBe(true);
   });
 
+  it("chat variant turns spellcheck and autocorrect back on", () => {
+    const { container: chat } = renderEditor({ variant: "chat" });
+    const { container: card } = renderEditor({ variant: "card" });
+
+    expect(viewIn(chat).contentDOM.getAttribute("spellcheck")).toBe("true");
+    expect(viewIn(chat).contentDOM.getAttribute("autocorrect")).toBe("on");
+    expect(viewIn(card).contentDOM.getAttribute("spellcheck")).toBe("false");
+  });
+
   it("uses the chat frame for the chat variant", () => {
     const { container } = renderEditor({ variant: "chat" });
 
@@ -219,6 +242,10 @@ describe("MarkdownEditor", () => {
     expect(view.state.doc.toString()).toBe("");
     expect(onChange).toHaveBeenCalledWith("");
     expect(view.hasFocus).toBe(true);
+
+    // Undo must not resurrect a sent message.
+    undo(view);
+    expect(view.state.doc.toString()).toBe("");
 
     unmount();
     expect(editorRef.current).toBeNull();
@@ -292,15 +319,17 @@ describe("MarkdownEditor onSubmit", () => {
     expect(view.state.doc.toString()).toBe("hi\n");
   });
 
-  it("Enter is left alone mid-IME-composition", () => {
+  it("Enter with Cmd, Ctrl, or Alt still submits, like the old textarea", () => {
     const onSubmit = vi.fn();
-    const { container } = renderEditor({ initialValue: "x", onSubmit });
+    const { container } = renderEditor({ initialValue: "hi", onSubmit });
     const view = viewIn(container);
 
-    vi.spyOn(view, "composing", "get").mockReturnValue(true);
-    fireEvent.keyDown(view.contentDOM, { key: "Enter" });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter", metaKey: true });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter", altKey: true });
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledTimes(3);
+    expect(view.state.doc.toString()).toBe("hi");
   });
 
   it("without onSubmit, Enter continues a list like the context editors", () => {

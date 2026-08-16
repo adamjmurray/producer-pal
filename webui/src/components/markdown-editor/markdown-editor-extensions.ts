@@ -8,6 +8,7 @@ import {
   history,
   historyKeymap,
   indentWithTab,
+  toggleTabFocusMode,
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import {
@@ -218,9 +219,16 @@ const bulletMarkerPlugin = ViewPlugin.fromClass(
  */
 export const markdownEditorExtensions: Extension[] = [
   history(),
-  // Tab / Shift+Tab indent and outdent. Keyboard users tab out via
-  // Tab-focus mode (Ctrl-m / Alt-Shift-m on macOS, from defaultKeymap).
-  keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+  // Tab / Shift+Tab indent and outdent. Keyboard users tab out via Tab-focus
+  // mode: Ctrl-m, or Escape then Tab. Ctrl-m is bound here on every platform
+  // because defaultKeymap's macOS binding (Alt-Shift-m) never matches —
+  // macOS reports the composed character, not "m".
+  keymap.of([
+    ...defaultKeymap,
+    ...historyKeymap,
+    indentWithTab,
+    { key: "Ctrl-m", run: toggleTabFocusMode },
+  ]),
   markdown(),
   EditorView.lineWrapping,
   bulletMarkerPlugin,
@@ -229,19 +237,28 @@ export const markdownEditorExtensions: Extension[] = [
 ];
 
 /**
- * Chat-input overrides on top of {@link markdownEditorExtensions}' theme:
- * tighter padding (matching the old textarea's `px-3 py-2`), a two-line
- * minimum, and an internal scroll past ~40vh. `Prec.high` so its rules are
- * mounted after the base theme's and win at equal specificity.
+ * Chat-input additions on top of {@link markdownEditorExtensions}: tighter
+ * padding (matching the old textarea's `px-3 py-2`), a two-line minimum, an
+ * internal scroll past ~40vh, and the browser's spellcheck / autocorrect back
+ * on for prose (CodeMirror turns them off by default). The theme is
+ * `Prec.high` so its rules mount after the base theme's and win at equal
+ * specificity.
  */
-export const chatInputTheme: Extension = Prec.high(
-  EditorView.theme({
-    ".cm-scroller": {
-      padding: "0.25rem 0.5rem",
-      maxHeight: "40vh",
-    },
-    ".cm-content": {
-      minHeight: "3.1em", // two lines at line-height 1.55
-    },
+export const chatInputExtensions: Extension = [
+  Prec.high(
+    EditorView.theme({
+      ".cm-scroller": {
+        padding: "0.25rem 0.5rem",
+        maxHeight: "40vh",
+      },
+      ".cm-content": {
+        minHeight: "3.1em", // two lines at line-height 1.55
+      },
+    }),
+  ),
+  EditorView.contentAttributes.of({
+    spellcheck: "true",
+    autocorrect: "on",
+    autocapitalize: "sentences",
   }),
-);
+];
