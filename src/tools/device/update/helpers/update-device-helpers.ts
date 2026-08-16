@@ -347,3 +347,32 @@ export function updateABCompare(device: LiveAPI, action: string): void {
       break;
   }
 }
+
+/**
+ * Live prepends a rack return chain's send letter to its name, so writing back
+ * the name read-device reported ("F Pedal") would double it ("F F Pedal").
+ * Strip a leading letter when it matches the chain's own slot.
+ * @param chain - The chain being renamed
+ * @param name - Requested name
+ * @returns Name to write
+ */
+export function stripReturnChainLetter(chain: LiveAPI, name: string): string {
+  const match = /return_chains (\d+)$/.exec(chain.path);
+
+  if (match == null) {
+    return name;
+  }
+
+  const index = Number(match[1]);
+
+  // Past Z we don't know what Live labels the chain, so leave the name alone.
+  if (index > 25) {
+    return name;
+  }
+
+  const prefix = `${String.fromCharCode(65 + index)} `;
+
+  return name.toUpperCase().startsWith(prefix)
+    ? name.slice(prefix.length)
+    : name;
+}

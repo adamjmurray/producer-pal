@@ -26,6 +26,7 @@ import {
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
+  stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
 import {
@@ -350,7 +351,7 @@ function updateTarget(
     if (type === "DrumPad") {
       console.warn("updateDevice: 'name' is read-only for DrumPad");
     } else {
-      target.set("name", options.name);
+      target.set("name", stripReturnChainLetter(target, options.name));
     }
   }
 

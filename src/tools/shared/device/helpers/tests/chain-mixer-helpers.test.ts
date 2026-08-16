@@ -277,7 +277,7 @@ describe("applyChainMixer", () => {
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        'no return chain matching "a" (rack has none)',
+        'no return chain matching "a" (rack has no return chains; they can only be added in Live)',
       );
     });
 

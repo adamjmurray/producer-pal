@@ -182,8 +182,12 @@ function applyChainSend(
   const index = findReturnIndex(names, sendReturn);
 
   if (index === -1) {
+    // The "none" case is where a model would otherwise try to add one, so say
+    // it can't be done here — racks expose no way to create a return chain.
     const available =
-      names.length > 0 ? ` (returns: ${names.join(", ")})` : " (rack has none)";
+      names.length > 0
+        ? ` (returns: ${names.join(", ")})`
+        : " (rack has no return chains; they can only be added in Live)";
 
     console.warn(`no return chain matching "${sendReturn}"${available}`);
 
