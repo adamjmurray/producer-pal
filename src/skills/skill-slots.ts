@@ -287,7 +287,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "arrangement-write": {
     title: "Arrangement: placing clips",
     description:
-      "Moving and splitting clips on the arrangement timeline, and stacking take lanes. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
+      "Moving clips with toPath — along the arrangement timeline and between session slots — plus splitting them and stacking take lanes. It's the only place toPath is explained. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
   },
 
