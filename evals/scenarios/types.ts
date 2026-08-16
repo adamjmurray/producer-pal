@@ -125,10 +125,10 @@ export interface ScenarioRequirements {
 
   /** Param names the scenario depends on. Skipped under `smallModelMode` when
    *  any is in the small-model excluded-param surface
-   *  (`SMALL_MODEL_EXCLUDED_PARAMS`, derived from each tool's co-located param
-   *  modes — params whose `smallModel` mode is `null`). Use for scenarios whose
-   *  deterministic checks require a param small models never receive — e.g.
-   *  update-device `actions`, update-clip `split`. */
+   *  (`SMALL_MODEL_EXCLUDED_PARAMS`: params a mode hides, plus deprecated ones
+   *  no mode publishes). Use for scenarios whose deterministic checks require a
+   *  param small models never receive — e.g. update-device `actions`,
+   *  update-clip `split`. */
   params?: string[];
 
   /** Needs the transforms DSL (functions like `step()`/`swing()`/`legato()`/

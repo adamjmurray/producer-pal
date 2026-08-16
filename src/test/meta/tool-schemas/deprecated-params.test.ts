@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  SMALL_MODEL_EXCLUDED_PARAMS,
+  STANDARD_TOOL_DEFS,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
@@ -60,5 +63,14 @@ describe("deprecated params", () => {
       expect(Object.keys(validating)).toContain("toSlot");
       expect(deprecated.toSlot).toStrictEqual({ replacedBy: "toPath" });
     }
+  });
+
+  // The eval framework skips a scenario when it needs a param the model never
+  // receives. A deprecated param is exactly that, so it belongs in the set —
+  // otherwise a scenario naming one silently fails instead of skipping.
+  it("counts a deprecated param as one a small model never receives", () => {
+    expect(SMALL_MODEL_EXCLUDED_PARAMS).toContain("toSlot");
+    // Still holds what small-model mode hides on its own.
+    expect(SMALL_MODEL_EXCLUDED_PARAMS).toContain("split");
   });
 });
