@@ -127,14 +127,17 @@ export async function duplicateSceneToArrangementAtPositions(
 }
 
 /**
- * Warning text for a duplicate the deadline cut short, naming the arrangement
- * positions it never reached so the caller can re-run just those.
+ * Warning text for a duplicate the deadline cut short, naming what it never
+ * reached so the caller can re-run just that. A clip fan-out repeats the same
+ * position across tracks, so pass `remainingTracks` to tell those copies apart
+ * — without it a caller re-runs tracks that already finished.
  *
  * @param remainingBeats - Positions still to do, in Ableton beats
  * @param done - Copies placed before time ran out
  * @param total - Copies the run set out to place
  * @param timeSigNumerator - Song time signature numerator
  * @param timeSigDenominator - Song time signature denominator
+ * @param remainingTracks - Destination track per remaining position, if any
  * @returns The warning message
  */
 export function unreachedPositionsWarning(
@@ -143,11 +146,19 @@ export function unreachedPositionsWarning(
   total: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  remainingTracks?: number[],
 ): string {
   const positions = remainingBeats
-    .map((beats) =>
-      abletonBeatsToBarBeat(beats, timeSigNumerator, timeSigDenominator),
-    )
+    .map((beats, i) => {
+      const barBeat = abletonBeatsToBarBeat(
+        beats,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+      const trackIndex = remainingTracks?.[i];
+
+      return trackIndex == null ? barBeat : `t${trackIndex} ${barBeat}`;
+    })
     .join(", ");
 
   return (

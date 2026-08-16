@@ -604,7 +604,36 @@ describe("duplicate - clip duplication", () => {
       expect(outlet).toHaveBeenCalledWith(
         1,
         "Ran out of time after duplicating 0 of 3. " +
-          "Not duplicated: 3|1, 4|1, 5|1. Re-run for those positions.",
+          "Not duplicated: t0 3|1, t0 4|1, t0 5|1. Re-run for those positions.",
+      );
+    });
+
+    it("names the track of each copy a cut-short fan-out did not reach", async () => {
+      // One position across several tracks: without the track, the warning is
+      // the same position three times and a caller re-runs tracks that finished.
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+      registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+      registerTrackWithArrangementDup(3, { has_midi_input: 1 });
+
+      await duplicate(
+        {
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath: "t1,t2,t3",
+        },
+        { deadline: Date.now() - 1 },
+      );
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "Ran out of time after duplicating 0 of 3. " +
+          "Not duplicated: t1 3|1, t2 3|1, t3 3|1. Re-run for those positions.",
       );
     });
   });

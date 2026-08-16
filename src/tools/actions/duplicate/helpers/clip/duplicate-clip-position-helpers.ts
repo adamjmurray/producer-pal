@@ -229,6 +229,7 @@ async function duplicateClipToArrangementPositions(
           copies,
           songTimeSigNumerator,
           songTimeSigDenominator,
+          targetTracks.slice(i),
         ),
       )
     ) {
