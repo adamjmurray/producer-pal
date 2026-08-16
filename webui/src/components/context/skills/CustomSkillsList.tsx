@@ -34,7 +34,7 @@ export function CustomSkillsList(
   props: CustomSkillsListProps,
 ): preact.JSX.Element {
   const { entries, selectedName, creating, onSelect, onNew } = props;
-  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = entries.toSorted((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="flex flex-col gap-2 overflow-y-auto p-3">

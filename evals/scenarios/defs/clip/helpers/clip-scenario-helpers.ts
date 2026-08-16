@@ -243,10 +243,10 @@ export function diffNotes(
   events: NoteEvent[],
   expected: ExpectedNote[],
 ): string {
-  const sortedEvents = [...events].sort(
+  const sortedEvents = events.toSorted(
     (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
   );
-  const sortedExpected = [...expected].sort(
+  const sortedExpected = expected.toSorted(
     (a, b) =>
       a.start - b.start || pitchSortKey(a.pitch) - pitchSortKey(b.pitch),
   );

@@ -49,16 +49,13 @@ describe("findDuplicates", () => {
     expect(result.groups).toHaveLength(2);
     // Group A (size 3) sorts ahead of group B (size 2).
     expect(result.groups[0]?.count).toBe(3);
-    expect(result.groups[0]?.items.map((i) => i.name).sort()).toStrictEqual([
-      "pack_clap.aif",
-      "subfolder_x.wav",
-      "subfolder_z.wav",
-    ]);
+    expect(result.groups[0]?.items.map((i) => i.name).toSorted()).toStrictEqual(
+      ["pack_clap.aif", "subfolder_x.wav", "subfolder_z.wav"],
+    );
     expect(result.groups[1]?.count).toBe(2);
-    expect(result.groups[1]?.items.map((i) => i.name).sort()).toStrictEqual([
-      "pack_kick.wav",
-      "user_kick.aif",
-    ]);
+    expect(result.groups[1]?.items.map((i) => i.name).toSorted()).toStrictEqual(
+      ["pack_kick.wav", "user_kick.aif"],
+    );
   });
 
   it("excludes invalid-format rows even when their hash matches (version insurance)", async () => {

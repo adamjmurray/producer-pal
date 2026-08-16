@@ -176,7 +176,7 @@ async function createAndReadback(
  * @param expected - Expected notes in time order
  */
 function expectNotes(events: NoteEvent[], expected: ExpectedNote[]): void {
-  const sorted = [...events].sort(
+  const sorted = events.toSorted(
     (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
   );
 

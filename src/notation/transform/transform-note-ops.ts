@@ -468,7 +468,7 @@ function resolveMergeTolerance(
  * @returns One sustained note per run
  */
 function mergeRuns(group: NoteEvent[], tolerance: number): NoteEvent[] {
-  const sorted = [...group].sort((a, b) => a.start_time - b.start_time);
+  const sorted = group.toSorted((a, b) => a.start_time - b.start_time);
   const out: NoteEvent[] = [];
 
   // group is non-empty by construction, so index 0 is always present.

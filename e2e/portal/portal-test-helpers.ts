@@ -103,7 +103,7 @@ export async function runPortal(
 export async function listToolNames(session: PortalSession): Promise<string[]> {
   const { tools } = await session.client.listTools();
 
-  return tools.map((tool) => tool.name).sort();
+  return tools.map((tool) => tool.name).toSorted();
 }
 
 /**

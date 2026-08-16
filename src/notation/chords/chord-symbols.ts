@@ -123,7 +123,7 @@ export function realizeChordSymbol(
 
   const clamped = pitches.map((p) => Math.max(0, Math.min(127, p)));
 
-  return [...new Set(clamped)].sort((a, b) => a - b);
+  return [...new Set(clamped)].toSorted((a, b) => a - b);
 }
 
 /**

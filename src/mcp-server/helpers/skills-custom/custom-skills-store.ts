@@ -61,7 +61,7 @@ const store = makeMarkdownCollectionStore<
   indexTitle: "# Producer Pal Custom Skills",
   noun: "Skill",
   toEntry,
-  sort: sortByName,
+  sortEntries: sortByName,
   renderIndexSections: renderSkillsIndexSections,
   buildStored: buildStoredSkill,
 });
@@ -127,10 +127,10 @@ function toEntry(slug: string, raw: string): CustomSkillEntry {
  * Order skills by name.
  *
  * @param entries - The freshly-read entries to sort
- * @returns The same array, sorted in place
+ * @returns A new array, sorted by name
  */
 function sortByName(entries: CustomSkillEntry[]): CustomSkillEntry[] {
-  return entries.sort((a, b) => a.name.localeCompare(b.name));
+  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

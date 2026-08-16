@@ -190,7 +190,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
 
     const records = await readConversationsFromDb(page);
 
-    expect(records.map((r) => r.id).sort()).toEqual(["u1", "u2"]);
+    expect(records.map((r) => r.id).toSorted()).toEqual(["u1", "u2"]);
 
     expectNoConsoleOutput(captured);
   });

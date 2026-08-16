@@ -48,7 +48,7 @@ export const barBeatPerBarNote: EvalScenario = leadClipNotationScenario({
   check: (events) => {
     if (events.length !== BAR_DOWNBEATS.length) return false;
 
-    const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+    const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
     return sorted.every(
       (e, i) =>
@@ -81,7 +81,7 @@ export const barBeatPerBarChord: EvalScenario = leadClipNotationScenario({
       const pitches = events
         .filter((e) => Math.abs(e.start_time - downbeat) < EPS)
         .map((e) => e.pitch)
-        .sort((a, b) => a - b);
+        .toSorted((a, b) => a - b);
 
       return (
         pitches.length === C_MAJOR.length &&

@@ -41,8 +41,8 @@ const ciWorkflow = readRepoFile(".github/workflows/run-checks-and-tests.yml");
 
 describe("build flags", () => {
   it("only reads flags that are classified as build-time or runtime", () => {
-    expect([...flagsReadInSrc()].sort()).toStrictEqual(
-      [...BUILD_FLAGS, ...RUNTIME_FLAGS].sort(),
+    expect([...flagsReadInSrc()].toSorted()).toStrictEqual(
+      [...BUILD_FLAGS, ...RUNTIME_FLAGS].toSorted(),
     );
   });
 

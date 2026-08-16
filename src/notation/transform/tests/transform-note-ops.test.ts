@@ -371,9 +371,9 @@ describe("note-count operations (ratchet/merge)", () => {
       applyTransforms(notes, "merge()", 4, 4);
 
       expect(notes).toHaveLength(2);
-      expect(notes.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
-        60, 64,
-      ]);
+      expect(notes.map((n) => n.pitch).toSorted((a, b) => a - b)).toStrictEqual(
+        [60, 64],
+      );
     });
 
     it("takes dynamics from the earliest note in each group", () => {
@@ -621,7 +621,7 @@ describe("selector float tolerance over a ratcheted burst", () => {
   const gbVelocities = (notes: ReturnType<typeof lastHat>): number[] =>
     notes
       .filter((n) => n.pitch === 42)
-      .sort((a, b) => a.start_time - b.start_time)
+      .toSorted((a, b) => a.start_time - b.start_time)
       .map((n) => Math.round(n.velocity));
 
   it("matches each ratcheted note with an exact-point selector", () => {

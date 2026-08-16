@@ -19,7 +19,7 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 export function sortNotes<T extends { start_time: number; pitch: number }>(
   notes: T[],
 ): T[] {
-  return [...notes].sort((a, b) => {
+  return notes.toSorted((a, b) => {
     if (a.start_time !== b.start_time) {
       return a.start_time - b.start_time;
     }

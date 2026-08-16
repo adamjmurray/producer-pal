@@ -336,7 +336,7 @@ describe("branchFamilyIds", () => {
 
     const family = branchFamilyIds(["A"], [a, other]);
 
-    expect([...family].sort()).toStrictEqual(["A"]);
+    expect([...family].toSorted()).toStrictEqual(["A"]);
   });
 
   it("includes every sibling sharing a seed's family root", () => {
@@ -348,7 +348,7 @@ describe("branchFamilyIds", () => {
 
     const family = branchFamilyIds(["A"], [a, b, c]);
 
-    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+    expect([...family].toSorted()).toStrictEqual(["A", "B", "C"]);
   });
 
   it("walks the fork chain so a nested family collapses to one root", () => {
@@ -359,7 +359,7 @@ describe("branchFamilyIds", () => {
 
     const family = branchFamilyIds(["C"], [a, b, c]);
 
-    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+    expect([...family].toSorted()).toStrictEqual(["A", "B", "C"]);
   });
 
   it("keeps a referenced-but-deleted trunk seed protected", () => {
@@ -370,7 +370,7 @@ describe("branchFamilyIds", () => {
 
     const family = branchFamilyIds(["A"], [b, c]);
 
-    expect([...family].sort()).toStrictEqual(["A", "B", "C"]);
+    expect([...family].toSorted()).toStrictEqual(["A", "B", "C"]);
   });
 
   it("excludes unrelated families", () => {
@@ -381,7 +381,7 @@ describe("branchFamilyIds", () => {
 
     const family = branchFamilyIds(["A"], [a, b, x, y]);
 
-    expect([...family].sort()).toStrictEqual(["A", "B"]);
+    expect([...family].toSorted()).toStrictEqual(["A", "B"]);
   });
 
   it("returns an empty set for no seeds", () => {

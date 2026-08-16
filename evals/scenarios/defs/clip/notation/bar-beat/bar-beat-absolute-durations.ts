@@ -67,7 +67,7 @@ function assertClipNotes(
   expectedDuration?: number,
 ): EvalAssertion {
   return clipStateAssertion(slot, meter, (events) => {
-    const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
+    const starts = events.map((e) => e.start_time).toSorted((a, b) => a - b);
 
     if (starts.length !== expectedStarts.length) return false;
 

@@ -36,7 +36,7 @@ async function findSkills(): Promise<string[]> {
   const skills = entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort();
+    .toSorted();
 
   if (!skills.includes(MAIN_SKILL)) {
     throw new Error(`No ${MAIN_SKILL} folder in ${SKILLS_DIR}`);

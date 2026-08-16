@@ -430,7 +430,7 @@ describe("createSpawnSubagentTool", () => {
 
     expect(spawnState.count).toBe(2);
     expect(
-      runWorker.mock.calls.map((c) => c[0].toolCallId).sort(),
+      runWorker.mock.calls.map((c) => c[0].toolCallId).toSorted(),
     ).toStrictEqual(["tc1", "tc2"]);
     // Two workers, two distinct identities.
     expect(

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -113,7 +114,7 @@ function assertBlankLineRatio(dirPath: string): void {
 
   if (insufficientFiles.length > 0) {
     const details = insufficientFiles
-      .sort((a, b) => a.ratio - b.ratio)
+      .toSorted((a, b) => a.ratio - b.ratio)
       .map(
         (f) =>
           `  - ${f.path}: ${(f.ratio * 100).toFixed(1)}% blank (${f.blankLines}/${f.totalLines} lines)`,

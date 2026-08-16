@@ -67,7 +67,7 @@ describe("librarySearch", () => {
     it("returns only plugins when kind=plugin", async () => {
       const result = await librarySearch({ kind: "plugin" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "EQ Eight.vst3",
         "Operator.vst3",
       ]);
@@ -125,7 +125,7 @@ describe("librarySearch", () => {
     it("returns only user library files when source=user", async () => {
       const result = await librarySearch({ source: "user" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "user_kick.aif",
         "user_snare.wav",
       ]);
@@ -155,7 +155,7 @@ describe("librarySearch", () => {
     it("returns only builtin files when source=builtin", async () => {
       const result = await librarySearch({ source: "builtin" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "EQ Eight.vst3",
         "Operator.vst3",
       ]);
@@ -177,7 +177,7 @@ describe("librarySearch", () => {
     it("filters by name substring", async () => {
       const result = await librarySearch({ query: "kick" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
@@ -210,7 +210,7 @@ describe("librarySearch", () => {
       // `_kick` does occur literally inside user_kick.aif and pack_kick.wav.
       const literal = await librarySearch({ query: "_kick", kind: "audio" });
 
-      expect(literal.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(literal.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
@@ -226,7 +226,7 @@ describe("librarySearch", () => {
     it("returns files matching a single tag", async () => {
       const result = await librarySearch({ tags: "Kick" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
@@ -248,7 +248,7 @@ describe("librarySearch", () => {
     it("trims and dedupes tag tokens", async () => {
       const result = await librarySearch({ tags: " Kick , Kick ,  " });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
@@ -259,7 +259,7 @@ describe("librarySearch", () => {
       // lowercase tags but there's only "kick", returning 0 rows.
       const result = await librarySearch({ tags: "Kick,kick" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
@@ -270,15 +270,15 @@ describe("librarySearch", () => {
       const upper = await librarySearch({ tags: "KICK" });
       const mixed = await librarySearch({ tags: "kIcK" });
 
-      expect(lower.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(lower.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
-      expect(upper.items.map((i) => i.name).sort()).toStrictEqual(
-        lower.items.map((i) => i.name).sort(),
+      expect(upper.items.map((i) => i.name).toSorted()).toStrictEqual(
+        lower.items.map((i) => i.name).toSorted(),
       );
-      expect(mixed.items.map((i) => i.name).sort()).toStrictEqual(
-        lower.items.map((i) => i.name).sort(),
+      expect(mixed.items.map((i) => i.name).toSorted()).toStrictEqual(
+        lower.items.map((i) => i.name).toSorted(),
       );
     });
   });
@@ -318,7 +318,7 @@ describe("librarySearch", () => {
     it("filters to one-shots via the underlying Type tags", async () => {
       const result = await librarySearch({ type: "oneshot" });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_clap.aif",
         "pack_kick.wav",
         "user_kick.aif",
@@ -354,7 +354,7 @@ describe("librarySearch", () => {
         tags: "One Shot",
       });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "pack_clap.aif",
         "pack_kick.wav",
       ]);
@@ -523,7 +523,7 @@ describe("librarySearch", () => {
         inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
       });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "subfolder_x.wav",
         "subfolder_y.wav",
       ]);
@@ -539,7 +539,7 @@ describe("librarySearch", () => {
         kind: "audio",
       });
 
-      const names = result.items.map((i) => i.name).sort();
+      const names = result.items.map((i) => i.name).toSorted();
 
       expect(names).toContain("pack_kick.wav");
       expect(names).not.toContain("subfolder_x.wav");
@@ -554,7 +554,7 @@ describe("librarySearch", () => {
         kind: "audio",
       });
 
-      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
         "subfolder_x.wav",
         "subfolder_y.wav",
       ]);
@@ -595,8 +595,8 @@ describe("librarySearch", () => {
         inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
       });
 
-      expect(withSlash.items.map((i) => i.name).sort()).toStrictEqual(
-        withoutSlash.items.map((i) => i.name).sort(),
+      expect(withSlash.items.map((i) => i.name).toSorted()).toStrictEqual(
+        withoutSlash.items.map((i) => i.name).toSorted(),
       );
     });
 
@@ -607,8 +607,8 @@ describe("librarySearch", () => {
       const empty = await librarySearch({ inFolder: "", kind: "audio" });
       const unset = await librarySearch({ kind: "audio" });
 
-      expect(empty.items.map((i) => i.name).sort()).toStrictEqual(
-        unset.items.map((i) => i.name).sort(),
+      expect(empty.items.map((i) => i.name).toSorted()).toStrictEqual(
+        unset.items.map((i) => i.name).toSorted(),
       );
       // Crucially, results include items deeper than the root level.
       expect(empty.items.map((i) => i.name)).toContain("user_kick.aif");
@@ -625,8 +625,8 @@ describe("librarySearch", () => {
         inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
       });
 
-      expect(lower.items.map((i) => i.name).sort()).toStrictEqual(
-        canonical.items.map((i) => i.name).sort(),
+      expect(lower.items.map((i) => i.name).toSorted()).toStrictEqual(
+        canonical.items.map((i) => i.name).toSorted(),
       );
       expect(lower.items.length).toBeGreaterThan(0);
     });

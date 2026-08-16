@@ -46,7 +46,7 @@ export async function formatToolListing(
           "",
           ...buildFallbackTools(options)
             .tools.map((tool) => `  ${tool.name}`)
-            .sort(),
+            .toSorted(),
         ]
       : [`Available now (${live.length}):`, "", ...live.map((n) => `  ${n}`)];
 
@@ -113,7 +113,7 @@ async function fetchDeviceToolNames(
 
     const { tools } = await client.listTools();
 
-    return tools.map((tool) => tool.name).sort();
+    return tools.map((tool) => tool.name).toSorted();
   } catch (error) {
     // stderr, not stdout: the caller prints the listing to stdout, and a reader
     // piping it somewhere shouldn't get a diagnostic mixed into the data.

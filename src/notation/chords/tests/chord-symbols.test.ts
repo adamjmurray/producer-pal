@@ -312,8 +312,8 @@ const EXPECTED_INTERVALS: Record<string, readonly number[]> = {
 
 describe("CHORD_QUALITY_INTERVALS — every quality matches the golden spec", () => {
   it("covers exactly the golden set of qualities (no untested rows drift in)", () => {
-    expect(Object.keys(CHORD_QUALITY_INTERVALS).sort()).toStrictEqual(
-      Object.keys(EXPECTED_INTERVALS).sort(),
+    expect(Object.keys(CHORD_QUALITY_INTERVALS).toSorted()).toStrictEqual(
+      Object.keys(EXPECTED_INTERVALS).toSorted(),
     );
   });
 

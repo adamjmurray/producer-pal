@@ -227,7 +227,7 @@ async function fetchOpenAiStyleIds(
   return (body.data ?? [])
     .map((entry) => entry.id ?? "")
     .filter(Boolean)
-    .sort();
+    .toSorted();
 }
 
 /**
@@ -247,7 +247,7 @@ async function fetchGoogleModels(): Promise<string[]> {
   return (body.models ?? [])
     .map((entry) => (entry.name ?? "").replace(/^models\//, ""))
     .filter(Boolean)
-    .sort();
+    .toSorted();
 }
 
 /**

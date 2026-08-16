@@ -259,7 +259,7 @@ function formatOutput(
   lines.push("", "=".repeat(70), "", "UNIQUE DEVICE SHAPES:", "");
 
   // Non-generic shapes first, then alphabetical.
-  const keys = [...groups.keys()].sort((a, b) => {
+  const keys = [...groups.keys()].toSorted((a, b) => {
     const aGeneric = a.startsWith("Device:");
     const bGeneric = b.startsWith("Device:");
 
