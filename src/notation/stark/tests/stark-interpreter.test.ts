@@ -151,7 +151,7 @@ describe("stark interpreter — pitched lines", () => {
   it("warns when drum and pitched lines share a clip but interprets all", () => {
     const notes = interpretNotation("kick: X\nmelody: C'''''");
 
-    expect(notes.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
+    expect(notes.map((n) => n.pitch).toSorted((a, b) => a - b)).toStrictEqual([
       36, 120,
     ]);
     expect(outlet).toHaveBeenCalledWith(
@@ -163,7 +163,7 @@ describe("stark interpreter — pitched lines", () => {
   it("does not warn for a legit two-register pitched clip (bass + melody)", () => {
     const notes = interpretNotation("bass: C\nmelody: G");
 
-    expect(notes.map((n) => n.pitch).sort((a, b) => a - b)).toStrictEqual([
+    expect(notes.map((n) => n.pitch).toSorted((a, b) => a - b)).toStrictEqual([
       36, 67,
     ]);
     expect(outlet).not.toHaveBeenCalled();

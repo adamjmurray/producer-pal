@@ -16,7 +16,7 @@ import { parse } from "yaml";
 const FRONTMATTER = /^---\n([\s\S]*?)\n---/;
 
 describe("example skill frontmatter", () => {
-  const skillFiles = globSync("examples/skills/*/SKILL.md").sort();
+  const skillFiles = globSync("examples/skills/*/SKILL.md").toSorted();
 
   it("finds the example skills", () => {
     expect(skillFiles.length).toBeGreaterThan(0);

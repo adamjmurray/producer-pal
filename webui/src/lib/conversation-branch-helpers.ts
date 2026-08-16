@@ -91,7 +91,7 @@ export function collapseBranchFamilies<T extends BranchRecord>(
   }
 
   return [...families.values()]
-    .sort((a, b) => b.latest - a.latest)
+    .toSorted((a, b) => b.latest - a.latest)
     .map((family) => family.rep);
 }
 
@@ -151,7 +151,9 @@ export function computeBranchPoints(
     addBranchPoint(byAnchor, index, activeId, activeId, items);
   }
 
-  return [...byAnchor.values()].sort((a, b) => a.anchorIndex - b.anchorIndex);
+  return [...byAnchor.values()].toSorted(
+    (a, b) => a.anchorIndex - b.anchorIndex,
+  );
 }
 
 /**
@@ -343,7 +345,7 @@ function siblingsOfSet(
     .filter(
       (item) => item.forkParentId === trunkId && item.forkedAtIndex === index,
     )
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .toSorted((a, b) => a.createdAt - b.createdAt)
     .map((item) => item.id);
   const trunkExists = items.some((item) => item.id === trunkId);
 

@@ -81,7 +81,7 @@ async function findResultsInDir(dir: string): Promise<string[]> {
 
     return files
       .filter((f) => f.endsWith(".json"))
-      .sort()
+      .toSorted()
       .toReversed()
       .map((f) => join(dir, f));
   } catch {
@@ -141,7 +141,7 @@ async function showRun(runId: string): Promise<void> {
 async function showLatest(): Promise<void> {
   try {
     const runDirs = await readdir(RESULTS_DIR);
-    const sorted = runDirs.sort().toReversed();
+    const sorted = runDirs.toSorted().toReversed();
 
     for (const dir of sorted) {
       const files = await findResultsInDir(join(RESULTS_DIR, dir));
@@ -203,7 +203,7 @@ async function compareRuns(runIds: string[]): Promise<void> {
 
   console.log(styleText("bold", `Comparing: ${runIds.join(" → ")}\n`));
 
-  for (const scenarioId of [...scenarioIds].sort()) {
+  for (const scenarioId of [...scenarioIds].toSorted()) {
     const cells = runIds.map((runId) =>
       formatRunCell(runResults, runId, scenarioId),
     );

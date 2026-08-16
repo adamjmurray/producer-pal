@@ -83,8 +83,8 @@ describe("updateClip - preTransforms", () => {
     const finalNotes = addedNotes(mocks.clip123);
     const bar1 = finalNotes.filter((n) => n.start_time < 4);
     const bar2 = finalNotes.filter((n) => n.start_time >= 4);
-    const bar1Pitches = bar1.map((n) => n.pitch).sort((a, b) => a - b);
-    const bar2Pitches = bar2.map((n) => n.pitch).sort((a, b) => a - b);
+    const bar1Pitches = bar1.map((n) => n.pitch).toSorted((a, b) => a - b);
+    const bar2Pitches = bar2.map((n) => n.pitch).toSorted((a, b) => a - b);
 
     // Bar 1: original 60/62/64/65 cleared by preTransforms; only new 72/74/76/77 land
     expect(bar1Pitches).toStrictEqual([72, 74, 76, 77]);
@@ -142,10 +142,10 @@ describe("updateClip - preTransforms", () => {
 
     const clip123Final = addedNotes(mocks.clip123)
       .map((n) => n.pitch)
-      .sort((a, b) => a - b);
+      .toSorted((a, b) => a - b);
     const clip456Final = addedNotes(mocks.clip456)
       .map((n) => n.pitch)
-      .sort((a, b) => a - b);
+      .toSorted((a, b) => a - b);
 
     expect(clip123Final).toStrictEqual([67, 81]); // bar 2 G3 + new bar 1 A4
     expect(clip456Final).toStrictEqual([69, 81]); // bar 2 A3 + new bar 1 A4

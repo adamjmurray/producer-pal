@@ -46,7 +46,7 @@ describe("findSimilar", () => {
     expect(names[0]).toBe("pack_kick.wav");
     expect(result.items[0]?.similarity).toBeGreaterThan(0.9);
     // Descending similarity order.
-    expect(sims).toStrictEqual([...sims].sort((a, b) => b - a));
+    expect(sims).toStrictEqual(sims.toSorted((a, b) => b - a));
     // The seed itself and the invalid-header row are excluded.
     expect(names).not.toContain("user_kick.aif");
     expect(names).not.toContain("subfolder_y.wav");
@@ -55,7 +55,7 @@ describe("findSimilar", () => {
   it("returns every audio sample that has a valid vector", async () => {
     const result = await findSimilar({ similarTo: SEED_KICK });
 
-    expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+    expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
       "pack_clap.aif",
       "pack_kick.wav",
       "subfolder_x.wav",
@@ -86,7 +86,7 @@ describe("findSimilar", () => {
       inFolder: PACK_ONE,
     });
 
-    expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+    expect(result.items.map((i) => i.name).toSorted()).toStrictEqual([
       "pack_clap.aif",
       "pack_kick.wav",
     ]);

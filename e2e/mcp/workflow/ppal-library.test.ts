@@ -120,7 +120,7 @@ describe("ppal-library", () => {
         expect(item.path.startsWith(SAMPLE_FOLDER)).toBe(true);
       }
 
-      const names = result.items.map((i) => i.name).sort();
+      const names = result.items.map((i) => i.name).toSorted();
 
       expect(names).toStrictEqual(["kick.aiff", "sample.aiff"]);
     });
@@ -220,7 +220,7 @@ describe("ppal-library", () => {
       }
 
       const counts = result.tags.map((t) => t.count);
-      const sortedDesc = [...counts].sort((a, b) => b - a);
+      const sortedDesc = counts.toSorted((a, b) => b - a);
 
       expect(counts).toStrictEqual(sortedDesc);
     });
@@ -321,7 +321,7 @@ describe("ppal-library", () => {
 
       const counts = result.groups.map((g) => g.count);
 
-      expect(counts).toStrictEqual([...counts].sort((a, b) => b - a));
+      expect(counts).toStrictEqual(counts.toSorted((a, b) => b - a));
     });
   });
 
@@ -350,7 +350,7 @@ describe("ppal-library", () => {
         expect(s).toBeLessThanOrEqual(1.0001);
       }
 
-      expect(sims).toStrictEqual([...sims].sort((a, b) => b - a));
+      expect(sims).toStrictEqual(sims.toSorted((a, b) => b - a));
       // The seed itself is never in its own results.
       expect(result.items.every((i) => i.path !== seedPath)).toBe(true);
       // The seed's byte-identical duplicate twin is a ~1.0 top match.

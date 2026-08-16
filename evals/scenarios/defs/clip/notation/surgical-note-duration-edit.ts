@@ -191,8 +191,8 @@ function assertShortenOutcome(
         );
       }
 
-      const targets = [...before]
-        .sort((a, b) => a.start_time - b.start_time)
+      const targets = before
+        .toSorted((a, b) => a.start_time - b.start_time)
         .slice(-2);
 
       checkDurations(before, after, targets);

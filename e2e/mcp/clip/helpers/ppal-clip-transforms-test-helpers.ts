@@ -315,7 +315,7 @@ export function expectEvenlySpaced(
   pitches: number[],
   step: number,
 ): void {
-  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+  const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
   expect(sorted).toHaveLength(pitches.length);
 

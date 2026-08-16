@@ -58,7 +58,7 @@ function eightNoteCheck(
   return (events) => {
     if (events.length !== 8) return false;
 
-    const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+    const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
     return sorted.every((e, i) => e.pitch === 60 && perNote(e, i));
   };
@@ -153,7 +153,7 @@ const ZIP_JUDGE = `Evaluate whether the assistant produced this polyrhythmic run
 function checkZip(events: NoteEvent[]): boolean {
   if (events.length !== ZIP_NOTE_COUNT) return false;
 
-  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+  const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
   let onset = 0;
 
   for (let i = 0; i < ZIP_NOTE_COUNT; i++) {

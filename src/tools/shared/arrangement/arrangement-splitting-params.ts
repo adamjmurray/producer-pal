@@ -120,5 +120,5 @@ function parseSplitPoints(
   }
 
   // Sort and remove duplicates
-  return [...new Set(points)].sort((a, b) => a - b);
+  return [...new Set(points)].toSorted((a, b) => a - b);
 }

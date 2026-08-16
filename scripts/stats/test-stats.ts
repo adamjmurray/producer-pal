@@ -257,7 +257,7 @@ function findSlowestFiles(results: VitestResults): SlowestFile[] {
       tests: file.assertionResults.length,
       durationMs: file.endTime - file.startTime,
     }))
-    .sort((a, b) => b.durationMs - a.durationMs)
+    .toSorted((a, b) => b.durationMs - a.durationMs)
     .slice(0, SLOWEST_COUNT);
 }
 

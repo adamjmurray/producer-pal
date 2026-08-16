@@ -35,7 +35,7 @@ interface MemoryListProps {
  */
 export function MemoryList(props: MemoryListProps): preact.JSX.Element {
   const { entries, selectedName, creating, onSelect, onNew, onDelete } = props;
-  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = entries.toSorted((a, b) => a.name.localeCompare(b.name));
 
   const confirmDelete = (name: string): void => {
     if (window.confirm(`Delete memory "${name}"? This cannot be undone.`)) {

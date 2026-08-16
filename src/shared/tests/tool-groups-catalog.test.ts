@@ -23,8 +23,8 @@ import {
 
 describe("tool-groups vs the real catalog", () => {
   it("covers every registered tool, and nothing else", () => {
-    expect([...ALL_TOOL_IDS].sort()).toStrictEqual(
-      [...TOOL_NAMES, toolDefLiveApi.toolName].sort(),
+    expect(ALL_TOOL_IDS.toSorted()).toStrictEqual(
+      [...TOOL_NAMES, toolDefLiveApi.toolName].toSorted(),
     );
   });
 
@@ -44,6 +44,6 @@ describe("tool-groups vs the real catalog", () => {
       .filter((def) => def.toolOptions.annotations?.readOnlyHint === true)
       .map((def) => def.toolName);
 
-    expect([...READ_ONLY_TOOLS].sort()).toStrictEqual(readOnly.sort());
+    expect(READ_ONLY_TOOLS.toSorted()).toStrictEqual(readOnly.toSorted());
   });
 });

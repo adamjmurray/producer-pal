@@ -82,7 +82,7 @@ export async function testSplitClip(
 
 /** Sort clips by arrangement start position */
 function sortByArrangementStart(clips: ReadClipResult[]): ReadClipResult[] {
-  return [...clips].sort((a, b) => {
+  return clips.toSorted((a, b) => {
     const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
     const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
 

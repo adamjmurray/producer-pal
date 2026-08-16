@@ -72,5 +72,5 @@ function findConfigKeys(): string[] {
     }
   }
 
-  return [...keys].sort();
+  return [...keys].toSorted();
 }

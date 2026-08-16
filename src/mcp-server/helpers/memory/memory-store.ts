@@ -53,7 +53,7 @@ const store = makeMarkdownCollectionStore<MemoryEntry, RememberMemoryInput>({
   noun: "Memory",
   requireDescription: true,
   toEntry,
-  sort: sortByName,
+  sortEntries: sortByName,
   renderIndexSections: renderMemoryIndex,
   buildStored: buildStoredMemory,
 });
@@ -116,10 +116,10 @@ function toEntry(slug: string, raw: string): MemoryEntry {
  * Order memories alphabetically by name.
  *
  * @param entries - The freshly-read entries to sort
- * @returns The same array, sorted in place
+ * @returns A new array, sorted by name
  */
 function sortByName(entries: MemoryEntry[]): MemoryEntry[] {
-  return entries.sort((a, b) => a.name.localeCompare(b.name));
+  return entries.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

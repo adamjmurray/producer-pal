@@ -232,7 +232,7 @@ describe("listPlugins — filtering and derivation", () => {
 
     const result = await listPlugins({ category: "instrument" });
 
-    expect(result.plugins.map((p) => p.name).sort()).toStrictEqual([
+    expect(result.plugins.map((p) => p.name).toSorted()).toStrictEqual([
       "Massive",
       "Serum",
     ]);
@@ -257,7 +257,7 @@ describe("listPlugins — filtering and derivation", () => {
 
     const result = await listPlugins();
     const names = result.plugins.map((p) => p.name);
-    const sorted = [...names].sort((a, b) =>
+    const sorted = names.toSorted((a, b) =>
       a.toLowerCase().localeCompare(b.toLowerCase()),
     );
 

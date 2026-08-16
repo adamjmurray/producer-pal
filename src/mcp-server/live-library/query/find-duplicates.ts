@@ -154,5 +154,5 @@ function groupByHash(rows: DuplicateRow[]): DuplicateRow[][] {
 
   return [...byHash.values()]
     .filter((group) => group.length > 1)
-    .sort((a, b) => b.length - a.length);
+    .toSorted((a, b) => b.length - a.length);
 }

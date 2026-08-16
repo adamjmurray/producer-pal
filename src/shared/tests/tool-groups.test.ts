@@ -83,7 +83,7 @@ describe("resolveToolNames", () => {
 
   it("resolves the read-only alias", () => {
     expect(resolve(READ_ONLY_ALIAS).names).toStrictEqual(
-      [...READ_ONLY_TOOLS].sort(
+      READ_ONLY_TOOLS.toSorted(
         (a, b) => ALL_TOOL_IDS.indexOf(a) - ALL_TOOL_IDS.indexOf(b),
       ),
     );

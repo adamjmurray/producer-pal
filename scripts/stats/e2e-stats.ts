@@ -200,7 +200,7 @@ function findSlowestTests(
   }
 
   return all
-    .sort((a, b) => b.durationMs - a.durationMs)
+    .toSorted((a, b) => b.durationMs - a.durationMs)
     .slice(0, SLOWEST_COUNT);
 }
 

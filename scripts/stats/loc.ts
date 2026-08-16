@@ -209,7 +209,7 @@ function aggregateByLanguage(
     stats.code += entry.code;
   }
 
-  return [...map.values()].sort((a, b) => b.code - a.code);
+  return [...map.values()].toSorted((a, b) => b.code - a.code);
 }
 
 /**

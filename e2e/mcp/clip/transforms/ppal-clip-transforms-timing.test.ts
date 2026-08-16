@@ -48,7 +48,7 @@ function extractStartBeats(notes: string): number[] {
     }
   }
 
-  return beats.sort((a, b) => a - b);
+  return beats.toSorted((a, b) => a - b);
 }
 
 /** Extract duration values (n prefix) from notation. */

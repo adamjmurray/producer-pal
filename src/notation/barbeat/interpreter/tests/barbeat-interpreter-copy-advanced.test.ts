@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -68,7 +69,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Verify no duplicates by checking all start_times
         const startTimes = result
           .map((note) => note.start_time)
-          .sort((a, b) => a - b);
+          .toSorted((a, b) => a - b);
 
         expect(startTimes).toStrictEqual([
           8, // bar 3
@@ -101,7 +102,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         // Verify no duplicates by checking all start_times
         const startTimes = result
           .map((note) => note.start_time)
-          .sort((a, b) => a - b);
+          .toSorted((a, b) => a - b);
 
         expect(startTimes).toStrictEqual([
           0, // bar 1

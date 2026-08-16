@@ -1101,15 +1101,15 @@
         "no-underscore-dangle": "off"
       }
     },
-    // PERMANENT, both. A polyfill is the one place these two rules are
-    // exactly backwards. The
-    // Max V8 runtime lacks the ES2023 array methods, which is why this module
-    // installs them onto the prototype (no-extend-native, 8 hits, all here) by
-    // hand-writing the very method the rule wants called (no-array-reverse —
-    // its fixer rewrites `[...arr].reverse()` in polyfillToReversed to
-    // `[...arr].toReversed()`, i.e. the polyfill calling itself). If this
-    // opt-out is ever dropped, es2023-array.test.ts is what fails — it deletes
-    // the natives before re-importing — but it fails in a case named for
+    // PERMANENT, all three. A polyfill is the one place these rules are exactly
+    // backwards. The Max V8 runtime lacks the ES2023 array methods, which is why
+    // this module installs them onto the prototype (no-extend-native, 8 hits,
+    // all here) by hand-writing the very methods the rules want called
+    // (no-array-reverse / no-array-sort — the reverse fixer rewrites
+    // `[...arr].reverse()` in polyfillToReversed to `[...arr].toReversed()`,
+    // i.e. the polyfill calling itself; polyfillToSorted is the same shape). If
+    // an opt-out is ever dropped, es2023-array.test.ts is what fails — it
+    // deletes the natives before re-importing — but it fails in a case named for
     // prototype installation, so the message points at the harness rather than
     // at the rewritten body.
     {
@@ -1117,7 +1117,8 @@
       "plugins": ["unicorn"],
       "rules": {
         "no-extend-native": "off",
-        "unicorn/no-array-reverse": "off"
+        "unicorn/no-array-reverse": "off",
+        "unicorn/no-array-sort": "off"
       }
     },
     {
@@ -1157,12 +1158,6 @@
       ],
       "plugins": ["unicorn"],
       "rules": {
-        // DEFERRED. 110 in 54 files (69 in src/). The fix rewrites `.sort()`
-        // to `.toSorted()`, which changes whether the receiver is mutated. Not
-        // mechanical — every call site has to be read for whether something
-        // relies on the mutation. Safe in the V8 runtime: live-api-adapter.ts
-        // imports the es2023-array polyfill.
-        "unicorn/no-array-sort": "off",
         // PERMANENT. 0 — off for a conflict, not for debt. It bans
         // `return undefined`, which is exactly what typescript/consistent-return
         // requires of a function that returns a value on some paths (23 sites,
@@ -1261,10 +1256,9 @@
     // which the unicorn block above does not cover — the alternative was a
     // hand-rolled "unicorn's trees, intersected with test paths" glob list,
     // and test-file-classification.test.ts rejects rival spellings of a whole
-    // category for good reason. The widening surfaced nothing but no-array-sort
-    // (already deferred), so it is turned off here too and the rest of the
-    // plugin becomes new coverage for those suites. Same for
-    // prefer-add-event-listener over e2e/ui's WebSocket handles.
+    // category for good reason. The rest of the plugin becomes new coverage for
+    // those suites; prefer-add-event-listener is off for e2e/ui's WebSocket
+    // handles, same as the block above.
     //
     // consistent-function-scoping: PERMANENT. 136 of its 144 hits are in test
     // files, where a helper defined inside a `describe` sits next to the cases
@@ -1286,7 +1280,6 @@
       "plugins": ["unicorn"],
       "rules": {
         "unicorn/consistent-function-scoping": "off",
-        "unicorn/no-array-sort": "off",
         "unicorn/prefer-add-event-listener": "off"
       }
     },

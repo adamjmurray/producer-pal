@@ -136,7 +136,7 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
             {
               buildSha: BUILD_SHA,
               startedAt: buildStartedAt,
-              inputs: [...new Set(buildInputs)].sort(),
+              inputs: [...new Set(buildInputs)].toSorted(),
             },
             null,
             2,

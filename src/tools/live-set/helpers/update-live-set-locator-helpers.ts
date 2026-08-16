@@ -135,7 +135,7 @@ export async function deleteLocator(
     stopPlaybackIfNeeded(liveSet);
 
     // Delete in reverse order to avoid index shifting issues
-    const times = matches.map((m) => m.time).sort((a, b) => b - a);
+    const times = matches.map((m) => m.time).toSorted((a, b) => b - a);
 
     for (const time of times) {
       liveSet.set("current_song_time", time);

@@ -39,7 +39,7 @@ function gateTools(name: string): readonly string[] | null {
  * @returns Each distinct `ppal-` name in it
  */
 function mentionedTools(body: string): string[] {
-  return [...new Set(body.match(/ppal-[a-z-]+/g) ?? [])].sort();
+  return [...new Set(body.match(/ppal-[a-z-]+/g) ?? [])].toSorted();
 }
 
 // Fragments that name a tool outside their own gate ON PURPOSE: the handoff is
@@ -376,7 +376,7 @@ describe("audienceGatedFragments", () => {
     );
 
     expect(conversationOnly.length).toBeGreaterThan(0);
-    expect([...dropped].sort()).toStrictEqual(conversationOnly.sort());
+    expect([...dropped].toSorted()).toStrictEqual(conversationOnly.toSorted());
   });
 
   it("drops nothing a toolset could have decided", () => {
