@@ -118,6 +118,13 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
  * actual content, avoiding permanent song_length bloat from hardcoded
  * positions.
  *
+ * Concurrent requests (parallel subagents) can derive the SAME start position:
+ * each reads song_length independently and nothing reserves the range. That is
+ * safe only because every consumer stages, uses, and clears its block
+ * synchronously — requests interleave at await points, so their staged content
+ * never coexists. Put an await between staging and clearing and two requests
+ * can overwrite each other there, silently.
+ *
  * @param ctx - Per-request context to populate
  */
 function initHoldingArea(ctx: ToolContext): void {
