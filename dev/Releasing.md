@@ -40,6 +40,15 @@ and see how much is accumulating for the release.
 artifacts, not just git. Nothing downstream has to infer which build it's
 holding.
 
+**Minor versions carry the work.** Features, tool-schema changes, and the bug
+fixes that ride along with them all go in a `2.N.0`. Patch versions are for
+simple follow-ups and urgent fixes on top of a release — not a place to
+accumulate a cycle's worth of changes.
+
+Batch generously into one minor rather than splitting across two closely spaced
+releases. Step 3 is cross-platform and largely manual, so a release costs about
+the same to test whatever it contains.
+
 The rest of the cycle moves within that version:
 
 ```sh
