@@ -7,16 +7,13 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
-import {
-  type DeprecatedParamInfo,
-  deprecatedParamWarning,
-} from "#src/tools/shared/tool-framework/deprecated-param.ts";
+import { hiddenParamWarnings } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
   type ModalDescription,
   resolveModalDescription,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
-import { deprecatedParamNamesSomething } from "#src/tools/shared/utils.ts";
+import { hiddenParamNamesSomething } from "#src/tools/shared/utils.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -75,12 +72,13 @@ export function defineTool(
     const { smallModelMode = false, notation } = mcpOptions;
     const { inputSchema, description, ...toolConfig } = options;
 
-    // Deprecated params still validate, but are not published — the model never
-    // learns the old name while callers that still send it keep working.
+    // Hidden params still validate, but are not published — the model reads only
+    // the canonical names while callers sending a retired or guessed one keep
+    // working. See hidden-param.ts.
     const {
       validating: finalInputSchema,
       published: publishedSchema,
-      deprecated: deprecatedParams,
+      hidden: hiddenParams,
       excludeEnumValues,
     } = resolveToolSchema(inputSchema, { notation, smallModelMode });
 
@@ -100,17 +98,17 @@ export function defineTool(
         inputSchema: passthroughSchema,
       },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
-        // Detect unexpected arguments before stripping them. Deprecated params
-        // are expected here even though they were not published.
+        // Detect unexpected arguments before stripping them. Hidden params are
+        // expected here even though they were not published.
         const expectedKeys = new Set(Object.keys(finalInputSchema));
         const extraKeys = Object.keys(args).filter(
           (key) => !expectedKeys.has(key),
         );
-        // Only count a deprecated param the handler will actually honor —
-        // warning "use X instead" for a blank or null value steers the caller
-        // over a value that was never used.
-        const usedDeprecated = Object.keys(deprecatedParams).filter((key) =>
-          deprecatedParamNamesSomething(args[key]),
+        // Only count a hidden param the handler will actually honor — warning
+        // "use X instead" for a blank or null value steers the caller over a
+        // value that was never used.
+        const usedHidden = Object.keys(hiddenParams).filter((key) =>
+          hiddenParamNamesSomething(args[key]),
         );
 
         // Parse with strict schema (strips extra keys for callLiveApi)
@@ -144,16 +142,13 @@ export function defineTool(
           result.content.push({ type: "text", text: warning });
         }
 
-        // The value was honored; this only steers the caller to the new name.
-        for (const key of usedDeprecated) {
-          result.content.push({
-            type: "text",
-            text: deprecatedParamWarning(
-              name,
-              key,
-              deprecatedParams[key] as DeprecatedParamInfo,
-            ),
-          });
+        // The value was honored; this only steers the caller to the real name.
+        for (const text of hiddenParamWarnings(
+          name,
+          usedHidden,
+          hiddenParams,
+        )) {
+          result.content.push({ type: "text", text });
         }
 
         return result;

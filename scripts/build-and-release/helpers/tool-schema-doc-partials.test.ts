@@ -11,7 +11,7 @@ import {
   defineTool,
   type ToolDefFunction,
 } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/deprecated-param.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 import {
   generateNotationParamsPartial,

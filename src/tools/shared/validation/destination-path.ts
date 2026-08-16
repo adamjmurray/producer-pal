@@ -12,7 +12,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  deprecatedParamNamesSomething,
+  hiddenParamNamesSomething,
   parseCommaSeparatedIds,
 } from "#src/tools/shared/utils.ts";
 
@@ -159,18 +159,17 @@ export function namedDestination(
 }
 
 /**
- * Normalizes a deprecated destination param. Like {@link namedDestination},
- * except a coerced null also reads as unset: a caller moving off the old param
- * may send null for it, and that must not count as a second destination.
+ * Normalizes a hidden (deprecated or alias) destination param. Like
+ * {@link namedDestination}, except a coerced null also reads as unset: a caller
+ * moving off the old param may send null for it, and that must not count as a
+ * second destination.
  * @param value - Raw param value
  * @returns The trimmed value, or undefined when it names nothing
  */
-export function namedDeprecatedDestination(
+export function namedHiddenDestination(
   value: string | undefined,
 ): string | undefined {
-  return deprecatedParamNamesSomething(value)
-    ? namedDestination(value)
-    : undefined;
+  return hiddenParamNamesSomething(value) ? namedDestination(value) : undefined;
 }
 
 /**

@@ -6,14 +6,14 @@
 // One place that turns a tool's raw inputSchema into the two schemas every
 // caller needs: the one that validates and the one that gets published. Both
 // MCP registration (define-tool.ts) and GET /api/tools go through here — when
-// only one of them applied the deprecation filter, REST served a param the MCP
+// only one of them applied the hidden-param filter, REST served a param the MCP
 // catalog hid.
 
 import { type ZodType } from "zod";
 import {
-  collectDeprecatedParams,
-  type DeprecatedParamInfo,
-} from "#src/tools/shared/tool-framework/deprecated-param.ts";
+  collectHiddenParams,
+  type HiddenParamInfo,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   type ModeContext,
@@ -21,11 +21,11 @@ import {
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export interface ResolvedToolSchema {
-  /** Every param the handler accepts, deprecated ones included. */
+  /** Every param the handler accepts, hidden ones included. */
   validating: Record<string, ZodType>;
-  /** What the model sees: `validating` minus the deprecated params. */
+  /** What the model sees: `validating` minus the hidden params. */
   published: Record<string, ZodType>;
-  deprecated: Record<string, DeprecatedParamInfo>;
+  hidden: Record<string, HiddenParamInfo>;
   excludeEnumValues: Record<string, string[]>;
 }
 
@@ -33,7 +33,7 @@ export interface ResolvedToolSchema {
  * Resolves a tool's input schema for one request's modes.
  * @param inputSchema - The tool's raw input schema
  * @param context - The active notation and small-model flag
- * @returns The validating and published schemas, plus what was deprecated
+ * @returns The validating and published schemas, plus what was hidden
  */
 export function resolveToolSchema(
   inputSchema: Record<string, ZodType>,
@@ -52,21 +52,21 @@ export function resolveToolSchema(
     resolved.descriptionOverrides,
     resolved.excludeEnumValues,
   );
-  const deprecated = collectDeprecatedParams(validating);
-  const deprecatedKeys = Object.keys(deprecated);
+  const hidden = collectHiddenParams(validating);
+  const hiddenKeys = Object.keys(hidden);
   const published =
-    deprecatedKeys.length === 0
+    hiddenKeys.length === 0
       ? validating
       : Object.fromEntries(
           Object.entries(validating).filter(
-            ([key]) => !deprecatedKeys.includes(key),
+            ([key]) => !hiddenKeys.includes(key),
           ),
         );
 
   return {
     validating,
     published,
-    deprecated,
+    hidden,
     excludeEnumValues: resolved.excludeEnumValues,
   };
 }

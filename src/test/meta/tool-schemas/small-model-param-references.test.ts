@@ -83,7 +83,7 @@ describe("published param references", () => {
 
 /**
  * Finds text a tool still publishes that names a param it does not publish —
- * hidden by a mode, or retired by deprecatedParam().
+ * hidden by a mode, or unpublished by deprecatedParam()/aliasParam().
  * @param def - The tool definition to resolve
  * @param context - The notation and small-model axes to resolve
  * @returns One message per offending (description, removed param) pair
@@ -93,10 +93,10 @@ function danglingReferences(
   context: { notation: Notation; smallModelMode: boolean },
 ): string[] {
   const { inputSchema, description } = def.toolOptions;
-  const { published, deprecated } = resolveToolSchema(inputSchema, context);
+  const { published, hidden } = resolveToolSchema(inputSchema, context);
   const removed = [
     ...resolveParamModes(inputSchema, context).excludeParams,
-    ...Object.keys(deprecated),
+    ...Object.keys(hidden),
   ];
 
   if (removed.length === 0) return [];

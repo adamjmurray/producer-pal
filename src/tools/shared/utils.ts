@@ -46,15 +46,15 @@ export function withoutNulls(
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**
- * Whether a deprecated param's value names something. Nullish, blank, and the
+ * Whether a hidden param's value names something. Nullish, blank, and the
  * strings a JSON null coerces into all mean "unset" here, so a caller can stop
- * sending the old param without it counting as sent. Current params get no
+ * sending the old param without it counting as sent. Published params get no
  * such pass: "null" is not a track, and reading it as unset is how a value
  * lands somewhere the caller never asked for.
  * @param value - Raw param value
  * @returns True when the value names something
  */
-export function deprecatedParamNamesSomething(value: unknown): boolean {
+export function hiddenParamNamesSomething(value: unknown): boolean {
   if (value == null) return false;
 
   if (typeof value !== "string") return true;

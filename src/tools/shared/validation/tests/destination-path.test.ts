@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type DestinationPath,
-  namedDeprecatedDestination,
+  namedHiddenDestination,
   namedDestination,
   parseDestinationPath,
   parseDestinationPathList,
@@ -269,21 +269,21 @@ describe("namedDestination", () => {
   });
 });
 
-describe("namedDeprecatedDestination", () => {
+describe("namedHiddenDestination", () => {
   // A caller moving off toSlot may send null for it; that must not read as a
   // second destination alongside a real toPath.
   it("reads a coerced null as naming nothing", () => {
-    expect(namedDeprecatedDestination("null")).toBeUndefined();
-    expect(namedDeprecatedDestination("undefined")).toBeUndefined();
+    expect(namedHiddenDestination("null")).toBeUndefined();
+    expect(namedHiddenDestination("undefined")).toBeUndefined();
   });
 
   it("reads a blank param as naming nothing", () => {
-    expect(namedDeprecatedDestination(undefined)).toBeUndefined();
-    expect(namedDeprecatedDestination("")).toBeUndefined();
-    expect(namedDeprecatedDestination("   ")).toBeUndefined();
+    expect(namedHiddenDestination(undefined)).toBeUndefined();
+    expect(namedHiddenDestination("")).toBeUndefined();
+    expect(namedHiddenDestination("   ")).toBeUndefined();
   });
 
   it("trims a param that names something", () => {
-    expect(namedDeprecatedDestination(" 2/1 ")).toBe("2/1");
+    expect(namedHiddenDestination(" 2/1 ")).toBe("2/1");
   });
 });

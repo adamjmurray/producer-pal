@@ -8,9 +8,9 @@ import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
-  collectDeprecatedParams,
-  deprecatedParamWarning,
-} from "#src/tools/shared/tool-framework/deprecated-param.ts";
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import {
@@ -210,9 +210,9 @@ export function registerRestApiRoutes(
 }
 
 /**
- * Steers a REST caller off a deprecated param, the way define-tool.ts does for
- * MCP. The catalog no longer lists the param, so this notice is the only signal
- * a REST caller gets that it is on borrowed time.
+ * Steers a REST caller off a hidden param, the way define-tool.ts does for MCP.
+ * The catalog no longer lists the param, so this notice is the only signal a
+ * REST caller gets that it is retired or a fallback.
  * @param response - The tool's response, appended to in place
  * @param toolName - Tool that was called
  * @param inputSchema - The tool's raw input schema
@@ -224,15 +224,11 @@ function appendDeprecationNotices(
   inputSchema: Record<string, ZodType>,
   args: Record<string, unknown>,
 ): void {
-  for (const [key, info] of Object.entries(
-    collectDeprecatedParams(inputSchema),
-  )) {
-    if (args[key] != null) {
-      response.content.push({
-        type: "text",
-        text: deprecatedParamWarning(toolName, key, info),
-      });
-    }
+  const hidden = collectHiddenParams(inputSchema);
+  const usedKeys = Object.keys(hidden).filter((key) => args[key] != null);
+
+  for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
+    response.content.push({ type: "text", text });
   }
 }
 

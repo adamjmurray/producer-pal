@@ -8,11 +8,12 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import { defineTool, type ToolOptions } from "../define-tool.ts";
 import {
-  collectDeprecatedParams,
+  aliasParam,
+  collectHiddenParams,
   deprecatedParam,
-  deprecatedParamWarning,
-  getDeprecatedParam,
-} from "../deprecated-param.ts";
+  getHiddenParam,
+  hiddenParamWarnings,
+} from "../hidden-param.ts";
 import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
 
@@ -25,13 +26,16 @@ describe("deprecatedParam", () => {
     });
 
     expect(schema.parse(7)).toBe("7");
-    expect(getDeprecatedParam(schema)).toStrictEqual({ replacedBy: "toPath" });
+    expect(getHiddenParam(schema)).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "toPath",
+    });
   });
 
-  it("leaves current params untagged", () => {
-    expect(getDeprecatedParam(z.string())).toBeUndefined();
+  it("leaves published params untagged", () => {
+    expect(getHiddenParam(z.string())).toBeUndefined();
     expect(
-      getDeprecatedParam(param(z.string().optional(), { default: "a param" })),
+      getHiddenParam(param(z.string().optional(), { default: "a param" })),
     ).toBeUndefined();
   });
 
@@ -59,7 +63,10 @@ describe("deprecatedParam", () => {
       ),
     ],
   ])("composes with param() as %s", (_label, schema) => {
-    expect(getDeprecatedParam(schema)).toStrictEqual({ replacedBy: "toPath" });
+    expect(getHiddenParam(schema)).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "toPath",
+    });
     expect(getParamModes(schema)?.smallModel).toBeNull();
   });
 
@@ -96,43 +103,110 @@ describe("deprecatedParam", () => {
   });
 });
 
-describe("collectDeprecatedParams", () => {
-  it("picks out only the deprecated params", () => {
-    expect(
-      collectDeprecatedParams({
-        toPath: z.string().optional(),
-        toSlot: deprecatedParam(z.string().optional(), {
-          replacedBy: "toPath",
-        }),
-        toTrack: deprecatedParam(z.number().optional(), {
-          replacedBy: "toPath",
-        }),
-      }),
-    ).toStrictEqual({
-      toSlot: { replacedBy: "toPath" },
-      toTrack: { replacedBy: "toPath" },
+describe("aliasParam", () => {
+  it("tags a schema without changing how it validates", () => {
+    const schema = aliasParam(z.coerce.number().optional(), {
+      canonical: "path",
+      example: "t0/s1",
+    });
+
+    expect(schema.parse("7")).toBe(7);
+    expect(getHiddenParam(schema)).toStrictEqual({
+      kind: "alias",
+      canonical: "path",
+      example: "t0/s1",
     });
   });
 
-  it("returns nothing for a schema with no deprecations", () => {
-    expect(collectDeprecatedParams({ toPath: z.string() })).toStrictEqual({});
-  });
-});
-
-describe("deprecatedParamWarning", () => {
-  it("names the tool, the old param, and the replacement", () => {
-    expect(
-      deprecatedParamWarning("ppal-duplicate", "toSlot", {
-        replacedBy: "toPath",
-      }),
-    ).toBe(
-      'Warning: ppal-duplicate param "toSlot" is deprecated and will be removed; use "toPath" instead',
+  it("composes with param()", () => {
+    const schema = param(
+      aliasParam(z.coerce.number().optional(), { canonical: "path" }),
+      { default: "a param", smallModel: null },
     );
+
+    expect(getHiddenParam(schema)).toStrictEqual({
+      kind: "alias",
+      canonical: "path",
+    });
+    expect(getParamModes(schema)?.smallModel).toBeNull();
   });
 });
 
-describe("defineTool with a deprecated param", () => {
-  it("leaves the deprecated param out of the published schema", () => {
+describe("collectHiddenParams", () => {
+  it("picks out only the hidden params, keeping why each is hidden", () => {
+    expect(
+      collectHiddenParams({
+        path: z.string().optional(),
+        slot: deprecatedParam(z.string().optional(), { replacedBy: "path" }),
+        trackIndex: aliasParam(z.number().optional(), { canonical: "path" }),
+      }),
+    ).toStrictEqual({
+      slot: { kind: "deprecated", replacedBy: "path" },
+      trackIndex: { kind: "alias", canonical: "path" },
+    });
+  });
+
+  it("returns nothing for a schema with no hidden params", () => {
+    expect(collectHiddenParams({ toPath: z.string() })).toStrictEqual({});
+  });
+});
+
+describe("hiddenParamWarnings", () => {
+  const hidden = collectHiddenParams({
+    slot: deprecatedParam(z.string().optional(), { replacedBy: "path" }),
+    trackIndex: aliasParam(z.number().optional(), {
+      canonical: "path",
+      example: "t0/s1",
+    }),
+    sceneIndex: aliasParam(z.number().optional(), {
+      canonical: "path",
+      example: "t0/s1",
+    }),
+  });
+
+  it("names the tool, the retired param, and the replacement", () => {
+    expect(
+      hiddenParamWarnings("ppal-duplicate", ["slot"], hidden),
+    ).toStrictEqual([
+      'Warning: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+    ]);
+  });
+
+  // Two halves of one destination are one mistake, so they read as one
+  // correction rather than two near-identical lines.
+  it("groups aliases by the param they fold into", () => {
+    expect(
+      hiddenParamWarnings(
+        "ppal-create-clip",
+        ["trackIndex", "sceneIndex"],
+        hidden,
+      ),
+    ).toStrictEqual([
+      'Warning: ppal-create-clip accepts "trackIndex", "sceneIndex" as a fallback; the parameter is "path" (e.g. path: "t0/s1")',
+    ]);
+  });
+
+  it("omits the example when the alias has none", () => {
+    expect(
+      hiddenParamWarnings(
+        "ppal-select",
+        ["trackIndex"],
+        collectHiddenParams({
+          trackIndex: aliasParam(z.number().optional(), { canonical: "path" }),
+        }),
+      ),
+    ).toStrictEqual([
+      'Warning: ppal-select accepts "trackIndex" as a fallback; the parameter is "path"',
+    ]);
+  });
+
+  it("says nothing when no hidden param was sent", () => {
+    expect(hiddenParamWarnings("ppal-duplicate", [], hidden)).toStrictEqual([]);
+  });
+});
+
+describe("defineTool with hidden params", () => {
+  it("leaves the hidden params out of the published schema", () => {
     // The model reads the published schema, so this is what stops it learning
     // the retired name.
     const { mockServer } = register();
@@ -143,7 +217,7 @@ describe("defineTool with a deprecated param", () => {
     ]);
   });
 
-  it("still validates and forwards the deprecated param", () => {
+  it("still validates and forwards a hidden param", () => {
     // Dropping it from the schema alone would have it stripped here, which is
     // the silent-destination-drop this whole mechanism exists to prevent.
     const { mockServer, mockCallLiveApi } = register();
@@ -151,7 +225,7 @@ describe("defineTool with a deprecated param", () => {
     return handler(mockServer)({ id: "1", toSlot: 3 }).then(() => {
       expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
         id: "1",
-        // z.coerce.string() ran, so the deprecated param is coerced like any other
+        // z.coerce.string() ran, so the hidden param is coerced like any other
         toSlot: "3",
       });
     });
@@ -170,7 +244,17 @@ describe("defineTool with a deprecated param", () => {
     });
   });
 
-  it("stays quiet when the deprecated param is not sent", () => {
+  it("warns an alias caller which param is the real one", () => {
+    const { mockServer } = register();
+
+    return handler(mockServer)({ id: "1", toTrack: 2 }).then((result) => {
+      expect(result.content.map((c) => c.text)).toContain(
+        'Warning: test-tool accepts "toTrack" as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
+      );
+    });
+  });
+
+  it("stays quiet when no hidden param is sent", () => {
     const { mockServer } = register();
 
     return handler(mockServer)({ id: "1", toPath: "t7" }).then((result) => {
@@ -178,7 +262,7 @@ describe("defineTool with a deprecated param", () => {
     });
   });
 
-  // The warning points the caller at the new name. Firing it for a value the
+  // The warning points the caller at the real name. Firing it for a value the
   // handler never honored points them at nothing.
   it.each([
     ["a JSON null", null],
@@ -186,7 +270,7 @@ describe("defineTool with a deprecated param", () => {
     ['the string "undefined"', "undefined"],
     ["an empty string", ""],
     ["whitespace only", "   "],
-  ])("stays quiet when the deprecated param is %s", (_label, toSlot) => {
+  ])("stays quiet when the hidden param is %s", (_label, toSlot) => {
     const { mockServer } = register();
 
     return handler(mockServer)({ id: "1", toSlot }).then((result) => {
@@ -206,7 +290,7 @@ describe("defineTool with a deprecated param", () => {
 });
 
 /**
- * Register a tool carrying one deprecated param.
+ * Register a tool carrying one deprecated param and one alias param.
  * @returns Mock server and callLiveApi mock
  */
 function register(): { mockServer: MockServer; mockCallLiveApi: Mock } {
@@ -217,6 +301,10 @@ function register(): { mockServer: MockServer; mockCallLiveApi: Mock } {
       toPath: z.string().optional(),
       toSlot: deprecatedParam(z.coerce.string().optional(), {
         replacedBy: "toPath",
+      }),
+      toTrack: aliasParam(z.coerce.number().optional(), {
+        canonical: "toPath",
+        example: "t0/s1",
       }),
     },
   };

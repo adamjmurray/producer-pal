@@ -16,7 +16,7 @@ import {
   copyClipToSlot,
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
-  namedDeprecatedDestination,
+  namedHiddenDestination,
   namedDestination,
   parseDestinationPathList,
 } from "#src/tools/shared/validation/destination-path.ts";
@@ -43,7 +43,7 @@ export function resolveMoveDestination(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedDestination(rawToPath);
-  const toSlot = namedDeprecatedDestination(rawToSlot);
+  const toSlot = namedHiddenDestination(rawToSlot);
 
   // Honoring one and dropping the other would move the clip somewhere the
   // caller didn't ask for, so move it nowhere and say so.

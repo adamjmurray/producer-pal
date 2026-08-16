@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { z, type ZodType } from "zod";
-import { deprecatedParam } from "../deprecated-param.ts";
+import { deprecatedParam } from "../hidden-param.ts";
 import { getParamModes, param } from "../modal-config.ts";
 import { resolveToolSchema } from "../resolve-tool-schema.ts";
 import { carrySchemaTags, getSchemaTag, tagSchema } from "../schema-tags.ts";
@@ -32,14 +32,17 @@ describe("tags through Zod wrappers", () => {
       const toSlot = wrap(
         deprecatedParam(z.coerce.string(), { replacedBy: "toPath" }),
       );
-      const { published, validating, deprecated } = resolveToolSchema(
+      const { published, validating, hidden } = resolveToolSchema(
         { toSlot },
         {},
       );
 
       expect(Object.keys(published)).toStrictEqual([]);
       expect(Object.keys(validating)).toStrictEqual(["toSlot"]);
-      expect(deprecated.toSlot).toStrictEqual({ replacedBy: "toPath" });
+      expect(hidden.toSlot).toStrictEqual({
+        kind: "deprecated",
+        replacedBy: "toPath",
+      });
     },
   );
 
@@ -105,13 +108,16 @@ describe("carrySchemaTags", () => {
       }),
       { replacedBy: "toPath" },
     ).default([]);
-    const { published, deprecated } = resolveToolSchema(
+    const { published, hidden } = resolveToolSchema(
       { trimmed },
       { smallModelMode: true },
     );
 
     expect(Object.keys(published)).toStrictEqual([]);
-    expect(deprecated.trimmed).toStrictEqual({ replacedBy: "toPath" });
+    expect(hidden.trimmed).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "toPath",
+    });
   });
 
   it("leaves an untagged schema untagged", () => {

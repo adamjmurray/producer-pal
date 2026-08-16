@@ -12,9 +12,9 @@ import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-to
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 // Pins the published shape of the real tools. Without this, reverting a
-// deprecatedParam() wrapper to a plain schema republishes the retired name with
-// no test failing — the framework tests only cover synthetic tools, and the e2e
-// suite needs Ableton running.
+// deprecatedParam()/aliasParam() wrapper to a plain schema republishes the
+// hidden name with no test failing — the framework tests only cover synthetic
+// tools, and the e2e suite needs Ableton running.
 
 /**
  * Read the params a tool publishes to the model.
@@ -34,7 +34,7 @@ function publishedParams(toolName: string): string[] {
   );
 }
 
-describe("deprecated params", () => {
+describe("hidden params", () => {
   it("publishes toPath and hides the destination params it replaced", () => {
     const duplicate = publishedParams("ppal-duplicate");
 
@@ -55,20 +55,23 @@ describe("deprecated params", () => {
       const def = STANDARD_TOOL_DEFS.find(
         (td: ToolDefFunction) => td.toolName === toolName,
       ) as ToolDefFunction;
-      const { validating, deprecated } = resolveToolSchema(
+      const { validating, hidden } = resolveToolSchema(
         def.toolOptions.inputSchema,
         {},
       );
 
       expect(Object.keys(validating)).toContain("toSlot");
-      expect(deprecated.toSlot).toStrictEqual({ replacedBy: "toPath" });
+      expect(hidden.toSlot).toStrictEqual({
+        kind: "deprecated",
+        replacedBy: "toPath",
+      });
     }
   });
 
   // The eval framework skips a scenario when it needs a param the model never
-  // receives. A deprecated param is exactly that, so it belongs in the set —
+  // receives. A hidden param is exactly that, so it belongs in the set —
   // otherwise a scenario naming one silently fails instead of skipping.
-  it("counts a deprecated param as one a small model never receives", () => {
+  it("counts a hidden param as one a small model never receives", () => {
     expect(SMALL_MODEL_EXCLUDED_PARAMS).toContain("toSlot");
     // Still holds what small-model mode hides on its own.
     expect(SMALL_MODEL_EXCLUDED_PARAMS).toContain("split");

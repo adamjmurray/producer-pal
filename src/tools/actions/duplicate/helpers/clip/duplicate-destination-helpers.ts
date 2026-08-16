@@ -10,7 +10,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  namedDeprecatedDestination,
+  namedHiddenDestination,
   namedDestination,
   parseDestinationPathList,
   requireClipDestination,
@@ -45,7 +45,7 @@ export function resolveClipDestinations(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedDestination(rawToPath);
-  const toSlot = namedDeprecatedDestination(rawToSlot);
+  const toSlot = namedHiddenDestination(rawToSlot);
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // toPath replaces, so refuse instead of picking.
@@ -115,7 +115,7 @@ export function warnUnusedDestination(
   if (type === "clip") return;
 
   const toPath = namedDestination(rawToPath);
-  const toSlot = namedDeprecatedDestination(rawToSlot);
+  const toSlot = namedHiddenDestination(rawToSlot);
 
   if (type !== "device" && toPath != null) {
     console.warn(
