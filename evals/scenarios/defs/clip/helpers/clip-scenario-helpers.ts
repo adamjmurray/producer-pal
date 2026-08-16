@@ -110,7 +110,7 @@ export function clipStateAssertion(
   return {
     type: "state",
     tool: TOOL_READ_CLIP,
-    args: { slot, include: ["notes", "timing"] },
+    args: { path: slotToPath(slot), include: ["notes", "timing"] },
     expect: (result: unknown): boolean => {
       const clip = result as { notes?: string; timeSignature?: string };
 
@@ -515,6 +515,20 @@ function clipObjectsFrom(parsed: unknown): ClipShape[] {
 }
 
 /**
+ * Convert a "trackIndex/sceneIndex" slot string into the path the clip tools
+ * take. Scenario definitions and the `slot` field results report both still
+ * speak the older format, so the conversion lives here rather than at every
+ * call site.
+ * @param slot - Slot string, "trackIndex/sceneIndex"
+ * @returns The equivalent session path, "t<track>/s<scene>"
+ */
+function slotToPath(slot: string): string {
+  const [trackIndex, sceneIndex] = slot.split("/");
+
+  return `t${trackIndex}/s${sceneIndex}`;
+}
+
+/**
  * Delete any existing session clips in the given slots. Use as a scenario
  * `setup` so repeat trials (`-r N`, which reuse the open Live Set) each start
  * with empty slots instead of inheriting clips from the previous trial.
@@ -531,7 +545,7 @@ export async function clearSessionSlots(
   for (const slot of slots) {
     const result = await mcpClient.callTool({
       name: "ppal-read-clip",
-      arguments: { slot, include: [] },
+      arguments: { path: slotToPath(slot), include: [] },
     });
 
     let id: unknown;

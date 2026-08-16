@@ -116,18 +116,18 @@ export const DRUM_LOOP_BEATS = 4;
 /**
  * Create an unwarped drum-loop clip in a session slot.
  * @param client - The MCP client
- * @param slot - The session slot, "trackIndex/sceneIndex"
+ * @param path - The session position, "t<track>/s<scene>"
  * @returns The new clip's id
  */
 export async function createUnwarpedDrumLoop(
   client: Client,
-  slot: string,
+  path: string,
 ): Promise<string> {
   const result = await client.callTool({
     name: "ppal-create-clip",
     arguments: {
       sampleFile: DRUM_LOOP_FILE,
-      slot,
+      path,
       name: "unwarped loop",
       warping: false,
     },

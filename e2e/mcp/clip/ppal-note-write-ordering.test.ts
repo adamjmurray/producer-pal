@@ -64,20 +64,20 @@ async function createOrderingTrack(name: string): Promise<number> {
 /**
  * Create a clip and assert how many notes Live actually stored. noteCount is
  * read back from the clip, so it is the survival count, not the input count.
- * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param path - Session position ("t<track>/s<scene>")
  * @param notes - bar|beat notation for the clip
  * @param noteCount - Expected stored note count
  * @returns The created clip
  */
 async function createClipWithCount(
-  slot: string,
+  path: string,
   notes: string,
   noteCount: number,
 ): Promise<CreateClipResult> {
   const created = parseToolResult<CreateClipResult>(
     await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { slot, notes },
+      arguments: { path, notes },
     }),
   );
 

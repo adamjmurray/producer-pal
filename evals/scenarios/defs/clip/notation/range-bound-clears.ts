@@ -34,6 +34,8 @@ import {
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
+/** The same position as SLOT, in the path grammar the clip tools take. */
+const SLOT_PATH = "t0/s0";
 /** A C3 quarter on every beat of 4 bars — bar 3 is full and 4|1 is occupied. */
 const TEST_NOTES = "n/4 C3 1|1,2,3,4 2|1,2,3,4 3|1,2,3,4 4|1,2,3,4";
 /** Float tolerance for matching note start times (musical beats). */
@@ -50,7 +52,7 @@ async function setupRangeClip(mcpClient: Client): Promise<void> {
   await mcpClient.callTool({
     name: "ppal-create-clip",
     arguments: {
-      slot: SLOT,
+      path: SLOT_PATH,
       length: "4bar",
       timeSignature: "4/4",
       name: "range-bound-test",
