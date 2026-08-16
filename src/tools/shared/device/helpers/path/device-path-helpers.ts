@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
@@ -8,6 +9,7 @@ import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
 } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
+import { parseTrackSegment } from "#src/tools/shared/validation/destination-path.ts";
 import { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
 
 // Re-export all functions for backwards compatibility
@@ -29,23 +31,17 @@ export interface InsertionPathResolution {
  * @returns LiveAPI track object
  */
 function resolveTrack(segment: string): LiveAPI {
-  if (segment === "mt") {
+  const track = parseTrackSegment(segment);
+
+  if (track.kind === "master-track") {
     return LiveAPI.from(livePath.masterTrack());
   }
 
-  if (segment.startsWith("rt")) {
-    const returnIndex = Number.parseInt(segment.slice(2));
-
-    return LiveAPI.from(livePath.returnTrack(returnIndex));
+  if (track.kind === "return-track") {
+    return LiveAPI.from(livePath.returnTrack(track.returnIndex));
   }
 
-  if (segment.startsWith("t")) {
-    const trackIndex = Number.parseInt(segment.slice(1));
-
-    return LiveAPI.from(livePath.track(trackIndex));
-  }
-
-  throw new Error(`Invalid track segment: ${segment}`);
+  return LiveAPI.from(livePath.track(track.trackIndex));
 }
 
 /**
