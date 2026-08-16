@@ -3,13 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  abletonBeatsToBarBeat,
-  barBeatToAbletonBeats,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
+import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
@@ -21,124 +18,14 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 export interface SplittingContext {
   holdingAreaStartBeats: number;
   silenceWavPath?: string;
+  /** When the request's budget runs out; set once per request by the adapter. */
+  deadline?: number | null;
 }
 
 interface SplitClipRange {
   trackIndex: number;
   startTime: number;
   endTime: number;
-}
-
-/**
- * Parse comma-separated bar|beat positions into beat offsets from clip start.
- * Positions use clip-local coordinates where 1|1 is the clip start.
- * @param splitStr - Comma-separated bar|beat positions (e.g., "2|1, 3|1, 4|1")
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns Sorted array of beat offsets, or null if invalid
- */
-function parseSplitPoints(
-  splitStr: string,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): number[] | null {
-  const points: number[] = [];
-  const parts = splitStr.split(",").map((s) => s.trim());
-
-  for (const part of parts) {
-    if (!part) continue;
-
-    try {
-      const beats = barBeatToAbletonBeats(
-        part,
-        timeSigNumerator,
-        timeSigDenominator,
-      );
-
-      points.push(beats);
-    } catch {
-      return null;
-    }
-  }
-
-  // Sort and remove duplicates
-  return [...new Set(points)].sort((a, b) => a - b);
-}
-
-/**
- * Prepare split parameters by parsing comma-separated bar|beat positions.
- * @param split - Comma-separated bar|beat positions (e.g., "2|1, 3|1, 4|1")
- * @param arrangementClips - Array of arrangement clips
- * @param warnings - Set to track warnings already issued
- * @returns Array of beat offsets or null
- */
-export function prepareSplitParams(
-  split: string | undefined,
-  arrangementClips: LiveAPI[],
-  warnings: Set<string>,
-): number[] | null {
-  if (split == null) {
-    return null;
-  }
-
-  if (arrangementClips.length === 0) {
-    if (!warnings.has("split-no-arrangement")) {
-      console.warn("split requires arrangement clips");
-      warnings.add("split-no-arrangement");
-    }
-
-    return null;
-  }
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
-
-  const splitPoints = parseSplitPoints(
-    split,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  if (splitPoints == null || splitPoints.length === 0) {
-    if (!warnings.has("split-invalid-format")) {
-      console.warn(
-        `Invalid split format: "${split}". Expected comma-separated bar|beat positions like "2|1, 3|1"`,
-      );
-      warnings.add("split-invalid-format");
-    }
-
-    return null;
-  }
-
-  if (splitPoints.length > MAX_SPLIT_POINTS) {
-    if (!warnings.has("split-max-exceeded")) {
-      console.warn(
-        `Too many split points (${splitPoints.length}), max is ${MAX_SPLIT_POINTS}`,
-      );
-      warnings.add("split-max-exceeded");
-    }
-
-    return null;
-  }
-
-  // Filter out points at 0 (can't split at the very start)
-  const validPoints = splitPoints.filter((p) => p > 0);
-
-  if (validPoints.length === 0) {
-    if (!warnings.has("split-no-valid-points")) {
-      console.warn("No valid split points (all at or before clip start)");
-      warnings.add("split-no-valid-points");
-    }
-
-    return null;
-  }
-
-  return validPoints;
 }
 
 interface SplitSingleClipArgs {
@@ -259,8 +146,9 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   }
 
   // Step 3: Extract middle segments (1 to N-2) from source copies
-  extractMiddleSegments({
+  const tailSegment = extractMiddleSegments({
     track,
+    clipId: originalClipId,
     sourceClipId,
     boundaries,
     segmentCount,
@@ -271,8 +159,10 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     context: tilingCtx,
   });
 
-  // Step 4: Left-trim source to isolate last segment, move to final position
-  const lastSegStart = boundaries[segmentCount - 1] as number; // loop bounds guarantee valid
+  // Step 4: Left-trim source to isolate the tail, move to final position. The
+  // tail is the last segment unless the deadline stopped step 3 early, in which
+  // case it is everything from there on, put back as one clip.
+  const lastSegStart = boundaries[tailSegment] as number; // loop bounds guarantee valid
   const lastSegFinalPos = clipArrangementStart + lastSegStart;
 
   if (lastSegStart > EPSILON) {
@@ -301,6 +191,8 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
 interface ExtractMiddleSegmentsArgs {
   track: LiveAPI;
+  /** The clip being split, for warnings */
+  clipId: string;
   sourceClipId: string;
   boundaries: number[];
   segmentCount: number;
@@ -314,11 +206,18 @@ interface ExtractMiddleSegmentsArgs {
 /**
  * Extract middle segments (indices 1 to N-2) by duplicating source, edge-trimming, and moving.
  * Skips segments whose duplication fails (partial-success model).
+ *
+ * Stopping for the deadline is safe HERE and nowhere later in the segment: the
+ * caller places the source copy from this index on, so the part of the clip that
+ * never got cut goes back whole instead of vanishing.
+ *
  * @param args - Extraction arguments
+ * @returns The boundary index the caller should place the tail from
  */
-function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
+function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
   const {
     track,
+    clipId,
     sourceClipId,
     boundaries,
     segmentCount,
@@ -330,6 +229,18 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
   } = args;
 
   for (let i = 1; i < segmentCount - 1; i++) {
+    if (
+      stopForDeadline(
+        context.deadline,
+        () =>
+          `Ran out of time splitting clip ${clipId} after ${i} of ` +
+          `${segmentCount - 1} cuts; the rest of it is left whole. ` +
+          `Re-run to cut the rest.`,
+      )
+    ) {
+      return i;
+    }
+
     const segStart = boundaries[i] as number; // loop bounds guarantee valid index
     const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
 
@@ -385,6 +296,8 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
       true,
     );
   }
+
+  return segmentCount - 1;
 }
 
 /**
@@ -438,9 +351,24 @@ export function performSplitting(
   const holdingAreaStart = _context.holdingAreaStartBeats;
   const splitClipRanges = new Map<string, SplitClipRange>();
 
-  for (const clip of arrangementClips) {
+  for (let i = 0; i < arrangementClips.length; i++) {
+    // Between clips, so no clip is left half-cut. One clip's own splitting is
+    // bounded by MAX_SPLIT_POINTS, and it checks the deadline itself.
+    if (
+      stopForDeadline(_context.deadline, () => {
+        const skipped = arrangementClips.slice(i).map((c) => c.id);
+
+        return (
+          `Ran out of time after splitting ${i} of ${arrangementClips.length} clips. ` +
+          `Not split: ${skipped.join(", ")}. Re-run for those ids.`
+        );
+      })
+    ) {
+      break;
+    }
+
     splitSingleClip({
-      clip,
+      clip: arrangementClips[i] as LiveAPI, // bounded by the loop
       splitPoints,
       holdingAreaStart,
       context: _context,

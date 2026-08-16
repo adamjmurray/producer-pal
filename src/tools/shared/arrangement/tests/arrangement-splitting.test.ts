@@ -8,10 +8,8 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  prepareSplitParams,
-  performSplitting,
-} from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { performSplitting } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   mockArrangementClipsRescan,
   overrideWithDuplicateCounter,
@@ -648,5 +646,64 @@ describe("performSplitting", () => {
     performSplitting([mockClip], [0.002], clips, HOLDING_AREA);
 
     expectSplitTrimCount(callState.trackMock, 2);
+  });
+
+  it("names the clips it never started splitting when time is up", () => {
+    const { callState, mockClip, clips } = setupSplitTest();
+
+    performSplitting([mockClip], [4, 8], clips, {
+      ...HOLDING_AREA,
+      deadline: Date.now() - 1,
+    });
+
+    expect(callState.trackMock.call).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Ran out of time after splitting 0 of 1 clips. " +
+        "Not split: clip_1. Re-run for those ids.",
+    );
+  });
+
+  it("puts the rest of a clip back whole when time runs out mid-split", () => {
+    // Cutting out mid-clip must not strand the segments still in the holding
+    // area: what never got cut goes back as one clip.
+    const { callState, mockClip, clips } = setupSplitTest();
+    const splitCalls = callState.trackMock.call.getMockImplementation() as (
+      method: string,
+      ...args: unknown[]
+    ) => unknown;
+
+    vi.useFakeTimers({ now: 0 });
+
+    try {
+      // Every Live call costs a second, so the budget runs out inside the split.
+      callState.trackMock.call.mockImplementation(
+        (method: string, ...args: unknown[]) => {
+          vi.advanceTimersByTime(1000);
+
+          return splitCalls(method, ...args);
+        },
+      );
+
+      performSplitting([mockClip], [4, 8, 12], clips, {
+        ...HOLDING_AREA,
+        deadline: 1500,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        "Ran out of time splitting clip clip_1 after 1 of 3 cuts",
+      ),
+    );
+    // The uncut tail (beats 4-16) placed back at beat 4, in one piece.
+    expect(callState.trackMock.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id dup_1",
+      4,
+    );
   });
 });

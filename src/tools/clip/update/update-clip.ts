@@ -12,8 +12,8 @@ import {
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/session/select.ts";
+import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
-  prepareSplitParams,
   performSplitting,
   type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
