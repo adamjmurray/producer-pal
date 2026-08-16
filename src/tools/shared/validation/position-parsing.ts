@@ -47,6 +47,13 @@ export function parseSlot(input: string): SlotPosition {
  */
 export function parseSlotList(input?: string | null): SlotPosition[] {
   const entries = parseCommaSeparatedIds(input);
+  const trimmed = input?.trim();
+
+  // Slots are read positionally, so a dropped entry shifts every later one onto
+  // the wrong scene instead of just making one fewer. toPath warns about this.
+  if (trimmed && entries.length < trimmed.split(",").length) {
+    console.warn(`toSlot "${input}" has empty entries, which were dropped`);
+  }
 
   return entries.map((entry) => {
     const parts = entry.split("/");

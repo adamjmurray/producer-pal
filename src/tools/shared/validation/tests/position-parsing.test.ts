@@ -94,6 +94,28 @@ describe("parseSlotList", () => {
     );
   });
 
+  // Slots are positional, so a dropped entry moves every later one.
+  it("should warn when it drops an empty entry", () => {
+    expect(parseSlotList(",0/1")).toStrictEqual([
+      { trackIndex: 0, sceneIndex: 1 },
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'toSlot ",0/1" has empty entries, which were dropped',
+    );
+  });
+
+  it("should not warn for a clean list or a blank param", () => {
+    parseSlotList("0/1, 2/3");
+    parseSlotList("");
+    parseSlotList(undefined);
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("has empty entries"),
+    );
+  });
+
   it("should throw for non-integer values", () => {
     expect(() => parseSlotList("a/b")).toThrow(
       'invalid toSlot "a/b" - trackIndex and sceneIndex must be integers',
