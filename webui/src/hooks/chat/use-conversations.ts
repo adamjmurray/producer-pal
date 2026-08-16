@@ -19,7 +19,7 @@ import {
   resolvePanelNotification,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,

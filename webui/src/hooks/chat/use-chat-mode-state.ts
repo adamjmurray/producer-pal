@@ -13,9 +13,9 @@ import {
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
-import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
+import { useConversationLock } from "#webui/hooks/chat/helpers/conversations/use-conversation-lock";
+import { useConversationPanelState } from "#webui/hooks/chat/helpers/conversations/use-conversation-panel-state";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";

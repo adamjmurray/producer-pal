@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/preact";
-import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
+import { useConversationPanelState } from "#webui/hooks/chat/helpers/conversations/use-conversation-panel-state";
 
 function createMockDeps() {
   return {

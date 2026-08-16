@@ -9,7 +9,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
 
 /**
  * Create a mock conversation manager with async methods.

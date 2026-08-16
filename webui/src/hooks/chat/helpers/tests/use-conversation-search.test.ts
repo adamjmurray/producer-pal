@@ -8,7 +8,7 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useConversationSearch } from "#webui/hooks/chat/helpers/use-conversation-search";
+import { useConversationSearch } from "#webui/hooks/chat/helpers/conversations/use-conversation-search";
 import { searchConversations } from "#webui/lib/conversation-db";
 
 vi.mock(import("#webui/lib/conversation-db"), () => ({

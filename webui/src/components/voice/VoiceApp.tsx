@@ -14,7 +14,7 @@ import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
 import {
   type UseConversationSearchReturn,
   useConversationSearch,
-} from "#webui/hooks/chat/helpers/use-conversation-search";
+} from "#webui/hooks/chat/helpers/conversations/use-conversation-search";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";

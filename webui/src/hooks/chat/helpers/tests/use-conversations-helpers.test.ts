@@ -12,7 +12,7 @@ import {
   deriveTitle,
   resolvePanelNotification,
   sumMessageUsage,
-} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import { loadConversation } from "#webui/lib/conversation-db";
 
 vi.mock(import("#webui/lib/conversation-db"), () => ({

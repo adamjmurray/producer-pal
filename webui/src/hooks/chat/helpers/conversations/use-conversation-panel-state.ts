@@ -5,7 +5,7 @@
 
 import { useMemo } from "preact/hooks";
 import { type ConversationPanelState } from "#webui/components/AppShell";
-import { useConversationSearch } from "#webui/hooks/chat/helpers/use-conversation-search";
+import { useConversationSearch } from "#webui/hooks/chat/helpers/conversations/use-conversation-search";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { isMobile } from "#webui/utils/is-mobile";
