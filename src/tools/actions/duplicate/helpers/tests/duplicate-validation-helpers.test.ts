@@ -4,12 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
   inferDestination,
+  resolveDestinationTrackIndex,
   validateAndConfigureRouteToSource,
   validateArrangementParameters,
   validateClipParameters,
+  validateDestinationTrackParameters,
 } from "../duplicate-validation-helpers.ts";
 
 describe("validateAndConfigureRouteToSource", () => {
@@ -148,6 +155,181 @@ describe("validateClipParameters", () => {
     expect(() =>
       validateClipParameters("clip", "arrangement", undefined),
     ).not.toThrow();
+  });
+});
+
+describe("validateDestinationTrackParameters", () => {
+  it("throws when a clip is given toPath, naming the params that work", () => {
+    // toPath used to be dropped in silence, degrading a cross-track copy into a
+    // duplicate onto the source's own track (which overwrites it at the same
+    // position). The message has to point at toTrack/toSlot instead.
+    expect(() =>
+      validateDestinationTrackParameters(
+        "clip",
+        "arrangement",
+        undefined,
+        "t2",
+        undefined,
+      ),
+    ).toThrow(/toPath is for devices.*toTrack \(arrangement\) or toSlot/s);
+  });
+
+  it("throws when an arrangement clip is given toSlot", () => {
+    expect(() =>
+      validateDestinationTrackParameters(
+        "clip",
+        "arrangement",
+        "2/0",
+        undefined,
+        undefined,
+      ),
+    ).toThrow(/toSlot is for session destinations.*use toTrack/s);
+  });
+
+  it("leaves toPath alone for devices and toSlot alone for session clips", () => {
+    expect(() =>
+      validateDestinationTrackParameters(
+        "device",
+        undefined,
+        undefined,
+        "t1/d0",
+        undefined,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateDestinationTrackParameters(
+        "clip",
+        "session",
+        "2/0",
+        undefined,
+        undefined,
+      ),
+    ).not.toThrow();
+  });
+
+  it("warns and ignores toTrack for non-clip types", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    expect(() =>
+      validateDestinationTrackParameters(
+        "scene",
+        "arrangement",
+        undefined,
+        undefined,
+        2,
+      ),
+    ).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(
+      'toTrack ignored: only supported for clips (type "scene")',
+    );
+  });
+
+  it("throws when toTrack is paired with a session destination", () => {
+    expect(() =>
+      validateDestinationTrackParameters(
+        "clip",
+        "session",
+        "2/0",
+        undefined,
+        2,
+      ),
+    ).toThrow(/toTrack is for arrangement destinations/);
+  });
+
+  it("accepts toTrack on an arrangement clip", () => {
+    expect(() =>
+      validateDestinationTrackParameters(
+        "clip",
+        "arrangement",
+        undefined,
+        undefined,
+        2,
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe("resolveDestinationTrackIndex", () => {
+  /**
+   * Register a source clip mock on a track.
+   * @param trackIndex - Track the clip lives on, or null for an orphan clip
+   * @param isMidi - Whether the clip is a MIDI clip
+   * @returns The clip's LiveAPI instance
+   */
+  function sourceClip(trackIndex: number | null, isMidi = true): LiveAPI {
+    registerMockObject("src_clip", {
+      path:
+        trackIndex == null
+          ? "live_set scenes 0"
+          : `${livePath.track(trackIndex)} arrangement_clips 0`,
+      type: "Clip",
+      properties: { is_midi_clip: isMidi ? 1 : 0 },
+    });
+
+    return LiveAPI.from("src_clip");
+  }
+
+  /**
+   * Register a destination track mock.
+   * @param trackIndex - Track index to register
+   * @param isMidi - Whether the track takes MIDI input
+   */
+  function destTrack(trackIndex: number, isMidi = true): void {
+    registerMockObject(`dest_track_${String(trackIndex)}`, {
+      path: livePath.track(trackIndex).toString(),
+      type: "Track",
+      properties: { has_midi_input: isMidi ? 1 : 0 },
+    });
+  }
+
+  it("falls back to the source clip's own track when toTrack is omitted", () => {
+    expect(resolveDestinationTrackIndex(sourceClip(3), undefined)).toBe(3);
+  });
+
+  it("throws when the source clip has no track index and toTrack is omitted", () => {
+    expect(() =>
+      resolveDestinationTrackIndex(sourceClip(null), undefined),
+    ).toThrow(/no track index for clip id/);
+  });
+
+  it("returns toTrack when the destination exists and types match", () => {
+    const clip = sourceClip(3);
+
+    destTrack(7);
+
+    expect(resolveDestinationTrackIndex(clip, 7)).toBe(7);
+  });
+
+  it("throws when toTrack names a track that does not exist", () => {
+    const clip = sourceClip(3);
+
+    mockNonExistentObjects();
+
+    expect(() => resolveDestinationTrackIndex(clip, 99)).toThrow(
+      "duplicate failed: no track at toTrack 99",
+    );
+  });
+
+  it("throws when a MIDI clip targets an audio track", () => {
+    // Live's duplicate_clip_to_arrangement silently no-ops on a mismatch, so a
+    // reported success here would be a lie.
+    const clip = sourceClip(3, true);
+
+    destTrack(5, false);
+
+    expect(() => resolveDestinationTrackIndex(clip, 5)).toThrow(
+      "MIDI clip cannot be duplicated to audio track 5",
+    );
+  });
+
+  it("throws when an audio clip targets a MIDI track", () => {
+    const clip = sourceClip(4, false);
+
+    destTrack(8, true);
+
+    expect(() => resolveDestinationTrackIndex(clip, 8)).toThrow(
+      "audio clip cannot be duplicated to MIDI track 8",
+    );
   });
 });
 

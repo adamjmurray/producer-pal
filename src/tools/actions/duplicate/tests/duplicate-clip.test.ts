@@ -154,6 +154,75 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
+    it("places the copy on toTrack instead of the source's own track", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track0 = registerTrackWithArrangementDup(0);
+      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+      registerArrangementClip(2, 0, 8);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toTrack: 2,
+      });
+
+      // The destination track receives the call; the source's track is untouched
+      // — the whole point, since duplicating onto the source's own track at the
+      // source's position overwrites it.
+      expect(track2.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        8,
+      );
+      expect(track0.call).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      expect(result).toStrictEqual({
+        id: livePath.track(2).arrangementClip(0),
+        trackIndex: 2,
+        arrangementStart: "3|1",
+      });
+    });
+
+    it("rejects toPath on a clip and points at the params that work", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath: "t2",
+        }),
+      ).rejects.toThrow(/toPath is for devices/);
+    });
+
+    it("rejects toSlot on an arrangement destination", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toSlot: "2/0",
+        }),
+      ).rejects.toThrow(/toSlot is for session destinations/);
+    });
+
     it("skips a silent duplicate failure (Ableton returns ['id', 0]) without a phantom clip", async () => {
       // Regression (#21): the no-length arrangement-duplicate path pushed a
       // phantom clip when Ableton silently failed the dup (["id", 0]), unlike its

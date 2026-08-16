@@ -14,10 +14,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   description: {
     default:
       "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement.",
+      "Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement, " +
+      "and toTrack to land an arrangement copy on a different track.",
     smallModel:
       "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use arrangementStart or toSlot for clip placement; toPath for devices.",
+      "Use arrangementStart or toSlot for clip placement, toTrack for another track's arrangement; toPath for devices.",
   },
 
   annotations: {
@@ -76,6 +77,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "session destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
       smallModel:
         "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
+    }),
+    toTrack: param(z.coerce.number().int().min(0).optional(), {
+      default:
+        "arrangement destination track index for clips; omit to copy onto the source clip's own track. Must match the clip's type (MIDI/audio)",
+      smallModel: "arrangement destination track index for clips",
     }),
     toPath: param(z.string().optional(), {
       default:

@@ -32,6 +32,7 @@ import {
   validateAndConfigureRouteToSource,
   validateClipParameters,
   validateDestinationParameter,
+  validateDestinationTrackParameters,
   validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.ts";
 
@@ -50,6 +51,7 @@ interface DuplicateArgs {
   routeToSource?: boolean;
   focus?: boolean;
   toSlot?: string;
+  toTrack?: number;
   toPath?: string;
   transforms?: string;
   code?: string;
@@ -82,6 +84,7 @@ interface DuplicateParams {
  * @param args.routeToSource - Route to source
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
+ * @param args.toTrack - Arrangement destination track index for clips
  * @param args.toPath - Destination path
  * @param args.transforms - Transform expressions broadcast across all copies
  * @param args.code - JavaScript function body broadcast across all copies
@@ -105,6 +108,7 @@ export async function duplicate(
     routeToSource,
     focus,
     toSlot,
+    toTrack,
     toPath,
     transforms,
     code,
@@ -138,6 +142,15 @@ export async function duplicate(
 
   // Validate destination parameter compatibility with type
   validateDestinationParameter(type, destination);
+
+  // Reject cross-track destination params that don't apply here
+  validateDestinationTrackParameters(
+    type,
+    destination,
+    toSlot,
+    toPath,
+    toTrack,
+  );
 
   // Validate arrangement parameters
   validateArrangementParameters(destination, arrangementStart, locator);
@@ -173,6 +186,7 @@ export async function duplicate(
         name,
         color,
         toSlot,
+        toTrack,
         arrangementStart,
         locator,
         arrangementLength,

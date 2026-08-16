@@ -26,7 +26,10 @@ import {
 } from "./duplicate-helpers.ts";
 import { unreachedPositionsWarning } from "./duplicate-position-helpers.ts";
 import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
-import { resolveArrangementPositions } from "./duplicate-validation-helpers.ts";
+import {
+  resolveArrangementPositions,
+  resolveDestinationTrackIndex,
+} from "./duplicate-validation-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -36,6 +39,7 @@ import { resolveArrangementPositions } from "./duplicate-validation-helpers.ts";
  * @param name - Base name for duplicated clips
  * @param color - Color for duplicated clips (cycles if comma-separated)
  * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
+ * @param toTrack - Arrangement destination track index, or undefined for the source's own track
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
@@ -51,6 +55,7 @@ export async function duplicateClipWithPositions(
   name: string | undefined,
   color: string | undefined,
   toSlot: string | undefined,
+  toTrack: number | undefined,
   arrangementStart: string | undefined,
   locator: string | undefined,
   arrangementLength: string | undefined,
@@ -95,6 +100,7 @@ export async function duplicateClipWithPositions(
     }
   } else {
     // Arrangement destination
+    const destTrackIndex = resolveDestinationTrackIndex(object, toTrack);
     const liveSet = LiveAPI.from(livePath.liveSet);
     const songTimeSigNumerator = liveSet.getProperty(
       "signature_numerator",
@@ -124,6 +130,7 @@ export async function duplicateClipWithPositions(
       return duplicateClipsToTakeLane(
         object,
         id,
+        destTrackIndex,
         positionsInBeats,
         name,
         color,
@@ -171,6 +178,7 @@ export async function duplicateClipWithPositions(
       const result = await duplicateClipToArrangement(
         id,
         positionsInBeats[i] as number,
+        destTrackIndex,
         getNameForIndex(name, i, parsedNames),
         getColorForIndex(color, i, parsedColors),
         arrangementLength,

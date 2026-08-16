@@ -38,6 +38,7 @@ import {
  * replaces/truncates it (no overlap guard).
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
+ * @param destTrackIndex - Track whose take lane receives the copies
  * @param positionsInBeats - Target arrangement start positions in Ableton beats
  * @param name - Base name (comma-separated for per-clip names)
  * @param color - Base color (comma-separated, cycles)
@@ -48,6 +49,7 @@ import {
 export function duplicateClipsToTakeLane(
   sourceClip: LiveAPI,
   id: string,
+  destTrackIndex: number,
   positionsInBeats: number[],
   name: string | undefined,
   color: string | undefined,
@@ -62,15 +64,7 @@ export function duplicateClipsToTakeLane(
     return [];
   }
 
-  const trackIndex = sourceClip.trackIndex;
-
-  if (trackIndex == null) {
-    throw new Error(
-      `duplicate failed: no track index for clip id "${id}" (path=${sourceClip.path})`,
-    );
-  }
-
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  const track = LiveAPI.from(livePath.track(destTrackIndex));
   const length = sourceClip.getProperty("length") as number;
   const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
 

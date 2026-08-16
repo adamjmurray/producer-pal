@@ -336,6 +336,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
+      0,
       [0],
       undefined,
       undefined,
@@ -379,6 +380,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
+      0,
       [0, 4, 8],
       undefined,
       undefined,
@@ -404,6 +406,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
+      0,
       [0], // beat 0 overlaps the existing clip on lane 1
       undefined,
       undefined,
@@ -445,25 +448,5 @@ describe("duplicate take lane", () => {
       ),
     );
     expect(result).toStrictEqual([]);
-  });
-
-  it("throws when the source clip has no track index", () => {
-    registerMockObject("orphan_clip", {
-      path: "live_set scenes 0",
-      type: "Clip",
-      properties: { is_midi_clip: 1 },
-    });
-
-    expect(() =>
-      duplicateClipsToTakeLane(
-        LiveAPI.from("orphan_clip"),
-        "orphan_clip",
-        [0],
-        undefined,
-        undefined,
-        "new",
-        undefined,
-      ),
-    ).toThrow(/no track index for clip id "orphan_clip"/);
   });
 });
