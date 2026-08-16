@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { type MinimalClipInfo } from "./duplicate-helpers.ts";
+import { type MinimalClipInfo } from "../duplicate-helpers.ts";
 
 interface NestedClipResult {
   trackIndex: number;

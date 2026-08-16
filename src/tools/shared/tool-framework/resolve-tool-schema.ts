@@ -1,0 +1,72 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// One place that turns a tool's raw inputSchema into the two schemas every
+// caller needs: the one that validates and the one that gets published. Both
+// MCP registration (define-tool.ts) and GET /api/tools go through here — when
+// only one of them applied the deprecation filter, REST served a param the MCP
+// catalog hid.
+
+import { type ZodType } from "zod";
+import {
+  collectDeprecatedParams,
+  type DeprecatedParamInfo,
+} from "#src/tools/shared/tool-framework/deprecated-param.ts";
+import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  type ModeContext,
+  resolveParamModes,
+} from "#src/tools/shared/tool-framework/modal-config.ts";
+
+export interface ResolvedToolSchema {
+  /** Every param the handler accepts, deprecated ones included. */
+  validating: Record<string, ZodType>;
+  /** What the model sees: `validating` minus the deprecated params. */
+  published: Record<string, ZodType>;
+  deprecated: Record<string, DeprecatedParamInfo>;
+  excludeEnumValues: Record<string, string[]>;
+}
+
+/**
+ * Resolves a tool's input schema for one request's modes.
+ * @param inputSchema - The tool's raw input schema
+ * @param context - The active notation and small-model flag
+ * @returns The validating and published schemas, plus what was deprecated
+ */
+export function resolveToolSchema(
+  inputSchema: Record<string, ZodType>,
+  context: ModeContext,
+): ResolvedToolSchema {
+  // Resolve every param's co-located modes into the flat exclude/override maps
+  // filterSchemaForSmallModel consumes. Notation wins over small-model per
+  // param; a mode's `null` hides the param.
+  const resolved = resolveParamModes(inputSchema, context);
+  // filterSchemaForSmallModel returns the schema unchanged when there is
+  // nothing to exclude or override, so calling it unconditionally is a no-op
+  // for tools/contexts without any active modes.
+  const validating = filterSchemaForSmallModel(
+    inputSchema,
+    resolved.excludeParams,
+    resolved.descriptionOverrides,
+    resolved.excludeEnumValues,
+  );
+  const deprecated = collectDeprecatedParams(validating);
+  const deprecatedKeys = Object.keys(deprecated);
+  const published =
+    deprecatedKeys.length === 0
+      ? validating
+      : Object.fromEntries(
+          Object.entries(validating).filter(
+            ([key]) => !deprecatedKeys.includes(key),
+          ),
+        );
+
+  return {
+    validating,
+    published,
+    deprecated,
+    excludeEnumValues: resolved.excludeEnumValues,
+  };
+}

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  getToolNotices,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -218,7 +220,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        toSlot: `${emptyMidiTrack2}/0`,
+        toPath: `t${emptyMidiTrack2}/s0`,
       },
     });
     const dupClipSession =
@@ -236,7 +238,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        toSlot: "10/0, 10/1, 10/2",
+        toPath: "t10/s0, t10/s1, t10/s2",
         name: "Batch Clip",
       },
     });
@@ -335,6 +337,41 @@ describe("ppal-duplicate", () => {
 
     expect(dupSessionToArrangement.id).toBeDefined();
     expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
+  });
+
+  it("still honors the deprecated toSlot, and says so", async () => {
+    const emptyMidiTrack = 8;
+
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${emptyMidiTrack}/6`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+    const createdClip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: createdClip.id,
+        toSlot: `${emptyMidiTrack}/7`,
+      },
+    });
+
+    // The copy still lands where an old caller asked for it...
+    expect(parseToolResult<DuplicateClipResult>(result).slot).toBe(
+      `${emptyMidiTrack}/7`,
+    );
+
+    // ...and the model is told to stop using the param.
+    expect(getToolNotices(result)).toContainEqual(
+      expect.stringContaining('param "toSlot" is deprecated'),
+    );
   });
 
   it("duplicates devices", async () => {

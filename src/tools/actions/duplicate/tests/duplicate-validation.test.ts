@@ -73,7 +73,7 @@ describe("duplicate - clip session validation", () => {
       duplicate({
         type: "clip",
         id: "clip1",
-        toSlot: "  ",
+        toSlot: ",",
       }),
     ).rejects.toThrow("duplicate failed: toSlot is required for session clips");
   });

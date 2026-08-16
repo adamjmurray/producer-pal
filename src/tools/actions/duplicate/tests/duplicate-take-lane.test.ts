@@ -10,6 +10,7 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
 
 // Capture take lane warnings
@@ -20,7 +21,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-helpers.ts";
+import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/clip/duplicate-take-lane-helpers.ts";
 import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
@@ -337,6 +338,7 @@ describe("duplicate take lane", () => {
       LiveAPI.from("src_clip"),
       "src_clip",
       [0],
+      [0],
       undefined,
       undefined,
       "new",
@@ -379,6 +381,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
+      [0, 0, 0],
       [0, 4, 8],
       undefined,
       undefined,
@@ -404,6 +407,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
+      [0],
       [0], // beat 0 overlaps the existing clip on lane 1
       undefined,
       undefined,
@@ -418,6 +422,73 @@ describe("duplicate take lane", () => {
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(created).toHaveLength(1);
+  });
+
+  // takeLane "new" appends a lane every time it is resolved, so the lane has to
+  // be resolved once per DESTINATION TRACK, not once per copy.
+  it("stacks every copy on one new lane when toPath repeats a track", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const dest = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t1",
+      arrangementStart: "5|1, 9|1, 13|1",
+      takeLane: "new",
+    })) as Array<{ takeLane: number }>;
+
+    expect(dest.call).toHaveBeenCalledTimes(1);
+    expect(dest.call).toHaveBeenCalledWith("create_take_lane");
+    expect(result.map((copy) => copy.takeLane)).toStrictEqual([1, 1, 1]);
+
+    const lane = lookupMockObject(undefined, livePath.track(1).takeLane(0));
+
+    expect(lane?.call).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives each toPath track its own new lane", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const first = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+    const second = registerTakeLaneTrack({ trackIndex: 2, initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t1, t2",
+      arrangementStart: "5|1",
+      takeLane: "new",
+    });
+
+    expect(first.call).toHaveBeenCalledTimes(1);
+    expect(second.call).toHaveBeenCalledTimes(1);
+  });
+
+  // Live has no take-lane delete, so a cap error partway through a multi-track
+  // resolve would strand an empty lane on every track that already succeeded.
+  it("creates no lane at all when a later toPath track is at the lane cap", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const ok = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    registerTakeLaneTrack({ trackIndex: 2, initialLanes: MAX_TAKE_LANES });
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1, t2",
+        arrangementStart: "5|1",
+        takeLane: "new",
+      }),
+    ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
+
+    expect(ok.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
   it("warns and skips when source is a take-lane clip and no takeLane param is given (main-lane destination)", async () => {
@@ -445,25 +516,5 @@ describe("duplicate take lane", () => {
       ),
     );
     expect(result).toStrictEqual([]);
-  });
-
-  it("throws when the source clip has no track index", () => {
-    registerMockObject("orphan_clip", {
-      path: "live_set scenes 0",
-      type: "Clip",
-      properties: { is_midi_clip: 1 },
-    });
-
-    expect(() =>
-      duplicateClipsToTakeLane(
-        LiveAPI.from("orphan_clip"),
-        "orphan_clip",
-        [0],
-        undefined,
-        undefined,
-        "new",
-        undefined,
-      ),
-    ).toThrow(/no track index for clip id "orphan_clip"/);
   });
 });

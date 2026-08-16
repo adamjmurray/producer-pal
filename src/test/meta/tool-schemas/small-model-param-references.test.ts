@@ -7,16 +7,19 @@ import { describe, expect, it, vi } from "vitest";
 import { z, type ZodType } from "zod";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
   param,
   resolveModalDescription,
   resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 // Hiding a param with `smallModel: null` leaves any sibling text that named it
 // pointing at nothing, so the small model is told to use an argument its schema
 // doesn't have. Five defects shipped from exactly this before the check existed.
+//
+// Deprecation is the other way a param leaves the published schema, and it
+// applies in every mode — so both axes run here.
 //
 // There is no allowlist. Every surviving description is currently clean under a
 // plain word-boundary match, including the removed params whose names are also
@@ -37,14 +40,21 @@ const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
 // Small-model mode crosses with notation, and a param can be hidden in only one
 // cell (`smallModel:stark`), so every combination gets its own case.
 const CASES = NOTATIONS.flatMap((notation) =>
-  TOOL_DEFS.map(
-    (def) => [`${def.toolName} (${notation})`, def, notation] as const,
+  [true, false].flatMap((smallModelMode) =>
+    TOOL_DEFS.map(
+      (def) =>
+        [
+          `${def.toolName} (${notation}${smallModelMode ? ", small" : ""})`,
+          def,
+          { notation, smallModelMode },
+        ] as const,
+    ),
   ),
 );
 
-describe("small-model param references", () => {
-  it.each(CASES)("%s names no param it removed", (_label, def, notation) => {
-    expect(danglingReferences(def, notation)).toStrictEqual([]);
+describe("published param references", () => {
+  it.each(CASES)("%s names no param it removed", (_label, def, context) => {
+    expect(danglingReferences(def, context)).toStrictEqual([]);
   });
 
   it("catches a description that names a removed param", () => {
@@ -63,52 +73,50 @@ describe("small-model param references", () => {
       },
     } as unknown as ToolDefFunction;
 
-    expect(danglingReferences(def, "barbeat")).toStrictEqual([
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: true }),
+    ).toStrictEqual([
       "fake (barbeat): tool description names removed param `takeLane`",
     ]);
   });
 });
 
 /**
- * Finds text a tool still ships in small-model mode that names a param the same
- * mode removed.
+ * Finds text a tool still publishes that names a param it does not publish —
+ * hidden by a mode, or retired by deprecatedParam().
  * @param def - The tool definition to resolve
- * @param notation - The notation axis to resolve alongside small-model mode
+ * @param context - The notation and small-model axes to resolve
  * @returns One message per offending (description, removed param) pair
  */
 function danglingReferences(
   def: ToolDefFunction,
-  notation: Notation,
+  context: { notation: Notation; smallModelMode: boolean },
 ): string[] {
   const { inputSchema, description } = def.toolOptions;
-  const context = { notation, smallModelMode: true };
-  const resolved = resolveParamModes(inputSchema, context);
+  const { published, deprecated } = resolveToolSchema(inputSchema, context);
+  const removed = [
+    ...resolveParamModes(inputSchema, context).excludeParams,
+    ...Object.keys(deprecated),
+  ];
 
-  if (resolved.excludeParams.length === 0) return [];
-
-  const survivors = filterSchemaForSmallModel(
-    inputSchema,
-    resolved.excludeParams,
-    resolved.descriptionOverrides,
-    resolved.excludeEnumValues,
-  );
+  if (removed.length === 0) return [];
 
   const texts: [string, string][] = [
     ["tool description", resolveModalDescription(description, context)],
   ];
 
-  for (const [name, schema] of Object.entries(survivors)) {
+  for (const [name, schema] of Object.entries(published)) {
     const text = (schema as ZodType).description;
 
     if (text != null) texts.push([`\`${name}\` description`, text]);
   }
 
-  return resolved.excludeParams.flatMap((removed) =>
+  return removed.flatMap((name) =>
     texts
-      .filter(([, text]) => new RegExp(`\\b${removed}\\b`).test(text))
+      .filter(([, text]) => new RegExp(`\\b${name}\\b`).test(text))
       .map(
         ([where]) =>
-          `${def.toolName} (${notation}): ${where} names removed param \`${removed}\``,
+          `${def.toolName} (${context.notation}): ${where} names removed param \`${name}\``,
       ),
   );
 }

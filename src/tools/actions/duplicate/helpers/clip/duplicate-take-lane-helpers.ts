@@ -7,7 +7,9 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  assertTakeLaneCapacity,
   resolveTakeLane,
+  type ResolvedTakeLane,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -26,7 +28,7 @@ import {
 import {
   getMinimalClipInfo,
   type MinimalClipInfo,
-} from "./duplicate-helpers.ts";
+} from "../duplicate-helpers.ts";
 
 /**
  * Duplicate a MIDI clip onto a take lane at one or more arrangement positions.
@@ -38,6 +40,7 @@ import {
  * replaces/truncates it (no overlap guard).
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
+ * @param destTrackIndices - Track per copy, parallel to positionsInBeats
  * @param positionsInBeats - Target arrangement start positions in Ableton beats
  * @param name - Base name (comma-separated for per-clip names)
  * @param color - Base color (comma-separated, cycles)
@@ -48,6 +51,7 @@ import {
 export function duplicateClipsToTakeLane(
   sourceClip: LiveAPI,
   id: string,
+  destTrackIndices: number[],
   positionsInBeats: number[],
   name: string | undefined,
   color: string | undefined,
@@ -62,17 +66,27 @@ export function duplicateClipsToTakeLane(
     return [];
   }
 
-  const trackIndex = sourceClip.trackIndex;
+  const length = sourceClip.getProperty("length") as number;
+  const destTracks = [...new Set(destTrackIndices)].map((trackIndex) => ({
+    trackIndex,
+    track: LiveAPI.from(livePath.track(trackIndex)),
+  }));
 
-  if (trackIndex == null) {
-    throw new Error(
-      `duplicate failed: no track index for clip id "${id}" (path=${sourceClip.path})`,
-    );
+  // Lanes are permanent (Live has no delete), so check every track's capacity
+  // before creating a lane on any of them — otherwise a cap error on the last
+  // track strands an empty lane on all the earlier ones.
+  for (const { track } of destTracks) {
+    assertTakeLaneCapacity(track, target);
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  const length = sourceClip.getProperty("length") as number;
-  const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
+  // One lane per destination track, resolved once: with target "new", asking
+  // per copy would append a fresh lane for every position.
+  const lanes = new Map(
+    destTracks.map(({ trackIndex, track }) => [
+      trackIndex,
+      resolveTakeLane(track, target, takeLaneName),
+    ]),
+  );
 
   const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
   const parsedColors = parseCommaSeparatedColors(
@@ -89,6 +103,10 @@ export function duplicateClipsToTakeLane(
 
   for (let i = 0; i < positionsInBeats.length; i++) {
     const startBeats = positionsInBeats[i] as number;
+    // Both maps are keyed off the same destination track list
+    const { lane } = lanes.get(
+      destTrackIndices[i] as number,
+    ) as ResolvedTakeLane;
 
     try {
       created.push(
@@ -108,8 +126,13 @@ export function duplicateClipsToTakeLane(
     }
   }
 
+  const laneNumbers = [
+    ...new Set([...lanes.values()].map(({ laneNumber }) => laneNumber)),
+  ];
+
   console.warn(
-    `duplicate: created on take lane ${laneNumber}. Expand the take-lanes arrow on the track header in Live to see it.`,
+    `duplicate: created on take lane${laneNumbers.length > 1 ? "s" : ""} ${laneNumbers.join(", ")}. ` +
+      "Expand the take-lanes arrow on the track header in Live to see it.",
   );
 
   return created;

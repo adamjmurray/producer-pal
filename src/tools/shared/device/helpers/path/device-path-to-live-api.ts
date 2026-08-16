@@ -1,9 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { parseTrackSegment } from "#src/tools/shared/validation/destination-path.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 
@@ -27,28 +29,16 @@ interface ChainSegmentResult {
  * @param path - Full path for error messages
  * @returns Live API path prefix
  */
-function parseTrackSegment(trackSegment: string, path: string): string {
-  if (trackSegment === "mt") return livePath.masterTrack().toString();
+function trackPathPrefix(trackSegment: string, path: string): string {
+  const track = parseTrackSegment(trackSegment, "path", path);
 
-  if (trackSegment.startsWith("rt")) {
-    const index = Number.parseInt(trackSegment.slice(2));
+  if (track.kind === "master-track") return livePath.masterTrack().toString();
 
-    if (Number.isNaN(index))
-      throw new Error(`Invalid return track index in path: ${path}`);
-
-    return livePath.returnTrack(index).toString();
+  if (track.kind === "return-track") {
+    return livePath.returnTrack(track.returnIndex).toString();
   }
 
-  if (trackSegment.startsWith("t")) {
-    const index = Number.parseInt(trackSegment.slice(1));
-
-    if (Number.isNaN(index))
-      throw new Error(`Invalid track index in path: ${path}`);
-
-    return livePath.track(index).toString();
-  }
-
-  throw new Error(`Invalid track segment in path: ${path}`);
+  return livePath.track(track.trackIndex).toString();
 }
 
 /**
@@ -137,7 +127,7 @@ export function resolvePathToLiveApi(path: string): ResolvedPath {
     throw new Error(`Invalid path: ${path}`);
   }
 
-  let liveApiPath = parseTrackSegment(firstSegment, path);
+  let liveApiPath = trackPathPrefix(firstSegment, path);
 
   // Track-only path is not valid for devices
   if (segments.length === 1) {

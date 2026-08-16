@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z, type ZodType } from "zod";
+import {
+  carrySchemaTags,
+  describeWithTags,
+} from "#src/tools/shared/tool-framework/schema-tags.ts";
 
 /**
  * Filters parameters from a Zod schema object based on excluded parameter names,
@@ -36,9 +40,12 @@ export function filterSchemaForSmallModel(
   for (const [key, value] of Object.entries(schema)) {
     if (excludeParams?.includes(key)) continue;
 
+    // describeWithTags, not .describe(): a re-described instance loses its
+    // param()/deprecatedParam() tags otherwise, and a deprecated param that
+    // also has a mode override would get republished.
     filtered[key] =
       descriptionOverrides && key in descriptionOverrides
-        ? value.describe(descriptionOverrides[key] as string)
+        ? describeWithTags(value, descriptionOverrides[key] as string)
         : value;
   }
 
@@ -124,5 +131,8 @@ function filterEnumValues(schema: ZodType, valuesToExclude: string[]): ZodType {
     rebuilt = rebuilt.describe(description);
   }
 
-  return rebuilt;
+  // The rebuild is a brand-new instance, so the param()/deprecatedParam() tags
+  // have to be moved over by hand — otherwise trimming a deprecated param's
+  // enum republishes it.
+  return carrySchemaTags(schema, rebuilt);
 }

@@ -305,6 +305,57 @@ describe("updateClip - Basic operations", () => {
     });
   });
 
+  it("should move session clip with toPath", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({ ids: "123", toPath: "t1/s2" });
+
+    expect(result).toMatchObject({
+      id: "live_set/tracks/1/clip_slots/2/clip",
+      slot: "1/2",
+    });
+  });
+
+  // `slot` in a result reads "1/2", and a model pastes it straight back. The
+  // steer has to arrive as a warning: throwing would discard the whole batch,
+  // notes and all.
+  it("should warn (not throw) for a toPath in the old unprefixed spelling", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupToSlotMocks();
+
+    const result = await updateClip({
+      ids: "123",
+      toPath: "1/2",
+      name: "Renamed Anyway",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('did you mean "t1/s2"?'),
+    );
+    expect(result).not.toHaveProperty("slot");
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed Anyway");
+  });
+
+  // The silent-no-op twin of duplicate's ",": update-clip warns rather than
+  // throwing, but it must not stay quiet about a move that never happened.
+  it.each(["toPath", "toSlot"])(
+    "should warn when %s was sent but names nothing",
+    async (param) => {
+      setupMidiClipMock(mocks.clip123);
+      setupToSlotMocks();
+
+      const result = await updateClip({ ids: "123", [param]: "," });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("names no destination"),
+      );
+      expect(result).not.toHaveProperty("slot");
+    },
+  );
+
   it("should ignore an empty toSlot instead of moving the clip", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();

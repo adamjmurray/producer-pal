@@ -100,7 +100,20 @@ export function clearClipAtDuplicateTarget(
   // overlaps target" crash on the duplicate itself. Neither is safe here, so
   // report it (return false) and let the caller route through the holding area
   // (duplicateSelfOverlappingClip) or skip the tile.
-  if (sourceStart < targetEnd && sourceEnd > targetPosition) {
+  //
+  // Only a source on THIS track can be in the way — a cross-track source shares
+  // beats with the target but not the timeline being cleared. An unknown source
+  // track counts as this one: skipping the guard when we can't tell risks the
+  // crash it exists to prevent.
+  const sourceTrackIndex = sourceClip.trackIndex;
+  const sourceIsOnThisTrack =
+    sourceTrackIndex == null || sourceTrackIndex === track.trackIndex;
+
+  if (
+    sourceIsOnThisTrack &&
+    sourceStart < targetEnd &&
+    sourceEnd > targetPosition
+  ) {
     return false;
   }
 

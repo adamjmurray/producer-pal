@@ -17,7 +17,11 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
+import { duplicateClipWithPositions } from "./helpers/clip/duplicate-clip-position-helpers.ts";
+import {
+  resolveClipDestinations,
+  warnUnusedDestination,
+} from "./helpers/clip/duplicate-destination-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import { duplicateSceneToArrangementAtPositions } from "./helpers/duplicate-position-helpers.ts";
@@ -25,12 +29,12 @@ import {
   duplicateTrack,
   duplicateScene,
 } from "./helpers/duplicate-track-scene-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/duplicate-transform-helpers.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
 import {
+  hasArrangementPosition,
   inferDestination,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-  validateClipParameters,
   validateDestinationParameter,
   validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.ts";
@@ -81,8 +85,8 @@ interface DuplicateParams {
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
  * @param args.focus - Focus duplicated clip/scene
- * @param args.toSlot - Destination clip slot(s)
- * @param args.toPath - Destination path
+ * @param args.toSlot - Deprecated destination clip slot(s); use toPath
+ * @param args.toPath - Destination path(s): track, session slot, or device
  * @param args.transforms - Transform expressions broadcast across all copies
  * @param args.code - JavaScript function body broadcast across all copies
  * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
@@ -130,11 +134,22 @@ export async function duplicate(
   // Validate the ID exists and matches the expected type
   const object = validateIdType(id, type, "duplicate");
 
-  // Infer destination from position parameters
-  const destination = inferDestination(type, arrangementStart, locator, toSlot);
+  // Resolve a clip's destination up front, so a bad path fails before anything
+  // is created. Other types have no destination path.
+  const clipDestinations =
+    type === "clip"
+      ? resolveClipDestinations(
+          toPath,
+          toSlot,
+          hasArrangementPosition(arrangementStart, locator),
+        )
+      : null;
 
-  // Validate clip-specific parameters
-  validateClipParameters(type, destination, toSlot);
+  warnUnusedDestination(type, toPath, toSlot);
+
+  const destination =
+    clipDestinations?.destination ??
+    inferDestination(type, arrangementStart, locator);
 
   // Validate destination parameter compatibility with type
   validateDestinationParameter(type, destination);
@@ -165,14 +180,13 @@ export async function duplicate(
   }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
-  const createdObjects = await (type === "clip"
+  const createdObjects = await (clipDestinations != null
     ? duplicateClipWithPositions(
-        destination,
+        clipDestinations,
         object,
         id,
         name,
         color,
-        toSlot,
         arrangementStart,
         locator,
         arrangementLength,

@@ -5,6 +5,11 @@
 
 import { type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
+import {
+  describeWithTags,
+  getSchemaTag,
+  tagSchema,
+} from "#src/tools/shared/tool-framework/schema-tags.ts";
 
 /**
  * Modal tool config: per-arg and per-tool-description overrides keyed by the
@@ -60,30 +65,27 @@ export interface ResolvedParamModes {
   excludeEnumValues: Record<string, string[]>;
 }
 
-interface ModeContext {
+export interface ModeContext {
   notation?: Notation;
   smallModelMode?: boolean;
 }
 
 // Associates a schema instance with its modes without changing its type, so
 // every consumer of inputSchema still sees an ordinary described ZodType and the
-// mode map never leaks into the published JSON schema.
-const PARAM_MODES = new WeakMap<ZodType, ParamModeMap>();
+// mode map never leaks into the published JSON schema. See schema-tags.ts.
+const MODES_TAG = Symbol("paramModes");
 
 /**
  * Wraps a param schema with per-mode overrides. The `default` description is
  * applied via `.describe()` (so all schema consumers keep working unchanged),
- * and the full mode map is stashed for {@link resolveParamModes}.
+ * and the full mode map is stashed for {@link resolveParamModes}. Composes with
+ * {@link deprecatedParam} in either order.
  * @param schema - The param's Zod schema
  * @param modes - Per-mode overrides over the required `default` description
  * @returns The schema described with `default`, tagged with its modes
  */
 export function param<T extends ZodType>(schema: T, modes: ParamModeMap): T {
-  const described = schema.describe(modes.default);
-
-  PARAM_MODES.set(described, modes);
-
-  return described;
+  return tagSchema(describeWithTags(schema, modes.default), MODES_TAG, modes);
 }
 
 /**
@@ -92,7 +94,7 @@ export function param<T extends ZodType>(schema: T, modes: ParamModeMap): T {
  * @returns Its mode map, or undefined if it has no modal overrides
  */
 export function getParamModes(schema: ZodType): ParamModeMap | undefined {
-  return PARAM_MODES.get(schema);
+  return getSchemaTag(schema, MODES_TAG) as ParamModeMap | undefined;
 }
 
 /**

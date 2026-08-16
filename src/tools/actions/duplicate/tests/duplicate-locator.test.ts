@@ -220,6 +220,30 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expectDuplicatedAt(track0, "id clip1", 8);
       expect(result).toHaveProperty("arrangementStart", "3|1");
     });
+
+    // A locator naming nothing parses to zero positions, and the destination
+    // list is cycled against it — so without this the copy count comes from the
+    // track list and the clip lands at an undefined position.
+    it.each([
+      ["", "empty"],
+      [",", "separators only"],
+      ["   ", "whitespace"],
+    ])(
+      "throws instead of placing a copy for a locator that is %s (%s)",
+      async (locator) => {
+        const track0 = setupClipWithLocators(standardCuePoints);
+
+        await expect(
+          duplicate({ type: "clip", id: "clip1", locator }),
+        ).rejects.toThrow("duplicate failed: locator names no locators");
+
+        expect(track0.call).not.toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          expect.anything(),
+          expect.anything(),
+        );
+      },
+    );
   });
 
   describe("multi-value locators", () => {

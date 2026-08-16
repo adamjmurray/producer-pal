@@ -10,6 +10,7 @@
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { parseTrackSegment } from "#src/tools/shared/validation/destination-path.ts";
 import { resolveDrumPadFromPath } from "./path/device-drumpad-navigation.ts";
 
 // Maximum chains that can be auto-created to prevent runaway creation
@@ -61,19 +62,17 @@ export function resolveContainerWithAutoCreate(
  * @returns Live API path
  */
 function resolveTrackPath(segment: string): string {
-  if (segment === "mt") {
+  const track = parseTrackSegment(segment, "path");
+
+  if (track.kind === "master-track") {
     return livePath.masterTrack().toString();
   }
 
-  if (segment.startsWith("rt")) {
-    return livePath.returnTrack(Number.parseInt(segment.slice(2))).toString();
+  if (track.kind === "return-track") {
+    return livePath.returnTrack(track.returnIndex).toString();
   }
 
-  if (segment.startsWith("t")) {
-    return livePath.track(Number.parseInt(segment.slice(1))).toString();
-  }
-
-  throw new Error(`Invalid track segment: ${segment}`);
+  return livePath.track(track.trackIndex).toString();
 }
 
 /**

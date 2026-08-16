@@ -6,6 +6,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   lastMcpContext,
+  mcpRequests,
   neverRespondToMcp,
   setMcpResponse,
 } from "#src/test/mocks/mock-max.ts";
@@ -156,6 +157,20 @@ describe("REST API Routes", () => {
       expect(starkDescription).not.toContain("bar|beat notation");
     });
 
+    it("hides deprecated params, the same as the MCP catalog", async () => {
+      // The catalog is how an agent discovers the tool surface, so serving a
+      // retired param here teaches the model the name MCP is hiding.
+      const response = await fetch(`${appState.baseUrl}/api/tools`);
+      const body = await response.json();
+      const duplicate = body.tools.find(
+        (t: { name: string }) => t.name === "ppal-duplicate",
+      );
+      const params = Object.keys(duplicate.inputSchema.properties);
+
+      expect(params).toContain("toPath");
+      expect(params).not.toContain("toSlot");
+    });
+
     it("allows cross-origin requests (LAN/tunnel chat uses a non-localhost origin)", async () => {
       // /api/tools is intentionally NOT localhost-gated like /config: the chat
       // UI reaches it same-origin from the page URL, which over LAN/tunnel is a
@@ -266,6 +281,26 @@ describe("REST API Routes", () => {
 
       expect(body.result).toBe("track data here");
       expect(body.isError).toBe(false);
+    });
+
+    it("honors a deprecated param and says it is deprecated", async () => {
+      // The catalog no longer lists it, so this notice is the only signal a
+      // REST caller gets. The value is still forwarded.
+      setMcpResponse({ content: [{ type: "text", text: "moved" }] });
+
+      const response = await callTool("ppal-duplicate", {
+        type: "clip",
+        id: "1",
+        toSlot: "2/0",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toMatchObject({
+        toSlot: "2/0",
+      });
+      expect(body.appended?.join("\n")).toContain(
+        'param "toSlot" is deprecated',
+      );
     });
 
     it("should return isError true when tool reports error", async () => {

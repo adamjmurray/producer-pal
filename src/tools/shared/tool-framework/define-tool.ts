@@ -7,12 +7,15 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { type Notation } from "#src/shared/notation.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
+import {
+  type DeprecatedParamInfo,
+  deprecatedParamWarning,
+} from "#src/tools/shared/tool-framework/deprecated-param.ts";
 import {
   type ModalDescription,
   resolveModalDescription,
-  resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -71,23 +74,14 @@ export function defineTool(
     const { smallModelMode = false, notation } = mcpOptions;
     const { inputSchema, description, ...toolConfig } = options;
 
-    // Resolve every param's co-located modes into the flat exclude/override maps
-    // filterSchemaForSmallModel consumes. Notation wins over small-model per
-    // param; a mode's `null` hides the param.
-    const resolved = resolveParamModes(inputSchema, {
-      notation,
-      smallModelMode,
-    });
-
-    // filterSchemaForSmallModel returns the schema unchanged when there is
-    // nothing to exclude or override, so calling it unconditionally is a no-op
-    // for tools/contexts without any active modes.
-    const finalInputSchema = filterSchemaForSmallModel(
-      inputSchema,
-      resolved.excludeParams,
-      resolved.descriptionOverrides,
-      resolved.excludeEnumValues,
-    );
+    // Deprecated params still validate, but are not published — the model never
+    // learns the old name while callers that still send it keep working.
+    const {
+      validating: finalInputSchema,
+      published: publishedSchema,
+      deprecated: deprecatedParams,
+      excludeEnumValues,
+    } = resolveToolSchema(inputSchema, { notation, smallModelMode });
 
     const finalDescription = resolveModalDescription(description, {
       notation,
@@ -95,7 +89,7 @@ export function defineTool(
     });
 
     // Use loose() so extra args reach our handler (SDK would strip them otherwise)
-    const passthroughSchema = z.object(finalInputSchema).loose();
+    const passthroughSchema = z.object(publishedSchema).loose();
 
     server.registerTool(
       name,
@@ -105,10 +99,14 @@ export function defineTool(
         inputSchema: passthroughSchema,
       },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
-        // Detect unexpected arguments before stripping them
+        // Detect unexpected arguments before stripping them. Deprecated params
+        // are expected here even though they were not published.
         const expectedKeys = new Set(Object.keys(finalInputSchema));
         const extraKeys = Object.keys(args).filter(
           (key) => !expectedKeys.has(key),
+        );
+        const usedDeprecated = Object.keys(deprecatedParams).filter(
+          (key) => args[key] != null,
         );
 
         // Parse with strict schema (strips extra keys for callLiveApi)
@@ -118,8 +116,8 @@ export function defineTool(
         // is the primary gate; this catches hallucinated values). Populated only
         // when a mode trims a param's enum values.
         const finalArgs =
-          Object.keys(resolved.excludeEnumValues).length > 0
-            ? filterExcludedEnumValues(validated, resolved.excludeEnumValues)
+          Object.keys(excludeEnumValues).length > 0
+            ? filterExcludedEnumValues(validated, excludeEnumValues)
             : validated;
 
         const rawResult = (await callLiveApi(
@@ -140,6 +138,18 @@ export function defineTool(
           const warning = `Warning: ${name} ignored unexpected argument(s): ${extraKeys.join(", ")}`;
 
           result.content.push({ type: "text", text: warning });
+        }
+
+        // The value was honored; this only steers the caller to the new name.
+        for (const key of usedDeprecated) {
+          result.content.push({
+            type: "text",
+            text: deprecatedParamWarning(
+              name,
+              key,
+              deprecatedParams[key] as DeprecatedParamInfo,
+            ),
+          });
         }
 
         return result;

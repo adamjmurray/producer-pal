@@ -146,7 +146,9 @@ export function normalizeTakeLaneTarget(
  * here is permanent. The MAX cap is enforced before any lane is created, so it
  * never strands one. The one residual leak is unfixable: if a later clip write
  * fails on a freshly created lane, that empty lane persists. Do all other
- * throwing validation (e.g. invalid takeLane) before calling this.
+ * throwing validation (e.g. invalid takeLane) before calling this — and when
+ * resolving lanes on several tracks, {@link assertTakeLaneCapacity} on every one
+ * of them first, or a later track's cap error strands the earlier tracks' lanes.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane
@@ -157,14 +159,8 @@ export function resolveTakeLane(
   target: TakeLaneTarget,
   takeLaneName?: string | null,
 ): ResolvedTakeLane {
-  const currentCount = track.getChildIds("take_lanes").length;
+  const currentCount = assertTakeLaneCapacity(track, target);
   const targetCount = target === "new" ? currentCount + 1 : target;
-
-  if (targetCount > MAX_TAKE_LANES) {
-    throw new Error(
-      `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`,
-    );
-  }
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i < targetCount; i++) {
@@ -180,4 +176,30 @@ export function resolveTakeLane(
   }
 
   return { lane, laneNumber: targetCount };
+}
+
+/**
+ * Checks a track can hold the target lane, without creating anything. Call this
+ * for every destination track before resolving any of them: lanes are permanent,
+ * so a cap error partway through a multi-track resolve leaves empty lanes behind
+ * on the tracks that already succeeded.
+ * @param track - The regular track LiveAPI to check
+ * @param target - Normalized take lane target (lane number or "new")
+ * @returns The track's current take lane count
+ * @throws If the target lane would exceed MAX_TAKE_LANES
+ */
+export function assertTakeLaneCapacity(
+  track: LiveAPI,
+  target: TakeLaneTarget,
+): number {
+  const currentCount = track.getChildIds("take_lanes").length;
+  const targetCount = target === "new" ? currentCount + 1 : target;
+
+  if (targetCount > MAX_TAKE_LANES) {
+    throw new Error(
+      `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`,
+    );
+  }
+
+  return currentCount;
 }

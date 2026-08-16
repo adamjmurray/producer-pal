@@ -7,6 +7,7 @@ import {
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
@@ -30,13 +31,20 @@ export function resolveArrangementPositions(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number[] {
+  // A malformed list (e.g. "", "," or only whitespace) survives the earlier
+  // trim-only checks but parses to zero positions. Callers cycle this list
+  // against the destination tracks, so an empty one yields a copy at an
+  // undefined position rather than no copies — throw instead.
   if (locator != null) {
-    return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
+    const times = resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
+
+    if (times.length === 0) {
+      throw new Error("duplicate failed: locator names no locators");
+    }
+
+    return times;
   }
 
-  // A malformed list (e.g. "," or only whitespace) survives the earlier
-  // trim-only checks but parses to zero positions; throw instead of silently
-  // producing no duplicates.
   const positions = parseArrangementStartList(arrangementStart);
 
   if (positions.length === 0) {
@@ -127,29 +135,36 @@ export function validateAndConfigureRouteToSource(
 }
 
 /**
- * Infers the duplication destination from the provided parameters
+ * Reports whether the call names an arrangement position.
+ * @param arrangementStart - Bar|beat position(s)
+ * @param locator - Locator ID(s) or name(s)
+ * @returns True when either names a position
+ */
+export function hasArrangementPosition(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): boolean {
+  return (
+    (arrangementStart != null && arrangementStart.trim() !== "") ||
+    locator != null
+  );
+}
+
+/**
+ * Infers the duplication destination for a track, scene, or device. Clips
+ * resolve theirs from toPath (see duplicate-destination-helpers.ts).
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
  * @param locator - Locator ID or name
- * @param toSlot - Session clip slot
  * @returns Inferred destination
  */
 export function inferDestination(
   type: string,
   arrangementStart: string | undefined,
   locator: string | undefined,
-  toSlot: string | undefined,
 ): "session" | "arrangement" | undefined {
-  const hasArrangementParams =
-    (arrangementStart != null && arrangementStart.trim() !== "") ||
-    locator != null;
-
-  if (hasArrangementParams) {
+  if (hasArrangementPosition(arrangementStart, locator)) {
     return "arrangement";
-  }
-
-  if (type === "clip") {
-    return toSlot != null ? "session" : undefined;
   }
 
   if (type === "device") {
@@ -161,29 +176,49 @@ export function inferDestination(
 }
 
 /**
- * Validates clip-specific parameters
- * @param type - Type of object being duplicated
- * @param destination - Inferred destination
- * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
+ * Resolves and validates the tracks a clip is duplicated onto in the arrangement.
+ * @param sourceClip - The clip being duplicated
+ * @param trackIndices - Requested destination tracks, or empty for the source's own track
+ * @returns The destination track indices
  */
-export function validateClipParameters(
-  type: string,
-  destination: string | undefined,
-  toSlot: string | undefined,
-): void {
-  if (type !== "clip") {
-    return;
+export function resolveDestinationTrackIndices(
+  sourceClip: LiveAPI,
+  trackIndices: number[],
+): number[] {
+  if (trackIndices.length === 0) {
+    const sourceTrackIndex = sourceClip.trackIndex;
+
+    if (sourceTrackIndex == null) {
+      throw new Error(
+        `duplicate failed: no track index for clip id "${sourceClip.id}" (path=${sourceClip.path})`,
+      );
+    }
+
+    return [sourceTrackIndex];
   }
 
-  if (destination == null) {
-    throw new Error(
-      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
-    );
+  const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
+
+  for (const trackIndex of trackIndices) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
+
+    if (!track.exists()) {
+      throw new Error(`duplicate failed: no track at toPath "t${trackIndex}"`);
+    }
+
+    // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
+    // failing, so check first rather than reporting a copy that never happened.
+    const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
+
+    if (clipIsMidi !== trackIsMidi) {
+      throw new Error(
+        `duplicate failed: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
+          `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
+      );
+    }
   }
 
-  if (destination === "session" && (toSlot == null || toSlot.trim() === "")) {
-    throw new Error("duplicate failed: toSlot is required for session clips");
-  }
+  return trackIndices;
 }
 
 /**

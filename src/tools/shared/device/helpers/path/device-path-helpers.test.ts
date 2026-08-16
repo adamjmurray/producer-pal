@@ -417,16 +417,14 @@ describe("device-path-helpers", () => {
         expect(() => resolvePathToLiveApi("/d0")).toThrow("Invalid path: /d0");
       });
 
-      it("throws on invalid track prefix", () => {
-        expect(() => resolvePathToLiveApi("abc/d0")).toThrow(
-          "Invalid track segment",
-        );
-      });
-
-      it("throws on invalid return track index", () => {
-        expect(() => resolvePathToLiveApi("rtx/d0")).toThrow(
-          "Invalid return track index",
-        );
+      it("throws on any malformed track segment, naming the valid forms", () => {
+        // One message for all of them: the track grammar lives in
+        // destination-path.ts so clip and device paths can't drift apart.
+        for (const path of ["abc/d0", "rtx/d0", "tabc/d0"]) {
+          expect(() => resolvePathToLiveApi(path)).toThrow(
+            /is not a track; expected "t<index>", "rt<index>", or "mt"/,
+          );
+        }
       });
 
       it("throws on invalid device index", () => {
@@ -450,12 +448,6 @@ describe("device-path-helpers", () => {
       it("throws on empty drum pad note", () => {
         expect(() => resolvePathToLiveApi("t1/d0/p")).toThrow(
           "Invalid drum pad note",
-        );
-      });
-
-      it("throws on invalid track index with 't' prefix", () => {
-        expect(() => resolvePathToLiveApi("tabc/d0")).toThrow(
-          "Invalid track index in path",
         );
       });
 
@@ -535,17 +527,13 @@ describe("device-path-helpers", () => {
     });
 
     it("throws on invalid track segment for single-segment paths", () => {
-      // Single segment paths that don't match mt/rt*/t* prefixes
-      // Note: "track0" starts with "t" so it's handled by the t* branch
-      expect(() => resolveInsertionPath("xyz")).toThrow(
-        "Invalid track segment: xyz",
-      );
-      expect(() => resolveInsertionPath("abc")).toThrow(
-        "Invalid track segment: abc",
-      );
-      expect(() => resolveInsertionPath("scene0")).toThrow(
-        "Invalid track segment: scene0",
-      );
+      // "track0" and "t" used to slip through the old startsWith("t") check and
+      // resolve to track NaN; the shared grammar requires t<digits>.
+      for (const path of ["xyz", "abc", "scene0", "track0", "t"]) {
+        expect(() => resolveInsertionPath(path)).toThrow(
+          `"${path}" is not a track`,
+        );
+      }
     });
 
     describe("chain auto-creation", () => {

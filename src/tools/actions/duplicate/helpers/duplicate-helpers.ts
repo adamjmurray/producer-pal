@@ -363,6 +363,7 @@ export function duplicateClipSlot(
  * Duplicate a clip to the arrangement view
  * @param clipId - Clip ID to duplicate
  * @param arrangementStartBeats - Start position in beats
+ * @param destTrackIndex - Track to place the copy on (may differ from the source's)
  * @param name - Optional name for the duplicated clip(s)
  * @param color - Optional color for the duplicated clip(s)
  * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
@@ -374,6 +375,7 @@ export function duplicateClipSlot(
 export async function duplicateClipToArrangement(
   clipId: string,
   arrangementStartBeats: number,
+  destTrackIndex?: number,
   name?: string,
   color?: string,
   arrangementLength?: string,
@@ -388,7 +390,7 @@ export async function duplicateClipToArrangement(
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
   }
 
-  const trackIndex = clip.trackIndex;
+  const trackIndex = destTrackIndex ?? clip.trackIndex;
 
   if (trackIndex == null) {
     throw new Error(

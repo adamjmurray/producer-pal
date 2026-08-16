@@ -603,7 +603,15 @@ describe("device-path-helpers", () => {
 
     it("throws for an invalid track segment in a multi-segment container path", () => {
       expect(() => resolveInsertionPath("x0/c0")).toThrow(
-        "Invalid track segment: x0",
+        'invalid path "x0" - "x0" is not a track',
+      );
+    });
+
+    // The old lenient parser read "t0abc" as track 0; the shared grammar is
+    // strict, so device paths reject it the same way clip paths do.
+    it("throws for a malformed track index in a container path", () => {
+      expect(() => resolveInsertionPath("t0abc/c0")).toThrow(
+        'invalid path "t0abc" - "t0abc" is not a track',
       );
     });
   });
