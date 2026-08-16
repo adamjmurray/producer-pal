@@ -10,17 +10,17 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  namedHiddenDestination,
-  namedDestination,
-  parseDestinationPathList,
-  requireClipDestination,
-} from "#src/tools/shared/validation/destination-path.ts";
+  namedHiddenPath,
+  namedPath,
+  parseObjectPathList,
+  requireClipPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   parseSlotList,
   type SlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
-type ClipPath = ReturnType<typeof requireClipDestination>;
+type ClipPath = ReturnType<typeof requireClipPath>;
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
@@ -44,8 +44,8 @@ export function resolveClipDestinations(
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const toPath = namedDestination(rawToPath);
-  const toSlot = namedHiddenDestination(rawToSlot);
+  const toPath = namedPath(rawToPath);
+  const toSlot = namedHiddenPath(rawToSlot);
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // toPath replaces, so refuse instead of picking.
@@ -59,8 +59,8 @@ export function resolveClipDestinations(
     return legacySlotDestinations(toSlot, hasArrangementParams);
   }
 
-  const paths = parseDestinationPathList(toPath).map((path) =>
-    requireClipDestination(path),
+  const paths = parseObjectPathList(toPath, "toPath").map((path) =>
+    requireClipPath(path, "toPath"),
   );
 
   if (hasArrangementParams) {
@@ -114,8 +114,8 @@ export function warnUnusedDestination(
 ): void {
   if (type === "clip") return;
 
-  const toPath = namedDestination(rawToPath);
-  const toSlot = namedHiddenDestination(rawToSlot);
+  const toPath = namedPath(rawToPath);
+  const toSlot = namedHiddenPath(rawToSlot);
 
   if (type !== "device" && toPath != null) {
     console.warn(

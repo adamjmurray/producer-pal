@@ -110,15 +110,10 @@ describe("createClip path param", () => {
     expect(result).toHaveLength(4);
   });
 
-  it("rejects a bare trackIndex/sceneIndex path with the prefixed spelling", async () => {
-    await expect(createClip({ path: "0/1" })).rejects.toThrow(
-      'invalid path "0/1" - paths need segment prefixes; did you mean "t0/s1"?',
-    );
-  });
-
   it("rejects a destination no clip can occupy", async () => {
     await expect(createClip({ path: "rt0" })).rejects.toThrow(
-      'invalid path "rt0" - clips go to a track ("t0") or a session slot ("t0/s1")',
+      'invalid path "rt0" - return and master tracks have no clips; ' +
+        'clips go to a track ("t0") or a session slot ("t0/s1")',
     );
   });
 

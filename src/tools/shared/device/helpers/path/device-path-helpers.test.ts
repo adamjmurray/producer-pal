@@ -18,17 +18,6 @@ import {
   resolveInsertionPath,
 } from "./device-path-helpers.ts";
 
-vi.mock(import("./device-path-to-live-api.ts"), async (importOriginal) => {
-  const original = await importOriginal();
-
-  return {
-    ...original,
-    resolvePathToLiveApi: vi.fn(original.resolvePathToLiveApi),
-  };
-});
-
-import { resolvePathToLiveApi as resolvePathToLiveApiMock } from "./device-path-to-live-api.ts";
-
 interface MockLiveApiContext {
   _path?: string;
   _id?: string;
@@ -386,74 +375,63 @@ describe("device-path-helpers", () => {
     });
 
     describe("error handling", () => {
-      it("throws on empty path", () => {
-        expect(() => resolvePathToLiveApi("")).toThrow(
-          "Path must be a non-empty string",
-        );
-      });
-
-      it("throws on null path", () => {
-        expect(() => resolvePathToLiveApi(null as unknown as string)).toThrow(
-          "Path must be a non-empty string",
-        );
-      });
-
-      it("throws on a non-string path", () => {
+      it("throws on an empty or non-string path", () => {
         // A truthy non-string trips the `typeof !== "string"` half of the guard
         // (not the `!path` half), so removing it would let `.split` throw a
         // different, less useful error.
-        expect(() => resolvePathToLiveApi(123 as unknown as string)).toThrow(
-          "Path must be a non-empty string",
-        );
-      });
-
-      it("throws on track-only path", () => {
-        expect(() => resolvePathToLiveApi("t1")).toThrow(
-          "Path must include at least a device index",
-        );
-      });
-
-      it("throws when the first segment is empty (leading slash)", () => {
-        expect(() => resolvePathToLiveApi("/d0")).toThrow("Invalid path: /d0");
-      });
-
-      it("throws on any malformed track segment, naming the valid forms", () => {
-        // One message for all of them: the track grammar lives in
-        // destination-path.ts so clip and device paths can't drift apart.
-        for (const path of ["abc/d0", "rtx/d0", "tabc/d0"]) {
-          expect(() => resolvePathToLiveApi(path)).toThrow(
-            /is not a track; expected "t<index>", "rt<index>", or "mt"/,
+        for (const path of ["", null, 123]) {
+          expect(() => resolvePathToLiveApi(path as string)).toThrow(
+            "invalid path: path is empty",
           );
         }
       });
 
-      it("throws on invalid device index", () => {
-        expect(() => resolvePathToLiveApi("t1/dabc")).toThrow(
-          "Invalid device index",
+      it("throws on track-only path", () => {
+        // rt0 and mt used to answer with this too, because the return/master
+        // case fell through to the device parser instead of naming a track.
+        for (const path of ["t1", "rt0", "mt"]) {
+          expect(() => resolvePathToLiveApi(path)).toThrow(
+            `invalid path "${path}" - a track is not a device; add a device index (e.g. "${path}/d0")`,
+          );
+        }
+      });
+
+      it("throws when the first segment is empty (leading slash)", () => {
+        expect(() => resolvePathToLiveApi("/d0")).toThrow(
+          'invalid path "/d0" - it has an empty segment',
         );
       });
 
-      it("throws on invalid chain index", () => {
-        expect(() => resolvePathToLiveApi("t1/d0/cabc")).toThrow(
-          "Invalid chain index",
-        );
+      it("throws on any malformed track segment, naming the valid forms", () => {
+        // One message for all of them: the whole grammar lives in
+        // object-path.ts so clip and device paths can't drift apart.
+        for (const path of ["abc/d0", "rtx/d0", "tabc/d0"]) {
+          expect(() => resolvePathToLiveApi(path)).toThrow(
+            /is not a track or scene; expected "t<index>", "rt<index>", "mt", or "s<index>"/,
+          );
+        }
       });
 
-      it("throws on invalid return chain index", () => {
-        expect(() => resolvePathToLiveApi("t1/d0/rcx")).toThrow(
-          "Invalid return chain index",
-        );
+      it("throws on a segment that names no device, chain, or pad", () => {
+        for (const path of [
+          "t1/dabc",
+          "t1/d0/cabc",
+          "t1/d0/rcx",
+          "t1/d0/p",
+          "t0/d0/xyz",
+        ]) {
+          expect(() => resolvePathToLiveApi(path)).toThrow(
+            /is not a device, chain, or drum pad; expected "d<index>", "c<index>", "rc<index>", or "p<note>"/,
+          );
+        }
       });
 
-      it("throws on empty drum pad note", () => {
-        expect(() => resolvePathToLiveApi("t1/d0/p")).toThrow(
-          "Invalid drum pad note",
+      it("throws on a path that holds no device at all", () => {
+        expect(() => resolvePathToLiveApi("s0")).toThrow(
+          /a scene holds no devices/,
         );
-      });
-
-      it("throws on invalid chain segment (not c, rc, or p prefix)", () => {
-        expect(() => resolvePathToLiveApi("t0/d0/xyz")).toThrow(
-          "Invalid chain segment in path",
+        expect(() => resolvePathToLiveApi("t0/s1")).toThrow(
+          /a session slot holds no devices/,
         );
       });
     });
@@ -504,36 +482,38 @@ describe("device-path-helpers", () => {
     });
 
     it("throws on invalid paths", () => {
-      expect(() => resolveInsertionPath("")).toThrow(
-        "Path must be a non-empty string",
-      );
-      expect(() => resolveInsertionPath(null as unknown as string)).toThrow(
-        "Path must be a non-empty string",
-      );
-      expect(() => resolveInsertionPath(123 as unknown as string)).toThrow(
-        "Path must be a non-empty string",
-      );
+      for (const path of ["", null, 123]) {
+        expect(() => resolveInsertionPath(path as string)).toThrow(
+          "invalid path: path is empty",
+        );
+      }
+
+      // A negative or non-numeric device position is a parse error now, not a
+      // position the resolver has to second-guess.
       expect(() => resolveInsertionPath("t0/dabc")).toThrow(
-        "Invalid device position",
+        /"dabc" is not a device, chain, or drum pad/,
       );
       expect(() => resolveInsertionPath("t0/d-1")).toThrow(
-        "Invalid device position",
+        /"d-1" is not a device, chain, or drum pad/,
       );
     });
 
     it("throws on path starting with /", () => {
-      expect(() => resolveInsertionPath("/t0")).toThrow("Invalid path: /t0");
-      expect(() => resolveInsertionPath("/")).toThrow("Invalid path: /");
+      for (const path of ["/t0", "/"]) {
+        expect(() => resolveInsertionPath(path)).toThrow(
+          `invalid path "${path}" - it has an empty segment`,
+        );
+      }
     });
 
     it("names the param the path came from", () => {
       // A device duplicate/move gets its path from `toPath`, so reporting
       // "invalid path" sends a caller looking for a param it never sent.
       expect(() => resolveInsertionPath("x9/d0", "toPath")).toThrow(
-        'invalid toPath "x9" - "x9" is not a track',
+        'invalid toPath "x9/d0" - "x9" is not a track or scene',
       );
       expect(() => resolveInsertionPath("x9/d0")).toThrow(
-        'invalid path "x9" - "x9" is not a track',
+        'invalid path "x9/d0" - "x9" is not a track or scene',
       );
     });
 
@@ -717,28 +697,6 @@ describe("device-path-helpers", () => {
     });
 
     describe("drum pad edge cases", () => {
-      it("returns LiveAPI.from when resolvePathToLiveApi returns non-drum-pad type", () => {
-        // resolveDrumPadContainer returns LiveAPI.from(resolved.liveApiPath)
-        // when resolvePathToLiveApi returns a non-drum-pad targetType.
-        // This is a defensive branch since paths with 'p' always resolve to drum-pad.
-        // We mock resolvePathToLiveApi to return a chain type for a path with 'p'.
-        const mock = vi.mocked(resolvePathToLiveApiMock);
-
-        mock.mockReturnValueOnce({
-          liveApiPath: "live_set tracks 0 devices 0 chains 0",
-          targetType: "chain",
-          remainingSegments: [],
-        });
-
-        // Path has 'p' so resolveContainer calls resolveDrumPadContainer
-        const result = resolveInsertionPath("t0/d0/pC1");
-
-        expect((result.container as MockLiveApiContext)._path).toBe(
-          "live_set tracks 0 devices 0 chains 0",
-        );
-        expect(result.position).toBeNull();
-      });
-
       it("returns null when device does not exist during drum pad auto-creation", () => {
         // device.exists() returns false inside the chain auto-creation block
         // Register device with id "0" so exists() returns false

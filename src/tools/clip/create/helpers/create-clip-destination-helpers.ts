@@ -13,11 +13,11 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  namedDestination,
-  namedHiddenDestination,
-  parseDestinationPathList,
-  requireClipDestination,
-} from "#src/tools/shared/validation/destination-path.ts";
+  namedPath,
+  namedHiddenPath,
+  parseObjectPathList,
+  requireClipPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   parseSlotList,
   type SlotPosition,
@@ -64,8 +64,8 @@ export function resolveCreateClipDestinations(
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const path = namedDestination(params.path ?? undefined);
-  const slot = namedHiddenDestination(params.slot ?? undefined);
+  const path = namedPath(params.path ?? undefined);
+  const slot = namedHiddenPath(params.slot ?? undefined);
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // path replaces, so refuse instead of picking.
@@ -112,8 +112,8 @@ function splitPathDestinations(
   const sessionSlots: SlotPosition[] = [];
   const tracks: number[] = [];
 
-  for (const destination of parseDestinationPathList(path, "path")) {
-    const clipPath = requireClipDestination(destination, "path");
+  for (const destination of parseObjectPathList(path, "path")) {
+    const clipPath = requireClipPath(destination, "path");
 
     if (clipPath.kind === "slot") {
       sessionSlots.push({

@@ -310,11 +310,12 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric chain segment", () => {
-    // "cX" parses to NaN; the NaN guard must reject it with the index error.
+    // Segments past a drum pad are still segments: the grammar rejects "cX"
+    // before any of this resolves against the rack.
     setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
 
     expect(() => readDevice({ path: "t1/d0/pC1/cX" })).toThrow(
-      "Invalid chain index in path: t1/d0/pC1/cX",
+      'invalid path "t1/d0/pC1/cX" - "cX" is not a device, chain, or drum pad',
     );
   });
 
@@ -357,11 +358,10 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric device segment", () => {
-    // "dX" parses to NaN; the NaN guard must reject it with the index error.
     setupKickPadWithChainDevice();
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
-      "Invalid device index in path: t1/d0/pC1/c0/dX",
+      'invalid path "t1/d0/pC1/c0/dX" - "dX" is not a device, chain, or drum pad',
     );
   });
 });

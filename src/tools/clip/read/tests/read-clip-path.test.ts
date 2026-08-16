@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
@@ -28,8 +29,21 @@ describe("readClip path param", () => {
     );
   });
 
-  it("rejects the unprefixed spelling with the fix", () => {
-    expect(() => readClip({ path: "1/1" })).toThrow('did you mean "t1/s1"?');
+  // What results said before 2.2.0, so a model pasting one back made a
+  // well-founded guess: honor it, and warn to teach the spelling.
+  it("honors the old unprefixed spelling, with a warning", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipProps: { name: "Test Clip" },
+    });
+
+    expect(readClip({ path: "1/1" }).name).toBe("Test Clip");
+    expect(warn).toHaveBeenCalledWith(
+      'path "1/1" is the old slot spelling; use "t1/s1"',
+    );
   });
 
   it("still reads via the deprecated slot", () => {

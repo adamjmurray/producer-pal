@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -567,15 +568,14 @@ describe("device-path-helpers", () => {
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
-    it("returns null for negative chain index during auto-creation", () => {
+    it("rejects a negative chain index before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // Negative chain index is invalid
-      const result = resolveInsertionPath("t0/d0/pC1/c-1");
-
-      expect(result.container).toBeNull();
+      expect(() => resolveInsertionPath("t0/d0/pC1/c-1")).toThrow(
+        /"c-1" is not a device, chain, or drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
@@ -603,7 +603,7 @@ describe("device-path-helpers", () => {
 
     it("throws for an invalid track segment in a multi-segment container path", () => {
       expect(() => resolveInsertionPath("x0/c0")).toThrow(
-        'invalid path "x0" - "x0" is not a track',
+        'invalid path "x0/c0" - "x0" is not a track or scene',
       );
     });
 
@@ -611,7 +611,7 @@ describe("device-path-helpers", () => {
     // strict, so device paths reject it the same way clip paths do.
     it("throws for a malformed track index in a container path", () => {
       expect(() => resolveInsertionPath("t0abc/c0")).toThrow(
-        'invalid path "t0abc" - "t0abc" is not a track',
+        'invalid path "t0abc/c0" - "t0abc" is not a track or scene',
       );
     });
   });

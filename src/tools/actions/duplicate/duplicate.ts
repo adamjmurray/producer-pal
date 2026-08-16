@@ -10,7 +10,7 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { destinationPathEntries } from "#src/tools/shared/validation/destination-path.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -256,7 +256,7 @@ function duplicateDeviceWithPaths(
 ): object | object[] {
   // Reads a blank toPath as omitted the way clips do, and refuses one that
   // names nothing rather than quietly falling back to the default destination.
-  const paths = destinationPathEntries(toPath);
+  const paths = pathEntries(toPath, "toPath");
 
   if (paths.length <= 1) {
     return duplicateDevice(object, paths[0], name, count);

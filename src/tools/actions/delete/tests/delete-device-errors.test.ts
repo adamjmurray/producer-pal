@@ -76,7 +76,9 @@ describe("deleteObject device path error cases", () => {
 
     expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
-      "delete: Invalid drum pad note in path: t0/d0/p",
+      expect.stringContaining(
+        'delete: invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
+      ),
     );
   });
 

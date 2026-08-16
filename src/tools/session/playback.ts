@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -7,10 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  namedDestination,
-  namedHiddenDestination,
+  namedPath,
+  namedHiddenPath,
   parseSessionSlotList,
-} from "#src/tools/shared/validation/destination-path.ts";
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   getCurrentLoopState,
@@ -358,8 +359,8 @@ function resolvePlaybackSlotPositions(
   path: string | undefined,
   slots: string | undefined,
 ): SlotPosition[] | null {
-  const named = namedDestination(path);
-  const legacy = namedHiddenDestination(slots);
+  const named = namedPath(path);
+  const legacy = namedHiddenPath(slots);
 
   if (named != null && legacy != null) {
     throw new Error(

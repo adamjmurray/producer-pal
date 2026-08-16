@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
@@ -74,8 +75,72 @@ describe("select path param", () => {
     expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_2");
   });
 
-  it("rejects the unprefixed spelling with the fix", () => {
-    expect(() => select({ path: "0/1" })).toThrow('did you mean "t0/s1"?');
+  // What results said before 2.2.0, so a model pasting one back made a
+  // well-founded guess: honor it, and warn to teach the spelling.
+  it("honors the old unprefixed spelling, with a warning", () => {
+    const warn = vi.spyOn(console, "warn");
+    const songView = setupSongViewMock();
+
+    registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    select({ path: "0/1" });
+
+    expect(songView.set).toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      expect.anything(),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    );
+  });
+
+  // rt0 and mt used to fall through to the device parser, which answered a
+  // select call with a message about device indices.
+  it("selects a return or master track", () => {
+    registerMockObject("return_0", {
+      path: livePath.returnTrack(0),
+      type: "Track",
+    });
+    registerMockObject("master", {
+      path: livePath.masterTrack(),
+      type: "Track",
+    });
+    const songView = setupSongViewMock();
+
+    select({ path: "rt0" });
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id return_0");
+
+    select({ path: "mt" });
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id master");
+  });
+
+  it("selects a scene", () => {
+    registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
+    const songView = setupSongViewMock();
+
+    select({ path: "s3" });
+
+    expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
+  });
+
+  it("refuses a path that disagrees with the param it duplicates", () => {
+    expect(() => select({ path: "t2", trackIndex: 3 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    expect(() => select({ path: "rt0", trackType: "master" })).toThrow(
+      "select failed: path and trackType name different targets",
+    );
+    expect(() => select({ path: "s3", sceneIndex: 4 })).toThrow(
+      "select failed: path and sceneIndex name different targets",
+    );
+  });
+
+  it("rejects a take lane, which names no one thing to select", () => {
+    expect(() => select({ path: "t0/l1" })).toThrow(
+      /a take lane is not selectable/,
+    );
   });
 
   it("refuses path alongside a param it replaced", () => {

@@ -16,10 +16,10 @@ import {
   copyClipToSlot,
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
-  namedHiddenDestination,
-  namedDestination,
-  parseDestinationPathList,
-} from "#src/tools/shared/validation/destination-path.ts";
+  namedHiddenPath,
+  namedPath,
+  parseObjectPathList,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 
@@ -42,8 +42,8 @@ export function resolveMoveDestination(
 ): SlotPosition | null {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const toPath = namedDestination(rawToPath);
-  const toSlot = namedHiddenDestination(rawToSlot);
+  const toPath = namedPath(rawToPath);
+  const toSlot = namedHiddenPath(rawToSlot);
 
   // Honoring one and dropping the other would move the clip somewhere the
   // caller didn't ask for, so move it nowhere and say so.
@@ -135,7 +135,10 @@ export function handlePositionOperations(
  * @returns The destination slot, or null when the path names no slot
  */
 function pathDestination(toPath: string): SlotPosition | null {
-  const first = firstDestination(parseDestinationPathList(toPath), "toPath");
+  const first = firstDestination(
+    parseObjectPathList(toPath, "toPath"),
+    "toPath",
+  );
 
   if (first.kind !== "slot") {
     console.warn(
@@ -156,7 +159,7 @@ function pathDestination(toPath: string): SlotPosition | null {
  * @throws When the param was sent but names nothing
  */
 function firstDestination<T>(destinations: T[], label: string): T {
-  // Only toSlot arrives empty (e.g. ","); parseDestinationPathList throws
+  // Only toSlot arrives empty (e.g. ","); parseObjectPathList throws
   // before toPath can. Throwing rather than warning lets the caller's catch
   // report it like any other destination that failed to parse, and spares
   // callers a null case that only one of them can hit.

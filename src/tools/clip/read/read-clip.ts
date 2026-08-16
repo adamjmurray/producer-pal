@@ -16,12 +16,12 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
-  namedDestination,
-  namedHiddenDestination,
-  parseDestinationPath,
+  namedPath,
+  namedHiddenPath,
   requireSessionSlot,
-} from "#src/tools/shared/validation/destination-path.ts";
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   formatSlot,
   parseSlot,
@@ -450,15 +450,15 @@ function resolveClipLocation(args: ReadClipArgs): {
   sceneIndex: number | null;
 } {
   const clipId = args.clipId ?? null;
-  const path = namedDestination(args.path ?? undefined);
+  const path = namedPath(args.path ?? undefined);
 
   if (path != null) {
-    const parsed = requireSessionSlot(parseDestinationPath(path, "path"));
+    const parsed = requireSessionSlot(parseObjectPath(path, "path"));
 
     return { clipId, ...parsed };
   }
 
-  const slot = namedHiddenDestination(args.slot ?? undefined);
+  const slot = namedHiddenPath(args.slot ?? undefined);
 
   if (slot != null) {
     return { clipId, ...parseSlot(slot) };

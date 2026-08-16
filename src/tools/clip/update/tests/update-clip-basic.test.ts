@@ -318,25 +318,25 @@ describe("updateClip - Basic operations", () => {
     });
   });
 
-  // `slot` in a result reads "1/2", and a model pastes it straight back. The
-  // steer has to arrive as a warning: throwing would discard the whole batch,
-  // notes and all.
-  it("should warn (not throw) for a toPath in the old unprefixed spelling", async () => {
+  // `slot` in a result reads "1/2", and a model pastes it straight back. That's
+  // a well-founded guess, not a typo — make the move and warn to teach the
+  // spelling that replaced it.
+  it("should honor a toPath in the old unprefixed spelling, with a warning", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({
-      ids: "123",
-      toPath: "1/2",
-      name: "Renamed Anyway",
-    });
+    const result = await updateClip({ ids: "123", toPath: "1/2" });
 
+    expect(result).toMatchObject({
+      id: "live_set/tracks/1/clip_slots/2/clip",
+      slot: "1/2",
+    });
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('did you mean "t1/s2"?'),
+      expect.stringContaining(
+        'toPath "1/2" is the old slot spelling; use "t1/s2"',
+      ),
     );
-    expect(result).not.toHaveProperty("slot");
-    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed Anyway");
   });
 
   // The silent-no-op twin of duplicate's ",": update-clip warns rather than
