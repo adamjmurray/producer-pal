@@ -50,6 +50,20 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel:
         "array of {name, value}. name = param name or id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
     }),
+    // The escape hatch for the drum-pad instrument-swap guard
+    // (nested-param-target.ts), and deliberately NOT taught in the skills: the
+    // model learns of it from the warning, at the moment it is relevant, so it
+    // never reaches for it casually. Declared in EVERY mode — including
+    // small-model, whose `params` description teaches the sample write — because
+    // a guard whose only way out is hidden from the tier that hits it would
+    // deadlock the write.
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Only when a sample write was skipped for replacing a pad's " +
+          "instrument: true replaces it anyway.",
+      ),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
     // a delimited string would be ambiguous. One action string per element.
