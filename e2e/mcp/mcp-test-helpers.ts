@@ -266,6 +266,29 @@ export async function createTestDevice(
 }
 
 /**
+ * Creates a Drum Rack at `path` with two populated pads (C1 = kick, D1 = the
+ * generic sample) and waits for state to settle.
+ */
+export async function createTwoPadDrumRack(
+  client: Client,
+  path: string,
+): Promise<void> {
+  await client.callTool({
+    name: "ppal-create-device",
+    arguments: {
+      deviceName: "Drum Rack",
+      path,
+      params: [
+        { name: "pC1/d0/sample", value: KICK_FILE },
+        { name: "pD1/d0/sample", value: SAMPLE_FILE },
+      ],
+    },
+  });
+
+  await sleep(200);
+}
+
+/**
  * Reads a clip's notes back from Live and returns the parsed result.
  * The most common e2e read-back pattern, shared across clip test suites.
  */

@@ -13,7 +13,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
-  setupDrumChainMocks,
+  setupDrumPadPathMocks,
   setupDrumPadMocks,
   setupNestedDrumDeviceMocks,
 } from "./delete-test-helpers.ts";
@@ -537,34 +537,72 @@ describe("deleteObject device deletion", () => {
       );
     });
 
-    it("should delete a drum chain by path", () => {
-      const chainId = "chain-36";
+    it("should clear the DrumPad itself by path, not its chain", () => {
+      const padId = "pad-36";
 
-      const { chain } = setupDrumChainMocks({
+      const { pad } = setupDrumPadPathMocks({
         devicePath: "live_set tracks 0 devices 0",
-        chainPath: "live_set tracks 0 devices 0 chains 0",
         drumRackId: "drum-rack-1",
-        chainId,
+        padId,
       });
 
       const result = deleteObject({ path: "t0/d0/pC1", type: "drum-pad" });
 
       expect(result).toStrictEqual({
-        id: chainId,
+        id: padId,
         type: "drum-pad",
         deleted: true,
       });
-      expect(chain.call).toHaveBeenCalledWith("delete_all_chains");
+      expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
+    });
+
+    it("should clear a pad on a drum rack nested inside an instrument rack", () => {
+      const padId = "pad-38";
+
+      const { pad } = setupDrumPadPathMocks({
+        devicePath: "live_set tracks 0 devices 0 chains 0 devices 0",
+        drumRackId: "nested-drum-rack",
+        padId,
+        note: 38,
+      });
+
+      const result = deleteObject({
+        path: "t0/d0/c0/d0/pD1",
+        type: "drum-pad",
+      });
+
+      expect(result).toStrictEqual({
+        id: padId,
+        type: "drum-pad",
+        deleted: true,
+      });
+      expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
+    });
+
+    it("should warn when the pad note does not exist on the rack", () => {
+      const consoleSpy = vi.spyOn(console, "warn");
+
+      setupDrumPadPathMocks({
+        devicePath: "live_set tracks 0 devices 0",
+        drumRackId: "drum-rack-1",
+        padId: "pad-36",
+      });
+
+      const result = deleteObject({ path: "t0/d0/pD1", type: "drum-pad" });
+
+      expect(result).toStrictEqual([]);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'delete: drum-pad at path "t0/d0/pD1" does not exist',
+      );
     });
 
     it("should delete drum pads from both ids and path", () => {
-      const chainId = "chain-36";
+      const padId = "pad-36";
 
-      const { chain, extraPads } = setupDrumChainMocks({
+      const { pad, extraPads } = setupDrumPadPathMocks({
         devicePath: "live_set tracks 0 devices 0",
-        chainPath: "live_set tracks 0 devices 0 chains 0",
         drumRackId: "drum-rack-1",
-        chainId,
+        padId,
         extraPadPath: {
           pad_by_id: "live_set tracks 0 devices 0 drum_pads 37",
         },
@@ -578,22 +616,21 @@ describe("deleteObject device deletion", () => {
 
       expect(result).toStrictEqual([
         { id: "pad_by_id", type: "drum-pad", deleted: true },
-        { id: chainId, type: "drum-pad", deleted: true },
+        { id: padId, type: "drum-pad", deleted: true },
       ]);
       expect(extraPads.get("pad_by_id")?.call).toHaveBeenCalledWith(
         "delete_all_chains",
       );
-      expect(chain.call).toHaveBeenCalledWith("delete_all_chains");
+      expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
     });
 
     it("should skip invalid drum chain paths and continue with valid ones", () => {
-      const chainId = "chain-36";
+      const padId = "pad-36";
 
-      const { chain } = setupDrumChainMocks({
+      const { pad } = setupDrumPadPathMocks({
         devicePath: "live_set tracks 0 devices 0",
-        chainPath: "live_set tracks 0 devices 0 chains 0",
         drumRackId: "drum-rack-1",
-        chainId,
+        padId,
       });
 
       const result = deleteObject({
@@ -602,11 +639,11 @@ describe("deleteObject device deletion", () => {
       });
 
       expect(result).toStrictEqual({
-        id: chainId,
+        id: padId,
         type: "drum-pad",
         deleted: true,
       });
-      expect(chain.call).toHaveBeenCalledWith("delete_all_chains");
+      expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
     });
 
     it("should warn when path resolves to device instead of drum-pad", () => {

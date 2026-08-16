@@ -6,6 +6,7 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -407,6 +408,27 @@ function resolvePathsToIds(paths: string[], type: string): string[] {
 }
 
 /**
+ * Finds the DrumPad object for a note on a drum rack
+ * @param rackPath - Live API path to the drum rack
+ * @param note - Pad note name (e.g. "C1")
+ * @returns The DrumPad, or null if the rack or pad doesn't exist
+ */
+function findDrumPad(rackPath: string, note: string): LiveAPI | null {
+  const rack = LiveAPI.from(rackPath);
+
+  if (!rack.exists()) return null;
+
+  const midi = noteNameToMidi(note);
+
+  if (midi == null) return null;
+
+  return (
+    rack.getChildren("drum_pads").find((p) => p.getProperty("note") === midi) ??
+    null
+  );
+}
+
+/**
  * Resolves a single path resolution result to an ID
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
@@ -428,20 +450,20 @@ function resolvePathToId(
       return null;
     }
 
-    // Use shared helper to get just the drum pad (no remaining segments)
-    const result = resolveDrumPadFromPath(
+    // resolveDrumPadFromPath returns the pad's *chain*, and delete_all_chains
+    // on a chain is a silent no-op — so find the DrumPad object itself.
+    const pad = findDrumPad(
       resolved.liveApiPath,
       resolved.drumPadNote as string,
-      [], // Ignore remaining segments for drum-pad deletion
     );
 
-    if (!result.target) {
+    if (!pad) {
       console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
 
       return null;
     }
 
-    return result.target.id;
+    return pad.id;
   }
 
   // For device type, handle both direct device paths and nested device paths in drum pads

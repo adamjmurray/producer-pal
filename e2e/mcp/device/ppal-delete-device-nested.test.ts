@@ -20,8 +20,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  KICK_FILE,
-  SAMPLE_FILE,
+  createTwoPadDrumRack,
   extractToolResultText,
   parseToolResult,
   setupMcpTestContext,
@@ -50,19 +49,7 @@ describe("ppal-delete nested rack device ordering", () => {
     await sleep(150);
 
     // Drum Rack with two pads => two chains, each with an auto-created Simpler.
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: {
-        deviceName: "Drum Rack",
-        path: `t${t}`,
-        params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pD1/d0/sample", value: SAMPLE_FILE },
-        ],
-      },
-    });
-
-    await sleep(200);
+    await createTwoPadDrumRack(ctx.client!, `t${t}`);
 
     // Append a SECOND device into pad C1's chain -> same-chain siblings (d0, d1).
     const reverb = parseToolResult<{ id: string; deviceIndex: number }>(
