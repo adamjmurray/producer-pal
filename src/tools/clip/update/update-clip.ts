@@ -38,7 +38,7 @@ import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
-import { resolveMoveDestination } from "./helpers/update-clip-session-helpers.ts";
+import { resolveMoveDestinations } from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
@@ -164,7 +164,11 @@ export async function updateClip(
   // instead of being swallowed by the per-clip warn-and-skip wrapper.
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
-  const parsedToSlot = resolveMoveDestination(toPath, toSlot);
+  const moveDestinations = resolveMoveDestinations(
+    toPath,
+    toSlot,
+    mutableClips.length,
+  );
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -217,7 +221,7 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
-      toSlot: parsedToSlot,
+      toSlot: moveDestinations[i] ?? null,
       nonSurvivorClipIds,
       context,
       updatedClips,

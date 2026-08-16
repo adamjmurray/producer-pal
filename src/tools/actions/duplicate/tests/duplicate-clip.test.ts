@@ -414,19 +414,24 @@ describe("duplicate - clip duplication", () => {
       expect(track0.call).not.toHaveBeenCalled();
     });
 
-    it("rejects toSlot on an arrangement destination", async () => {
+    it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toSlot: "2/0",
-        }),
-      ).rejects.toThrow(/toSlot is for session destinations/);
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toSlot: "2/0",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "arrangementStart/locator ignored — toSlot names a session position",
+        ),
+      );
     });
 
     it("skips a silent duplicate failure (Ableton returns ['id', 0]) without a phantom clip", async () => {

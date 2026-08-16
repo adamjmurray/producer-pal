@@ -123,9 +123,20 @@ describe("resolveClipDestinations", () => {
       );
     });
 
-    it("rejects the deprecated toSlot paired with an arrangement position", () => {
-      expect(() => resolveClipDestinations(undefined, "2/1", true)).toThrow(
-        /toSlot is for session destinations.*use toPath/s,
+    // Warn, don't throw: the same conflict on toPath drops the weaker of the
+    // two, and toSlot shouldn't be the harsher spelling of the same mistake.
+    it("drops the arrangement position when the deprecated toSlot names a slot", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(resolveClipDestinations(undefined, "2/1", true)).toStrictEqual({
+        destination: "session",
+        slots: [{ trackIndex: 2, sceneIndex: 1 }],
+        arrangementTargets: [],
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "arrangementStart/locator ignored — toSlot names a session position",
+        ),
       );
     });
   });

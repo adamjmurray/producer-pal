@@ -406,7 +406,7 @@ describe("updateClip - Basic operations", () => {
     expect(result).not.toHaveProperty("slot");
   });
 
-  it("should warn and use first slot when toSlot has multiple values", async () => {
+  it("should warn about destinations with no clip to move", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
@@ -416,7 +416,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ ids: "123", toSlot: "1/2, 3/4" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      "toSlot only supports a single destination - using first",
+      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
     );
 
     expect(result).toMatchObject({
@@ -435,7 +435,7 @@ describe("updateClip - Basic operations", () => {
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "toSlot only supports a single destination - using first",
+      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
     );
   });
 

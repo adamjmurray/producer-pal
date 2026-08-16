@@ -145,13 +145,17 @@ function legacySlotDestinations(
   toSlot: string,
   hasArrangementParams: boolean,
 ): ClipDestinations {
-  if (hasArrangementParams) {
-    throw new Error(
-      'duplicate failed: toSlot is for session destinations; use toPath (e.g. "t2") to duplicate to another track\'s arrangement',
+  const slots = parseSlotList(toSlot);
+
+  // toSlot only ever named session slots, so it can't be the arrangement
+  // destination arrangementStart wants. Drop the weaker of the two rather than
+  // failing the call, the way toPath does for the same conflict.
+  if (hasArrangementParams && slots.length > 0) {
+    console.warn(
+      "duplicate: arrangementStart/locator ignored — toSlot names a session position; " +
+        'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
-
-  const slots = parseSlotList(toSlot);
 
   if (slots.length === 0) {
     throw new Error("duplicate failed: toSlot is required for session clips");

@@ -20,6 +20,7 @@ import {
   namedPath,
   parseObjectPathList,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 
@@ -29,17 +30,24 @@ interface SlotPosition {
 }
 
 /**
- * Resolves the session slot a clip moves to, from toPath or the deprecated
- * toSlot. Warns and returns null for anything update-clip can't do, so the rest
- * of the update still runs.
- * @param rawToPath - Destination path (e.g., "t2/s3")
- * @param rawToSlot - Deprecated destination slot (trackIndex/sceneIndex)
- * @returns The destination slot, or null when there is nothing to move to
+ * Resolves where each clip in the batch moves, from toPath or the deprecated
+ * toSlot. Warns and returns nulls for anything update-clip can't do, so the
+ * rest of the update still runs.
+ *
+ * Destinations pair 1:1 with ids and never cycle, unlike name and color: two
+ * clips can share a name, but the second one sent to a slot overwrites the
+ * first — which is a move that reports success and loses a clip.
+ * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3")
+ * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
+ * @param clipCount - How many clips the batch is updating
+ * @returns One destination per clip, null where there is nothing to move to
  */
-export function resolveMoveDestination(
+export function resolveMoveDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
-): SlotPosition | null {
+  clipCount: number,
+): Array<SlotPosition | null> {
+  const none = Array.from({ length: clipCount }, () => null);
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedPath(rawToPath);
@@ -49,27 +57,28 @@ export function resolveMoveDestination(
   // caller didn't ask for, so move it nowhere and say so.
   if (toPath != null && toSlot != null) {
     console.warn(
-      "toPath and toSlot both name a destination, so the clip was not moved; use toPath alone (toSlot is deprecated)",
+      "toPath and toSlot both name a destination, so no clip was moved; use toPath alone (toSlot is deprecated)",
     );
 
-    return null;
+    return none;
   }
 
-  // A bad destination is one param out of many on a batch update, and the
-  // tool's rule is warn-and-skip so the notes still land. `slot` in a result
-  // reads "10/6", so a model pasting one straight into toPath hits the
-  // "did you mean t10/s6?" steer here — as a warning, not a discarded batch.
-  try {
-    if (toSlot != null) {
-      return firstDestination(parseSlotList(toSlot), "toSlot");
-    }
+  if (toPath == null && toSlot == null) return none;
 
-    if (toPath != null) return pathDestination(toPath);
+  // A bad destination is one param out of many on a batch update, and the
+  // tool's rule is warn-and-skip so the notes still land.
+  try {
+    const destinations =
+      toSlot != null
+        ? requireDestinations(parseSlotList(toSlot), "toSlot")
+        : pathDestinations(toPath as string);
+
+    return pairWithClips(destinations, clipCount, toSlot == null);
   } catch (error) {
     console.warn(`clip not moved: ${errorMessage(error)}`);
   }
 
-  return null;
+  return none;
 }
 
 interface HandlePositionOperationsArgs {
@@ -129,49 +138,80 @@ export function handlePositionOperations(
 }
 
 /**
- * Reads the session slot off a toPath, warning when the path names something
- * update-clip can't move a clip to.
+ * Reads the session slots off a toPath, warning about each entry that names
+ * something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
- * @returns The destination slot, or null when the path names no slot
+ * @returns One destination per entry, null where the entry names no slot
  */
-function pathDestination(toPath: string): SlotPosition | null {
-  const first = firstDestination(
+function pathDestinations(toPath: string): Array<SlotPosition | null> {
+  const parsed = requireDestinations(
     parseObjectPathList(toPath, "toPath"),
     "toPath",
   );
 
-  if (first.kind !== "slot") {
+  return parsed.map((entry) => {
+    if (entry.kind === "slot") {
+      return { trackIndex: entry.trackIndex, sceneIndex: entry.sceneIndex };
+    }
+
     console.warn(
-      `toPath "${toPath}" is not a session slot, so the clip was not moved; update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track`,
+      `toPath "${formatObjectPath(entry)}" is not a session slot, so that clip was not moved; ` +
+        'update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track',
     );
 
     return null;
-  }
-
-  return { trackIndex: first.trackIndex, sceneIndex: first.sceneIndex };
+  });
 }
 
 /**
- * Takes the one destination update-clip can use, warning about any extras.
+ * Lines destinations up with the clips they apply to, warning when the counts
+ * disagree — a caller that named the wrong number of slots gets told which
+ * clips moved rather than watching copies land on top of each other.
+ * @param destinations - Destinations, in order
+ * @param clipCount - How many clips the batch is updating
+ * @param isPath - Whether the destinations came from toPath (for the warning)
+ * @returns Exactly clipCount destinations, padded with null
+ */
+function pairWithClips(
+  destinations: Array<SlotPosition | null>,
+  clipCount: number,
+  isPath: boolean,
+): Array<SlotPosition | null> {
+  const label = isPath ? "toPath" : "toSlot";
+
+  if (destinations.length !== clipCount) {
+    const extra = destinations.length > clipCount;
+
+    console.warn(
+      `${label} names ${destinations.length} destination(s) for ${clipCount} clip(s); ` +
+        (extra
+          ? "the extra destinations went unused"
+          : "the clips past the last destination were not moved"),
+    );
+  }
+
+  return Array.from(
+    { length: clipCount },
+    (_unused, i) => destinations[i] ?? null,
+  );
+}
+
+/**
+ * Refuses a destination param that was sent but names nothing.
  * @param destinations - Parsed destinations, in order
- * @param label - Param name for the warning
- * @returns The first destination
+ * @param label - Param name for the error
+ * @returns The destinations
  * @throws When the param was sent but names nothing
  */
-function firstDestination<T>(destinations: T[], label: string): T {
-  // Only toSlot arrives empty (e.g. ","); parseObjectPathList throws
-  // before toPath can. Throwing rather than warning lets the caller's catch
-  // report it like any other destination that failed to parse, and spares
-  // callers a null case that only one of them can hit.
+function requireDestinations<T>(destinations: T[], label: string): T[] {
+  // Only toSlot arrives empty (e.g. ","); parseObjectPathList throws before
+  // toPath can. Throwing rather than warning lets the caller's catch report it
+  // like any other destination that failed to parse.
   if (destinations.length === 0) {
     throw new Error(`${label} names no destination`);
   }
 
-  if (destinations.length > 1) {
-    console.warn(`${label} only supports a single destination - using first`);
-  }
-
-  return destinations[0] as T;
+  return destinations;
 }
 
 interface HandleSessionSlotMoveArgs {
