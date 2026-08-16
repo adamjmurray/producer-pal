@@ -255,11 +255,17 @@ async function duplicateClipToArrangementPositions(
 }
 
 /**
- * Repeats a non-empty list until it reaches the given length.
+ * Repeats a list until it reaches the given length. Built by repeating the whole
+ * list and trimming, so nothing has to promise the list is non-empty: an empty
+ * one gives an empty result, which is what `length` would be anyway.
  * @param values - Values to cycle
  * @param length - Wanted length
  * @returns A list of that length
  */
 function cycle(values: number[], length: number): number[] {
-  return Array.from({ length }, (_, i) => values[i % values.length] as number);
+  const repeats = Math.ceil(length / Math.max(values.length, 1));
+
+  return Array.from({ length: repeats }, () => values)
+    .flat()
+    .slice(0, length);
 }
