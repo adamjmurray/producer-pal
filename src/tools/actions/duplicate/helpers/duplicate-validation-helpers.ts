@@ -31,13 +31,20 @@ export function resolveArrangementPositions(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number[] {
+  // A malformed list (e.g. "", "," or only whitespace) survives the earlier
+  // trim-only checks but parses to zero positions. Callers cycle this list
+  // against the destination tracks, so an empty one yields a copy at an
+  // undefined position rather than no copies — throw instead.
   if (locator != null) {
-    return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
+    const times = resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
+
+    if (times.length === 0) {
+      throw new Error("duplicate failed: locator names no locators");
+    }
+
+    return times;
   }
 
-  // A malformed list (e.g. "," or only whitespace) survives the earlier
-  // trim-only checks but parses to zero positions; throw instead of silently
-  // producing no duplicates.
   const positions = parseArrangementStartList(arrangementStart);
 
   if (positions.length === 0) {
