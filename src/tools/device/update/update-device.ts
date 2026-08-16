@@ -84,6 +84,7 @@ interface ResolvedTarget {
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
+ * @param args.force - Allow a destructive pad-device swap a `sample` write needs
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Updated object info(s)
@@ -110,6 +111,7 @@ export function updateDevice(
     chokeGroup,
     mappedPitch,
     wrapInRack,
+    force,
     focus,
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
@@ -146,6 +148,7 @@ export function updateDevice(
       sendReturn,
       chokeGroup,
       mappedPitch,
+      force,
     };
 
     result = updateMultipleTargets(

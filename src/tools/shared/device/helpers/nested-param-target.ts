@@ -33,13 +33,14 @@ interface DrumPadSlot {
  * | empty                    | create a Simpler                              |
  * | Simpler (single-sample)  | reuse it (caller's sample write replaces)     |
  * | Simpler (multi-sample)   | reuse it (caller's sample write warn-skips)   |
- * | DrumSampler              | delete, create a Simpler, + notice (stop-gap) |
+ * | DrumSampler              | skip and warn; `force` swaps in a Simpler     |
  * | any other device         | skip and warn (no overwrite)                  |
  *
  * @param rack - The device being created/updated (the path prefix is relative to it)
  * @param prefix - The path segments before the param name (e.g. "pC1/d0")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
  * @param toolName - Calling tool name for warning prefix
+ * @param force - Allow the DrumSampler-to-Simpler swap the sample write needs
  * @returns The target device, or null (after warning) when none can be targeted
  */
 export function resolveNestedParamTarget(
@@ -47,6 +48,7 @@ export function resolveNestedParamTarget(
   prefix: string,
   paramName: string,
   toolName: string,
+  force = false,
 ): LiveAPI | null {
   const segments = prefix.split("/").filter((segment) => segment.length > 0);
 
@@ -65,7 +67,7 @@ export function resolveNestedParamTarget(
 
   // Pad-property model: a `sample` write to a drum-pad device slot.
   if (slot) {
-    return resolveDrumPadSampleTarget(rack, slot, toolName);
+    return resolveDrumPadSampleTarget(rack, slot, toolName, force);
   }
 
   // General case: read-only navigation to an existing device.
@@ -156,12 +158,14 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
  * @param rack - Drum Rack device
  * @param slot - Parsed drum-pad device slot
  * @param toolName - Calling tool name for warning prefix
+ * @param force - Allow the DrumSampler-to-Simpler swap
  * @returns The Simpler to write the sample to, or null (after warning)
  */
 function resolveDrumPadSampleTarget(
   rack: LiveAPI,
   slot: DrumPadSlot,
   toolName: string,
+  force: boolean,
 ): LiveAPI | null {
   const { padNote, chainIndex, deviceIndex } = slot;
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
@@ -190,18 +194,34 @@ function resolveDrumPadSampleTarget(
   }
 
   if (isDrumSampler(className)) {
-    // Stop-gap: DrumSampler's sample is not controllable via the current Live
-    // API, so swap in a Simpler. Revisit when the API exposes its sample.
+    // DrumSampler's sample is not settable via the current Live API, so the only
+    // way to honor the write is to swap in a Simpler. That changes the pad's
+    // instrument and loses every DrumSampler setting, which is too destructive to
+    // do silently — warn-and-skip, and let `force` through once the user has
+    // agreed. Revisit if the API ever exposes DrumSampler's sample.
+    if (!force) {
+      console.warn(
+        `${toolName}: sample write SKIPPED on pad ${padNote} — it holds a ` +
+          `${className}, whose sample the Live API can't set. Honoring the ` +
+          `write REPLACES it with a Simpler, losing all ${className} settings. ` +
+          `Ask the user before passing force:true. To keep it: load the sample ` +
+          `on another pad, or copy the ${className} to a free pad first ` +
+          `(ppal-duplicate type:"device").`,
+      );
+
+      return null;
+    }
+
     // The replacement Simpler is appended at the chain end (createSimplerInChain
     // uses insert_device, which has no position arg). That's correct here: a drum
     // pad chain holds a single instrument, so deleting the DrumSampler and
     // appending the Simpler lands it in the same (first) slot. If a pad ever held
     // an instrument plus trailing effects, the Simpler would land after them —
-    // acceptable for this stop-gap since the sample write targets the returned
-    // device directly, not a fixed index.
+    // acceptable, since the sample write targets the returned device directly,
+    // not a fixed index.
     chain.call("delete_device", deviceIndex);
     console.warn(
-      `${toolName}: replaced DrumSampler on pad ${padNote} with a Simpler to load the sample (DrumSampler's sample is not controllable via the Live API)`,
+      `${toolName}: force:true — replaced the ${className} on pad ${padNote} with a Simpler to load the sample. Its ${className} settings are gone.`,
     );
 
     return createSimplerInChain(chain, toolName);
