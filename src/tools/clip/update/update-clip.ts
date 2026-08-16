@@ -32,13 +32,13 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
+import { resolveMoveDestination } from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
@@ -56,6 +56,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   arrangementStart?: string;
   arrangementLength?: string;
   toSlot?: string;
+  toPath?: string;
   split?: string;
   code?: string;
   focus?: boolean;
@@ -84,7 +85,8 @@ interface ClipResult {
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double; duplicate_loop inserts the copy, so content past the region is pushed later, not deleted), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
- * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
+ * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
+ * @param args.toPath - Session slot to move the clip to (e.g., "t2/s3")
  * @param args.split - Comma-separated bar|beat positions to split clip
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
@@ -119,6 +121,7 @@ export async function updateClip(
     arrangementStart,
     arrangementLength,
     toSlot,
+    toPath,
     split,
     gainDb,
     pitchShift,
@@ -161,7 +164,7 @@ export async function updateClip(
   // instead of being swallowed by the per-clip warn-and-skip wrapper.
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
-  const parsedToSlot = parseToSlotParam(toSlot);
+  const parsedToSlot = resolveMoveDestination(toPath, toSlot);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -243,27 +246,6 @@ function focusLastUpdatedClip(
 
     select({ clipId: lastClip.id, detailView: "clip" });
   }
-}
-
-/**
- * Parse the toSlot parameter, validating single destination
- * @param toSlot - Raw toSlot string (trackIndex/sceneIndex format)
- * @returns Parsed slot position or null
- */
-function parseToSlotParam(
-  toSlot?: string,
-): { trackIndex: number; sceneIndex: number } | null {
-  if (toSlot == null) return null;
-
-  const slots = parseSlotList(toSlot);
-
-  if (slots.length === 0) return null;
-
-  if (slots.length > 1) {
-    console.warn("toSlot only supports a single destination - using first");
-  }
-
-  return slots[0] as { trackIndex: number; sceneIndex: number };
 }
 
 /**

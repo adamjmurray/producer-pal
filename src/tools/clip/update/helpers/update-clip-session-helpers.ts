@@ -11,11 +11,56 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { parseDestinationPathList } from "#src/tools/shared/validation/destination-path.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 
 interface SlotPosition {
   trackIndex: number;
   sceneIndex: number;
+}
+
+/**
+ * Resolves the session slot a clip moves to, from toPath or the deprecated
+ * toSlot. Warns and returns null for anything update-clip can't do, so the rest
+ * of the update still runs.
+ * @param toPath - Destination path (e.g., "t2/s3")
+ * @param toSlot - Deprecated destination slot (trackIndex/sceneIndex)
+ * @returns The destination slot, or null when there is nothing to move to
+ */
+export function resolveMoveDestination(
+  toPath: string | undefined,
+  toSlot: string | undefined,
+): SlotPosition | null {
+  // Honoring one and dropping the other would move the clip somewhere the
+  // caller didn't ask for, so move it nowhere and say so.
+  if (toPath != null && toSlot != null) {
+    console.warn(
+      "toPath and toSlot both name a destination, so the clip was not moved; use toPath alone (toSlot is deprecated)",
+    );
+
+    return null;
+  }
+
+  if (toSlot != null) {
+    return firstDestination(parseSlotList(toSlot), "toSlot");
+  }
+
+  if (toPath == null) return null;
+
+  const first = firstDestination(parseDestinationPathList(toPath), "toPath");
+
+  if (first == null) return null;
+
+  if (first.kind !== "slot") {
+    console.warn(
+      `toPath "${toPath}" is not a session slot, so the clip was not moved; update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track`,
+    );
+
+    return null;
+  }
+
+  return { trackIndex: first.trackIndex, sceneIndex: first.sceneIndex };
 }
 
 interface HandlePositionOperationsArgs {
@@ -44,7 +89,7 @@ export function handlePositionOperations(
 
   if (toSlot != null && !isArrangementClip) {
     if (arrangementStartBeats != null || arrangementLengthBeats != null) {
-      console.warn("toSlot ignored when arrangement parameters are specified");
+      console.warn("toPath ignored when arrangement parameters are specified");
     } else {
       handleSessionSlotMove({
         clip,
@@ -57,7 +102,7 @@ export function handlePositionOperations(
     }
   } else if (toSlot != null && isArrangementClip) {
     console.warn(
-      `toSlot parameter ignored for arrangement clip (id ${clip.id})`,
+      `toPath ignored for arrangement clip (id ${clip.id}): only session clips move to a slot`,
     );
   }
 
@@ -72,6 +117,22 @@ export function handlePositionOperations(
     noteResult: args.noteResult,
     isNonSurvivor: args.isNonSurvivor,
   });
+}
+
+/**
+ * Takes the one destination update-clip can use, warning about any extras.
+ * @param destinations - Parsed destinations, in order
+ * @param label - Param name for the warning
+ * @returns The first destination, or null when there are none
+ */
+function firstDestination<T>(destinations: T[], label: string): T | null {
+  if (destinations.length === 0) return null;
+
+  if (destinations.length > 1) {
+    console.warn(`${label} only supports a single destination - using first`);
+  }
+
+  return destinations[0] as T;
 }
 
 interface HandleSessionSlotMoveArgs {

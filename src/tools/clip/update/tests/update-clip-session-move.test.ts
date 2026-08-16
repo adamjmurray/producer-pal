@@ -14,6 +14,7 @@ import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts"
 import {
   handlePositionOperations,
   handleSessionSlotMove,
+  resolveMoveDestination,
 } from "../helpers/update-clip-session-helpers.ts";
 
 vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
@@ -334,7 +335,7 @@ describe("handlePositionOperations", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "toSlot parameter ignored for arrangement clip (id 789)",
+      "toPath ignored for arrangement clip (id 789): only session clips move to a slot",
     );
   });
 
@@ -360,7 +361,7 @@ describe("handlePositionOperations", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "toSlot ignored when arrangement parameters are specified",
+      "toPath ignored when arrangement parameters are specified",
     );
   });
 
@@ -383,7 +384,7 @@ describe("handlePositionOperations", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "toSlot ignored when arrangement parameters are specified",
+      "toPath ignored when arrangement parameters are specified",
     );
   });
 
@@ -410,7 +411,65 @@ describe("handlePositionOperations", () => {
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("toSlot parameter ignored for arrangement clip"),
+      expect.stringContaining("toPath ignored for arrangement clip"),
+    );
+  });
+});
+
+describe("resolveMoveDestination", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reads a slot from toPath", () => {
+    expect(resolveMoveDestination("t2/s3", undefined)).toStrictEqual({
+      trackIndex: 2,
+      sceneIndex: 3,
+    });
+  });
+
+  it("still reads the deprecated toSlot", () => {
+    expect(resolveMoveDestination(undefined, "2/3")).toStrictEqual({
+      trackIndex: 2,
+      sceneIndex: 3,
+    });
+  });
+
+  it("returns nothing when neither param is given", () => {
+    expect(resolveMoveDestination(undefined, undefined)).toBeNull();
+    expect(resolveMoveDestination("  ", undefined)).toBeNull();
+    expect(resolveMoveDestination(undefined, "  ")).toBeNull();
+  });
+
+  it("moves nowhere when toPath and toSlot both name a destination", () => {
+    // An update tool warns and skips instead of throwing, but it must not pick
+    // one destination over the other.
+    expect(resolveMoveDestination("t2/s3", "4/5")).toBeNull();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        "both name a destination, so the clip was not moved",
+      ),
+    );
+  });
+
+  it("warns and skips a destination that is not a session slot", () => {
+    // update-clip has no cross-track move; duplicate is the tool for that.
+    expect(resolveMoveDestination("t2", undefined)).toBeNull();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('toPath "t2" is not a session slot'),
+    );
+  });
+
+  it("takes the first of several toPath destinations, with a warning", () => {
+    expect(resolveMoveDestination("t2/s3,t4/s5", undefined)).toStrictEqual({
+      trackIndex: 2,
+      sceneIndex: 3,
+    });
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "toPath only supports a single destination - using first",
     );
   });
 });

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/deprecated-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -71,10 +72,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter",
       ),
-    toSlot: z.coerce
+    toSlot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+    }),
+    toPath: z.coerce
       .string()
       .optional()
-      .describe("trackIndex/sceneIndex to move session clip (e.g., '2/3')"),
+      .describe(
+        "session slot to move the clip to, 't<track>/s<scene>' (e.g., 't2/s3'); session clips only",
+      ),
     split: param(z.string().optional(), {
       default: `comma-separated bar|beat split positions, measured from the clip's start (1|1 = clip start, NOT song time) (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only; song meter`,
       smallModel: null,
