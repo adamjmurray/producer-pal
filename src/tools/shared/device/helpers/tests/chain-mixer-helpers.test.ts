@@ -113,6 +113,12 @@ describe("readChainMixer", () => {
     });
   });
 
+  it("treats sub-1% pan as centered rather than reporting pan 0", () => {
+    registerChainWithMixer({ pan: 0.004 });
+
+    expect(readChainMixer(chainApi())).toStrictEqual({});
+  });
+
   it("names active sends after the rack's return chains and skips silent ones", () => {
     registerChainWithMixer({
       sends: [
@@ -310,7 +316,7 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" mixer {"gainDb":-15} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan/sendGainDb) or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 
@@ -324,7 +330,67 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" mixer {"pan":0.5} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan/sendGainDb)',
+      'chain "Snare" trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("phrases a copy as a copy and drops the pad-move hint", () => {
+    registerChainWithMixer({ gainDb: -15 });
+
+    warnIfChainMixerLeftBehind(
+      LiveAPI.from(devicePath),
+      LiveAPI.from(destination.path),
+      true,
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("points at update-track when the destination is a track", () => {
+    registerChainWithMixer({ gainDb: -15 });
+    const track = registerMockObject("dest-track", {
+      path: livePath.track(2),
+      type: "Track",
+    });
+
+    warnIfChainMixerLeftBehind(
+      LiveAPI.from(devicePath),
+      LiveAPI.from(track.path),
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("counts sends rather than listing them", () => {
+    registerChainWithMixer({
+      gainDb: -15,
+      sends: [
+        { value: 0.5, display_value: -12 },
+        { value: 0.5, display_value: -6 },
+      ],
+    });
+    registerMockObject("rack-1", {
+      path: rackPath,
+      type: "RackDevice",
+      properties: { return_chains: children("rc-0", "rc-1") },
+    });
+    registerMockObject("rc-0", { type: "Chain", properties: { name: "a D" } });
+    registerMockObject("rc-1", { type: "Chain", properties: { name: "b R" } });
+
+    warnIfChainMixerLeftBehind(
+      LiveAPI.from(devicePath),
+      LiveAPI.from(destination.path),
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 

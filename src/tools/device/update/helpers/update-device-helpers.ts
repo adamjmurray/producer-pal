@@ -47,7 +47,9 @@ export function moveDeviceToPath(
     return false;
   }
 
-  warnIfChainMixerLeftBehind(source, container);
+  // Device duplication passes the real source alongside a temp copy; a plain
+  // move leaves `source` defaulted to the device itself.
+  warnIfChainMixerLeftBehind(source, container, source.id !== device.id);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 

@@ -246,6 +246,12 @@ export function roundPan(pan: number): number {
 export function findReturnIndex(names: string[], sendReturn: string): number {
   const wanted = sendReturn.toLowerCase();
 
+  // Every name "starts with" the empty string, so without this an empty
+  // sendReturn would match the first return that has a separator up front.
+  if (wanted === "") {
+    return -1;
+  }
+
   return names.findIndex((name) => {
     const lower = name.toLowerCase();
     const next = lower[wanted.length];

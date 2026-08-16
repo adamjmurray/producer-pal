@@ -163,7 +163,16 @@ describe("readDevice with drum pad path", () => {
     const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
     const chains = result.chains as Record<string, unknown>[];
 
-    expect(chains[0]).toMatchObject({ gainDb: -15, pan: 0.25 });
+    expect(chains[0]).toStrictEqual({
+      id: "chain-1",
+      path: "t1/d0/pC1/c0",
+      type: "DrumChain",
+      name: "Layer 1",
+      mappedPitch: "C2",
+      gainDb: -15,
+      pan: 0.25,
+      devices: [],
+    });
   });
 
   it("should read drum pad with chains containing devices", () => {

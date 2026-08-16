@@ -455,6 +455,24 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(send.set).not.toHaveBeenCalled();
   });
 
+  // pan and sendReturn each need their own case: paired with another mixer
+  // param they ride along on the other one's gate check.
+  it("sets pan when it is the only mixer param given", () => {
+    updateDevice({ ids: "chain-0", pan: 0.5 });
+
+    expect(panning.set).toHaveBeenCalledWith("value", 0.5);
+  });
+
+  it("warns when sendReturn is the only mixer param given", () => {
+    updateDevice({ ids: "chain-0", sendReturn: "a" });
+
+    expect(send.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "sendGainDb and sendReturn must both be specified",
+    );
+  });
+
   it.each(["DrumPad", "SimplerDevice"] as const)(
     "warns when mixer params are used on a %s",
     (type) => {
@@ -518,9 +536,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining(
-        'chain "Trimmed" mixer {"gainDb":-15} stays with the chain',
-      ),
+      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -529,7 +545,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("stays with the chain"),
+      expect.stringContaining("stays behind"),
     );
   });
 });

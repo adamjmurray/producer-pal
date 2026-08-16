@@ -785,4 +785,13 @@ describe("findReturnIndex", () => {
     expect(findReturnIndex(names, "C")).toBe(-1);
     expect(findReturnIndex(names, "Rev")).toBe(-1);
   });
+
+  it("matches an exact name ignoring case", () => {
+    expect(findReturnIndex(names, "chorus")).toBe(2);
+    expect(findReturnIndex(names, "A-REVERB")).toBe(0);
+  });
+
+  it("matches nothing for an empty name", () => {
+    expect(findReturnIndex(names, "")).toBe(-1);
+  });
 });

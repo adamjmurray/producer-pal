@@ -36,7 +36,9 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 
   const pan = mixer.child("panning").getProperty("value");
 
-  if (typeof pan === "number" && pan !== 0) {
+  // Round before the check: sub-1% noise is centered as far as Live is
+  // concerned, and reporting it as `pan: 0` would contradict "non-default only".
+  if (typeof pan === "number" && roundPan(pan) !== 0) {
     info.pan = roundPan(pan);
   }
 
@@ -85,11 +87,13 @@ export function applyChainMixer(
  * non-default. The chain fader belongs to the chain, so it doesn't follow the
  * device — a common surprise on device-based drum pad moves.
  * @param device - The source device (before it moves)
- * @param destination - Container the device is going into
+ * @param destination - Container the device is going into (chain or track)
+ * @param isCopy - True when the device is being copied, not moved
  */
 export function warnIfChainMixerLeftBehind(
   device: LiveAPI,
   destination: LiveAPI,
+  isCopy = false,
 ): void {
   const chainPath = device.path.replace(/ devices \d+$/, "");
 
@@ -109,16 +113,50 @@ export function warnIfChainMixerLeftBehind(
     return;
   }
 
+  // A track destination has no chain fader to reapply onto, so it needs
+  // update-track instead. Moving the whole pad only makes sense chain-to-chain,
+  // and never for a copy — the point of a copy is to leave the pad in place.
+  const toChain = destination.type.endsWith("Chain");
+  const tool = toChain ? "update-device" : "update-track";
+  const where = toChain ? "destination chain" : "destination track";
   const hint =
-    chain.type === "DrumChain"
+    !isCopy && toChain && chain.type === "DrumChain"
       ? " or move the whole pad instead (update-device with the pad path and toPath)"
       : "";
 
   const name = chain.getProperty("name") as string;
+  const verb = isCopy ? "does not follow the copy" : "stays behind";
 
   console.warn(
-    `chain "${name}" mixer ${JSON.stringify(mixer)} stays with the chain, not the device — set it on the destination chain (update-device gainDb/pan/sendGainDb)${hint}`,
+    `chain "${name}" trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
+}
+
+/**
+ * Summarize a chain mixer for a warning. Sends are counted, not listed: a
+ * factory kit routes most pads to several returns, and the full list buries the
+ * warning in text the reader can get from read-device.
+ * @param mixer - Result of readChainMixer
+ * @returns Compact description, e.g. "gainDb -15, 5 sends"
+ */
+function summarizeChainMixer(mixer: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  if (typeof mixer.gainDb === "number") {
+    parts.push(`gainDb ${mixer.gainDb}`);
+  }
+
+  if (typeof mixer.pan === "number") {
+    parts.push(`pan ${mixer.pan}`);
+  }
+
+  const sends = mixer.sends as unknown[] | undefined;
+
+  if (sends != null && sends.length > 0) {
+    parts.push(`${sends.length} send${sends.length === 1 ? "" : "s"}`);
+  }
+
+  return parts.join(", ");
 }
 
 /**
