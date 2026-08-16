@@ -105,16 +105,26 @@ describe("requireClipPath", () => {
       ["rt0", /return and master tracks have no clips/],
       ["mt", /return and master tracks have no clips/],
       ["s3", /a scene alone names no track/],
-      ["t0/l1", /take lanes are not a clip destination/],
-      ["t0/l+", /take lanes are not a clip destination/],
     ];
 
     for (const [path, message] of cases) {
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(message);
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(
-        /clips go to a track \("t0"\) or a session slot \("t0\/s1"\)/,
+        /clips go to a track \("t0"\), a take lane on it \("t0\/l1"\), or a session slot \("t0\/s1"\)/,
       );
     }
+  });
+
+  it("passes take lanes through, which are arrangement destinations", () => {
+    expect(requireClipPath(parseObjectPath("t0/l1"))).toStrictEqual({
+      kind: "take-lane",
+      trackIndex: 0,
+      laneIndex: 1,
+    });
+    expect(requireClipPath(parseObjectPath("t0/l+"))).toStrictEqual({
+      kind: "new-take-lane",
+      trackIndex: 0,
+    });
   });
 
   it("names the path in its canonical spelling, under the caller's label", () => {

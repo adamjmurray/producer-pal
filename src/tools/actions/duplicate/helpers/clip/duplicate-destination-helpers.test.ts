@@ -22,7 +22,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 2, sceneIndex: 1 },
           { trackIndex: 3, sceneIndex: 0 },
         ],
-        trackIndices: [],
+        arrangementTargets: [],
       });
     });
 
@@ -35,7 +35,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 2, sceneIndex: 1 },
           { trackIndex: 3, sceneIndex: 0 },
         ],
-        trackIndices: [],
+        arrangementTargets: [],
       });
     });
 
@@ -51,7 +51,7 @@ describe("resolveClipDestinations", () => {
       expect(resolveClipDestinations("t2/s1", "null", false)).toStrictEqual({
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        trackIndices: [],
+        arrangementTargets: [],
       });
     });
 
@@ -65,7 +65,7 @@ describe("resolveClipDestinations", () => {
       expect(resolveClipDestinations("t2/s1", "  ", false)).toStrictEqual({
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        trackIndices: [],
+        arrangementTargets: [],
       });
     });
   });
@@ -75,7 +75,10 @@ describe("resolveClipDestinations", () => {
       expect(resolveClipDestinations("t2,t3", undefined, true)).toStrictEqual({
         destination: "arrangement",
         slots: [],
-        trackIndices: [2, 3],
+        arrangementTargets: [
+          { trackIndex: 2, takeLane: null },
+          { trackIndex: 3, takeLane: null },
+        ],
       });
     });
 
@@ -85,7 +88,7 @@ describe("resolveClipDestinations", () => {
         {
           destination: "arrangement",
           slots: [],
-          trackIndices: [],
+          arrangementTargets: [],
         },
       );
     });
@@ -98,7 +101,7 @@ describe("resolveClipDestinations", () => {
       expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual({
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
-        trackIndices: [],
+        arrangementTargets: [],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("arrangementStart/locator ignored"),
@@ -113,7 +116,7 @@ describe("resolveClipDestinations", () => {
       ).toStrictEqual({
         destination: "arrangement",
         slots: [],
-        trackIndices: [3],
+        arrangementTargets: [{ trackIndex: 3, takeLane: null }],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('toPath "t2/s1" ignored'),
@@ -149,10 +152,10 @@ describe("resolveClipDestinations", () => {
 
   it("rejects a destination no clip can occupy", () => {
     expect(() => resolveClipDestinations("t1/d0", undefined, true)).toThrow(
-      /clips go to a track \("t0"\) or a session slot/,
+      /clips go to a track \("t0"\), a take lane on it/,
     );
     expect(() => resolveClipDestinations("mt", undefined, true)).toThrow(
-      /clips go to a track \("t0"\) or a session slot/,
+      /clips go to a track \("t0"\), a take lane on it/,
     );
   });
 });

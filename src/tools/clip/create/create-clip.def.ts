@@ -36,7 +36,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     path: param(z.coerce.string().optional(), {
       default:
         "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a session position; " +
-        "'t<track>' is that track's arrangement, which also needs arrangementStart. All indices 0-based, " +
+        "'t<track>' is that track's arrangement, which also needs arrangementStart; 't<track>/l<lane>' is a " +
+        "take lane on it and 't<track>/l+' appends a fresh one (MIDI only). All indices 0-based, " +
         "so 't0/s0' is the first track's first scene (e.g., 't0/s0' or 't0/s0,t0/s2' or 't1' with arrangementStart)",
       smallModel:
         "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0' = first track's arrangement (also needs arrangementStart)",
@@ -173,14 +174,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       smallModel: null,
     }),
 
-    takeLane: param(z.coerce.string().optional(), {
-      default:
-        'arrangement take lane: omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane (for variations)',
-      smallModel: null,
+    takeLane: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
     }),
 
     takeLaneName: param(z.string().optional(), {
-      default: "name for a take lane newly created by this call",
+      default: "name for a take lane this call creates (path 't<track>/l+')",
       smallModel: null,
     }),
   },

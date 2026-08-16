@@ -196,65 +196,150 @@ describe("createClip take lanes", () => {
   });
 });
 
+describe("createClip take lane paths", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates on the take lane a path names", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: 2 });
+
+    await createClip({ path: "t0/l1", arrangementStart: "1|1", notes: "C3" });
+
+    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(1));
+
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  it("appends a fresh lane for l+", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    await createClip({ path: "t0/l+", arrangementStart: "1|1", notes: "C3" });
+
+    expect(track.call).toHaveBeenCalledWith("create_take_lane");
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+  });
+
+  // Impossible with the takeLane param, which named one lane for the whole
+  // call: each destination carries its own.
+  it("puts each destination on the lane it named", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await createClip({
+      path: "t0/l0,t0/l2",
+      arrangementStart: "1|1,2|1",
+      notes: "C3",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 4, 4);
+  });
+
+  it("ignores the takeLane alias when the path already names a lane", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await createClip({
+      path: "t0/l2",
+      arrangementStart: "1|1",
+      notes: "C3",
+      takeLane: "1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('takeLane ignored — "path" already names'),
+    );
+  });
+
+  // The alias is 1-based and the segment is the Live API index, so takeLane 2
+  // and l1 have to land on the same lane.
+  it("reads the takeLane alias as the same lane the path segment names", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await createClip({
+      path: "t0",
+      arrangementStart: "1|1",
+      notes: "C3",
+      takeLane: "2",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+  });
+});
+
 describe("resolveCreateClipTakeLanes (unit)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("resolves no lanes and warns for a session-only request (no arrangement positions)", () => {
-    // A track is registered so that, if the guard were skipped, the mutant path
-    // would resolve a real lane instead of returning an empty map. Kills the
-    // `arrangementPositions.length === 0` → false mutant.
+  it("resolves no lanes for destinations that named none", () => {
+    // A track is registered so that, if the null check were skipped, the mutant
+    // path would resolve a real lane instead of returning an empty map.
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes("new", null, 0, []);
-
-    expect(result.size).toBe(0);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane ignored for session clips"),
-    );
-  });
-
-  it("resolves no lanes WITHOUT warning when a session-only request did not request a take lane", () => {
-    // takeLane 0 = main lane (not requested). The `isTakeLaneRequested(...)` →
-    // true mutant would emit the ignored-warning even though none was requested.
-    const result = resolveCreateClipTakeLanes(0, null, 0, []);
+    const result = resolveCreateClipTakeLanes(null, [
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: null },
+    ]);
 
     expect(result.size).toBe(0);
     expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
-  it("targets a take lane (no session-ignore warning) for an arrangement-only request", () => {
-    // sessionSlotCount is 0, so the ignored-warning must NOT fire (kills the
-    // `sessionSlotCount > 0` → true and > → >= mutants), and the targeting-hint
-    // warning must fire (kills the blanked-string mutant).
+  it("resolves a lane per destination and reports it as a path", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
-    const result = resolveCreateClipTakeLanes("new", null, 0, [
-      { trackIndex: 0, arrangementStart: "1|1" },
+    const result = resolveCreateClipTakeLanes(null, [
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
     ]);
 
-    expect(result.get(0)).toBeDefined();
-    expect(consoleMock.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining("ignored for session clips"),
-    );
+    expect(result.get("t0/l+")).toBeDefined();
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("targeting take lane"),
+      expect.stringContaining('targeting take lane "t0/l0"'),
     );
   });
 
-  // Resolving per position rather than per track would hand a track with two
-  // positions two different "new" lanes, splitting one request across them.
-  it("resolves one lane per track, not per position", () => {
+  // Resolving per position rather than per destination would hand a track with
+  // two positions two different "new" lanes, splitting one request across them.
+  it("resolves one lane per destination, not per position", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
     registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
-    const result = resolveCreateClipTakeLanes("new", null, 0, [
-      { trackIndex: 0, arrangementStart: "1|1" },
-      { trackIndex: 1, arrangementStart: "2|1" },
-      { trackIndex: 0, arrangementStart: "3|1" },
+    const result = resolveCreateClipTakeLanes(null, [
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
+      { trackIndex: 1, arrangementStart: "2|1", takeLane: "new" },
+      { trackIndex: 0, arrangementStart: "3|1", takeLane: "new" },
     ]);
 
-    expect([...result.keys()]).toStrictEqual([0, 1]);
+    expect([...result.keys()]).toStrictEqual(["t0/l+", "t1/l+"]);
+  });
+
+  // Two destinations naming different lanes on one track each get their own.
+  it("keeps distinct lanes on the same track apart", () => {
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    const result = resolveCreateClipTakeLanes(null, [
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: 0 },
+      { trackIndex: 0, arrangementStart: "2|1", takeLane: 2 },
+    ]);
+
+    expect([...result.keys()]).toStrictEqual(["t0/l0", "t0/l2"]);
+    expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
+    expect(result.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
 });

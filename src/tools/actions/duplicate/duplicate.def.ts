@@ -79,7 +79,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: param(z.coerce.string().optional(), {
       default:
         "destination path(s), comma-separated for multiple. Clips: 't2/s1' = session slot (track 2, scene 1), " +
-        "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type); " +
+        "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
+        "'t2/l1' = a take lane on it and 't2/l+' appends a fresh one (MIDI only); " +
         "omit for the source clip's own track. Devices: 't1/d0'. Cycles against arrangementStart when the lists differ in length",
       smallModel:
         "destination path(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0'",
@@ -105,14 +106,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         }
       : {}),
 
-    takeLane: param(z.coerce.string().optional(), {
-      default:
-        'arrangement take lane (MIDI clips only): omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane for a variation',
-      smallModel: null,
+    takeLane: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
     }),
 
     takeLaneName: param(z.string().optional(), {
-      default: "name for a take lane newly created by this call",
+      default: "name for a take lane this call creates (toPath 't<track>/l+')",
       smallModel: null,
     }),
   },

@@ -220,7 +220,7 @@ describe("duplicateClipWithPositions to session slots", () => {
           { trackIndex: 1, sceneIndex: 0 },
           { trackIndex: 2, sceneIndex: 0 },
         ],
-        trackIndices: [],
+        arrangementTargets: [],
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
@@ -229,7 +229,7 @@ describe("duplicateClipWithPositions to session slots", () => {
       undefined,
       undefined,
       undefined,
-      null,
+      undefined,
       undefined,
       {},
     );

@@ -15,6 +15,8 @@
  *   take-lane clips, so take lanes are append-only (clean up in Live's UI).
  */
 
+import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+
 /** Maximum take lanes per track (soft cap; total non-main lanes). */
 export const MAX_TAKE_LANES = 8;
 
@@ -39,54 +41,82 @@ export function isTakeLaneClip(clip: LiveAPI): boolean {
   return TAKE_LANE_PATH_RE.test(clip.path);
 }
 
-/** Normalized take lane target: a 1-based lane number, or "new" to append. */
+/**
+ * A take lane target: a 0-based lane index, or "new" to append one.
+ *
+ * 0-based because `take_lanes` excludes the main lane, so the index is the Live
+ * API index — the same number the `t0/l<n>` path segment carries. The 1-based
+ * `takeLane` param is converted on the way in.
+ */
 export type TakeLaneTarget = number | "new";
 
+/** One arrangement destination: which track, and which of its lanes. */
+export interface ArrangementTrack {
+  trackIndex: number;
+  /** Take lane target, or null for the main lane. */
+  takeLane: TakeLaneTarget | null;
+}
+
 /**
- * Resolve a takeLane argument for `duplicate`: warn-and-ignore for any non
- * arrangement-clip duplicate (so a malformed takeLane on a session duplicate or
- * non-clip type warns instead of throwing inside normalizeTakeLaneTarget), else
- * normalize via the standard validator.
+ * Read the take lane a clip path names.
+ * @param path - A parsed clip path
+ * @returns The lane target, or null for the main lane
+ */
+export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
+  if (path.kind === "take-lane") return path.laneIndex;
+
+  return path.kind === "new-take-lane" ? "new" : null;
+}
+
+/**
+ * Keys a resolved take lane by the destination that asked for it, so several
+ * destinations naming one lane share it. "new" keeps its own key: two
+ * destinations both asking for a fresh lane on a track want the same new lane,
+ * not one each.
+ * @param trackIndex - Destination track index
+ * @param target - Take lane target
+ * @returns The key, spelled as the path segment it came from
+ */
+export function takeLaneKey(
+  trackIndex: number,
+  target: TakeLaneTarget,
+): string {
+  return `t${trackIndex}/l${target === "new" ? "+" : target}`;
+}
+
+/**
+ * Warn when `duplicate` was given a takeLane it has no use for — a non-clip
+ * type, or a session destination. The value isn't validated here: a malformed
+ * takeLane on a duplicate that ignores it should warn, not throw.
  * @param type - The duplicate target type ("clip", "track", etc.)
  * @param destination - "session" | "arrangement" | undefined
  * @param takeLane - Raw takeLane value from the tool args
  * @param warn - console.warn binding (Max-aware in V8, native in tests)
- * @returns Normalized take lane target, or null when ignored or main lane
  */
-export function resolveTakeLaneForDuplicate(
+export function warnUnusedTakeLane(
   type: string,
   destination: string | undefined,
   takeLane: number | string | null | undefined,
   warn: (...args: unknown[]) => void,
-): TakeLaneTarget | null {
+): void {
+  if (!isTakeLaneRequested(takeLane)) return;
+
   if (type !== "clip") {
-    if (isTakeLaneRequested(takeLane)) {
-      warn(
-        `takeLane ignored: only supported when duplicating clips (type "${type}")`,
-      );
-    }
-
-    return null;
+    warn(
+      `takeLane ignored: only supported when duplicating clips (type "${type}")`,
+    );
+  } else if (destination === "session") {
+    warn(
+      "duplicate: takeLane ignored for session destination (arrangement-only)",
+    );
   }
-
-  if (destination === "session") {
-    if (isTakeLaneRequested(takeLane)) {
-      warn(
-        "duplicate: takeLane ignored for session destination (arrangement-only)",
-      );
-    }
-
-    return null;
-  }
-
-  return normalizeTakeLaneTarget(takeLane);
 }
 
 export interface ResolvedTakeLane {
   /** The resolved TakeLane LiveAPI object. */
   lane: LiveAPI;
-  /** 1-based lane number (matches the takeLane param). */
-  laneNumber: number;
+  /** 0-based lane index (matches the `l<n>` path segment). */
+  laneIndex: number;
 }
 
 /**
@@ -109,6 +139,7 @@ export function isTakeLaneRequested(
 /**
  * Normalize a raw takeLane argument to a target, or null for the main lane.
  * `0`, `null`, `undefined`, and `""` mean the main lane (unchanged behavior).
+ * The param is 1-based and the target is 0-based, so `N` becomes lane `N - 1`.
  * @param takeLane - Raw takeLane value from a tool argument
  * @returns A TakeLaneTarget, or null to target the main lane
  */
@@ -131,13 +162,13 @@ export function normalizeTakeLaneTarget(
     );
   }
 
-  return n;
+  return n - 1;
 }
 
 /**
  * Resolve (auto-creating as needed) the target take lane on a track.
- * A numeric target ensures at least that many lanes exist (auto-creating up to
- * the index, mirroring scene auto-create); "new" appends a fresh lane. The
+ * A numeric target auto-creates lanes up to that index (mirroring scene
+ * auto-create); "new" appends a fresh lane. The
  * MAX_TAKE_LANES cap is enforced. takeLaneName names only the target lane, and
  * only when this call created it — existing lanes and any intermediate lanes
  * auto-created to fill a gap are left unnamed.
@@ -152,7 +183,7 @@ export function normalizeTakeLaneTarget(
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane
- * @returns The resolved take lane and its 1-based number
+ * @returns The resolved take lane and its 0-based index
  */
 export function resolveTakeLane(
   track: LiveAPI,
@@ -160,14 +191,13 @@ export function resolveTakeLane(
   takeLaneName?: string | null,
 ): ResolvedTakeLane {
   const currentCount = assertTakeLaneCapacity(track, target);
-  const targetCount = target === "new" ? currentCount + 1 : target;
+  const laneIndex = target === "new" ? currentCount : target;
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
-  for (let i = currentCount; i < targetCount; i++) {
+  for (let i = currentCount; i <= laneIndex; i++) {
     track.call("create_take_lane");
   }
 
-  const laneIndex = targetCount - 1;
   const lane = track.child("take_lanes", String(laneIndex));
   const laneWasCreated = laneIndex >= currentCount;
 
@@ -175,7 +205,7 @@ export function resolveTakeLane(
     lane.setAll({ name: takeLaneName });
   }
 
-  return { lane, laneNumber: targetCount };
+  return { lane, laneIndex };
 }
 
 /**
@@ -193,7 +223,7 @@ export function assertTakeLaneCapacity(
   target: TakeLaneTarget,
 ): number {
   const currentCount = track.getChildIds("take_lanes").length;
-  const targetCount = target === "new" ? currentCount + 1 : target;
+  const targetCount = (target === "new" ? currentCount : target) + 1;
 
   if (targetCount > MAX_TAKE_LANES) {
     throw new Error(

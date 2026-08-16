@@ -5,7 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { warnUnusedTakeLane } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -170,14 +170,10 @@ export async function duplicate(
   }
 
   // takeLane only applies to arrangement-destination clips; the helper warns
-  // and returns null for non-clip types and session-destination clips so a
-  // malformed value doesn't throw before the warn-and-ignore path.
-  const takeLaneTarget = resolveTakeLaneForDuplicate(
-    type,
-    destination,
-    takeLane,
-    console.warn,
-  );
+  // for non-clip types and session destinations so a malformed value doesn't
+  // throw before the warn-and-ignore path. Where it does apply, the destination
+  // resolver folded it onto the paths already.
+  warnUnusedTakeLane(type, destination, takeLane, console.warn);
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
@@ -195,7 +191,7 @@ export async function duplicate(
         arrangementStart,
         locator,
         arrangementLength,
-        takeLaneTarget,
+        takeLane,
         takeLaneName,
         context,
       )

@@ -156,7 +156,7 @@ export async function createClip(
   // instead of creating half of them somewhere else.
   const arrangementStarts = parseArrangementStartList(arrangementStart);
   const destinations = resolveCreateClipDestinations(
-    { path, slot, trackIndex, sceneIndex },
+    { path, slot, trackIndex, sceneIndex, takeLane },
     arrangementStarts,
   );
   const { sessionSlots, arrangementPositions } = destinations;
@@ -201,9 +201,7 @@ export async function createClip(
   // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
   // replaces existing clips, like the main lane.
   const takeLanes = resolveCreateClipTakeLanes(
-    takeLane,
     takeLaneName,
-    sessionSlots.length,
     arrangementPositions,
   );
 

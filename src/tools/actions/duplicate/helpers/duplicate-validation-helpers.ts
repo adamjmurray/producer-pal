@@ -8,6 +8,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type ArrangementTrack } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
@@ -178,14 +179,14 @@ export function inferDestination(
 /**
  * Resolves and validates the tracks a clip is duplicated onto in the arrangement.
  * @param sourceClip - The clip being duplicated
- * @param trackIndices - Requested destination tracks, or empty for the source's own track
- * @returns The destination track indices
+ * @param targets - Requested destinations, or empty for the source's own track
+ * @returns The destinations, each with the lane it named
  */
-export function resolveDestinationTrackIndices(
+export function resolveDestinationTargets(
   sourceClip: LiveAPI,
-  trackIndices: number[],
-): number[] {
-  if (trackIndices.length === 0) {
+  targets: ArrangementTrack[],
+): ArrangementTrack[] {
+  if (targets.length === 0) {
     const sourceTrackIndex = sourceClip.trackIndex;
 
     if (sourceTrackIndex == null) {
@@ -194,12 +195,12 @@ export function resolveDestinationTrackIndices(
       );
     }
 
-    return [sourceTrackIndex];
+    return [{ trackIndex: sourceTrackIndex, takeLane: null }];
   }
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
-  for (const trackIndex of trackIndices) {
+  for (const { trackIndex } of targets) {
     const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
@@ -218,7 +219,7 @@ export function resolveDestinationTrackIndices(
     }
   }
 
-  return trackIndices;
+  return targets;
 }
 
 /**

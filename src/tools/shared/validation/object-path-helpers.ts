@@ -25,8 +25,14 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 
-/** Where a clip can go: a track's arrangement, or a session slot. */
-export type ClipPath = Extract<ObjectPath, { kind: "track" | "slot" }>;
+/**
+ * Where a clip can go: a session slot, or a track's arrangement — its main lane
+ * (`t0`), one of its take lanes (`t0/l1`), or a fresh one (`t0/l+`).
+ */
+export type ClipPath = Extract<
+  ObjectPath,
+  { kind: "track" | "slot" | "take-lane" | "new-take-lane" }
+>;
 
 /** A track or device-chain location, which is what can hold a device. */
 export interface DeviceContainerPath {
@@ -116,12 +122,19 @@ export function namedHiddenPath(value: string | undefined): string | undefined {
  * @returns The path, narrowed to the shapes a clip can use
  */
 export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
-  if (path.kind === "track" || path.kind === "slot") return path;
+  if (
+    path.kind === "track" ||
+    path.kind === "slot" ||
+    path.kind === "take-lane" ||
+    path.kind === "new-take-lane"
+  ) {
+    return path;
+  }
 
   throw pathError(
     label,
     formatObjectPath(path),
-    `${describeNonClipPath(path)}; clips go to a track ("t0") or a session slot ("t0/s1")`,
+    `${describeNonClipPath(path)}; clips go to a track ("t0"), a take lane on it ("t0/l1"), or a session slot ("t0/s1")`,
   );
 }
 
@@ -139,10 +152,15 @@ export function requireSessionSlot(
   const clip = requireClipPath(path, label);
 
   if (clip.kind !== "slot") {
+    const problem =
+      clip.kind === "track"
+        ? "a track has no one clip"
+        : "take lanes hold arrangement clips";
+
     throw pathError(
       label,
       formatObjectPath(clip),
-      `a track has no one clip; name a session position as "t<track>/s<scene>" ` +
+      `${problem}; name a session position as "t<track>/s<scene>" ` +
         `(e.g., "t${clip.trackIndex}/s0")`,
     );
   }
@@ -247,9 +265,6 @@ function describeNonClipPath(path: ObjectPath): string {
       return "device paths hold no clips";
     case "scene":
       return "a scene alone names no track";
-    case "take-lane":
-    case "new-take-lane":
-      return "take lanes are not a clip destination";
     default:
       return "return and master tracks have no clips";
   }
