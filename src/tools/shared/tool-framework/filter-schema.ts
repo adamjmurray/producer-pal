@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z, type ZodType } from "zod";
-import { describeWithTags } from "#src/tools/shared/tool-framework/schema-tags.ts";
+import {
+  carrySchemaTags,
+  describeWithTags,
+} from "#src/tools/shared/tool-framework/schema-tags.ts";
 
 /**
  * Filters parameters from a Zod schema object based on excluded parameter names,
@@ -128,5 +131,8 @@ function filterEnumValues(schema: ZodType, valuesToExclude: string[]): ZodType {
     rebuilt = rebuilt.describe(description);
   }
 
-  return rebuilt;
+  // The rebuild is a brand-new instance, so the param()/deprecatedParam() tags
+  // have to be moved over by hand — otherwise trimming a deprecated param's
+  // enum republishes it.
+  return carrySchemaTags(schema, rebuilt);
 }

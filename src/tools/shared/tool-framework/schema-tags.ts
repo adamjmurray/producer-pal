@@ -7,10 +7,12 @@
 // the modal overrides param() attaches, and the deprecation deprecatedParam()
 // attaches.
 //
-// Tags key off the schema INSTANCE, and `.describe()` returns a new one, so
-// anything that re-describes a param must carry the tags across or they are lost
-// — a deprecated param gets republished, a modal param stops resolving its
-// modes. Re-describe through describeWithTags(), never `.describe()` directly.
+// Tags key off the schema INSTANCE, and every Zod builder — `.describe()`,
+// `.optional()`, `.default()`, an enum rebuild — returns a new one. Anything
+// that derives a schema from a tagged one must carry the tags across or they are
+// lost: a deprecated param gets republished, a modal param stops resolving its
+// modes. Re-describe through describeWithTags() and rebuild through
+// carrySchemaTags(), never a bare builder call. Tag last when building a param.
 
 import { type ZodType } from "zod";
 
@@ -48,6 +50,21 @@ export function getSchemaTag(schema: ZodType, key: symbol): unknown {
 }
 
 /**
+ * Copies a schema's tags onto another instance. Use whenever a param is rebuilt
+ * rather than re-described — `.optional()`, `.default()`, an enum rebuild.
+ * @param from - The schema the tags are on
+ * @param to - The schema replacing it
+ * @returns The `to` schema
+ */
+export function carrySchemaTags<T extends ZodType>(from: ZodType, to: T): T {
+  const tags = TAGS.get(from);
+
+  if (tags != null) TAGS.set(to, new Map(tags));
+
+  return to;
+}
+
+/**
  * Re-describes a schema, carrying its tags onto the new instance.
  * @param schema - The schema to re-describe
  * @param description - The new description
@@ -57,10 +74,5 @@ export function describeWithTags<T extends ZodType>(
   schema: T,
   description: string,
 ): T {
-  const described = schema.describe(description);
-  const tags = TAGS.get(schema);
-
-  if (tags != null) TAGS.set(described, new Map(tags));
-
-  return described;
+  return carrySchemaTags(schema, schema.describe(description));
 }

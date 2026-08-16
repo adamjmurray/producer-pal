@@ -95,11 +95,22 @@ export function parseDestinationPathList(
   input?: string | null,
   label = "toPath",
 ): DestinationPath[] {
-  const entries = parseCommaSeparatedIds(input);
+  const named = namedDestination(input ?? undefined);
+
+  if (named == null) return [];
+
+  const entries = parseCommaSeparatedIds(named);
+
+  // "," names nothing but was still sent. An empty list means "wherever the
+  // caller didn't say" downstream — the source clip's own track — so accepting
+  // it here is the silent wrong-destination this param exists to prevent.
+  if (entries.length === 0) {
+    throw new Error(`invalid ${label} "${input}" - it names no destination`);
+  }
 
   // Destinations are cycled against a position list, so a dropped entry shifts
   // every later copy onto the wrong track instead of just making one fewer.
-  if (entries.length > 0 && entries.length < (input ?? "").split(",").length) {
+  if (entries.length < named.split(",").length) {
     console.warn(
       `${label} "${input}" has empty entries, which were dropped; the remaining paths cycle across the positions`,
     );
@@ -108,9 +119,14 @@ export function parseDestinationPathList(
   return entries.map((entry) => parseDestinationPath(entry, label));
 }
 
+// z.coerce.string() turns a JSON null into the string "null" before our handler
+// runs, and a caller sending null means "unset". No destination is ever named
+// this, so reading it as unset costs nothing.
+const UNSET = new Set(["", "null", "undefined"]);
+
 /**
- * Normalizes a destination param: a blank string names nothing, so it reads the
- * same as an omitted param rather than as a destination that failed to parse.
+ * Normalizes a destination param: a value that names nothing reads the same as
+ * an omitted param rather than as a destination that failed to parse.
  * @param value - Raw param value
  * @returns The trimmed value, or undefined when it names nothing
  */
@@ -119,7 +135,7 @@ export function namedDestination(
 ): string | undefined {
   const trimmed = value?.trim();
 
-  return trimmed == null || trimmed === "" ? undefined : trimmed;
+  return trimmed == null || UNSET.has(trimmed) ? undefined : trimmed;
 }
 
 /**

@@ -153,7 +153,13 @@ function pathDestination(toPath: string): SlotPosition | null {
  * @returns The first destination, or null when there are none
  */
 function firstDestination<T>(destinations: T[], label: string): T | null {
-  if (destinations.length === 0) return null;
+  // Only reachable for a param that was sent but names nothing (e.g. ","), so
+  // silence here would be a move that never happened and never said so.
+  if (destinations.length === 0) {
+    console.warn(`${label} names no destination, so the clip was not moved`);
+
+    return null;
+  }
 
   if (destinations.length > 1) {
     console.warn(`${label} only supports a single destination - using first`);
@@ -244,11 +250,23 @@ export function handleSessionSlotMove({
   );
 
   sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
-  sourceClipSlot.call("delete_clip");
 
   const newClip = LiveAPI.from(
     livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex).clip(),
   );
 
+  // Look before deleting. Live's duplicate_clip_to reports nothing when it
+  // declines the copy, so a no-op for any reason (the MIDI/audio mismatch above
+  // is only the known one) would otherwise destroy the clip and report a move.
+  if (!newClip.exists()) {
+    console.warn(
+      `clip ${clip.id} was not moved: no clip landed at ${toSlot.trackIndex}/${toSlot.sceneIndex}, so the original was kept`,
+    );
+    updatedClips.push(buildClipResultObject(clip.id, noteResult));
+
+    return;
+  }
+
+  sourceClipSlot.call("delete_clip");
   updatedClips.push(buildClipResultObject(newClip.id, noteResult, toSlot));
 }

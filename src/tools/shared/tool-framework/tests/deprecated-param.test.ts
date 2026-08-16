@@ -63,22 +63,34 @@ describe("deprecatedParam", () => {
     expect(getParamModes(schema)?.smallModel).toBeNull();
   });
 
-  // filterSchemaForSmallModel re-describes a param when a mode overrides its
-  // text — another instance swap the tag has to survive.
-  it("survives a mode's description override", () => {
-    const schema = {
-      toSlot: deprecatedParam(
+  // filterSchemaForSmallModel swaps the instance two ways when a mode is active:
+  // a description override re-describes it, and an enum trim rebuilds it
+  // outright. The tag has to survive both.
+  it.each([
+    [
+      "a description override",
+      deprecatedParam(
         param(z.coerce.string().optional(), {
           default: "a param",
           smallModel: "shorter",
         }),
         { replacedBy: "toPath" },
       ),
-    };
-
+    ],
+    [
+      "an enum trim",
+      deprecatedParam(
+        param(z.array(z.enum(["a", "b"])).default([]), {
+          default: "a param",
+          smallModel: { excludeEnumValues: ["b"] },
+        }),
+        { replacedBy: "toPath" },
+      ),
+    ],
+  ])("survives %s", (_label, toSlot) => {
     expect(
       Object.keys(
-        resolveToolSchema(schema, { smallModelMode: true }).published,
+        resolveToolSchema({ toSlot }, { smallModelMode: true }).published,
       ),
     ).toStrictEqual([]);
   });

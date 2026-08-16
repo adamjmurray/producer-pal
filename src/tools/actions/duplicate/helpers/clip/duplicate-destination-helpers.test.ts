@@ -44,6 +44,16 @@ describe("resolveClipDestinations", () => {
       );
     });
 
+    // z.coerce.string() turns a JSON null into "null" before we see it, so a
+    // caller unsetting toSlot must not read as naming a second destination.
+    it("reads a coerced null alongside a real toPath as omitted", () => {
+      expect(resolveClipDestinations("t2/s1", "null", false)).toStrictEqual({
+        destination: "session",
+        slots: [{ trackIndex: 2, sceneIndex: 1 }],
+        trackIndices: [],
+      });
+    });
+
     // A blank param names nothing, so it reads as omitted — which is what lets
     // toSlot: "" alongside a real toPath still honor the toPath.
     it("reads a blank destination param as omitted", () => {

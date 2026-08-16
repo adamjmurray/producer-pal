@@ -353,6 +353,28 @@ describe("duplicate - clip duplication", () => {
       expect(track2.call).not.toHaveBeenCalled();
     });
 
+    // An empty toPath list means "the source clip's own track" downstream, which
+    // is the overwrite-the-source failure toPath exists to prevent.
+    it("creates nothing for a toPath that was sent but names nothing", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track0 = registerTrackWithArrangementDup(0, { has_midi_input: 1 });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1",
+          toPath: ",",
+        }),
+      ).rejects.toThrow(/toPath "," - it names no destination/);
+
+      expect(track0.call).not.toHaveBeenCalled();
+    });
+
     it("rejects toSlot on an arrangement destination", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),

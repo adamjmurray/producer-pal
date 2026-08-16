@@ -151,6 +151,17 @@ describe("parseDestinationPathList", () => {
     expect(parseDestinationPathList(undefined)).toStrictEqual([]);
     expect(parseDestinationPathList(null)).toStrictEqual([]);
     expect(parseDestinationPathList("")).toStrictEqual([]);
+    expect(parseDestinationPathList("   ")).toStrictEqual([]);
+  });
+
+  // An empty list reads as "the source's own track" downstream, so a param that
+  // was sent but names nothing must not quietly become one.
+  it("throws for a list that was sent but names nothing", () => {
+    for (const input of [",", " , , "]) {
+      expect(() => parseDestinationPathList(input)).toThrow(
+        /it names no destination/,
+      );
+    }
   });
 
   it("throws on the first bad entry rather than skipping it", () => {
@@ -231,6 +242,13 @@ describe("namedDestination", () => {
     expect(namedDestination(undefined)).toBeUndefined();
     expect(namedDestination("")).toBeUndefined();
     expect(namedDestination("   ")).toBeUndefined();
+  });
+
+  // z.coerce.string() turns a JSON null into "null" before the handler sees it,
+  // and a caller sending null means "unset", not "a track called null".
+  it("reads a coerced null as naming nothing", () => {
+    expect(namedDestination("null")).toBeUndefined();
+    expect(namedDestination("undefined")).toBeUndefined();
   });
 
   it("trims a param that names something", () => {

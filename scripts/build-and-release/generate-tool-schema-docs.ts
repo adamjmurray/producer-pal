@@ -17,6 +17,7 @@ import {
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.join(__dirname, "../..");
@@ -125,7 +126,9 @@ function escapeTableCell(text: string): string {
  */
 function generateToolPartial(toolDef: ToolDefFunction): string {
   const { toolOptions } = toolDef;
-  const { inputSchema } = toolOptions;
+  // The published schema, not the raw one: a deprecated param is still accepted
+  // but is not part of the surface, and docs/public/markdown/ is read by models.
+  const inputSchema = resolveToolSchema(toolOptions.inputSchema, {}).published;
   const schemaKeys = Object.keys(inputSchema);
 
   if (schemaKeys.length === 0) {
