@@ -137,8 +137,6 @@ export function handlePositionOperations(
 function pathDestination(toPath: string): SlotPosition | null {
   const first = firstDestination(parseDestinationPathList(toPath), "toPath");
 
-  if (first == null) return null;
-
   if (first.kind !== "slot") {
     console.warn(
       `toPath "${toPath}" is not a session slot, so the clip was not moved; update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track`,
@@ -154,15 +152,16 @@ function pathDestination(toPath: string): SlotPosition | null {
  * Takes the one destination update-clip can use, warning about any extras.
  * @param destinations - Parsed destinations, in order
  * @param label - Param name for the warning
- * @returns The first destination, or null when there are none
+ * @returns The first destination
+ * @throws When the param was sent but names nothing
  */
-function firstDestination<T>(destinations: T[], label: string): T | null {
-  // Only reachable for a param that was sent but names nothing (e.g. ","), so
-  // silence here would be a move that never happened and never said so.
+function firstDestination<T>(destinations: T[], label: string): T {
+  // Only toSlot arrives empty (e.g. ","); parseDestinationPathList throws
+  // before toPath can. Throwing rather than warning lets the caller's catch
+  // report it like any other destination that failed to parse, and spares
+  // callers a null case that only one of them can hit.
   if (destinations.length === 0) {
-    console.warn(`${label} names no destination, so the clip was not moved`);
-
-    return null;
+    throw new Error(`${label} names no destination`);
   }
 
   if (destinations.length > 1) {
