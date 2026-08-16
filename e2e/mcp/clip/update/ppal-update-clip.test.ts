@@ -249,6 +249,19 @@ describe("ppal-update-clip", () => {
     expect(tripletNotes).toContain("1|2+n/6");
   });
 
+  it("quantizes at full strength when only quantizeGrid is given", async () => {
+    // quantizeGrid alone must move notes (strength defaults to 1).
+    const clipId = await createOffGridClip(6, OFF_GRID_NOTES);
+
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clipId, quantizeGrid: "1/4" },
+    });
+
+    await sleep(100);
+    expectSnappedToQuarters(await readNotes(clipId));
+  });
+
   it("limits quantization to a single pitch with quantizePitch", async () => {
     // Two off-grid notes at different pitches and positions.
     const clipId = await createOffGridClip(7, "C3 1|1.25\nE3 1|2.75");

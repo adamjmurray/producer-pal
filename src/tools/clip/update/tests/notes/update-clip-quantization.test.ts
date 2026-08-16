@@ -79,16 +79,34 @@ describe("handleQuantization", () => {
     mockClip.call.mockReturnValue(["id", 0]);
   });
 
-  it("should do nothing when quantize is undefined", () => {
-    handleQuantization(mockClip, { quantize: undefined, quantizeGrid: "1/16" });
+  it("should do nothing when no quantize param is provided", () => {
+    handleQuantization(mockClip, {});
 
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should do nothing when quantize is not provided", () => {
-    handleQuantization(mockClip, { quantizeGrid: "1/16" });
+  it("should quantize fully when only quantizeGrid is provided", () => {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
-    expect(mockClip.call).not.toHaveBeenCalled();
+    handleQuantization(mockClip, { quantizeGrid: "1/8" });
+
+    expect(mockClip.call).toHaveBeenCalledWith("quantize", 2, 1);
+  });
+
+  it("should keep an explicit quantize of 0 rather than defaulting to 1", () => {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+
+    handleQuantization(mockClip, { quantize: 0, quantizeGrid: "1/8" });
+
+    expect(mockClip.call).toHaveBeenCalledWith("quantize", 2, 0);
+  });
+
+  it("should quantize fully when only quantizePitch is provided", () => {
+    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+
+    handleQuantization(mockClip, { quantizePitch: "C3" });
+
+    expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 5, 1);
   });
 
   it("should warn and skip for audio clips", () => {

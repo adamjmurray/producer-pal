@@ -145,4 +145,22 @@ describe("updateClip - splitting smoke tests", () => {
 
     expect(results.map((r) => r.id)).toContain(clipId);
   });
+
+  it("should not warn about split on a take-lane clip when split is not given", async () => {
+    const clipId = "take_lane_clip";
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    clearMockRegistry();
+    setupSplittingClipBaseMocks(clipId, {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+    });
+    setupSplittingClipGetMock(clipId);
+    createSplittingCallMock();
+
+    await updateClip({ ids: clipId, name: "renamed" }, {});
+
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("split parameter ignored"),
+    );
+  });
 });

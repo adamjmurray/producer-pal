@@ -318,6 +318,8 @@ function applySplittingIfNeeded(
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
+  if (split == null) return clips;
+
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
 
@@ -336,7 +338,7 @@ function applySplittingIfNeeded(
   });
   const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
 
-  if (split != null && splitPoints != null && arrangementClips.length > 0) {
+  if (splitPoints != null) {
     performSplitting(
       arrangementClips,
       splitPoints,

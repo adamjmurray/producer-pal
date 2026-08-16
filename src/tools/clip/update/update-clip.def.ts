@@ -157,7 +157,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe(
-        "MIDI quantize strength 0-1 (1 = full snap); snaps note starts to quantizeGrid (default 1/16). MIDI clips only",
+        "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
       ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
