@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { warnIfChainMixerLeftBehind } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
@@ -28,16 +29,25 @@ function parseDrumPadNoteFromPath(path: string): string | null {
  * Move a device to a new location
  * @param device - LiveAPI device object
  * @param toPath - Target path
+ * @param source - The device the user is really moving or copying, when
+ *   `device` is a temp copy of it (device duplication); drives the
+ *   left-behind chain mixer warning
  * @returns false when the destination doesn't exist, so the caller can report
  *   it in its own terms; true once the device has moved
  */
-export function moveDeviceToPath(device: LiveAPI, toPath: string): boolean {
+export function moveDeviceToPath(
+  device: LiveAPI,
+  toPath: string,
+  source: LiveAPI = device,
+): boolean {
   // Every caller here got the path from a `toPath` param, so name it that.
   const { container, position } = resolveInsertionPath(toPath, "toPath");
 
   if (!container?.exists()) {
     return false;
   }
+
+  warnIfChainMixerLeftBehind(source, container);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 

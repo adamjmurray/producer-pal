@@ -76,6 +76,8 @@ interface ResolvedTarget {
  * @param args.mute - Mute state (chains/drum pads only)
  * @param args.solo - Solo state (chains/drum pads only)
  * @param args.color - Color #RRGGBB (chains only)
+ * @param args.gainDb - Chain gain in dB (chains only)
+ * @param args.pan - Chain pan -1 to 1 (chains only)
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
@@ -98,6 +100,8 @@ export function updateDevice(
     mute,
     solo,
     color,
+    gainDb,
+    pan,
     chokeGroup,
     mappedPitch,
     wrapInRack,
@@ -131,6 +135,8 @@ export function updateDevice(
       mute,
       solo,
       color,
+      gainDb,
+      pan,
       chokeGroup,
       mappedPitch,
     };

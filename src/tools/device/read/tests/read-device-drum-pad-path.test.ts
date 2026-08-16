@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-test-helpers.ts";
 
@@ -138,6 +140,30 @@ describe("readDevice with drum pad path", () => {
       chokeGroup: 2,
       devices: [],
     });
+  });
+
+  it("lists the chain's own trim when it is non-default", () => {
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: { "chain-1": { name: "Layer 1", out_note: 48 } },
+    });
+
+    const mixerPath = `${livePath.track(1).device(0)} drum_pads 0 chains 0 mixer_device`;
+
+    registerMockObject("mixer-1", { path: mixerPath });
+    registerMockObject("volume-1", {
+      path: `${mixerPath} volume`,
+      properties: { display_value: -15 },
+    });
+    registerMockObject("panning-1", {
+      path: `${mixerPath} panning`,
+      properties: { value: 0.25 },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as Record<string, unknown>[];
+
+    expect(chains[0]).toMatchObject({ gainDb: -15, pan: 0.25 });
   });
 
   it("should read drum pad with chains containing devices", () => {

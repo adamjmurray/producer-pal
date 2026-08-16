@@ -6,6 +6,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   setParamValues,
@@ -29,6 +30,8 @@ export interface UpdatePropertyOptions {
   mute?: boolean;
   solo?: boolean;
   color?: string;
+  gainDb?: number;
+  pan?: number;
   chokeGroup?: number;
   mappedPitch?: string;
 }
@@ -54,6 +57,8 @@ export function updateDeviceProperties(
     mute,
     solo,
     color,
+    gainDb,
+    pan,
     chokeGroup,
     mappedPitch,
   } = options;
@@ -87,6 +92,8 @@ export function updateDeviceProperties(
   warnIfSet("mute", mute, type);
   warnIfSet("solo", solo, type);
   warnIfSet("color", color, type);
+  warnIfSet("gainDb", gainDb, type);
+  warnIfSet("pan", pan, type);
   warnIfSet("chokeGroup", chokeGroup, type);
   warnIfSet("mappedPitch", mappedPitch, type);
 }
@@ -121,8 +128,14 @@ export function updateNonDeviceProperties(
     if (options.color != null) {
       target.setColor(options.color);
     }
+
+    if (options.gainDb != null || options.pan != null) {
+      applyChainMixer(target, options);
+    }
   } else {
     warnIfSet("color", options.color, type);
+    warnIfSet("gainDb", options.gainDb, type);
+    warnIfSet("pan", options.pan, type);
   }
 
   if (type === "DrumChain") {

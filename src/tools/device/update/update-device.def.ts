@@ -29,7 +29,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
 
     toPath: param(z.string().optional(), {
-      default: "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1')",
+      default:
+        "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1'). To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
@@ -86,6 +87,15 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       default:
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
       smallModel: "#RRGGBB (chains only)",
+    }),
+    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
+      default: "chain's own gain in dB (chains/drum pads only)",
+      smallModel: null,
+    }),
+    pan: param(z.coerce.number().min(-1).max(1).optional(), {
+      default:
+        "chain's own pan, -1 (left) to 1 (right) (chains/drum pads only)",
+      smallModel: null,
     }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",

@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
 import { processDeviceChains } from "../device-reader-helpers.ts";
 
+// A chain with no mixer device, so buildChainInfo adds no mixer fields.
+const noMixer = { exists: () => false };
+
 interface ReturnChain {
   id: string;
   name: string;
@@ -47,6 +50,7 @@ describe("processDeviceChains", () => {
       return 0;
     },
     getColor: () => null,
+    child: () => noMixer,
     getChildren: () => [],
   });
 
@@ -65,6 +69,7 @@ describe("processDeviceChains", () => {
       return 0;
     },
     getColor: () => null,
+    child: () => noMixer,
     getChildren: (child: string) => {
       if (child === "devices") return overrides.devices ?? [];
 
@@ -185,6 +190,7 @@ describe("processDeviceChains", () => {
         return 0;
       },
       getColor: () => null,
+      child: () => noMixer,
       getChildren: (child: string) => {
         if (child === "devices") return [mockNestedDevice];
 
@@ -245,6 +251,7 @@ describe("processDeviceChains", () => {
         return 0;
       },
       getColor: () => null,
+      child: () => noMixer,
       getChildren: (child: string) => {
         if (child === "devices") return [mockDevice1, mockDevice2];
 

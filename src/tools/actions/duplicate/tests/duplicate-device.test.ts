@@ -72,6 +72,7 @@ describe("duplicate - device duplication", () => {
         _path: String(livePath.track(1).device(2)),
       }),
       "t0/d3",
+      expect.anything(),
     );
 
     // Should delete the temp track
@@ -97,6 +98,7 @@ describe("duplicate - device duplication", () => {
         _path: String(livePath.track(1).device(1)),
       }),
       "t3/d0",
+      expect.anything(),
     );
   });
 
@@ -123,12 +125,14 @@ describe("duplicate - device duplication", () => {
     // Should duplicate track 1
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 1);
 
-    // Should move device (from temp track at index 2)
+    // Should move device (from temp track at index 2), naming the real source
+    // so the chain-mixer warning reads the source chain, not the temp copy
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.objectContaining({
         _path: String(livePath.track(2).device(0).chain(0).device(1)),
       }),
       "t1/d0/c0/d2",
+      expect.objectContaining({ _id: "rack_device1" }),
     );
 
     // Should delete the temp track at index 2
@@ -199,6 +203,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t2/d0",
+      expect.anything(),
     );
   });
 
@@ -256,6 +261,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t100",
+      expect.anything(),
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -274,6 +280,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t0/d2",
+      expect.anything(),
     );
   });
 
@@ -299,6 +306,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t3/d0",
+      expect.anything(),
     );
   });
 
@@ -312,6 +320,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "r0/d0",
+      expect.anything(),
     );
   });
 
@@ -361,6 +370,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t12/d1",
+      expect.anything(),
     );
   });
 
@@ -382,6 +392,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t13/d0",
+      expect.anything(),
     );
   });
 
@@ -405,6 +416,7 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t0/d0/c0",
+      expect.anything(),
     );
   });
 });

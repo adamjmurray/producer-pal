@@ -60,6 +60,8 @@ describe("device-reader-helpers", () => {
           return 0;
         },
         getColor: () => overrides.color ?? null,
+        // No mixer device: buildChainInfo adds no mixer fields.
+        child: () => ({ exists: () => false }),
       }) as unknown as LiveAPI;
 
     it("builds chain info with id, type and name", () => {
