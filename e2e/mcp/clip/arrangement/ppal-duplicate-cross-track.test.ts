@@ -12,7 +12,13 @@
  * `toPath` really copies, and anything ambiguous or wrong is refused instead of
  * quietly eating the source.
  *
- * Uses: e2e-test-set (t8 = empty MIDI track, t7 = MIDI track with no clips)
+ * `toPath` and `arrangementStart` are both lists, and the shorter one cycles.
+ * That count only shows up against real Live — the copies have to land on the
+ * tracks and beats we claim — so the fan-out cases live here rather than in unit
+ * tests.
+ *
+ * Uses: e2e-test-set (t8 = empty MIDI track; t7, t10 = MIDI tracks with no
+ * clips; t5 = audio track)
  *
  * Run with: npm run e2e:mcp -- ppal-duplicate-cross-track
  */
@@ -32,6 +38,7 @@ const ctx = setupMcpTestContext({ once: true });
 
 const SOURCE_TRACK = 8;
 const DEST_TRACK = 7;
+const DEST_TRACK_2 = 10;
 const AUDIO_TRACK = 5;
 
 describe("cross-track arrangement clip duplicate", () => {
@@ -130,6 +137,77 @@ describe("cross-track arrangement clip duplicate", () => {
       `MIDI clip cannot be duplicated to audio track ${AUDIO_TRACK}`,
     );
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
+  });
+
+  it("fans one position out across every track in toPath", async () => {
+    const position = "37|1";
+    const source = await createArrClip(position, "Source E");
+
+    const result = await callTool("ppal-duplicate", {
+      type: "clip",
+      id: source.id,
+      arrangementStart: position,
+      toPath: `t${DEST_TRACK},t${DEST_TRACK_2}`,
+      name: "Fan Out",
+    });
+    const copies = parseToolResult<Array<{ id: string }>>(result);
+
+    expect(copies).toHaveLength(2);
+
+    // One copy per track, at the single position we gave.
+    const first = await clipAt(DEST_TRACK, position);
+    const second = await clipAt(DEST_TRACK_2, position);
+
+    expect(first?.id).toBe(copies[0]!.id);
+    expect(second?.id).toBe(copies[1]!.id);
+    expect(first?.name).toBe("Fan Out");
+    expect(second?.name).toBe("Fan Out");
+    expect(second?.notes).toContain("C3");
+
+    const survivor = await clipAt(SOURCE_TRACK, position);
+
+    expect(survivor?.id).toBe(source.id);
+  });
+
+  it("cycles one toPath track across every arrangementStart", async () => {
+    const source = await createArrClip("45|1", "Source F");
+    const positions = ["49|1", "53|1", "57|1"];
+
+    const result = await callTool("ppal-duplicate", {
+      type: "clip",
+      id: source.id,
+      arrangementStart: positions.join(", "),
+      toPath: `t${DEST_TRACK_2}`,
+      name: "Cycled",
+    });
+    const copies = parseToolResult<Array<{ id: string }>>(result);
+
+    expect(copies).toHaveLength(3);
+
+    for (const [i, position] of positions.entries()) {
+      const placed = await clipAt(DEST_TRACK_2, position);
+
+      expect(placed?.id).toBe(copies[i]!.id);
+      expect(placed?.name).toBe("Cycled");
+    }
+
+    // All three went to the named track, not the source's.
+    expect(await clipAt(SOURCE_TRACK, "49|1")).toBeUndefined();
+  });
+
+  it("steers the old unprefixed slot spelling to a path", async () => {
+    const source = await createArrClip("61|1", "Source G");
+
+    const result = await callTool("ppal-duplicate", {
+      type: "clip",
+      id: source.id,
+      toPath: `${DEST_TRACK}/0`,
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      `did you mean "t${DEST_TRACK}/s0"?`,
+    );
   });
 });
 

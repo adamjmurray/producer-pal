@@ -517,7 +517,8 @@ recurring shapes:
 - **Merge-group length boundaries** (`update-clip-arrangement-optimizer`):
   `>= 1` / `< 1` on group lengths the merge loop can only ever enter with ≥1
   element.
-- **Dual null-returns** (`update-clip.ts` `parseToSlotParam`): the
+- **Dual null-returns** (`update-clip.ts` `parseToSlotParam`, since moved to
+  `resolveMoveDestination` in `update-clip-session-helpers.ts`): the
   `toSlot == null` early return and the `slots.length === 0` return converge on
   the same `null`.
 - **Never-nullish fallbacks / never-equal bounds** across create/read helpers:

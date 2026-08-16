@@ -38,6 +38,10 @@ const ctx = setupMcpTestContext();
 // t8 "9-MIDI" is an empty MIDI track in e2e-test-set
 const MIDI_TRACK = 8;
 
+// Clip-free MIDI tracks, for cross-track take-lane duplicates
+const LANE_DEST_TRACK = 7;
+const LANE_DEST_TRACK_2 = 10;
+
 interface CreateClipTakeLaneResult extends CreateClipResult {
   takeLane?: number;
 }
@@ -449,5 +453,86 @@ describe("take lanes", () => {
     const after = await readTakeLanes(MIDI_TRACK);
 
     expect(after.takeLanes![0]!.clips).toHaveLength(1);
+  });
+
+  // takeLane: "new" appends a lane every time it's resolved, so a multi-copy
+  // duplicate has to resolve one lane per destination track up front — resolving
+  // per copy would stripe the copies across a stack of new lanes.
+  it("stacks every copy on one new lane when toPath repeats a track", async () => {
+    const source = parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          trackIndex: MIDI_TRACK,
+          arrangementStart: "1|1",
+          notes: "C3 E3 1|1",
+          name: "Take Source",
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${LANE_DEST_TRACK}`,
+          arrangementStart: "5|1, 9|1, 13|1",
+          takeLane: "new",
+        },
+      }),
+    );
+
+    expect(dup.data).toHaveLength(3);
+    expect(dup.data.map((copy) => copy.takeLane)).toStrictEqual([1, 1, 1]);
+
+    await sleep(100);
+    const detail = await readTakeLanes(LANE_DEST_TRACK);
+
+    expect(detail.takeLanes).toHaveLength(1);
+    expect(detail.takeLanes![0]!.clips).toHaveLength(3);
+  });
+
+  it("gives each toPath track its own new lane", async () => {
+    const source = parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          trackIndex: MIDI_TRACK,
+          arrangementStart: "1|1",
+          notes: "C3 1|1",
+        },
+      }),
+    );
+
+    await sleep(100);
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${LANE_DEST_TRACK},t${LANE_DEST_TRACK_2}`,
+          arrangementStart: "5|1",
+          takeLane: "new",
+        },
+      }),
+    );
+
+    expect(dup.data).toHaveLength(2);
+    expect(dup.data.map((copy) => copy.takeLane)).toStrictEqual([1, 1]);
+
+    await sleep(100);
+
+    for (const trackIndex of [LANE_DEST_TRACK, LANE_DEST_TRACK_2]) {
+      const detail = await readTakeLanes(trackIndex);
+
+      expect(detail.takeLanes).toHaveLength(1);
+      expect(detail.takeLanes![0]!.clips).toHaveLength(1);
+    }
   });
 });

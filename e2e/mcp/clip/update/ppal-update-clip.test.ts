@@ -14,6 +14,8 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
+  getToolNotices,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -377,7 +379,7 @@ describe("ppal-update-clip", () => {
     expect(batchClip2.name).toBe("Batch Updated");
   });
 
-  it("moves session clip with toSlot", async () => {
+  it("moves session clip with toPath", async () => {
     // Setup: Create a clip at scene 4 on the empty MIDI track
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -394,7 +396,7 @@ describe("ppal-update-clip", () => {
     // Move clip from scene 4 to scene 5 on the same track
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/5` },
+      arguments: { ids: clip.id, toPath: `t${emptyMidiTrack}/s5` },
     });
     const movedClip = parseToolResult<{
       id: string;
@@ -426,6 +428,67 @@ describe("ppal-update-clip", () => {
       parseToolResultWithWarnings<ReadClipResult>(verifyOld);
 
     expect(oldSlot.id).toBeNull();
+  });
+
+  it("warns instead of throwing when toPath isn't a session slot", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${emptyMidiTrack}/6`,
+        notes: "C3 1|1",
+        name: "Stay Put",
+      },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // "t7" names a track, not a slot — update-clip can't move a clip across
+    // tracks, so it skips the move and finishes the rest of the update.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clip.id, toPath: "t7", name: "Renamed Anyway" },
+    });
+    const { data, warnings } = parseToolResultWithWarnings<{
+      id: string;
+      slot?: string;
+    }>(result);
+
+    expect(isToolError(result)).toBe(false);
+    expect(warnings.join(" ")).toContain("is not a session slot");
+
+    await sleep(100);
+
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: data.id },
+    });
+    const stayed = parseToolResult<ReadClipResult>(verify);
+
+    expect(stayed.slot).toBe(`${emptyMidiTrack}/6`);
+    expect(stayed.name).toBe("Renamed Anyway");
+  });
+
+  it("still honors the deprecated toSlot, and says so", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { slot: `${emptyMidiTrack}/6`, notes: "C3 1|1" },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/7` },
+    });
+
+    expect(parseToolResult<{ slot: string }>(result).slot).toBe(
+      `${emptyMidiTrack}/7`,
+    );
+    expect(getToolNotices(result)).toContainEqual(
+      expect.stringContaining('param "toSlot" is deprecated'),
+    );
   });
 
   it("updates audio clip properties", async () => {
