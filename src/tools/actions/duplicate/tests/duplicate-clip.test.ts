@@ -24,7 +24,7 @@ describe("duplicate - clip duplication", () => {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
-      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
+      'duplicate failed: clip requires toPath ("t0/s1" for a session slot) or arrangementStart/locator (for the arrangement)',
     );
   });
 
@@ -106,6 +106,42 @@ describe("duplicate - clip duplication", () => {
       expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip");
     });
 
+    it("takes the same slot from toPath", async () => {
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
+      });
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        toPath: "t0/s1",
+      });
+
+      expect(sourceClipSlot.call).toHaveBeenCalledWith(
+        "duplicate_clip_to",
+        "id live_set/tracks/0/clip_slots/1",
+      );
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/1/clip",
+        slot: "0/1",
+      });
+    });
+
+    it("refuses when toPath and toSlot both name a destination", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          toPath: "t0/s1",
+          toSlot: "0/2",
+        }),
+      ).rejects.toThrow(/toPath and toSlot both name a destination/);
+    });
+
     it("should throw an error when trying to duplicate an arrangement clip to session", async () => {
       registerMockObject("arrangementClip1", {
         path: livePath.track(0).arrangementClip(0),
@@ -154,7 +190,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("places the copy on toTrack instead of the source's own track", async () => {
+    it("places the copy on toPath's track instead of the source's own", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -169,7 +205,7 @@ describe("duplicate - clip duplication", () => {
         type: "clip",
         id: "clip1",
         arrangementStart: "3|1",
-        toTrack: 2,
+        toPath: "t2",
       });
 
       // The destination track receives the call; the source's track is untouched
@@ -193,7 +229,94 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("rejects toPath on a clip and points at the params that work", async () => {
+    it("cycles one position across several toPath tracks", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+      const track3 = registerTrackWithArrangementDup(3, { has_midi_input: 1 });
+
+      registerArrangementClip(2, 0, 8);
+      registerArrangementClip(3, 0, 8);
+
+      // Two tracks, one position: the shorter list cycles, so the copy count is
+      // the longer of the two.
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath: "t2,t3",
+      });
+
+      expect(track2.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        8,
+      );
+      expect(track3.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        8,
+      );
+
+      expect(result).toStrictEqual([
+        {
+          id: livePath.track(2).arrangementClip(0),
+          trackIndex: 2,
+          arrangementStart: "3|1",
+        },
+        {
+          id: livePath.track(3).arrangementClip(0),
+          trackIndex: 3,
+          arrangementStart: "3|1",
+        },
+      ]);
+    });
+
+    it("cycles one toPath track across several positions", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+      registerArrangementClip(2, 0, 8);
+      registerArrangementClip(2, 1, 16);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1,5|1",
+        toPath: "t2",
+      });
+
+      expect(track2.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        8,
+      );
+      expect(track2.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        16,
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it("rejects a bare track in toPath with no position, naming both options", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      await expect(
+        duplicate({ type: "clip", id: "clip1", toPath: "t2" }),
+      ).rejects.toThrow(/"t2" names a track but not a spot on it/);
+    });
+
+    it("rejects a session slot in toPath on an arrangement destination", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
@@ -203,9 +326,9 @@ describe("duplicate - clip duplication", () => {
           type: "clip",
           id: "clip1",
           arrangementStart: "3|1",
-          toPath: "t2",
+          toPath: "t2/s0",
         }),
-      ).rejects.toThrow(/toPath is for devices/);
+      ).rejects.toThrow(/"t2\/s0" is a session slot/);
     });
 
     it("rejects toSlot on an arrangement destination", async () => {

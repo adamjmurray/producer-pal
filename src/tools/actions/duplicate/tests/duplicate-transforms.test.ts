@@ -11,7 +11,7 @@ import {
   registerMockObject,
   registerSessionClipDuplication,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/helpers/duplicate-transform-helpers.ts";
+import { applyTransformsToDuplicatedClips } from "#src/tools/actions/duplicate/helpers/clip/duplicate-transform-helpers.ts";
 
 // Capture warnings emitted for unsupported transforms/code usage
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({

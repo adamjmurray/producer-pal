@@ -6,12 +6,11 @@
 /**
  * E2E tests for a cross-track arrangement clip duplicate.
  *
- * `toTrack` is the only cross-track destination for an arrangement clip. The
- * device-only `toPath` and the session-only `toSlot` used to be dropped without
- * a word, degrading the call to "duplicate onto my own track at
- * arrangementStart" — which overwrites the source when the position matches. So
- * these pin both halves: `toTrack` really copies, and the wrong param is
- * refused instead of quietly eating the source.
+ * `toPath` names the destination track. A destination that isn't honored
+ * degrades the call to "duplicate onto my own track at arrangementStart", which
+ * overwrites the source when the position matches — so these pin both halves:
+ * `toPath` really copies, and anything ambiguous or wrong is refused instead of
+ * quietly eating the source.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track, t7 = MIDI track with no clips)
  *
@@ -41,7 +40,7 @@ describe("cross-track arrangement clip duplicate", () => {
     await sleep(50);
   });
 
-  it("copies to toTrack at the source's own position, leaving the source intact", async () => {
+  it("copies to toPath's track at the source's own position, leaving the source intact", async () => {
     const position = "5|1";
     const source = await createArrClip(position, "Source A");
 
@@ -49,7 +48,7 @@ describe("cross-track arrangement clip duplicate", () => {
       type: "clip",
       id: source.id,
       arrangementStart: position,
-      toTrack: DEST_TRACK,
+      toPath: `t${DEST_TRACK}`,
       name: "Cross Copy A",
     });
     const copy = parseToolResult<{ id: string; trackIndex?: number }>(result);
@@ -70,20 +69,21 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source A");
   });
 
-  it("rejects toPath instead of dropping it and overwriting the source", async () => {
+  it("refuses a bare track with no position instead of guessing which one", async () => {
     const position = "13|1";
     const source = await createArrClip(position, "Source B");
 
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
       toPath: `t${DEST_TRACK}`,
       name: "Cross Copy B",
     });
 
     expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain("toPath is for devices");
+    expect(getToolErrorMessage(result)).toContain(
+      `"t${DEST_TRACK}" names a track but not a spot on it`,
+    );
 
     const survivor = await clipAt(SOURCE_TRACK, position);
 
@@ -91,7 +91,7 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source B");
   });
 
-  it("rejects toSlot on an arrangement destination", async () => {
+  it("rejects the deprecated toSlot on an arrangement destination", async () => {
     const position = "21|1";
     const source = await createArrClip(position, "Source C");
 
@@ -122,7 +122,7 @@ describe("cross-track arrangement clip duplicate", () => {
       type: "clip",
       id: source.id,
       arrangementStart: position,
-      toTrack: AUDIO_TRACK,
+      toPath: `t${AUDIO_TRACK}`,
     });
 
     expect(isToolError(result)).toBe(true);

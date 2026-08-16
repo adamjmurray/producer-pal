@@ -35,7 +35,7 @@ export const arrangementWrite = `### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
-To copy a clip to another track, use duplicate with \`toTrack\` (arrangement) or \`toSlot\` (session). An arrangement duplicate without \`toTrack\` lands on the source's own track, which overwrites the source when the position matches.
+To copy a clip to another track, use duplicate with \`toPath\`: \`t2\` for track 2's arrangement (with \`arrangementStart\` or \`locator\`), \`t2/s0\` for a session slot. A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 
 ### Take Lanes (Arrangement Variations)
 

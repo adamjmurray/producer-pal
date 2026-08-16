@@ -20,7 +20,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-helpers.ts";
+import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/clip/duplicate-take-lane-helpers.ts";
 import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
@@ -336,7 +336,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
-      0,
+      [0],
       [0],
       undefined,
       undefined,
@@ -380,7 +380,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
-      0,
+      [0, 0, 0],
       [0, 4, 8],
       undefined,
       undefined,
@@ -406,7 +406,7 @@ describe("duplicate take lane", () => {
     const created = duplicateClipsToTakeLane(
       LiveAPI.from("src_clip"),
       "src_clip",
-      0,
+      [0],
       [0], // beat 0 overlaps the existing clip on lane 1
       undefined,
       undefined,

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/deprecated-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
@@ -14,11 +15,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   description: {
     default:
       "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement, " +
-      "and toTrack to land an arrangement copy on a different track.",
+      "Use count for multiple track/scene copies; arrangementStart or locator for clip placement, " +
+      "and toPath for the destination track, session slot, or device chain.",
     smallModel:
       "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use arrangementStart or toSlot for clip placement, toTrack for another track's arrangement; toPath for devices.",
+      "Use arrangementStart for clip placement; toPath for the destination track, session slot, or device.",
   },
 
   annotations: {
@@ -72,21 +73,16 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Auto-fills with loops; song meter",
       ),
-    toSlot: param(z.coerce.string().optional(), {
+    toSlot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+    }),
+    toPath: param(z.coerce.string().optional(), {
       default:
-        "session destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
+        "destination path(s), comma-separated for multiple. Clips: 't2/s1' = session slot (track 2, scene 1), " +
+        "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type); " +
+        "omit for the source clip's own track. Devices: 't1/d0'. Cycles against arrangementStart when the lists differ in length",
       smallModel:
-        "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
-    }),
-    toTrack: param(z.coerce.number().int().min(0).optional(), {
-      default:
-        "arrangement destination track index for clips; omit to copy onto the source clip's own track. Must match the clip's type (MIDI/audio)",
-      smallModel: "arrangement destination track index for clips",
-    }),
-    toPath: param(z.string().optional(), {
-      default:
-        "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
-      smallModel: "device destination path (e.g., 't1/d0')",
+        "destination path(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0'",
     }),
 
     routeToSource: param(z.boolean().optional(), {

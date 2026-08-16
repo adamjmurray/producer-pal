@@ -128,29 +128,36 @@ export function validateAndConfigureRouteToSource(
 }
 
 /**
- * Infers the duplication destination from the provided parameters
+ * Reports whether the call names an arrangement position.
+ * @param arrangementStart - Bar|beat position(s)
+ * @param locator - Locator ID(s) or name(s)
+ * @returns True when either names a position
+ */
+export function hasArrangementPosition(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): boolean {
+  return (
+    (arrangementStart != null && arrangementStart.trim() !== "") ||
+    locator != null
+  );
+}
+
+/**
+ * Infers the duplication destination for a track, scene, or device. Clips
+ * resolve theirs from toPath (see duplicate-destination-helpers.ts).
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
  * @param locator - Locator ID or name
- * @param toSlot - Session clip slot
  * @returns Inferred destination
  */
 export function inferDestination(
   type: string,
   arrangementStart: string | undefined,
   locator: string | undefined,
-  toSlot: string | undefined,
 ): "session" | "arrangement" | undefined {
-  const hasArrangementParams =
-    (arrangementStart != null && arrangementStart.trim() !== "") ||
-    locator != null;
-
-  if (hasArrangementParams) {
+  if (hasArrangementPosition(arrangementStart, locator)) {
     return "arrangement";
-  }
-
-  if (type === "clip") {
-    return toSlot != null ? "session" : undefined;
   }
 
   if (type === "device") {
@@ -162,89 +169,16 @@ export function inferDestination(
 }
 
 /**
- * Validates clip-specific parameters
- * @param type - Type of object being duplicated
- * @param destination - Inferred destination
- * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
- */
-export function validateClipParameters(
-  type: string,
-  destination: string | undefined,
-  toSlot: string | undefined,
-): void {
-  if (type !== "clip") {
-    return;
-  }
-
-  if (destination == null) {
-    throw new Error(
-      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
-    );
-  }
-
-  if (destination === "session" && (toSlot == null || toSlot.trim() === "")) {
-    throw new Error("duplicate failed: toSlot is required for session clips");
-  }
-}
-
-/**
- * Rejects cross-track destination params that don't apply to this duplicate.
- * These used to be dropped in silence, which turned an intended cross-track copy
- * into a duplicate onto the source's own track — overwriting the source when the
- * position matched. Say no instead, and name the param that does work.
- * @param type - Type of object being duplicated
- * @param destination - Inferred destination
- * @param toSlot - Session destination clip slot(s)
- * @param toPath - Device destination path(s)
- * @param toTrack - Arrangement destination track index
- */
-export function validateDestinationTrackParameters(
-  type: string,
-  destination: string | undefined,
-  toSlot: string | undefined,
-  toPath: string | undefined,
-  toTrack: number | undefined,
-): void {
-  if (type === "clip" && toPath != null) {
-    throw new Error(
-      "duplicate failed: toPath is for devices; duplicate a clip to another track with toTrack (arrangement) or toSlot (session)",
-    );
-  }
-
-  if (type === "clip" && destination === "arrangement" && toSlot != null) {
-    throw new Error(
-      "duplicate failed: toSlot is for session destinations; use toTrack to duplicate to another track's arrangement",
-    );
-  }
-
-  if (toTrack == null) {
-    return;
-  }
-
-  if (type !== "clip") {
-    console.warn(`toTrack ignored: only supported for clips (type "${type}")`);
-
-    return;
-  }
-
-  if (destination === "session") {
-    throw new Error(
-      "duplicate failed: toTrack is for arrangement destinations; toSlot already names the session destination track",
-    );
-  }
-}
-
-/**
- * Resolves and validates the track a clip is duplicated onto in the arrangement.
+ * Resolves and validates the tracks a clip is duplicated onto in the arrangement.
  * @param sourceClip - The clip being duplicated
- * @param toTrack - Requested destination track index, or undefined for the source's own track
- * @returns The destination track index
+ * @param trackIndices - Requested destination tracks, or empty for the source's own track
+ * @returns The destination track indices
  */
-export function resolveDestinationTrackIndex(
+export function resolveDestinationTrackIndices(
   sourceClip: LiveAPI,
-  toTrack: number | undefined,
-): number {
-  if (toTrack == null) {
+  trackIndices: number[],
+): number[] {
+  if (trackIndices.length === 0) {
     const sourceTrackIndex = sourceClip.trackIndex;
 
     if (sourceTrackIndex == null) {
@@ -253,28 +187,31 @@ export function resolveDestinationTrackIndex(
       );
     }
 
-    return sourceTrackIndex;
+    return [sourceTrackIndex];
   }
 
-  const track = LiveAPI.from(livePath.track(toTrack));
-
-  if (!track.exists()) {
-    throw new Error(`duplicate failed: no track at toTrack ${toTrack}`);
-  }
-
-  // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
-  // failing, so check first rather than reporting a copy that never happened.
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
-  const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
-  if (clipIsMidi !== trackIsMidi) {
-    throw new Error(
-      `duplicate failed: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
-        `${trackIsMidi ? "MIDI" : "audio"} track ${toTrack}`,
-    );
+  for (const trackIndex of trackIndices) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
+
+    if (!track.exists()) {
+      throw new Error(`duplicate failed: no track at toPath "t${trackIndex}"`);
+    }
+
+    // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
+    // failing, so check first rather than reporting a copy that never happened.
+    const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
+
+    if (clipIsMidi !== trackIsMidi) {
+      throw new Error(
+        `duplicate failed: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
+          `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
+      );
+    }
   }
 
-  return toTrack;
+  return trackIndices;
 }
 
 /**
