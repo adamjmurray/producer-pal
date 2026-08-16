@@ -11,7 +11,10 @@ import {
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import {
+  clipCopyBlocker,
+  copyClipToSlot,
+} from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
   namedDeprecatedDestination,
   namedDestination,
@@ -223,17 +226,15 @@ export function handleSessionSlotMove({
     return;
   }
 
-  // Live's duplicate_clip_to no-ops on a MIDI/audio mismatch instead of
-  // failing, and the source is deleted right after — check first rather than
+  // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
+  // of failing, and the source is deleted right after — check first rather than
   // destroying the clip and reporting it moved.
-  const destTrack = LiveAPI.from(livePath.track(toSlot.trackIndex));
   const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
-  const destIsMidi = (destTrack.getProperty("has_midi_input") as number) > 0;
+  const blocker = clipCopyBlocker(clipIsMidi, toSlot.trackIndex);
 
-  if (clipIsMidi !== destIsMidi) {
+  if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: track ` +
-        `${toSlot.trackIndex} is ${destIsMidi ? "MIDI" : "audio"}`,
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: ${blocker}`,
     );
     updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
@@ -250,16 +251,13 @@ export function handleSessionSlotMove({
     livePath.track(srcTrackIndex).clipSlot(srcSceneIndex),
   );
 
-  sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
+  // Look before deleting. duplicate_clip_to reports nothing when it declines a
+  // copy, so anything the checks above didn't catch would destroy the clip and
+  // report a move. copyClipToSlot compares the destination's clip before and
+  // after, so an occupied slot's original clip can't be mistaken for the copy.
+  const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
 
-  const newClip = LiveAPI.from(
-    livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex).clip(),
-  );
-
-  // Look before deleting. Live's duplicate_clip_to reports nothing when it
-  // declines the copy, so a no-op for any reason (the MIDI/audio mismatch above
-  // is only the known one) would otherwise destroy the clip and report a move.
-  if (!newClip.exists()) {
+  if (newClip == null) {
     console.warn(
       `clip ${clip.id} was not moved: no clip landed at ${toSlot.trackIndex}/${toSlot.sceneIndex}, so the original was kept`,
     );

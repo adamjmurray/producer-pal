@@ -9,9 +9,9 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   parseArrangementLength,
   getMinimalClipInfo,
-  duplicateClipSlot,
   duplicateClipToArrangement,
 } from "../duplicate-helpers.ts";
+import { duplicateClipSlot } from "../clip/duplicate-clip-slot-helpers.ts";
 import {
   findRoutingOptionForDuplicateNames,
   type RoutingType,

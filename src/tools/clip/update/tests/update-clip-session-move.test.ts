@@ -21,20 +21,27 @@ vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
   handleArrangementOperations: vi.fn(),
 }));
 
+/** Id of the clip Live creates in the destination slot when the copy lands */
+const COPY_ID = "456";
+/** Id of the clip already sitting in the destination slot */
+const OCCUPANT_ID = "789";
+
 /**
  * Create a mock clip and register destination slot mocks, then call handleSessionSlotMove.
+ * Unregistered objects are non-existent here, so a slot only holds a clip when
+ * this helper puts one there — the destination's clip appears when (and only
+ * when) duplicate_clip_to actually copies.
  * @param opts - Test options
  * @param opts.trackIndex - Source clip track index
  * @param opts.sceneIndex - Source clip scene index
  * @param opts.toTrackIndex - Destination track index
  * @param opts.toSceneIndex - Destination scene index
- * @param opts.destHasClip - Whether destination slot has an existing clip
+ * @param opts.destHasClip - Whether destination slot already has a clip
  * @param opts.noteResult - Note result to pass
- * @param opts.registerSource - Whether to register the source clip slot
- * @param opts.registerDest - Whether to register destination mocks
- * @param opts.registerDestClip - Whether the copy lands (dest slot's clip exists)
+ * @param opts.copyLands - Whether duplicate_clip_to makes the copy
  * @param opts.clipIsMidi - Whether the source clip is MIDI
  * @param opts.destIsMidi - Whether the destination track takes MIDI
+ * @param opts.destIsFrozen - Whether the destination track is frozen
  * @returns Object with mockClip, updatedClips, and source clip slot mock
  */
 function runSessionMove(opts: {
@@ -44,11 +51,10 @@ function runSessionMove(opts: {
   toSceneIndex: number;
   destHasClip?: number;
   noteResult?: { noteCount: number } | null;
-  registerSource?: boolean;
-  registerDest?: boolean;
-  registerDestClip?: boolean;
+  copyLands?: boolean;
   clipIsMidi?: number;
   destIsMidi?: number;
+  destIsFrozen?: number;
 }) {
   const {
     trackIndex = 0,
@@ -57,12 +63,13 @@ function runSessionMove(opts: {
     toSceneIndex,
     destHasClip = 0,
     noteResult = null,
-    registerSource = true,
-    registerDest = true,
-    registerDestClip = true,
+    copyLands = true,
     clipIsMidi = 1,
     destIsMidi = 1,
+    destIsFrozen = 0,
   } = opts;
+
+  mockNonExistentObjects();
 
   const mockClip = {
     id: "123",
@@ -75,35 +82,38 @@ function runSessionMove(opts: {
 
   registerMockObject(`live_set/tracks/${toTrackIndex}`, {
     path: livePath.track(toTrackIndex),
-    properties: { has_midi_input: destIsMidi },
+    properties: { has_midi_input: destIsMidi, is_frozen: destIsFrozen },
   });
 
-  const sourceSlot = registerSource
-    ? registerMockObject(
-        `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
-        {
-          path: livePath.track(trackIndex).clipSlot(sceneIndex),
-        },
-      )
-    : undefined;
+  const destClipPath = livePath
+    .track(toTrackIndex)
+    .clipSlot(toSceneIndex)
+    .clip();
 
-  if (registerDest) {
-    registerMockObject(
-      `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}`,
-      {
-        path: livePath.track(toTrackIndex).clipSlot(toSceneIndex),
-        properties: { has_clip: destHasClip },
+  const sourceSlot = registerMockObject(
+    `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
+    {
+      path: livePath.track(trackIndex).clipSlot(sceneIndex),
+      methods: {
+        duplicate_clip_to: () => {
+          if (copyLands) registerMockObject(COPY_ID, { path: destClipPath });
+
+          return null;
+        },
       },
-    );
+    },
+  );
 
-    if (registerDestClip) {
-      registerMockObject(
-        `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}/clip`,
-        {
-          path: livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
-        },
-      );
-    }
+  registerMockObject(
+    `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}`,
+    {
+      path: livePath.track(toTrackIndex).clipSlot(toSceneIndex),
+      properties: { has_clip: destHasClip },
+    },
+  );
+
+  if (destHasClip) {
+    registerMockObject(OCCUPANT_ID, { path: destClipPath });
   }
 
   const updatedClips: ClipResult[] = [];
@@ -141,7 +151,7 @@ describe("handleSessionSlotMove", () => {
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
-      id: "live_set/tracks/1/clip_slots/2/clip",
+      id: COPY_ID,
       noteCount: 5,
       slot: "1/2",
     });
@@ -227,7 +237,7 @@ describe("handleSessionSlotMove", () => {
       expect.any(String),
     );
     expect(updatedClips[0]).toMatchObject({
-      id: "live_set/tracks/2/clip_slots/1/clip",
+      id: COPY_ID,
       slot: "2/1",
     });
   });
@@ -309,6 +319,44 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
+  // A frozen track still reports has_midi_input, so the type check passes and
+  // Live refuses the copy anyway. Naming the reason beats the generic
+  // "no clip landed" backstop below.
+  it("should not move (or delete) a clip to a frozen track", () => {
+    const { updatedClips, sourceSlot } = runSessionMove({
+      toTrackIndex: 17,
+      toSceneIndex: 0,
+      destHasClip: 1,
+      destIsFrozen: 1,
+      copyLands: false,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "MIDI clip 123 was not moved: track 17 is frozen",
+    );
+    expect(sourceSlot.call).not.toHaveBeenCalled();
+    expect(updatedClips).toHaveLength(1);
+    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).not.toHaveProperty("slot");
+  });
+
+  it("should move a clip to an unfrozen track", () => {
+    const { updatedClips } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      destIsFrozen: 0,
+    });
+
+    // is_frozen is falsy, so the frozen guard must not fire (kills its
+    // forced-true mutant).
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("is frozen"),
+    );
+    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, slot: "1/2" });
+  });
+
   it("should not move an audio clip to a MIDI track", () => {
     const { updatedClips, sourceSlot } = runSessionMove({
       toTrackIndex: 1,
@@ -327,15 +375,11 @@ describe("handleSessionSlotMove", () => {
   // duplicate_clip_to reports nothing when it declines the copy, so the delete
   // has to be gated on the copy actually being there — for any reason it
   // declined, not just the MIDI/audio mismatch above.
-  it("should keep the source when no clip lands at the destination", () => {
-    // Everything the move touches is registered below; the destination's clip
-    // deliberately is not, which is what "the copy didn't land" looks like.
-    mockNonExistentObjects();
-
+  it("should keep the source when no clip lands in an empty destination", () => {
     const { updatedClips, sourceSlot } = runSessionMove({
       toTrackIndex: 1,
       toSceneIndex: 2,
-      registerDestClip: false,
+      copyLands: false,
     });
 
     expect(sourceSlot.call).toHaveBeenCalledWith(
@@ -350,17 +394,43 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({ id: "123" });
   });
 
+  // The dangerous case: the slot already holds a clip, so a path lookup finds
+  // one either way. Only the destination clip's id tells the copy apart from
+  // the clip that was always there — get it wrong and the source is deleted.
+  it("should keep the source when the occupied destination still holds its own clip", () => {
+    const { updatedClips, sourceSlot } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
+      destHasClip: 1,
+      copyLands: false,
+    });
+
+    expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "clip 123 was not moved: no clip landed at 1/2, so the original was kept",
+    );
+    expect(updatedClips).toHaveLength(1);
+    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    // Reporting the clip that was already there as the moved clip is its own
+    // defect, on top of deleting the source.
+    expect(updatedClips[0]?.id).not.toBe(OCCUPANT_ID);
+    expect(updatedClips[0]).not.toHaveProperty("slot");
+  });
+
   it("should warn when overwriting existing clip at destination", () => {
-    const { updatedClips } = runSessionMove({
+    const { updatedClips, sourceSlot } = runSessionMove({
       toTrackIndex: 0,
       toSceneIndex: 1,
       destHasClip: 1,
     });
 
     expect(outlet).toHaveBeenCalledWith(1, "overwriting existing clip at 0/1");
+    expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
+    // The copy replaced the occupant, so the result is the copy's id.
     expect(updatedClips[0]).toMatchObject({
-      id: "live_set/tracks/0/clip_slots/1/clip",
+      id: COPY_ID,
       slot: "0/1",
     });
   });

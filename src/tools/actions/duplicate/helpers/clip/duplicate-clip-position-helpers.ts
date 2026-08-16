@@ -21,10 +21,8 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
-import {
-  duplicateClipSlot,
-  duplicateClipToArrangement,
-} from "../duplicate-helpers.ts";
+import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
+import { duplicateClipSlot } from "./duplicate-clip-slot-helpers.ts";
 import { unreachedPositionsWarning } from "../duplicate-position-helpers.ts";
 import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
 import {
@@ -114,16 +112,20 @@ function duplicateClipToSlots(
 
   warnExtraNames(parsedNames, slots.length, "duplicate");
 
-  return slots.map((slot, i) =>
-    duplicateClipSlot(
-      trackIndex,
-      sourceSceneIndex,
-      slot.trackIndex,
-      slot.sceneIndex,
-      getNameForIndex(name, i, parsedNames),
-      getColorForIndex(color, i, parsedColors),
-    ),
-  );
+  // A copy Live declined warns and reports nothing, so the results only list
+  // the copies that exist.
+  return slots
+    .map((slot, i) =>
+      duplicateClipSlot(
+        trackIndex,
+        sourceSceneIndex,
+        slot.trackIndex,
+        slot.sceneIndex,
+        getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
+      ),
+    )
+    .filter((clipInfo) => clipInfo != null);
 }
 
 /**

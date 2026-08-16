@@ -17,7 +17,6 @@ import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arra
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
@@ -297,66 +296,6 @@ async function lengthenClipAndCollectInfo(
       duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, omitFields));
     }
   }
-}
-
-/**
- * Duplicate a clip slot to another slot
- * @param sourceTrackIndex - Source track index
- * @param sourceSceneIndex - Source scene index
- * @param toTrackIndex - Destination track index
- * @param toSceneIndex - Destination scene index
- * @param name - Optional name for the duplicated clip
- * @param color - Optional color for the duplicated clip
- * @returns Minimal clip info object
- */
-export function duplicateClipSlot(
-  sourceTrackIndex: number,
-  sourceSceneIndex: number,
-  toTrackIndex: number,
-  toSceneIndex: number,
-  name?: string,
-  color?: string,
-): MinimalClipInfo {
-  // Get source clip slot
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
-  );
-
-  if (!sourceClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex} does not exist`,
-    );
-  }
-
-  if (!sourceClipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `duplicate failed: no clip in source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex}`,
-    );
-  }
-
-  // Get destination clip slot
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toTrackIndex).clipSlot(toSceneIndex),
-  );
-
-  if (!destClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: destination clip slot at track ${toTrackIndex}, scene ${toSceneIndex} does not exist`,
-    );
-  }
-
-  // Use duplicate_clip_to to copy the clip to the destination
-  sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
-
-  // Get the newly created clip
-  const newClip = LiveAPI.from(
-    livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
-  );
-
-  newClip.setAll({ name, color });
-
-  // Return the new clip info directly
-  return getMinimalClipInfo(newClip);
 }
 
 /**
