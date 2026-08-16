@@ -7,7 +7,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerMockObject,
+  registerSessionClipDuplication,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 describe("duplicate - input validation", () => {
@@ -76,6 +79,44 @@ describe("duplicate - clip session validation", () => {
         toSlot: ",",
       }),
     ).rejects.toThrow("duplicate failed: toSlot is required for session clips");
+  });
+
+  // Every other inapplicable param on this tool warns; these two used to be
+  // dropped without a word, so the copy count / length silently didn't happen.
+  it("warns that a clip copy ignores count", async () => {
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0/s1",
+      count: 3,
+    });
+
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/0/clip_slots/1/clip",
+      slot: "0/1",
+    });
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("count ignored for clips"),
+    );
+  });
+
+  it("warns that a session copy ignores arrangementLength", async () => {
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0/s1",
+      arrangementLength: "4bar",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("arrangementLength ignored"),
+    );
   });
 });
 

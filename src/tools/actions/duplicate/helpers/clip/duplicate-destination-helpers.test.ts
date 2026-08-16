@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   resolveClipDestinations,
+  warnInapplicableClipParams,
   warnUnusedDestination,
 } from "./duplicate-destination-helpers.ts";
 
@@ -129,6 +130,40 @@ describe("resolveClipDestinations", () => {
     expect(() => resolveClipDestinations("mt", undefined, true)).toThrow(
       /clips go to a track \("t0"\) or a session slot/,
     );
+  });
+});
+
+describe("warnInapplicableClipParams", () => {
+  const session = resolveClipDestinations("t2/s1", undefined, false);
+  const arrangement = resolveClipDestinations("t2", undefined, true);
+
+  it("warns that a clip copy ignores count", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnInapplicableClipParams(arrangement, 3, undefined);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("count ignored for clips"),
+    );
+  });
+
+  it("warns that a session copy ignores arrangementLength", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnInapplicableClipParams(session, 1, "4bar");
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("arrangementLength ignored"),
+    );
+  });
+
+  it("says nothing for params the copy actually uses", () => {
+    const warnSpy = vi.spyOn(console, "warn");
+
+    warnInapplicableClipParams(arrangement, 1, "4bar");
+    warnInapplicableClipParams(session, 1, undefined);
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
 

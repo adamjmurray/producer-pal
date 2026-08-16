@@ -77,6 +77,31 @@ export function resolveClipDestinations(
 }
 
 /**
+ * Warns for params a clip duplicate has no use for. A clip gets one copy per
+ * destination, and only an arrangement copy has a length.
+ * @param destinations - Where the copies go
+ * @param count - Requested number of copies
+ * @param arrangementLength - Requested arrangement length
+ */
+export function warnInapplicableClipParams(
+  destinations: ClipDestinations,
+  count: number,
+  arrangementLength: string | undefined,
+): void {
+  if (count > 1) {
+    console.warn(
+      "count ignored for clips: one copy per destination — list more in toPath or arrangementStart",
+    );
+  }
+
+  if (destinations.destination === "session" && arrangementLength != null) {
+    console.warn(
+      "arrangementLength ignored: it only applies to arrangement destinations",
+    );
+  }
+}
+
+/**
  * Warns when a destination param was sent for a type that has no destination.
  * @param type - Type of object being duplicated
  * @param rawToPath - Destination path(s)

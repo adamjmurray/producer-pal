@@ -20,6 +20,7 @@ import {
 import { duplicateClipWithPositions } from "./helpers/clip/duplicate-clip-position-helpers.ts";
 import {
   resolveClipDestinations,
+  warnInapplicableClipParams,
   warnUnusedDestination,
 } from "./helpers/clip/duplicate-destination-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
@@ -146,6 +147,10 @@ export async function duplicate(
       : null;
 
   warnUnusedDestination(type, toPath, toSlot);
+
+  if (clipDestinations != null) {
+    warnInapplicableClipParams(clipDestinations, count, arrangementLength);
+  }
 
   const destination =
     clipDestinations?.destination ??
