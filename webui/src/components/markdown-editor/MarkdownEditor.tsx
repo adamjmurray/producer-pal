@@ -4,10 +4,30 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Compartment, EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
-import { useEffect, useRef } from "preact/hooks";
-import { markdownEditorExtensions } from "./markdown-editor-extensions";
-import { notifyFocusChange } from "./markdown-editor-helpers";
+import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
+import {
+  type MutableRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "preact/hooks";
+import {
+  chatInputTheme,
+  markdownEditorExtensions,
+} from "./markdown-editor-extensions";
+import {
+  editableConfig,
+  frameClassName,
+  notifyFocusChange,
+  submitKeymap,
+} from "./markdown-editor-helpers";
+
+/** Imperative handle a parent can hold to drive the editor between renders. */
+export interface MarkdownEditorHandle {
+  /** Empty the document without dropping focus. */
+  clear: () => void;
+  focus: () => void;
+}
 
 interface MarkdownEditorProps {
   /**
@@ -16,10 +36,22 @@ interface MarkdownEditorProps {
    * a reset (e.g. a "Clear" action), remount the component via a `key` prop.
    */
   initialValue: string;
-  readOnly: boolean;
+  /** Block edits but keep focus and selection (a preview). */
+  readOnly?: boolean;
+  /** Block edits and focus, dimmed like a disabled form control. */
+  disabled?: boolean;
+  /** Hint shown while the document is empty. */
+  placeholder?: string;
   onChange: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  /**
+   * When set, Enter submits and Shift+Enter inserts a newline (still
+   * continuing a list). Read once at mount; the latest callback is called.
+   */
+  onSubmit?: () => void;
+  /** Receives a {@link MarkdownEditorHandle} while mounted, null after. */
+  editorRef?: MutableRef<MarkdownEditorHandle | null>;
   className?: string;
   /**
    * Accessible name for the editable region, applied to the content DOM via
@@ -29,6 +61,12 @@ interface MarkdownEditorProps {
    * nameless textbox to screen readers.
    */
   ariaLabel?: string;
+  /**
+   * `card` (default) fills its container like a document pane. `chat` sizes
+   * to its content — two lines minimum, scrolling past ~40vh — with the chat
+   * input's tighter padding and frame. Read once at mount.
+   */
+  variant?: "card" | "chat";
 }
 
 /**
@@ -37,29 +75,34 @@ interface MarkdownEditorProps {
  * back as props. This deliberately rules out the controlled round-trip that
  * could otherwise loop (editor change → setState → new value prop → dispatch
  * → updateListener → setState → …) if any normalization ever diverged.
- * Wrapped in a card-style frame so the editable region reads as an input,
- * not page background.
+ * Wrapped in a frame so the editable region reads as an input, not page
+ * background.
  * @param props - Editor props
  * @returns Editor element
  */
 export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
-  const { initialValue, readOnly, onChange, onFocus, onBlur, className } =
-    props;
-  const { ariaLabel } = props;
+  const { initialValue, onChange, onFocus, onBlur, onSubmit } = props;
+  const { readOnly = false, disabled = false, placeholder } = props;
+  const { className, ariaLabel, editorRef, variant = "card" } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const readOnlyCompartment = useRef(new Compartment());
+  const editableCompartment = useRef(new Compartment());
+  const placeholderCompartment = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   const onFocusRef = useRef(onFocus);
   const onBlurRef = useRef(onBlur);
+  const onSubmitRef = useRef(onSubmit);
 
   // Keep callback refs current. Updating in an effect (vs. during render)
-  // satisfies react-hooks/refs and keeps the editor instance stable.
-  useEffect(() => {
+  // satisfies react-hooks/refs and keeps the editor instance stable. A layout
+  // effect, so a keystroke right after a re-render (Enter on the heels of the
+  // change that enabled submit) can't reach a stale callback.
+  useLayoutEffect(() => {
     onChangeRef.current = onChange;
     onFocusRef.current = onFocus;
     onBlurRef.current = onBlur;
-  }, [onChange, onFocus, onBlur]);
+    onSubmitRef.current = onSubmit;
+  }, [onChange, onFocus, onBlur, onSubmit]);
 
   useEffect(() => {
     // Ref is set by the rendered <div ref={containerRef} />; always defined
@@ -84,12 +127,19 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
       state: EditorState.create({
         doc: initialValue,
         extensions: [
+          ...(variant === "chat" ? [chatInputTheme] : []),
           markdownEditorExtensions,
           ...(ariaLabel != null
             ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
             : []),
+          ...(onSubmit != null
+            ? [submitKeymap(() => onSubmitRef.current?.())]
+            : []),
           updateListener,
-          readOnlyCompartment.current.of(EditorState.readOnly.of(readOnly)),
+          editableCompartment.current.of(editableConfig(readOnly, disabled)),
+          placeholderCompartment.current.of(
+            placeholder != null ? placeholderExt(placeholder) : [],
+          ),
         ],
       }),
       parent: container,
@@ -97,32 +147,50 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
 
     viewRef.current = view;
 
+    if (editorRef != null) {
+      editorRef.current = {
+        clear: () => {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: "" },
+          });
+        },
+        focus: () => view.focus(),
+      };
+    }
+
     return () => {
       view.destroy();
       viewRef.current = null;
+      if (editorRef != null) editorRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally seed-only: the editor is uncontrolled. To reset, the parent remounts via `key`.
   }, []);
 
-  // Toggle read-only via compartment so we don't recreate the editor.
+  // Toggle read-only / disabled via compartment so we don't recreate the editor.
   useEffect(() => {
     const view = viewRef.current as EditorView;
 
     view.dispatch({
-      effects: readOnlyCompartment.current.reconfigure(
-        EditorState.readOnly.of(readOnly),
+      effects: editableCompartment.current.reconfigure(
+        editableConfig(readOnly, disabled),
       ),
     });
-  }, [readOnly]);
+  }, [readOnly, disabled]);
+
+  useEffect(() => {
+    const view = viewRef.current as EditorView;
+
+    view.dispatch({
+      effects: placeholderCompartment.current.reconfigure(
+        placeholder != null ? placeholderExt(placeholder) : [],
+      ),
+    });
+  }, [placeholder]);
 
   // Frame the editable region so it visually reads as an input, not page bg.
   // Inner host is the CodeMirror parent; outer is the frame + focus ring.
-  const frameClass =
-    "rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500/60 overflow-hidden flex flex-col";
-  const wrapperClass = className ? `${frameClass} ${className}` : frameClass;
-
   return (
-    <div className={wrapperClass}>
+    <div className={frameClassName(variant, disabled, className)}>
       <div
         ref={containerRef}
         className="min-h-0 flex-1 overflow-auto text-zinc-900 dark:text-zinc-200"

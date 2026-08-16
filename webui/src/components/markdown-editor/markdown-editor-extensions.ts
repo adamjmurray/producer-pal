@@ -15,7 +15,7 @@ import {
   syntaxHighlighting,
   syntaxTree,
 } from "@codemirror/language";
-import { RangeSetBuilder, type Extension } from "@codemirror/state";
+import { type Extension, Prec, RangeSetBuilder } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -111,6 +111,12 @@ const editorTheme = EditorView.theme({
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "currentColor",
+  },
+  ".cm-placeholder": {
+    color: "rgb(113 113 122)", // zinc-500
+  },
+  "html.dark & .cm-placeholder": {
+    color: "rgb(161 161 170)", // zinc-400
   },
   // Native browser selection (there is no drawSelection extension, so
   // `.cm-selectionBackground` never renders — only `::selection` applies). Both
@@ -221,3 +227,21 @@ export const markdownEditorExtensions: Extension[] = [
   editorTheme,
   syntaxHighlighting(markdownHighlightStyle),
 ];
+
+/**
+ * Chat-input overrides on top of {@link markdownEditorExtensions}' theme:
+ * tighter padding (matching the old textarea's `px-3 py-2`), a two-line
+ * minimum, and an internal scroll past ~40vh. `Prec.high` so its rules are
+ * mounted after the base theme's and win at equal specificity.
+ */
+export const chatInputTheme: Extension = Prec.high(
+  EditorView.theme({
+    ".cm-scroller": {
+      padding: "0.25rem 0.5rem",
+      maxHeight: "40vh",
+    },
+    ".cm-content": {
+      minHeight: "3.1em", // two lines at line-height 1.55
+    },
+  }),
+);

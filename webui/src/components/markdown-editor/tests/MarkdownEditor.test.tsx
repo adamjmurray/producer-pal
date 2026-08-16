@@ -10,28 +10,31 @@ import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { notifyFocusChange } from "#webui/components/markdown-editor/markdown-editor-helpers";
-import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
+import {
+  MarkdownEditor,
+  type MarkdownEditorHandle,
+} from "#webui/components/markdown-editor/MarkdownEditor";
 
-type EditorProps = Partial<{
-  initialValue: string;
-  readOnly: boolean;
-  onChange: (value: string) => void;
-  onFocus: () => void;
-  onBlur: () => void;
-  className: string;
-}>;
+type EditorProps = Partial<Parameters<typeof MarkdownEditor>[0]>;
 
 function renderEditor(props: EditorProps = {}) {
   return render(
     <MarkdownEditor
-      initialValue={props.initialValue ?? "x"}
-      readOnly={props.readOnly ?? false}
-      onChange={props.onChange ?? (() => {})}
-      onFocus={props.onFocus}
-      onBlur={props.onBlur}
-      className={props.className}
+      initialValue="x"
+      readOnly={false}
+      onChange={() => {}}
+      {...props}
     />,
   );
+}
+
+/**
+ * The live EditorView behind a rendered editor.
+ * @param container - The render container
+ * @returns The view
+ */
+function viewIn(container: Element): EditorView {
+  return EditorView.findFromDOM(container as HTMLElement)!;
 }
 
 describe("MarkdownEditor", () => {
@@ -111,7 +114,7 @@ describe("MarkdownEditor", () => {
     // dispatch a transaction — the same path a real keystroke takes.
     const onChange = vi.fn();
     const { container } = renderEditor({ initialValue: "hi", onChange });
-    const view = EditorView.findFromDOM(container as HTMLElement)!;
+    const view = viewIn(container);
 
     view.dispatch({ changes: { from: 2, insert: " there" } });
 
@@ -120,7 +123,7 @@ describe("MarkdownEditor", () => {
 
   it("indents the current line with Tab and outdents with Shift+Tab", () => {
     const { container } = renderEditor({ initialValue: "hello" });
-    const view = EditorView.findFromDOM(container as HTMLElement)!;
+    const view = viewIn(container);
 
     fireEvent.keyDown(view.contentDOM, { key: "Tab" });
     expect(view.state.doc.toString()).toBe("  hello");
@@ -131,7 +134,7 @@ describe("MarkdownEditor", () => {
 
   it("indents and outdents every line of a multi-line selection", () => {
     const { container } = renderEditor({ initialValue: "one\ntwo\nthree" });
-    const view = EditorView.findFromDOM(container as HTMLElement)!;
+    const view = viewIn(container);
 
     view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
 
@@ -142,11 +145,90 @@ describe("MarkdownEditor", () => {
     expect(view.state.doc.toString()).toBe("one\ntwo\nthree");
   });
 
+  it("shows the placeholder while empty and follows prop changes", () => {
+    const { container, rerender } = renderEditor({
+      initialValue: "",
+      placeholder: "Type here",
+    });
+
+    expect(container.querySelector(".cm-placeholder")?.textContent).toBe(
+      "Type here",
+    );
+
+    rerender(
+      <MarkdownEditor
+        initialValue=""
+        onChange={() => {}}
+        placeholder="Busy…"
+      />,
+    );
+
+    expect(container.querySelector(".cm-placeholder")?.textContent).toBe(
+      "Busy…",
+    );
+  });
+
+  it("disabled turns off contenteditable and dims the frame", () => {
+    const { container, rerender } = renderEditor({ disabled: true });
+    const content = container.querySelector(".cm-content")!;
+
+    expect(content.getAttribute("contenteditable")).toBe("false");
+    expect(container.querySelector(".opacity-50")).toBeTruthy();
+
+    rerender(
+      <MarkdownEditor initialValue="x" onChange={() => {}} disabled={false} />,
+    );
+
+    expect(content.getAttribute("contenteditable")).toBe("true");
+    expect(container.querySelector(".opacity-50")).toBeFalsy();
+  });
+
+  it("read-only keeps contenteditable so the preview stays focusable", () => {
+    const { container } = renderEditor({ readOnly: true });
+    const view = viewIn(container);
+
+    expect(
+      container.querySelector(".cm-content")?.getAttribute("contenteditable"),
+    ).toBe("true");
+    expect(view.state.readOnly).toBe(true);
+  });
+
+  it("uses the chat frame for the chat variant", () => {
+    const { container } = renderEditor({ variant: "chat" });
+
+    expect(container.querySelector(".shadow-inner")).toBeTruthy();
+    expect(container.querySelector(".rounded-md")).toBeFalsy();
+  });
+
+  it("exposes clear() and focus() through editorRef", () => {
+    const editorRef: { current: MarkdownEditorHandle | null } = {
+      current: null,
+    };
+    const onChange = vi.fn();
+    const { container, unmount } = renderEditor({
+      initialValue: "draft",
+      onChange,
+      editorRef,
+    });
+    const view = viewIn(container);
+
+    editorRef.current!.focus();
+    expect(view.hasFocus).toBe(true);
+
+    editorRef.current!.clear();
+    expect(view.state.doc.toString()).toBe("");
+    expect(onChange).toHaveBeenCalledWith("");
+    expect(view.hasFocus).toBe(true);
+
+    unmount();
+    expect(editorRef.current).toBeNull();
+  });
+
   it("reports focus and blur through the update listener", () => {
     const onFocus = vi.fn();
     const onBlur = vi.fn();
     const { container } = renderEditor({ onFocus, onBlur });
-    const view = EditorView.findFromDOM(container as HTMLElement)!;
+    const view = viewIn(container);
 
     view.contentDOM.focus();
     view.dispatch({ userEvent: "select" });
@@ -155,6 +237,80 @@ describe("MarkdownEditor", () => {
 
     expect(onFocus).toHaveBeenCalled();
     expect(onBlur).toHaveBeenCalled();
+  });
+});
+
+describe("MarkdownEditor onSubmit", () => {
+  it("Enter calls the latest onSubmit instead of inserting a newline", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { container, rerender } = renderEditor({
+      initialValue: "hi",
+      onSubmit: first,
+    });
+    const view = viewIn(container);
+
+    rerender(
+      <MarkdownEditor
+        initialValue="hi"
+        onChange={() => {}}
+        onSubmit={second}
+      />,
+    );
+    fireEvent.keyDown(view.contentDOM, { key: "Enter" });
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(view.state.doc.toString()).toBe("hi");
+  });
+
+  it("Shift+Enter inserts a newline and continues a list", () => {
+    const onSubmit = vi.fn();
+    const { container } = renderEditor({
+      initialValue: "- one",
+      onSubmit,
+    });
+    const view = viewIn(container);
+
+    view.dispatch({ selection: { anchor: 5 } });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter", shiftKey: true });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(view.state.doc.toString()).toBe("- one\n- ");
+  });
+
+  it("Shift+Enter outside a list inserts a plain newline", () => {
+    const { container } = renderEditor({
+      initialValue: "hi",
+      onSubmit: () => {},
+    });
+    const view = viewIn(container);
+
+    view.dispatch({ selection: { anchor: 2 } });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter", shiftKey: true });
+
+    expect(view.state.doc.toString()).toBe("hi\n");
+  });
+
+  it("Enter is left alone mid-IME-composition", () => {
+    const onSubmit = vi.fn();
+    const { container } = renderEditor({ initialValue: "x", onSubmit });
+    const view = viewIn(container);
+
+    vi.spyOn(view, "composing", "get").mockReturnValue(true);
+    fireEvent.keyDown(view.contentDOM, { key: "Enter" });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("without onSubmit, Enter continues a list like the context editors", () => {
+    const { container } = renderEditor({ initialValue: "- one" });
+    const view = viewIn(container);
+
+    view.dispatch({ selection: { anchor: 5 } });
+    fireEvent.keyDown(view.contentDOM, { key: "Enter" });
+
+    expect(view.state.doc.toString()).toBe("- one\n- ");
   });
 });
 

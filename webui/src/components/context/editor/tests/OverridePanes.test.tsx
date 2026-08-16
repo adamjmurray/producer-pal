@@ -21,7 +21,7 @@ import { OverridePanes } from "#webui/components/context/editor/OverridePanes";
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
     initialValue: string;
-    readOnly: boolean;
+    readOnly?: boolean;
     onChange: (value: string) => void;
   }) => {
     const seeded = useRef(props.initialValue);

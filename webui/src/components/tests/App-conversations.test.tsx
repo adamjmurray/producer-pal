@@ -48,6 +48,19 @@ import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { mockChatHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
+/**
+ * Stub `matchMedia` for the mobile check. The chat input's CodeMirror also
+ * subscribes to a print query, so the stub needs `addEventListener`.
+ * @param matches - What every media query reports
+ */
+function mockMatchMedia(matches: boolean): void {
+  window.matchMedia = vi.fn().mockReturnValue({
+    matches,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+}
+
 describe("App conversation management", () => {
   const panelOpenViewState = {
     viewState: {
@@ -107,13 +120,13 @@ describe("App conversation management", () => {
   };
 
   it("keeps panel open on new conversation on desktop", () => {
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    mockMatchMedia(false);
     clickNewConversation();
     expect(panelOpenViewState.setViewState).not.toHaveBeenCalled();
   });
 
   it("closes panel on new conversation on mobile", () => {
-    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    mockMatchMedia(true);
     clickNewConversation();
     expect(panelOpenViewState.setViewState).toHaveBeenCalledWith({
       historyPanelOpen: false,
@@ -121,13 +134,13 @@ describe("App conversation management", () => {
   });
 
   it("keeps panel open on select on desktop", () => {
-    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    mockMatchMedia(false);
     clickSelectConversation();
     expect(panelOpenViewState.setViewState).not.toHaveBeenCalled();
   });
 
   it("closes panel on select on mobile", () => {
-    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    mockMatchMedia(true);
     clickSelectConversation();
     expect(panelOpenViewState.setViewState).toHaveBeenCalledWith({
       historyPanelOpen: false,

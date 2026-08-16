@@ -95,12 +95,16 @@ export async function setupSubagentTest(
  * @param text - The message to send
  */
 export async function sendChatMessage(page: Page, text: string): Promise<void> {
-  const input = page.getByPlaceholder("Type a message...");
+  const input = page.getByRole("textbox", { name: "Message" });
 
   await expect(input).toBeVisible();
-  await input.fill(text);
+  // Real keystrokes: `fill()` goes through Chromium's IME path, which
+  // CodeMirror treats as a composition and then swallows the Enter.
+  await input.click();
+  await input.pressSequentially(text);
   await input.press("Enter");
-  await expect(input).toHaveValue("");
+  // The placeholder only renders while the editor is empty.
+  await expect(input.locator(".cm-placeholder")).toBeVisible();
 }
 
 /**
