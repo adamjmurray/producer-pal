@@ -16,11 +16,12 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  createMidiTrack,
   createTwoPadDrumRack,
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 
@@ -36,7 +37,7 @@ interface DeleteResult {
 
 describe("ppal-delete drum-pad", () => {
   it("clears a pad on a Drum Rack directly on the track", async () => {
-    const t = await createMidiTrack();
+    const t = await createMidiTrack(ctx.client!);
 
     await createTwoPadDrumRack(ctx.client!, `t${t}`);
 
@@ -58,7 +59,7 @@ describe("ppal-delete drum-pad", () => {
   });
 
   it("clears a pad on a Drum Rack nested inside an Instrument Rack", async () => {
-    const t = await createMidiTrack();
+    const t = await createMidiTrack(ctx.client!);
 
     await ctx.client!.callTool({
       name: "ppal-create-device",
@@ -86,23 +87,6 @@ describe("ppal-delete drum-pad", () => {
 
     expect(await readPadPitches(rack)).toStrictEqual(["D1"]);
   });
-
-  /**
-   * Create a fresh MIDI track and return its index.
-   * @returns The new track's index
-   */
-  async function createMidiTrack(): Promise<number> {
-    const track = parseToolResult<{ trackIndex: number }>(
-      await ctx.client!.callTool({
-        name: "ppal-create-track",
-        arguments: { type: "midi" },
-      }),
-    );
-
-    await sleep(150);
-
-    return track.trackIndex;
-  }
 
   /**
    * Read a drum rack's populated pad pitches.
