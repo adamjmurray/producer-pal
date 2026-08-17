@@ -6,8 +6,15 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { warnIfChainMixerLeftBehind } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  carryChainMixer,
+  chainMixerToCarry,
+  warnIfChainMixerLeftBehind,
+} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import {
+  resolveInsertionPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // ============================================================================
@@ -23,6 +30,23 @@ function parseDrumPadNoteFromPath(path: string): string | null {
   const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
 
   return match ? (match[1] ?? null) : null;
+}
+
+/**
+ * Whether a pad path names the rack the chain already lives in. Resolution is
+ * by path rather than by object so a toPath pointing at nothing (a track that
+ * doesn't exist) is refused rather than read as "same rack".
+ * @param toPath - Target drum pad path
+ * @param drumRackPath - Live API path of the rack holding the source chain
+ * @returns True when toPath's rack is that same rack
+ */
+function targetsSameRack(toPath: string, drumRackPath: string): boolean {
+  try {
+    return resolvePathToLiveApi(toPath, "toPath").liveApiPath === drumRackPath;
+  } catch {
+    // A path that doesn't parse can't be shown to name this rack.
+    return false;
+  }
 }
 
 /**
@@ -47,9 +71,15 @@ export function moveDeviceToPath(
     return false;
   }
 
+  // Decide before the move: afterward the destination holds this device, so it
+  // no longer reads as the untouched chain that makes carrying safe.
+  const carry = chainMixerToCarry(source, container);
+
   // Device duplication passes the real source alongside a temp copy; a plain
   // move leaves `source` defaulted to the device itself.
-  warnIfChainMixerLeftBehind(source, container, source.id !== device.id);
+  if (carry == null) {
+    warnIfChainMixerLeftBehind(source, container, source.id !== device.id);
+  }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -59,6 +89,10 @@ export function moveDeviceToPath(
     toLiveApiId(container.id),
     position ?? 0,
   );
+
+  if (carry != null) {
+    carryChainMixer(carry, container);
+  }
 
   return true;
 }
@@ -90,9 +124,22 @@ export function moveDrumChainToPath(
     return;
   }
 
+  const drumRackPath = chain.path.replace(/ chains \d+$/, "");
+
+  // The move is an in_note re-map within one rack, so a toPath naming a
+  // different rack can't be honored. Without this it lands on that note in the
+  // SOURCE rack instead — the wrong pad, reported as a success.
+  if (!targetsSameRack(toPath, drumRackPath)) {
+    console.warn(
+      `toPath "${toPath}" names a different rack, but a pad move stays within one rack; ` +
+        `move the pad's device instead (update-device on the device path)`,
+    );
+
+    return;
+  }
+
   if (moveEntirePad) {
     const sourceInNote = chain.getProperty("in_note");
-    const drumRackPath = chain.path.replace(/ chains \d+$/, "");
     const drumRack = LiveAPI.from(drumRackPath);
     const allChains = drumRack.getChildren("chains");
 

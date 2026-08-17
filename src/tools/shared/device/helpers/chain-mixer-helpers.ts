@@ -106,15 +106,9 @@ export function warnIfChainMixerLeftBehind(
   destination: LiveAPI,
   isCopy = false,
 ): void {
-  const chainPath = device.path.replace(/ devices \d+$/, "");
+  const chain = sourceChain(device);
 
-  if (!/ (?:return_)?chains \d+$/.test(chainPath)) {
-    return;
-  }
-
-  const chain = LiveAPI.from(chainPath);
-
-  if (!chain.exists() || chain.id === destination.id) {
+  if (chain == null || chain.id === destination.id) {
     return;
   }
 
@@ -137,6 +131,92 @@ export function warnIfChainMixerLeftBehind(
   console.warn(
     `chain "${name}" trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
+}
+
+/**
+ * The chain a device currently sits in, or null when it sits directly on a
+ * track. The chain fader belongs to the chain, so this is the thing a device
+ * move leaves behind.
+ * @param device - The device to look up from
+ * @returns The chain, or null when there isn't one
+ */
+function sourceChain(device: LiveAPI): LiveAPI | null {
+  const chainPath = device.path.replace(/ devices \d+$/, "");
+
+  if (!/ (?:return_)?chains \d+$/.test(chainPath)) {
+    return null;
+  }
+
+  const chain = LiveAPI.from(chainPath);
+
+  return chain.exists() ? chain : null;
+}
+
+/**
+ * The source chain's mixer, when carrying it onto the destination can't disturb
+ * anything — the destination is a chain holding no devices of its own, with a
+ * mixer still at defaults. That is what an auto-created pad chain looks like,
+ * so the trim follows the sound instead of stranding on the chain it left.
+ *
+ * Anything else keeps its own fader: a chain already holding devices would have
+ * them re-levelled by a write the caller never asked for, and a non-default trim
+ * is someone's deliberate setting. Those cases warn instead.
+ *
+ * Must be called BEFORE the move — afterward the destination holds the device
+ * and no longer reads as untouched.
+ * @param device - The source device (before it moves)
+ * @param destination - Container the device is going into (chain or track)
+ * @returns The mixer to carry, or null to leave the destination alone
+ */
+export function chainMixerToCarry(
+  device: LiveAPI,
+  destination: LiveAPI,
+): Record<string, unknown> | null {
+  const chain = sourceChain(device);
+
+  if (chain == null || chain.id === destination.id) {
+    return null;
+  }
+
+  const mixer = readChainMixer(chain);
+
+  // Nothing to carry, or a track destination with no chain fader to carry onto.
+  if (
+    Object.keys(mixer).length === 0 ||
+    !destination.type.endsWith("Chain") ||
+    destination.getChildren("devices").length > 0 ||
+    Object.keys(readChainMixer(destination)).length > 0
+  ) {
+    return null;
+  }
+
+  return mixer;
+}
+
+/**
+ * Apply a mixer read off one chain onto another. Sends go one at a time so they
+ * match by return-chain name rather than by index, which only line up when both
+ * chains live in the same rack.
+ * @param mixer - Mixer values from {@link chainMixerToCarry}
+ * @param destination - Chain to write them onto
+ */
+export function carryChainMixer(
+  mixer: Record<string, unknown>,
+  destination: LiveAPI,
+): void {
+  applyChainMixer(destination, {
+    gainDb: mixer.gainDb as number | undefined,
+    pan: mixer.pan as number | undefined,
+  });
+
+  const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
+
+  for (const send of sends) {
+    applyChainMixer(destination, {
+      sendGainDb: send.gainDb,
+      sendReturn: send.return,
+    });
+  }
 }
 
 /**
