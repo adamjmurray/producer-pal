@@ -19,7 +19,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
 
   inputSchema: {
     deviceId: z.coerce.string().optional().describe("Device ID to read"),
-    path: z
+    path: z.coerce
       .string()
       .optional()
       .describe("path (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1', 't1/d0/rc0')"),

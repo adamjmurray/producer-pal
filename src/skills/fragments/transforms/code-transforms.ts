@@ -37,7 +37,7 @@ All times are musical beats (the meter's beat — an eighth in 6/8), matching \`
 **Context properties:**
 - \`track\`: { index, name, type, color }
 - \`clip\`: { id, name, length, timeSignature, looping, index, count } (length in musical beats)
-- \`location\`: { view, path?, arrangementStart? }
+- \`location\`: { view, path?, arrangementStartBeats? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number (musical beats per bar)
 

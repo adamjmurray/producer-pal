@@ -18,7 +18,7 @@ deprecated).
 | update-clip                                                                    | **ids**, **path**, **toPath**, _toSlot_                                               | done                                 |
 | duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                 |
 | delete                                                                         | **ids**, **path** (clips and devices)                                                 | done                                 |
-| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` tolerates `s3`     |
+| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` is slots only      |
 | select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3` |
 | create-device                                                                  | **path**                                                                              | unchanged                            |
 | read-device                                                                    | **deviceId**, **path**                                                                | unchanged                            |
@@ -58,7 +58,7 @@ segment.
 `formatSlot` → `slotPath`/`arrangementPath`. Clip results emit `path` and drop
 `slot`, `trackIndex`, and `takeLane`; read-track's take lane entries report
 `path` instead of a 1-based `takeLane`. code-exec's `location` is
-`{ view, path?, arrangementStart? }`.
+`{ view, path?, arrangementStartBeats? }`.
 
 Breaking, and the release notes need to say so.
 
@@ -85,8 +85,8 @@ Two behavior fixes landed with it:
 
 Eval the interface against 2.1.0, then set removal releases for the deprecated
 params (`slot`, `slots`, `toSlot`, `devicePath`, `takeLane`). The permanent
-aliases (`trackIndex`, `sceneIndex` on clip tools) stay. `formatSlot` /
-`parseSlot` / `parseSlotList` retire with the deprecated params, not before.
+aliases (`trackIndex`, `sceneIndex` on clip tools) stay. `parseSlot` and
+`parseSlotList` retire with the deprecated params, not before.
 
 ## Docs to update as the phases land
 

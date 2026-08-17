@@ -243,7 +243,7 @@ describe("buildCodeExecutionContext", () => {
       16,
     );
 
-    expect(result.location.arrangementStart).toBe(32);
+    expect(result.location.arrangementStartBeats).toBe(32);
   });
 });
 

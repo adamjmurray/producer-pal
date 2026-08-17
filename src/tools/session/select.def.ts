@@ -58,7 +58,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       replacedBy: "path",
     }),
 
-    devicePath: deprecatedParam(z.string().optional(), {
+    devicePath: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),
 

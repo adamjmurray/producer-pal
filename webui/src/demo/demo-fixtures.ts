@@ -228,13 +228,12 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: "ppal-read-clip",
-        args: { trackIndex: 0, sceneIndex: 5 },
+        args: { path: "t0/s5" },
         result: toolResult({
           error: "No clip in this slot",
           id: null,
           type: null,
-          trackIndex: 0,
-          sceneIndex: 5,
+          path: "t0/s5",
         }),
       },
     ],

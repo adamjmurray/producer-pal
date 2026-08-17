@@ -439,7 +439,7 @@ describe("code-exec-helpers", () => {
         expect(result.clip.count).toBe(1);
         expect(result.location).toStrictEqual({
           view: "arrangement",
-          arrangementStart: 32,
+          arrangementStartBeats: 32,
         });
         expect(result.liveSet.scale).toBeUndefined();
         expect(result.beatsPerBar).toBe(3);

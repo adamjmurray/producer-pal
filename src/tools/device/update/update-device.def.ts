@@ -22,13 +22,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
-    path: param(z.string().optional(), {
+    path: param(z.coerce.string().optional(), {
       default:
         "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
 
-    toPath: param(z.string().optional(), {
+    toPath: param(z.coerce.string().optional(), {
       default:
         "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1'). To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device",
       smallModel: "destination path to move device to",

@@ -42,8 +42,10 @@ export interface CodeClipContext {
  */
 export interface CodeLocationContext {
   view: "session" | "arrangement";
-  path?: string; // where the clip is: "t0/s3", "t0", or "t0/l1"
-  arrangementStart?: number; // arrangement only, in song musical beats
+  path?: string; // where the clip is: "t0/s3", "t0", or "t0/l1" — pastes into a tool's path
+  // Arrangement only, in song musical beats. Not named arrangementStart because
+  // the tool param of that name is bar|beat, and these don't interchange.
+  arrangementStartBeats?: number;
 }
 
 /**

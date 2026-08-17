@@ -240,7 +240,7 @@ function buildLocationContext(
       "signature_denominator",
     ) as number;
 
-    location.arrangementStart = arrangementStartBeats * (songDenom / 4);
+    location.arrangementStartBeats = arrangementStartBeats * (songDenom / 4);
   }
 
   return location;

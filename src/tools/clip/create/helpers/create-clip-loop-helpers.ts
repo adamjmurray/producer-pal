@@ -9,7 +9,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
@@ -295,7 +295,12 @@ function takeLaneFor(
 ): LiveAPI | null {
   if (position.takeLane == null) return null;
 
-  return lanes.get(takeLaneKey(position)) ?? null;
+  const key = takeLaneKey(position);
+
+  // Every take-lane destination is resolved before the loop, so a miss is a
+  // bug. Say so rather than falling back to the main lane, which would put the
+  // clip somewhere the caller didn't ask for.
+  return assertDefined(lanes.get(key), `no take lane resolved for "${key}"`);
 }
 
 interface PreparedClipData {

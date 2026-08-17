@@ -202,9 +202,17 @@ async function duplicateClipToArrangementPositions(
     takeLaneName,
   );
 
+  // Both warnings are per call, not per copy: a mixed toPath like "t1,t1/l0"
+  // repeats them once for every position otherwise.
   if (lanes.size > 0 && arrangementLength != null) {
     console.warn(
-      "duplicate: arrangementLength ignored for take-lane duplication (the copy uses the source clip's length)",
+      "duplicate: arrangementLength ignored for the take-lane copies (they use the source clip's length)",
+    );
+  }
+
+  if (isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null)) {
+    console.warn(
+      `duplicate: source clip "${id}" is on a take lane; promoting to the main lane is not yet supported`,
     );
   }
 
@@ -325,15 +333,9 @@ async function duplicateOneCopy(options: CopyOptions): Promise<object | null> {
 
   // Main-lane destination with a take-lane source: Track.duplicate_clip_to_arrangement
   // behavior is unverified for take-lane source IDs (see take-lane-helpers.ts
-  // header — Track-scoped APIs silently no-op on take-lane clips). Warn and skip
-  // until promote-via-recreate is implemented as a follow-up.
-  if (isTakeLaneClip(object)) {
-    console.warn(
-      `duplicate: source clip "${id}" is on a take lane; promoting to the main lane is not yet supported`,
-    );
-
-    return null;
-  }
+  // header — Track-scoped APIs silently no-op on take-lane clips). Skip until
+  // promote-via-recreate is implemented as a follow-up; the caller warned once.
+  if (isTakeLaneClip(object)) return null;
 
   return await duplicateClipToArrangement(
     id,

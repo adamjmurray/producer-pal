@@ -21,7 +21,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
       default: "comma-separated ID(s) to delete (must be same type)",
       smallModel: "object ID to delete",
     }),
-    path: param(z.string().optional(), {
+    path: param(z.coerce.string().optional(), {
       default:
         "comma-separated paths to delete: session clips ('t0/s1'), devices ('t0/d1'), drum pads ('t1/d0/pC1')",
       smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",

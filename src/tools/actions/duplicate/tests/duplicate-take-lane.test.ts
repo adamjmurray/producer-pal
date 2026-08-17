@@ -208,7 +208,7 @@ describe("duplicate take lane", () => {
     await duplicateToFreshLane({ arrangementLength: "2bar" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementLength ignored for take-lane"),
+      expect.stringContaining("arrangementLength ignored for the take-lane"),
     );
   });
 
@@ -675,5 +675,31 @@ describe("duplicate take lane", () => {
       ),
     );
     expect(result).toStrictEqual([]);
+  });
+
+  // The reason doesn't change per copy, so neither should the warning.
+  it("says the source can't be promoted once, not once per position", async () => {
+    registerLiveSet();
+    registerMockObject("tl_src_clip", {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+      properties: { is_midi_clip: 1, is_arrangement_clip: 1, length: 4 },
+    });
+
+    await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "1|1,2|1,3|1,4|1",
+    });
+
+    const promoteWarnings = vi
+      .mocked(consoleMock.warn)
+      .mock.calls.filter(([message]) =>
+        String(message).includes(
+          "promoting to the main lane is not yet supported",
+        ),
+      );
+
+    expect(promoteWarnings).toHaveLength(1);
   });
 });

@@ -32,8 +32,8 @@ Paths address **clips and devices**. Tracks and scenes keep `trackIndex` /
   Rejected because `read-track`, `read-scene`, `update-track`, and
   `update-scene` are small, long-stable, and have no competing spelling to
   reconcile — the confusion this grammar fixes is specific to clip slots. `s3`
-  still parses, so `select` and `playback` tolerate it, but nothing unpublishes
-  `sceneIndex`.
+  still parses and `select` takes it; `playback` names a scene with
+  `sceneIndex`. Nothing unpublishes `sceneIndex`.
 - **`trackIndex` / `sceneIndex` as insertion positions on `create-track` and
   `create-scene` → `path`.** They create the location rather than address one,
   and `create-track type:"return"` would collide with an `rt` root.
