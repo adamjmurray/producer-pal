@@ -482,6 +482,10 @@ describe("take lanes", () => {
 
     // Main lane has no `l` segment, so the path is the bare track
     expect(promoted.data.path).toBe(`t${MIDI_TRACK}`);
+    // Re-creating carries notes, not automation, and the response says so
+    expect(promoted.warnings.join(" ")).toContain(
+      "automation envelopes aren't copied",
+    );
 
     await sleep(100);
     const copy = parseToolResult<ReadClipResult>(

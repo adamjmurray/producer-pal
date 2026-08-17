@@ -28,7 +28,10 @@ import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
 import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
 import { duplicateClipSlot } from "./duplicate-clip-slot-helpers.ts";
 import { unreachedPositionsWarning } from "../duplicate-position-helpers.ts";
-import { recreateMidiClip } from "./duplicate-clip-recreate-helpers.ts";
+import {
+  NO_ENVELOPES_NOTE,
+  recreateMidiClip,
+} from "./duplicate-clip-recreate-helpers.ts";
 import { resolveDuplicateTakeLanes } from "./duplicate-take-lane-helpers.ts";
 import {
   resolveArrangementPositions,
@@ -214,7 +217,11 @@ async function duplicateClipToArrangementPositions(
     );
   }
 
-  if (promotes && !canPromote) {
+  if (canPromote) {
+    console.warn(
+      `duplicate: promoted to the main lane by re-creating the clip (${NO_ENVELOPES_NOTE})`,
+    );
+  } else if (promotes) {
     console.warn(
       `duplicate: promoting to the main lane re-creates the clip from its notes, so audio clip "${id}" can't be promoted off its take lane; drag it in Live's UI`,
     );

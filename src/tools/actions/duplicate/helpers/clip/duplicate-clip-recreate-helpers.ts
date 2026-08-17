@@ -13,6 +13,14 @@ import {
 } from "../duplicate-helpers.ts";
 
 /**
+ * Goes in every warning about a copy this file re-created, since re-creating
+ * copies notes and not automation. Unconditional: reading a clip's envelopes
+ * needs a specific DeviceParameter, so there is no way to ask whether one has
+ * any.
+ */
+export const NO_ENVELOPES_NOTE = "automation envelopes aren't copied";
+
+/**
  * Re-create a MIDI clip somewhere Live's own arrangement duplicate can't reach,
  * copying the source's notes and loop/marker/signature properties.
  *

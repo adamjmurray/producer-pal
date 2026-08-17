@@ -12,6 +12,7 @@ import {
   type ArrangementTrack,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 
 /**
  * Resolve every take lane a duplicate's destinations name, auto-creating as
@@ -66,7 +67,8 @@ export function resolveDuplicateTakeLanes(
 
     lanes.set(key, lane);
     console.warn(
-      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}". ` +
+      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}" ` +
+        `(${NO_ENVELOPES_NOTE}). ` +
         "Expand the take-lanes arrow on the track header in Live to see it.",
     );
   }

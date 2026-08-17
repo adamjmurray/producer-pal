@@ -187,9 +187,13 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
     expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
-    // The lane's path is reported so the user can find the new clip.
+    // The lane's path is reported so the user can find the new clip, along with
+    // what re-creating cost: notes come across, automation doesn't. Live can't
+    // say whether a clip has envelopes, so the note is unconditional.
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('created on take lane "t0/l0"'),
+      expect.stringContaining(
+        `created on take lane "t0/l0" (automation envelopes aren't copied)`,
+      ),
     );
     expect(result).toMatchObject({
       path: "t0/l0",
@@ -785,6 +789,29 @@ describe("duplicate take lane", () => {
     expect(promoted?.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [SOURCE_NOTE],
     });
+  });
+
+  // A promote emitted no warning at all before, so the envelope loss was silent.
+  // Like the other re-create warnings, it's per call rather than per copy.
+  it("warns once that a promoted copy loses automation envelopes", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource();
+
+    await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "1|1,2|1,3|1",
+    });
+
+    const warnings = vi
+      .mocked(consoleMock.warn)
+      .mock.calls.filter(([message]) =>
+        String(message).includes("automation envelopes aren't copied"),
+      );
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.[0]).toContain("promoted to the main lane");
   });
 
   // Promoting re-creates from notes, which an audio clip has none of.
