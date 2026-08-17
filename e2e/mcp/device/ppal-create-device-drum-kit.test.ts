@@ -162,7 +162,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     expect(pad.sample).toContain("kick.aiff");
   });
 
-  it("replaces a DrumSampler on a pad with a Simpler to honor the sample write", async () => {
+  it("skips a sample write onto a DrumSampler pad, and replaces it under force", async () => {
     const t = await createTrackWithDrumRack();
 
     // Put a DrumSampler on pad E1.
@@ -185,8 +185,9 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     expect(before.type).toContain("Sampler");
 
-    // A sample write replaces the DrumSampler with a Simpler + emits a notice.
-    const { warnings } = parseToolResultWithWarnings(
+    // Honoring the write means replacing the DrumSampler, losing its settings,
+    // so it warn-skips and names force:true as the way through.
+    const skipped = parseToolResultWithWarnings(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
@@ -196,7 +197,32 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       }),
     );
 
-    expect(warnings.join("\n")).toContain("replaced DrumSampler");
+    expect(skipped.warnings.join("\n")).toContain("sample write SKIPPED");
+    expect(skipped.warnings.join("\n")).toContain("force:true");
+
+    await sleep(150);
+
+    const kept = parseToolResult<ReadDeviceResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-device",
+        arguments: { path: `t${t}/d0/pE1/c0/d0` },
+      }),
+    );
+
+    expect(kept.type).not.toContain("Simpler");
+
+    const forced = parseToolResultWithWarnings(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: `t${t}/d0`,
+          params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
+          force: true,
+        },
+      }),
+    );
+
+    expect(forced.warnings.join("\n")).toContain("force:true");
 
     await sleep(150);
 
