@@ -156,9 +156,9 @@ Why each row exists:
 | Instrument two Instrument Racks in | `t1/d0/c0/d0/c0/d0`               |
 
 Not baked in, because `ppal-create-device` builds them at runtime: a pad holding
-an **empty** rack, a rack on a chain other than the first, and Audio Effect Rack
-nesting. Only macro mappings and rack return chains can't be made through the
-Live API.
+an **empty** rack, a bare Drum Rack on a track, a rack on a chain other than the
+first, a Drum Rack two Instrument Racks deep, and Audio Effect Rack nesting.
+Only macro mappings and rack return chains can't be made through the Live API.
 
 Every rack here holds its nested device on **chain 0**, and the committed suites
 address it by that path — so don't insert a chain ahead of it.

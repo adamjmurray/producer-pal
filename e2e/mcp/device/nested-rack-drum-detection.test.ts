@@ -11,10 +11,10 @@
  * read-track reports a drum map. Two separate tree walks decide that, and
  * barbeat and stark are separate serializers, so each is asserted on its own.
  *
- * Uses: racks-test — t0 nests a Drum Rack two racks down, t1 nests a melodic
- * instrument just as deep for the negative case. Shapes the Live API can build
- * (a rack on a later chain, an Audio Effect Rack) are made at runtime instead.
- * See e2e/live-sets/racks-test-spec.md.
+ * Uses: racks-test — t0 nests a Drum Rack in an Instrument Rack, t1 nests a
+ * melodic instrument two racks deep for the negative case. Shapes the Live API
+ * can build (a bare kit, a kit on a later chain or deeper, an Audio Effect
+ * Rack) are made at runtime instead. See e2e/live-sets/racks-test-spec.md.
  *
  * Run with: npm run e2e:mcp -- nested-rack-drum-detection
  */
@@ -123,7 +123,7 @@ async function deleteTrack(trackIndex: number): Promise<void> {
 
 describe("nested rack drum detection", () => {
   // t0: Instrument Rack "Outer" -> chain "Kit" -> Drum Rack "Kit".
-  describe("a Drum Rack two racks down", () => {
+  describe("a Drum Rack inside an Instrument Rack", () => {
     it("serializes the clip as drum lines in barbeat", async () => {
       expect(await readNotes("t0/s0", "barbeat")).toBe(
         "v100 n/16 C1 1|1,2,3\nE1 1|1\nF1 1|1.5x4@n/4\nD1 1|2,4",
@@ -172,24 +172,50 @@ describe("nested rack drum detection", () => {
     });
   });
 
-  // Neither shape can be baked into the Set usefully — the Live API builds
-  // both, so build them here rather than freezing them into the fixture.
+  // These shapes cost nothing to build through the Live API, so build them
+  // here rather than freezing more structure into the fixture.
   describe("rack shapes built at runtime", () => {
-    // The tree walk has to check every chain, not just the first one.
-    it("finds a Drum Rack on a chain other than the first", async () => {
-      const trackIndex = await createTrack("Later Chain Kit");
+    const DRUM_SHAPES = [
+      {
+        name: "directly on the track",
+        build: async (track: number): Promise<void> => {
+          await createTwoPadDrumRack(ctx.client!, `t${track}`);
+        },
+      },
+      {
+        name: "on a chain other than the first",
+        build: async (track: number): Promise<void> => {
+          await createTestDevice(ctx.client!, "Instrument Rack", `t${track}`);
+          // c1 auto-creates chains 0 and 1, so the kit lands on the second.
+          await createTwoPadDrumRack(ctx.client!, `t${track}/d0/c1`);
+        },
+      },
+      {
+        name: "two Instrument Racks deep",
+        build: async (track: number): Promise<void> => {
+          await createTestDevice(ctx.client!, "Instrument Rack", `t${track}`);
+          await createTestDevice(
+            ctx.client!,
+            "Instrument Rack",
+            `t${track}/d0/c0`,
+          );
+          await createTwoPadDrumRack(ctx.client!, `t${track}/d0/c0/d0/c0`);
+        },
+      },
+    ];
 
-      await createTestDevice(ctx.client!, "Instrument Rack", `t${trackIndex}`);
-      // c1 auto-creates chain 0 and chain 1, so the kit lands on the second.
-      await createTwoPadDrumRack(ctx.client!, `t${trackIndex}/d0/c1`);
+    it.each(DRUM_SHAPES)("finds a Drum Rack $name", async ({ name, build }) => {
+      const trackIndex = await createTrack(`Kit ${name}`);
+
+      await build(trackIndex);
 
       expect(Object.keys((await readDrumMap(trackIndex)) ?? {})).toStrictEqual([
         "C1",
         "D1",
       ]);
 
-      // Grouped by pitch (C1 twice on one line) only happens in drum mode;
-      // pitched mode would stack C1 and D1 onto a shared 1|1.
+      // Grouping by pitch (C1 twice on one line) only happens in drum mode;
+      // pitched mode would stack C1 and D1 onto a shared 1|1 instead.
       await createClip(trackIndex, "C1 D1 1|1 C1 1|2");
 
       const notes = await readNotes(`t${trackIndex}/s0`, "barbeat");
