@@ -37,7 +37,7 @@ import {
 
 const ctx = setupMcpTestContext();
 
-const SLOT = `${AUDIO_WARP_TRACK}/1`;
+const SLOT = `t${AUDIO_WARP_TRACK}/s1`;
 
 /**
  * Apply a transform to a clip and read its gain back.
