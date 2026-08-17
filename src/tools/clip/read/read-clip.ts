@@ -446,14 +446,27 @@ function resolveClipLocation(args: ReadClipArgs): {
 } {
   const clipId = args.clipId ?? null;
   const path = namedPath(args.path ?? undefined);
+  const slot = namedHiddenPath(args.slot ?? undefined);
 
-  if (path != null) {
-    const parsed = requireSessionSlot(parseObjectPath(path, "path"));
-
-    return { clipId, ...parsed };
+  // Honoring one and dropping the other is the silent wrong-clip bug path
+  // replaces, so refuse instead of picking — the same trade every other tool
+  // takes.
+  if (path != null && slot != null) {
+    throw new Error(
+      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+    );
   }
 
-  const slot = namedHiddenPath(args.slot ?? undefined);
+  if (path != null) {
+    // The aliases are a fallback for a caller that did not use path.
+    if (args.trackIndex != null || args.sceneIndex != null) {
+      console.warn(
+        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+      );
+    }
+
+    return { clipId, ...requireSessionSlot(parseObjectPath(path, "path")) };
+  }
 
   if (slot != null) {
     return { clipId, ...parseSlot(slot) };

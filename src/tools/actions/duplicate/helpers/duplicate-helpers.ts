@@ -62,7 +62,9 @@ export function parseArrangementLength(
 export interface MinimalClipInfo {
   id: string;
   /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
-   * arrangement. Pastes straight back into any path/toPath param. */
+   * arrangement. A session slot pastes back into any path/toPath param; an
+   * arrangement one names a whole track, so only tools that take a track
+   * destination accept it — reach a specific arrangement clip by id. */
   path?: string;
   arrangementStart?: string;
   name?: string;

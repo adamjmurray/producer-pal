@@ -67,7 +67,10 @@ describe("readClip path param", () => {
     expect(readClip({ trackIndex: 1, sceneIndex: 1 }).name).toBe("Test Clip");
   });
 
-  it("prefers path over the params it replaced", () => {
+  // Picking one and reading the other clip is the silent wrong-clip bug path
+  // replaces — and the framework would then append "the value was honored"
+  // about the one that wasn't.
+  it("refuses path and slot together instead of picking one", () => {
     setupMidiClipMock({
       trackIndex: 1,
       sceneIndex: 1,
@@ -79,6 +82,27 @@ describe("readClip path param", () => {
       clipProps: { name: "From slot" },
     });
 
-    expect(readClip({ path: "t1/s1", slot: "2/3" }).name).toBe("From path");
+    expect(() => readClip({ path: "t1/s1", slot: "2/3" })).toThrow(
+      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+    );
+  });
+
+  // trackIndex/sceneIndex are permanent aliases, not deprecated, so they warn
+  // rather than throw — matching create-clip.
+  it("warns that trackIndex/sceneIndex went unused when path names the clip", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipProps: { name: "From path" },
+    });
+
+    expect(readClip({ path: "t1/s1", trackIndex: 2, sceneIndex: 3 }).name).toBe(
+      "From path",
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+    );
   });
 });
