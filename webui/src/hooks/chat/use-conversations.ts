@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
@@ -188,6 +189,20 @@ export function useConversations({
     setLocationHash(null);
   }, []);
 
+  const restoreRecord = useCallback(
+    (record: ConversationRecord) => {
+      // A conversation left mid-tool-call — the tab closed, the page reloaded —
+      // is saved with that call still missing its result, because the stream's
+      // own reconcile never got to run. Do it here or the card renders as
+      // forever "working…" and the next request 400s on the unmatched tool_use.
+      // "failed" rather than "canceled": the turn died under the call, nobody
+      // stopped it. Same text the wire form already substitutes for this case.
+      reconcileDanglingToolCalls(record.messages, 0, "failed");
+      restoreChatHistory(record.messages, buildLockedSettings(record));
+    },
+    [restoreChatHistory],
+  );
+
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
     const init = async () => {
@@ -206,7 +221,7 @@ export function useConversations({
 
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
-          restoreChatHistory(record.messages, buildLockedSettings(record));
+          restoreRecord(record);
           syncMetaRef(activeMetaRef, record);
         } else {
           // Hash ID no longer exists in DB
@@ -216,13 +231,7 @@ export function useConversations({
     };
 
     void init();
-  }, [
-    refreshList,
-    restoreChatHistory,
-    setActiveId,
-    clearActiveId,
-    onForeignRecord,
-  ]);
+  }, [refreshList, restoreRecord, setActiveId, clearActiveId, onForeignRecord]);
 
   const saveCurrentConversation = useCallback(
     (updatedAt?: number): Promise<void> => {
@@ -325,7 +334,7 @@ export function useConversations({
       }
 
       clearConversation();
-      restoreChatHistory(record.messages, buildLockedSettings(record));
+      restoreRecord(record);
       setActiveId(id);
       syncMetaRef(activeMetaRef, record);
       // Re-collapse with the new active id so its family's row reflects — and
@@ -335,7 +344,7 @@ export function useConversations({
     [
       clearConversation,
       clearActiveId,
-      restoreChatHistory,
+      restoreRecord,
       setActiveId,
       onForeignRecord,
       refreshList,
