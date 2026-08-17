@@ -273,6 +273,12 @@ result the wire form would substitute anyway. Without it the card renders as
 forever "working…" and the next request 400s on the unmatched tool_use. The
 cards read that placeholder back as "stopped" or "interrupted".
 
+Pressing Stop mid-call needs its own fix: the stream reconciles its own history
+on the way out, but that repaint lands after the abort and `onMessageUpdate`
+drops it (it has to — a conversation switch aborts the same way, and a late
+paint would clobber the conversation the user switched to). `stopResponse` marks
+the rendered cards itself, via `haltRunningToolCalls`.
+
 **Active conversation routing**: The active conversation ID is stored in the URL
 hash (`#<conversation-id>`), enabling browser back/forward navigation between
 conversations. On page load, the hash is read to restore the last conversation.

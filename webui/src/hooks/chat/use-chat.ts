@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { haltRunningToolCalls } from "#webui/chat/helpers/halt-running-tool-calls";
 import { type UIMessage } from "#webui/types/messages";
 import {
   beginTurn,
@@ -141,6 +142,11 @@ export function useChat<
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
+    // Mark whatever tool call was in flight as stopped. The stream reconciles
+    // its own history on the way out, but that repaint arrives after the abort
+    // and onMessageUpdate drops it, so the card would otherwise sit at
+    // "working…" for the rest of the session.
+    setMessages(haltRunningToolCalls);
     // Drop any pending-fork signal on teardown. A fork aborted before it streamed
     // assistant content never autosaves, so the signal would otherwise linger and
     // mis-branch the next, unrelated conversation's save into a spurious sibling.
