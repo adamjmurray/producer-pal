@@ -191,3 +191,9 @@ content beyond built-in devices — no Factory Packs required.
 | Unmapped rack (control)                 | "Outer", "Sub Kit"      |
 | Drum Sampler on a pad                   | pAb1                    |
 | Sampler on a pad                        | pA1                     |
+
+Suites that read this Set — change the fixture and these are what break:
+
+- `e2e/mcp/device/ppal-update-device-disabled-params.test.ts`
+- `e2e/mcp/device/ppal-read-device-nested-racks.test.ts`
+- `e2e/mcp/device/ppal-update-device-pad-sample-policy.test.ts`
