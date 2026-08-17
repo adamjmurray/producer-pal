@@ -189,18 +189,14 @@ export function updateTrackSelection({
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
-      const trackAPI = LiveAPI.from(trackPath);
+      const liveApiTrackId = toLiveApiId(LiveAPI.from(trackPath).id);
 
-      if (trackAPI.exists()) {
-        const liveApiTrackId = toLiveApiId(trackAPI.id);
+      songView.setProperty("selected_track", liveApiTrackId);
+      result.selectedTrackId = liveApiTrackId;
+      result.selectedCategory = finalCategory;
 
-        songView.setProperty("selected_track", liveApiTrackId);
-        result.selectedTrackId = liveApiTrackId;
-        result.selectedCategory = finalCategory;
-
-        if (finalCategory !== "master" && trackIndex != null) {
-          result.selectedTrackIndex = trackIndex;
-        }
+      if (finalCategory !== "master" && trackIndex != null) {
+        result.selectedTrackIndex = trackIndex;
       }
     }
   }
@@ -234,15 +230,13 @@ export function updateSceneSelection({
       result.selectedSceneIndex = sceneIndex;
     }
   } else if (sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
+    const finalSceneId = toLiveApiId(
+      LiveAPI.from(livePath.scene(sceneIndex)).id,
+    );
 
-    if (sceneAPI.exists()) {
-      const finalSceneId = toLiveApiId(sceneAPI.id);
-
-      songView.setProperty("selected_scene", finalSceneId);
-      result.selectedSceneId = finalSceneId;
-      result.selectedSceneIndex = sceneIndex;
-    }
+    songView.setProperty("selected_scene", finalSceneId);
+    result.selectedSceneId = finalSceneId;
+    result.selectedSceneIndex = sceneIndex;
   }
 
   return result;
@@ -278,11 +272,9 @@ export function updateDeviceSelection({
 
     const deviceAPI = LiveAPI.from(resolved.liveApiPath);
 
-    if (deviceAPI.exists()) {
-      songView.call("select_device", toLiveApiId(deviceAPI.id));
+    songView.call("select_device", toLiveApiId(deviceAPI.id));
 
-      return deviceAPI;
-    }
+    return deviceAPI;
   }
 
   return undefined;
@@ -367,8 +359,6 @@ export function updateClipSlotSelection({
   const clipSlotAPI = LiveAPI.from(
     livePath.track(clipSlot.trackIndex).clipSlot(clipSlot.sceneIndex),
   );
-
-  if (!clipSlotAPI.exists()) return false;
 
   const hasClip = clipSlotAPI.getProperty("has_clip") as number;
 
