@@ -301,7 +301,7 @@ async function duplicateOneCopy(options: CopyOptions): Promise<object | null> {
   const { target, startBeats, lanes, object, id } = options;
 
   if (target.takeLane != null) {
-    const lane = lanes.get(takeLaneKey(target.trackIndex, target.takeLane));
+    const lane = lanes.get(takeLaneKey(target));
 
     // A rejected source (audio, for now) warned once during lane resolution.
     if (lane == null) return null;

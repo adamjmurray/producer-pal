@@ -57,11 +57,12 @@ export function resolveDuplicateTakeLanes(
 
   const lanes = new Map<string, LiveAPI>();
 
-  // Resolve once per destination rather than once per copy — otherwise a track
-  // with two positions on "l+" gets a fresh lane for each.
-  for (const { trackIndex, takeLane } of laneTargets) {
-    const target = takeLane as TakeLaneTarget;
-    const key = takeLaneKey(trackIndex, target);
+  // Resolve once per destination rather than once per copy — otherwise a single
+  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  for (const destination of laneTargets) {
+    const { trackIndex } = destination;
+    const target = destination.takeLane as TakeLaneTarget;
+    const key = takeLaneKey(destination);
 
     if (lanes.has(key)) continue;
 

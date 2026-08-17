@@ -119,6 +119,7 @@ interface IterationPosition {
   arrangementStartBeats: number | null;
   arrangementStart: string | null;
   takeLane: TakeLaneTarget | null;
+  newLaneOrdinal?: number;
 }
 
 /**
@@ -260,7 +261,7 @@ function resolveIterationPosition(
     };
   }
 
-  const { trackIndex, arrangementStart, takeLane } = params
+  const { trackIndex, arrangementStart, takeLane, newLaneOrdinal } = params
     .arrangementPositions[i] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
@@ -278,6 +279,7 @@ function resolveIterationPosition(
     ),
     arrangementStart,
     takeLane,
+    newLaneOrdinal,
   };
 }
 
@@ -293,7 +295,7 @@ function takeLaneFor(
 ): LiveAPI | null {
   if (position.takeLane == null) return null;
 
-  return lanes.get(takeLaneKey(position.trackIndex, position.takeLane)) ?? null;
+  return lanes.get(takeLaneKey(position)) ?? null;
 }
 
 interface PreparedClipData {

@@ -130,8 +130,8 @@ Live, or make sure your standalone Max is up to date. See
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
 - Stack MIDI variations on [take lanes](/features#take-lanes) with
-  `toPath: "t2/l+"` + transforms — audition alternates at the same arrangement
-  position
+  `toPath: "t2/l+,t2/l+"` + transforms — one lane per `l+`, auditioned at the
+  same arrangement position
 - Copy devices to any track, return track, or rack chain
 - Route duplicated tracks to source instrument for MIDI layering
 

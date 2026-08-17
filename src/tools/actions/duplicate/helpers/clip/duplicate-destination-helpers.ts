@@ -11,6 +11,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
+  withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -187,8 +188,14 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
     }
   }
 
+  // Number the lanes here, off the list the caller wrote: the copy loop cycles
+  // this list, and a cycled repeat must reuse its lane, not append one.
   if (slots.length === 0) {
-    return { destination: "arrangement", slots: [], arrangementTargets };
+    return {
+      destination: "arrangement",
+      slots: [],
+      arrangementTargets: withNewLaneOrdinals(arrangementTargets),
+    };
   }
 
   const named = slots

@@ -56,6 +56,33 @@ export interface ArrangementTrack {
   trackIndex: number;
   /** Take lane target, or null for the main lane. */
   takeLane: TakeLaneTarget | null;
+  /**
+   * Which written `l+` this destination came from, set by
+   * {@link withNewLaneOrdinals}. Only meaningful when `takeLane` is "new".
+   */
+  newLaneOrdinal?: number;
+}
+
+/**
+ * Numbers the `l+` entries in a destination list, so each one appends its own
+ * lane.
+ *
+ * Call this on the list as the caller wrote it, before it's cycled against
+ * arrangementStart. One written `l+` then stays one lane however many clips
+ * land on it, while `l+,l+` gets two.
+ * @param targets - Destinations parsed from the path, in order
+ * @returns The destinations, with each "new" entry numbered
+ */
+export function withNewLaneOrdinals(
+  targets: ArrangementTrack[],
+): ArrangementTrack[] {
+  let ordinal = 0;
+
+  return targets.map((target) =>
+    target.takeLane === "new"
+      ? { ...target, newLaneOrdinal: ordinal++ }
+      : target,
+  );
 }
 
 /**
@@ -71,18 +98,17 @@ export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
 
 /**
  * Keys a resolved take lane by the destination that asked for it, so several
- * destinations naming one lane share it. "new" keeps its own key: two
- * destinations both asking for a fresh lane on a track want the same new lane,
- * not one each.
- * @param trackIndex - Destination track index
- * @param target - Take lane target
+ * destinations naming one lane share it. An `l+` is keyed by its ordinal, so
+ * two written `l+` get two lanes while a cycled repeat of one gets a single
+ * lane.
+ * @param target - The destination
  * @returns The key, spelled as the path segment it came from
  */
-export function takeLaneKey(
-  trackIndex: number,
-  target: TakeLaneTarget,
-): string {
-  return `t${trackIndex}/l${target === "new" ? "+" : target}`;
+export function takeLaneKey(target: ArrangementTrack): string {
+  const { trackIndex, takeLane, newLaneOrdinal = 0 } = target;
+  const lane = takeLane === "new" ? `+${newLaneOrdinal}` : takeLane;
+
+  return `t${trackIndex}/l${lane}`;
 }
 
 /**
@@ -227,10 +253,12 @@ export function assertAllTakeLanesFit(targets: ArrangementTrack[]): void {
   const counts = new Map<number, number>();
   const resolved = new Set<string>();
 
-  for (const { trackIndex, takeLane } of targets) {
+  for (const target of targets) {
+    const { trackIndex, takeLane } = target;
+
     if (takeLane == null) continue;
 
-    const key = takeLaneKey(trackIndex, takeLane);
+    const key = takeLaneKey(target);
 
     if (resolved.has(key)) continue;
 

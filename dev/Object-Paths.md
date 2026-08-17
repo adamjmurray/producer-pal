@@ -44,6 +44,11 @@ All indices are 0-based.
 Chains auto-create when referenced (up to 16). Take lanes auto-create up to the
 index named, capped at `MAX_TAKE_LANES`.
 
+Each `l+` in a list appends its own lane, in the order written — `t0/l+,t0/l+`
+gets two. Cycling doesn't multiply them: when a shorter destination list repeats
+to cover a longer `arrangementStart` list, the repeats reuse the lane their `l+`
+already made, so one written `l+` is always one lane.
+
 ## Which shapes are legal where
 
 A path parses the same everywhere; what a tool accepts differs by what can

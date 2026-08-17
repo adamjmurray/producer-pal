@@ -16,7 +16,8 @@ import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   takeLaneFromPath,
-  type TakeLaneTarget,
+  withNewLaneOrdinals,
+  type ArrangementTrack,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   namedPath,
@@ -28,13 +29,6 @@ import {
   parseSlotList,
   type SlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
-
-/** One arrangement destination: which track, and which of its lanes. */
-export interface ArrangementTrack {
-  trackIndex: number;
-  /** Take lane target, or null for the main lane. */
-  takeLane: TakeLaneTarget | null;
-}
 
 /** One arrangement clip: which track and lane, and where on it. */
 export interface ArrangementPosition extends ArrangementTrack {
@@ -145,7 +139,9 @@ function splitPathDestinations(
     }
   }
 
-  return { sessionSlots, tracks };
+  // Number the lanes here, off the list the caller wrote: pairTracksWithStarts
+  // cycles this list, and a cycled repeat must reuse its lane, not append one.
+  return { sessionSlots, tracks: withNewLaneOrdinals(tracks) };
 }
 
 /**

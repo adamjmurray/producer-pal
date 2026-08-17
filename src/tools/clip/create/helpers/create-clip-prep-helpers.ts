@@ -116,14 +116,14 @@ export function resolveCreateClipTakeLanes(
   // last destination strands empty lanes on all the earlier ones.
   assertAllTakeLanesFit(arrangementPositions);
 
-  // Resolve once per destination rather than once per clip — otherwise a track
-  // with two positions on "l+" gets two fresh lanes.
+  // Resolve once per destination rather than once per clip — otherwise a single
+  // "l+" cycled over three arrangementStarts gets three fresh lanes.
   for (const position of arrangementPositions) {
     const { trackIndex, takeLane: target } = position;
 
     if (target == null) continue;
 
-    const key = takeLaneKey(trackIndex, target);
+    const key = takeLaneKey(position);
 
     if (lanes.has(key)) continue;
 
