@@ -97,6 +97,19 @@ the Live API index like every other segment.
 `0 → no segment`. `takeLaneName` stays a published param: it is a property of a
 lane being created, not an address.
 
+**Writes to and from a lane re-create the clip**, because Live's arrangement
+duplicate handles neither direction: `TakeLane` has no duplicate API, and
+`Track.duplicate_clip_to_arrangement` silently no-ops when the _source_ is a
+take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
+(promote) by reading the notes and building a new clip — MIDI only, and envelope
+automation is dropped.
+
+**A lane is one-way**: nothing removes a take lane or a clip on one, so anything
+needing the original gone is impossible, not unimplemented. `update-clip`'s
+`arrangementStart` is the case to remember — a move is copy-then-delete, and the
+delete can't happen, so it warns and leaves the clip alone rather than silently
+copying. Deleting and comping stay in Live's UI.
+
 ## Tolerance
 
 Three tiers, in order of preference.

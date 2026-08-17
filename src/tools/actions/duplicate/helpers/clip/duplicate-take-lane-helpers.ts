@@ -12,14 +12,6 @@ import {
   type ArrangementTrack,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import {
-  rawNotesToNoteEvents,
-  readAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
-import {
-  getMinimalClipInfo,
-  type MinimalClipInfo,
-} from "../duplicate-helpers.ts";
 
 /**
  * Resolve every take lane a duplicate's destinations name, auto-creating as
@@ -80,70 +72,4 @@ export function resolveDuplicateTakeLanes(
   }
 
   return lanes;
-}
-
-/**
- * Re-create a MIDI clip on a take lane, copying the source's notes and
- * loop/marker/signature properties. Like the main lane, re-creating over an
- * existing clip replaces/truncates it (no overlap guard).
- * @param sourceClip - The clip being copied
- * @param lane - The destination take lane LiveAPI object
- * @param startBeats - Arrangement start position in Ableton beats
- * @param name - Name for the new clip
- * @param color - Color for the new clip
- * @returns Minimal clip info for the created clip
- */
-export function copyMidiClipToTakeLane(
-  sourceClip: LiveAPI,
-  lane: LiveAPI,
-  startBeats: number,
-  name: string | undefined,
-  color: string | undefined,
-): MinimalClipInfo {
-  const length = sourceClip.getProperty("length") as number;
-  const newClipResult = lane.call(
-    "create_midi_clip",
-    startBeats,
-    length,
-  ) as string;
-  const newClip = LiveAPI.from(newClipResult);
-
-  if (!newClip.exists()) {
-    throw new Error("failed to create Arrangement clip");
-  }
-
-  // Read the full [-length, 2*length] scan window (not just [0, length]) so a
-  // pickup (negative start_time) before the clip start and any overhang past
-  // the end are copied — same window every other clip-copy path uses. Reading
-  // only from time 0 (the prior behavior) silently dropped pickups.
-  const rawNotes = readAllClipNotes(sourceClip);
-
-  if (rawNotes.length > 0) {
-    // Strip Live's extra note properties (note_id, mute, release_velocity) so
-    // stale ids aren't re-fed when copying one source to multiple positions.
-    newClip.call("add_new_notes", { notes: rawNotesToNoteEvents(rawNotes) });
-  }
-
-  // Order mirrors create-clip's buildClipProperties to satisfy Live's
-  // loop_end > loop_start constraint while applying values. Name/color fall back
-  // to the source so an un-overridden duplicate matches it (as native duplicate
-  // does); color is a Live int, so it bypasses setColor's #RRGGBB path.
-  newClip.setAll({
-    start_marker: sourceClip.getProperty("start_marker"),
-    loop_start: sourceClip.getProperty("loop_start"),
-    loop_end: sourceClip.getProperty("loop_end"),
-    end_marker: sourceClip.getProperty("end_marker"),
-    looping: sourceClip.getProperty("looping"),
-    signature_numerator: sourceClip.getProperty("signature_numerator"),
-    signature_denominator: sourceClip.getProperty("signature_denominator"),
-    name: name ?? sourceClip.getProperty("name"),
-  });
-
-  if (color != null) {
-    newClip.setColor(color);
-  } else {
-    newClip.set("color", sourceClip.getProperty("color"));
-  }
-
-  return getMinimalClipInfo(newClip);
 }

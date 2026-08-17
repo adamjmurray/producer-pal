@@ -88,6 +88,35 @@ function registerArrangementSource(
 }
 
 /**
+ * Register a source clip that already lives on a take lane (track 0, lane 0) —
+ * the shape a promote reads from.
+ * @param extraProps - Clip properties merged over the MIDI defaults
+ */
+function registerTakeLaneSource(extraProps: Record<string, number> = {}): void {
+  registerMockObject("tl_src_clip", {
+    path: livePath.track(0).takeLane(0).arrangementClip(0),
+    type: "Clip",
+    properties: {
+      is_midi_clip: 1,
+      is_arrangement_clip: 1,
+      length: 4,
+      start_time: 0,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      ...extraProps,
+    },
+    methods: {
+      get_notes_extended: () => JSON.stringify({ notes: [SOURCE_NOTE] }),
+    },
+  });
+}
+
+/**
  * Register a MIDI source on an empty take-lane track, run a take-lane duplicate,
  * and return the newly created lane clip mock for assertions.
  * @param overrides - Extra duplicate args merged over the take-lane defaults
@@ -208,7 +237,7 @@ describe("duplicate take lane", () => {
     await duplicateToFreshLane({ arrangementLength: "2bar" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementLength ignored for the take-lane"),
+      expect.stringContaining("arrangementLength ignored for the re-created"),
     );
   });
 
@@ -684,18 +713,41 @@ describe("duplicate take lane", () => {
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
   });
 
-  it("warns and skips when source is a take-lane clip and no takeLane param is given (main-lane destination)", async () => {
+  // A take-lane SOURCE only ever gets read, so lane→lane needs nothing special —
+  // but nothing else in this suite copies FROM a lane, so it's covered here.
+  it("copies a take-lane clip onto another take lane", async () => {
     registerLiveSet();
-    // Register a source clip whose path includes a take_lanes segment.
-    registerMockObject("tl_src_clip", {
-      path: livePath.track(0).takeLane(0).arrangementClip(0),
-      type: "Clip",
-      properties: {
-        is_midi_clip: 1,
-        is_arrangement_clip: 1,
-        length: 4,
-      },
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource();
+
+    const result = await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      toPath: "t0/l+",
+      arrangementStart: "5|1",
     });
+
+    // Landed on the appended lane, not the one the source sits on
+    expect(result).toMatchObject({ path: "t0/l1" });
+
+    const destLane = lookupMockObject(
+      undefined,
+      livePath.track(0).takeLane(1).arrangementClip(0),
+    );
+
+    expect(destLane?.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [SOURCE_NOTE],
+    });
+  });
+
+  // Promotion goes through the same re-create as a lane write, because
+  // duplicate_clip_to_arrangement no-ops on a take-lane SOURCE id.
+  it("promotes a take-lane clip to the main lane when the destination names no lane", async () => {
+    registerLiveSet();
+
+    const track = registerTakeLaneTrack({ initialLanes: 1 });
+
+    registerTakeLaneSource();
 
     const result = await duplicate({
       type: "clip",
@@ -703,24 +755,46 @@ describe("duplicate take lane", () => {
       arrangementStart: "5|1",
     });
 
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'source clip "tl_src_clip" is on a take lane; promoting to the main lane is not yet supported',
-      ),
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    // Reported on the main lane ("t0"), not a lane path.
+    expect(result).toMatchObject({ path: "t0" });
+
+    // It's a copy: nothing tries to clear the source off its lane.
+    expect(track.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      expect.anything(),
     );
-    expect(result).toStrictEqual([]);
   });
 
-  // The reason doesn't change per copy, so neither should the warning.
-  it("says the source can't be promoted once, not once per position", async () => {
+  it("copies the source's notes onto the promoted clip", async () => {
     registerLiveSet();
-    registerMockObject("tl_src_clip", {
-      path: livePath.track(0).takeLane(0).arrangementClip(0),
-      type: "Clip",
-      properties: { is_midi_clip: 1, is_arrangement_clip: 1, length: 4 },
-    });
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource();
 
     await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "5|1",
+    });
+
+    const promoted = lookupMockObject(
+      undefined,
+      livePath.track(0).arrangementClip(0),
+    );
+
+    expect(promoted?.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [SOURCE_NOTE],
+    });
+  });
+
+  // Promoting re-creates from notes, which an audio clip has none of.
+  // The reason doesn't change per copy, so neither should the warning.
+  it("warns once that an audio take can't be promoted, not once per position", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneSource({ is_midi_clip: 0, is_audio_clip: 1 });
+
+    const result = await duplicate({
       type: "clip",
       id: "tl_src_clip",
       arrangementStart: "1|1,2|1,3|1,4|1",
@@ -729,11 +803,10 @@ describe("duplicate take lane", () => {
     const promoteWarnings = vi
       .mocked(consoleMock.warn)
       .mock.calls.filter(([message]) =>
-        String(message).includes(
-          "promoting to the main lane is not yet supported",
-        ),
+        String(message).includes("can't be promoted off its take lane"),
       );
 
     expect(promoteWarnings).toHaveLength(1);
+    expect(result).toStrictEqual([]);
   });
 });

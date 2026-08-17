@@ -6,13 +6,20 @@
 /**
  * Take lane targeting shared by ppal-create-clip and ppal-duplicate.
  *
- * Live API notes (verified against Live 12):
+ * Live API notes (verified against Live 12.4.3):
  * - `Track.take_lanes` excludes the main lane; `create_take_lane()` appends one
  *   and returns its ref. New lane index = prior `take_lanes.length`.
- * - `TakeLane.create_midi_clip(start, length)` / `create_audio_clip(file, start)`
- *   create arrangement clips on the lane and return the new clip ref directly.
- * - There is no `delete_take_lane` and `Track.delete_clip` does not remove
- *   take-lane clips, so take lanes are append-only (clean up in Live's UI).
+ * - `TakeLane` has one property (`name`) and two functions, `create_midi_clip(
+ *   start, length)` and `create_audio_clip(file, start)`. They create
+ *   arrangement clips on the lane and return the new clip ref directly.
+ * - Take lanes are append-only: there is no `delete_take_lane`, `TakeLane` has
+ *   no delete of its own, and `Track.delete_clip` silently no-ops on a
+ *   take-lane clip. Clean up in Live's UI.
+ * - `Track.duplicate_clip_to_arrangement` silently no-ops when the SOURCE is a
+ *   take-lane clip — it creates nothing anywhere. Re-create the clip instead
+ *   (see duplicate-clip-recreate-helpers.ts).
+ * - Both no-ops return `id 0`, which a successful `delete_clip` returns too, so
+ *   the return value can't be tested — check whether the clip is still there.
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -32,8 +39,9 @@ const TAKE_LANE_PATH_RE = / take_lanes \d+\b/;
  * main-lane arrangement clips use `live_set tracks N arrangement_clips K`.
  *
  * Use this whenever a tool is about to invoke a `Track`-scoped arrangement API
- * (`duplicate_clip_to_arrangement`, `delete_clip`) — those APIs silently
- * no-op on take-lane clips and the caller must warn-and-skip instead.
+ * (`duplicate_clip_to_arrangement`, `delete_clip`) — those APIs silently no-op
+ * on take-lane clips, so the caller must re-create the clip instead (duplicate)
+ * or warn-and-skip (everything that needs the original gone).
  *
  * @param clip - The clip LiveAPI
  * @returns true when the clip's path includes a `take_lanes N` segment

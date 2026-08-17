@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   registerMockObject,
@@ -34,6 +34,10 @@ export interface TakeLaneTrackOptions {
  * appends a lane and grows the track's `take_lanes` list; each lane's
  * `create_midi_clip` / `create_audio_clip` registers and returns a fresh
  * arrangement clip and grows the lane's `arrangement_clips` list.
+ *
+ * The track answers `create_midi_clip` too, landing on its MAIN lane the way
+ * Live does even on a track that has take lanes — that's the call a promote
+ * makes.
  * @param options - Track index, initial lane count, and clip length
  * @returns The registered track mock object
  */
@@ -68,41 +72,19 @@ export function registerTakeLaneTrack(
       initialLaneClips,
     );
 
+    const owner: ClipOwner = {
+      clips: laneClips,
+      props: laneProps,
+      pathFor: (index) =>
+        livePath.track(trackIndex).takeLane(laneIndex).arrangementClip(index),
+      clipLength,
+      clipCreationFails,
+    };
     const createClip = (
       kind: string,
       startBeats: unknown,
       lengthBeats?: unknown,
-    ): unknown[] => {
-      // Simulate Live failing to create the clip (returns the "no object" ref).
-      if (clipCreationFails) {
-        return ["id", "0"];
-      }
-
-      const clipId = `tl_clip_${uid++}`;
-      const start = typeof startBeats === "number" ? startBeats : 0;
-      // Honor the length Live was asked for, so a wrong one can't read back
-      // right. create_audio_clip takes its length from the sample instead.
-      const length = typeof lengthBeats === "number" ? lengthBeats : clipLength;
-
-      registerMockObject(clipId, {
-        path: livePath
-          .track(trackIndex)
-          .takeLane(laneIndex)
-          .arrangementClip(laneClips.length),
-        type: "Clip",
-        properties: {
-          is_arrangement_clip: 1,
-          [kind]: 1,
-          length,
-          start_time: start,
-          end_time: start + length,
-        },
-      });
-      laneClips.push(clipId);
-      laneProps.arrangement_clips = children(...laneClips);
-
-      return ["id", clipId];
-    };
+    ): unknown[] => createOwnedClip(owner, kind, startBeats, lengthBeats);
 
     registerMockObject(laneId, {
       path: String(livePath.track(trackIndex).takeLane(laneIndex)),
@@ -123,10 +105,19 @@ export function registerTakeLaneTrack(
     laneIds.push(registerLane(i));
   }
 
+  const mainLaneClips: string[] = [];
   const trackProps: Record<string, unknown> = {
     has_midi_input: hasMidiInput,
     is_foldable: 0,
     take_lanes: children(...laneIds),
+    arrangement_clips: children(),
+  };
+  const mainLane: ClipOwner = {
+    clips: mainLaneClips,
+    props: trackProps,
+    pathFor: (index) => livePath.track(trackIndex).arrangementClip(index),
+    clipLength,
+    clipCreationFails,
   };
 
   return registerMockObject(`tl_track_${trackIndex}`, {
@@ -142,8 +133,66 @@ export function registerTakeLaneTrack(
 
         return ["id", laneId];
       },
+      create_midi_clip: (start, length) =>
+        createOwnedClip(mainLane, "is_midi_clip", start, length),
     },
   });
+}
+
+/** Something clips can be created on: a take lane, or a track's main lane. */
+interface ClipOwner {
+  /** The owner's clip-id list, mutated in place */
+  clips: string[];
+  /** The owner's mutable props, whose `arrangement_clips` grows */
+  props: Record<string, unknown>;
+  /** Builds the clip path for a given index in that list */
+  pathFor: (index: number) => PathLike;
+  clipLength: number;
+  clipCreationFails: boolean;
+}
+
+/**
+ * The stateful half of Live's `create_midi_clip` / `create_audio_clip`:
+ * registers a fresh arrangement clip on the owner and grows its clip list.
+ * @param owner - Where the clip lands
+ * @param kind - The `is_*_clip` property to set on it
+ * @param startBeats - Start position Live was given
+ * @param lengthBeats - Length Live was given (audio takes it from the sample)
+ * @returns The Live-style `["id", <id>]` ref
+ */
+function createOwnedClip(
+  owner: ClipOwner,
+  kind: string,
+  startBeats: unknown,
+  lengthBeats?: unknown,
+): unknown[] {
+  // Simulate Live failing to create the clip (returns the "no object" ref).
+  if (owner.clipCreationFails) {
+    return ["id", "0"];
+  }
+
+  const clipId = `tl_clip_${uid++}`;
+  const start = typeof startBeats === "number" ? startBeats : 0;
+  // Honor the length Live was asked for, so a wrong one can't read back right.
+  // create_audio_clip takes its length from the sample instead.
+  const length =
+    typeof lengthBeats === "number" ? lengthBeats : owner.clipLength;
+
+  registerMockObject(clipId, {
+    path: owner.pathFor(owner.clips.length),
+    type: "Clip",
+    properties: {
+      is_arrangement_clip: 1,
+      [kind]: 1,
+      length,
+      start_time: start,
+      end_time: start + length,
+    },
+  });
+  owner.clips.push(clipId);
+  owner.props.arrangement_clips = children(...owner.clips);
+
+  return ["id", clipId];
 }
 
 /**

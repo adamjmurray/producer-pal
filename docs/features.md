@@ -130,12 +130,15 @@ variations side by side without cluttering the timeline.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).
-- Limits: 8 take lanes per track. Duplicating to a take lane is MIDI-only and
-  recreates the clip from notes, so envelope automation isn't preserved. Once
-  placed, take-lane clips are append-only — they can't be split, moved, resized,
-  deleted, or promoted back to the main lane through tools, and Producer Pal
-  can't pick the active take. All of that stays in Live's UI. Expand the
-  take-lane arrow on a track header to see them.
+- [Duplicate](/features/tools#ppal-duplicate) also promotes a take-lane clip
+  back to the main lane — give it a `toPath` with no `l` segment. It's a copy:
+  the take stays on its lane, since Live's API can't remove it.
+- Limits: 8 take lanes per track. Duplicating to or from a take lane is
+  MIDI-only and recreates the clip from notes, so envelope automation isn't
+  preserved. Once placed, take-lane clips are append-only — they can't be split,
+  moved, resized, or deleted through tools, and Producer Pal can't pick the
+  active take. All of that stays in Live's UI. Expand the take-lane arrow on a
+  track header to see them.
 
 ## Network Control
 

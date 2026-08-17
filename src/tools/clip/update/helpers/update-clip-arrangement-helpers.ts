@@ -70,13 +70,13 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // duplicate_clip_to_arrangement is a Track-scoped API that always targets
-  // the main lane; on a take-lane clip it would silently move content off the
-  // lane (and the follow-up delete_clip is a no-op for take-lane clips).
+  // A move is copy-then-delete, and Live's API cannot delete a take-lane clip
+  // (delete_clip silently no-ops on one, and TakeLane has no delete at all), so
+  // any move we made would leave the original behind — a copy, not a move.
   // Warn and preserve the clip unchanged.
   if (isTakeLaneClip(clip)) {
     console.warn(
-      `arrangementStart parameter ignored for take-lane clip (id ${clip.id}); move it in Live's UI`,
+      `arrangementStart ignored for take-lane clip (id ${clip.id}): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere`,
     );
 
     return clip.id;

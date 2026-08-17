@@ -65,11 +65,12 @@ Breaking, and the release notes need to say so.
 The error messages that still named `trackIndex`/`sceneIndex` moved onto the
 grammar afterward.
 
-Still open: moving a take-lane clip. `update-clip` refuses one, and `duplicate`
-won't promote one to the main lane. Both hit the same Live API shape —
-`duplicate_clip_to_arrangement` always targets the main lane, and `delete_clip`
-is a no-op on a take-lane clip, so copy-then-delete leaves the source behind.
-Tracked separately; the warnings name the limitation.
+Settled afterward, once the Live API was probed rather than guessed at:
+`duplicate` now promotes a take-lane clip to the main lane by re-creating it
+there, since `duplicate_clip_to_arrangement` turned out to no-op on a take-lane
+_source_. Moving one stays impossible — nothing can remove a take-lane clip, so
+a move could only ever be a copy, and `update-clip` says so instead of
+pretending otherwise. See [Object-Paths.md](../Object-Paths.md#take-lanes).
 
 ### Phase 3 — reach ✅
 

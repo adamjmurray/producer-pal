@@ -410,7 +410,7 @@ describe("take lanes", () => {
     );
 
     expect(lengthDup.warnings.join(" ")).toContain(
-      "arrangementLength ignored for the take-lane copies",
+      "arrangementLength ignored for the re-created copies",
     );
     expect(lengthDup.data.path).toBe(`t${MIDI_TRACK}/l1`);
 
@@ -451,6 +451,54 @@ describe("take lanes", () => {
       "take lanes hold MIDI clips only",
     );
     expect(audioDup.data).toStrictEqual([]);
+  });
+
+  // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this
+  // re-creates the clip on the main lane. It's a copy, not a move: the take
+  // stays put, because nothing can remove it.
+  it("promotes a take-lane clip back to the main lane, leaving the take behind", async () => {
+    await createOnLane({
+      path: `t${MIDI_TRACK}/l+`,
+      arrangementStart: "1|1",
+      notes: "C3 E3 G3 1|1",
+      name: "The Keeper",
+    });
+
+    await sleep(100);
+    const lanes = await readTakeLanes(MIDI_TRACK);
+    const takeId = lanes.takeLanes![0]!.clips[0]!.id;
+
+    const promoted = parseToolResultWithWarnings<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: takeId,
+          toPath: `t${MIDI_TRACK}`,
+          arrangementStart: "5|1",
+        },
+      }),
+    );
+
+    // Main lane has no `l` segment, so the path is the bare track
+    expect(promoted.data.path).toBe(`t${MIDI_TRACK}`);
+
+    await sleep(100);
+    const copy = parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: promoted.data.id, include: ["notes"] },
+      }),
+    );
+
+    expect(copy.name).toBe("The Keeper");
+    expect(copy.notes).toContain("C3");
+
+    // The source take is untouched on its lane
+    const after = await readTakeLanes(MIDI_TRACK);
+
+    expect(after.takeLanes![0]!.clips).toHaveLength(1);
+    expect(after.takeLanes![0]!.clips[0]!.id).toBe(takeId);
   });
 
   it("warns and skips deletion of a take-lane clip (no delete API)", async () => {
