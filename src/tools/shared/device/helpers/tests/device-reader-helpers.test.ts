@@ -4,14 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import {
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  STATE,
+} from "#src/tools/constants.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDrumPadSoloStates } from "../device-reader-drum-helpers.ts";
 
 // Types for tests (not exported from source modules)
-interface DeviceInfo {
-  type: string;
-  chains?: { devices?: DeviceInfo[] }[];
-}
 interface DrumPadInfo {
   note: number;
   pitch: string;
@@ -25,11 +31,8 @@ import {
   readMacroVariations,
   readABCompare,
 } from "../device-reader-helpers.ts";
-import {
-  computeState,
-  isInstrumentDevice,
-  hasInstrumentInDevices,
-} from "../device-state-helpers.ts";
+import { computeState, deviceHasInstrument } from "../device-state-helpers.ts";
+import "#src/live-api-adapter/live-api-extensions.ts";
 
 // Helper types used in tests
 type ChainOverrides = {
@@ -309,101 +312,86 @@ describe("device-reader-helpers", () => {
     });
   });
 
-  describe("isInstrumentDevice", () => {
-    it("returns true for instrument device type", () => {
-      expect(isInstrumentDevice(DEVICE_TYPE.INSTRUMENT)).toBe(true);
-      expect(isInstrumentDevice("instrument: Wavetable")).toBe(true);
-    });
-
-    it("returns true for instrument rack device type", () => {
-      expect(isInstrumentDevice(DEVICE_TYPE.INSTRUMENT_RACK)).toBe(true);
-      expect(isInstrumentDevice("instrument-rack: My Rack")).toBe(true);
-    });
-
-    it("returns true for drum rack device type", () => {
-      expect(isInstrumentDevice(DEVICE_TYPE.DRUM_RACK)).toBe(true);
-      expect(isInstrumentDevice("drum-rack: 808 Kit")).toBe(true);
-    });
-
-    it("returns false for audio effect device types", () => {
-      expect(isInstrumentDevice(DEVICE_TYPE.AUDIO_EFFECT)).toBe(false);
-      expect(isInstrumentDevice(DEVICE_TYPE.AUDIO_EFFECT_RACK)).toBe(false);
-    });
-
-    it("returns false for midi effect device types", () => {
-      expect(isInstrumentDevice(DEVICE_TYPE.MIDI_EFFECT)).toBe(false);
-      expect(isInstrumentDevice(DEVICE_TYPE.MIDI_EFFECT_RACK)).toBe(false);
-    });
-  });
-
-  describe("hasInstrumentInDevices", () => {
-    it("returns false for empty or null devices", () => {
-      expect(hasInstrumentInDevices(null as unknown as DeviceInfo[])).toBe(
-        false,
-      );
-      expect(hasInstrumentInDevices(undefined as unknown as DeviceInfo[])).toBe(
-        false,
-      );
-      expect(hasInstrumentInDevices([])).toBe(false);
-    });
-
-    it("returns true when device list has an instrument", () => {
-      const devices: DeviceInfo[] = [
-        { type: DEVICE_TYPE.AUDIO_EFFECT },
-        { type: DEVICE_TYPE.INSTRUMENT },
-      ];
-
-      expect(hasInstrumentInDevices(devices)).toBe(true);
-    });
-
-    it("returns false when no instruments present", () => {
-      const devices: DeviceInfo[] = [
-        { type: DEVICE_TYPE.AUDIO_EFFECT },
-        { type: DEVICE_TYPE.MIDI_EFFECT },
-      ];
-
-      expect(hasInstrumentInDevices(devices)).toBe(false);
-    });
-
-    it("finds instruments in nested chains", () => {
-      const devices: DeviceInfo[] = [
-        {
-          type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-          chains: [
-            {
-              devices: [{ type: DEVICE_TYPE.INSTRUMENT }],
-            },
-          ],
+  describe("deviceHasInstrument", () => {
+    /**
+     * Register a device, plus one chain holding the given devices when it's a rack
+     * @param id - Mock-registry id
+     * @param type - Live's device type number
+     * @param rackDevices - Ids of devices in the rack's single chain, or null
+     *   for a device that can't have chains
+     * @returns The registered device
+     */
+    function registerDevice(
+      id: string,
+      type: number,
+      rackDevices: string[] | null = null,
+    ): RegisteredMockObject {
+      const device = registerMockObject(id, {
+        properties: {
+          type,
+          can_have_chains: rackDevices == null ? 0 : 1,
+          ...(rackDevices != null && { chains: children(`${id}-chain`) }),
         },
-      ];
+      });
 
-      expect(hasInstrumentInDevices(devices)).toBe(true);
+      if (rackDevices != null) {
+        registerMockObject(`${id}-chain`, {
+          properties: { devices: children(...rackDevices) },
+        });
+      }
+
+      return device;
+    }
+
+    /**
+     * Point a fresh LiveAPI at a registered device
+     * @param id - Mock-registry id
+     * @returns The device object
+     */
+    function deviceApi(id: string): LiveAPI {
+      return LiveAPI.from(`id ${id}`);
+    }
+
+    it("is true for a plain instrument", () => {
+      registerDevice("dev", LIVE_API_DEVICE_TYPE_INSTRUMENT);
+
+      expect(deviceHasInstrument(deviceApi("dev"))).toBe(true);
     });
 
-    it("returns false when nested chains have no instruments", () => {
-      const devices: DeviceInfo[] = [
-        {
-          type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-          chains: [
-            {
-              devices: [{ type: DEVICE_TYPE.AUDIO_EFFECT }],
-            },
-          ],
-        },
-      ];
+    it("is false for an effect", () => {
+      registerDevice("dev", LIVE_API_DEVICE_TYPE_AUDIO_EFFECT);
 
-      expect(hasInstrumentInDevices(devices)).toBe(false);
+      expect(deviceHasInstrument(deviceApi("dev"))).toBe(false);
     });
 
-    it("handles chains without devices property", () => {
-      const devices: DeviceInfo[] = [
-        {
-          type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-          chains: [{}],
-        },
-      ];
+    it("is true for a rack holding an instrument", () => {
+      registerDevice("rack", LIVE_API_DEVICE_TYPE_INSTRUMENT, ["inner"]);
+      registerDevice("inner", LIVE_API_DEVICE_TYPE_INSTRUMENT);
 
-      expect(hasInstrumentInDevices(devices)).toBe(false);
+      expect(deviceHasInstrument(deviceApi("rack"))).toBe(true);
+    });
+
+    // Live types a rack as an instrument even when it holds nothing that makes
+    // sound, which would otherwise list a silent pad in the drum map.
+    it("is false for an empty rack", () => {
+      registerDevice("rack", LIVE_API_DEVICE_TYPE_INSTRUMENT, []);
+
+      expect(deviceHasInstrument(deviceApi("rack"))).toBe(false);
+    });
+
+    it("is false for a rack holding only effects", () => {
+      registerDevice("rack", LIVE_API_DEVICE_TYPE_INSTRUMENT, ["inner"]);
+      registerDevice("inner", LIVE_API_DEVICE_TYPE_AUDIO_EFFECT);
+
+      expect(deviceHasInstrument(deviceApi("rack"))).toBe(false);
+    });
+
+    it("finds an instrument nested two racks deep", () => {
+      registerDevice("outer", LIVE_API_DEVICE_TYPE_INSTRUMENT, ["mid"]);
+      registerDevice("mid", LIVE_API_DEVICE_TYPE_INSTRUMENT, ["inner"]);
+      registerDevice("inner", LIVE_API_DEVICE_TYPE_INSTRUMENT);
+
+      expect(deviceHasInstrument(deviceApi("outer"))).toBe(true);
     });
   });
 

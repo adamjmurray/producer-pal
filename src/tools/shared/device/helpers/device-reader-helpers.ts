@@ -190,6 +190,7 @@ export function processDeviceChains(
         depth,
         maxDepth,
         readDeviceFn,
+        devicePath,
       );
     } else {
       processRegularChains(

@@ -15,6 +15,10 @@ import {
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import {
+  isParamEnabled,
+  warnParamDisabled,
+} from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -212,6 +216,14 @@ function setParamValue(
   inputValue: string | number,
   toolName: string,
 ): void {
+  if (!isParamEnabled(param)) {
+    warnParamDisabled(
+      `${toolName}: param "${param.getProperty("name") as string}"`,
+    );
+
+    return;
+  }
+
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - quantized param. Resolve the input against value_items by string.

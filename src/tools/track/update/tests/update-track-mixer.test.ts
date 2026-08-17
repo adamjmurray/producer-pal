@@ -304,6 +304,23 @@ describe("updateTrack - mixer properties", () => {
     expect(leftSplitParam1.set).not.toHaveBeenCalled();
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
   });
+
+  // Live accepts a set on a disabled parameter and ignores it. A track mixer
+  // is harder to disable than a rack chain's, but the guard is the same.
+  it("should warn and skip a disabled volume", () => {
+    volumeParam1 = registerMockObject("volume_param_1", {
+      path: `${livePath.track(0).mixerDevice()} volume`,
+      properties: { is_enabled: 0 },
+    });
+
+    updateTrack({ ids: "123", gainDb: -6 });
+
+    expect(volumeParam1.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("updateTrack: gainDb is disabled"),
+    );
+  });
 });
 
 /**

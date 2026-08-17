@@ -13,6 +13,7 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
   findReturnIndex,
   parseCommaSeparatedIds,
@@ -223,10 +224,11 @@ function applySendProperties(
     return;
   }
 
-  // Set the send gain
-  assertDefined(sends[sendIndex], `send at index ${sendIndex}`).set(
+  setParamIfEnabled(
+    assertDefined(sends[sendIndex], `send at index ${sendIndex}`),
     "display_value",
     sendGainDb,
+    `updateTrack: send "${names[sendIndex]}"`,
   );
 }
 
@@ -247,7 +249,7 @@ function applyStereoPan(
     const panning = mixer.child("panning");
 
     if (panning.exists()) {
-      panning.set("value", pan);
+      setParamIfEnabled(panning, "value", pan, "updateTrack: pan");
     }
   }
 
@@ -276,7 +278,7 @@ function applySplitPan(
     const leftSplit = mixer.child("left_split_stereo");
 
     if (leftSplit.exists()) {
-      leftSplit.set("value", leftPan);
+      setParamIfEnabled(leftSplit, "value", leftPan, "updateTrack: leftPan");
     }
   }
 
@@ -284,7 +286,7 @@ function applySplitPan(
     const rightSplit = mixer.child("right_split_stereo");
 
     if (rightSplit.exists()) {
-      rightSplit.set("value", rightPan);
+      setParamIfEnabled(rightSplit, "value", rightPan, "updateTrack: rightPan");
     }
   }
 
@@ -315,7 +317,7 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
     const volume = mixer.child("volume");
 
     if (volume.exists()) {
-      volume.set("display_value", gainDb);
+      setParamIfEnabled(volume, "display_value", gainDb, "updateTrack: gainDb");
     }
   }
 

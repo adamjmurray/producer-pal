@@ -47,6 +47,7 @@ export interface ReadDeviceOptions {
 
 interface DeviceWithChains {
   chains?: Array<{ devices?: unknown[] }>;
+  drumPads?: unknown[];
   _processedDrumPads?: unknown;
 }
 
@@ -115,23 +116,61 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
   }
 
   const deviceObj = obj as DeviceWithChains & Record<string, unknown>;
-  const { _processedDrumPads, chains, ...rest } = deviceObj;
+  const { _processedDrumPads, chains, drumPads, ...rest } = deviceObj;
   const result: Record<string, unknown> = { ...rest };
 
   if (Array.isArray(chains)) {
-    result.chains = chains.map((chain) => {
-      if (typeof chain === "object" && "devices" in chain && chain.devices) {
-        return {
-          ...chain,
-          devices: cleanupInternalDrumPads(chain.devices),
-        };
+    result.chains = chains.map(cleanupChain);
+  }
+
+  // A nested drum rack carries its own drumPads, each holding chains that can
+  // hold further racks — so the walk has to descend both branches, not just
+  // chains, or the internal bookkeeping surfaces in the response.
+  if (Array.isArray(drumPads)) {
+    result.drumPads = drumPads.map((drumPad) => {
+      if (drumPad == null || typeof drumPad !== "object") {
+        return drumPad;
       }
 
-      return chain;
+      const {
+        _processedChains,
+        chains: padChains,
+        ...padRest
+      } = drumPad as {
+        _processedChains?: unknown;
+        chains?: unknown[];
+      } & Record<string, unknown>;
+
+      return Array.isArray(padChains)
+        ? { ...padRest, chains: padChains.map(cleanupChain) }
+        : padRest;
     });
   }
 
   return result;
+}
+
+/**
+ * Strip internal bookkeeping from one chain and recurse into its devices
+ * @param chain - Chain info object from the reader
+ * @returns Cleaned chain
+ */
+function cleanupChain(chain: unknown): unknown {
+  if (chain == null || typeof chain !== "object") {
+    return chain;
+  }
+
+  const { _inNote, _hasInstrument, ...rest } = chain as {
+    _inNote?: number;
+    _hasInstrument?: boolean;
+    devices?: unknown;
+  } & Record<string, unknown>;
+
+  if (rest.devices) {
+    rest.devices = cleanupInternalDrumPads(rest.devices);
+  }
+
+  return rest;
 }
 
 /**
@@ -166,6 +205,9 @@ export function getDrumMap(
         drumRacks.push(device);
       }
 
+      // Only `chains` is searched, so the walk stops at the first drum rack (a
+      // drum rack keeps its chains under drum pads). Harmless today: both
+      // callers use the first rack found and never reach a nested one.
       if (device.chains) {
         for (const chain of device.chains) {
           if (chain.devices) {

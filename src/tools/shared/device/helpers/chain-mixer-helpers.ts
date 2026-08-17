@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
+import { setParamIfEnabled } from "./param-write-helpers.ts";
 
 export interface ChainMixerParams {
   gainDb?: number;
@@ -70,11 +71,21 @@ export function applyChainMixer(
   }
 
   if (gainDb != null) {
-    mixer.child("volume").set("display_value", gainDb);
+    setParamIfEnabled(
+      mixer.child("volume"),
+      "display_value",
+      gainDb,
+      `${chainLabel(chain)} gainDb`,
+    );
   }
 
   if (pan != null) {
-    mixer.child("panning").set("value", pan);
+    setParamIfEnabled(
+      mixer.child("panning"),
+      "value",
+      pan,
+      `${chainLabel(chain)} pan`,
+    );
   }
 
   if (sendGainDb != null || sendReturn != null) {
@@ -202,7 +213,23 @@ function applyChainSend(
     return;
   }
 
-  send.set("display_value", sendGainDb);
+  setParamIfEnabled(
+    send,
+    "display_value",
+    sendGainDb,
+    `${chainLabel(chain)} send "${names[index]}"`,
+  );
+}
+
+/**
+ * Name a chain for a warning, falling back to its id when it has no name
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns Label like `chain "Kick"`
+ */
+function chainLabel(chain: LiveAPI): string {
+  const name = chain.getProperty("name") as string | undefined;
+
+  return name ? `chain "${name}"` : `chain ${chain.id}`;
 }
 
 /**
