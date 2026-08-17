@@ -189,12 +189,20 @@ export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(toolDispatch);
 /**
  * Call a tool by name with the given arguments and per-request context.
  *
+ * Exported for the docs generator, which runs the tools against a mock Live Set
+ * to produce the example output in the tool reference. Going through the same
+ * dispatch is what keeps those examples honest.
+ *
  * @param toolName - Name of the tool to call
  * @param args - Arguments to pass to the tool
  * @param ctx - Per-request context for the tool
  * @returns Tool execution result
  */
-function callTool(toolName: string, args: object, ctx: ToolContext): unknown {
+export function callTool(
+  toolName: string,
+  args: object,
+  ctx: ToolContext,
+): unknown {
   const tool = toolDispatch[toolName];
 
   if (!tool) {
