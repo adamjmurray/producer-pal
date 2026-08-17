@@ -25,7 +25,10 @@ export { buildChainPath } from "./device-path-builders.ts";
 export { buildReturnChainPath } from "./device-path-builders.ts";
 export { buildDrumPadPath } from "./device-path-builders.ts";
 export { resolvePathToLiveApi } from "./device-path-to-live-api.ts";
-export { resolveDrumPadFromPath } from "./device-drumpad-navigation.ts";
+export {
+  findDrumPad,
+  resolveDrumPadFromPath,
+} from "./device-drumpad-navigation.ts";
 
 export interface InsertionPathResolution {
   container: LiveAPI | null;
