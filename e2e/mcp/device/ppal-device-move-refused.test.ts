@@ -10,7 +10,7 @@
  * would add a second without saying so. Both tools used to report success: the
  * move returned the device's id as if it had gone somewhere, and the duplicate
  * returned the id of a copy still sitting on its temp track, which the cleanup
- * then deleted.
+ * then deleted. Both now warn and skip.
  *
  * Run with: npm run e2e:mcp -- ppal-device-move-refused
  */
@@ -18,10 +18,9 @@ import { describe, expect, it } from "vitest";
 import {
   createMidiTrack,
   createTestDevice,
-  getToolErrorMessage,
   getToolWarnings,
-  isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -83,7 +82,7 @@ describe("a device move Live refuses", () => {
     expect(await deviceCount(to)).toBe(1);
   });
 
-  it("fails a duplicate rather than naming a copy that no longer exists", async () => {
+  it("skips a duplicate rather than naming a copy that no longer exists", async () => {
     const { to, deviceId } = await twoInstrumentTracks();
 
     const result = await ctx.client!.callTool({
@@ -91,9 +90,12 @@ describe("a device move Live refuses", () => {
       arguments: { type: "device", id: deviceId, toPath: `t${to}` },
     });
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      `the copy could not be moved to "t${to}"`,
+    const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
+
+    // Nothing was copied, so there is nothing to report but the warning.
+    expect(data).toStrictEqual([]);
+    expect(warnings).toContainEqual(
+      expect.stringContaining(`the copy could not be moved to "t${to}"`),
     );
 
     await sleep(200);

@@ -248,7 +248,7 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
-  it("fails, in the caller's coordinates, when the destination does not exist", async () => {
+  it("skips, in the caller's coordinates, when the destination does not exist", async () => {
     // Without this the temp device's id came back as a success, for a device
     // that the cleanup was about to delete.
     const { liveSet } = setupDeviceDuplicationMocks();
@@ -256,11 +256,17 @@ describe("duplicate - device duplication", () => {
     vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("no-destination");
 
     // The path handed to the move is t100 (shifted past the temp track); the
-    // error names the t99 the caller sent.
-    await expect(
-      duplicate({ type: "device", id: "device1", toPath: "t99" }),
-    ).rejects.toThrow('duplicate failed: no destination at toPath "t99"');
+    // warning names the t99 the caller sent.
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t99",
+    });
 
+    expect(result).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'duplicate: no destination at toPath "t99"',
+    );
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t100",
@@ -269,20 +275,47 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
-  it("fails when Live would not take the copy at the destination", async () => {
+  it("skips when Live would not take the copy at the destination", async () => {
     // The copy is still on the temp track, which the cleanup deletes, so
     // reporting its id named a device that no longer existed.
     const { liveSet } = setupDeviceDuplicationMocks();
 
     vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("refused");
 
-    await expect(
-      duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
-    ).rejects.toThrow(
-      'duplicate failed: the copy could not be moved to "t2/d0"',
-    );
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t2/d0",
+    });
 
+    expect(result).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'duplicate: the copy could not be moved to "t2/d0"',
+    );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("keeps the copies that worked when one destination fails", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    vi.mocked(moveDeviceToPathMock)
+      .mockReturnValueOnce("moved")
+      .mockReturnValueOnce("refused")
+      .mockReturnValueOnce("moved");
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t2/d0, t3/d0, t4/d0",
+    });
+
+    // The bad destination in the middle keeps neither the copy before it nor
+    // the one after it from being reported.
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/1/devices/1" },
+      { id: "live_set/tracks/1/devices/1" },
+    ]);
+    expect(moveDeviceToPathMock).toHaveBeenCalledTimes(3);
   });
 
   it("reads a blank toPath as omitted, the way clips do", async () => {

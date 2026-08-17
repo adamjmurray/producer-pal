@@ -7,6 +7,49 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+
+/**
+ * Duplicates a device to one or more destination paths.
+ * Supports comma-separated toPath for multiple destinations.
+ * @param object - LiveAPI device object
+ * @param toPath - Destination path(s), comma-separated for multiple
+ * @param name - Optional name for duplicated device(s)
+ * @param count - Number of copies (warns if > 1)
+ * @returns Result object, or an array of them for multiple destinations
+ */
+export function duplicateDeviceWithPaths(
+  object: LiveAPI,
+  toPath: string | undefined,
+  name: string | undefined,
+  count: number,
+): object | object[] {
+  // Reads a blank toPath as omitted the way clips do, and refuses one that
+  // names nothing rather than quietly falling back to the default destination.
+  const paths = pathEntries(toPath, "toPath");
+
+  if (paths.length <= 1) {
+    // A lone copy that was skipped has nothing to report but its warning.
+    return duplicateDevice(object, paths[0], name, count) ?? [];
+  }
+
+  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+
+  warnExtraNames(parsedNames, paths.length, "duplicate");
+
+  // Always an array here: one object back from a two-destination call would
+  // read as a one-destination call that worked.
+  return paths
+    .map((path, i) =>
+      duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
+    )
+    .filter((result) => result != null);
+}
 
 /**
  * Duplicate a device using the track duplication workaround.
@@ -19,14 +62,14 @@ import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
  * @param count - Number of duplicates (only 1 supported, warns if > 1)
- * @returns Result with duplicated device info
+ * @returns The new device, or null when the copy was skipped
  */
-export function duplicateDevice(
+function duplicateDevice(
   device: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
   count = 1,
-): { id: string } {
+): { id: string } | null {
   if (count > 1) {
     console.warn(
       "count parameter ignored for device duplication (only single copy supported)",
@@ -75,22 +118,25 @@ export function duplicateDevice(
       trackIndex,
     );
 
-    // 7. Move the copy to the destination. Report a failure against the
+    // 7. Move the copy to the destination. Skip rather than throw, so the other
+    // destinations of a comma-separated toPath still get their copies. Name the
     // caller's toPath, not the adjusted one — the temp track shifted its track
     // index. Either way nothing survives: the copy is still on the temp track,
     // which the cleanup below deletes.
     const outcome = moveDeviceToPath(tempDevice, adjustedDestination, device);
 
     if (outcome === "no-destination") {
-      throw new Error(
-        `duplicate failed: no destination at toPath "${destination}"`,
-      );
+      console.warn(`duplicate: no destination at toPath "${destination}"`);
+
+      return null;
     }
 
     if (outcome === "refused") {
-      throw new Error(
-        `duplicate failed: the copy could not be moved to "${destination}"`,
+      console.warn(
+        `duplicate: the copy could not be moved to "${destination}"`,
       );
+
+      return null;
     }
 
     // 8. Set name if provided

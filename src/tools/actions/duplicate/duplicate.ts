@@ -23,7 +23,7 @@ import {
   warnInapplicableClipParams,
   warnUnusedDestination,
 } from "./helpers/clip/duplicate-destination-helpers.ts";
-import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
+import { duplicateDeviceWithPaths } from "./helpers/duplicate-device-helpers.ts";
 import { duplicateDrumPad } from "./helpers/duplicate-drum-pad-helpers.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import { duplicateSceneToArrangementAtPositions } from "./helpers/duplicate-position-helpers.ts";
@@ -299,38 +299,6 @@ function duplicateDrumPadToPaths(
 
   // A lone copy that was skipped has nothing to report but its warning.
   return results[0] ?? results;
-}
-
-/**
- * Duplicates a device to one or more destination paths.
- * Supports comma-separated toPath for multiple destinations.
- * @param object - LiveAPI device object
- * @param toPath - Destination path(s), comma-separated for multiple
- * @param name - Optional name for duplicated device(s)
- * @param count - Number of copies (warns if > 1)
- * @returns Result object or array of result objects
- */
-function duplicateDeviceWithPaths(
-  object: LiveAPI,
-  toPath: string | undefined,
-  name: string | undefined,
-  count: number,
-): object | object[] {
-  // Reads a blank toPath as omitted the way clips do, and refuses one that
-  // names nothing rather than quietly falling back to the default destination.
-  const paths = pathEntries(toPath, "toPath");
-
-  if (paths.length <= 1) {
-    return duplicateDevice(object, paths[0], name, count);
-  }
-
-  const parsedNames = parseCommaSeparatedNames(name, paths.length);
-
-  warnExtraNames(parsedNames, paths.length, "duplicate");
-
-  return paths.map((path, i) =>
-    duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
-  );
 }
 
 /**
