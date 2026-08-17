@@ -380,10 +380,16 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
 }
 
 /**
- * Pull the created clip's id and target slot from the ppal-create-clip call in
- * the given turn. Lets a grading read fetch the clip by id (wherever the model
+ * Pull the created clip's id and path from the ppal-create-clip call in the
+ * given turn. Lets a grading read fetch the clip by id (wherever the model
  * placed it — small models often misjudge 0-based scene indexing) while a
  * separate assertion checks whether it landed in the intended slot.
+ *
+ * Both come off the RESULT, not the args. The tool takes a destination several
+ * ways — `path`, the hidden trackIndex/sceneIndex alias, the tolerated old
+ * "0/0" spelling — and reports back one canonical path either way. Grading the
+ * args would score a model that used a spelling this reader didn't know as a
+ * placement failure for a clip that landed correctly.
  *
  * Reads the last SUCCESSFUL create call: a model that hits a param error is
  * told to fix the args and retry, and grading the discarded first attempt got
@@ -403,22 +409,11 @@ export function getCreatedClip(
   if (!call) return {};
 
   const parsed = parsedToolResult(call);
-  const id = parsed?.id == null ? undefined : argText(parsed.id);
 
-  return { id, path: createdClipPath(call.args) };
-}
-
-/**
- * The destination a create-clip call named, in the one grammar. Grades a model
- * that reached for the deprecated `slot` on the same axis as one that used
- * `path`, since the tool honors both.
- * @param args - The create-clip call's arguments
- * @returns The path, or undefined when the call named no destination
- */
-function createdClipPath(args: Record<string, unknown>): string | undefined {
-  if (typeof args.path === "string") return args.path;
-
-  return typeof args.slot === "string" ? slotToPath(args.slot) : undefined;
+  return {
+    id: parsed?.id == null ? undefined : argText(parsed.id),
+    path: typeof parsed?.path === "string" ? parsed.path : undefined,
+  };
 }
 
 /**
