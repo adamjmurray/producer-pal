@@ -6,7 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  assertTakeLaneCapacity,
+  assertAllTakeLanesFit,
   resolveTakeLane,
   takeLaneKey,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
@@ -111,14 +111,10 @@ export function resolveCreateClipTakeLanes(
 ): Map<string, LiveAPI> {
   const lanes = new Map<string, LiveAPI>();
 
-  // Lanes are permanent (Live has no delete), so check every destination's
-  // capacity before creating a lane on any of them — otherwise a cap error on
-  // the last one strands empty lanes on all the earlier ones.
-  for (const position of arrangementPositions) {
-    if (position.takeLane != null) {
-      assertTakeLaneCapacity(trackFor(position), position.takeLane);
-    }
-  }
+  // Lanes are permanent (Live has no delete), so check the whole call's
+  // capacity before creating a lane on any of it — otherwise a cap error on the
+  // last destination strands empty lanes on all the earlier ones.
+  assertAllTakeLanesFit(arrangementPositions);
 
   // Resolve once per destination rather than once per clip — otherwise a track
   // with two positions on "l+" gets two fresh lanes.

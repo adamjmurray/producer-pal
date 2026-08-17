@@ -202,8 +202,6 @@ async function duplicateClipToArrangementPositions(
     takeLaneName,
   );
 
-  if (lanes == null) return [];
-
   if (lanes.size > 0 && arrangementLength != null) {
     console.warn(
       "duplicate: arrangementLength ignored for take-lane duplication (the copy uses the source clip's length)",

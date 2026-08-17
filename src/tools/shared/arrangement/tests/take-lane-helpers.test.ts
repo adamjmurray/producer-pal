@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  assertAllTakeLanesFit,
   isTakeLaneClip,
   isTakeLaneRequested,
   MAX_TAKE_LANES,
@@ -210,5 +211,58 @@ describe("resolveTakeLane", () => {
 
     expect(lane.set).not.toHaveBeenCalledWith("name", expect.anything());
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
+  });
+});
+
+describe("assertAllTakeLanesFit", () => {
+  it("counts the lanes earlier destinations will create", () => {
+    // l7 auto-creates 8 lanes, leaving no room for l+. Checking each
+    // destination against the pre-call count misses this and throws mid-resolve,
+    // after those 8 permanent lanes already exist.
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: 7 },
+        { trackIndex: 0, takeLane: "new" },
+      ]),
+    ).toThrow(/reached the 8 take lane limit/);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  it("allows a call whose lanes all fit", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    // l+ takes lane 0, then l7 fills up to lane 7: 8 lanes, exactly the cap.
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: "new" },
+        { trackIndex: 0, takeLane: 7 },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("counts repeated l+ on one track as the single lane it resolves to", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: "new" },
+        { trackIndex: 0, takeLane: "new" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("counts each track separately and ignores main-lane destinations", () => {
+    registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: 7 },
+        { trackIndex: 1, takeLane: "new" },
+        { trackIndex: 0, takeLane: null },
+      ]),
+    ).not.toThrow();
   });
 });

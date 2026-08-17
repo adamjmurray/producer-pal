@@ -342,4 +342,19 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     expect(result.get("t0/l0")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(result.get("t0/l2")!.path).toBe("live_set tracks 0 take_lanes 2");
   });
+
+  // l7 fills the track to the cap, so l+ has nowhere to go. Checking each
+  // destination against the pre-call count misses that and throws mid-resolve,
+  // stranding l7's 8 permanent lanes and creating no clips.
+  it("creates no lane when two destinations on one track exceed the cap together", () => {
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(() =>
+      resolveCreateClipTakeLanes(null, [
+        { trackIndex: 0, arrangementStart: "1|1", takeLane: 7 },
+        { trackIndex: 0, arrangementStart: "2|1", takeLane: "new" },
+      ]),
+    ).toThrow(/take lane limit/);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
 });

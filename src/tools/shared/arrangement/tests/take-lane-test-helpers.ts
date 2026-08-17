@@ -20,6 +20,8 @@ export interface TakeLaneTrackOptions {
   clipLength?: number;
   /** Make each lane's create_*_clip return a non-existent ref (id 0) */
   clipCreationFails?: boolean;
+  /** 0 makes it an audio track, which an audio source can be copied to */
+  hasMidiInput?: number;
   /**
    * Seed clips into pre-existing lanes for overlap testing. Index i lists the
    * clip time ranges (in beats) to register on initial lane i.
@@ -43,6 +45,7 @@ export function registerTakeLaneTrack(
     initialLanes = 0,
     clipLength = 4,
     clipCreationFails = false,
+    hasMidiInput = 1,
     initialLaneClips = [],
   } = options;
   const laneIds: string[] = [];
@@ -113,7 +116,7 @@ export function registerTakeLaneTrack(
   }
 
   const trackProps: Record<string, unknown> = {
-    has_midi_input: 1,
+    has_midi_input: hasMidiInput,
     is_foldable: 0,
     take_lanes: children(...laneIds),
   };

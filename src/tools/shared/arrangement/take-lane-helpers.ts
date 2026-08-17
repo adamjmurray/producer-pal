@@ -15,6 +15,7 @@
  *   take-lane clips, so take lanes are append-only (clean up in Live's UI).
  */
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /** Maximum take lanes per track (soft cap; total non-main lanes). */
@@ -174,12 +175,11 @@ export function normalizeTakeLaneTarget(
  * auto-created to fill a gap are left unnamed.
  *
  * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
- * here is permanent. The MAX cap is enforced before any lane is created, so it
- * never strands one. The one residual leak is unfixable: if a later clip write
+ * here is permanent. The one residual leak is unfixable: if a later clip write
  * fails on a freshly created lane, that empty lane persists. Do all other
- * throwing validation (e.g. invalid takeLane) before calling this — and when
- * resolving lanes on several tracks, {@link assertTakeLaneCapacity} on every one
- * of them first, or a later track's cap error strands the earlier tracks' lanes.
+ * throwing validation (e.g. invalid takeLane) before calling this — and run
+ * {@link assertAllTakeLanesFit} over the whole call first, or a later
+ * destination's cap error strands the lanes the earlier ones made.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane
@@ -190,8 +190,10 @@ export function resolveTakeLane(
   target: TakeLaneTarget,
   takeLaneName?: string | null,
 ): ResolvedTakeLane {
-  const currentCount = assertTakeLaneCapacity(track, target);
+  const currentCount = track.getChildIds("take_lanes").length;
   const laneIndex = target === "new" ? currentCount : target;
+
+  assertTakeLaneCapacity(laneIndex);
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i <= laneIndex; i++) {
@@ -209,27 +211,52 @@ export function resolveTakeLane(
 }
 
 /**
- * Checks a track can hold the target lane, without creating anything. Call this
- * for every destination track before resolving any of them: lanes are permanent,
- * so a cap error partway through a multi-track resolve leaves empty lanes behind
- * on the tracks that already succeeded.
- * @param track - The regular track LiveAPI to check
- * @param target - Normalized take lane target (lane number or "new")
- * @returns The track's current take lane count
- * @throws If the target lane would exceed MAX_TAKE_LANES
+ * Checks every destination in a call fits before any lane is created.
+ *
+ * Checking each destination on its own is not enough: they all read the track's
+ * pre-call lane count, so nothing sees the lanes an earlier destination is
+ * about to add. "t0/l7,t0/l+" passes that way and then throws mid-resolve,
+ * leaving 8 permanent empty lanes and creating no clips.
+ *
+ * So count along instead, in the order the lanes are resolved and skipping
+ * repeats the same way {@link takeLaneKey} does.
+ * @param targets - Every destination in the call, in resolve order
+ * @throws If any track would go past MAX_TAKE_LANES
  */
-export function assertTakeLaneCapacity(
-  track: LiveAPI,
-  target: TakeLaneTarget,
-): number {
-  const currentCount = track.getChildIds("take_lanes").length;
-  const targetCount = (target === "new" ? currentCount : target) + 1;
+export function assertAllTakeLanesFit(targets: ArrangementTrack[]): void {
+  const counts = new Map<number, number>();
+  const resolved = new Set<string>();
 
-  if (targetCount > MAX_TAKE_LANES) {
+  for (const { trackIndex, takeLane } of targets) {
+    if (takeLane == null) continue;
+
+    const key = takeLaneKey(trackIndex, takeLane);
+
+    if (resolved.has(key)) continue;
+
+    resolved.add(key);
+
+    const count =
+      counts.get(trackIndex) ??
+      LiveAPI.from(livePath.track(trackIndex)).getChildIds("take_lanes").length;
+    // Resolving auto-creates lanes up to the target, so the track ends up with
+    // at least laneIndex + 1 of them.
+    const laneIndex = takeLane === "new" ? count : takeLane;
+
+    assertTakeLaneCapacity(laneIndex);
+    counts.set(trackIndex, Math.max(count, laneIndex + 1));
+  }
+}
+
+/**
+ * Checks a lane index is within the per-track cap.
+ * @param laneIndex - 0-based index of the lane about to be resolved
+ * @throws If the lane would exceed MAX_TAKE_LANES
+ */
+function assertTakeLaneCapacity(laneIndex: number): void {
+  if (laneIndex + 1 > MAX_TAKE_LANES) {
     throw new Error(
       `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`,
     );
   }
-
-  return currentCount;
 }

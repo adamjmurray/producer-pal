@@ -6,7 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  assertTakeLaneCapacity,
+  assertAllTakeLanesFit,
   resolveTakeLane,
   takeLaneKey,
   type ArrangementTrack,
@@ -27,21 +27,20 @@ import {
  *
  * Lanes are permanent (Live has no delete), so every destination's capacity is
  * checked before any lane is created — a cap error partway through would strand
- * the lanes already made. MIDI only: an audio source warns and the whole
- * take-lane duplicate is skipped (no v1 take-lane audio support).
+ * the lanes already made. MIDI only: an audio source warns and gets no lanes,
+ * which skips its lane copies while its main-lane copies still run.
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
  * @param targets - Destinations, in copy order
  * @param takeLaneName - Name for a take lane newly created by this call
- * @returns Lanes keyed by {@link takeLaneKey}, or null when the source can't go
- *   on a lane at all
+ * @returns Lanes keyed by {@link takeLaneKey}
  */
 export function resolveDuplicateTakeLanes(
   sourceClip: LiveAPI,
   id: string,
   targets: ArrangementTrack[],
   takeLaneName: string | undefined,
-): Map<string, LiveAPI> | null {
+): Map<string, LiveAPI> {
   const laneTargets = targets.filter((target) => target.takeLane != null);
 
   if (laneTargets.length === 0) return new Map();
@@ -51,15 +50,10 @@ export function resolveDuplicateTakeLanes(
       `duplicate: takeLane supports MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
     );
 
-    return null;
+    return new Map();
   }
 
-  for (const { trackIndex, takeLane } of laneTargets) {
-    assertTakeLaneCapacity(
-      LiveAPI.from(livePath.track(trackIndex)),
-      takeLane as TakeLaneTarget,
-    );
-  }
+  assertAllTakeLanesFit(laneTargets);
 
   const lanes = new Map<string, LiveAPI>();
 

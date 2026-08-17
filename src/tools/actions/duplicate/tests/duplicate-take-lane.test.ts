@@ -21,7 +21,11 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerSessionClipDuplication,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const SOURCE_NOTE = {
@@ -256,6 +260,43 @@ describe("duplicate take lane", () => {
     );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result).toStrictEqual([]);
+  });
+
+  // Warn-and-skip: the lane destination is the only one that can't be served.
+  it("still makes an audio source's main-lane copies", async () => {
+    registerLiveSet();
+    registerArrangementSource(false);
+    const laneTrack = registerTakeLaneTrack({
+      trackIndex: 1,
+      initialLanes: 1,
+      hasMidiInput: 0,
+    });
+    const mainTrack = registerTrackWithArrangementDup(2, { has_midi_input: 0 });
+
+    registerArrangementClip(2, 0, 0);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t2,t1/l0",
+      arrangementStart: "1|1,5|1",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane supports MIDI clips only"),
+    );
+    expect(mainTrack.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id src_clip",
+      0,
+    );
+    expect(laneTrack.call).not.toHaveBeenCalledWith("create_take_lane");
+    // One result, not zero: only the lane copy was skipped.
+    expect(result).toStrictEqual({
+      id: livePath.track(2).arrangementClip(0),
+      path: "t2",
+      arrangementStart: "1|1",
+    });
   });
 
   it("warns and ignores takeLane for a session destination", async () => {
@@ -542,6 +583,26 @@ describe("duplicate take lane", () => {
     ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
 
     expect(ok.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  // Same hazard within one track: l7 fills it to the cap, so l+ has nowhere to
+  // go. Both destinations read the same pre-call count, so neither sees it.
+  it("creates no lane when two lanes on one track exceed the cap together", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const track = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1/l7,t1/l+",
+        arrangementStart: "1|1,5|1",
+      }),
+    ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
   it("warns and skips when source is a take-lane clip and no takeLane param is given (main-lane destination)", async () => {
