@@ -100,8 +100,9 @@ Live, or make sure your standalone Max is up to date. See
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
-  - Select by path: a session position (e.g., `t0/s3`), a device (e.g.,
-    `t0/d1`), or a track (e.g., `t0`)
+  - Select by path: a session position (e.g., `t0/s3`), a track (`t0`), a return
+    track (`rt0`), the master track (`mt`), a scene (`s3`), or a device (e.g.,
+    `t0/d1`)
   - Switch between Session and Arrangement views
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device
@@ -129,7 +130,7 @@ Live, or make sure your standalone Max is up to date. See
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
 - Stack MIDI variations on [take lanes](/features#take-lanes) with
-  `takeLane: "new"` + transforms — audition alternates at the same arrangement
+  `toPath: "t2/l+"` + transforms — audition alternates at the same arrangement
   position
 - Copy devices to any track, return track, or rack chain
 - Route duplicated tracks to source instrument for MIDI layering
@@ -234,7 +235,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
 - Place clips in Session slots or Arrangement timeline
-- Place arrangement clips on [take lanes](/features#take-lanes) with `takeLane`
+- Place arrangement clips on [take lanes](/features#take-lanes) with a `t0/l1`
+  or `t0/l+` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether

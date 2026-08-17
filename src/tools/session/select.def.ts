@@ -50,7 +50,8 @@ export const toolDefSelect = defineTool("ppal-select", {
       .string()
       .optional()
       .describe(
-        "select by path: 't0/s3' a session position (0-based track/scene), 't0/d1' a device",
+        "select by path, 0-based: 't0/s3' a session position, 't0' a track, 'rt0' a return track, " +
+          "'mt' the master track, 's3' a scene, 't0/d1' a device",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

@@ -120,12 +120,12 @@ Live's take lanes stack alternate versions of an arrangement clip at the same
 position — only the active take plays. They're the natural way to audition
 variations side by side without cluttering the timeline.
 
-- Target a lane with `takeLane` on
-  [Create Clip](/features/tools#ppal-create-clip) and
-  [Duplicate](/features/tools#ppal-duplicate): `0` (or omit) = main lane, `1+` =
-  that lane (auto-created up to it), `"new"` = append a fresh lane.
+- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based,
+  auto-created up to it) and `t2/l+` appends a fresh one. Plain `t2` is the main
+  lane. Use it as `path` on [Create Clip](/features/tools#ppal-create-clip) or
+  `toPath` on [Duplicate](/features/tools#ppal-duplicate).
 - Generate variations with a few [Duplicate](/features/tools#ppal-duplicate)
-  calls using `takeLane: "new"` plus [transforms](#transforms) to vary each
+  calls using `toPath: "t2/l+"` plus [transforms](#transforms) to vary each
   copy.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the

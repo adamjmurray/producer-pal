@@ -381,7 +381,7 @@ function processAudioClip(
 }
 
 /**
- * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
+ * Add clip location properties (path, plus arrangement timing)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view

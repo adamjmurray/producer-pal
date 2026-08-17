@@ -50,6 +50,6 @@ A duplicate without \`toPath\` lands on the source's own track, which overwrites
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
 - A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one. Arrangement only, and duplicate is MIDI-only. Each destination in a list carries its own lane.
-- Variation workflow: a few duplicate calls with \`toPath: "t2/l+"\` + \`transforms\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries \`takeLane\` (1-based) and its \`name\`.
+- Variation workflow: a few duplicate calls with \`toPath: "t2/l+"\` + \`transforms\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 - Take-lane clips are append-only: \`update-clip\` (\`split\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them. Main→take duplicate recreates the clip from notes and drops envelope automation; take→main promote isn't supported. For any of these, ask the user to do it in Live's UI.`;

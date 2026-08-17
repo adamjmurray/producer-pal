@@ -87,9 +87,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "session slot to move the clip to, 't<track>/s<scene>' (e.g., 't2/s3'); session clips only. " +
-          "One slot only, never a list (unlike duplicate's toPath) - every id in ids moves to it, " +
-          "so move clips one at a time",
+        "session slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
+          "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
+          "ids/path, in order - destinations don't cycle, so name one slot per clip",
       ),
     split: param(z.string().optional(), {
       default: `comma-separated bar|beat split positions, measured from the clip's start (1|1 = clip start, NOT song time) (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only; song meter`,
