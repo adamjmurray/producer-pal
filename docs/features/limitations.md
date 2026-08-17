@@ -79,8 +79,25 @@ more of the timeline takes more clips.
 ::: tip Workaround: Producer Pal tiles them for you
 
 Ask for a longer looped arrangement clip and Producer Pal duplicates and tiles
-it to fill the length. Nothing to do on your side — just expect a row of clips
-instead of one long one.
+it to fill the length. It sounds identical, but the result is a row of clips
+rather than one long one — a 2-bar clip stretched to 32 bars lands as 16 clips,
+and nothing in the API merges them back into a loop.
+
+That's the default because each tile is a real copy, so clip envelopes on the
+original survive.
+
+:::
+
+::: tip Workaround: ask for one long clip instead (MIDI only)
+
+If you'd rather have a single clip, say so. Producer Pal turns looping off,
+extends the clip, and writes the pattern out across the whole span —
+[bar copying](/features/midi-notation#bar-beat) does that in one call however
+many repeats you need.
+
+The repeats are then real notes, not a loop, so changing the pattern later means
+changing every repeat. Audio clips have no equivalent — there are no notes to
+write.
 
 :::
 
