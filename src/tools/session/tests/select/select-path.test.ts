@@ -128,19 +128,106 @@ describe("select path param", () => {
     expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
   });
 
-  // KNOWN GAP, pinned so a fix is a deliberate change: select does nothing and
-  // says nothing for a track that isn't there. The grammar bounds no index, so
-  // "t99" parses and select has no existence check behind it. Not new — the
-  // trackIndex param it replaced behaves identically, which is why this pins
-  // both: whatever select ends up doing here, it has to do it for the pair.
-  it("silently no-ops on a track that doesn't exist, path or param", () => {
+  // The grammar bounds no index, so "t99" parses and names a track that isn't
+  // there. Refuse it in the same words whichever spelling the caller reached
+  // for — a selection that quietly doesn't happen reads like one that did.
+  it("refuses a track that doesn't exist, path or param", () => {
     mockNonExistentObjects();
     const songView = setupSongViewMock();
 
-    expect(select({ path: "t99" })).toStrictEqual({});
-    expect(select({ trackIndex: 99 })).toStrictEqual({});
+    expect(() => select({ path: "t99" })).toThrow(
+      'select failed: no track at "t99"',
+    );
+    expect(() => select({ trackIndex: 99 })).toThrow(
+      'select failed: no track at "t99"',
+    );
     expect(songView.set).not.toHaveBeenCalledWith(
       "selected_track",
+      expect.anything(),
+    );
+  });
+
+  it("refuses a return or master track that doesn't exist", () => {
+    mockNonExistentObjects();
+    setupSongViewMock();
+
+    expect(() => select({ path: "rt9" })).toThrow(
+      'select failed: no track at "rt9"',
+    );
+    expect(() => select({ trackType: "return", trackIndex: 9 })).toThrow(
+      'select failed: no track at "rt9"',
+    );
+    expect(() => select({ path: "mt" })).toThrow(
+      'select failed: no track at "mt"',
+    );
+  });
+
+  it("refuses a scene that doesn't exist, path or param", () => {
+    mockNonExistentObjects();
+    const songView = setupSongViewMock();
+
+    expect(() => select({ path: "s99" })).toThrow(
+      'select failed: no scene at "s99"',
+    );
+    expect(() => select({ sceneIndex: 99 })).toThrow(
+      'select failed: no scene at "s99"',
+    );
+    expect(songView.set).not.toHaveBeenCalledWith(
+      "selected_scene",
+      expect.anything(),
+    );
+  });
+
+  // A session position names two things, so say which one is missing.
+  it("refuses a session position, naming the missing half", () => {
+    mockNonExistentObjects();
+    registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("scene_0", { path: livePath.scene(0), type: "Scene" });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() => select({ path: "t9/s0" })).toThrow(
+      'select failed: no track at "t9"',
+    );
+    expect(() => select({ path: "t0/s99" })).toThrow(
+      'select failed: no scene at "s99"',
+    );
+    expect(() => select({ slot: "9/0" })).toThrow(
+      'select failed: no track at "t9"',
+    );
+
+    // Live keeps a clip slot per scene on every track, so a track and scene
+    // that both exist should have one — but say so rather than no-op if not.
+    expect(() => select({ path: "t0/s0" })).toThrow(
+      'select failed: no clip slot at "t0/s0"',
+    );
+  });
+
+  it("refuses a device that isn't there, path or param", () => {
+    mockNonExistentObjects();
+    setupSongViewMock();
+
+    expect(() => select({ path: "t0/d9" })).toThrow(
+      'select failed: no device at "t0/d9"',
+    );
+    expect(() => select({ devicePath: "t0/d9" })).toThrow(
+      'select failed: no device at "t0/d9"',
+    );
+  });
+
+  // Nothing is touched until every target checks out, so the view a scene
+  // selection would have switched to stays where it was.
+  it("leaves the view alone when the target isn't there", () => {
+    mockNonExistentObjects();
+    setupSongViewMock();
+
+    const appView = setupAppViewMock();
+
+    expect(() => select({ view: "session", path: "s99" })).toThrow(
+      'select failed: no scene at "s99"',
+    );
+    expect(appView.call).not.toHaveBeenCalledWith(
+      "show_view",
       expect.anything(),
     );
   });

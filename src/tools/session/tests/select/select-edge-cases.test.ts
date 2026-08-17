@@ -130,8 +130,9 @@ describe("select edge cases", () => {
   });
 
   describe("device path selection with non-existent device at path", () => {
-    it("skips device selection when device at path doesn't exist", () => {
-      setupSongViewMock();
+    it("refuses a device path with nothing at it", () => {
+      const songView = setupSongViewMock();
+
       setupAppViewMock();
       mockNonExistentObjects();
 
@@ -141,10 +142,13 @@ describe("select edge cases", () => {
         type: "Track",
       });
 
-      const result = select({ devicePath: "t0/d99" });
-
-      // Device doesn't exist at path, so no selection made
-      expect(result.selectedDevice).toBeUndefined();
+      expect(() => select({ devicePath: "t0/d99" })).toThrow(
+        'select failed: no device at "t0/d99"',
+      );
+      expect(songView.call).not.toHaveBeenCalledWith(
+        "select_device",
+        expect.anything(),
+      );
     });
   });
 });

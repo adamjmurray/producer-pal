@@ -121,19 +121,8 @@ describe("select-helpers", () => {
     });
   });
 
+  // A slot that isn't there is refused before this runs — see select-path.test.ts.
   describe("updateClipSlotSelection", () => {
-    it("returns false when the clip slot does not exist", () => {
-      mockNonExistentObjects();
-      const { api } = setupSongView();
-
-      const result = updateClipSlotSelection({
-        songView: api,
-        clipSlot: { trackIndex: 5, sceneIndex: 5 },
-      });
-
-      expect(result).toBe(false);
-    });
-
     it("returns true but skips selecting the clip when the clip object is gone", () => {
       mockNonExistentObjects();
       const { mock, api } = setupSongView();

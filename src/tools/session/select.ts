@@ -17,6 +17,7 @@ import {
   validateParameters,
   type TrackCategory,
 } from "./helpers/select-helpers.ts";
+import { requireSelectTargets } from "./helpers/select-existence-helpers.ts";
 import {
   determineAutoDetailView,
   resolveIdParam,
@@ -105,6 +106,16 @@ export function select(
   if (!resolved.hasArgs) {
     return readFullState();
   }
+
+  requireSelectTargets({
+    trackId,
+    category,
+    trackIndex,
+    sceneId,
+    sceneIndex,
+    clipSlot: parsedClipSlot,
+    devicePath,
+  });
 
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
