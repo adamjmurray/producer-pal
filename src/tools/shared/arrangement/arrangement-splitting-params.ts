@@ -9,19 +9,24 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { type SplitMode } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 
 /**
  * Prepare split parameters by parsing comma-separated bar|beat positions.
+ * Both split params parse the same way, in song meter; `mode` only decides how
+ * the results are read later, and what the warnings call the param.
  * @param split - Comma-separated bar|beat positions (e.g., "2|1, 3|1, 4|1")
  * @param arrangementClips - Array of arrangement clips
  * @param warnings - Set to track warnings already issued
- * @returns Array of beat offsets or null
+ * @param mode - Which split param the positions came from
+ * @returns Array of beat positions or null
  */
 export function prepareSplitParams(
   split: string | undefined,
   arrangementClips: LiveAPI[],
   warnings: Set<string>,
+  mode: SplitMode,
 ): number[] | null {
   if (split == null) {
     return null;
@@ -29,7 +34,7 @@ export function prepareSplitParams(
 
   if (arrangementClips.length === 0) {
     if (!warnings.has("split-no-arrangement")) {
-      console.warn("split requires arrangement clips");
+      console.warn(`${mode.param} requires arrangement clips`);
       warnings.add("split-no-arrangement");
     }
 
@@ -53,7 +58,7 @@ export function prepareSplitParams(
   if (splitPoints == null || splitPoints.length === 0) {
     if (!warnings.has("split-invalid-format")) {
       console.warn(
-        `Invalid split format: "${split}". Expected comma-separated bar|beat positions like "2|1, 3|1"`,
+        `Invalid ${mode.param} format: "${split}". Expected comma-separated bar|beat positions like "2|1, 3|1"`,
       );
       warnings.add("split-invalid-format");
     }
@@ -64,7 +69,7 @@ export function prepareSplitParams(
   if (splitPoints.length > MAX_SPLIT_POINTS) {
     if (!warnings.has("split-max-exceeded")) {
       console.warn(
-        `Too many split points (${splitPoints.length}), max is ${MAX_SPLIT_POINTS}`,
+        `Too many ${mode.param} points (${splitPoints.length}), max is ${MAX_SPLIT_POINTS}`,
       );
       warnings.add("split-max-exceeded");
     }
@@ -72,12 +77,18 @@ export function prepareSplitParams(
     return null;
   }
 
-  // Filter out points at 0 (can't split at the very start)
+  // Filter out points at 0. Nothing can be split there: in clip coordinates
+  // that's the clip's own start, and in song coordinates no clip begins before
+  // it. Per-clip bounds are checked later, once each clip's start is known.
   const validPoints = splitPoints.filter((p) => p > 0);
 
   if (validPoints.length === 0) {
     if (!warnings.has("split-no-valid-points")) {
-      console.warn("No valid split points (all at or before clip start)");
+      const origin = mode.origin === "song" ? "the song start" : "clip start";
+
+      console.warn(
+        `No valid ${mode.param} points (all at or before ${origin})`,
+      );
       warnings.add("split-no-valid-points");
     }
 

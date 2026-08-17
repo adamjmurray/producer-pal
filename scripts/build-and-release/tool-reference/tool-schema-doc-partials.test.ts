@@ -51,7 +51,7 @@ describe("generateToolPartial", () => {
   it("marks a param small-model mode hides", () => {
     const markdown = generateToolPartial(toolDef("ppal-update-clip"));
 
-    expect(markdown).toContain("`split` 🐘");
+    expect(markdown).toContain("`arrangementSplit` 🐘");
   });
 });
 

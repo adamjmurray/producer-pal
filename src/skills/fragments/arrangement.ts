@@ -43,6 +43,7 @@ create-clip's \`path\` takes a comma-separated list and may mix the two kinds, s
 
 \`arrangementStart\` moves arrangement clips; \`toPath\` moves session clips, pairing one destination per id (they don't cycle — two clips in one slot means the second overwrites the first). Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region.
+\`arrangementSplit\` cuts clips at song positions — the same timeline as \`arrangementStart\`, not offsets into the clip. Positions outside a clip are ignored, so one call can cut several clips at the same bar.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 
 ### Take Lanes (Arrangement Variations)
@@ -53,4 +54,4 @@ Stack alternate takes of an arrangement clip at the same position; only the acti
 - Promote a take back to the main lane with a duplicate whose \`toPath\` has no \`l\` segment (\`t2\`). It's a copy — the take stays on its lane, which Live's API can't clear.
 - Variation workflow: one duplicate with \`toPath: "t2/l+,t2/l+,t2/l+"\` + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
-- Take-lane clips are append-only: \`update-clip\` (\`split\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them — Live's API can't move or remove a clip off a lane, so ask the user to do those in Live's UI. Any duplicate touching a lane recreates the clip from notes and drops envelope automation.`;
+- Take-lane clips are append-only: \`update-clip\` (\`arrangementSplit\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them — Live's API can't move or remove a clip off a lane, so ask the user to do those in Live's UI. Any duplicate touching a lane recreates the clip from notes and drops envelope automation.`;

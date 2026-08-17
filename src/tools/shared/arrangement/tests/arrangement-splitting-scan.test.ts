@@ -9,11 +9,14 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { performSplitting } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import {
+  ARRANGEMENT_SPLIT_MODE,
+  performSplitting,
+} from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   setupClipSplittingMocks,
   SPLIT_CLIP_ID,
-} from "./arrangement-splitting-test-helpers.ts";
+} from "./helpers/arrangement-splitting-test-helpers.ts";
 
 /**
  * Make every clip the split creates look like a real arrangement clip.
@@ -70,9 +73,15 @@ function countTrackScans(splitPoints: number[]): number {
 
   const mockClip = LiveAPI.from(`id ${SPLIT_CLIP_ID}`);
 
-  performSplitting([mockClip], splitPoints, [mockClip], {
-    holdingAreaStartBeats: 40000,
-  });
+  performSplitting(
+    [mockClip],
+    splitPoints,
+    [mockClip],
+    {
+      holdingAreaStartBeats: 40000,
+    },
+    ARRANGEMENT_SPLIT_MODE,
+  );
 
   return callState.trackMock.get.mock.calls.filter(
     ([property]: unknown[]) => property === "arrangement_clips",
@@ -103,9 +112,15 @@ describe("performSplitting track scanning", () => {
     });
 
     registerDuplicatesAsArrangementClips(callState.trackMock);
-    performSplitting([LiveAPI.from(`id ${SPLIT_CLIP_ID}`)], [4, 8, 12], [], {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting(
+      [LiveAPI.from(`id ${SPLIT_CLIP_ID}`)],
+      [4, 8, 12],
+      [],
+      {
+        holdingAreaStartBeats: 40000,
+      },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     const duplicates = callState.trackMock.call.mock.calls.filter(
       ([method]: unknown[]) => method === "duplicate_clip_to_arrangement",

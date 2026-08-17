@@ -14,7 +14,7 @@ import {
   createNote,
   expectedDrumPatternNotes,
 } from "#src/test/test-data-builders.ts";
-import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
+import { setupClipSplittingMocks } from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { processSingleClipUpdate } from "#src/tools/clip/update/helpers/update-clip-helpers.ts";
 import * as sessionHelpers from "#src/tools/clip/update/helpers/update-clip-session-helpers.ts";
@@ -632,17 +632,20 @@ describe("updateClip - Basic operations", () => {
 });
 
 describe("updateClip - splitting mutation coverage", () => {
-  it("should warn when split targets a non-arrangement clip", async () => {
+  it("should warn when arrangementSplit targets a non-arrangement clip", async () => {
     const mocks = setupUpdateClipMocks();
 
     setupMidiClipMock(mocks.clip123); // session clip: is_arrangement_clip = 0
 
-    const result = await updateClip({ ids: "123", split: "2|1" });
+    const result = await updateClip({ ids: "123", arrangementSplit: "2|1" });
 
     // Session clips are excluded from arrangementClips, so prepareSplitParams
     // sees an empty list and warns. The <= 0 guard must return false for them
     // (forced-true / never-false mutants would include the clip and split it).
-    expect(outlet).toHaveBeenCalledWith(1, "split requires arrangement clips");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "arrangementSplit requires arrangement clips",
+    );
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -674,7 +677,7 @@ describe("updateClip - splitting mutation coverage", () => {
     });
 
     const result = await updateClip(
-      { ids: clipId, split: "2|1" },
+      { ids: clipId, arrangementSplit: "2|1" },
       { holdingAreaStartBeats: 40000 },
     );
 
@@ -698,11 +701,11 @@ describe("updateClip - splitting mutation coverage", () => {
     const clipId = "clip_1";
     const { callState } = setupClipSplittingMocks(clipId);
 
-    // split is provided but unparseable, so splitPoints is null. The guard's
+    // arrangementSplit is provided but unparseable, so splitPoints is null. The guard's
     // splitPoints != null term must stay honored (forced-true / || mutants
     // would call performSplitting with null and throw).
     const result = await updateClip(
-      { ids: clipId, split: "not-a-position" },
+      { ids: clipId, arrangementSplit: "not-a-position" },
       { holdingAreaStartBeats: 40000 },
     );
 

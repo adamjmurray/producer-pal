@@ -12,7 +12,7 @@ import {
   setupMidiSourceClip,
   setupTileClip,
   setupTrackWithQueuedMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({

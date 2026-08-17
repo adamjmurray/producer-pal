@@ -11,7 +11,7 @@ import {
   setupTrack,
   setupTrackWithoutIndex,
   tilingTrackMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
   setArrangementDuplicateCrashWorkaround,

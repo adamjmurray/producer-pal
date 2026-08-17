@@ -21,7 +21,7 @@ import {
   setupClipSplittingMocks,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
-} from "#src/tools/shared/arrangement/tests/arrangement-splitting-test-helpers.ts";
+} from "#src/tools/shared/arrangement/tests/helpers/arrangement-splitting-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
@@ -33,6 +33,41 @@ function expectDuplicateCalled(trackMock: RegisteredMockObject): void {
 }
 
 describe("updateClip - splitting smoke tests", () => {
+  it("still splits for the deprecated split param", async () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    await updateClip(
+      { ids: clipId, split: "2|1" },
+      { holdingAreaStartBeats: 40000 },
+    );
+
+    expectDuplicateCalled(callState.trackMock);
+  });
+
+  it("splits nothing when both split params are given", async () => {
+    const clipId = "clip_1";
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    // They read positions on different timelines, so there is no safe guess.
+    await updateClip(
+      { ids: clipId, arrangementSplit: "2|1", split: "3|1" },
+      { holdingAreaStartBeats: 40000 },
+    );
+
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.any(String),
+      expect.any(Number),
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("arrangementSplit and split both name split"),
+    );
+  });
+
   it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 
@@ -41,7 +76,7 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip(
       {
         ids: clipId,
-        split: "2|1, 3|1", // Split at bar 2 and bar 3
+        arrangementSplit: "2|1, 3|1", // Split at bar 2 and bar 3
       },
       { holdingAreaStartBeats: 40000 },
     );
@@ -58,7 +93,7 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip(
       {
         ids: clipId,
-        split: "2|1",
+        arrangementSplit: "2|1",
         name: "Split Clip",
       },
       { holdingAreaStartBeats: 40000 },
@@ -104,7 +139,7 @@ describe("updateClip - splitting smoke tests", () => {
     const result = await updateClip(
       {
         ids: clipId,
-        split: "2|1",
+        arrangementSplit: "2|1",
       },
       { holdingAreaStartBeats: 40000 },
     );
@@ -133,13 +168,13 @@ describe("updateClip - splitting smoke tests", () => {
     const result = await updateClip(
       {
         ids: clipId,
-        split: "2|1",
+        arrangementSplit: "2|1",
       },
       { holdingAreaStartBeats: 40000 },
     );
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("split parameter ignored for take-lane clip"),
+      expect.stringContaining("arrangementSplit ignored for take-lane clip"),
     );
     const results = Array.isArray(result) ? result : [result];
 
@@ -160,7 +195,7 @@ describe("updateClip - splitting smoke tests", () => {
     await updateClip({ ids: clipId, name: "renamed" }, {});
 
     expect(consoleSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("split parameter ignored"),
+      expect.stringContaining("ignored for take-lane clip"),
     );
   });
 });

@@ -14,7 +14,10 @@ import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/session/select.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
+  ARRANGEMENT_SPLIT_MODE,
+  LEGACY_SPLIT_MODE,
   performSplitting,
+  type SplitMode,
   type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
@@ -61,6 +64,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   arrangementLength?: string;
   toSlot?: string;
   toPath?: string;
+  arrangementSplit?: string;
   split?: string;
   code?: string;
   focus?: boolean;
@@ -92,7 +96,8 @@ interface ClipResult {
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
  * @param args.toPath - Session slot to move the clip to (e.g., "t2/s3")
- * @param args.split - Comma-separated bar|beat positions to split clip
+ * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at
+ * @param args.split - Deprecated split positions, measured from each clip's start; use arrangementSplit
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param args.warpMode - Audio clip warp mode
@@ -128,6 +133,7 @@ export async function updateClip(
     arrangementLength,
     toSlot,
     toPath,
+    arrangementSplit,
     split,
     gainDb,
     pitchShift,
@@ -174,7 +180,12 @@ export async function updateClip(
     requestedIds,
     resolveMoveDestinations(toPath, toSlot, requestedIds.length),
   );
-  const mutableClips = applySplittingIfNeeded(clips, split, context);
+  const mutableClips = applySplittingIfNeeded(
+    clips,
+    arrangementSplit,
+    split,
+    context,
+  );
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -317,18 +328,24 @@ async function applyCodeExecToNewClips(
 }
 
 /**
- * Apply splitting to arrangement clips if split parameter is provided
+ * Apply splitting to arrangement clips if a split param is provided
  * @param clips - Validated clip LiveAPI objects
- * @param split - Comma-separated split positions
+ * @param arrangementSplit - Comma-separated song-timeline split positions
+ * @param split - Deprecated clip-relative split positions
  * @param context - Tool execution context
  * @returns Filtered clips (non-existent removed after splitting)
  */
 function applySplittingIfNeeded(
   clips: LiveAPI[],
+  arrangementSplit: string | undefined,
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
-  if (split == null) return clips;
+  const request = resolveSplitRequest(arrangementSplit, split);
+
+  if (request == null) return clips;
+
+  const { value, mode } = request;
 
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
@@ -338,7 +355,7 @@ function applySplittingIfNeeded(
     // the split onto the main lane.
     if (isTakeLaneClip(clip)) {
       console.warn(
-        `split parameter ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+        `${mode.param} ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
       );
 
       return false;
@@ -346,7 +363,12 @@ function applySplittingIfNeeded(
 
     return true;
   });
-  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
+  const splitPoints = prepareSplitParams(
+    value,
+    arrangementClips,
+    new Set(),
+    mode,
+  );
 
   if (splitPoints != null) {
     performSplitting(
@@ -354,10 +376,42 @@ function applySplittingIfNeeded(
       splitPoints,
       clips,
       context as SplittingContext,
+      mode,
     );
 
     return clips.filter((clip) => clip.exists());
   }
 
   return clips;
+}
+
+/**
+ * Pick which split param to act on. The two read positions on different
+ * timelines, so sending both is ambiguous: warn and split nothing rather than
+ * guess, matching how toPath/toSlot handle a doubled destination.
+ * @param arrangementSplit - Song-timeline positions
+ * @param split - Deprecated clip-relative positions
+ * @returns The positions and how to read them, or null to skip splitting
+ */
+function resolveSplitRequest(
+  arrangementSplit: string | undefined,
+  split: string | undefined,
+): { value: string; mode: SplitMode } | null {
+  if (arrangementSplit != null && split != null) {
+    console.warn(
+      "arrangementSplit and split both name split positions, so no clip was " +
+        "split; use arrangementSplit alone (split is deprecated, and its " +
+        "positions are measured from each clip's start instead of the song timeline)",
+    );
+
+    return null;
+  }
+
+  if (arrangementSplit != null) {
+    return { value: arrangementSplit, mode: ARRANGEMENT_SPLIT_MODE };
+  }
+
+  if (split != null) return { value: split, mode: LEGACY_SPLIT_MODE };
+
+  return null;
 }

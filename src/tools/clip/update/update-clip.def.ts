@@ -81,6 +81,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
+    arrangementSplit: param(z.string().optional(), {
+      default:
+        `comma-separated bar|beat positions to cut clips at, on the song timeline like arrangementStart (e.g., '9|1, 17|1') - max ${MAX_SPLIT_POINTS} points. ` +
+        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
+      smallModel: null,
+    }),
     toSlot: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
     }),
@@ -92,9 +98,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
           "ids/path, in order - destinations don't cycle, so name one slot per clip",
       ),
-    split: param(z.string().optional(), {
-      default: `comma-separated bar|beat split positions, measured from the clip's start (1|1 = clip start, NOT song time) (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only; song meter`,
-      smallModel: null,
+    // Deprecated because its positions are clip-relative: models reason in song
+    // time, so they aimed at the wrong bar every time. Kept working unchanged
+    // for callers that scripted against it; arrangementSplit is the published
+    // param and reads song-timeline positions.
+    split: deprecatedParam(z.string().optional(), {
+      replacedBy: "arrangementSplit",
     }),
 
     // Audio clip parameters

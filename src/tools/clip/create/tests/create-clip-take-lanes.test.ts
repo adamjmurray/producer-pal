@@ -9,7 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { registerArrangementTrack } from "./create-clip-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)

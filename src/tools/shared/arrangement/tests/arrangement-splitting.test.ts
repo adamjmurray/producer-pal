@@ -8,7 +8,10 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { performSplitting } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import {
+  ARRANGEMENT_SPLIT_MODE,
+  performSplitting,
+} from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   mockArrangementClipsRescan,
@@ -17,7 +20,7 @@ import {
   setupSplitTest,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
-} from "./arrangement-splitting-test-helpers.ts";
+} from "./helpers/arrangement-splitting-test-helpers.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
 
@@ -108,34 +111,49 @@ describe("prepareSplitParams", () => {
 
   it("should return null when split is undefined", () => {
     const warnings = new Set<string>();
-    const result = prepareSplitParams(undefined, [], warnings);
+    const result = prepareSplitParams(
+      undefined,
+      [],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
   });
 
   it("should warn and return null when no arrangement clips", () => {
     const warnings = new Set<string>();
-    const result = prepareSplitParams("2|1, 3|1", [], warnings);
+    const result = prepareSplitParams(
+      "2|1, 3|1",
+      [],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-arrangement")).toBe(true);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("split requires arrangement clips"),
+      expect.stringContaining("arrangementSplit requires arrangement clips"),
     );
   });
 
   it("should warn and return null for invalid format", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
-    const result = prepareSplitParams("invalid", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "invalid",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
     expect(warnings.has("split-invalid-format")).toBe(true);
     // The warning text names the problem so the model can correct it.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('Invalid split format: "invalid"'),
+      expect.stringContaining('Invalid arrangementSplit format: "invalid"'),
     );
   });
 
@@ -144,7 +162,12 @@ describe("prepareSplitParams", () => {
 
     // "," has only empty parts, so parseSplitPoints returns [] (empty, not null).
     // That must be reported as invalid format, not silently accepted as no-op.
-    const result = prepareSplitParams(",", [mockClip], warnings);
+    const result = prepareSplitParams(
+      ",",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
     expect(warnings.has("split-invalid-format")).toBe(true);
@@ -159,6 +182,7 @@ describe("prepareSplitParams", () => {
       "2|1, notaposition",
       [mockClip],
       warnings,
+      ARRANGEMENT_SPLIT_MODE,
     );
 
     expect(result).toBeNull();
@@ -171,11 +195,11 @@ describe("prepareSplitParams", () => {
 
     vi.clearAllMocks();
 
-    prepareSplitParams("invalid", [mockClip], warnings);
+    prepareSplitParams("invalid", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Invalid split format"),
+      expect.stringContaining("Invalid arrangementSplit format"),
     );
   });
 
@@ -188,11 +212,16 @@ describe("prepareSplitParams", () => {
 
     vi.clearAllMocks();
 
-    prepareSplitParams(manyPoints, [mockClip], warnings);
+    prepareSplitParams(
+      manyPoints,
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Too many split points"),
+      expect.stringContaining("Too many arrangementSplit points"),
     );
   });
 
@@ -202,11 +231,11 @@ describe("prepareSplitParams", () => {
 
     vi.clearAllMocks();
 
-    prepareSplitParams("1|1", [mockClip], warnings);
+    prepareSplitParams("1|1", [mockClip], warnings, ARRANGEMENT_SPLIT_MODE);
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("No valid split points"),
+      expect.stringContaining("No valid arrangementSplit points"),
     );
   });
 
@@ -217,7 +246,12 @@ describe("prepareSplitParams", () => {
     const points = Array.from({ length: 32 }, (_, i) => `${i + 2}|1`).join(
       ", ",
     );
-    const result = prepareSplitParams(points, [mockClip], warnings);
+    const result = prepareSplitParams(
+      points,
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toHaveLength(32);
     expect(warnings.has("split-max-exceeded")).toBe(false);
@@ -227,7 +261,12 @@ describe("prepareSplitParams", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
     // 2|1 = 4 beats, 3|1 = 8 beats (in 4/4)
-    const result = prepareSplitParams("2|1, 3|1", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "2|1, 3|1",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toStrictEqual([4, 8]);
     expect(warnings.size).toBe(0);
@@ -237,7 +276,12 @@ describe("prepareSplitParams", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
     // Out of order with duplicate
-    const result = prepareSplitParams("3|1, 2|1, 2|1", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "3|1, 2|1, 2|1",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toStrictEqual([4, 8]); // Sorted and deduplicated
   });
@@ -245,7 +289,12 @@ describe("prepareSplitParams", () => {
   it("should filter out split points at clip start (1|1)", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
-    const result = prepareSplitParams("1|1, 2|1", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "1|1, 2|1",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // 1|1 = 0 beats (filtered out), 2|1 = 4 beats
     expect(result).toStrictEqual([4]);
@@ -254,13 +303,18 @@ describe("prepareSplitParams", () => {
   it("should warn when all split points are at or before clip start", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
-    const result = prepareSplitParams("1|1", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "1|1",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
     expect(warnings.has("split-no-valid-points")).toBe(true);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("No valid split points"),
+      expect.stringContaining("No valid arrangementSplit points"),
     );
   });
 
@@ -271,13 +325,18 @@ describe("prepareSplitParams", () => {
     const manyPoints = Array.from({ length: 33 }, (_, i) => `${i + 2}|1`).join(
       ", ",
     );
-    const result = prepareSplitParams(manyPoints, [mockClip], warnings);
+    const result = prepareSplitParams(
+      manyPoints,
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toBeNull();
     expect(warnings.has("split-max-exceeded")).toBe(true);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Too many split points"),
+      expect.stringContaining("Too many arrangementSplit points"),
     );
   });
 
@@ -285,7 +344,12 @@ describe("prepareSplitParams", () => {
     const { mockClip, warnings } = setupPrepareTest();
 
     // Trailing comma produces an empty part that gets skipped
-    const result = prepareSplitParams("2|1, 3|1, ", [mockClip], warnings);
+    const result = prepareSplitParams(
+      "2|1, 3|1, ",
+      [mockClip],
+      warnings,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(result).toStrictEqual([4, 8]);
     expect(warnings.size).toBe(0);
@@ -295,13 +359,13 @@ describe("prepareSplitParams", () => {
     const warnings = new Set<string>();
 
     // First call: warns about no arrangement clips
-    prepareSplitParams("2|1", [], warnings);
+    prepareSplitParams("2|1", [], warnings, ARRANGEMENT_SPLIT_MODE);
     expect(warnings.has("split-no-arrangement")).toBe(true);
 
     // Second call with the same warnings set: should not warn again
     const outletCallCount = (outlet as Mock).mock.calls.length;
 
-    prepareSplitParams("2|1", [], warnings);
+    prepareSplitParams("2|1", [], warnings, ARRANGEMENT_SPLIT_MODE);
 
     // No additional outlet calls for the same warning
     expect((outlet as Mock).mock.calls).toHaveLength(outletCallCount);
@@ -313,7 +377,13 @@ describe("performSplitting", () => {
     const { callState, mockClip, clips } = setupSplitTest();
 
     // Split a 16-beat clip at 4 and 8 beats (2|1 and 3|1 in 4/4)
-    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should create segments via duplication
     expectDuplicateCalled(callState.trackMock);
@@ -328,20 +398,26 @@ describe("performSplitting", () => {
     });
 
     // Split points at 8 and 12 beats are beyond 4-beat clip
-    performSplitting([mockClip], [8, 12], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [8, 12],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should not create any duplicates
     expectDuplicateNotCalled(callState.trackMock);
 
     // Should warn (not silently no-op) so the model can recover. The clip is
-    // 4 beats (1 bar) long, so its clip-local end is 2|1.
+    // 4 beats (1 bar) long and starts at 0, so it spans 1|1 to 2|1.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("split skipped for clip clip_1"),
+      expect.stringContaining("arrangementSplit skipped for clip clip_1"),
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("before its end at 2|1"),
+      expect.stringContaining("the clip spans 1|1 to 2|1"),
     );
   });
 
@@ -357,7 +433,13 @@ describe("performSplitting", () => {
       return undefined;
     });
 
-    performSplitting([mockClip], [4], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -369,7 +451,13 @@ describe("performSplitting", () => {
     const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_UNLOOPED);
 
     // Split an 8-beat unlooped clip at 4 beats
-    performSplitting([mockClip], [4], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should duplicate for segments
     expectDuplicateCalled(callState.trackMock);
@@ -385,7 +473,13 @@ describe("performSplitting", () => {
     // Override trackIndex to be null
     Object.defineProperty(mockClip, "trackIndex", { get: () => null });
 
-    performSplitting([mockClip], [4], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should emit warning about trackIndex
     expect(outlet).toHaveBeenCalledWith(
@@ -399,7 +493,13 @@ describe("performSplitting", () => {
     const dups = overrideWithDuplicateCounter(callState.trackMock);
 
     // Split points: 4 (valid), 12 (beyond clip end)
-    performSplitting([mockClip], [4, 12], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4, 12],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Optimized algorithm for 2 segments:
     // Step 1: 1 duplicate source to holding
@@ -438,10 +538,16 @@ describe("performSplitting", () => {
     });
 
     // Split an 8-beat unlooped audio clip at 4 beats
-    performSplitting([mockClip], [4], clips, {
-      holdingAreaStartBeats: 40000,
-      silenceWavPath: "/tmp/silence.wav",
-    });
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      {
+        holdingAreaStartBeats: 40000,
+        silenceWavPath: "/tmp/silence.wav",
+      },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should duplicate for audio content
     expectDuplicateCalled(callState.trackMock);
@@ -454,7 +560,13 @@ describe("performSplitting", () => {
     const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
 
     // Split a 12-beat clip at 4 and 8 beats → 3 segments
-    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Optimized algorithm for 3 segments:
     // Step 1: 1 duplicate source to holding
@@ -468,7 +580,8 @@ describe("performSplitting", () => {
     const clipId = "clip_1";
 
     // start_time 100, end_time 112 → clipLength 12, so `end - start` (not
-    // `end + start`) is exercised. Split at 4 and 8 → boundaries [0,4,8,12].
+    // `end + start`) is exercised. Song positions 104 and 108 are 4 and 8 beats
+    // into the clip → boundaries [0,4,8,12].
     const { callState } = setupClipSplittingMocks(clipId, {
       looping: true,
       startTime: 100,
@@ -477,7 +590,13 @@ describe("performSplitting", () => {
     });
     const { mockClip, clips } = createPerformContext(clipId);
 
-    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [104, 108],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     const calls = callState.trackMock.call.mock.calls;
     const dupPositions = calls
@@ -507,7 +626,13 @@ describe("performSplitting", () => {
     const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
     const dups = overrideWithDuplicateCounter(callState.trackMock);
 
-    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(dups.count).toBe(2);
   });
@@ -521,7 +646,13 @@ describe("performSplitting", () => {
     });
 
     // Split at 4 and 8 → 3 segments, but middle dup fails
-    performSplitting([mockClip], [4, 8], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Should warn about the failed middle segment
     expect(outlet).toHaveBeenCalledWith(
@@ -546,9 +677,15 @@ describe("performSplitting", () => {
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
 
-    performSplitting([mockClip], [4, 8], clips, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      {
+        holdingAreaStartBeats: 40000,
+      },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // clips array should now contain fresh clip references from rescan
     expect(clips).toHaveLength(2);
@@ -570,9 +707,15 @@ describe("performSplitting", () => {
     // Pass an empty clips array so staleIndex will be -1
     const clips: LiveAPI[] = [];
 
-    performSplitting([mockClip], [4], clips, {
-      holdingAreaStartBeats: 40000,
-    });
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      {
+        holdingAreaStartBeats: 40000,
+      },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // clips array should remain empty since stale clip was not found
     expect(clips).toHaveLength(0);
@@ -598,7 +741,13 @@ describe("performSplitting", () => {
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
 
-    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      { holdingAreaStartBeats: 40000 },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(clips.map((c) => c.id)).toStrictEqual(["fresh_in1", "fresh_in2"]);
   });
@@ -615,7 +764,13 @@ describe("performSplitting", () => {
     // The stale clip is at index 1; the decoy at index 0 must be untouched.
     const clips = [decoy, mockClip];
 
-    performSplitting([mockClip], [4], clips, { holdingAreaStartBeats: 40000 });
+    performSplitting(
+      [mockClip],
+      [4],
+      clips,
+      { holdingAreaStartBeats: 40000 },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(clips[0]!.id).toBe("decoy");
     expect(clips.some((c) => c.id === "fresh_1")).toBe(true);
@@ -633,7 +788,13 @@ describe("performSplitting", () => {
   ])("rejects a split point %s", (_label, clipProps, points) => {
     const { callState, mockClip, clips } = setupSplitTest(clipProps);
 
-    performSplitting([mockClip], points, clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      points,
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     // Nothing is duplicated or trimmed: the clip is left exactly as it was.
     expect(callState.trackMock.call).not.toHaveBeenCalled();
@@ -643,7 +804,13 @@ describe("performSplitting", () => {
     // Guards the margin against being widened into ordinary split positions.
     const { callState, mockClip, clips } = setupSplitTest(EIGHT_BEAT_LOOPED);
 
-    performSplitting([mockClip], [0.002], clips, HOLDING_AREA);
+    performSplitting(
+      [mockClip],
+      [0.002],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expectSplitTrimCount(callState.trackMock, 2);
   });
@@ -651,10 +818,16 @@ describe("performSplitting", () => {
   it("names the clips it never started splitting when time is up", () => {
     const { callState, mockClip, clips } = setupSplitTest();
 
-    performSplitting([mockClip], [4, 8], clips, {
-      ...HOLDING_AREA,
-      deadline: Date.now() - 1,
-    });
+    performSplitting(
+      [mockClip],
+      [4, 8],
+      clips,
+      {
+        ...HOLDING_AREA,
+        deadline: Date.now() - 1,
+      },
+      ARRANGEMENT_SPLIT_MODE,
+    );
 
     expect(callState.trackMock.call).not.toHaveBeenCalled();
     expect(outlet).toHaveBeenCalledWith(
@@ -685,10 +858,16 @@ describe("performSplitting", () => {
         },
       );
 
-      performSplitting([mockClip], [4, 8, 12], clips, {
-        ...HOLDING_AREA,
-        deadline: 1500,
-      });
+      performSplitting(
+        [mockClip],
+        [4, 8, 12],
+        clips,
+        {
+          ...HOLDING_AREA,
+          deadline: 1500,
+        },
+        ARRANGEMENT_SPLIT_MODE,
+      );
     } finally {
       vi.useRealTimers();
     }

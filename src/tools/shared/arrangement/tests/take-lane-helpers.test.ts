@@ -14,7 +14,7 @@ import {
   resolveTakeLane,
   warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { registerTakeLaneTrack } from "./take-lane-test-helpers.ts";
+import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
 
 describe("isTakeLaneClip", () => {
   it("matches a take-lane clip path (single- and multi-digit lane index)", () => {

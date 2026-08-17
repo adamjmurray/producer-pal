@@ -23,21 +23,43 @@ import {
 export const SPLIT_POINT = "1|2";
 
 /**
- * Split a clip via ppal-update-clip.
+ * Split a clip via ppal-update-clip. Positions are on the song timeline.
  * Returns raw result for warning extraction.
  */
 export async function splitClip(
   client: Client,
   clipId: string,
-  splitPoint: string = SPLIT_POINT,
+  splitPoint: string,
 ): Promise<unknown> {
   return await client.callTool({
     name: "ppal-update-clip",
     arguments: {
       ids: clipId,
-      split: splitPoint,
+      arrangementSplit: splitPoint,
     },
   });
+}
+
+/**
+ * Shift clip-relative bar|beat offsets onto the song timeline, so a test can
+ * say "1 beat into the clip" while the tool takes song positions.
+ * e2e test sets are all 4/4.
+ */
+export function toSongPositions(
+  arrangementStart: string,
+  offsets: string,
+): string {
+  const startBars = parseBarBeat(arrangementStart);
+
+  return offsets
+    .split(",")
+    .map((offset) => {
+      const bars = startBars + parseBarBeat(offset.trim());
+      const beat = (bars % 1) * 4 + 1;
+
+      return `${Math.floor(bars) + 1}|${Number(beat.toFixed(4))}`;
+    })
+    .join(", ");
 }
 
 /**
@@ -59,14 +81,20 @@ export async function testSplitClip(
 
   // Read initial clip
   const initial = await readClipsOnTrack(client, trackIndex);
-  const clipId = initial.clips[0]?.id;
+  const clip = initial.clips[0];
+  const clipId = clip?.id;
 
-  if (!clipId) {
-    throw new Error(`No clip found on track ${trackIndex}`);
+  if (!clipId || !clip?.arrangementStart) {
+    throw new Error(`No arrangement clip found on track ${trackIndex}`);
   }
 
-  // Split at specified point (default: beat 2, 1 beat into the clip)
-  const result = await splitClip(client, clipId, splitPoint);
+  // Split at specified point (default: beat 2, 1 beat into the clip), shifted
+  // onto the song timeline that arrangementSplit reads.
+  const result = await splitClip(
+    client,
+    clipId,
+    toSongPositions(clip.arrangementStart, splitPoint),
+  );
   const warnings = getToolWarnings(result);
 
   await sleep(sleepMs);

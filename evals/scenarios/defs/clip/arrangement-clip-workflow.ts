@@ -8,16 +8,64 @@
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
-import { type EvalScenario } from "../../types.ts";
+import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+
+/** Bass is the second track of the basic-midi-4-track Live Set. */
+const BASS_TRACK_INDEX = 1;
+
+/**
+ * Where the three clips end up: the 8-bar clip cut at bar 9, plus the
+ * duplicate. `tool_called` alone passed on a split that was skipped, so this
+ * reads the track and pins the boundaries the turns were supposed to produce.
+ */
+const EXPECTED_STARTS = ["5|1", "9|1", "13|1"];
+
+/**
+ * Read the arrangement clip starts out of a read-track result, in bar order.
+ * @param result - Parsed ppal-read-track result
+ * @returns Each clip's arrangementStart
+ */
+function clipStarts(result: unknown): string[] {
+  const track = result as {
+    arrangementClips?: Array<{ arrangementStart?: string }>;
+  };
+
+  return (track.arrangementClips ?? [])
+    .map((clip) => clip.arrangementStart ?? "?")
+    .toSorted(
+      (a, b) => Number(a.split("|")[0] ?? 0) - Number(b.split("|")[0] ?? 0),
+    );
+}
+
+/**
+ * Read the Bass track's arrangement clips and compare their start positions.
+ * @returns A state assertion over the final clip layout
+ */
+function assertClipLayout(): EvalAssertion {
+  return {
+    type: "state",
+    tool: "ppal-read-track",
+    args: {
+      trackIndex: BASS_TRACK_INDEX,
+      include: ["arrangement-clips"],
+    },
+    expect: (result) =>
+      clipStarts(result).join(", ") === EXPECTED_STARTS.join(", "),
+    explain: (result) =>
+      `expected clips at ${EXPECTED_STARTS.join(", ")}, got ${
+        clipStarts(result).join(", ") || "none"
+      }`,
+  };
+}
 
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
   description: "Create arrangement clip, duplicate, and split",
   kind: "regression",
   liveSet: "basic-midi-4-track",
-  // Turn 3 ("split the clip") needs update-clip's `split` param, which
-  // small-model mode strips from the schema — the split is impossible there.
-  requires: { params: ["split"] },
+  // Turn 3 ("split the clip") needs update-clip's `arrangementSplit` param,
+  // which small-model mode strips from the schema — the split is impossible there.
+  requires: { params: ["arrangementSplit"] },
 
   messages: [
     "Connect to Ableton Live",
@@ -54,8 +102,10 @@ export const arrangementClipWorkflow: EvalScenario = {
     // Turn 2: Duplicate
     { type: "tool_called", tool: "ppal-duplicate", turn: 2 },
 
-    // Turn 3: Split
+    // Turn 3: Split. The call alone proves nothing — a split whose positions
+    // miss the clip is warned-and-skipped, and the tool still returns success.
     { type: "tool_called", tool: "ppal-update-clip", turn: 3 },
+    assertClipLayout(),
 
     { type: "response_contains", pattern: /bass/i, turn: 1 },
     { type: "response_contains", pattern: /duplicat/i, turn: 2 },
@@ -67,13 +117,8 @@ export const arrangementClipWorkflow: EvalScenario = {
       maxTokens: 80_000,
     },
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created an 8-bar bass clip in the arrangement starting at bar 5
-2. Duplicated the clip to bar 13
-3. Split a clip at bar 9
-4. Confirmed each step was completed`,
-    },
+    // No llm_judge: the clip layout above pins every outcome it used to grade,
+    // and a judge that reads the assistant's own summary passed the runs where
+    // the split never happened.
   ],
 };

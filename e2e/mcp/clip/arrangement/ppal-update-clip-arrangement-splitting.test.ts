@@ -28,9 +28,11 @@ import {
   assertSpanPreserved,
   splitClip,
   testSplitClip,
+  toSongPositions,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
+  getToolNotices,
   getToolWarnings,
   parseToolResult,
   type ReadClipResult,
@@ -170,6 +172,32 @@ describe("Behavioral splitting tests", () => {
     dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
   });
 
+  /**
+   * Read only the clips in one test's own span — the track is shared.
+   * @param startBar - First bar of the span
+   * @param bars - Span length in bars
+   * @returns Clips starting inside the span, in timeline order
+   */
+  async function clipsInSpan(
+    startBar: number,
+    bars: number,
+  ): Promise<ReadClipResult[]> {
+    const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
+    const spanStart = startBar - 1;
+    const startOf = (clip: ReadClipResult): number =>
+      clip.arrangementStart ? parseBarBeat(clip.arrangementStart) : -1;
+
+    return clips
+      .filter((c) => {
+        const start = startOf(c);
+
+        return (
+          start >= spanStart - EPSILON && start < spanStart + bars - EPSILON
+        );
+      })
+      .toSorted((a, b) => startOf(a) - startOf(b));
+  }
+
   it("preserves total note count across splits", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
@@ -184,7 +212,12 @@ describe("Behavioral splitting tests", () => {
     const clipId = parseToolResult<{ id: string }>(createResult).id;
 
     await sleep(200);
-    const splitResult = await splitClip(ctx.client!, clipId, "2|1, 3|1, 4|1");
+    // The clip runs from song bar 200 to 204, so cut it on each bar line.
+    const splitResult = await splitClip(
+      ctx.client!,
+      clipId,
+      "201|1, 202|1, 203|1",
+    );
     const splitClips = parseSplitResult(splitResult);
 
     expect(splitClips.length).toBe(4);
@@ -218,7 +251,11 @@ describe("Behavioral splitting tests", () => {
     await sleep(200);
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, split: "2|1", name: "Split Section" },
+      arguments: {
+        ids: clipId,
+        arrangementSplit: "211|1",
+        name: "Split Section",
+      },
     });
     const splitClips = parseSplitResult(result);
 
@@ -242,7 +279,7 @@ describe("Behavioral splitting tests", () => {
     const clipId = parseToolResult<{ id: string }>(createResult).id;
 
     await sleep(200);
-    const result = await splitClip(ctx.client!, clipId);
+    const result = await splitClip(ctx.client!, clipId, "2|1");
     const splitClips = parseSplitResult(result);
 
     expect(splitClips[0]?.id).toBe(clipId);
@@ -276,11 +313,121 @@ describe("Behavioral splitting tests", () => {
     await sleep(200);
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1Id},${clip2Id}`, split: "2|1" },
+      arguments: {
+        ids: `${clip1Id},${clip2Id}`,
+        // One position per clip. Each falls outside the other clip, which
+        // ignores it — that filtering is what lets one call cut both.
+        arrangementSplit: "221|1, 231|1",
+      },
     });
     const splitClips = parseSplitResult(result);
 
     expect(splitClips.length).toBe(4);
+  });
+
+  // The two params read the same bar|beat text on different timelines. A clip
+  // that starts away from bar 1 is the only place that difference shows.
+  describe("split position coordinates", () => {
+    /**
+     * Create a 4-bar looped MIDI clip at `startBar`.
+     * @param startBar - Arrangement bar to place the clip at
+     * @returns The new clip's id
+     */
+    async function createFourBarClip(startBar: number): Promise<string> {
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${dynamicTrackIndex}`,
+          arrangementStart: `${startBar}|1`,
+          notes: "C3 1|1",
+          length: "4bar",
+          looping: true,
+        },
+      });
+
+      return parseToolResult<{ id: string }>(result).id;
+    }
+
+    it("cuts arrangementSplit at the song bar the user named", async () => {
+      // The reported failure, in miniature: a clip at bar 400 asked to split at
+      // bar 402 must cut there, not 2 bars past its own start.
+      const clipId = await createFourBarClip(400);
+
+      await sleep(200);
+      const result = await splitClip(ctx.client!, clipId, "402|1");
+
+      expect(getToolWarnings(result)).toHaveLength(0);
+
+      await sleep(200);
+      const clips = await clipsInSpan(400, 4);
+
+      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+        "400|1",
+        "402|1",
+      ]);
+    });
+
+    it("ignores an arrangementSplit position outside the clip", async () => {
+      const clipId = await createFourBarClip(410);
+
+      await sleep(200);
+      // Bar 2 of the song is nowhere near this clip. Under the old param this
+      // was a cut 1 bar in; now it warns instead of cutting the wrong place.
+      const result = await splitClip(ctx.client!, clipId, "2|1");
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "no split points fall inside the clip",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(410, 4);
+
+      expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
+    });
+
+    it("still measures the deprecated split from the clip's start", async () => {
+      const clipId = await createFourBarClip(420);
+
+      await sleep(200);
+      // 3|1 means "2 bars in" here, so the cut lands on song bar 422.
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { ids: clipId, split: "3|1" },
+      });
+
+      // The framework's deprecation channel, not the handler's WARNING one.
+      expect(getToolNotices(result).join("\n")).toContain(
+        'param "split" is deprecated',
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(420, 4);
+
+      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+        "420|1",
+        "422|1",
+      ]);
+    });
+
+    it("splits nothing when both split params are given", async () => {
+      const clipId = await createFourBarClip(430);
+
+      await sleep(200);
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { ids: clipId, arrangementSplit: "432|1", split: "3|1" },
+      });
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "both name split positions",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(430, 4);
+
+      expect(clips).toHaveLength(1);
+    });
   });
 
   // A point within EPSILON of an edge asks for a zero-length segment. Splitting
@@ -309,30 +456,6 @@ describe("Behavioral splitting tests", () => {
       return parseToolResult<{ id: string }>(result).id;
     }
 
-    /**
-     * Read only the clips in one test's own span — the track is shared.
-     * @param startBar - First bar of the span
-     * @param bars - Span length in bars
-     * @returns Clips starting inside the span
-     */
-    async function clipsInSpan(
-      startBar: number,
-      bars: number,
-    ): Promise<ReadClipResult[]> {
-      const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
-      const spanStart = startBar - 1;
-
-      return clips.filter((c) => {
-        const start = c.arrangementStart
-          ? parseBarBeat(c.arrangementStart)
-          : -1;
-
-        return (
-          start >= spanStart - EPSILON && start < spanStart + bars - EPSILON
-        );
-      });
-    }
-
     // The clip is 8 beats, so 1|1.0005 sits 0.0005 beats past its start and
     // 2|4.9995 sits 0.0005 beats before its end.
     it.each([
@@ -345,7 +468,11 @@ describe("Behavioral splitting tests", () => {
 
         await sleep(200);
         const initialClips = await clipsInSpan(startBar, 2);
-        const result = await splitClip(ctx.client!, clipId, split);
+        const result = await splitClip(
+          ctx.client!,
+          clipId,
+          toSongPositions(`${startBar}|1`, split),
+        );
 
         expect(getToolWarnings(result)).toHaveLength(0);
 
@@ -366,7 +493,11 @@ describe("Behavioral splitting tests", () => {
       const clipId = await createTwoBarClip(320);
 
       await sleep(200);
-      const result = await splitClip(ctx.client!, clipId, "1|1.0005");
+      const result = await splitClip(
+        ctx.client!,
+        clipId,
+        toSongPositions("320|1", "1|1.0005"),
+      );
 
       expect(getToolWarnings(result).join("\n")).toContain(
         "no split points fall inside the clip",

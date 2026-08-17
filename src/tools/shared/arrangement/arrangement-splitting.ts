@@ -22,6 +22,25 @@ export interface SplittingContext {
   deadline?: number | null;
 }
 
+/**
+ * How a split request's positions are read, and what to call it in warnings.
+ * The two params parse identically (song meter) and differ only here.
+ */
+export interface SplitMode {
+  /** The param the caller used. */
+  param: "arrangementSplit" | "split";
+  /** "song" = positions on the song timeline; "clip" = offsets from clip start. */
+  origin: "song" | "clip";
+}
+
+export const ARRANGEMENT_SPLIT_MODE: SplitMode = {
+  param: "arrangementSplit",
+  origin: "song",
+};
+
+/** Deprecated `split`: positions measured from each clip's own start. */
+export const LEGACY_SPLIT_MODE: SplitMode = { param: "split", origin: "clip" };
+
 interface SplitClipRange {
   trackIndex: number;
   startTime: number;
@@ -31,6 +50,7 @@ interface SplitClipRange {
 interface SplitSingleClipArgs {
   clip: LiveAPI;
   splitPoints: number[];
+  mode: SplitMode;
   holdingAreaStart: number;
   context: SplittingContext;
   splitClipRanges: Map<string, SplitClipRange>;
@@ -50,7 +70,7 @@ interface SplitSingleClipArgs {
  * @returns true if splitting succeeded, false if skipped
  */
 function splitSingleClip(args: SplitSingleClipArgs): boolean {
-  const { clip, splitPoints, holdingAreaStart, context } = args;
+  const { clip, splitPoints, mode, holdingAreaStart, context } = args;
   const { splitClipRanges } = args;
 
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -68,6 +88,14 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     return false;
   }
 
+  // Song-timeline positions become offsets from this clip's start; the
+  // deprecated `split` param already gives offsets. Everything below is
+  // clip-relative.
+  const offsets =
+    mode.origin === "song"
+      ? splitPoints.map((p) => p - clipArrangementStart)
+      : splitPoints;
+
   // Filter split points to those within clip bounds.
   //
   // The margin is EPSILON, not 0, and it is load-bearing: the trims below are
@@ -76,22 +104,12 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   // below assume was vacated still occupied. Those moves skip the overlap
   // clear, so Live would crash on the next duplicate. Keep the two thresholds
   // equal. Such a point asks for a zero-length segment anyway.
-  const validPoints = splitPoints.filter(
+  const validPoints = offsets.filter(
     (p) => p > EPSILON && p < clipLength - EPSILON,
   );
 
   if (validPoints.length === 0) {
-    const liveSet = LiveAPI.from(livePath.liveSet);
-    const clipEnd = abletonBeatsToBarBeat(
-      clipLength,
-      liveSet.getProperty("signature_numerator") as number,
-      liveSet.getProperty("signature_denominator") as number,
-    );
-
-    console.warn(
-      `split skipped for clip ${clip.id}: no split points fall inside the clip. ` +
-        `Positions are relative to the clip's start (1|1) and must be before its end at ${clipEnd}.`,
-    );
+    warnNoPointsInClip(clip.id, clipArrangementStart, clipLength, mode);
 
     return false;
   }
@@ -187,6 +205,38 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   );
 
   return true;
+}
+
+/**
+ * Warn that a clip has no usable split points, naming the span the caller
+ * should have aimed at in whichever coordinates it used.
+ * @param clipId - The clip that was skipped
+ * @param clipArrangementStart - The clip's song-timeline start, in beats
+ * @param clipLength - The clip's arrangement length, in beats
+ * @param mode - How the caller's positions are read
+ */
+function warnNoPointsInClip(
+  clipId: string,
+  clipArrangementStart: number,
+  clipLength: number,
+  mode: SplitMode,
+): void {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const numerator = liveSet.getProperty("signature_numerator") as number;
+  const denominator = liveSet.getProperty("signature_denominator") as number;
+  const toBarBeat = (beats: number): string =>
+    abletonBeatsToBarBeat(beats, numerator, denominator);
+
+  const where =
+    mode.origin === "song"
+      ? `Positions are on the song timeline, and the clip spans ` +
+        `${toBarBeat(clipArrangementStart)} to ${toBarBeat(clipArrangementStart + clipLength)}.`
+      : `Positions are relative to the clip's start (1|1) and must be before ` +
+        `its end at ${toBarBeat(clipLength)}.`;
+
+  console.warn(
+    `${mode.param} skipped for clip ${clipId}: no split points fall inside the clip. ${where}`,
+  );
 }
 
 interface ExtractMiddleSegmentsArgs {
@@ -338,15 +388,17 @@ function rescanSplitClips(
  * warning is emitted. This is consistent with update-clip error handling patterns.
  *
  * @param arrangementClips - Array of arrangement clips to split
- * @param splitPoints - Array of beat offsets from clip start (relative to 1|1)
+ * @param splitPoints - Parsed bar|beat positions in beats, read per `mode`
  * @param clips - Array to update with fresh clips after splitting
  * @param _context - Internal context object
+ * @param mode - Whether positions are song-timeline or clip-relative
  */
 export function performSplitting(
   arrangementClips: LiveAPI[],
   splitPoints: number[],
   clips: LiveAPI[],
   _context: SplittingContext,
+  mode: SplitMode,
 ): void {
   const holdingAreaStart = _context.holdingAreaStartBeats;
   const splitClipRanges = new Map<string, SplitClipRange>();
@@ -370,6 +422,7 @@ export function performSplitting(
     splitSingleClip({
       clip: arrangementClips[i] as LiveAPI, // bounded by the loop
       splitPoints,
+      mode,
       holdingAreaStart,
       context: _context,
       splitClipRanges,

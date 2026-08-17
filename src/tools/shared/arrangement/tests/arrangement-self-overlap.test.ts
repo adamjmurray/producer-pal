@@ -10,7 +10,7 @@ import {
   setupClip,
   setupTrack,
   tilingTrackMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import {
   duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,

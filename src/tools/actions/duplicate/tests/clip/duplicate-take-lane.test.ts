@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 // Capture take lane warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({

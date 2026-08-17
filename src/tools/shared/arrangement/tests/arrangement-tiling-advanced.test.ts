@@ -16,7 +16,7 @@ import {
   setupScene,
   setupTileClip,
   setupTrackWithQueuedMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import { createPartialTile, tileClipToRange } from "../arrangement-tiling.ts";
 
 beforeEach(() => {
