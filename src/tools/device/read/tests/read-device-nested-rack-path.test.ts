@@ -132,6 +132,50 @@ describe("readDevice - paths through a nested drum rack", () => {
     );
   });
 
+  // read-track reads at the shared default depth, so it finds a kit several
+  // racks down. A drum-map read has to search that deep too, or the same kit
+  // answers differently depending on which tool asked.
+  it("finds a kit two racks down without being told a depth", () => {
+    setupNestedDrumRack();
+    registerMockObject("wrapper", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+      properties: {
+        name: "Outer",
+        class_display_name: "Instrument Rack",
+        type: 1,
+        can_have_chains: 1,
+        is_active: 1,
+        chains: children("wrapper-chain"),
+      },
+    });
+    registerMockObject("wrapper-chain", {
+      path: `${livePath.track(1).device(0)} chains 0`,
+      type: "Chain",
+      properties: { name: "Kit", devices: children("drum-rack-1") },
+    });
+    registerMockObject("drum-rack-1", {
+      path: `${livePath.track(1).device(0)} chains 0 devices 0`,
+      type: "Device",
+      properties: {
+        name: "Kit",
+        class_display_name: "Drum Rack",
+        type: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        is_active: 1,
+        drum_pads: children("pad-36"),
+        chains: children("chain-1"),
+      },
+    });
+
+    const result = readDevice({ path: "t1/d0", include: ["drum-map"] });
+
+    // The outer kit's own pad, not the Sub Kit rack's C3 "Hat" — the search
+    // takes the first rack it reaches and doesn't descend into it.
+    expect(result.drumMap).toStrictEqual({ C1: "Sub Kit" });
+  });
+
   it("reports the nested pad path in pad notation, not raw chain indexes", () => {
     setupNestedDrumRack();
 

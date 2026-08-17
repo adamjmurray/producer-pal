@@ -9,6 +9,7 @@ import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
+  DEFAULT_MAX_DEPTH,
   getDrumMap,
   readDevice as readDeviceShared,
   type DeviceWithDrumPads,
@@ -85,8 +86,7 @@ export function readDevice(
     includeSample,
     includeOptions,
     includeActions,
-    // drum-map needs depth >= 1 to detect instruments in drum pad chains
-    maxDepth: includeDrumMap ? Math.max(1, maxDepth) : maxDepth,
+    maxDepth: drumMapReadDepth(maxDepth, includeDrumMap, chainsForDrumMap),
     paramSearch,
   };
 
@@ -100,6 +100,32 @@ export function readDevice(
 
   // Cleanup after drum-map processing (getDrumMap needs _processedDrumPads)
   return cleanupInternalDrumPads(processed) as Record<string, unknown>;
+}
+
+/**
+ * Depth to walk the device tree at.
+ *
+ * A kit can sit several racks down, and read-track finds it there because it
+ * reads at the shared default depth. Match that when the tree is being walked
+ * only to build the map — it gets stripped from the response afterwards, so the
+ * extra depth costs nothing visible. When the caller asked for chains too,
+ * their maxDepth governs what's rendered; the floor of 1 is what reaches a rack
+ * one level in.
+ * @param maxDepth - Depth the caller asked for
+ * @param includeDrumMap - Whether the drum map was requested
+ * @param chainsForDrumMap - Whether chains are being read only for the map
+ * @returns Depth to read at
+ */
+function drumMapReadDepth(
+  maxDepth: number,
+  includeDrumMap: boolean,
+  chainsForDrumMap: boolean,
+): number {
+  if (chainsForDrumMap) {
+    return Math.max(DEFAULT_MAX_DEPTH, maxDepth);
+  }
+
+  return includeDrumMap ? Math.max(1, maxDepth) : maxDepth;
 }
 
 /**
