@@ -11,7 +11,7 @@ on:
       - "src/shared/config.ts"
       - "src/tools/**"
       - "src/skills/**"
-      - "scripts/build-and-release/generate-tool-schema-docs.ts"
+      - "scripts/build-and-release/tool-reference/**"
       - "scripts/build-and-release/generate-docs-markdown.ts"
       - "scripts/build-and-release/generate-skill-downloads.ts"
       - ".github/workflows/deploy-docs.yml"

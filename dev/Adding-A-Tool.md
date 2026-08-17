@@ -31,11 +31,18 @@ them — this list is so you don't discover that one at a time.
    Getting it wrong means guidance silently missing for a toolset where your
    tool is the only one keeping that fragment alive.
 
-6. **Document it** in [docs/features.md](../docs/features.md) — a hand-written
-   section plus the generated schema partial (`npm run docs:schemas`). The tool
-   count in the page's frontmatter description is hand-written too.
+6. **Document it** in [docs/features/tools.md](../docs/features/tools.md) — a
+   hand-written section plus two generated partials: the schema table
+   (`npm run docs:schemas`) and an example call (`npm run docs:examples`). The
+   tool count in the page's frontmatter description is hand-written too.
 
-Then `npm run fix && npm run check`. The tests that hold steps 4 and 5 are
-[tool-groups-catalog.test.ts](../src/shared/tests/tool-groups-catalog.test.ts)
+7. **Add an example call** to `TOOL_EXAMPLES`
+   ([example-live-set/calls.ts](../scripts/build-and-release/tool-reference/example-live-set/calls.ts)),
+   which runs against the mock Live Set in that directory. Every tool needs one.
+   If the fixture has nothing your tool can act on, add it there too.
+
+Then `npm run fix && npm run check`. The tests that hold steps 4, 5, and 7 are
+[tool-groups-catalog.test.ts](../src/shared/tests/tool-groups-catalog.test.ts),
+[fragment-tool-gates.test.ts](../src/skills/tests/fragment-tool-gates.test.ts),
 and
-[fragment-tool-gates.test.ts](../src/skills/tests/fragment-tool-gates.test.ts).
+[tool-output-doc-partials.test.ts](../scripts/build-and-release/tool-reference/tool-output-doc-partials.test.ts).
