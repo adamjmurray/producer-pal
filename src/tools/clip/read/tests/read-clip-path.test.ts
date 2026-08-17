@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
@@ -26,6 +27,25 @@ describe("readClip path param", () => {
   it("rejects a bare track path", () => {
     expect(() => readClip({ path: "t1" })).toThrow(
       'invalid path "t1" - a track has no one clip',
+    );
+  });
+
+  // The grammar bounds no index, so "t99" parses and the existence check
+  // downstream is the only thing standing between it and a wrong read.
+  it("rejects a well-formed path that points at no track", () => {
+    mockNonExistentObjects();
+
+    expect(() => readClip({ path: "t99/s0" })).toThrow('no track at "t99"');
+  });
+
+  // read-clip REPORTS "t3/l0" for a take-lane clip but won't take it back —
+  // this reader only walks the session grid, and a take lane holds arrangement
+  // clips. Pinned because it's the one place a result path doesn't paste back,
+  // so the error has to name the spelling that does.
+  it("rejects a take lane path and names what to send instead", () => {
+    expect(() => readClip({ path: "t1/l0" })).toThrow(
+      'invalid path "t1/l0" - take lanes hold arrangement clips; ' +
+        'name a session position as "t<track>/s<scene>" (e.g., "t1/s0")',
     );
   });
 

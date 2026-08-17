@@ -12,6 +12,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import {
   registerArrangementTrack,
@@ -98,6 +99,34 @@ describe("createClip path param", () => {
       'invalid path "rt0" - return and master tracks have no clips; ' +
         'clips go to a track ("t0"), a take lane on it ("t0/l1"), or a session slot ("t0/s1")',
     );
+  });
+
+  // The grammar bounds no index, so "t99" parses fine and every tool leans on
+  // a downstream existence check. Without mockNonExistentObjects the mock says
+  // yes to any path, and this question never gets asked.
+  it("rejects a well-formed path that points at no track", async () => {
+    mockNonExistentObjects();
+
+    await expect(
+      createClip({ path: "t99/s0", notes: "C3 1|1" }),
+    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    await expect(
+      createClip({ path: "t99", arrangementStart: "1|1", notes: "C3 1|1" }),
+    ).rejects.toThrow("createClip failed: track 99 does not exist");
+  });
+
+  // A take lane names one place, unlike a bare track — but still not a spot on
+  // it. The error echoes back the lane the caller wrote, l+ included.
+  it("rejects a take-lane path with no position on it", async () => {
+    await expect(
+      createClip({ path: "t0/l+", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'createClip failed: path "t0/l+" names no position; ' +
+        "add arrangementStart; take lanes hold arrangement clips",
+    );
+    await expect(
+      createClip({ path: "t0/l1", notes: "C3 1|1" }),
+    ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
   });
 
   it("refuses path and slot together rather than picking one", async () => {

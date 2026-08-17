@@ -6,7 +6,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
   resetSelectTestState,
@@ -123,6 +126,23 @@ describe("select path param", () => {
     select({ path: "s3" });
 
     expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
+  });
+
+  // KNOWN GAP, pinned so a fix is a deliberate change: select does nothing and
+  // says nothing for a track that isn't there. The grammar bounds no index, so
+  // "t99" parses and select has no existence check behind it. Not new — the
+  // trackIndex param it replaced behaves identically, which is why this pins
+  // both: whatever select ends up doing here, it has to do it for the pair.
+  it("silently no-ops on a track that doesn't exist, path or param", () => {
+    mockNonExistentObjects();
+    const songView = setupSongViewMock();
+
+    expect(select({ path: "t99" })).toStrictEqual({});
+    expect(select({ trackIndex: 99 })).toStrictEqual({});
+    expect(songView.set).not.toHaveBeenCalledWith(
+      "selected_track",
+      expect.anything(),
+    );
   });
 
   // Only a disagreement is worth refusing. A model that says the same thing

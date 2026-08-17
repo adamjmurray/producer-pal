@@ -148,6 +148,15 @@ describe("requireSessionSlot", () => {
     );
   });
 
+  // Both take-lane spellings, since l+ reaches the message by a different arm.
+  it("rejects a take lane, which is an arrangement position", () => {
+    for (const path of ["t7/l1", "t7/l+"]) {
+      expect(() => requireSessionSlot(parseObjectPath(path))).toThrow(
+        /take lanes hold arrangement clips; name a session position as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
+      );
+    }
+  });
+
   it("rejects a non-clip path in clip terms", () => {
     expect(() => requireSessionSlot(parseObjectPath("t1/d0"))).toThrow(
       /device paths hold no clips/,

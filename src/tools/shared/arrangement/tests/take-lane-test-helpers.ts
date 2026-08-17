@@ -16,7 +16,7 @@ export interface TakeLaneTrackOptions {
   trackIndex?: number;
   /** Number of pre-existing (empty) take lanes */
   initialLanes?: number;
-  /** Length in beats for clips created on lanes */
+  /** Length in beats for lane clips Live isn't told a length for (audio) */
   clipLength?: number;
   /** Make each lane's create_*_clip return a non-existent ref (id 0) */
   clipCreationFails?: boolean;
@@ -68,7 +68,11 @@ export function registerTakeLaneTrack(
       initialLaneClips,
     );
 
-    const createClip = (kind: string, startBeats: unknown): unknown[] => {
+    const createClip = (
+      kind: string,
+      startBeats: unknown,
+      lengthBeats?: unknown,
+    ): unknown[] => {
       // Simulate Live failing to create the clip (returns the "no object" ref).
       if (clipCreationFails) {
         return ["id", "0"];
@@ -76,6 +80,9 @@ export function registerTakeLaneTrack(
 
       const clipId = `tl_clip_${uid++}`;
       const start = typeof startBeats === "number" ? startBeats : 0;
+      // Honor the length Live was asked for, so a wrong one can't read back
+      // right. create_audio_clip takes its length from the sample instead.
+      const length = typeof lengthBeats === "number" ? lengthBeats : clipLength;
 
       registerMockObject(clipId, {
         path: livePath
@@ -86,9 +93,9 @@ export function registerTakeLaneTrack(
         properties: {
           is_arrangement_clip: 1,
           [kind]: 1,
-          length: clipLength,
+          length,
           start_time: start,
-          end_time: start + clipLength,
+          end_time: start + length,
         },
       });
       laneClips.push(clipId);
@@ -102,7 +109,8 @@ export function registerTakeLaneTrack(
       type: "TakeLane",
       properties: laneProps,
       methods: {
-        create_midi_clip: (_start) => createClip("is_midi_clip", _start),
+        create_midi_clip: (_start, _length) =>
+          createClip("is_midi_clip", _start, _length),
         create_audio_clip: (_file, _start) =>
           createClip("is_audio_clip", _start),
       },
