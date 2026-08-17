@@ -206,6 +206,49 @@ describe("ppal-select", () => {
     expect(viewOnly.view).toBe("session");
     expect(viewOnly.selectedTrack).toBeUndefined();
     expect(viewOnly.selectedScene).toBeUndefined();
+
+    // Test 16: A target that isn't there is refused, not silently skipped, and
+    // in the same words whichever spelling named it.
+    const expectNoTarget = async (
+      args: Record<string, unknown>,
+      message: string,
+    ) => {
+      const result = await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: args,
+      });
+
+      expect(
+        isToolError(result),
+        `expected ${JSON.stringify(args)} to fail`,
+      ).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(message);
+    };
+
+    await expectNoTarget({ path: "t99" }, 'no track at "t99"');
+    await expectNoTarget({ trackIndex: 99 }, 'no track at "t99"');
+    await expectNoTarget(
+      { trackIndex: 99, trackType: "return" },
+      'no track at "rt99"',
+    );
+    await expectNoTarget({ path: "s99" }, 'no scene at "s99"');
+    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
+    await expectNoTarget({ path: "t0/s99" }, 'no scene at "s99"');
+    await expectNoTarget({ path: "t0/d99" }, 'no device at "t0/d99"');
+
+    // Test 17: A refused select changes nothing — a scene selection would have
+    // switched to session view before it ever looked for the scene.
+    await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { view: "arrangement" },
+    });
+    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
+
+    const afterFailure = parseToolResult<SelectResult>(
+      await ctx.client!.callTool({ name: "ppal-select", arguments: {} }),
+    );
+
+    expect(afterFailure.view).toBe("arrangement");
   });
 });
 
