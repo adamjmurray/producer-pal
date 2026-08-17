@@ -26,6 +26,7 @@ function expectRestrictions(args: string[]): void {
   expect(flat).toContain("--disable shell_tool");
   expect(flat).toContain("--disable unified_exec");
   expect(flat).toContain("--disable multi_agent");
+  expect(flat).toContain("--disable apps");
   expect(args).toContain("--ignore-user-config");
   expect(args).toContain("--ignore-rules");
   expect(args).toContain('approval_policy="never"');

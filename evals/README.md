@@ -128,6 +128,10 @@ to Producer Pal: built-in tools off, settings and plugins off, other MCP servers
 ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
 (which is also what keeps the user's memory files out of the run).
 
+On Codex the plugin part takes its own flag, `--disable apps`.
+`--ignore-user-config` does not reach the installed apps, and they come back as
+MCP tools — a second Producer Pal among them, competing with the eval's server.
+
 A looping model is bounded the same way it is on the AI SDK path. Neither CLI
 takes a step limit we can rely on, so the transports count the model's actions
 (each tool call, each reply) off the event stream and kill the subprocess once

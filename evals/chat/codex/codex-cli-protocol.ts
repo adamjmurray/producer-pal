@@ -151,6 +151,11 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     "unified_exec",
     "--disable",
     "multi_agent",
+    // Off, or every installed Codex app comes back as MCP tools — including a
+    // second Producer Pal competing with the eval's own server.
+    // --ignore-user-config does not cover it.
+    "--disable",
+    "apps",
     "--model",
     resolveCodexModel(input.model),
     "-c",
