@@ -272,14 +272,11 @@ function readDrumPadByPath(
     throw new Error(`Device not found at path: ${liveApiPath}`);
   }
 
-  // Get drum pads and find the one matching the note
+  // Get drum pads and find the one matching the note. The grammar already
+  // validated the note, so the only one that doesn't convert is the catch-all
+  // "p*" — and Live has no drum_pads entry for it, so it reports as not found.
   const drumPads = device.getChildren("drum_pads");
   const targetMidiNote = noteNameToMidi(drumPadNote);
-
-  if (targetMidiNote == null) {
-    throw new Error(`Invalid drum pad note name: ${drumPadNote}`);
-  }
-
   const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
 
   if (!pad) {

@@ -287,7 +287,17 @@ describe("readDevice with drum pad path", () => {
     setupKickPadMocks();
 
     expect(() => readDevice({ path: "t1/d0/pXYZ" })).toThrow(
-      "Invalid drum pad note name: XYZ",
+      /"pXYZ" names no drum pad/,
+    );
+  });
+
+  // The catch-all is a chain with in_note -1, not a drum_pads entry, so there
+  // is nothing here to find. read-device reads it through the rack instead.
+  it("should report the catch-all pad as not found", () => {
+    setupKickPadMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*" })).toThrow(
+      "Drum pad * not found",
     );
   });
 

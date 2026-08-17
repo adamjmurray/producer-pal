@@ -12,6 +12,7 @@
 // anything is created or moved. See dev/Object-Paths.md.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =
@@ -47,6 +48,8 @@ const DEVICE = /^d(\d+)$/;
 const CHAIN = /^c(\d+)$/;
 const RETURN_CHAIN = /^rc(\d+)$/;
 const DRUM_PAD = /^p(.+)$/;
+/** The drum rack pad that catches every note no other pad claims. */
+const CATCH_ALL_PAD = "*";
 
 // What results said before 2.2.0: a bare track index, or trackIndex/sceneIndex.
 // Honored with a warning rather than refused — a model pasting back what a
@@ -59,6 +62,29 @@ const LIVE_API_COLLECTION = {
   chain: "chains",
   "return-chain": "return_chains",
 } as const;
+
+/** One step down a device chain: the track root, or a segment under it. */
+type DeviceTailStep = DeviceSegment["kind"] | "root";
+
+const DEVICE_KIND = "device";
+const A_DEVICE = `"d<index>"`;
+
+// How to name each step, and what may follow it. Without these rules a path
+// like "t0/c0" or "t0/d0/d1" parses and then fails as a missing object, which
+// reads as "your rack is wrong" rather than "your path is".
+const DEVICE_TAIL_RULES: Record<
+  DeviceTailStep,
+  { noun: string; expected: string }
+> = {
+  root: { noun: "a track", expected: A_DEVICE },
+  device: {
+    noun: "a device",
+    expected: `"c<index>", "rc<index>", or "p<note>"`,
+  },
+  chain: { noun: "a chain", expected: A_DEVICE },
+  "return-chain": { noun: "a return chain", expected: A_DEVICE },
+  "drum-pad": { noun: "a drum pad", expected: `"c<index>" or ${A_DEVICE}` },
+};
 
 /**
  * Parses a path into what it names. Does not check that the object exists —
@@ -280,8 +306,62 @@ function parseTail(
   return {
     kind: "device",
     root,
-    segments: tail.map((segment) => parseDeviceSegment(segment, label, input)),
+    segments: parseDeviceTail(tail, label, input),
   };
+}
+
+/**
+ * Parses the device chain after the root, checking each segment can follow the
+ * one before it.
+ * @param tail - Segments after the root
+ * @param label - Param name for error messages
+ * @param input - Full path, for error messages
+ * @returns The parsed device-chain segments
+ */
+function parseDeviceTail(
+  tail: string[],
+  label: string,
+  input: string,
+): DeviceSegment[] {
+  let previous: DeviceTailStep = "root";
+
+  return tail.map((raw) => {
+    const segment = parseDeviceSegment(raw, label, input);
+
+    if (!canFollow(segment.kind, previous)) {
+      const { noun, expected } = DEVICE_TAIL_RULES[previous];
+
+      throw pathError(
+        label,
+        input,
+        `"${raw}" can't follow ${noun}; expected ${expected}`,
+      );
+    }
+
+    previous = segment.kind;
+
+    return segment;
+  });
+}
+
+/**
+ * Whether a segment can sit under the step before it. A track holds devices, a
+ * device holds chains, return chains, and drum pads, and each of those holds
+ * devices — so the tail alternates, except that a drum pad also takes a `c<n>`
+ * picking among the chains that share its note.
+ * @param kind - The segment's kind
+ * @param previous - The step it would sit under
+ * @returns True when that is nesting Live has
+ */
+function canFollow(
+  kind: DeviceSegment["kind"],
+  previous: DeviceTailStep,
+): boolean {
+  if (kind === DEVICE_KIND) return previous !== DEVICE_KIND;
+
+  return (
+    previous === DEVICE_KIND || (kind === "chain" && previous === "drum-pad")
+  );
 }
 
 /**
@@ -387,7 +467,22 @@ function parseDeviceSegment(
 
   const drumPad = DRUM_PAD.exec(segment);
 
-  if (drumPad) return { kind: "drum-pad", note: drumPad[1] as string };
+  if (drumPad) {
+    const note = drumPad[1] as string;
+
+    // Live keys drum pads by note, so an unparseable one names no pad. Caught
+    // here because the read path and the write path fail differently otherwise
+    // — one throws, one warn-skips with a message about the rack.
+    if (note !== CATCH_ALL_PAD && noteNameToMidi(note) == null) {
+      throw pathError(
+        label,
+        input,
+        `"${segment}" names no drum pad; use a note name (e.g. "pC1"), or "p*" for the catch-all pad`,
+      );
+    }
+
+    return { kind: "drum-pad", note };
+  }
 
   throw pathError(
     label,

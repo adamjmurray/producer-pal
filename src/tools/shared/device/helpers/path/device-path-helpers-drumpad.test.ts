@@ -556,15 +556,14 @@ describe("device-path-helpers", () => {
       expect(result.container!.id).toBe("chain-36");
     });
 
-    it("returns null for invalid note name during auto-creation", () => {
+    it("rejects an unparseable pad note before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // Invalid note name (not a valid MIDI note)
-      const result = resolveInsertionPath("t0/d0/pInvalidNote");
-
-      expect(result.container).toBeNull();
+      expect(() => resolveInsertionPath("t0/d0/pInvalidNote")).toThrow(
+        /"pInvalidNote" names no drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
@@ -589,15 +588,15 @@ describe("device-path-helpers", () => {
       expect(result.container).not.toBeNull();
     });
 
-    it("returns null when the segment after the pad note is not a chain index", () => {
+    it("rejects a return chain after a pad note before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // "rc0" (not "c<n>") exercises the non-"c" branch of chain-index parsing.
-      const result = resolveInsertionPath("t0/d0/pC1/rc0");
-
-      expect(result.container).toBeNull();
+      // A pad holds chains and devices; "rc0" names neither.
+      expect(() => resolveInsertionPath("t0/d0/pC1/rc0")).toThrow(
+        /"rc0" can't follow a drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 

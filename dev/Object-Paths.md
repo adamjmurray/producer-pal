@@ -21,10 +21,17 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path    := root ( "/" segment )*
 root    := "t"<n> | "rt"<n> | "mt" | "s"<n>
-segment := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note>
+segment := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
 ```
 
-All indices are 0-based.
+All indices are 0-based. `<note>` is a note name (`C1`, `F#2`); `p*` is the drum
+rack's catch-all pad.
+
+Segments have to nest the way Live does, and a path that doesn't is a parse
+error rather than a missing object later: a track holds devices, a device holds
+chains, return chains, and drum pads, and each of those holds devices. A drum
+pad also takes a `c<n>`, picking among the chains that share its note. So
+`t0/c0` and `t0/d0/d1` are rejected.
 
 | Path           | Names                             | Live API                              |
 | -------------- | --------------------------------- | ------------------------------------- |
@@ -39,6 +46,7 @@ All indices are 0-based.
 | `t0/d0/c1`     | rack chain                        | `... chains 1`                        |
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                 |
 | `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                    |
+| `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1        |
 | `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0` |
 
 Chains auto-create when referenced (up to 16). Take lanes auto-create up to the

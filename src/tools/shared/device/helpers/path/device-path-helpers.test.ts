@@ -709,18 +709,14 @@ describe("device-path-helpers", () => {
         expect(result.container).toBeNull();
       });
 
-      it("returns null when drum pad navigation returns non-chain target type", () => {
-        // resolveDrumPadFromPath returns {target: null, targetType: "device"}
-        // which is not "chain" so auto-creation is skipped → falls through to return null.
-        // Path "t0/d0/pC1/c0/c1": remainingSegments=["c0","c1"].
-        // "c0" is consumed as chain index, "c1" doesn't start with "d" →
-        // resolveDrumPadFromPath returns {target: null, targetType: "device"}.
+      it("rejects a chain after the pad's own chain", () => {
+        // "pC1/c0" is already a chain, and a chain holds devices — so the
+        // grammar rejects "c1" instead of resolving to nothing.
         registerDrumRackOnC1();
 
-        const result = resolveInsertionPath("t0/d0/pC1/c0/c1");
-
-        expect(result.container).toBeNull();
-        expect(result.position).toBeNull();
+        expect(() => resolveInsertionPath("t0/d0/pC1/c0/c1")).toThrow(
+          /"c1" can't follow a chain/,
+        );
       });
     });
   });

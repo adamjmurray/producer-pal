@@ -96,7 +96,7 @@ describe("parseObjectPath", () => {
 
   it("keeps a drum pad's note rather than an index", () => {
     // Live indexes drum_pads by MIDI note, the one place a segment isn't a
-    // Live API index. Note validity is the resolver's problem, not the parser's.
+    // Live API index. "*" is the catch-all pad.
     expect(parseObjectPath("t1/d0/pF#2")).toStrictEqual({
       kind: "device",
       root: { kind: "track", trackIndex: 1 },
@@ -189,6 +189,55 @@ describe("parseObjectPath", () => {
     expect(() => parseObjectPath("t1/d0/p")).toThrow(
       /"p" is not a device, chain, or drum pad/,
     );
+  });
+
+  // Live has no pad for a note it can't read, so "pizza" and "p36" address
+  // nothing. Caught here because the read and write paths fail differently
+  // otherwise — one throws, the other warn-skips about the rack.
+  it("rejects a drum pad whose note is unparseable", () => {
+    for (const path of ["t1/d0/pizza", "t1/d0/p36", "t1/d0/pH2", "t1/d0/pC9"]) {
+      expect(() => parseObjectPath(path)).toThrow(
+        /names no drum pad; use a note name \(e\.g\. "pC1"\), or "p\*" for the catch-all pad/,
+      );
+    }
+  });
+
+  // A path has to nest the way Live does, or it parses and then fails later as
+  // a missing object — which reads as "your rack is wrong", not "your path is".
+  it("rejects a segment that can't follow the one before it", () => {
+    const cases: [string, RegExp][] = [
+      ["t0/c0", /"c0" can't follow a track; expected "d<index>"/],
+      ["mt/rc0", /"rc0" can't follow a track/],
+      ["t0/pC1", /"pC1" can't follow a track/],
+      [
+        "t0/d0/d1",
+        /"d1" can't follow a device; expected "c<index>", "rc<index>", or "p<note>"/,
+      ],
+      ["t0/d0/c0/c1", /"c1" can't follow a chain; expected "d<index>"/],
+      ["t0/d0/rc0/rc1", /"rc1" can't follow a return chain/],
+      [
+        "t0/d0/pC1/rc0",
+        /"rc0" can't follow a drum pad; expected "c<index>" or "d<index>"/,
+      ],
+    ];
+
+    for (const [path, message] of cases) {
+      expect(() => parseObjectPath(path)).toThrow(message);
+    }
+  });
+
+  it("accepts every nesting Live actually has", () => {
+    for (const path of [
+      "t0/d0",
+      "t0/d0/c1/d2",
+      "t0/d0/rc0/d1",
+      "t0/d0/pC1",
+      "t0/d0/pC1/d0",
+      "t0/d0/pC1/c1/d0",
+      "t0/d0/p*/c0/d0/pD1/d0",
+    ]) {
+      expect(() => parseObjectPath(path)).not.toThrow();
+    }
   });
 
   it("uses the caller's label in messages", () => {
