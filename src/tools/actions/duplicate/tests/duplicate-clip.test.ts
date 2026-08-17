@@ -307,6 +307,36 @@ describe("duplicate - clip duplication", () => {
       expect(result).toHaveLength(2);
     });
 
+    // 3 positions over 2 tracks doesn't divide, and the shorter list has to
+    // cycle PAST its end (t2, t3, t2) rather than run out at two copies.
+    it("cycles tracks past the end when the two counts don't divide", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+      registerTrackWithArrangementDup(3, { has_midi_input: 1 });
+      registerArrangementClip(2, 0, 8);
+      registerArrangementClip(2, 1, 24);
+      registerArrangementClip(3, 0, 16);
+
+      const result = (await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1,5|1,7|1",
+        toPath: "t2,t3",
+      })) as Array<{ path: string; arrangementStart: string }>;
+
+      expect(
+        result.map((copy) => [copy.path, copy.arrangementStart]),
+      ).toStrictEqual([
+        ["t2", "3|1"],
+        ["t3", "5|1"],
+        ["t2", "7|1"],
+      ]);
+    });
+
     it("rejects a bare track in toPath with no position, naming both options", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),

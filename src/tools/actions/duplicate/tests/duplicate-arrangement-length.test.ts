@@ -308,10 +308,10 @@ describe("duplicate - arrangementLength functionality", () => {
       expect.anything(),
     );
 
-    expect(result).toMatchObject({
-      id: expect.any(String) as string,
-      path: expect.any(String) as string,
-      arrangementStart: expect.any(String) as string,
+    expect(result).toStrictEqual({
+      id: livePath.track(0).arrangementClip(0),
+      path: "t0",
+      arrangementStart: "5|1",
     });
   });
 });

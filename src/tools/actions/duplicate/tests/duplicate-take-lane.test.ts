@@ -514,6 +514,40 @@ describe("duplicate take lane", () => {
     );
   });
 
+  // One destination can't tell the guard apart from its opposite: `some` and
+  // `every` agree on a one-item list. With two, the alias reaches a destination
+  // that named no lane, which is the thing being refused.
+  it("ignores the takeLane alias when any toPath names a lane", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    const mainTrack = registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+
+    registerArrangementClip(1, 0, 32);
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l2,t1",
+      arrangementStart: "5|1,9|1",
+      takeLane: "1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    // t1 named no lane, so it stays on the main lane rather than inheriting one.
+    expect(mainTrack.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id src_clip",
+      32,
+    );
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('takeLane ignored — "toPath" already names'),
+    );
+  });
+
   // takeLane "new" appends a lane every time it is resolved, so the lane has to
   // be resolved once per DESTINATION TRACK, not once per copy.
   it("stacks every copy on one new lane when toPath repeats a track", async () => {

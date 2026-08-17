@@ -4,8 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
@@ -16,25 +14,10 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import {
+  registerArrangementTrack,
   setupArrangementClipMocks,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
-
-/**
- * Register a track whose create_midi_clip returns a distinct arrangement clip.
- * @param trackIndex - 0-based track index
- */
-function registerArrangementTrack(trackIndex: number): void {
-  registerMockObject(`track-${trackIndex}`, {
-    path: livePath.track(trackIndex),
-    methods: {
-      create_midi_clip: () => ["id", `arrangement_clip_${trackIndex}`],
-    },
-  });
-  registerMockObject(`arrangement_clip_${trackIndex}`, {
-    properties: { length: 4 },
-  });
-}
 
 describe("createClip path param", () => {
   beforeEach(() => {

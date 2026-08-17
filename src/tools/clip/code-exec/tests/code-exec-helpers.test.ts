@@ -447,6 +447,61 @@ describe("code-exec-helpers", () => {
         LiveAPI.from = originalFrom;
       }
     });
+
+    // A clip on a take lane has to say so. Bare "t0" points user code at the
+    // main lane, which is a different clip in the same spot.
+    it("names the take lane in an arrangement clip's path", () => {
+      const mockClip = {
+        id: "clip-789",
+        path: livePath.track(0).takeLane(2).arrangementClip(0),
+        trackIndex: 0,
+        takeLaneIndex: 2,
+        getProperty: mockGetProperty({
+          name: "Take 3",
+          length: 4,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 0,
+        }),
+      };
+
+      const originalFrom = LiveAPI.from;
+
+      LiveAPI.from = vi.fn((pathLike: unknown) =>
+        String(pathLike) === "live_set"
+          ? ({
+              getProperty: mockGetProperty({
+                tempo: 120,
+                signature_numerator: 4,
+                signature_denominator: 4,
+                scale_mode: 0,
+              }),
+            } as unknown as LiveAPI)
+          : ({
+              getProperty: vi.fn(() => null),
+              getColor: vi.fn().mockReturnValue(null),
+            } as unknown as LiveAPI),
+      ) as typeof LiveAPI.from;
+
+      try {
+        const result = buildCodeExecutionContext(
+          mockClip as unknown as LiveAPI,
+          "arrangement",
+          0,
+          1,
+          undefined,
+          16,
+        );
+
+        expect(result.location).toStrictEqual({
+          view: "arrangement",
+          path: "t0/l2",
+          arrangementStartBeats: 16,
+        });
+      } finally {
+        LiveAPI.from = originalFrom;
+      }
+    });
   });
 
   describe("getClipLocationInfo", () => {

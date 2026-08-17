@@ -173,6 +173,24 @@ describe("parseObjectPath", () => {
     }
   });
 
+  // Every segment pattern is anchored at both ends. Unanchored, "l1x" reads as
+  // lane 1 and the junk vanishes — so a typo silently lands somewhere the
+  // caller never named, which is worse than being told the path is wrong.
+  it("rejects trailing junk after an indexed segment", () => {
+    for (const path of [
+      "t0x",
+      "rt0x",
+      "s0x",
+      "t0/s0x",
+      "t0/l1x",
+      "t0/d0x",
+      "t0/d0/c0x",
+      "t0/d0/rc0x",
+    ]) {
+      expect(() => parseObjectPath(path)).toThrow(/invalid path/);
+    }
+  });
+
   it("rejects parts under a scene", () => {
     expect(() => parseObjectPath("s0/t1")).toThrow(/a scene has no parts/);
   });

@@ -10,6 +10,7 @@ import {
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
+import { registerArrangementTrack } from "./create-clip-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -304,6 +305,33 @@ describe("createClip take lane paths", () => {
     );
   });
 
+  // One destination can't tell the guard apart from its opposite: `some` and
+  // `every` agree on a one-item list. With two, the alias names a lane for a
+  // destination that never asked for one, which is the thing being refused.
+  it("ignores the takeLane alias when any destination's path names a lane", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    const mainTrack = registerArrangementTrack(1);
+
+    await createClip({
+      path: "t0/l2,t1",
+      arrangementStart: "1|1",
+      notes: "C3",
+      takeLane: "1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    // t1 named no lane, so it stays on the main lane rather than inheriting one.
+    expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(mainTrack.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('takeLane ignored — "path" already names'),
+    );
+  });
+
   // The alias is 1-based and the segment is the Live API index, so takeLane 2
   // and l1 have to land on the same lane.
   it("reads the takeLane alias as the same lane the path segment names", async () => {
@@ -348,7 +376,7 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
       { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
     ]);
 
-    expect(result.get("t0/l+0")).toBeDefined();
+    expect(result.get("t0/l+0")!.path).toBe("live_set tracks 0 take_lanes 0");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('targeting take lane "t0/l0"'),
     );
@@ -357,8 +385,8 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   // One written "l+" cycled over several arrangementStarts shares its ordinal,
   // so all its positions land on the one lane instead of splitting across three.
   it("resolves one lane per written l+, not per position", () => {
-    registerTakeLaneTrack({ initialLanes: 0 });
-    registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
+    const track0 = registerTakeLaneTrack({ initialLanes: 0 });
+    const track1 = registerTakeLaneTrack({ initialLanes: 0, trackIndex: 1 });
 
     const result = resolveCreateClipTakeLanes(null, [
       { trackIndex: 0, arrangementStart: "1|1", takeLane: "new" },
@@ -367,6 +395,11 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
     ]);
 
     expect([...result.keys()]).toStrictEqual(["t0/l+0", "t1/l+0"]);
+    // The keys alone can't catch a lost dedup — Map.set on a key that's already
+    // there adds no key. The append count is what proves t0's second position
+    // reused the lane its first one made.
+    expect(track0.call).toHaveBeenCalledTimes(1);
+    expect(track1.call).toHaveBeenCalledTimes(1);
   });
 
   // Two written "l+" on one track are two appends, so each gets its own lane.

@@ -125,6 +125,21 @@ describe("select path param", () => {
     expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
   });
 
+  // Only a disagreement is worth refusing. A model that says the same thing
+  // twice — path plus the param it replaced, in agreement — gets the selection,
+  // not an error about how it phrased the request.
+  it("accepts a path that agrees with the param it duplicates", () => {
+    registerMockObject("track_2", { path: livePath.track(2), type: "Track" });
+    registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
+    const songView = setupSongViewMock();
+
+    select({ path: "t2", trackIndex: 2 });
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_2");
+
+    select({ path: "s3", sceneIndex: 3 });
+    expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
+  });
+
   it("refuses a path that disagrees with the param it duplicates", () => {
     expect(() => select({ path: "t2", trackIndex: 3 })).toThrow(
       "select failed: path and trackIndex name different targets",
