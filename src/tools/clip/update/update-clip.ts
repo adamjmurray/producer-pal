@@ -27,7 +27,6 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -38,8 +37,11 @@ import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
-import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
-import { resolveMoveDestinations } from "./helpers/update-clip-session-helpers.ts";
+import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import {
+  resolveMoveDestinations,
+  resolveRequestedClips,
+} from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
@@ -148,10 +150,11 @@ export async function updateClip(
   const deadline = context.deadline ?? null;
 
   // ids and path both name clips to update, so a call may use either or both —
-  // neither contradicts the other the way two destinations would.
+  // neither contradicts the other the way two destinations would. Entries stay
+  // in place, nulls included, so toPath lines up with what the caller named.
   const requestedIds = [
     ...(ids == null ? [] : parseCommaSeparatedIds(ids)),
-    ...(path == null ? [] : clipIdsAtPaths(path, "updateClip")),
+    ...(path == null ? [] : clipIdPerPath(path, "updateClip")),
   ];
 
   if (requestedIds.length === 0) {
@@ -160,14 +163,6 @@ export async function updateClip(
     return [];
   }
 
-  const mutableClips = applySplittingIfNeeded(
-    validateIdTypes(requestedIds, "clip", "updateClip", {
-      skipInvalid: true,
-    }),
-    split,
-    context,
-  );
-
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
@@ -175,11 +170,11 @@ export async function updateClip(
   // instead of being swallowed by the per-clip warn-and-skip wrapper.
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
-  const moveDestinations = resolveMoveDestinations(
-    toPath,
-    toSlot,
-    mutableClips.length,
+  const { clips, destinationById } = resolveRequestedClips(
+    requestedIds,
+    resolveMoveDestinations(toPath, toSlot, requestedIds.length),
   );
+  const mutableClips = applySplittingIfNeeded(clips, split, context);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -232,7 +227,7 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
-      toSlot: moveDestinations[i] ?? null,
+      toSlot: destinationById.get(clip.id) ?? null,
       nonSurvivorClipIds,
       context,
       updatedClips,

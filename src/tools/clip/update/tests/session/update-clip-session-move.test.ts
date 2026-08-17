@@ -15,9 +15,9 @@ import {
   handlePositionOperations,
   handleSessionSlotMove,
   resolveMoveDestinations,
-} from "../helpers/update-clip-session-helpers.ts";
+} from "../../helpers/update-clip-session-helpers.ts";
 
-vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
+vi.mock(import("../../helpers/update-clip-arrangement-helpers.ts"), () => ({
   handleArrangementOperations: vi.fn(),
 }));
 

@@ -33,7 +33,24 @@ export function clipIdsAtPaths(
   tool: string,
   label = "path",
 ): string[] {
-  const ids: string[] = [];
+  return clipIdPerPath(paths, tool, label).filter((id) => id != null);
+}
+
+/**
+ * The same lookup, keeping one entry per path with null where a path named no
+ * clip. Callers that line paths up against another list — move destinations —
+ * need the positions to hold even when an entry resolves to nothing.
+ * @param paths - Comma-separated session positions (e.g. "t0/s1,t2/s3")
+ * @param tool - Tool name, for warnings
+ * @param label - Param name the paths came from, for warnings
+ * @returns One clip id per path entry, in path order
+ */
+export function clipIdPerPath(
+  paths: string,
+  tool: string,
+  label = "path",
+): Array<string | null> {
+  const ids: Array<string | null> = [];
 
   for (const entry of pathEntries(paths, label)) {
     try {
@@ -51,6 +68,8 @@ export function clipIdsAtPaths(
     } catch (error) {
       console.warn(`${tool}: ${errorMessage(error)}`);
     }
+
+    ids.push(null);
   }
 
   return ids;

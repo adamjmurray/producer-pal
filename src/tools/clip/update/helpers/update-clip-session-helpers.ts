@@ -22,6 +22,7 @@ import {
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 
 interface SlotPosition {
@@ -39,8 +40,8 @@ interface SlotPosition {
  * first — which is a move that reports success and loses a clip.
  * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3")
  * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
- * @param clipCount - How many clips the batch is updating
- * @returns One destination per clip, null where there is nothing to move to
+ * @param clipCount - How many clips the call named, before any are dropped
+ * @returns One destination per named clip, null where there is nothing to move to
  */
 export function resolveMoveDestinations(
   rawToPath: string | undefined,
@@ -79,6 +80,67 @@ export function resolveMoveDestinations(
   }
 
   return none;
+}
+
+interface RequestedClips {
+  clips: LiveAPI[];
+  destinationById: Map<string, SlotPosition>;
+}
+
+/**
+ * Resolves the requested ids to clips, drops repeats, and gives each clip the
+ * destination named at its own position in the call.
+ *
+ * Pairing happens here, against what the caller asked for, because an id that
+ * doesn't resolve has to take its own destination with it. Pairing the
+ * survivors by position instead slides every later clip onto the wrong slot,
+ * and a move overwrites whatever it lands on.
+ * @param requestedIds - Ids in call order, null where a path named no clip
+ * @param destinations - One destination per requested entry
+ * @returns The clips to update, and their destinations keyed by clip id
+ */
+export function resolveRequestedClips(
+  requestedIds: Array<string | null>,
+  destinations: Array<SlotPosition | null>,
+): RequestedClips {
+  const clips: LiveAPI[] = [];
+  const destinationById = new Map<string, SlotPosition>();
+  const seen = new Set<string>();
+  let repeats = 0;
+
+  for (const [index, id] of requestedIds.entries()) {
+    if (id == null) continue;
+
+    // One id at a time so the "does not exist" warnings stay in one place and
+    // the survivor keeps the position it was named at.
+    const clip = validateIdTypes([id], "clip", "updateClip", {
+      skipInvalid: true,
+    })[0];
+
+    if (clip == null) continue;
+
+    // An id and a path can name the same clip, as can a repeated id. Updating
+    // it twice compounds every operation — duplicateLoop would double it again.
+    if (seen.has(clip.id)) {
+      repeats++;
+      continue;
+    }
+
+    seen.add(clip.id);
+    clips.push(clip);
+
+    const destination = destinations[index];
+
+    if (destination != null) destinationById.set(clip.id, destination);
+  }
+
+  if (repeats > 0) {
+    console.warn(
+      `ids/path named ${repeats} clip(s) more than once; each clip was updated once`,
+    );
+  }
+
+  return { clips, destinationById };
 }
 
 interface HandlePositionOperationsArgs {
@@ -168,7 +230,7 @@ function pathDestinations(toPath: string): Array<SlotPosition | null> {
  * disagree — a caller that named the wrong number of slots gets told which
  * clips moved rather than watching copies land on top of each other.
  * @param destinations - Destinations, in order
- * @param clipCount - How many clips the batch is updating
+ * @param clipCount - How many clips the call named, before any are dropped
  * @param isPath - Whether the destinations came from toPath (for the warning)
  * @returns Exactly clipCount destinations, padded with null
  */
