@@ -184,7 +184,7 @@ describe("ppal-read-clip", () => {
 
     // Verify warning is emitted for empty slot
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toBe("WARNING: no clip at trackIndex 8, sceneIndex 0");
+    expect(warnings[0]).toBe("WARNING: no clip at t8/s0");
 
     // Test 2: Non-existent scene throws error
     const invalidSceneResult = await ctx.client!.callTool({
@@ -194,7 +194,7 @@ describe("ppal-read-clip", () => {
 
     expect(isToolError(invalidSceneResult)).toBe(true);
     expect(getToolErrorMessage(invalidSceneResult)).toContain(
-      "sceneIndex 999 does not exist",
+      'no scene at "s999"',
     );
 
     // Test 3: Non-existent track throws error
@@ -205,7 +205,7 @@ describe("ppal-read-clip", () => {
 
     expect(isToolError(invalidTrackResult)).toBe(true);
     expect(getToolErrorMessage(invalidTrackResult)).toContain(
-      "trackIndex 999 does not exist",
+      'no track at "t999"',
     );
   });
 });

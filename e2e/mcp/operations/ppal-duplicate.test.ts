@@ -227,7 +227,7 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.slot).toBe(`${emptyMidiTrack2}/0`);
+    expect(dupClipSession.path).toBe(`t${emptyMidiTrack2}/s0`);
 
     await sleep(100);
 
@@ -247,9 +247,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupClipMultiSlots).toHaveLength(3);
-    expect(dupClipMultiSlots[0]!.slot).toBe("10/0");
-    expect(dupClipMultiSlots[1]!.slot).toBe("10/1");
-    expect(dupClipMultiSlots[2]!.slot).toBe("10/2");
+    expect(dupClipMultiSlots[0]!.path).toBe("t10/s0");
+    expect(dupClipMultiSlots[1]!.path).toBe("t10/s1");
+    expect(dupClipMultiSlots[2]!.path).toBe("t10/s2");
 
     await sleep(100);
 
@@ -363,9 +363,10 @@ describe("ppal-duplicate", () => {
       },
     });
 
-    // The copy still lands where an old caller asked for it...
-    expect(parseToolResult<DuplicateClipResult>(result).slot).toBe(
-      `${emptyMidiTrack}/7`,
+    // The copy still lands where an old caller asked for it, and the result
+    // reports it in the spelling that replaced the param...
+    expect(parseToolResult<DuplicateClipResult>(result).path).toBe(
+      `t${emptyMidiTrack}/s7`,
     );
 
     // ...and the model is told to stop using the param.
@@ -467,8 +468,7 @@ interface DuplicateSceneResult {
 
 interface DuplicateClipResult {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   arrangementStart?: string;
   name?: string;
 }
