@@ -62,8 +62,14 @@ segment.
 
 Breaking, and the release notes need to say so.
 
-Still open: `update-clip`'s `toPath` refuses a take-lane clip, and error
-messages that name `trackIndex`/`sceneIndex`.
+The error messages that still named `trackIndex`/`sceneIndex` moved onto the
+grammar afterward.
+
+Still open: moving a take-lane clip. `update-clip` refuses one, and `duplicate`
+won't promote one to the main lane. Both hit the same Live API shape —
+`duplicate_clip_to_arrangement` always targets the main lane, and `delete_clip`
+is a no-op on a take-lane clip, so copy-then-delete leaves the source behind.
+Tracked separately; the warnings name the limitation.
 
 ### Phase 3 — reach ✅
 
