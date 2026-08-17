@@ -9,7 +9,7 @@ import {
   processDrumPads,
   updateDrumPadSoloStates,
 } from "../device-reader-drum-helpers.ts";
-import { hasInstrumentInDevices } from "../device-state-helpers.ts";
+import { deviceHasInstrument } from "../device-state-helpers.ts";
 
 // Mock device-path-helpers
 vi.mock(import("../path/device-path-helpers.ts"), () => ({
@@ -26,7 +26,7 @@ vi.mock(import("../device-state-helpers.ts"), () => ({
     ...(chain._state !== undefined ? { state: chain._state } : {}),
     ...options,
   })),
-  hasInstrumentInDevices: vi.fn(() => true),
+  deviceHasInstrument: vi.fn(() => true),
 }));
 
 // Test helper for creating drum pads with optional state
@@ -145,7 +145,10 @@ describe("device-reader-drum-helpers", () => {
 
           return null;
         }),
-        getChildren: vi.fn(() => []),
+        // One device, so instrument detection has something to inspect
+        getChildren: vi.fn((child: string) =>
+          child === "devices" ? [{ id: `device-${inNote}` }] : [],
+        ),
       }) as Record<string, unknown>;
 
     // Helper to create mock device
@@ -440,12 +443,13 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads![0]!.chains).toBeUndefined();
     });
 
-    it("reports deviceCount and no-instrument for pad chains at the depth limit", () => {
+    it("reports deviceCount at the depth limit but still detects the instrument", () => {
       const device = createMockDevice([{ inNote: 36, name: "Kick" }]);
       const deviceInfo: DeviceInfoResult = {};
 
-      // depth === maxDepth → chains report deviceCount instead of expanding,
-      // and cannot know whether an instrument is present.
+      // depth === maxDepth → chains report deviceCount instead of expanding.
+      // Detection asks Live rather than the expanded tree, so it survives that:
+      // reporting no-instrument here dropped nested racks from the drum map.
       processDrumPads(
         device as unknown as LiveAPI,
         deviceInfo,
@@ -457,6 +461,14 @@ describe("device-reader-drum-helpers", () => {
       );
 
       expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/pC1/c0`);
+      expect(deviceInfo.drumPads![0]!.hasInstrument).toBeUndefined();
+    });
+
+    it("flags a pad whose chain holds no instrument", () => {
+      vi.mocked(deviceHasInstrument).mockReturnValueOnce(false);
+
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Empty" }]);
+
       expect(deviceInfo.drumPads![0]!.hasInstrument).toBe(false);
     });
 
@@ -489,7 +501,7 @@ describe("device-reader-drum-helpers", () => {
     it("keeps hasInstrument unset when only some layered chains have an instrument", () => {
       // some() semantics: one instrument anywhere on the pad is enough, so the
       // pad must NOT be flagged hasInstrument: false.
-      vi.mocked(hasInstrumentInDevices)
+      vi.mocked(deviceHasInstrument)
         .mockReturnValueOnce(true)
         .mockReturnValueOnce(false);
 

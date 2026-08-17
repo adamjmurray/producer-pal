@@ -42,11 +42,13 @@ function registerChainWithMixer({
   pan = 0,
   sends = [],
   type = "DrumChain",
+  disabled = [],
 }: {
   gainDb?: number;
   pan?: number;
   sends?: { value: number; display_value: number }[];
   type?: "Chain" | "DrumChain";
+  disabled?: ("volume" | "panning")[];
 } = {}): MixerMocks {
   const chain = registerMockObject("chain-1", {
     path: chainPath,
@@ -64,12 +66,18 @@ function registerChainWithMixer({
   const volume = registerMockObject("volume-1", {
     path: `${mixerPath} volume`,
     type: "DeviceParameter",
-    properties: { display_value: gainDb },
+    properties: {
+      display_value: gainDb,
+      is_enabled: disabled.includes("volume") ? 0 : 1,
+    },
   });
   const panning = registerMockObject("panning-1", {
     path: `${mixerPath} panning`,
     type: "DeviceParameter",
-    properties: { value: pan },
+    properties: {
+      value: pan,
+      is_enabled: disabled.includes("panning") ? 0 : 1,
+    },
   });
 
   for (const [i, send] of sends.entries()) {
@@ -195,6 +203,36 @@ describe("applyChainMixer", () => {
     );
   });
 
+  // Live accepts a set on a macro-mapped parameter and ignores it, so an
+  // unguarded write would report success and change nothing.
+  it("warns and skips a macro-mapped gain, per parameter", () => {
+    const { volume, panning } = registerChainWithMixer({
+      disabled: ["volume"],
+    });
+
+    applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
+
+    expect(volume.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('chain "Snare" gainDb is disabled'),
+    );
+    // Mapping one parameter must not block the others on the same chain
+    expect(panning.set).toHaveBeenCalledWith("value", 0.25);
+  });
+
+  it("warns and skips a macro-mapped pan", () => {
+    const { panning } = registerChainWithMixer({ disabled: ["panning"] });
+
+    applyChainMixer(chainApi(), { pan: -1 });
+
+    expect(panning.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('chain "Snare" pan is disabled'),
+    );
+  });
+
   describe("sends", () => {
     const silent = { value: 0, display_value: -70 };
 
@@ -278,6 +316,22 @@ describe("applyChainMixer", () => {
       expect(outlet).toHaveBeenCalledWith(
         1,
         'no return chain matching "a" (rack has no return chains; they can only be added in Live)',
+      );
+    });
+
+    it("warns and skips a macro-mapped send", () => {
+      registerChainWithSends();
+      const send = registerMockObject("send-1", {
+        type: "DeviceParameter",
+        properties: { is_enabled: 0 },
+      });
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "b Reverb" });
+
+      expect(send.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('chain "Snare" send "b Reverb" is disabled'),
       );
     });
 

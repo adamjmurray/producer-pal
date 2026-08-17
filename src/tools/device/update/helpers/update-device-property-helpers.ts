@@ -36,6 +36,7 @@ export interface UpdatePropertyOptions {
   sendReturn?: string;
   chokeGroup?: number;
   mappedPitch?: string;
+  force?: boolean;
 }
 
 /**
@@ -65,10 +66,11 @@ export function updateDeviceProperties(
     sendReturn,
     chokeGroup,
     mappedPitch,
+    force,
   } = options;
 
   if (params != null) {
-    setParamValues(target, params);
+    setParamValues(target, params, "updateDevice", force);
   }
 
   if (actions != null) {

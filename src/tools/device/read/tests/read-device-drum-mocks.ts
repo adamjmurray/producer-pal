@@ -23,6 +23,7 @@ interface ChainProps {
   mute?: number;
   solo?: number;
   choke_group?: number;
+  in_note?: number;
   out_note?: number;
   color?: number;
   deviceIds?: string[];
@@ -135,6 +136,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
           solo: chainProps.solo ?? 0,
           muted_via_solo: 0,
           choke_group: chainProps.choke_group ?? 0,
+          in_note: chainProps.in_note ?? note,
           out_note: chainProps.out_note ?? 36,
           ...(chainProps.color ? { color: chainProps.color } : {}),
           devices: chainDeviceIds.flatMap((d) => ["id", d]),

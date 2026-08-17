@@ -86,10 +86,17 @@ function rack(): LiveAPI {
  * Resolve a nested param target for a `sample` write, which takes the
  * device-creating path.
  * @param prefix - The path prefix addressing a slot under the rack
+ * @param force - Allow the DrumSampler-to-Simpler swap
  * @returns The resolved target, or null when resolution warn-skips
  */
-function resolveSampleTarget(prefix: string): LiveAPI | null {
-  return resolveNestedParamTarget(rack(), prefix, "sample", "createDevice");
+function resolveSampleTarget(prefix: string, force = false): LiveAPI | null {
+  return resolveNestedParamTarget(
+    rack(),
+    prefix,
+    "sample",
+    "createDevice",
+    force,
+  );
 }
 
 /**
@@ -145,7 +152,39 @@ describe("resolveNestedParamTarget", () => {
       expect(target?.id).toBe("existing-simpler");
     });
 
-    it("replaces a DrumSampler with a Simpler and emits a notice", () => {
+    it("skips a DrumSampler pad without force, leaving the device intact", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerDevice("ds-1", "DrumSampler");
+
+      const target = resolveSampleTarget("pC1/d0");
+
+      expectWarnedNull(target, "sample write SKIPPED on pad C1");
+      expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+      expectNoDeviceInserted(chain);
+    });
+
+    it("names force:true and the non-destructive alternatives in the skip warning", () => {
+      registerRack(["chain-c1"]);
+      registerDrumChain("chain-c1", 36, ["ds-1"]);
+      registerDevice("ds-1", "DrumSampler");
+
+      resolveSampleTarget("pC1/d0");
+
+      const warning = vi
+        .mocked(outlet)
+        .mock.calls.map((call) => String(call[1]))
+        .join("\n");
+
+      expect(warning).toContain("force:true");
+      expect(warning).toContain("another pad");
+      expect(warning).toContain('ppal-duplicate type:"device"');
+    });
+
+    it("replaces a DrumSampler with a Simpler under force, and says so", () => {
       registerRack(["chain-c1"]);
       const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
         insert_device: () => ["id", "new-simpler"],
@@ -154,14 +193,14 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("ds-1", "DrumSampler");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      const target = resolveSampleTarget("pC1/d0");
+      const target = resolveSampleTarget("pC1/d0", true);
 
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
       expect(target?.id).toBe("new-simpler");
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("replaced DrumSampler"),
+        expect.stringContaining("replaced the DrumSampler"),
       );
     });
 
@@ -174,10 +213,24 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("ds-1", "Drum Sampler");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      const target = resolveSampleTarget("pC1/d0");
+      const target = resolveSampleTarget("pC1/d0", true);
 
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
       expect(target?.id).toBe("new-simpler");
+    });
+
+    it("skips a leniently-matched 'Drum Sampler' without force", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerDevice("ds-1", "Drum Sampler");
+
+      const target = resolveSampleTarget("pC1/d0");
+
+      expectWarnedNull(target, "sample write SKIPPED on pad C1");
+      expectNoDeviceInserted(chain);
     });
 
     it("skips and warns for a non-Simpler device on the pad", () => {

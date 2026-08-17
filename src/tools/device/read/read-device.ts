@@ -14,6 +14,7 @@ import {
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
+import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 
@@ -364,10 +365,48 @@ function readDrumPadNestedTarget(
     `device at index ${deviceIndex}`,
   );
 
+  // Anything after the device segment points inside it — a nested rack's own
+  // pads, chains, or devices. Without this the extra segments were dropped and
+  // the outer device came back under the requested path, so a read of a nested
+  // pad silently answered with the rack holding it.
+  const nested = remainingSegments.slice(hasChainSegment ? 2 : 1);
+
+  if (nested.length > 0) {
+    return readNestedTarget(device, nested, fullPath, options);
+  }
+
   return readDeviceShared(device, {
     ...options,
     parentPath: fullPath,
   });
+}
+
+/**
+ * Read a target further inside a device reached through a drum pad path.
+ * Navigation is shared with the write side so both accept the same paths.
+ * @param device - Device the remaining segments are relative to
+ * @param segments - Segments after the device (c/rc/d/p prefixed)
+ * @param fullPath - Full simplified path for the response
+ * @param options - Read options
+ * @returns Chain or device information
+ */
+function readNestedTarget(
+  device: LiveAPI,
+  segments: string[],
+  fullPath: string,
+  options: ReadOptions,
+): Record<string, unknown> {
+  const { target, targetType } = navigateRemainingSegments(device, segments);
+
+  if (target == null) {
+    throw new Error(`Invalid path: ${fullPath}`);
+  }
+
+  if (targetType === "chain") {
+    return readDrumPadChain(target, fullPath, options);
+  }
+
+  return readDeviceShared(target, { ...options, parentPath: fullPath });
 }
 
 /**
