@@ -1,7 +1,11 @@
 [build]
 command = "npm run docs:build"
 publish = "docs/.vitepress/dist"
-ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF docs/ src/shared/version.ts src/tools/ src/skills/ scripts/build-and-release/generate-docs-markdown.ts scripts/build-and-release/generate-tool-schema-docs.ts"
+# Watches all of src/ because the tool reference's example output is produced by
+# running the tools: notation formats the notes, the adapter dispatches, the
+# connect helpers build the appended blocks. Listing subpaths went stale as soon
+# as that landed.
+ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF docs/ src/ scripts/build-and-release/generate-docs-markdown.ts scripts/build-and-release/tool-reference/"
 
 [build.environment]
 NODE_VERSION = "24"
