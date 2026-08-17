@@ -1,0 +1,208 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// A real pad copy, via the rack's own copy_pad. Everything that makes a pad
+// sound the way it does lives on its chain — trim, sends, choke group, devices —
+// and copy_pad brings all of it. A device-level duplicate can't: it moves the
+// device out of its chain and leaves the chain (and its fader) behind.
+
+import { errorMessage } from "#src/shared/error-utils.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { findDrumPad } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  buildDrumPadPath,
+  extractDevicePath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+
+export interface DuplicateDrumPadResult {
+  id: string;
+  path: string;
+}
+
+interface PadTarget {
+  /** Live API path to the drum rack holding the pad */
+  rackPath: string;
+  /** Note name as the caller wrote it */
+  note: string;
+  midi: number;
+}
+
+/**
+ * Copies a drum pad onto another pad of the same rack, bringing its chains and
+ * everything attached to them: trim, pan, sends, choke group, and devices.
+ * @param path - Source pad path, e.g. "t0/d0/pC1"
+ * @param toPath - Destination pad path in the same rack, e.g. "t0/d0/pD1"
+ * @param name - Optional name for the chain(s) the copy creates
+ * @returns The destination pad, or null when the copy was skipped
+ */
+export function duplicateDrumPad(
+  path: string,
+  toPath: string,
+  name?: string,
+): DuplicateDrumPadResult | null {
+  const source = resolvePadTarget(path, "path");
+  const destination = resolvePadTarget(toPath, "toPath");
+
+  if (source == null || destination == null) {
+    return null;
+  }
+
+  if (source.rackPath !== destination.rackPath) {
+    console.warn(
+      `duplicate: a drum-pad copy stays within one rack, but path "${path}" and toPath "${toPath}" are in different racks`,
+    );
+
+    return null;
+  }
+
+  const rack = LiveAPI.from(source.rackPath);
+
+  if (!rack.exists()) {
+    console.warn(`duplicate: no device at "${path}"`);
+
+    return null;
+  }
+
+  if (!canCopyPads(rack, path)) {
+    return null;
+  }
+
+  const sourcePad = findDrumPad(rack.path, source.note);
+
+  if (sourcePad == null || sourcePad.getChildren("chains").length === 0) {
+    console.warn(`duplicate: drum pad "${path}" is empty, nothing to copy`);
+
+    return null;
+  }
+
+  const chainsBefore =
+    findDrumPad(rack.path, destination.note)?.getChildren("chains").length ?? 0;
+
+  rack.call("copy_pad", source.midi, destination.midi);
+
+  return finishPadCopy(rack, destination, toPath, chainsBefore, name);
+}
+
+/**
+ * Reports whether a rack can copy pads, warning when it can't.
+ *
+ * Live hard-crashes on copy_pad when has_drum_pads is 0 — a Drum Rack nested
+ * inside another Drum Rack's pad is padless and reports 0. Never call copy_pad
+ * without this check.
+ * @param rack - The rack the pads belong to
+ * @param path - Source pad path, for the warning
+ * @returns True when copy_pad is safe to call
+ */
+function canCopyPads(rack: LiveAPI, path: string): boolean {
+  if (rack.getProperty("can_have_drum_pads") !== 1) {
+    console.warn(`duplicate: "${path}" is not in a Drum Rack`);
+
+    return false;
+  }
+
+  if (rack.getProperty("has_drum_pads") !== 1) {
+    console.warn(
+      `duplicate: the Drum Rack at "${path}" has no pads (a Drum Rack nested in a drum pad never does), so there is nothing to copy between`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Resolves a pad path to the rack that holds it and the pad's MIDI note.
+ * @param path - The path to resolve
+ * @param label - Param name the path came from, for warnings
+ * @returns The pad target, or null when the path doesn't name one pad
+ */
+function resolvePadTarget(path: string, label: string): PadTarget | null {
+  let resolved;
+
+  try {
+    resolved = resolvePathToLiveApi(path, label);
+  } catch (e) {
+    console.warn(`duplicate: ${errorMessage(e)}`);
+
+    return null;
+  }
+
+  // A trailing chain or device segment names something inside the pad, and
+  // copy_pad only ever copies a whole pad.
+  if (
+    resolved.targetType !== "drum-pad" ||
+    resolved.remainingSegments.length > 0
+  ) {
+    console.warn(
+      `duplicate: ${label} "${path}" does not name a drum pad (expected something like "t0/d0/pC1")`,
+    );
+
+    return null;
+  }
+
+  const note = resolved.drumPadNote as string;
+  const midi = noteNameToMidi(note);
+
+  if (midi == null) {
+    console.warn(
+      `duplicate: ${label} "${path}" names the catch-all pad, which has no pad to copy`,
+    );
+
+    return null;
+  }
+
+  return { rackPath: resolved.liveApiPath, note, midi };
+}
+
+/**
+ * Confirms the copy landed, names the new chains, and describes the result.
+ * @param rack - The rack the copy happened in
+ * @param destination - The destination pad
+ * @param toPath - Destination path as written, for warnings
+ * @param chainsBefore - Chain count on the destination pad before the copy
+ * @param name - Optional name for the chain(s) the copy created
+ * @returns The destination pad, or null when nothing was copied
+ */
+function finishPadCopy(
+  rack: LiveAPI,
+  destination: PadTarget,
+  toPath: string,
+  chainsBefore: number,
+  name?: string,
+): DuplicateDrumPadResult | null {
+  const pad = findDrumPad(rack.path, destination.note);
+  const chains = pad?.getChildren("chains") ?? [];
+
+  if (pad == null || chains.length <= chainsBefore) {
+    console.warn(`duplicate: copying onto drum pad "${toPath}" had no effect`);
+
+    return null;
+  }
+
+  // Live layers rather than replaces, matching a device-based pad move onto an
+  // occupied pad. Say so, because the pad now plays both.
+  if (chainsBefore > 0) {
+    console.warn(
+      `duplicate: drum pad "${toPath}" already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
+    );
+  }
+
+  if (name != null) {
+    for (const chain of chains.slice(chainsBefore)) {
+      chain.set("name", name);
+    }
+  }
+
+  const devicePath = extractDevicePath(rack.path);
+  const noteName = midiToNoteName(destination.midi) as string;
+
+  return {
+    id: pad.id,
+    path: devicePath == null ? toPath : buildDrumPadPath(devicePath, noteName),
+  };
+}

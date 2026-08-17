@@ -24,6 +24,7 @@ import {
   warnUnusedDestination,
 } from "./helpers/clip/duplicate-destination-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
+import { duplicateDrumPad } from "./helpers/duplicate-drum-pad-helpers.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import { duplicateSceneToArrangementAtPositions } from "./helpers/duplicate-position-helpers.ts";
 import {
@@ -42,7 +43,8 @@ import {
 
 interface DuplicateArgs {
   type: string;
-  id: string;
+  id?: string;
+  path?: string;
   count?: number;
 
   arrangementStart?: string;
@@ -76,6 +78,7 @@ interface DuplicateParams {
  * @param args - The parameters
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID
+ * @param args.path - Source drum pad path (drum pads only)
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
  * @param args.locator - Arrangement locator ID(s) or name(s)
@@ -99,6 +102,7 @@ export async function duplicate(
   {
     type,
     id,
+    path,
     count = 1,
     arrangementStart,
     locator,
@@ -119,7 +123,7 @@ export async function duplicate(
   context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
   // Validate basic inputs
-  validateBasicInputs(type, id, count);
+  validateBasicInputs(type, id, count, path);
 
   // Auto-configure for routing back to source
   const routeToSourceConfig = validateAndConfigureRouteToSource(
@@ -132,8 +136,13 @@ export async function duplicate(
   withoutClips = routeToSourceConfig.withoutClips;
   withoutDevices = routeToSourceConfig.withoutDevices;
 
-  // Validate the ID exists and matches the expected type
-  const object = validateIdType(id, type, "duplicate");
+  // Validate the ID exists and matches the expected type. Drum pads are named
+  // by path instead — Live indexes them by MIDI note within a rack — so there's
+  // no id to look up.
+  const object =
+    type === "drum-pad"
+      ? null
+      : validateIdType(id as string, type, "duplicate");
 
   // Resolve a clip's destination up front, so a bad path fails before anything
   // is created. Other types have no destination path.
@@ -175,17 +184,21 @@ export async function duplicate(
   // resolver folded it onto the paths already.
   warnUnusedTakeLane(type, destination, takeLane, console.warn);
 
-  // Handle device duplication (supports comma-separated toPath for multiple destinations)
+  // Both of these take comma-separated toPath for multiple destinations
+  if (type === "drum-pad") {
+    return duplicateDrumPadToPaths(path as string, toPath, name, count);
+  }
+
   if (type === "device") {
-    return duplicateDeviceWithPaths(object, toPath, name, count);
+    return duplicateDeviceWithPaths(object as LiveAPI, toPath, name, count);
   }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
   const createdObjects = await (clipDestinations != null
     ? duplicateClipWithPositions(
         clipDestinations,
-        object,
-        id,
+        object as LiveAPI,
+        id as string,
         name,
         color,
         arrangementStart,
@@ -198,8 +211,8 @@ export async function duplicate(
     : duplicateTrackOrSceneWithCount(
         type,
         destination,
-        object,
-        id,
+        object as LiveAPI,
+        id as string,
         count,
         name,
         color,
@@ -233,6 +246,52 @@ export async function duplicate(
   }
 
   return createdObjects;
+}
+
+/**
+ * Copies a drum pad to one or more destination pads.
+ * Supports comma-separated toPath for multiple destinations.
+ * @param path - Source pad path
+ * @param toPath - Destination pad path(s), comma-separated for multiple
+ * @param name - Optional name(s) for the chain(s) each copy creates
+ * @param count - Number of copies (warns if > 1)
+ * @returns Result object, or an array of them for multiple destinations
+ */
+function duplicateDrumPadToPaths(
+  path: string,
+  toPath: string | undefined,
+  name: string | undefined,
+  count: number,
+): object | object[] {
+  if (count > 1) {
+    console.warn(
+      `count ${count} ignored: a drum pad copy goes to the pads toPath names`,
+    );
+  }
+
+  const paths = pathEntries(toPath, "toPath");
+
+  // Unlike a device, a pad has no natural "next" slot to default to — the next
+  // MIDI note is as likely to be occupied as empty — so the caller must say.
+  if (paths.length === 0) {
+    throw new Error("duplicate failed: toPath is required for drum pads");
+  }
+
+  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+
+  warnExtraNames(parsedNames, paths.length, "duplicate");
+
+  const results = paths
+    .map((destination, i) =>
+      duplicateDrumPad(
+        path,
+        destination,
+        getNameForIndex(name, i, parsedNames),
+      ),
+    )
+    .filter((result) => result != null);
+
+  return results.length === 1 ? (results[0] as object) : results;
 }
 
 /**

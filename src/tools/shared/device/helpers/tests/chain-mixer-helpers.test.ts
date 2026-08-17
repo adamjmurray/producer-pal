@@ -388,7 +388,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
   });
 
-  it("phrases a copy as a copy and drops the pad-move hint", () => {
+  it("phrases a copy as a copy and points at a pad copy", () => {
     registerChainWithMixer({ gainDb: -15 });
 
     warnIfChainMixerLeftBehind(
@@ -399,7 +399,7 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      `chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
     );
   });
 

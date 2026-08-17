@@ -220,7 +220,7 @@ describe("warnUnusedDestination", () => {
     warnUnusedDestination("scene", "t2", "2/1");
 
     expect(warnSpy).toHaveBeenCalledWith(
-      'toPath ignored: only supported for clips and devices (type "scene")',
+      'toPath ignored: only supported for clips, devices, and drum pads (type "scene")',
     );
     expect(warnSpy).toHaveBeenCalledWith(
       'toSlot ignored: only supported for clips (type "scene")',

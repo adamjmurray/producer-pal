@@ -125,15 +125,11 @@ export function warnIfChainMixerLeftBehind(
   }
 
   // A track destination has no chain fader to reapply onto, so it needs
-  // update-track instead. Moving the whole pad only makes sense chain-to-chain,
-  // and never for a copy — the point of a copy is to leave the pad in place.
+  // update-track instead.
   const toChain = destination.type.endsWith("Chain");
   const tool = toChain ? "update-device" : "update-track";
   const where = toChain ? "destination chain" : "destination track";
-  const hint =
-    !isCopy && toChain && chain.type === "DrumChain"
-      ? " or move the whole pad instead (update-device with the pad path and toPath)"
-      : "";
+  const hint = padHint(isCopy, toChain, chain.type);
 
   const name = chain.getProperty("name") as string;
   const verb = isCopy ? "does not follow the copy" : "stays behind";
@@ -141,6 +137,24 @@ export function warnIfChainMixerLeftBehind(
   console.warn(
     `chain "${name}" trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
+}
+
+/**
+ * The whole-pad alternative to offer, when there is one. Both operations keep
+ * the chain — and so the trim — intact, instead of moving a device out of it.
+ * @param isCopy - True when the device is being copied, not moved
+ * @param toChain - True when the destination is a chain rather than a track
+ * @param chainType - Live type of the chain being left behind
+ * @returns Text to append to the warning, or "" when nothing applies
+ */
+function padHint(isCopy: boolean, toChain: boolean, chainType: string): string {
+  if (!toChain || chainType !== "DrumChain") {
+    return "";
+  }
+
+  return isCopy
+    ? " or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it"
+    : " or move the whole pad instead (update-device with the pad path and toPath)";
 }
 
 /**
