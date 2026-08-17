@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -21,7 +22,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 
-const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
+const PATH_SUPPORTED_TYPES = new Set(["clip", "device", "drum-pad"]);
 
 interface DeleteResult {
   id: string;
@@ -39,7 +40,7 @@ interface DeleteArgs {
  * Deletes objects by ids and/or paths
  * @param args - The parameters
  * @param args.ids - Comma-separated list of object IDs
- * @param args.path - Comma-separated paths for device/drum-pad
+ * @param args.path - Comma-separated paths for clip/device/drum-pad
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
@@ -61,19 +62,20 @@ export function deleteObject(
   // Handle path parameter - only valid for devices and drum-pads
   if (path && !PATH_SUPPORTED_TYPES.has(type)) {
     console.warn(
-      `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
+      `delete: path parameter is only valid for types "clip", "device", or "drum-pad", ignoring paths`,
     );
   }
 
   // Collect IDs from both sources
   const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
 
-  // Resolve paths to IDs for device or drum-pad types
+  // Resolve paths to IDs for the types that can be addressed by location
   if (path && PATH_SUPPORTED_TYPES.has(type)) {
-    const paths = parseCommaSeparatedIds(path);
-    const pathIds = resolvePathsToIds(paths, type);
-
-    objectIds.push(...pathIds);
+    objectIds.push(
+      ...(type === "clip"
+        ? clipIdsAtPaths(path, "delete")
+        : resolvePathsToIds(parseCommaSeparatedIds(path), type)),
+    );
   }
 
   if (objectIds.length === 0) {

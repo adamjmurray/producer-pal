@@ -16,16 +16,15 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
-  namedDestination,
-  namedHiddenDestination,
-  parseDestinationPath,
+  arrangementPath,
+  namedPath,
+  namedHiddenPath,
   requireSessionSlot,
-} from "#src/tools/shared/validation/destination-path.ts";
-import {
-  formatSlot,
-  parseSlot,
-} from "#src/tools/shared/validation/position-parsing.ts";
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
@@ -80,11 +79,11 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  slot?: string;
-  trackIndex?: number | null;
-  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
-   * (`0` is the main lane). Only present for clips on a non-main take lane. */
-  takeLane?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
+   * arrangement. A session slot pastes back into any path/toPath param; an
+   * arrangement one names a whole track, so only tools that take a track
+   * destination accept it — reach a specific arrangement clip by id. */
+  path?: string;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -105,7 +104,7 @@ export interface ReadClipResult {
 /**
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
- * @param args.slot - Session clip slot (e.g., "0/3")
+ * @param args.path - Session clip slot (e.g., "t0/s3")
  * @param args.clipId - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
  * @param context - Context object (supplies the global notation setting)
@@ -126,7 +125,7 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("Either clipId or slot must be provided");
+    throw new Error("readClip failed: clipId or path is required");
   }
 
   // Resolve clip from ID or location
@@ -135,7 +134,7 @@ export function readClip(
   if (!resolved.found) {
     if (!args.suppressEmptyWarning) {
       console.warn(
-        `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
+        `no clip at ${slotPath(trackIndex as number, sceneIndex as number)}`,
       );
     }
 
@@ -384,7 +383,7 @@ function processAudioClip(
 }
 
 /**
- * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
+ * Add clip location properties (path, plus arrangement timing)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view
@@ -397,12 +396,10 @@ function addClipLocationProperties(
   includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    result.trackIndex = clip.trackIndex;
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      result.takeLane = takeLaneIndex + 1;
-    }
+    result.path = arrangementPath(
+      clip.trackIndex as number,
+      clip.takeLaneIndex,
+    );
 
     const startTimeBeats = clip.getProperty("start_time") as number;
 
@@ -430,7 +427,7 @@ function addClipLocationProperties(
       );
     }
   } else {
-    result.slot = formatSlot(
+    result.path = slotPath(
       clip.trackIndex as number,
       clip.sceneIndex as number,
     );
@@ -450,15 +447,28 @@ function resolveClipLocation(args: ReadClipArgs): {
   sceneIndex: number | null;
 } {
   const clipId = args.clipId ?? null;
-  const path = namedDestination(args.path ?? undefined);
+  const path = namedPath(args.path ?? undefined);
+  const slot = namedHiddenPath(args.slot ?? undefined);
 
-  if (path != null) {
-    const parsed = requireSessionSlot(parseDestinationPath(path, "path"));
-
-    return { clipId, ...parsed };
+  // Honoring one and dropping the other is the silent wrong-clip bug path
+  // replaces, so refuse instead of picking — the same trade every other tool
+  // takes.
+  if (path != null && slot != null) {
+    throw new Error(
+      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+    );
   }
 
-  const slot = namedHiddenDestination(args.slot ?? undefined);
+  if (path != null) {
+    // The aliases are a fallback for a caller that did not use path.
+    if (args.trackIndex != null || args.sceneIndex != null) {
+      console.warn(
+        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+      );
+    }
+
+    return { clipId, ...requireSessionSlot(parseObjectPath(path, "path")) };
+  }
 
   if (slot != null) {
     return { clipId, ...parseSlot(slot) };

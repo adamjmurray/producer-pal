@@ -10,7 +10,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readTrack } from "../read-track.ts";
 
 interface TakeLane {
-  takeLane: number;
+  path: string;
   name: string;
   clips: Array<Record<string, unknown>>;
 }
@@ -88,10 +88,10 @@ describe("readTrack take lanes", () => {
     const takeLanes = result.takeLanes as TakeLane[];
 
     expect(takeLanes).toHaveLength(2);
-    expect(takeLanes[0]!.takeLane).toBe(1);
+    expect(takeLanes[0]!.path).toBe("t2/l0");
     expect(takeLanes[0]!.name).toBe("Take A");
     expect(takeLanes[0]!.clips.map((c) => c.id)).toStrictEqual(["clip_a"]);
-    expect(takeLanes[1]!.takeLane).toBe(2);
+    expect(takeLanes[1]!.path).toBe("t2/l1");
     expect(takeLanes[1]!.name).toBe("Take B");
     expect(takeLanes[1]!.clips.map((c) => c.id)).toStrictEqual([
       "clip_b1",

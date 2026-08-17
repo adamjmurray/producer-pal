@@ -12,6 +12,8 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { requireDeviceContainer } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
@@ -60,6 +62,22 @@ function registerGrowingRack(
   });
 }
 
+/**
+ * Resolves a path the way the device tools do, so these tests exercise the real
+ * parse rather than hand-built segments.
+ * @param path - Device path (e.g. "t0/d0/c4")
+ * @returns The resolved container
+ */
+function resolveContainer(path: string): LiveAPI {
+  const { root, segments } = requireDeviceContainer(parseObjectPath(path));
+
+  return resolveContainerWithAutoCreate(
+    root,
+    segments.filter((segment) => segment.kind !== "drum-pad"),
+    path,
+  );
+}
+
 describe("resolveContainerWithAutoCreate", () => {
   beforeEach(() => {
     clearMockRegistry();
@@ -70,7 +88,7 @@ describe("resolveContainerWithAutoCreate", () => {
     // The count is targetIndex + 1 - existing, read from the live chain list.
     const rack = registerGrowingRack(2);
 
-    resolveContainerWithAutoCreate(["t0", "d0", "c4"], "t0/d0/c4");
+    resolveContainer("t0/d0/c4");
 
     expect(rack.call).toHaveBeenCalledTimes(3);
   });
@@ -80,9 +98,7 @@ describe("resolveContainerWithAutoCreate", () => {
     // succeed (the guard is `> MAX`, not `>= MAX`).
     const rack = registerGrowingRack(0);
 
-    expect(() =>
-      resolveContainerWithAutoCreate(["t0", "d0", "c15"], "t0/d0/c15"),
-    ).not.toThrow();
+    expect(() => resolveContainer("t0/d0/c15")).not.toThrow();
     expect(rack.call).toHaveBeenCalledTimes(16);
   });
 
@@ -91,22 +107,15 @@ describe("resolveContainerWithAutoCreate", () => {
     // failure and must abort rather than be treated as a created chain.
     registerGrowingRack(0, () => ["error", "5"]);
 
-    expect(() =>
-      resolveContainerWithAutoCreate(["t0", "d0", "c0"], "t0/d0/c0"),
-    ).toThrow("Failed to create chain 1/1");
+    expect(() => resolveContainer("t0/d0/c0")).toThrow(
+      "Failed to create chain 1/1",
+    );
   });
 
-  it("ignores a segment that is neither a device nor a chain", () => {
-    // Only d / c / rc prefixes navigate; an unrecognized segment leaves the
-    // container where it was rather than being coerced into a chain lookup.
+  it("stops at the device when the path names no chain", () => {
     const rack = registerGrowingRack(0);
 
-    const container = resolveContainerWithAutoCreate(
-      ["t0", "d0", "zz"],
-      "t0/d0/zz",
-    );
-
-    expect(container.path).toBe(DEVICE_PATH);
+    expect(resolveContainer("t0/d0").path).toBe(DEVICE_PATH);
     expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });

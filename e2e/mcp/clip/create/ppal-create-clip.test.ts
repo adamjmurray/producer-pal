@@ -15,8 +15,8 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolNotices,
   parseToolResult,
-  parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
@@ -58,7 +58,7 @@ describe("ppal-create-clip", () => {
 
     expect(minimalClip.type).toBe("midi");
     expect(minimalClip.view).toBe("session");
-    expect(minimalClip.slot).toBe(`${emptyMidiTrack}/0`);
+    expect(minimalClip.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 2: Create session clip with notes
     const notesResult = await ctx.client!.callTool({
@@ -186,12 +186,15 @@ describe("ppal-create-clip", () => {
       name: "ppal-create-clip",
       arguments: { trackIndex: emptyMidiTrack, sceneIndex: 8, notes: "C3 1|1" },
     });
-    const { data: clip, warnings } =
-      parseToolResultWithWarnings<CreateClipResult>(result);
+    const clip = parseToolResult<CreateClipResult>(result);
 
     expect(clip.id).toBeDefined();
-    expect(clip.slot).toBe(`${emptyMidiTrack}/8`);
-    expect(warnings.join("\n")).toContain('the parameter is "path"');
+    expect(clip.path).toBe(`t${emptyMidiTrack}/s8`);
+    // The nudge rides the framework's "Warning:" channel, not a tool handler's
+    // "WARNING:" one, so it reads back as a notice.
+    expect(getToolNotices(result)).toContainEqual(
+      expect.stringContaining('the parameter is "path"'),
+    );
   });
 
   it("creates arrangement MIDI clips", async () => {

@@ -67,7 +67,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
       notes: "C3 1|1",
       length: "1bar",
     });
-    await createUnwarpedDrumLoop(ctx.client!, `${AUDIO_WARP_TRACK}/${SCENE}`);
+    await createUnwarpedDrumLoop(ctx.client!, `t${AUDIO_WARP_TRACK}/s${SCENE}`);
     await call("ppal-update-live-set", { tempo: 216 });
 
     const liveSet = await call<{ scenes: Array<{ id: string }> }>(
@@ -75,13 +75,15 @@ describe("ppal-duplicate with an unwarped audio source", () => {
       { include: ["scenes"] },
     );
     const dup = await call<{
-      clips: Array<{ id: string; trackIndex: number }>;
+      clips: Array<{ id: string; path: string }>;
     }>("ppal-duplicate", {
       type: "scene",
       id: liveSet.scenes[SCENE]!.id,
       arrangementStart: "49|1",
     });
-    const midiCopies = dup.clips.filter((c) => c.trackIndex === MIDI_TRACK);
+    // An arrangement clip's path is its track, so the MIDI copies are the ones
+    // whose path is the MIDI track itself.
+    const midiCopies = dup.clips.filter((c) => c.path === `t${MIDI_TRACK}`);
     const starts = [];
 
     for (const copy of midiCopies) {
@@ -104,7 +106,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     // length, and the audio timing rewrite runs underneath all of it.
     const clipId = await createUnwarpedDrumLoop(
       ctx.client!,
-      `${AUDIO_WARP_TRACK}/1`,
+      `t${AUDIO_WARP_TRACK}/s1`,
     );
 
     await halveDrumLoopRegion(ctx.client!, clipId);

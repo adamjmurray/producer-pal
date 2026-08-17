@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -201,7 +202,7 @@ describe("readDevice with path parameter", () => {
 
   it("should throw error for track-only path", () => {
     expect(() => readDevice({ path: "t1" })).toThrow(
-      "Path must include at least a device index",
+      'invalid path "t1" - a track is not a device; add a device index (e.g. "t1/d0")',
     );
   });
 

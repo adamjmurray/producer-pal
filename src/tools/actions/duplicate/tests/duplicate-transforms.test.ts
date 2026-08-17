@@ -75,7 +75,7 @@ describe("duplicate - transforms/code", () => {
       );
       expect(result).toStrictEqual({
         id: destId,
-        slot: "0/1",
+        path: "t0/s1",
         noteCount: 4,
         transformed: 2,
       });
@@ -110,8 +110,8 @@ describe("duplicate - transforms/code", () => {
         expect.anything(),
       );
       expect(result).toStrictEqual([
-        { id: dest1, slot: "0/1", noteCount: 3, transformed: 3 },
-        { id: dest2, slot: "0/2", noteCount: 3, transformed: 3 },
+        { id: dest1, path: "t0/s1", noteCount: 3, transformed: 3 },
+        { id: dest2, path: "t0/s2", noteCount: 3, transformed: 3 },
       ]);
     });
 
@@ -134,7 +134,7 @@ describe("duplicate - transforms/code", () => {
       );
       expect(result).toStrictEqual({
         id: destId,
-        slot: "0/1",
+        path: "t0/s1",
         noteCount: 8,
       });
     });
@@ -266,7 +266,7 @@ describe("duplicate - transforms/code", () => {
     });
 
     it("handles a single (non-array) updateClip result", async () => {
-      const createdObjects: object[] = [{ id: "a", slot: "0/1" }];
+      const createdObjects: object[] = [{ id: "a", path: "t0/s1" }];
 
       updateClipMock.mockReturnValueOnce({
         id: "a",
@@ -282,7 +282,7 @@ describe("duplicate - transforms/code", () => {
       );
 
       expect(createdObjects).toStrictEqual([
-        { id: "a", slot: "0/1", noteCount: 5, transformed: 3 },
+        { id: "a", path: "t0/s1", noteCount: 5, transformed: 3 },
       ]);
     });
 

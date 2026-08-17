@@ -31,7 +31,7 @@ describe("moveDeviceToPath", () => {
 
   it("blames toPath, the param every caller took the path from", () => {
     expect(() => moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toThrow(
-      'invalid toPath "x9" - "x9" is not a track',
+      'invalid toPath "x9/d0" - "x9" is not a track or scene',
     );
   });
 

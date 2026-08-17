@@ -413,11 +413,11 @@ describe("ppal-update-clip", () => {
     });
     const movedClip = parseToolResult<{
       id: string;
-      slot: string;
+      path: string;
     }>(moveResult);
 
-    // Update result should include destination slot info
-    expect(movedClip.slot).toBe(`${emptyMidiTrack}/5`);
+    // Update result should include the destination path
+    expect(movedClip.path).toBe(`t${emptyMidiTrack}/s5`);
     expect(movedClip.id).not.toBe(clip.id); // new clip ID after move
 
     await sleep(100);
@@ -430,7 +430,7 @@ describe("ppal-update-clip", () => {
     const newClip = parseToolResult<ReadClipResult>(verifyNew);
 
     expect(newClip.name).toBe("Move Me");
-    expect(newClip.slot).toBe(`${emptyMidiTrack}/5`);
+    expect(newClip.path).toBe(`t${emptyMidiTrack}/s5`);
 
     // Verify the original slot is now empty
     const verifyOld = await ctx.client!.callTool({
@@ -478,7 +478,7 @@ describe("ppal-update-clip", () => {
     });
     const stayed = parseToolResult<ReadClipResult>(verify);
 
-    expect(stayed.slot).toBe(`${emptyMidiTrack}/6`);
+    expect(stayed.path).toBe(`t${emptyMidiTrack}/s6`);
     expect(stayed.name).toBe("Renamed Anyway");
   });
 
@@ -496,8 +496,8 @@ describe("ppal-update-clip", () => {
       arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/7` },
     });
 
-    expect(parseToolResult<{ slot: string }>(result).slot).toBe(
-      `${emptyMidiTrack}/7`,
+    expect(parseToolResult<{ path: string }>(result).path).toBe(
+      `t${emptyMidiTrack}/s7`,
     );
     expect(getToolNotices(result)).toContainEqual(
       expect.stringContaining('param "toSlot" is deprecated'),

@@ -6,9 +6,9 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  isTakeLaneRequested,
-  normalizeTakeLaneTarget,
+  assertAllTakeLanesFit,
   resolveTakeLane,
+  takeLaneKey,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
@@ -98,63 +98,59 @@ export function resolveClipTimingContext(
 }
 
 /**
- * Resolve the take lane per arrangement track. Returns a lane for each track
- * the request targets; an empty map means the main lane. Warns (and ignores
- * takeLane) for session-only requests and auto-creates lanes as needed. Like
- * the main lane, creating over an existing clip replaces/truncates it (no
- * overlap guard).
- * @param takeLane - Raw takeLane argument (0/null = main, 1+ = lane, "new")
+ * Resolve the take lane each arrangement destination names, auto-creating lanes
+ * as needed. Like the main lane, creating over an existing clip
+ * replaces/truncates it (no overlap guard).
  * @param takeLaneName - Name for a newly created lane
- * @param sessionSlotCount - Number of session slots in this request
- * @param arrangementPositions - Resolved arrangement track/position pairs
- * @returns Take lane LiveAPI keyed by track index, empty for the main lane
+ * @param arrangementPositions - Resolved arrangement destinations
+ * @returns Take lane LiveAPI keyed by {@link takeLaneKey}, empty for main lanes
  */
 export function resolveCreateClipTakeLanes(
-  takeLane: number | string | null,
   takeLaneName: string | null,
-  sessionSlotCount: number,
   arrangementPositions: ArrangementPosition[],
-): Map<number, LiveAPI> {
-  const lanes = new Map<number, LiveAPI>();
+): Map<string, LiveAPI> {
+  const lanes = new Map<string, LiveAPI>();
 
-  // No arrangement positions to target: warn-and-ignore without validating the
-  // value. Mirrors duplicate.ts's gate (takeLane is normalized only when it can
-  // apply) so an LLM passing garbage on a session-only create doesn't throw.
-  if (arrangementPositions.length === 0) {
-    if (isTakeLaneRequested(takeLane)) {
-      console.warn(
-        "createClip: takeLane ignored for session clips (arrangement-only)",
-      );
-    }
+  // Lanes are permanent (Live has no delete), so check the whole call's
+  // capacity before creating a lane on any of it — otherwise a cap error on the
+  // last destination strands empty lanes on all the earlier ones.
+  assertAllTakeLanesFit(arrangementPositions);
 
-    return lanes;
-  }
+  // Resolve once per destination rather than once per clip — otherwise a single
+  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  for (const position of arrangementPositions) {
+    const { trackIndex, takeLane: target } = position;
 
-  const target = normalizeTakeLaneTarget(takeLane);
+    if (target == null) continue;
 
-  if (target == null) return lanes;
+    const key = takeLaneKey(position);
 
-  if (sessionSlotCount > 0) {
-    console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
+    if (lanes.has(key)) continue;
+
+    const { lane, laneIndex } = resolveTakeLane(
+      trackFor(position),
+      target,
+      takeLaneName,
     );
-  }
 
-  // "new" appends a lane, so resolve once per track rather than once per clip —
-  // otherwise a track with two positions gets two fresh lanes.
-  for (const trackIndex of new Set(
-    arrangementPositions.map((position) => position.trackIndex),
-  )) {
-    const track = LiveAPI.from(livePath.track(trackIndex));
-    const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
-
-    lanes.set(trackIndex, lane);
+    lanes.set(key, lane);
     console.warn(
-      `createClip: targeting take lane ${laneNumber} on track ${trackIndex}. Expand the take-lanes arrow on the track header in Live to see it.`,
+      `createClip: targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
     );
   }
 
   return lanes;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The Live API track an arrangement destination sits on.
+ * @param position - An arrangement destination
+ * @returns The track LiveAPI
+ */
+function trackFor(position: ArrangementPosition): LiveAPI {
+  return LiveAPI.from(livePath.track(position.trackIndex));
 }
 
 /**

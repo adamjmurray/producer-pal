@@ -6,12 +6,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  assertAllTakeLanesFit,
   isTakeLaneClip,
   isTakeLaneRequested,
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
-  resolveTakeLaneForDuplicate,
+  warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./take-lane-test-helpers.ts";
 
@@ -38,52 +39,42 @@ describe("isTakeLaneClip", () => {
   });
 });
 
-describe("resolveTakeLaneForDuplicate", () => {
-  it("ignores (and warns for) takeLane on a non-clip duplicate", () => {
+describe("warnUnusedTakeLane", () => {
+  it("warns for takeLane on a non-clip duplicate", () => {
     const warn = vi.fn();
 
-    expect(
-      resolveTakeLaneForDuplicate("track", "arrangement", 2, warn),
-    ).toBeNull();
+    warnUnusedTakeLane("track", "arrangement", 2, warn);
+
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("only supported when duplicating clips"),
     );
   });
 
-  it("does not warn for a non-clip duplicate when no take lane was requested", () => {
+  it("warns for takeLane on a session-destination clip duplicate", () => {
     const warn = vi.fn();
 
-    expect(
-      resolveTakeLaneForDuplicate("track", "arrangement", 0, warn),
-    ).toBeNull();
-    expect(warn).not.toHaveBeenCalled();
-  });
+    warnUnusedTakeLane("clip", "session", 3, warn);
 
-  it("ignores (and warns for) takeLane on a session-destination clip duplicate", () => {
-    const warn = vi.fn();
-
-    expect(resolveTakeLaneForDuplicate("clip", "session", 3, warn)).toBeNull();
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("session destination"),
     );
   });
 
-  it("does not warn for a session clip duplicate when no take lane was requested", () => {
+  it("stays quiet when no take lane was requested", () => {
     const warn = vi.fn();
 
-    expect(
-      resolveTakeLaneForDuplicate("clip", "session", null, warn),
-    ).toBeNull();
+    warnUnusedTakeLane("track", "arrangement", 0, warn);
+    warnUnusedTakeLane("clip", "session", null, warn);
+
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("normalizes the target for an arrangement clip duplicate", () => {
+  it("stays quiet for an arrangement clip duplicate, which uses it", () => {
     const warn = vi.fn();
 
-    expect(resolveTakeLaneForDuplicate("clip", "arrangement", 2, warn)).toBe(2);
-    expect(
-      resolveTakeLaneForDuplicate("clip", "arrangement", "new", warn),
-    ).toBe("new");
+    warnUnusedTakeLane("clip", "arrangement", 2, warn);
+    warnUnusedTakeLane("clip", "arrangement", "new", warn);
+
     expect(warn).not.toHaveBeenCalled();
   });
 });
@@ -118,9 +109,11 @@ describe("normalizeTakeLaneTarget", () => {
     expect(normalizeTakeLaneTarget("new")).toBe("new");
   });
 
-  it("coerces positive integers (number or string)", () => {
-    expect(normalizeTakeLaneTarget(3)).toBe(3);
-    expect(normalizeTakeLaneTarget("2")).toBe(2);
+  // The param is 1-based, the target is the Live API index.
+  it("coerces positive integers (number or string) to a 0-based index", () => {
+    expect(normalizeTakeLaneTarget(3)).toBe(2);
+    expect(normalizeTakeLaneTarget("2")).toBe(1);
+    expect(normalizeTakeLaneTarget(1)).toBe(0);
   });
 
   it("throws on invalid values", () => {
@@ -135,9 +128,9 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 1 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneNumber } = resolveTakeLane(trackApi, "new");
+    const { lane, laneIndex } = resolveTakeLane(trackApi, "new");
 
-    expect(laneNumber).toBe(2);
+    expect(laneIndex).toBe(1);
     expect(lane.path).toBe("live_set tracks 0 take_lanes 1");
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
   });
@@ -146,9 +139,9 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 2 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneNumber } = resolveTakeLane(trackApi, 1);
+    const { lane, laneIndex } = resolveTakeLane(trackApi, 0);
 
-    expect(laneNumber).toBe(1);
+    expect(laneIndex).toBe(0);
     expect(lane.path).toBe("live_set tracks 0 take_lanes 0");
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
@@ -157,9 +150,9 @@ describe("resolveTakeLane", () => {
     const track = registerTakeLaneTrack({ initialLanes: 0 });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { lane, laneNumber } = resolveTakeLane(trackApi, 3);
+    const { lane, laneIndex } = resolveTakeLane(trackApi, 2);
 
-    expect(laneNumber).toBe(3);
+    expect(laneIndex).toBe(2);
     expect(lane.path).toBe("live_set tracks 0 take_lanes 2");
     expect(track.call).toHaveBeenCalledTimes(3);
   });
@@ -184,6 +177,9 @@ describe("resolveTakeLane", () => {
     );
   });
 
+  // The two ways past the cap need different advice: an "l+" on a full track is
+  // out of room, while "l9" is a bad number on any track — telling that caller
+  // to delete lanes sends them the wrong way.
   it("enforces the take lane cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
     const trackApi = LiveAPI.from(livePath.track(0));
@@ -192,19 +188,28 @@ describe("resolveTakeLane", () => {
       /reached the 8 take lane limit/,
     );
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
-      /reached the 8 take lane limit/,
+      /take lane "l9" is out of range: a track has "l0" through "l7"/,
     );
   });
 
+  it("calls an out-of-range lane out of range on an empty track", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(() =>
+      resolveTakeLane(LiveAPI.from(livePath.track(0)), MAX_TAKE_LANES),
+    ).toThrow(/take lane "l8" is out of range/);
+  });
+
   it("allows targeting exactly the cap-numbered lane (boundary is > not >=)", () => {
-    // Targeting lane MAX_TAKE_LANES (8) when 8 already exist is at the cap, not
-    // over it — it must resolve, not throw. Guards the `>` vs `>=` boundary.
+    // Targeting the last lane MAX_TAKE_LANES allows (index 7) when 8 already
+    // exist is at the cap, not over it — it must resolve, not throw. Guards the
+    // `>` vs `>=` boundary.
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
     const trackApi = LiveAPI.from(livePath.track(0));
 
-    const { laneNumber } = resolveTakeLane(trackApi, MAX_TAKE_LANES);
+    const { laneIndex } = resolveTakeLane(trackApi, MAX_TAKE_LANES - 1);
 
-    expect(laneNumber).toBe(MAX_TAKE_LANES);
+    expect(laneIndex).toBe(MAX_TAKE_LANES - 1);
   });
 
   it("does not name a newly created lane when the name is empty string", () => {
@@ -217,5 +222,58 @@ describe("resolveTakeLane", () => {
 
     expect(lane.set).not.toHaveBeenCalledWith("name", expect.anything());
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
+  });
+});
+
+describe("assertAllTakeLanesFit", () => {
+  it("counts the lanes earlier destinations will create", () => {
+    // l7 auto-creates 8 lanes, leaving no room for l+. Checking each
+    // destination against the pre-call count misses this and throws mid-resolve,
+    // after those 8 permanent lanes already exist.
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: 7 },
+        { trackIndex: 0, takeLane: "new" },
+      ]),
+    ).toThrow(/reached the 8 take lane limit/);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  it("allows a call whose lanes all fit", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    // l+ takes lane 0, then l7 fills up to lane 7: 8 lanes, exactly the cap.
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: "new" },
+        { trackIndex: 0, takeLane: 7 },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("counts repeated l+ on one track as the single lane it resolves to", () => {
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: "new" },
+        { trackIndex: 0, takeLane: "new" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("counts each track separately and ignores main-lane destinations", () => {
+    registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
+
+    expect(() =>
+      assertAllTakeLanesFit([
+        { trackIndex: 0, takeLane: 7 },
+        { trackIndex: 1, takeLane: "new" },
+        { trackIndex: 0, takeLane: null },
+      ]),
+    ).not.toThrow();
   });
 });

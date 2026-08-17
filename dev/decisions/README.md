@@ -90,3 +90,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0022](0022-audio-work-lives-in-companion-skills.md)    | Audio generation and analysis live in companion skills                |
 | [0023](0023-live-api-objects-are-pooled-per-request.md) | LiveAPI objects are released and pooled, never held across requests   |
 | [0024](0024-fetch-stalls-are-a-harness-problem.md)      | The ~2s `fetch` stall is fixed in the harness, not the portal         |
+| [0025](0025-object-path-grammar.md)                     | One object-path grammar, scoped to clips and devices                  |

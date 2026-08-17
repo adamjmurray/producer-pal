@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  assertTakeLaneCapacity,
+  assertAllTakeLanesFit,
   resolveTakeLane,
-  type ResolvedTakeLane,
+  takeLaneKey,
+  type ArrangementTrack,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -17,146 +17,90 @@ import {
   readAllClipNotes,
 } from "#src/tools/shared/clip-notes.ts";
 import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-import {
   getMinimalClipInfo,
   type MinimalClipInfo,
 } from "../duplicate-helpers.ts";
 
 /**
- * Duplicate a MIDI clip onto a take lane at one or more arrangement positions.
+ * Resolve every take lane a duplicate's destinations name, auto-creating as
+ * needed.
  *
- * Take lanes have no `duplicate_clip_to_arrangement`, so this re-creates the
- * clip on the lane via `create_midi_clip` and copies the notes plus loop/marker
- * properties. MIDI only: audio sources warn and are skipped (no v1 take-lane
- * audio support). Like the main lane, re-creating over an existing clip
- * replaces/truncates it (no overlap guard).
+ * Lanes are permanent (Live has no delete), so every destination's capacity is
+ * checked before any lane is created — a cap error partway through would strand
+ * the lanes already made. MIDI only: an audio source warns and gets no lanes,
+ * which skips its lane copies while its main-lane copies still run.
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
- * @param destTrackIndices - Track per copy, parallel to positionsInBeats
- * @param positionsInBeats - Target arrangement start positions in Ableton beats
- * @param name - Base name (comma-separated for per-clip names)
- * @param color - Base color (comma-separated, cycles)
- * @param target - Normalized take lane target (lane number or "new")
+ * @param targets - Destinations, in copy order
  * @param takeLaneName - Name for a take lane newly created by this call
- * @returns Array of minimal clip info objects for the created clips
+ * @returns Lanes keyed by {@link takeLaneKey}
  */
-export function duplicateClipsToTakeLane(
+export function resolveDuplicateTakeLanes(
   sourceClip: LiveAPI,
   id: string,
-  destTrackIndices: number[],
-  positionsInBeats: number[],
-  name: string | undefined,
-  color: string | undefined,
-  target: TakeLaneTarget,
+  targets: ArrangementTrack[],
   takeLaneName: string | undefined,
-): object[] {
+): Map<string, LiveAPI> {
+  const laneTargets = targets.filter((target) => target.takeLane != null);
+
+  if (laneTargets.length === 0) return new Map();
+
   if (sourceClip.getProperty("is_midi_clip") !== 1) {
     console.warn(
-      `duplicate: takeLane supports MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
+      `duplicate: take lanes hold MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
     );
 
-    return [];
+    return new Map();
   }
 
-  const length = sourceClip.getProperty("length") as number;
-  const destTracks = [...new Set(destTrackIndices)].map((trackIndex) => ({
-    trackIndex,
-    track: LiveAPI.from(livePath.track(trackIndex)),
-  }));
+  assertAllTakeLanesFit(laneTargets);
 
-  // Lanes are permanent (Live has no delete), so check every track's capacity
-  // before creating a lane on any of them — otherwise a cap error on the last
-  // track strands an empty lane on all the earlier ones.
-  for (const { track } of destTracks) {
-    assertTakeLaneCapacity(track, target);
+  const lanes = new Map<string, LiveAPI>();
+
+  // Resolve once per destination rather than once per copy — otherwise a single
+  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  for (const destination of laneTargets) {
+    const { trackIndex } = destination;
+    const target = destination.takeLane as TakeLaneTarget;
+    const key = takeLaneKey(destination);
+
+    if (lanes.has(key)) continue;
+
+    const { lane, laneIndex } = resolveTakeLane(
+      LiveAPI.from(livePath.track(trackIndex)),
+      target,
+      takeLaneName,
+    );
+
+    lanes.set(key, lane);
+    console.warn(
+      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}". ` +
+        "Expand the take-lanes arrow on the track header in Live to see it.",
+    );
   }
 
-  // One lane per destination track, resolved once: with target "new", asking
-  // per copy would append a fresh lane for every position.
-  const lanes = new Map(
-    destTracks.map(({ trackIndex, track }) => [
-      trackIndex,
-      resolveTakeLane(track, target, takeLaneName),
-    ]),
-  );
-
-  const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
-  const parsedColors = parseCommaSeparatedColors(
-    color,
-    positionsInBeats.length,
-  );
-
-  warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
-
-  // Warn-and-continue on per-position failures: take lanes are append-only in
-  // Live (no delete), so abandoning earlier successful clips on a hard throw
-  // would leave them silently stranded. Mirrors create-clip-loop-helpers.ts.
-  const created: MinimalClipInfo[] = [];
-
-  for (let i = 0; i < positionsInBeats.length; i++) {
-    const startBeats = positionsInBeats[i] as number;
-    // Both maps are keyed off the same destination track list
-    const { lane } = lanes.get(
-      destTrackIndices[i] as number,
-    ) as ResolvedTakeLane;
-
-    try {
-      created.push(
-        copyMidiClipToTakeLane(
-          sourceClip,
-          lane,
-          startBeats,
-          length,
-          getNameForIndex(name, i, parsedNames),
-          getColorForIndex(color, i, parsedColors),
-        ),
-      );
-    } catch (error) {
-      console.warn(
-        `duplicate: failed to create take-lane clip at beat ${startBeats}: ${errorMessage(error)}`,
-      );
-    }
-  }
-
-  const laneNumbers = [
-    ...new Set([...lanes.values()].map(({ laneNumber }) => laneNumber)),
-  ];
-
-  console.warn(
-    `duplicate: created on take lane${laneNumbers.length > 1 ? "s" : ""} ${laneNumbers.join(", ")}. ` +
-      "Expand the take-lanes arrow on the track header in Live to see it.",
-  );
-
-  return created;
+  return lanes;
 }
 
 /**
  * Re-create a MIDI clip on a take lane, copying the source's notes and
- * loop/marker/signature properties.
+ * loop/marker/signature properties. Like the main lane, re-creating over an
+ * existing clip replaces/truncates it (no overlap guard).
  * @param sourceClip - The clip being copied
  * @param lane - The destination take lane LiveAPI object
  * @param startBeats - Arrangement start position in Ableton beats
- * @param length - Source clip length in beats (clip creation + overlap window)
  * @param name - Name for the new clip
  * @param color - Color for the new clip
  * @returns Minimal clip info for the created clip
  */
-function copyMidiClipToTakeLane(
+export function copyMidiClipToTakeLane(
   sourceClip: LiveAPI,
   lane: LiveAPI,
   startBeats: number,
-  length: number,
   name: string | undefined,
   color: string | undefined,
 ): MinimalClipInfo {
+  const length = sourceClip.getProperty("length") as number;
   const newClipResult = lane.call(
     "create_midi_clip",
     startBeats,

@@ -80,7 +80,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        slot: "0/0",
+        path: "t0/s0",
         length: "4bar", // 16 beats = 4 bars in 4/4
         warping: true,
       });
@@ -104,7 +104,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        slot: "0/0",
+        path: "t0/s0",
         length: "2bar",
         warping: true,
       });
@@ -134,13 +134,13 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
-          slot: "0/0",
+          path: "t0/s0",
           length: "1bar",
           warping: true,
         },
         {
           id: "audio_clip_0_1",
-          slot: "0/1",
+          path: "t0/s1",
           length: "1bar",
           warping: true,
         },
@@ -237,7 +237,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "1|1",
         length: "2bar",
         warping: true,
@@ -260,7 +260,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "5|1",
         length: "4bar",
         warping: true,
@@ -297,21 +297,21 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "arrangement_audio_clip_0",
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "1|1",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_1",
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "2|1",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_2",
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "3|1",
           length: "1bar",
           warping: true,
@@ -390,7 +390,7 @@ describe("createClip - audio clips", () => {
       // Length should come from Live API, not calculated
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        slot: "0/0",
+        path: "t0/s0",
         length: "3bar+n/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
         warping: true,
       });
@@ -408,13 +408,13 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
-          slot: "0/0",
+          path: "t0/s0",
           length: "2bar",
           warping: true,
         },
         {
           id: "audio_clip_0_1",
-          slot: "0/1",
+          path: "t0/s1",
           length: "2bar",
           warping: true,
         },
@@ -616,7 +616,7 @@ describe("createClip - audio clip warping", () => {
 
     expect(result).toStrictEqual({
       id: "audio_clip_0_0",
-      slot: "0/0",
+      path: "t0/s0",
       length: "1bar", // 4 beats in 4/4
       warping: true,
     });

@@ -11,7 +11,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
   description:
     "Delete objects. Supports tracks, scenes, clips, devices, and drum pads. " +
-    "Use ids for most types; path for devices/drum pads.",
+    "Use ids for most types; path for clips, devices, and drum pads.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -21,10 +21,10 @@ export const toolDefDelete = defineTool("ppal-delete", {
       default: "comma-separated ID(s) to delete (must be same type)",
       smallModel: "object ID to delete",
     }),
-    path: param(z.string().optional(), {
+    path: param(z.coerce.string().optional(), {
       default:
-        "comma-separated device/drum-pad paths to delete (e.g., 't0/d1', 't1/d0/pC1/d0', 't1/d0/pC1')",
-      smallModel: "device/drum-pad path to delete (e.g., 't0/d1')",
+        "comma-separated paths to delete: session clips ('t0/s1'), devices ('t0/d1'), drum pads ('t1/d0/pC1')",
+      smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",
     }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z

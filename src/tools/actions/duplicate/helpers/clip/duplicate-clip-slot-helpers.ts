@@ -9,6 +9,7 @@ import {
   clipCopyBlocker,
   copyClipToSlot,
 } from "#src/tools/shared/copy-clip-to-slot.ts";
+import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
@@ -80,7 +81,7 @@ export function duplicateClipSlot(
 
   if (newClip == null) {
     console.warn(
-      `clip ${sourceClip.id} was not duplicated: no clip landed at ${toTrackIndex}/${toSceneIndex}`,
+      `clip ${sourceClip.id} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
 
     return null;

@@ -14,10 +14,10 @@ import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts"
 import {
   handlePositionOperations,
   handleSessionSlotMove,
-  resolveMoveDestination,
-} from "../helpers/update-clip-session-helpers.ts";
+  resolveMoveDestinations,
+} from "../../helpers/update-clip-session-helpers.ts";
 
-vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
+vi.mock(import("../../helpers/update-clip-arrangement-helpers.ts"), () => ({
   handleArrangementOperations: vi.fn(),
 }));
 
@@ -153,7 +153,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
       noteCount: 5,
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -238,7 +238,7 @@ describe("handleSessionSlotMove", () => {
     );
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
-      slot: "2/1",
+      path: "t2/s1",
     });
   });
 
@@ -264,7 +264,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "123",
-      slot: "2/3",
+      path: "t2/s3",
     });
     // No duplicate_clip_to should have been called
     expect(outlet).not.toHaveBeenCalledWith(
@@ -294,7 +294,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "destination slot 99/99 does not exist",
+      "destination t99/s99 does not exist",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({ id: "123" });
@@ -354,7 +354,7 @@ describe("handleSessionSlotMove", () => {
       1,
       expect.stringContaining("is frozen"),
     );
-    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, slot: "1/2" });
+    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, path: "t1/s2" });
   });
 
   it("should not move an audio clip to a MIDI track", () => {
@@ -389,7 +389,7 @@ describe("handleSessionSlotMove", () => {
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 123 was not moved: no clip landed at 1/2, so the original was kept",
+      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips[0]).toMatchObject({ id: "123" });
   });
@@ -408,7 +408,7 @@ describe("handleSessionSlotMove", () => {
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 123 was not moved: no clip landed at 1/2, so the original was kept",
+      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({ id: "123" });
@@ -425,13 +425,16 @@ describe("handleSessionSlotMove", () => {
       destHasClip: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(1, "overwriting existing clip at 0/1");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "overwriting existing clip at t0/s1",
+    );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     // The copy replaced the occupant, so the result is the copy's id.
     expect(updatedClips[0]).toMatchObject({
       id: COPY_ID,
-      slot: "0/1",
+      path: "t0/s1",
     });
   });
 
@@ -444,7 +447,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(updatedClips[0]).toMatchObject({
       noteCount: 12,
-      slot: "0/1",
+      path: "t0/s1",
     });
   });
 
@@ -565,60 +568,91 @@ describe("handlePositionOperations", () => {
   });
 });
 
-describe("resolveMoveDestination", () => {
+describe("resolveMoveDestinations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("reads a slot from toPath", () => {
-    expect(resolveMoveDestination("t2/s3", undefined)).toStrictEqual({
-      trackIndex: 2,
-      sceneIndex: 3,
-    });
+    expect(resolveMoveDestinations("t2/s3", undefined, 1)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+    ]);
   });
 
   it("still reads the deprecated toSlot", () => {
-    expect(resolveMoveDestination(undefined, "2/3")).toStrictEqual({
-      trackIndex: 2,
-      sceneIndex: 3,
-    });
+    expect(resolveMoveDestinations(undefined, "2/3", 1)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+    ]);
   });
 
   it("returns nothing when neither param is given", () => {
-    expect(resolveMoveDestination(undefined, undefined)).toBeNull();
-    expect(resolveMoveDestination("  ", undefined)).toBeNull();
-    expect(resolveMoveDestination(undefined, "  ")).toBeNull();
+    expect(resolveMoveDestinations(undefined, undefined, 2)).toStrictEqual([
+      null,
+      null,
+    ]);
+    expect(resolveMoveDestinations("  ", undefined, 1)).toStrictEqual([null]);
+    expect(resolveMoveDestinations(undefined, "  ", 1)).toStrictEqual([null]);
   });
 
   it("moves nowhere when toPath and toSlot both name a destination", () => {
     // An update tool warns and skips instead of throwing, but it must not pick
     // one destination over the other.
-    expect(resolveMoveDestination("t2/s3", "4/5")).toBeNull();
+    expect(resolveMoveDestinations("t2/s3", "4/5", 1)).toStrictEqual([null]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining(
-        "both name a destination, so the clip was not moved",
-      ),
+      expect.stringContaining("both name a destination, so no clip was moved"),
     );
   });
 
   it("warns and skips a destination that is not a session slot", () => {
     // update-clip has no cross-track move; duplicate is the tool for that.
-    expect(resolveMoveDestination("t2", undefined)).toBeNull();
+    expect(resolveMoveDestinations("t2", undefined, 1)).toStrictEqual([null]);
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining('toPath "t2" is not a session slot'),
     );
   });
 
-  it("takes the first of several toPath destinations, with a warning", () => {
-    expect(resolveMoveDestination("t2/s3,t4/s5", undefined)).toStrictEqual({
-      trackIndex: 2,
-      sceneIndex: 3,
-    });
+  // The whole point of the fan-out: sending both clips to destinations[0] put
+  // them in one slot, and the second copy overwrote the first.
+  it("pairs each destination with the clip at the same position", () => {
+    expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 2)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+      { trackIndex: 4, sceneIndex: 5 },
+    ]);
+  });
+
+  // Names and colors cycle; destinations can't — the second clip sent to a slot
+  // overwrites the first.
+  it("does not cycle a short destination list, and says which clips stayed", () => {
+    expect(resolveMoveDestinations("t2/s3", undefined, 3)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+      null,
+      null,
+    ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "toPath only supports a single destination - using first",
+      expect.stringContaining("1 destination(s) for 3 clip(s)"),
     );
+  });
+
+  it("warns about destinations with no clip to move", () => {
+    expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 1)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("the extra destinations went unused"),
+    );
+  });
+
+  it("skips only the entries that name no slot", () => {
+    expect(
+      resolveMoveDestinations("t2/s3,t4,t6/s7", undefined, 3),
+    ).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+      null,
+      { trackIndex: 6, sceneIndex: 7 },
+    ]);
   });
 });

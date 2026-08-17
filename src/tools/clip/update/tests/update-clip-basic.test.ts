@@ -42,13 +42,19 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should warn and return empty when ids is missing", async () => {
+  it("should warn and return empty when neither ids nor path is given", async () => {
     expect(await updateClip({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateClip: ids or path is required",
+    );
 
     vi.mocked(outlet).mockClear();
     expect(await updateClip({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "updateClip: ids or path is required",
+    );
   });
 
   it("should overlay new notes onto existing notes", async () => {
@@ -90,6 +96,31 @@ describe("updateClip - Basic operations", () => {
       1,
       'updateClip: id "nonexistent" does not exist',
     );
+  });
+
+  // Saves a read-then-update round trip: a caller that knows where the clip is
+  // shouldn't have to read it first just to learn its id.
+  it("should update a clip addressed by path", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    // clip456 sits at t1/s1
+    const result = await updateClip({ path: "t1/s1", name: "By Path" });
+
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
+    expect(result).toStrictEqual({ id: "456" });
+  });
+
+  it("should warn and skip a path with no clip, keeping the rest", async () => {
+    setupMidiClipMock(mocks.clip456);
+    mockNonExistentObjects();
+
+    const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateClip: no clip at path "t9/s9"',
+    );
+    expect(result).toStrictEqual({ id: "456" });
   });
 
   it("should update a single session clip by ID", async () => {
@@ -302,7 +333,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -314,29 +345,29 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
-  // `slot` in a result reads "1/2", and a model pastes it straight back. The
-  // steer has to arrive as a warning: throwing would discard the whole batch,
-  // notes and all.
-  it("should warn (not throw) for a toPath in the old unprefixed spelling", async () => {
+  // `slot` in a result reads "1/2", and a model pastes it straight back. That's
+  // a well-founded guess, not a typo — make the move and warn to teach the
+  // spelling that replaced it.
+  it("should honor a toPath in the old unprefixed spelling, with a warning", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({
-      ids: "123",
-      toPath: "1/2",
-      name: "Renamed Anyway",
-    });
+    const result = await updateClip({ ids: "123", toPath: "1/2" });
 
+    expect(result).toMatchObject({
+      id: "live_set/tracks/1/clip_slots/2/clip",
+      path: "t1/s2",
+    });
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('did you mean "t1/s2"?'),
+      expect.stringContaining(
+        'toPath "1/2" is the old slot spelling; use "t1/s2"',
+      ),
     );
-    expect(result).not.toHaveProperty("slot");
-    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed Anyway");
   });
 
   // The silent-no-op twin of duplicate's ",": update-clip warns rather than
@@ -406,7 +437,7 @@ describe("updateClip - Basic operations", () => {
     expect(result).not.toHaveProperty("slot");
   });
 
-  it("should warn and use first slot when toSlot has multiple values", async () => {
+  it("should warn about destinations with no clip to move", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
@@ -416,12 +447,12 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ ids: "123", toSlot: "1/2, 3/4" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      "toSlot only supports a single destination - using first",
+      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
     );
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      slot: "1/2",
+      path: "t1/s2",
     });
   });
 
@@ -435,7 +466,7 @@ describe("updateClip - Basic operations", () => {
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "toSlot only supports a single destination - using first",
+      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
     );
   });
 

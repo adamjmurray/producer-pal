@@ -27,7 +27,6 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -38,10 +37,15 @@ import {
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
-import { resolveMoveDestination } from "./helpers/update-clip-session-helpers.ts";
+import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import {
+  resolveMoveDestinations,
+  resolveRequestedClips,
+} from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
+  path?: string;
   notes?: string;
   transforms?: string;
   preTransforms?: string;
@@ -72,6 +76,7 @@ interface ClipResult {
  *
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
+ * @param args.path - Session position(s) of clips to update, instead of ids
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
@@ -107,6 +112,7 @@ interface ClipResult {
 export async function updateClip(
   {
     ids,
+    path,
     notes: notationString,
     transforms,
     preTransforms,
@@ -143,19 +149,19 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  if (!ids) {
-    console.warn("updateClip: ids is required");
+  // ids and path both name clips to update, so a call may use either or both —
+  // neither contradicts the other the way two destinations would. Entries stay
+  // in place, nulls included, so toPath lines up with what the caller named.
+  const requestedIds = [
+    ...(ids == null ? [] : parseCommaSeparatedIds(ids)),
+    ...(path == null ? [] : clipIdPerPath(path, "updateClip")),
+  ];
+
+  if (requestedIds.length === 0) {
+    console.warn("updateClip: ids or path is required");
 
     return [];
   }
-
-  const mutableClips = applySplittingIfNeeded(
-    validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
-      skipInvalid: true,
-    }),
-    split,
-    context,
-  );
 
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
@@ -164,7 +170,11 @@ export async function updateClip(
   // instead of being swallowed by the per-clip warn-and-skip wrapper.
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
-  const parsedToSlot = resolveMoveDestination(toPath, toSlot);
+  const { clips, destinationById } = resolveRequestedClips(
+    requestedIds,
+    resolveMoveDestinations(toPath, toSlot, requestedIds.length),
+  );
+  const mutableClips = applySplittingIfNeeded(clips, split, context);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -217,7 +227,7 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
-      toSlot: parsedToSlot,
+      toSlot: destinationById.get(clip.id) ?? null,
       nonSurvivorClipIds,
       context,
       updatedClips,

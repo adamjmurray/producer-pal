@@ -113,7 +113,7 @@ describe("note write ordering (create + update transforms)", () => {
     // only a tail overlap, which Live truncates — so BOTH notes survive. A
     // stored count of 2 proves it.
     const sorted = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|3 1|2.5",
       2,
     );
@@ -153,7 +153,7 @@ describe("note write ordering (create + update transforms)", () => {
 
     // Two non-overlapping C1 quarter notes at start 0 and start 2.
     const created = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|1 1|3",
       2,
     );
@@ -181,7 +181,7 @@ describe("note write ordering (create + update transforms)", () => {
 
     // Overlap-survival: existing C1 quarter at 1|3 (start 2, spans [2,3]).
     const created = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|3",
       1,
     );
@@ -216,7 +216,7 @@ describe("note write ordering (create + update transforms)", () => {
     // Overwrite/dedupe: restating a note at the same pitch+start must not double
     // it up — the new note replaces the existing one (count stays 1).
     const dupCreated = await createClipWithCount(
-      `${trackIndex}/1`,
+      `t${trackIndex}/s1`,
       "n/2 C1 1|1",
       1,
     );

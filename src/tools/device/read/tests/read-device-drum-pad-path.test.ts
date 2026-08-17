@@ -287,7 +287,17 @@ describe("readDevice with drum pad path", () => {
     setupKickPadMocks();
 
     expect(() => readDevice({ path: "t1/d0/pXYZ" })).toThrow(
-      "Invalid drum pad note name: XYZ",
+      /"pXYZ" names no drum pad/,
+    );
+  });
+
+  // The catch-all is a chain with in_note -1, not a drum_pads entry, so there
+  // is nothing here to find. read-device reads it through the rack instead.
+  it("should report the catch-all pad as not found", () => {
+    setupKickPadMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*" })).toThrow(
+      "Drum pad * not found",
     );
   });
 
@@ -310,11 +320,12 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric chain segment", () => {
-    // "cX" parses to NaN; the NaN guard must reject it with the index error.
+    // Segments past a drum pad are still segments: the grammar rejects "cX"
+    // before any of this resolves against the rack.
     setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
 
     expect(() => readDevice({ path: "t1/d0/pC1/cX" })).toThrow(
-      "Invalid chain index in path: t1/d0/pC1/cX",
+      'invalid path "t1/d0/pC1/cX" - "cX" is not a device, chain, or drum pad',
     );
   });
 
@@ -357,11 +368,10 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric device segment", () => {
-    // "dX" parses to NaN; the NaN guard must reject it with the index error.
     setupKickPadWithChainDevice();
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
-      "Invalid device index in path: t1/d0/pC1/c0/dX",
+      'invalid path "t1/d0/pC1/c0/dX" - "dX" is not a device, chain, or drum pad',
     );
   });
 });

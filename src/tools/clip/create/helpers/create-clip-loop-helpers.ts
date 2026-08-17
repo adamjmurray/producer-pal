@@ -9,16 +9,25 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import {
+  takeLaneKey,
+  type TakeLaneTarget,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
 import {
@@ -55,8 +64,8 @@ export interface CreateClipsParams {
   sampleFile: string | null;
   deadline: number | null | undefined;
   code: string | null;
-  /** Take lane per arrangement track; a track with no entry uses the main lane */
-  takeLanes: Map<number, LiveAPI>;
+  /** Take lane per arrangement destination; no entry means the main lane */
+  takeLanes: Map<string, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
@@ -113,6 +122,8 @@ interface IterationPosition {
   sceneIndex: number | null;
   arrangementStartBeats: number | null;
   arrangementStart: string | null;
+  takeLane: TakeLaneTarget | null;
+  newLaneOrdinal?: number;
 }
 
 /**
@@ -192,7 +203,7 @@ async function createClipAtIndex(
       params.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
-      params.takeLanes.get(pos.trackIndex) ?? null,
+      takeLaneFor(params.takeLanes, pos),
       {
         warping: params.warping,
         gainDb: params.gainDb,
@@ -220,11 +231,10 @@ async function createClipAtIndex(
       }
     }
   } catch (error) {
-    // Emit warning with position info
     const position =
       view === "session"
-        ? `slot=${pos.trackIndex}/${pos.sceneIndex}`
-        : `trackIndex=${pos.trackIndex}, arrangementStart=${pos.arrangementStart}`;
+        ? slotPath(pos.trackIndex, pos.sceneIndex as number)
+        : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
 
     console.warn(
       `Failed to create clip at ${position}: ${errorMessage(error)}`,
@@ -250,12 +260,12 @@ function resolveIterationPosition(
       sceneIndex: slot.sceneIndex,
       arrangementStartBeats: null,
       arrangementStart: null,
+      takeLane: null,
     };
   }
 
-  const { trackIndex, arrangementStart } = params.arrangementPositions[
-    i
-  ] as ArrangementPosition;
+  const { trackIndex, arrangementStart, takeLane, newLaneOrdinal } = params
+    .arrangementPositions[i] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer (matching the single-clip create path), not
@@ -271,7 +281,29 @@ function resolveIterationPosition(
       params.songTimeSigDenominator,
     ),
     arrangementStart,
+    takeLane,
+    newLaneOrdinal,
   };
+}
+
+/**
+ * The take lane a position's clip goes on.
+ * @param lanes - Resolved take lanes, keyed by destination
+ * @param position - The position being created
+ * @returns The lane, or null for the main lane
+ */
+function takeLaneFor(
+  lanes: Map<string, LiveAPI>,
+  position: IterationPosition,
+): LiveAPI | null {
+  if (position.takeLane == null) return null;
+
+  const key = takeLaneKey(position);
+
+  // Every take-lane destination is resolved before the loop, so a miss is a
+  // bug. Say so rather than falling back to the main lane, which would put the
+  // clip somewhere the caller didn't ask for.
+  return assertDefined(lanes.get(key), `no take lane resolved for "${key}"`);
 }
 
 interface PreparedClipData {

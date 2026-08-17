@@ -20,8 +20,7 @@ import {
 
 interface DuplicateClipResult {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   name?: string;
 }
 
@@ -65,11 +64,11 @@ describe("duplicate - scene duplication", () => {
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          slot: "0/1",
+          path: "t0/s1",
         },
         {
           id: "live_set/tracks/1/clip_slots/1/clip",
-          slot: "1/1",
+          path: "t1/s1",
         },
       ],
     });
@@ -106,11 +105,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            slot: "0/1",
+            path: "t0/s1",
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            slot: "1/1",
+            path: "t1/s1",
           },
         ],
       },
@@ -120,11 +119,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
-            slot: "0/2",
+            path: "t0/s2",
           },
           {
             id: "live_set/tracks/1/clip_slots/2/clip",
-            slot: "1/2",
+            path: "t1/s2",
           },
         ],
       },
@@ -261,7 +260,7 @@ describe("duplicate - scene duplication", () => {
       // At least the exact-match clip (track 2) should appear
       // Track 0's lengthening via updateClip is tested in updateClip's own tests
       expect(
-        result.clips.some((c: DuplicateClipResult) => c.trackIndex === 2),
+        result.clips.some((c: DuplicateClipResult) => c.path === "t2"),
       ).toBe(true);
     });
 
@@ -331,7 +330,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(0),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],
@@ -341,7 +340,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(1),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],
@@ -351,7 +350,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(2),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],

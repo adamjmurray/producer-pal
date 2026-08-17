@@ -4,8 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   error: vi.fn(),
@@ -14,27 +12,13 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import {
+  registerArrangementTrack,
   setupArrangementClipMocks,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
-
-/**
- * Register a track whose create_midi_clip returns a distinct arrangement clip.
- * @param trackIndex - 0-based track index
- */
-function registerArrangementTrack(trackIndex: number): void {
-  registerMockObject(`track-${trackIndex}`, {
-    path: livePath.track(trackIndex),
-    methods: {
-      create_midi_clip: () => ["id", `arrangement_clip_${trackIndex}`],
-    },
-  });
-  registerMockObject(`arrangement_clip_${trackIndex}`, {
-    properties: { length: 4 },
-  });
-}
 
 describe("createClip path param", () => {
   beforeEach(() => {
@@ -110,16 +94,39 @@ describe("createClip path param", () => {
     expect(result).toHaveLength(4);
   });
 
-  it("rejects a bare trackIndex/sceneIndex path with the prefixed spelling", async () => {
-    await expect(createClip({ path: "0/1" })).rejects.toThrow(
-      'invalid path "0/1" - paths need segment prefixes; did you mean "t0/s1"?',
+  it("rejects a destination no clip can occupy", async () => {
+    await expect(createClip({ path: "rt0" })).rejects.toThrow(
+      'invalid path "rt0" - return and master tracks have no clips; ' +
+        'clips go to a track ("t0"), a take lane on it ("t0/l1"), or a session slot ("t0/s1")',
     );
   });
 
-  it("rejects a destination no clip can occupy", async () => {
-    await expect(createClip({ path: "rt0" })).rejects.toThrow(
-      'invalid path "rt0" - clips go to a track ("t0") or a session slot ("t0/s1")',
+  // The grammar bounds no index, so "t99" parses fine and every tool leans on
+  // a downstream existence check. Without mockNonExistentObjects the mock says
+  // yes to any path, and this question never gets asked.
+  it("rejects a well-formed path that points at no track", async () => {
+    mockNonExistentObjects();
+
+    await expect(
+      createClip({ path: "t99/s0", notes: "C3 1|1" }),
+    ).rejects.toThrow("createClip failed: track 99 does not exist");
+    await expect(
+      createClip({ path: "t99", arrangementStart: "1|1", notes: "C3 1|1" }),
+    ).rejects.toThrow("createClip failed: track 99 does not exist");
+  });
+
+  // A take lane names one place, unlike a bare track — but still not a spot on
+  // it. The error echoes back the lane the caller wrote, l+ included.
+  it("rejects a take-lane path with no position on it", async () => {
+    await expect(
+      createClip({ path: "t0/l+", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'createClip failed: path "t0/l+" names no position; ' +
+        "add arrangementStart; take lanes hold arrangement clips",
     );
+    await expect(
+      createClip({ path: "t0/l1", notes: "C3 1|1" }),
+    ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
   });
 
   it("refuses path and slot together rather than picking one", async () => {

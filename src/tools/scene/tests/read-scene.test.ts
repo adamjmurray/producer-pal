@@ -224,14 +224,14 @@ describe("readScene", () => {
         {
           ...expectedClip({
             id: "clip_0_0",
-            slot: "0/0",
+            path: "t0/s0",
           }),
           color: undefined,
         },
         {
           ...expectedClip({
             id: "clip_1_0",
-            slot: "1/0",
+            path: "t1/s0",
           }),
           color: undefined,
         },
@@ -340,14 +340,14 @@ describe("readScene", () => {
           {
             ...expectedClip({
               id: "clip_0_2",
-              slot: "0/2",
+              path: "t0/s2",
             }),
             color: undefined,
           },
           {
             ...expectedClip({
               id: "clip_1_2",
-              slot: "1/2",
+              path: "t1/s2",
             }),
             color: undefined,
           },

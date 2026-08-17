@@ -19,6 +19,7 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { roundPan, stripFields } from "#src/tools/shared/utils.ts";
+import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
@@ -26,10 +27,9 @@ import {
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
-  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
-   * (`0` is the main lane). Lets a consumer round-trip a read back to a write
-   * without inferring the index from array position. */
-  takeLane: number;
+  /** The lane's path ("t0/l1"), which pastes back into any path/toPath param.
+   * Saves a consumer inferring the index from array position. */
+  path: string;
   name: string;
   clips: ReadClipResult[];
 }
@@ -148,17 +148,17 @@ export function countArrangementClips(track: LiveAPI): number {
  * Read all non-main take lanes from a track. Take lanes are arrangement-only
  * and the main lane is not included in the track's take_lanes collection.
  * @param track - Track object
+ * @param trackIndex - Track index, for the lane paths
  * @param include - Include array for nested clip reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Array of take lanes, each with its name and arrangement clips
  */
 export function readTakeLanes(
   track: LiveAPI,
+  trackIndex: number | null,
   include?: string[],
   notation?: Notation,
 ): ReadTakeLaneResult[] {
-  // 1-based to match the write-side `takeLane` param (0 = main lane, which the
-  // take_lanes collection excludes — so the first non-main lane is takeLane:1).
   const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
 
   return track.getChildren("take_lanes").map((lane, i) => {
@@ -172,13 +172,13 @@ export function readTakeLanes(
       )
       .filter((clip) => clip.id != null);
 
-    // Strip fields redundant with the parent track context (take lane clips are
-    // always arrangement clips on this track, matching its MIDI/audio type).
-    // `takeLane` is on the parent ReadTakeLaneResult.
-    stripFields(clips, "trackIndex", "view", "type", "takeLane");
+    // Strip fields redundant with the parent context (take lane clips are
+    // always arrangement clips on this track, matching its MIDI/audio type, and
+    // the lane's own path is on the parent ReadTakeLaneResult).
+    stripFields(clips, "path", "view", "type");
 
     return {
-      takeLane: i + 1,
+      path: arrangementPath(trackIndex as number, i),
       name: lane.getProperty("name") as string,
       clips,
     };

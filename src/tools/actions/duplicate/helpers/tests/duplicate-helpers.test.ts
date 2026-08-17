@@ -105,7 +105,7 @@ describe("duplicate-helpers", () => {
       vi.clearAllMocks();
     });
 
-    it("returns id for arrangement clip with trackIndex and arrangementStart", () => {
+    it("returns id for arrangement clip with its path and arrangementStart", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
         type: "Song",
@@ -126,11 +126,11 @@ describe("duplicate-helpers", () => {
       const result = getMinimalClipInfo(LiveAPI.from("456"));
 
       expect(result.id).toBe("456");
-      expect(result.trackIndex).toBe(2);
+      expect(result.path).toBe("t2");
       expect(result.arrangementStart).toBe("2|1");
     });
 
-    it("omits trackIndex when specified in omitFields for arrangement clip", () => {
+    it("omits the path when specified in omitFields for arrangement clip", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
         type: "Song",
@@ -148,10 +148,10 @@ describe("duplicate-helpers", () => {
         },
       });
 
-      const result = getMinimalClipInfo(LiveAPI.from("457"), ["trackIndex"]);
+      const result = getMinimalClipInfo(LiveAPI.from("457"), ["path"]);
 
       expect(result.id).toBe("457");
-      expect(result.trackIndex).toBeUndefined();
+      expect(result.path).toBeUndefined();
       expect(result.arrangementStart).toBe("1|1");
     });
 
@@ -178,11 +178,11 @@ describe("duplicate-helpers", () => {
       ]);
 
       expect(result.id).toBe("458");
-      expect(result.trackIndex).toBe(2);
+      expect(result.path).toBe("t2");
       expect(result.arrangementStart).toBeUndefined();
     });
 
-    it("returns id and slot for session clip", () => {
+    it("returns id and path for session clip", () => {
       registerMockObject("789", {
         path: livePath.track(1).clipSlot(3).clip(),
         type: "Clip",
@@ -194,20 +194,20 @@ describe("duplicate-helpers", () => {
       const result = getMinimalClipInfo(LiveAPI.from("789"));
 
       expect(result.id).toBe("789");
-      expect(result.slot).toBe("1/3");
+      expect(result.path).toBe("t1/s3");
     });
 
-    it("omits slot when specified in omitFields for session clip", () => {
+    it("omits the path when specified in omitFields for session clip", () => {
       registerMockObject("790", {
         path: livePath.track(1).clipSlot(3).clip(),
         type: "Clip",
         properties: { is_arrangement_clip: 0 },
       });
 
-      const result = getMinimalClipInfo(LiveAPI.from("790"), ["slot"]);
+      const result = getMinimalClipInfo(LiveAPI.from("790"), ["path"]);
 
       expect(result.id).toBe("790");
-      expect(result.slot).toBeUndefined();
+      expect(result.path).toBeUndefined();
     });
 
     it("throws error when trackIndex is null for arrangement clip", () => {

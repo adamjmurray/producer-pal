@@ -21,8 +21,11 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
-import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/clip/duplicate-take-lane-helpers.ts";
-import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerSessionClipDuplication,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const SOURCE_NOTE = {
@@ -155,14 +158,13 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
     expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
-    // The lane number (1-based) is reported so the user can find the new clip.
+    // The lane's path is reported so the user can find the new clip.
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("created on take lane 1"),
+      expect.stringContaining('created on take lane "t0/l0"'),
     );
     expect(result).toMatchObject({
-      trackIndex: 0,
+      path: "t0/l0",
       arrangementStart: "5|1",
-      takeLane: 1,
     });
   });
 
@@ -206,7 +208,7 @@ describe("duplicate take lane", () => {
     await duplicateToFreshLane({ arrangementLength: "2bar" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("arrangementLength ignored for take-lane"),
+      expect.stringContaining("arrangementLength ignored for the take-lane"),
     );
   });
 
@@ -254,10 +256,47 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane supports MIDI clips only"),
+      expect.stringContaining("take lanes hold MIDI clips only"),
     );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result).toStrictEqual([]);
+  });
+
+  // Warn-and-skip: the lane destination is the only one that can't be served.
+  it("still makes an audio source's main-lane copies", async () => {
+    registerLiveSet();
+    registerArrangementSource(false);
+    const laneTrack = registerTakeLaneTrack({
+      trackIndex: 1,
+      initialLanes: 1,
+      hasMidiInput: 0,
+    });
+    const mainTrack = registerTrackWithArrangementDup(2, { has_midi_input: 0 });
+
+    registerArrangementClip(2, 0, 0);
+
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t2,t1/l0",
+      arrangementStart: "1|1,5|1",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("take lanes hold MIDI clips only"),
+    );
+    expect(mainTrack.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id src_clip",
+      0,
+    );
+    expect(laneTrack.call).not.toHaveBeenCalledWith("create_take_lane");
+    // One result, not zero: only the lane copy was skipped.
+    expect(result).toStrictEqual({
+      id: livePath.track(2).arrangementClip(0),
+      path: "t2",
+      arrangementStart: "1|1",
+    });
   });
 
   it("warns and ignores takeLane for a session destination", async () => {
@@ -329,21 +368,17 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("warns and skips when Live fails to create a take-lane clip (single position)", () => {
+  it("warns and skips when Live fails to create a take-lane clip (single position)", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0, clipCreationFails: true });
 
-    const created = duplicateClipsToTakeLane(
-      LiveAPI.from("src_clip"),
-      "src_clip",
-      [0],
-      [0],
-      undefined,
-      undefined,
-      "new",
-      undefined,
-    );
+    const created = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l+",
+      arrangementStart: "1|1",
+    })) as object[];
 
     expect(created).toStrictEqual([]);
     // The wrapped warning carries the inner "failed to create Arrangement clip"
@@ -355,7 +390,7 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("warns and continues when only some positions fail (partial success)", () => {
+  it("warns and continues when only some positions fail (partial success)", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     // Pre-create one lane so we can intercept its create_midi_clip mock.
@@ -378,16 +413,12 @@ describe("duplicate take lane", () => {
       return original?.(method, ...args);
     });
 
-    const created = duplicateClipsToTakeLane(
-      LiveAPI.from("src_clip"),
-      "src_clip",
-      [0, 0, 0],
-      [0, 4, 8],
-      undefined,
-      undefined,
-      1,
-      undefined,
-    );
+    const created = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l0",
+      arrangementStart: "1|1, 2|1, 3|1",
+    })) as object[];
 
     expect(created).toHaveLength(2);
     expect(consoleMock.warn).toHaveBeenCalledWith(
@@ -395,7 +426,7 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("re-creates over an existing clip on a populated lane (replace, like the main lane)", () => {
+  it("re-creates over an existing clip on a populated lane (replace, like the main lane)", async () => {
     registerLiveSet();
     registerArrangementSource(true);
     // Existing lane 1 already holds a clip at beats 0-4.
@@ -404,16 +435,13 @@ describe("duplicate take lane", () => {
       initialLaneClips: [[{ start: 0, end: 4 }]],
     });
 
-    const created = duplicateClipsToTakeLane(
-      LiveAPI.from("src_clip"),
-      "src_clip",
-      [0],
-      [0], // beat 0 overlaps the existing clip on lane 1
-      undefined,
-      undefined,
-      1, // target the EXISTING populated lane
-      undefined,
-    );
+    const created = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      // beat 0 on the EXISTING populated lane
+      toPath: "t0/l0",
+      arrangementStart: "1|1",
+    })) as object;
 
     const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
 
@@ -421,7 +449,103 @@ describe("duplicate take lane", () => {
     // new lane is created (the target already exists).
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(created).toHaveLength(1);
+    expect(created).toHaveProperty("id");
+  });
+
+  it("duplicates onto the take lane a toPath names", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    const track = registerTakeLaneTrack({ initialLanes: 2 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l1",
+      arrangementStart: "5|1",
+    });
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+  });
+
+  // Impossible with the takeLane param, which named one lane for the whole
+  // call: each destination carries its own.
+  it("puts each destination on the lane it named, main lane included", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    const track = registerTakeLaneTrack({ initialLanes: 2 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l0,t0/l1",
+      arrangementStart: "5|1,9|1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 32, 4);
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  it("ignores the takeLane alias when toPath already names a lane", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l2",
+      arrangementStart: "5|1",
+      takeLane: "1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('takeLane ignored — "toPath" already names'),
+    );
+  });
+
+  // One destination can't tell the guard apart from its opposite: `some` and
+  // `every` agree on a one-item list. With two, the alias reaches a destination
+  // that named no lane, which is the thing being refused.
+  it("ignores the takeLane alias when any toPath names a lane", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 3 });
+
+    const mainTrack = registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+
+    registerArrangementClip(1, 0, 32);
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l2,t1",
+      arrangementStart: "5|1,9|1",
+      takeLane: "1",
+    });
+
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    // t1 named no lane, so it stays on the main lane rather than inheriting one.
+    expect(mainTrack.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      "id src_clip",
+      32,
+    );
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('takeLane ignored — "toPath" already names'),
+    );
   });
 
   // takeLane "new" appends a lane every time it is resolved, so the lane has to
@@ -438,11 +562,15 @@ describe("duplicate take lane", () => {
       toPath: "t1",
       arrangementStart: "5|1, 9|1, 13|1",
       takeLane: "new",
-    })) as Array<{ takeLane: number }>;
+    })) as Array<{ path: string }>;
 
     expect(dest.call).toHaveBeenCalledTimes(1);
     expect(dest.call).toHaveBeenCalledWith("create_take_lane");
-    expect(result.map((copy) => copy.takeLane)).toStrictEqual([1, 1, 1]);
+    expect(result.map((copy) => copy.path)).toStrictEqual([
+      "t1/l0",
+      "t1/l0",
+      "t1/l0",
+    ]);
 
     const lane = lookupMockObject(undefined, livePath.track(1).takeLane(0));
 
@@ -491,6 +619,71 @@ describe("duplicate take lane", () => {
     expect(ok.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
+  // Same hazard within one track: l7 fills it to the cap, so l+ has nowhere to
+  // go. Both destinations read the same pre-call count, so neither sees it.
+  it("creates no lane when two lanes on one track exceed the cap together", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const track = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1/l7,t1/l+",
+        arrangementStart: "1|1,5|1",
+      }),
+    ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
+  it("appends one lane per l+ in toPath", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l+,t0/l+",
+      arrangementStart: "1|1",
+    });
+
+    // Both copies sit at bar 1, one per fresh lane.
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(
+      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+  });
+
+  // The list cycles, so one written l+ covers all three positions. Numbering
+  // the expanded copies instead would scatter them over three lanes.
+  it("keeps one l+ on one lane across several arrangementStarts", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t0/l+",
+      arrangementStart: "1|1,2|1,3|1",
+    });
+
+    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
+
+    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
+
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 4, 4);
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+  });
+
   it("warns and skips when source is a take-lane clip and no takeLane param is given (main-lane destination)", async () => {
     registerLiveSet();
     // Register a source clip whose path includes a take_lanes segment.
@@ -516,5 +709,31 @@ describe("duplicate take lane", () => {
       ),
     );
     expect(result).toStrictEqual([]);
+  });
+
+  // The reason doesn't change per copy, so neither should the warning.
+  it("says the source can't be promoted once, not once per position", async () => {
+    registerLiveSet();
+    registerMockObject("tl_src_clip", {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+      properties: { is_midi_clip: 1, is_arrangement_clip: 1, length: 4 },
+    });
+
+    await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "1|1,2|1,3|1,4|1",
+    });
+
+    const promoteWarnings = vi
+      .mocked(consoleMock.warn)
+      .mock.calls.filter(([message]) =>
+        String(message).includes(
+          "promoting to the main lane is not yet supported",
+        ),
+      );
+
+    expect(promoteWarnings).toHaveLength(1);
   });
 });

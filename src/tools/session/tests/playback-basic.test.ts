@@ -261,7 +261,7 @@ describe("transport", () => {
         ids: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
+      "playback play-session-clips action failed: no clip slot at t99/s0",
     );
   });
 
@@ -589,7 +589,7 @@ describe("transport", () => {
         slots: "99/0",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
+      "playback play-session-clips action failed: no clip slot at t99/s0",
     );
   });
 

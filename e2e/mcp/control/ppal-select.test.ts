@@ -128,7 +128,7 @@ describe("ppal-select", () => {
 
     expect(withClip.selectedClip).toBeDefined();
     expect(withClip.selectedClip!.id).toBe(createdClip.id);
-    expect(withClip.selectedClip!.slot).toBeDefined();
+    expect(withClip.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 9b: Select session clip with conflicting view arg - should warn
     const conflictingViewResult = await ctx.client!.callTool({
@@ -174,7 +174,7 @@ describe("ppal-select", () => {
     const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
 
     expect(clipSlot.selectedClip).toBeDefined();
-    expect(clipSlot.selectedClip!.slot).toBe(`${emptyMidiTrack}/0`);
+    expect(clipSlot.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 13: Select scene by ID (auto-detection)
     const sceneId = scene.selectedScene!.id;
@@ -222,8 +222,7 @@ interface SelectResult {
   };
   selectedClip?: {
     id: string;
-    slot?: string;
-    trackIndex?: number;
+    path?: string;
     arrangementStart?: string;
   };
   selectedDevice?: {

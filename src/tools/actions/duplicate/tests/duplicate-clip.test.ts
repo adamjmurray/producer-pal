@@ -49,7 +49,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        slot: "0/1",
+        path: "t0/s1",
       });
     });
 
@@ -86,11 +86,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          slot: "0/1",
+          path: "t0/s1",
         },
         {
           id: "live_set/tracks/0/clip_slots/2/clip",
-          slot: "0/2",
+          path: "t0/s2",
         },
       ]);
 
@@ -124,7 +124,7 @@ describe("duplicate - clip duplication", () => {
       );
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        slot: "0/1",
+        path: "t0/s1",
       });
     });
 
@@ -186,7 +186,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "3|1",
       });
     });
@@ -225,7 +225,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(2).arrangementClip(0),
-        trackIndex: 2,
+        path: "t2",
         arrangementStart: "3|1",
       });
     });
@@ -265,12 +265,12 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(2).arrangementClip(0),
-          trackIndex: 2,
+          path: "t2",
           arrangementStart: "3|1",
         },
         {
           id: livePath.track(3).arrangementClip(0),
-          trackIndex: 3,
+          path: "t3",
           arrangementStart: "3|1",
         },
       ]);
@@ -305,6 +305,36 @@ describe("duplicate - clip duplication", () => {
         16,
       );
       expect(result).toHaveLength(2);
+    });
+
+    // 3 positions over 2 tracks doesn't divide, and the shorter list has to
+    // cycle PAST its end (t2, t3, t2) rather than run out at two copies.
+    it("cycles tracks past the end when the two counts don't divide", async () => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+      registerTrackWithArrangementDup(3, { has_midi_input: 1 });
+      registerArrangementClip(2, 0, 8);
+      registerArrangementClip(2, 1, 24);
+      registerArrangementClip(3, 0, 16);
+
+      const result = (await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1,5|1,7|1",
+        toPath: "t2,t3",
+      })) as Array<{ path: string; arrangementStart: string }>;
+
+      expect(
+        result.map((copy) => [copy.path, copy.arrangementStart]),
+      ).toStrictEqual([
+        ["t2", "3|1"],
+        ["t3", "5|1"],
+        ["t2", "7|1"],
+      ]);
     });
 
     it("rejects a bare track in toPath with no position, naming both options", async () => {
@@ -414,19 +444,24 @@ describe("duplicate - clip duplication", () => {
       expect(track0.call).not.toHaveBeenCalled();
     });
 
-    it("rejects toSlot on an arrangement destination", async () => {
+    it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toSlot: "2/0",
-        }),
-      ).rejects.toThrow(/toSlot is for session destinations/);
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toSlot: "2/0",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "arrangementStart/locator ignored — toSlot names a session position",
+        ),
+      );
     });
 
     it("skips a silent duplicate failure (Ableton returns ['id', 0]) without a phantom clip", async () => {
@@ -515,7 +550,7 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
-      expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "3|1" });
+      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
@@ -558,17 +593,17 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(0).arrangementClip(0),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "3|1",
         },
         {
           id: livePath.track(0).arrangementClip(1),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "4|1",
         },
         {
           id: livePath.track(0).arrangementClip(2),
-          trackIndex: 0,
+          path: "t0",
           arrangementStart: "5|1",
         },
       ]);

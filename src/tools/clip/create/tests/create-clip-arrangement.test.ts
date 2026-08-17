@@ -74,7 +74,7 @@ describe("createClip - arrangement view", () => {
 
     expect(result).toStrictEqual({
       id: "arrangement_clip",
-      trackIndex: 0,
+      path: "t0",
       arrangementStart: "3|1",
       noteCount: 3,
       length: "1bar",
@@ -117,21 +117,21 @@ describe("createClip - arrangement view", () => {
     expect(result).toStrictEqual([
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "3|1",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "4|1",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "5|1",
         noteCount: 2,
         length: "1bar",

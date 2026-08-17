@@ -14,16 +14,6 @@ export interface SlotPosition {
 }
 
 /**
- * Formats a track index and scene index into a slot string
- * @param trackIndex - 0-based track index
- * @param sceneIndex - 0-based scene index
- * @returns Slot string (e.g., "0/3")
- */
-export function formatSlot(trackIndex: number, sceneIndex: number): string {
-  return `${trackIndex}/${sceneIndex}`;
-}
-
-/**
  * Parses a single slot string into track and scene indices
  * @param input - Slot string (e.g., "0/3")
  * @returns Parsed slot position

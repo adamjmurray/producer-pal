@@ -5,12 +5,12 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { warnUnusedTakeLane } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { destinationPathEntries } from "#src/tools/shared/validation/destination-path.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -170,14 +170,10 @@ export async function duplicate(
   }
 
   // takeLane only applies to arrangement-destination clips; the helper warns
-  // and returns null for non-clip types and session-destination clips so a
-  // malformed value doesn't throw before the warn-and-ignore path.
-  const takeLaneTarget = resolveTakeLaneForDuplicate(
-    type,
-    destination,
-    takeLane,
-    console.warn,
-  );
+  // for non-clip types and session destinations so a malformed value doesn't
+  // throw before the warn-and-ignore path. Where it does apply, the destination
+  // resolver folded it onto the paths already.
+  warnUnusedTakeLane(type, destination, takeLane, console.warn);
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
@@ -195,7 +191,7 @@ export async function duplicate(
         arrangementStart,
         locator,
         arrangementLength,
-        takeLaneTarget,
+        takeLane,
         takeLaneName,
         context,
       )
@@ -256,7 +252,7 @@ function duplicateDeviceWithPaths(
 ): object | object[] {
   // Reads a blank toPath as omitted the way clips do, and refuses one that
   // names nothing rather than quietly falling back to the default destination.
-  const paths = destinationPathEntries(toPath);
+  const paths = pathEntries(toPath, "toPath");
 
   if (paths.length <= 1) {
     return duplicateDevice(object, paths[0], name, count);

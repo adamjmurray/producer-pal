@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   type RegisteredMockObject,
   registerMockObject,
@@ -51,10 +52,20 @@ describe("playback path param", () => {
     ).toThrow('invalid path "t0" - a track has no one clip');
   });
 
-  it("rejects the unprefixed spelling with the fix", () => {
-    expect(() =>
-      playback({ action: "play-session-clips", path: "0/1" }),
-    ).toThrow('did you mean "t0/s1"?');
+  // What results said before 2.2.0, so a model pasting one back made a
+  // well-founded guess: honor it, and warn to teach the spelling.
+  it("honors the old unprefixed spelling, with a warning", () => {
+    const warn = vi.spyOn(console, "warn");
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    playback({ action: "play-session-clips", path: "0/1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith(
+      'path "0/1" is the old slot spelling; use "t0/s1"',
+    );
   });
 
   it("refuses path and the deprecated slots together", () => {

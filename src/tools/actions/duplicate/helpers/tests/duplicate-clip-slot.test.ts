@@ -105,7 +105,7 @@ describe("duplicateClipSlot", () => {
       "duplicate_clip_to",
       "id live_set/tracks/1/clip_slots/0",
     );
-    expect(result).toStrictEqual({ id: COPY_ID, slot: "1/0" });
+    expect(result).toStrictEqual({ id: COPY_ID, path: "t1/s0" });
   });
 
   // Live's duplicate_clip_to returns success and copies nothing on a type
@@ -164,7 +164,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 56 was not duplicated: no clip landed at 1/0",
+      "clip 56 was not duplicated: no clip landed at t1/s0",
     );
   });
 
@@ -179,7 +179,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toBeNull();
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 56 was not duplicated: no clip landed at 1/0",
+      "clip 56 was not duplicated: no clip landed at t1/s0",
     );
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toStrictEqual({
       id: COPY_ID,
-      slot: "1/0",
+      path: "t1/s0",
     });
   });
 });
@@ -220,7 +220,7 @@ describe("duplicateClipWithPositions to session slots", () => {
           { trackIndex: 1, sceneIndex: 0 },
           { trackIndex: 2, sceneIndex: 0 },
         ],
-        trackIndices: [],
+        arrangementTargets: [],
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
@@ -229,12 +229,12 @@ describe("duplicateClipWithPositions to session slots", () => {
       undefined,
       undefined,
       undefined,
-      null,
+      undefined,
       undefined,
       {},
     );
 
-    expect(result).toStrictEqual([{ id: COPY_ID, slot: "1/0" }]);
+    expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
     expect(outlet).toHaveBeenCalledWith(
       1,
       "MIDI clip 56 was not duplicated: track 2 is frozen",

@@ -15,7 +15,7 @@ const WARNED_RESULT = {
       type: "text",
       text: "WARNING: quantize parameter ignored for audio clip",
     },
-    { type: "text", text: "WARNING: no clip at trackIndex 8, sceneIndex 0" },
+    { type: "text", text: "WARNING: no clip at t8/s0" },
   ],
 };
 
@@ -51,7 +51,7 @@ describe("mcpResultWarnings", () => {
   it("returns every relayed WARNING block, in order", () => {
     expect(mcpResultWarnings(WARNED_RESULT)).toStrictEqual([
       "WARNING: quantize parameter ignored for audio clip",
-      "WARNING: no clip at trackIndex 8, sceneIndex 0",
+      "WARNING: no clip at t8/s0",
     ]);
   });
 

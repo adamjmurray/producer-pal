@@ -4,7 +4,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  formatSlot,
   parseArrangementStartList,
   parseSceneIndexList,
   parseSlot,
@@ -132,16 +131,6 @@ describe("parseSlotList", () => {
     expect(() => parseSlotList("0/-1")).toThrow(
       'invalid toSlot "0/-1" - trackIndex and sceneIndex must be non-negative',
     );
-  });
-});
-
-describe("formatSlot", () => {
-  it("should format track and scene indices into a slot string", () => {
-    expect(formatSlot(0, 3)).toBe("0/3");
-  });
-
-  it("should handle larger indices", () => {
-    expect(formatSlot(12, 45)).toBe("12/45");
   });
 });
 

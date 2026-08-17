@@ -7,11 +7,6 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
-  namedDestination,
-  namedHiddenDestination,
-  parseDestinationPath,
-} from "#src/tools/shared/validation/destination-path.ts";
-import {
   applyDetailView,
   applyPluginEditorWindow,
   updateClipSelection,
@@ -20,12 +15,16 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
+  type TrackCategory,
 } from "./helpers/select-helpers.ts";
 import {
   determineAutoDetailView,
-  parseClipSlot,
   resolveIdParam,
 } from "./helpers/select-id-helpers.ts";
+import {
+  mergeWithPath,
+  resolvePathParam,
+} from "./helpers/select-path-helpers.ts";
 import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
@@ -65,8 +64,8 @@ export interface SelectResult {
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;
-    slot?: string;
-    trackIndex?: number;
+    /** Where the clip is: "t0/s3", "t0", or "t0/l1". */
+    path?: string;
     arrangementStart?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
@@ -88,17 +87,16 @@ export function select(
   _context: Partial<ToolContext> = {},
 ): SelectResult {
   const resolved = resolveArgs(args);
-  const { view, trackType, detailView } = args;
-  const category = trackType ?? "regular";
+  const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
-  const { trackIndex, devicePath } = resolved;
+  const { trackIndex, category, sceneIndex, devicePath } = resolved;
 
   validateParameters({
     trackId,
     category,
     trackIndex,
     sceneId,
-    sceneIndex: args.sceneIndex,
+    sceneIndex,
     deviceId,
     devicePath,
     slot: parsedClipSlot,
@@ -121,7 +119,7 @@ export function select(
 
   // Auto-switch to session view for scene/slot (session-only concepts)
   const needsSessionView =
-    sceneId != null || args.sceneIndex != null || parsedClipSlot != null;
+    sceneId != null || sceneIndex != null || parsedClipSlot != null;
 
   if (view == null && needsSessionView) {
     appView.call("show_view", toLiveApiView("session"));
@@ -138,7 +136,7 @@ export function select(
   const sceneResult = updateSceneSelection({
     songView,
     sceneId,
-    sceneIndex: args.sceneIndex,
+    sceneIndex,
   });
 
   if (clipId !== undefined) {
@@ -249,6 +247,8 @@ interface ResolvedArgs {
   clipId?: string;
   deviceId?: string;
   trackIndex?: number;
+  category: TrackCategory;
+  sceneIndex?: number;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
   hasArgs: boolean;
@@ -256,7 +256,7 @@ interface ResolvedArgs {
 }
 
 /**
- * Resolve external params (id, clipSlot string) to internal representations
+ * Resolve external params (id, path, slot string) to internal representations
  * @param args - Raw select arguments
  * @returns Resolved arguments with parsed clipSlot
  */
@@ -272,15 +272,30 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     deviceId = resolved.deviceId ?? deviceId;
   }
 
-  const { parsedClipSlot, devicePath, pathTrackIndex } = resolvePathParam(args);
-  const trackIndex = args.trackIndex ?? pathTrackIndex;
+  const fromPath = resolvePathParam(args);
+  const { parsedClipSlot, devicePath } = fromPath;
+  const trackIndex = mergeWithPath(
+    "trackIndex",
+    args.trackIndex,
+    fromPath.trackIndex,
+  );
+  const category = mergeWithPath(
+    "trackType",
+    args.trackType,
+    fromPath.category,
+  );
+  const sceneIndex = mergeWithPath(
+    "sceneIndex",
+    args.sceneIndex,
+    fromPath.sceneIndex,
+  );
 
   const hasSelectionArgs =
     trackId != null ||
     trackIndex != null ||
-    args.trackType != null ||
+    category != null ||
     sceneId != null ||
-    args.sceneIndex != null ||
+    sceneIndex != null ||
     clipId != null ||
     deviceId != null ||
     devicePath != null ||
@@ -296,59 +311,12 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     clipId,
     deviceId,
     trackIndex,
+    category: category ?? "regular",
+    sceneIndex,
     parsedClipSlot,
     devicePath,
     hasArgs,
     viewOnly,
-  };
-}
-
-interface ResolvedPath {
-  parsedClipSlot?: { trackIndex: number; sceneIndex: number };
-  devicePath?: string;
-  pathTrackIndex?: number;
-}
-
-/**
- * Resolve `path` and the two params it replaced into what they name. One
- * grammar covers all three shapes select can act on, so the kind the path
- * parses to picks the target.
- * @param args - Raw select arguments
- * @returns The clip slot, device path, or track the caller named
- */
-function resolvePathParam(args: SelectArgs): ResolvedPath {
-  const path = namedDestination(args.path);
-  const slot = namedHiddenDestination(args.slot);
-  const devicePath = namedHiddenDestination(args.devicePath);
-
-  if (path == null) {
-    return {
-      parsedClipSlot: slot == null ? undefined : parseClipSlot(slot),
-      devicePath,
-    };
-  }
-
-  // Honoring one and dropping the other is the silent-wrong-target bug path
-  // replaces, so refuse instead of picking.
-  if (slot != null || devicePath != null) {
-    throw new Error(
-      "select failed: path and slot/devicePath both name a target; use path alone (the others are deprecated)",
-    );
-  }
-
-  const destination = parseDestinationPath(path, "path");
-
-  if (destination.kind === "device") return { devicePath: destination.path };
-
-  if (destination.kind === "track") {
-    return { pathTrackIndex: destination.trackIndex };
-  }
-
-  return {
-    parsedClipSlot: {
-      trackIndex: destination.trackIndex,
-      sceneIndex: destination.sceneIndex,
-    },
   };
 }
 
@@ -404,7 +372,7 @@ function addClipToResponse(
       // A clip selection always switches Live to the clip's required view
       // (session for slotted clips, arrangement otherwise), so report that view
       // even when it overrides an explicitly requested, conflicting view.
-      result.view = info.slot != null ? "session" : "arrangement";
+      result.view = info.arrangementStart == null ? "session" : "arrangement";
     }
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);

@@ -110,9 +110,11 @@ describe("cross-track arrangement clip duplicate", () => {
       name: "Cross Copy C",
     });
 
+    // toSlot only ever named session slots, so it wins over arrangementStart —
+    // and then has nowhere to put an arrangement clip.
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "toSlot is for session destinations",
+      "cannot duplicate arrangement clips to the session",
     );
 
     const survivor = await clipAt(SOURCE_TRACK, position);
@@ -195,19 +197,30 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(await clipAt(SOURCE_TRACK, "49|1")).toBeUndefined();
   });
 
-  it("steers the old unprefixed slot spelling to a path", async () => {
+  it("honors the old bare track index and says what to write instead", async () => {
     const source = await createArrClip("61|1", "Source G");
+    const position = "65|1";
 
-    const result = await callTool("ppal-duplicate", {
-      type: "clip",
-      id: source.id,
-      toPath: `${DEST_TRACK}/0`,
-    });
-
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
-      `did you mean "t${DEST_TRACK}/s0"?`,
+    const { data: copy, warnings } = parseToolResultWithWarnings<{
+      id: string;
+      path?: string;
+    }>(
+      await callTool("ppal-duplicate", {
+        type: "clip",
+        id: source.id,
+        arrangementStart: position,
+        toPath: `${DEST_TRACK}`,
+      }),
     );
+
+    expect(warnings.join(" ")).toContain(
+      `toPath "${DEST_TRACK}" is a bare track index; use "t${DEST_TRACK}"`,
+    );
+
+    // Honored, not just tolerated: the copy is on the track the old spelling
+    // named, and the result reports it the way the warning asks for.
+    expect(copy.path).toBe(`t${DEST_TRACK}`);
+    expect((await clipAt(DEST_TRACK, position))?.id).toBe(copy.id);
   });
 });
 

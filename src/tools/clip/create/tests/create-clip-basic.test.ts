@@ -30,7 +30,7 @@ describe("createClip - basic validation and time signatures", () => {
   // arrangementStart — so the error names both fixes rather than the missing param.
   it("should throw error when a track is named without a spot on it", async () => {
     await expect(createClip({ path: "t0" })).rejects.toThrow(
-      'createClip failed: path "t0" names a track but not a spot on it',
+      'createClip failed: path "t0" names no position',
     );
   });
 
@@ -64,7 +64,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 2,
       length: "2bar",
     });

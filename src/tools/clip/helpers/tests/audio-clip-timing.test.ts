@@ -9,7 +9,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   audioClipSampleSeconds,
   audioClipTiming,
-} from "./audio-clip-timing.ts";
+} from "../audio-clip-timing.ts";
 
 const SAMPLE_RATE = 48000;
 

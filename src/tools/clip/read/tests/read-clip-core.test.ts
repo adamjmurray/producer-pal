@@ -80,7 +80,7 @@ describe("readClip", () => {
         id: "live_set/tracks/1/clip_slots/1/clip",
         name: "Test Clip",
         type: "midi",
-        slot: "1/1",
+        path: "t1/s1",
         view: "session",
         timeSignature: timeSig,
         looping: false,
@@ -248,13 +248,11 @@ describe("readClip", () => {
       id: null,
       type: null,
       name: null,
-      slot: "2/3",
+      path: "t2/s3",
     });
 
     // Verify warning is emitted
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "no clip at trackIndex 2, sceneIndex 3",
-    );
+    expect(consoleSpy).toHaveBeenCalledWith("no clip at t2/s3");
   });
 
   it("throws when track does not exist", () => {
@@ -264,7 +262,7 @@ describe("readClip", () => {
     });
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
-      "trackIndex 99 does not exist",
+      'no track at "t99"',
     );
   });
 
@@ -280,7 +278,7 @@ describe("readClip", () => {
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
-      "sceneIndex 99 does not exist",
+      'no scene at "s99"',
     );
   });
 
@@ -323,7 +321,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",
-      slot: "0/0",
+      path: "t0/s0",
       view: "session",
       timeSignature: "4/4",
       looping: true,
@@ -449,7 +447,7 @@ describe("readClip", () => {
     });
 
     expect(result.id).toBe("session_clip_id");
-    expect(result.slot).toBe("2/4");
+    expect(result.path).toBe("t2/s4");
     expect(result.view).toBe("session");
     expect(result).toHaveLength("1bar");
     expect(result.start).toBe("1|2");
@@ -487,8 +485,7 @@ describe("readClip", () => {
 
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
-    expect(result.trackIndex).toBe(3);
-    expect(result.slot).toBeUndefined();
+    expect(result.path).toBe("t3");
     // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
     expect(result.arrangementStart).toBe("5|1");
     // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1bar
@@ -529,7 +526,7 @@ describe("readClip", () => {
     });
   }
 
-  it("surfaces 1-based takeLane for arrangement clips on a take lane", () => {
+  it("reports the take lane in the path for arrangement clips on one", () => {
     setupArrangementClipFixture(
       "take_lane_clip_id",
       livePath.track(3).takeLane(0).arrangementClip(0),
@@ -537,10 +534,9 @@ describe("readClip", () => {
 
     const result = readClip({ clipId: "id take_lane_clip_id" });
 
-    // take_lanes 0 → 1-based takeLane:1 (main lane is excluded from the collection)
-    expect(result.takeLane).toBe(1);
+    // take_lanes 0 is the first take lane (the main lane is excluded from the collection)
+    expect(result.path).toBe("t3/l0");
     expect(result.view).toBe("arrangement");
-    expect(result.trackIndex).toBe(3);
   });
 
   it("omits takeLane for arrangement clips on the main lane", () => {
@@ -551,7 +547,6 @@ describe("readClip", () => {
 
     const result = readClip({ clipId: "id main_lane_clip_id" });
 
-    expect(result.takeLane).toBeUndefined();
     expect(result.view).toBe("arrangement");
   });
 
@@ -601,19 +596,21 @@ describe("readClip", () => {
     });
 
     expect(result.id).toBe("live_set/tracks/2/clip_slots/3/clip");
-    expect(result.slot).toBe("2/3");
+    expect(result.path).toBe("t2/s3");
     expect(result.type).toBe("midi");
   });
 
-  it("throws an error when neither clipId nor slot are provided", () => {
+  // The message names path, not the deprecated slot: a caller who sent neither
+  // can't see slot, so pointing at it is advice they can't act on.
+  it("throws an error when neither clipId nor path are provided", () => {
     expect(() => readClip({})).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
     expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
   });
 });

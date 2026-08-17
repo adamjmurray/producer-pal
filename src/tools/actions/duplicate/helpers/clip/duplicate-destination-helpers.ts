@@ -10,24 +10,30 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  namedHiddenDestination,
-  namedDestination,
-  parseDestinationPathList,
-  requireClipDestination,
-} from "#src/tools/shared/validation/destination-path.ts";
+  takeLaneFromPath,
+  withNewLaneOrdinals,
+  type ArrangementTrack,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  namedHiddenPath,
+  namedPath,
+  parseObjectPathList,
+  requireClipPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   parseSlotList,
   type SlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
-type ClipPath = ReturnType<typeof requireClipDestination>;
+type ClipPath = ReturnType<typeof requireClipPath>;
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Session slots, in order. Empty for arrangement destinations. */
   slots: SlotPosition[];
-  /** Arrangement tracks, in order. Empty means the source clip's own track. */
-  trackIndices: number[];
+  /** Arrangement destinations, in order. Empty means the source's own track. */
+  arrangementTargets: ArrangementTrack[];
 }
 
 /**
@@ -44,8 +50,8 @@ export function resolveClipDestinations(
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const toPath = namedDestination(rawToPath);
-  const toSlot = namedHiddenDestination(rawToSlot);
+  const toPath = namedPath(rawToPath);
+  const toSlot = namedHiddenPath(rawToSlot);
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // toPath replaces, so refuse instead of picking.
@@ -59,8 +65,8 @@ export function resolveClipDestinations(
     return legacySlotDestinations(toSlot, hasArrangementParams);
   }
 
-  const paths = parseDestinationPathList(toPath).map((path) =>
-    requireClipDestination(path),
+  const paths = parseObjectPathList(toPath, "toPath").map((path) =>
+    requireClipPath(path, "toPath"),
   );
 
   if (hasArrangementParams) {
@@ -114,8 +120,8 @@ export function warnUnusedDestination(
 ): void {
   if (type === "clip") return;
 
-  const toPath = namedDestination(rawToPath);
-  const toSlot = namedHiddenDestination(rawToSlot);
+  const toPath = namedPath(rawToPath);
+  const toSlot = namedHiddenPath(rawToSlot);
 
   if (type !== "device" && toPath != null) {
     console.warn(
@@ -140,19 +146,23 @@ function legacySlotDestinations(
   toSlot: string,
   hasArrangementParams: boolean,
 ): ClipDestinations {
-  if (hasArrangementParams) {
-    throw new Error(
-      'duplicate failed: toSlot is for session destinations; use toPath (e.g. "t2") to duplicate to another track\'s arrangement',
+  const slots = parseSlotList(toSlot);
+
+  // toSlot only ever named session slots, so it can't be the arrangement
+  // destination arrangementStart wants. Drop the weaker of the two rather than
+  // failing the call, the way toPath does for the same conflict.
+  if (hasArrangementParams && slots.length > 0) {
+    console.warn(
+      "duplicate: arrangementStart/locator ignored — toSlot names a session position; " +
+        'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
-
-  const slots = parseSlotList(toSlot);
 
   if (slots.length === 0) {
     throw new Error("duplicate failed: toSlot is required for session clips");
   }
 
-  return { destination: "session", slots, trackIndices: [] };
+  return { destination: "session", slots, arrangementTargets: [] };
 }
 
 /**
@@ -164,19 +174,28 @@ function legacySlotDestinations(
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
-  const trackIndices: number[] = [];
+  const arrangementTargets: ArrangementTrack[] = [];
   const slots: SlotPosition[] = [];
 
   for (const path of paths) {
     if (path.kind === "slot") {
       slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
     } else {
-      trackIndices.push(path.trackIndex);
+      arrangementTargets.push({
+        trackIndex: path.trackIndex,
+        takeLane: takeLaneFromPath(path),
+      });
     }
   }
 
+  // Number the lanes here, off the list the caller wrote: the copy loop cycles
+  // this list, and a cycled repeat must reuse its lane, not append one.
   if (slots.length === 0) {
-    return { destination: "arrangement", slots: [], trackIndices };
+    return {
+      destination: "arrangement",
+      slots: [],
+      arrangementTargets: withNewLaneOrdinals(arrangementTargets),
+    };
   }
 
   const named = slots
@@ -186,20 +205,20 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but session positions, the position has no track to
   // apply to, so toPath is the one that survives.
-  if (trackIndices.length === 0) {
+  if (arrangementTargets.length === 0) {
     console.warn(
       `duplicate: arrangementStart/locator ignored — toPath "${named}" names a session position; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
-    return { destination: "session", slots, trackIndices: [] };
+    return { destination: "session", slots, arrangementTargets: [] };
   }
 
   console.warn(
     `duplicate: toPath "${named}" ignored — arrangementStart/locator makes this an arrangement duplicate`,
   );
 
-  return { destination: "arrangement", slots: [], trackIndices };
+  return { destination: "arrangement", slots: [], arrangementTargets };
 }
 
 /**
@@ -212,10 +231,11 @@ function sessionDestinations(paths: ClipPath[]): ClipDestinations {
 
   for (const path of paths) {
     // A bare track names two places at once, and guessing between them is how a
-    // copy ends up on top of the source.
-    if (path.kind === "track") {
+    // copy ends up on top of the source. A take lane names the arrangement
+    // outright, so it needs a position there rather than a scene.
+    if (path.kind !== "slot") {
       throw new Error(
-        `duplicate failed: toPath "t${path.trackIndex}" names a track but not a spot on it; add ` +
+        `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
           `arrangementStart or locator for track ${path.trackIndex}'s arrangement, or use ` +
           `"t${path.trackIndex}/s<scene>" for a session slot`,
       );
@@ -224,5 +244,5 @@ function sessionDestinations(paths: ClipPath[]): ClipDestinations {
     slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
   }
 
-  return { destination: "session", slots, trackIndices: [] };
+  return { destination: "session", slots, arrangementTargets: [] };
 }

@@ -13,7 +13,7 @@ import {
 import {
   hasArrangementPosition,
   inferDestination,
-  resolveDestinationTrackIndices,
+  resolveDestinationTargets,
   validateAndConfigureRouteToSource,
   validateArrangementParameters,
 } from "../duplicate-validation-helpers.ts";
@@ -109,7 +109,7 @@ describe("inferDestination", () => {
   });
 });
 
-describe("resolveDestinationTrackIndices", () => {
+describe("resolveDestinationTargets", () => {
   /**
    * Register a source clip mock on a track.
    * @param trackIndex - Track the clip lives on, or null for an orphan clip
@@ -142,14 +142,23 @@ describe("resolveDestinationTrackIndices", () => {
     });
   }
 
+  /**
+   * A main-lane destination on a track.
+   * @param trackIndex - Track index
+   * @returns The destination
+   */
+  function mainLane(trackIndex: number) {
+    return { trackIndex, takeLane: null };
+  }
+
   it("falls back to the source clip's own track when no track is named", () => {
-    expect(resolveDestinationTrackIndices(sourceClip(3), [])).toStrictEqual([
-      3,
+    expect(resolveDestinationTargets(sourceClip(3), [])).toStrictEqual([
+      mainLane(3),
     ]);
   });
 
   it("throws when the source clip has no track index and none was named", () => {
-    expect(() => resolveDestinationTrackIndices(sourceClip(null), [])).toThrow(
+    expect(() => resolveDestinationTargets(sourceClip(null), [])).toThrow(
       /no track index for clip id/,
     );
   });
@@ -160,7 +169,9 @@ describe("resolveDestinationTrackIndices", () => {
     destTrack(7);
     destTrack(8);
 
-    expect(resolveDestinationTrackIndices(clip, [7, 8])).toStrictEqual([7, 8]);
+    expect(
+      resolveDestinationTargets(clip, [mainLane(7), mainLane(8)]),
+    ).toStrictEqual([mainLane(7), mainLane(8)]);
   });
 
   it("throws when toPath names a track that does not exist", () => {
@@ -168,7 +179,7 @@ describe("resolveDestinationTrackIndices", () => {
 
     mockNonExistentObjects();
 
-    expect(() => resolveDestinationTrackIndices(clip, [99])).toThrow(
+    expect(() => resolveDestinationTargets(clip, [mainLane(99)])).toThrow(
       'duplicate failed: no track at toPath "t99"',
     );
   });
@@ -180,7 +191,7 @@ describe("resolveDestinationTrackIndices", () => {
 
     destTrack(5, false);
 
-    expect(() => resolveDestinationTrackIndices(clip, [5])).toThrow(
+    expect(() => resolveDestinationTargets(clip, [mainLane(5)])).toThrow(
       "MIDI clip cannot be duplicated to audio track 5",
     );
   });
@@ -190,7 +201,7 @@ describe("resolveDestinationTrackIndices", () => {
 
     destTrack(8, true);
 
-    expect(() => resolveDestinationTrackIndices(clip, [8])).toThrow(
+    expect(() => resolveDestinationTargets(clip, [mainLane(8)])).toThrow(
       "audio clip cannot be duplicated to MIDI track 8",
     );
   });
@@ -201,9 +212,9 @@ describe("resolveDestinationTrackIndices", () => {
     destTrack(7, true);
     destTrack(5, false);
 
-    expect(() => resolveDestinationTrackIndices(clip, [7, 5])).toThrow(
-      "MIDI clip cannot be duplicated to audio track 5",
-    );
+    expect(() =>
+      resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
+    ).toThrow("MIDI clip cannot be duplicated to audio track 5");
   });
 });
 
