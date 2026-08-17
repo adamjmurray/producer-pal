@@ -252,9 +252,7 @@ describe("readClip", () => {
     });
 
     // Verify warning is emitted
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "no clip at trackIndex 2, sceneIndex 3",
-    );
+    expect(consoleSpy).toHaveBeenCalledWith("no clip at t2/s3");
   });
 
   it("throws when track does not exist", () => {
@@ -264,7 +262,7 @@ describe("readClip", () => {
     });
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
-      "trackIndex 99 does not exist",
+      'no track at "t99"',
     );
   });
 
@@ -280,7 +278,7 @@ describe("readClip", () => {
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
-      "sceneIndex 99 does not exist",
+      'no scene at "s99"',
     );
   });
 

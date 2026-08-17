@@ -219,7 +219,7 @@ export function resolveTakeLane(
   const currentCount = track.getChildIds("take_lanes").length;
   const laneIndex = target === "new" ? currentCount : target;
 
-  assertTakeLaneCapacity(laneIndex);
+  assertTakeLaneCapacity(laneIndex, target);
 
   // Auto-create lanes until the target lane exists (empty lanes persist).
   for (let i = currentCount; i <= laneIndex; i++) {
@@ -271,20 +271,30 @@ export function assertAllTakeLanesFit(targets: ArrangementTrack[]): void {
     // at least laneIndex + 1 of them.
     const laneIndex = takeLane === "new" ? count : takeLane;
 
-    assertTakeLaneCapacity(laneIndex);
+    assertTakeLaneCapacity(laneIndex, takeLane);
     counts.set(trackIndex, Math.max(count, laneIndex + 1));
   }
 }
 
 /**
  * Checks a lane index is within the per-track cap.
+ *
+ * The two ways past it need different advice: an `l+` on a full track is out of
+ * room, and deleting lanes in Live makes room. An out-of-range `l<n>` is a bad
+ * number, and deleting lanes makes it worse.
  * @param laneIndex - 0-based index of the lane about to be resolved
+ * @param target - What asked for it, so the message names the right problem
  * @throws If the lane would exceed MAX_TAKE_LANES
  */
-function assertTakeLaneCapacity(laneIndex: number): void {
-  if (laneIndex + 1 > MAX_TAKE_LANES) {
-    throw new Error(
-      `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`,
-    );
-  }
+function assertTakeLaneCapacity(
+  laneIndex: number,
+  target: TakeLaneTarget,
+): void {
+  if (laneIndex + 1 <= MAX_TAKE_LANES) return;
+
+  throw new Error(
+    target === "new"
+      ? `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`
+      : `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
+  );
 }

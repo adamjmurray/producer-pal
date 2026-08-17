@@ -11,6 +11,7 @@ import {
   namedPath,
   namedHiddenPath,
   parseSessionSlotList,
+  slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -284,7 +285,7 @@ function handlePlaySessionClips(
 
     if (!clipSlot.exists()) {
       throw new Error(
-        `playback ${action} action failed: clip slot at ${trackIndex}/${sceneIndex} does not exist`,
+        `playback ${action} action failed: no clip slot at ${slotPath(trackIndex, sceneIndex)}`,
       );
     }
 

@@ -52,14 +52,14 @@ export function resolveClip(
   const track = LiveAPI.from(livePath.track(trackIndex as number));
 
   if (!track.exists()) {
-    throw new Error(`trackIndex ${trackIndex} does not exist`);
+    throw new Error(`no track at "t${trackIndex}"`);
   }
 
   // Validate scene exists
   const scene = LiveAPI.from(livePath.scene(sceneIndex as number));
 
   if (!scene.exists()) {
-    throw new Error(`sceneIndex ${sceneIndex} does not exist`);
+    throw new Error(`no scene at "s${sceneIndex}"`);
   }
 
   // Track and scene exist - check if clip slot has a clip

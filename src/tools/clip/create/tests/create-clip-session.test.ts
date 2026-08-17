@@ -276,9 +276,7 @@ describe("createClip - session view", () => {
         notes: "C3 1|1",
         auto: "play-scene",
       }),
-    ).rejects.toThrow(
-      'createClip auto="play-scene" failed: scene at sceneIndex=0 does not exist',
-    );
+    ).rejects.toThrow('createClip auto="play-scene" failed: no scene at "s0"');
   });
 
   it("should throw error for invalid auto value", async () => {

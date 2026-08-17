@@ -158,7 +158,7 @@ export function handleAutoPlayback(
 
       if (!scene.exists()) {
         throw new Error(
-          `createClip auto="play-scene" failed: scene at sceneIndex=${firstSlot.sceneIndex} does not exist`,
+          `createClip auto="play-scene" failed: no scene at "s${firstSlot.sceneIndex}"`,
         );
       }
 

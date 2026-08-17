@@ -246,7 +246,9 @@ describe("clip-result-helpers", () => {
 
       expect(() =>
         prepareSessionClipSlot(0, 1000, LiveAPI.from(livePath.liveSet), 1000),
-      ).toThrow("sceneIndex 1000 exceeds the maximum allowed value of 999");
+      ).toThrow(
+        'scene "s1000" is out of range: scenes auto-create only through "s999"',
+      );
     });
 
     it("does not auto-create scenes when the slot already exists", () => {
@@ -288,7 +290,7 @@ describe("clip-result-helpers", () => {
 
       expect(() =>
         prepareSessionClipSlot(0, 1, LiveAPI.from(livePath.liveSet), 1000),
-      ).toThrow("a clip already exists at track 0, clip slot 1");
+      ).toThrow("a clip already exists at t0/s1");
     });
   });
 });

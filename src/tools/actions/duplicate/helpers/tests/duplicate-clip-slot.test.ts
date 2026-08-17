@@ -164,7 +164,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 56 was not duplicated: no clip landed at 1/0",
+      "clip 56 was not duplicated: no clip landed at t1/s0",
     );
   });
 
@@ -179,7 +179,7 @@ describe("duplicateClipSlot", () => {
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toBeNull();
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 56 was not duplicated: no clip landed at 1/0",
+      "clip 56 was not duplicated: no clip landed at t1/s0",
     );
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();

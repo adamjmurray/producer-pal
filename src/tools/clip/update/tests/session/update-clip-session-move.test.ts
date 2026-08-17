@@ -294,7 +294,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "destination slot 99/99 does not exist",
+      "destination t99/s99 does not exist",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({ id: "123" });
@@ -389,7 +389,7 @@ describe("handleSessionSlotMove", () => {
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 123 was not moved: no clip landed at 1/2, so the original was kept",
+      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips[0]).toMatchObject({ id: "123" });
   });
@@ -408,7 +408,7 @@ describe("handleSessionSlotMove", () => {
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "clip 123 was not moved: no clip landed at 1/2, so the original was kept",
+      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({ id: "123" });
@@ -425,7 +425,10 @@ describe("handleSessionSlotMove", () => {
       destHasClip: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(1, "overwriting existing clip at 0/1");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "overwriting existing clip at t0/s1",
+    );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     // The copy replaced the occupant, so the result is the copy's id.

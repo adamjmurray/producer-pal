@@ -128,17 +128,20 @@ export function slotPath(trackIndex: number, sceneIndex: number): string {
  * The path an arrangement clip's lane spells — the track itself for the main
  * lane, or the take lane it sits on.
  * @param trackIndex - 0-based track index
- * @param takeLaneIndex - 0-based take lane index, or null for the main lane
- * @returns The path (e.g. "t0" or "t0/l1")
+ * @param takeLane - 0-based lane index, "new" for an unresolved `l+`, or null
+ *   for the main lane
+ * @returns The path (e.g. "t0", "t0/l1", or "t0/l+")
  */
 export function arrangementPath(
   trackIndex: number,
-  takeLaneIndex?: number | null,
+  takeLane?: number | "new" | null,
 ): string {
+  if (takeLane == null) return formatObjectPath({ kind: "track", trackIndex });
+
   return formatObjectPath(
-    takeLaneIndex == null
-      ? { kind: "track", trackIndex }
-      : { kind: "take-lane", trackIndex, laneIndex: takeLaneIndex },
+    takeLane === "new"
+      ? { kind: "new-take-lane", trackIndex }
+      : { kind: "take-lane", trackIndex, laneIndex: takeLane },
   );
 }
 

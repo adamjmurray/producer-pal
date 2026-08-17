@@ -42,13 +42,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     // keep t5/s1 — sliding it onto t5/s0 would overwrite whatever sits there.
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "destination slot 5/1 does not exist",
-    );
+    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s1 does not exist");
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "destination slot 5/0 does not exist",
+      "destination t5/s0 does not exist",
     );
   });
 
@@ -97,13 +94,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ ids: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "destination slot 5/0 does not exist",
-    );
+    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s0 does not exist");
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "destination slot 5/1 does not exist",
+      "destination t5/s1 does not exist",
     );
   });
 });

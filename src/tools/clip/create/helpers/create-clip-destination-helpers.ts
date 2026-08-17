@@ -20,6 +20,7 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
+  arrangementPath,
   namedPath,
   namedHiddenPath,
   parseObjectPathList,
@@ -267,12 +268,16 @@ function pairTracksWithStarts(
 
   if (arrangementStarts.length === 0) {
     // A bare track names two places at once, and guessing between them is how a
-    // clip lands on top of something.
-    const { trackIndex } = tracks[0] as ArrangementTrack;
+    // clip lands on top of something. A take lane names only one, but still
+    // needs a position on it.
+    const { trackIndex, takeLane } = tracks[0] as ArrangementTrack;
+    const fix =
+      takeLane == null
+        ? `add arrangementStart for its arrangement, or use "t${trackIndex}/s<scene>" for a session slot`
+        : "add arrangementStart; take lanes hold arrangement clips";
 
     throw new Error(
-      `createClip failed: path "t${trackIndex}" names a track but not a spot on it; add ` +
-        `arrangementStart for track ${trackIndex}'s arrangement, or use "t${trackIndex}/s<scene>" for a session slot`,
+      `createClip failed: path "${arrangementPath(trackIndex, takeLane)}" names no position; ${fix}`,
     );
   }
 

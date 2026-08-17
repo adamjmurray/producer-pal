@@ -20,6 +20,10 @@ import {
   takeLaneKey,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
@@ -227,11 +231,10 @@ async function createClipAtIndex(
       }
     }
   } catch (error) {
-    // Emit warning with position info
     const position =
       view === "session"
-        ? `slot=${pos.trackIndex}/${pos.sceneIndex}`
-        : `trackIndex=${pos.trackIndex}, arrangementStart=${pos.arrangementStart}`;
+        ? slotPath(pos.trackIndex, pos.sceneIndex as number)
+        : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
 
     console.warn(
       `Failed to create clip at ${position}: ${errorMessage(error)}`,

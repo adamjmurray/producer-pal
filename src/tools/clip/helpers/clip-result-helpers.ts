@@ -10,7 +10,6 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export interface MidiNote {
@@ -166,9 +165,7 @@ export function prepareSessionClipSlot(
 ): LiveAPI {
   if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
-        MAX_AUTO_CREATED_SCENES - 1
-      }`,
+      `scene "s${sceneIndex}" is out of range: scenes auto-create only through "s${maxAutoCreatedScenes - 1}"`,
     );
   }
 
@@ -188,7 +185,7 @@ export function prepareSessionClipSlot(
 
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
+      `a clip already exists at ${slotPath(trackIndex, sceneIndex)}`,
     );
   }
 

@@ -177,6 +177,9 @@ describe("resolveTakeLane", () => {
     );
   });
 
+  // The two ways past the cap need different advice: an "l+" on a full track is
+  // out of room, while "l9" is a bad number on any track — telling that caller
+  // to delete lanes sends them the wrong way.
   it("enforces the take lane cap", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
     const trackApi = LiveAPI.from(livePath.track(0));
@@ -185,8 +188,16 @@ describe("resolveTakeLane", () => {
       /reached the 8 take lane limit/,
     );
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
-      /reached the 8 take lane limit/,
+      /take lane "l9" is out of range: a track has "l0" through "l7"/,
     );
+  });
+
+  it("calls an out-of-range lane out of range on an empty track", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    expect(() =>
+      resolveTakeLane(LiveAPI.from(livePath.track(0)), MAX_TAKE_LANES),
+    ).toThrow(/take lane "l8" is out of range/);
   });
 
   it("allows targeting exactly the cap-numbered lane (boundary is > not >=)", () => {

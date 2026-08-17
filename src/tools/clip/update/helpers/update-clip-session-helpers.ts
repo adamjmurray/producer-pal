@@ -19,6 +19,7 @@ import {
   namedHiddenPath,
   namedPath,
   parseObjectPathList,
+  slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
@@ -323,7 +324,7 @@ export function handleSessionSlotMove({
 
   if (!destClipSlot.exists()) {
     console.warn(
-      `destination slot ${toSlot.trackIndex}/${toSlot.sceneIndex} does not exist`,
+      `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
     );
     updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
@@ -347,7 +348,7 @@ export function handleSessionSlotMove({
 
   if (destClipSlot.getProperty("has_clip")) {
     console.warn(
-      `overwriting existing clip at ${toSlot.trackIndex}/${toSlot.sceneIndex}`,
+      `overwriting existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
     );
   }
 
@@ -363,7 +364,7 @@ export function handleSessionSlotMove({
 
   if (newClip == null) {
     console.warn(
-      `clip ${clip.id} was not moved: no clip landed at ${toSlot.trackIndex}/${toSlot.sceneIndex}, so the original was kept`,
+      `clip ${clip.id} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
     );
     updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
