@@ -133,13 +133,22 @@ function resolvePadTarget(path: string, label: string): PadTarget | null {
   }
 
   // A trailing chain or device segment names something inside the pad, and
-  // copy_pad only ever copies a whole pad.
-  if (
-    resolved.targetType !== "drum-pad" ||
-    resolved.remainingSegments.length > 0
-  ) {
+  // copy_pad only ever copies a whole pad. Resolution stops at the first pad,
+  // so a further pad segment is a pad of a nested rack — unreachable, and worth
+  // saying so rather than claiming the path names no pad at all.
+  if (resolved.targetType !== "drum-pad") {
     console.warn(
       `duplicate: ${label} "${path}" does not name a drum pad (expected something like "t0/d0/pC1")`,
+    );
+
+    return null;
+  }
+
+  if (resolved.remainingSegments.length > 0) {
+    console.warn(
+      resolved.remainingSegments.some((segment) => segment.startsWith("p"))
+        ? `duplicate: ${label} "${path}" names a pad of a nested Drum Rack, which can't be copied`
+        : `duplicate: ${label} "${path}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
 
     return null;

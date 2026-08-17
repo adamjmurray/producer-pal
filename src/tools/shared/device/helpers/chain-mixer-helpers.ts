@@ -14,6 +14,13 @@ export interface ChainMixerParams {
   sendReturn?: string;
 }
 
+export interface ChainMixerCarry {
+  /** Mixer values read off the source chain */
+  mixer: Record<string, unknown>;
+  /** The source chain, named for the announcement */
+  from: string;
+}
+
 /**
  * Read a chain's own mixer (the chain fader, not the devices inside it),
  * reporting only non-default settings: gainDb when not 0 dB, pan when not
@@ -123,7 +130,7 @@ export function warnIfChainMixerLeftBehind(
   const toChain = destination.type.endsWith("Chain");
   const tool = toChain ? "update-device" : "update-track";
   const where = toChain ? "destination chain" : "destination track";
-  const hint = padHint(isCopy, toChain, chain.type);
+  const hint = padHint(chain, destination, isCopy);
 
   const name = chain.getProperty("name") as string;
   const verb = isCopy ? "does not follow the copy" : "stays behind";
@@ -166,12 +173,13 @@ function sourceChain(device: LiveAPI): LiveAPI | null {
  * and no longer reads as untouched.
  * @param device - The source device (before it moves)
  * @param destination - Container the device is going into (chain or track)
- * @returns The mixer to carry, or null to leave the destination alone
+ * @returns The mixer to carry and where it came from, or null to leave the
+ *   destination alone
  */
 export function chainMixerToCarry(
   device: LiveAPI,
   destination: LiveAPI,
-): Record<string, unknown> | null {
+): ChainMixerCarry | null {
   const chain = sourceChain(device);
 
   if (chain == null || chain.id === destination.id) {
@@ -190,20 +198,27 @@ export function chainMixerToCarry(
     return null;
   }
 
-  return mixer;
+  return { mixer, from: chainLabel(chain) };
 }
 
 /**
- * Apply a mixer read off one chain onto another. Sends go one at a time so they
- * match by return-chain name rather than by index, which only line up when both
+ * Apply a mixer read off one chain onto another, and say so: the caller asked
+ * to move a device, not to touch a fader. Sends go one at a time so they match
+ * by return-chain name rather than by index, which only line up when both
  * chains live in the same rack.
- * @param mixer - Mixer values from {@link chainMixerToCarry}
+ * @param carry - Mixer values from {@link chainMixerToCarry}
  * @param destination - Chain to write them onto
  */
 export function carryChainMixer(
-  mixer: Record<string, unknown>,
+  carry: ChainMixerCarry,
   destination: LiveAPI,
 ): void {
+  const { mixer } = carry;
+
+  console.warn(
+    `${carry.from} trim (${summarizeChainMixer(mixer)}) carried onto the destination chain, which was empty and at defaults`,
+  );
+
   applyChainMixer(destination, {
     gainDb: mixer.gainDb as number | undefined,
     pan: mixer.pan as number | undefined,
@@ -222,19 +237,38 @@ export function carryChainMixer(
 /**
  * The whole-pad alternative to offer, when there is one. Both operations keep
  * the chain — and so the trim — intact, instead of moving a device out of it.
+ * Both also stay within one rack, so only offer them when the destination is
+ * another pad of the same rack — otherwise the suggestion is refused.
+ * @param chain - The chain being left behind
+ * @param destination - Container the device is going into
  * @param isCopy - True when the device is being copied, not moved
- * @param toChain - True when the destination is a chain rather than a track
- * @param chainType - Live type of the chain being left behind
  * @returns Text to append to the warning, or "" when nothing applies
  */
-function padHint(isCopy: boolean, toChain: boolean, chainType: string): string {
-  if (!toChain || chainType !== "DrumChain") {
+function padHint(
+  chain: LiveAPI,
+  destination: LiveAPI,
+  isCopy: boolean,
+): string {
+  if (
+    chain.type !== "DrumChain" ||
+    destination.type !== "DrumChain" ||
+    rackPath(chain) !== rackPath(destination)
+  ) {
     return "";
   }
 
   return isCopy
     ? " or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it"
     : " or move the whole pad instead (update-device with the pad path and toPath)";
+}
+
+/**
+ * Live API path of the rack a chain belongs to
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns The rack's path
+ */
+function rackPath(chain: LiveAPI): string {
+  return chain.path.replace(/ (?:return_)?chains \d+$/, "");
 }
 
 /**
@@ -363,7 +397,7 @@ function readActiveSends(
  * @returns Return chain names
  */
 function returnChainNames(chain: LiveAPI): string[] {
-  const rack = LiveAPI.from(chain.path.replace(/ (?:return_)?chains \d+$/, ""));
+  const rack = LiveAPI.from(rackPath(chain));
 
   return rack
     .getChildren("return_chains")

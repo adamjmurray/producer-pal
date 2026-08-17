@@ -89,7 +89,9 @@ describe("ppal-update-device drum chain trim carry", () => {
       arguments: { path: `t${t}/d0/pC1`, toPath: `t${t + 50}/d0/pB1` },
     });
 
-    expect(JSON.stringify(result)).toContain("names a different rack");
+    expect(JSON.stringify(result)).toContain(
+      "does not name a pad in this rack",
+    );
 
     await sleep(200);
 

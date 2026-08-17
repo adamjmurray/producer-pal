@@ -374,6 +374,27 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
   });
 
+  it("omits the pad-move hint when the destination is in another rack", () => {
+    // Both pad operations stay within one rack, so offering them here would
+    // point at something that gets refused.
+    registerChainWithMixer({ gainDb: -15 });
+
+    const otherRack = registerMockObject("other-chain", {
+      path: livePath.track(1).device(0).chain(0),
+      type: "DrumChain",
+    });
+
+    warnIfChainMixerLeftBehind(
+      LiveAPI.from(devicePath),
+      LiveAPI.from(otherRack.path),
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
   it("omits the pad-move hint for a regular chain", () => {
     registerChainWithMixer({ pan: 0.5, type: "Chain" });
 

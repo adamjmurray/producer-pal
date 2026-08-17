@@ -291,7 +291,14 @@ function duplicateDrumPadToPaths(
     )
     .filter((result) => result != null);
 
-  return results.length === 1 ? (results[0] as object) : results;
+  // Collapse on what was asked for, not on what survived: one object back from
+  // a two-destination call would read as a one-destination call that worked.
+  if (paths.length > 1) {
+    return results;
+  }
+
+  // A lone copy that was skipped has nothing to report but its warning.
+  return results[0] ?? results;
 }
 
 /**

@@ -126,12 +126,12 @@ export function moveDrumChainToPath(
 
   const drumRackPath = chain.path.replace(/ chains \d+$/, "");
 
-  // The move is an in_note re-map within one rack, so a toPath naming a
-  // different rack can't be honored. Without this it lands on that note in the
+  // The move is an in_note re-map within one rack, so a toPath naming a pad
+  // elsewhere can't be honored. Without this it lands on that note in the
   // SOURCE rack instead — the wrong pad, reported as a success.
   if (!targetsSameRack(toPath, drumRackPath)) {
     console.warn(
-      `toPath "${toPath}" names a different rack, but a pad move stays within one rack; ` +
+      `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
         `move the pad's device instead (update-device on the device path)`,
     );
 

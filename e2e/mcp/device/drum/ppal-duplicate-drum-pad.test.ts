@@ -78,11 +78,19 @@ describe("ppal-duplicate drum-pad", () => {
     const t = await createTrackWithDrumRack(ctx.client!);
 
     await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `t${t}/d0/pD1/c0`, name: "Resident" },
+    });
+
+    await sleep(150);
+
+    await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "drum-pad",
         path: `t${t}/d0/pC1`,
         toPath: `t${t}/d0/pD1`,
+        name: "Layered",
       },
     });
 
@@ -92,6 +100,13 @@ describe("ppal-duplicate drum-pad", () => {
     const pad = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
 
     expect(pad.chains).toHaveLength(2);
+
+    // Naming only the new chain assumes copy_pad appends. Pin that down here:
+    // if Live ever prepended, the resident chain would be the one renamed.
+    expect(pad.chains?.map((c) => c.name)).toStrictEqual([
+      "Resident",
+      "Layered",
+    ]);
   });
 
   it("copies to several pads in one call and names each copy", async () => {

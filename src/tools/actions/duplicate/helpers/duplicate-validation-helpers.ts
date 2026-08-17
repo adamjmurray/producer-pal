@@ -96,7 +96,7 @@ export function validateBasicInputs(
     }
 
     if (id) {
-      console.warn(`id ignored: drum pads are addressed by path`);
+      console.warn("id ignored: drum pads are addressed by path");
     }
   } else {
     if (!id) {

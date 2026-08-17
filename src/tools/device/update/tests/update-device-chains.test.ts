@@ -545,6 +545,11 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
 
     expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
+    // Announced, because the caller asked to move a device, not to set a fader.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
+    );
     expect(outlet).not.toHaveBeenCalledWith(
       1,
       expect.stringContaining("stays behind"),

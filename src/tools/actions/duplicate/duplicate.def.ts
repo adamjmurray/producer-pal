@@ -30,7 +30,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   inputSchema: {
     id: param(z.coerce.string().optional(), {
       default: "object to duplicate (required except for drum pads)",
-      smallModel: "object to duplicate",
+      smallModel: "object to duplicate (not drum pads: use path)",
     }),
     path: param(z.coerce.string().optional(), {
       default: "drum pad to duplicate, e.g. 't0/d0/pC1' (drum pads only)",

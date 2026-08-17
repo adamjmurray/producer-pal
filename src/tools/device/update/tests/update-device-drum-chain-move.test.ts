@@ -117,7 +117,7 @@ describe("updateDevice - drum chain moving", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names a different rack"),
+      expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -129,7 +129,7 @@ describe("updateDevice - drum chain moving", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names a different rack"),
+      expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });

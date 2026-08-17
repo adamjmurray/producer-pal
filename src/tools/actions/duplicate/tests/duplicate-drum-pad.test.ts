@@ -285,7 +285,9 @@ describe("duplicate - drum pad", () => {
       expect.stringContaining("nonsense"),
     );
     expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
-    expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
+    // Still an array: the caller named two destinations, and a bare object here
+    // would read as a one-destination call that worked.
+    expect(result).toStrictEqual([{ id: "pad38", path: "t0/d0/pD1" }]);
   });
 
   it("refuses a path that names something inside the pad", async () => {
@@ -299,8 +301,37 @@ describe("duplicate - drum pad", () => {
 
     expectNoCopy(rack);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("does not name a drum pad"),
+      expect.stringContaining("names something inside a drum pad"),
     );
+  });
+
+  it("says a nested rack's pad is out of reach rather than not a pad", async () => {
+    // Path resolution stops at the first pad, so "not a drum pad" would send
+    // the reader looking for a typo that isn't there.
+    const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
+
+    await duplicate({
+      type: "drum-pad",
+      path: "t0/d0/pC1/d0/pD1",
+      toPath: "t0/d0/pD1",
+    });
+
+    expectNoCopy(rack);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("names a pad of a nested Drum Rack"),
+    );
+  });
+
+  it("returns nothing for a lone copy that was skipped", async () => {
+    registerDrumRack([{ note: 36, chainIds: [] }]);
+
+    const result = await duplicate({
+      type: "drum-pad",
+      path: "t0/d0/pC1",
+      toPath: "t0/d0/pD1",
+    });
+
+    expect(result).toStrictEqual([]);
   });
 
   it("copies to several pads from one call", async () => {
