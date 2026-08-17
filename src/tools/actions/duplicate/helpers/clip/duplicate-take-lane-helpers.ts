@@ -47,7 +47,7 @@ export function resolveDuplicateTakeLanes(
 
   if (sourceClip.getProperty("is_midi_clip") !== 1) {
     console.warn(
-      `duplicate: takeLane supports MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
+      `duplicate: take lanes hold MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
     );
 
     return new Map();

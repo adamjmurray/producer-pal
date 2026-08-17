@@ -448,7 +448,7 @@ describe("take lanes", () => {
     );
 
     expect(audioDup.warnings.join(" ")).toContain(
-      "takeLane supports MIDI clips only",
+      "take lanes hold MIDI clips only",
     );
     expect(audioDup.data).toStrictEqual([]);
   });

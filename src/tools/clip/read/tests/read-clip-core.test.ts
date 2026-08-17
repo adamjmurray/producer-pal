@@ -600,15 +600,17 @@ describe("readClip", () => {
     expect(result.type).toBe("midi");
   });
 
-  it("throws an error when neither clipId nor slot are provided", () => {
+  // The message names path, not the deprecated slot: a caller who sent neither
+  // can't see slot, so pointing at it is advice they can't act on.
+  it("throws an error when neither clipId nor path are provided", () => {
     expect(() => readClip({})).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
     expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "Either clipId or slot must be provided",
+      "readClip failed: clipId or path is required",
     );
   });
 });

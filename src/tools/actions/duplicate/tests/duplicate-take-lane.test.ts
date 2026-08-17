@@ -256,7 +256,7 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane supports MIDI clips only"),
+      expect.stringContaining("take lanes hold MIDI clips only"),
     );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result).toStrictEqual([]);
@@ -283,7 +283,7 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("takeLane supports MIDI clips only"),
+      expect.stringContaining("take lanes hold MIDI clips only"),
     );
     expect(mainTrack.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
