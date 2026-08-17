@@ -15,7 +15,11 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-chain-trim-carry
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext, sleep } from "../../mcp-test-helpers";
+import {
+  createTestDevice,
+  setupMcpTestContext,
+  sleep,
+} from "../../mcp-test-helpers";
 import {
   createTrackWithDrumRack,
   readDrumPad,
@@ -58,27 +62,32 @@ describe("ppal-update-device drum chain trim carry", () => {
       arguments: { path: `t${t}/d0/pC1/c0`, gainDb: -15 },
     });
 
-    // D1 already holds its own device and its own trim.
+    // E1 holds an effect and a trim of its own. It has to be an effect: a chain
+    // takes only one instrument, so Live would turn down a move onto D1.
+    await createTestDevice(ctx.client!, "Reverb", `t${t}/d0/pE1`);
+
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pD1/c0`, gainDb: 6 },
+      arguments: { path: `t${t}/d0/pE1/c0`, gainDb: 6 },
     });
 
     await sleep(150);
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1/d0`, toPath: `t${t}/d0/pD1` },
+      arguments: { path: `t${t}/d0/pC1/d0`, toPath: `t${t}/d0/pE1` },
     });
 
     expect(JSON.stringify(result)).toContain("stays behind");
 
     await sleep(200);
 
-    // D1's own fader is untouched — what was already there still sounds the same.
-    expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pD1`)).chains?.[0]?.gainDb,
-    ).toBe(6);
+    const destination = (await readDrumPad(ctx.client!, `t${t}/d0/pE1`))
+      .chains?.[0];
+
+    // The device arrived, and E1's own fader is what it was.
+    expect(destination?.devices).toHaveLength(2);
+    expect(destination?.gainDb).toBe(6);
   });
 
   it("refuses a pad move whose toPath names a different rack", async () => {

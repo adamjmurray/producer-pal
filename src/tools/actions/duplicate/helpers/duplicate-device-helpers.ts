@@ -75,11 +75,21 @@ export function duplicateDevice(
       trackIndex,
     );
 
-    // 7. Move device to destination. Report a missing one against the caller's
-    // toPath, not the adjusted one — the temp track shifted its track index.
-    if (!moveDeviceToPath(tempDevice, adjustedDestination, device)) {
+    // 7. Move the copy to the destination. Report a failure against the
+    // caller's toPath, not the adjusted one — the temp track shifted its track
+    // index. Either way nothing survives: the copy is still on the temp track,
+    // which the cleanup below deletes.
+    const outcome = moveDeviceToPath(tempDevice, adjustedDestination, device);
+
+    if (outcome === "no-destination") {
       throw new Error(
         `duplicate failed: no destination at toPath "${destination}"`,
+      );
+    }
+
+    if (outcome === "refused") {
+      throw new Error(
+        `duplicate failed: the copy could not be moved to "${destination}"`,
       );
     }
 

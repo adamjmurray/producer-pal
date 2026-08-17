@@ -12,6 +12,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
@@ -23,6 +24,42 @@ export {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 export { updateDevice } from "../update-device.ts";
+
+/**
+ * Register a live_set whose move_device puts the device in the destination, the
+ * way Live does when it takes the move. The registry answers statically, so
+ * without this the destination never lists the device and moveDeviceToPath
+ * reads every move as refused. Leave it out to test a refusal.
+ * @returns The live_set mock
+ */
+export function mockWorkingDeviceMoves(): RegisteredMockObject {
+  return registerMockObject("live-set", {
+    path: livePath.liveSet,
+    methods: {
+      move_device: (device, container) => {
+        const target = lookupMockObject(bareId(container));
+
+        if (target != null) {
+          const devices =
+            (target.properties.devices as string[] | undefined) ?? [];
+
+          target.properties.devices = [...devices, "id", bareId(device)];
+        }
+
+        return null;
+      },
+    },
+  });
+}
+
+/**
+ * Strip the "id " prefix Live's object arguments carry
+ * @param arg - A move_device argument
+ * @returns The bare id
+ */
+function bareId(arg: unknown): string {
+  return String(arg).replace(/^id /, "");
+}
 
 /**
  * Register a continuous parameter mock with default properties.

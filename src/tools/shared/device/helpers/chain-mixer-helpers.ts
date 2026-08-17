@@ -104,17 +104,15 @@ export function applyChainMixer(
  * Warn when a device is moved or copied out of a chain whose mixer is
  * non-default. The chain fader belongs to the chain, so it doesn't follow the
  * device — a common surprise on device-based drum pad moves.
- * @param device - The source device (before it moves)
- * @param destination - Container the device is going into (chain or track)
+ * @param chain - The chain the device came out of, from {@link sourceChain}
+ * @param destination - Container the device went into (chain or track)
  * @param isCopy - True when the device is being copied, not moved
  */
 export function warnIfChainMixerLeftBehind(
-  device: LiveAPI,
+  chain: LiveAPI | null,
   destination: LiveAPI,
   isCopy = false,
 ): void {
-  const chain = sourceChain(device);
-
   if (chain == null || chain.id === destination.id) {
     return;
   }
@@ -143,11 +141,12 @@ export function warnIfChainMixerLeftBehind(
 /**
  * The chain a device currently sits in, or null when it sits directly on a
  * track. The chain fader belongs to the chain, so this is the thing a device
- * move leaves behind.
+ * move leaves behind. Read it before the move: afterward a moved device answers
+ * with the chain it landed in.
  * @param device - The device to look up from
  * @returns The chain, or null when there isn't one
  */
-function sourceChain(device: LiveAPI): LiveAPI | null {
+export function sourceChain(device: LiveAPI): LiveAPI | null {
   const chainPath = device.path.replace(/ devices \d+$/, "");
 
   if (!/ (?:return_)?chains \d+$/.test(chainPath)) {
@@ -171,17 +170,15 @@ function sourceChain(device: LiveAPI): LiveAPI | null {
  *
  * Must be called BEFORE the move — afterward the destination holds the device
  * and no longer reads as untouched.
- * @param device - The source device (before it moves)
+ * @param chain - The chain the device is coming out of, from {@link sourceChain}
  * @param destination - Container the device is going into (chain or track)
  * @returns The mixer to carry and where it came from, or null to leave the
  *   destination alone
  */
 export function chainMixerToCarry(
-  device: LiveAPI,
+  chain: LiveAPI | null,
   destination: LiveAPI,
 ): ChainMixerCarry | null {
-  const chain = sourceChain(device);
-
   if (chain == null || chain.id === destination.id) {
     return null;
   }

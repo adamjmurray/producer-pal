@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -35,12 +36,18 @@ describe("moveDeviceToPath", () => {
     );
   });
 
-  it("returns true after moving the device", () => {
+  it("reports a move once the device is at the destination", () => {
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
-    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+    // The mock is static, so the destination lists the device from the start;
+    // that is what "the move landed" looks like when it is read back.
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("device-0") },
+    });
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(true);
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe("moved");
     expect(liveSet.call).toHaveBeenCalledWith(
       "move_device",
       "id device-0",
@@ -49,13 +56,54 @@ describe("moveDeviceToPath", () => {
     );
   });
 
-  it("returns false, without moving, when the destination does not exist", () => {
+  it("reports a refusal when the device is not at the destination afterwards", () => {
+    // Live drops a move it won't make without saying so, and a device that
+    // never arrived must not be reported as one that did.
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("track-1", { path: livePath.track(1), type: "Track" });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
+      "refused",
+    );
+    expect(outlet).toHaveBeenCalledWith(1, "Live refused the move");
+  });
+
+  it("names the one refusal Live's own state explains", () => {
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("device-0", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+    });
+    registerMockObject("resident", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+      properties: { type: LIVE_API_DEVICE_TYPE_INSTRUMENT },
+    });
+    registerMockObject("track-1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { devices: children("resident") },
+    });
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
+      "refused",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Live refused the move: the destination already has an instrument, and only one is allowed",
+    );
+  });
+
+  it("reports a missing destination, without moving", () => {
     // Callers report this one themselves: update-device warns, duplicate throws.
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
     mockNonExistentObjects();
 
-    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99")).toBe(false);
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99")).toBe(
+      "no-destination",
+    );
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(outlet).not.toHaveBeenCalled();
   });

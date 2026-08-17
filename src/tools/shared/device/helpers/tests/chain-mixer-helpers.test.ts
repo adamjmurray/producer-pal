@@ -14,6 +14,7 @@ import {
 import {
   applyChainMixer,
   readChainMixer,
+  sourceChain,
   warnIfChainMixerLeftBehind,
 } from "../chain-mixer-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -364,7 +365,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     registerChainWithMixer({ gainDb: -15 });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
 
@@ -385,7 +386,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(otherRack.path),
     );
 
@@ -399,7 +400,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     registerChainWithMixer({ pan: 0.5, type: "Chain" });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
 
@@ -413,7 +414,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     registerChainWithMixer({ gainDb: -15 });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
       true,
     );
@@ -432,7 +433,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(track.path),
     );
 
@@ -459,7 +460,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     registerMockObject("rc-1", { type: "Chain", properties: { name: "b R" } });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
 
@@ -473,7 +474,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     registerChainWithMixer();
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
 
@@ -483,7 +484,10 @@ describe("warnIfChainMixerLeftBehind", () => {
   it("stays quiet when the device stays in the same chain", () => {
     registerChainWithMixer({ gainDb: -15 });
 
-    warnIfChainMixerLeftBehind(LiveAPI.from(devicePath), chainApi());
+    warnIfChainMixerLeftBehind(
+      sourceChain(LiveAPI.from(devicePath)),
+      chainApi(),
+    );
 
     expect(outlet).not.toHaveBeenCalled();
   });
@@ -495,7 +499,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(livePath.track(0).device(3)),
+      sourceChain(LiveAPI.from(livePath.track(0).device(3))),
       LiveAPI.from(destination.path),
     );
 
@@ -510,7 +514,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     });
 
     warnIfChainMixerLeftBehind(
-      LiveAPI.from(devicePath),
+      sourceChain(LiveAPI.from(devicePath)),
       LiveAPI.from(destination.path),
     );
 

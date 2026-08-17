@@ -11,6 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../update-device.ts";
+import { mockWorkingDeviceMoves } from "./update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
@@ -502,7 +503,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   const sourceMixerPath = `${sourceChainPath} mixer_device`;
 
   beforeEach(() => {
-    registerMockObject("live-set", { path: livePath.liveSet });
+    mockWorkingDeviceMoves();
     registerMockObject("rack", {
       path: rackPath,
       properties: {

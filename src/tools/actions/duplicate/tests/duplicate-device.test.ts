@@ -16,8 +16,8 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
-    // Reports a completed move; tests that need a refused one override it.
-    moveDeviceToPath: vi.fn(() => true),
+    // Reports a completed move; tests that need a failed one override it.
+    moveDeviceToPath: vi.fn((): DeviceMoveOutcome => "moved"),
   }),
 );
 
@@ -29,7 +29,10 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 // Import the mocks after vi.mock
-import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/helpers/update-device-helpers.ts";
+import {
+  type DeviceMoveOutcome,
+  moveDeviceToPath as moveDeviceToPathMock,
+} from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 describe("duplicate - device duplication", () => {
@@ -250,7 +253,7 @@ describe("duplicate - device duplication", () => {
     // that the cleanup was about to delete.
     const { liveSet } = setupDeviceDuplicationMocks();
 
-    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce(false);
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("no-destination");
 
     // The path handed to the move is t100 (shifted past the temp track); the
     // error names the t99 the caller sent.
@@ -263,6 +266,22 @@ describe("duplicate - device duplication", () => {
       "t100",
       expect.anything(),
     );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("fails when Live would not take the copy at the destination", async () => {
+    // The copy is still on the temp track, which the cleanup deletes, so
+    // reporting its id named a device that no longer existed.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("refused");
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
+    ).rejects.toThrow(
+      'duplicate failed: the copy could not be moved to "t2/d0"',
+    );
+
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 

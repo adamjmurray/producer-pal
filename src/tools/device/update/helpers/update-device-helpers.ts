@@ -9,8 +9,10 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   carryChainMixer,
   chainMixerToCarry,
+  sourceChain,
   warnIfChainMixerLeftBehind,
 } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   resolveInsertionPath,
   resolvePathToLiveApi,
@@ -50,36 +52,40 @@ function targetsSameRack(toPath: string, drumRackPath: string): boolean {
 }
 
 /**
+ * What a device move did. The caller words both failures, because only it knows
+ * the path the user asked for — a duplicate's is adjusted for its temp track.
+ */
+export type DeviceMoveOutcome = "moved" | "no-destination" | "refused";
+
+/**
  * Move a device to a new location
  * @param device - LiveAPI device object
  * @param toPath - Target path
  * @param source - The device the user is really moving or copying, when
  *   `device` is a temp copy of it (device duplication); drives the
  *   left-behind chain mixer warning
- * @returns false when the destination doesn't exist, so the caller can report
- *   it in its own terms; true once the device has moved
+ * @returns "moved" once the device is at the destination, "no-destination" when
+ *   toPath names nothing, or "refused" when Live wouldn't take it
  */
 export function moveDeviceToPath(
   device: LiveAPI,
   toPath: string,
   source: LiveAPI = device,
-): boolean {
+): DeviceMoveOutcome {
   // Every caller here got the path from a `toPath` param, so name it that.
   const { container, position } = resolveInsertionPath(toPath, "toPath");
 
   if (!container?.exists()) {
-    return false;
+    return "no-destination";
   }
+
+  // Read the chain before the move: on a plain move the source is the device
+  // itself, and afterward it answers with the chain it landed in.
+  const chain = sourceChain(source);
 
   // Decide before the move: afterward the destination holds this device, so it
   // no longer reads as the untouched chain that makes carrying safe.
-  const carry = chainMixerToCarry(source, container);
-
-  // Device duplication passes the real source alongside a temp copy; a plain
-  // move leaves `source` defaulted to the device itself.
-  if (carry == null) {
-    warnIfChainMixerLeftBehind(source, container, source.id !== device.id);
-  }
+  const carry = chainMixerToCarry(chain, container);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -90,11 +96,37 @@ export function moveDeviceToPath(
     position ?? 0,
   );
 
-  if (carry != null) {
-    carryChainMixer(carry, container);
+  // Live drops some moves without a word. Check rather than assume: the device
+  // is still wherever it was, and reporting its id would name a device that
+  // never arrived — for a duplicate, one the cleanup is about to delete.
+  if (!container.getChildren("devices").some(({ id }) => id === device.id)) {
+    console.warn(`Live refused the move${refusalReason(device, container)}`);
+
+    return "refused";
   }
 
-  return true;
+  if (carry != null) {
+    carryChainMixer(carry, container);
+  } else {
+    // Device duplication passes the real source alongside a temp copy; a plain
+    // move leaves `source` defaulted to the device itself.
+    warnIfChainMixerLeftBehind(chain, container, source.id !== device.id);
+  }
+
+  return "moved";
+}
+
+/**
+ * Why Live turned a move down, when the destination says it plainly enough
+ * @param device - The device that stayed put
+ * @param container - Where it was headed
+ * @returns Explanatory clause, or "" when nothing obvious accounts for it
+ */
+function refusalReason(device: LiveAPI, container: LiveAPI): string {
+  return deviceHasInstrument(device) &&
+    container.getChildren("devices").some(deviceHasInstrument)
+    ? ": the destination already has an instrument, and only one is allowed"
+    : "";
 }
 
 /**

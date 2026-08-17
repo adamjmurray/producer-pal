@@ -9,6 +9,7 @@ import {
   children,
   livePath,
   mockNonExistentObjects,
+  mockWorkingDeviceMoves,
   registerMockObject,
   registerParamMock,
   updateDevice,
@@ -609,7 +610,7 @@ describe("updateDevice", () => {
     let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
-      liveSet = registerMockObject("live-set", { path: "live_set" });
+      liveSet = mockWorkingDeviceMoves();
 
       registerMockObject("track1", { path: livePath.track(1) });
       registerMockObject("track0", { path: livePath.track(0) });

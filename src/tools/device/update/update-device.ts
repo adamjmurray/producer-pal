@@ -335,8 +335,12 @@ function updateTarget(
   // Handle move operation first (before other updates)
   if (options.toPath != null) {
     if (isDeviceType(type)) {
-      if (!moveDeviceToPath(target, options.toPath)) {
+      const outcome = moveDeviceToPath(target, options.toPath);
+
+      if (outcome === "no-destination") {
         console.warn(`move target at path "${options.toPath}" does not exist`);
+      } else if (outcome === "refused") {
+        console.warn(`device not moved to "${options.toPath}"`);
       }
     } else if (type === "DrumChain") {
       moveDrumChainToPath(
