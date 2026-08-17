@@ -30,6 +30,9 @@ import {
   readSpecializedParams,
 } from "./specialized/specialized-device-registry.ts";
 
+/** How deep readDevice walks a rack tree when the caller doesn't say. */
+export const DEFAULT_MAX_DEPTH = 4;
+
 export interface ReadDeviceOptions {
   includeChains?: boolean;
   includeReturnChains?: boolean;
@@ -205,9 +208,11 @@ export function getDrumMap(
         drumRacks.push(device);
       }
 
-      // Only `chains` is searched, so the walk stops at the first drum rack (a
-      // drum rack keeps its chains under drum pads). Harmless today: both
-      // callers use the first rack found and never reach a nested one.
+      // Every chain is searched, not just the first, so a kit nested in any
+      // rack chain is found. Searching `chains` alone is also what stops the
+      // walk at a drum rack: a drum rack keeps its chains under drum pads, so
+      // racks nested inside the kit are deliberately not collected — the track
+      // plays the outer kit, and its pads are the drum map.
       if (device.chains) {
         for (const chain of device.chains) {
           if (chain.devices) {
@@ -288,7 +293,7 @@ export function readDevice(
     includeActions = false,
     paramSearch,
     depth = 0,
-    maxDepth = 4,
+    maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
   } = options;
 

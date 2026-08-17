@@ -7,8 +7,8 @@ Small Live Set for two things the main `e2e-test-set` can't express:
    1, and ignores it — so a write silently does nothing. Producer Pal can't
    create macro mappings through the Live API, so they have to be baked into a
    Set.
-2. **Nested racks.** A Drum Rack inside an Instrument Rack chain, and a Drum
-   Rack inside a Drum Rack pad.
+2. **Nested racks.** A Drum Rack inside an Instrument Rack chain, a Drum Rack
+   inside a Drum Rack pad, and a melodic instrument two Instrument Racks deep.
 
 It also holds a Drum Sampler and a Sampler on drum pads, for the pad
 sample-write policy (warn-skip, and what `force: true` does and doesn't allow).
@@ -26,10 +26,12 @@ reason this Set exists rather than being built at test runtime.
 | Tempo          | 120 BPM    |
 | Time Signature | 4/4        |
 | Scale          | A Minor    |
-| Scenes         | 8 (empty)  |
+| Scenes         | 8          |
 | Return tracks  | None       |
 
-No clips anywhere — this Set is about device structure only.
+One clip per music track, in scene 0. They exist so rack **detection** can be
+asserted through what `read-clip` serializes — drum lines vs. pitched chords —
+so their content matters more than their musicality.
 
 ---
 
@@ -61,7 +63,30 @@ move).
 Neither "Outer" nor "Sub Kit" has macro mappings. Only the "Kit" Drum Rack does,
 so an unmapped rack is always available as a control.
 
-### t1: PPAL (MIDI)
+`s0` holds a MIDI clip on the pads C1, D1, E1, and F1 — F1 included on purpose,
+since that pad's device is itself a Drum Rack. The track must serialize as drums
+in every notation.
+
+### t1: Chords (MIDI, armed)
+
+The negative case: a melodic instrument nested as deep as the kit is, with no
+Drum Rack anywhere, so drum detection must **not** fire.
+
+```
+d0: Instrument Rack "Outer"
+└── c0: "Inner"
+    └── d0: Instrument Rack "Inner"
+        └── c0: "Meld"
+            └── d0: Meld
+```
+
+Two rack levels to the instrument, which is also the deeply-nested case: the
+tree walk has to descend twice to find it.
+
+`s0` holds a four-chord progression. The track must serialize as pitched chords
+in every notation, and report no drum map.
+
+### t2: PPAL (MIDI)
 
 Producer Pal Max for Live device. The Set is saved with the **Live API tool
 enabled**, so `ppal-live-api` is available for asserting `is_enabled` directly
@@ -123,16 +148,20 @@ Why each row exists:
 
 ## Nested Racks
 
-Two shapes, both reachable from `t0/d0`:
+| Shape                              | Path                              |
+| ---------------------------------- | --------------------------------- |
+| Drum Rack in an Instrument Rack    | `t0/d0/c0/d0`                     |
+| Drum Rack in a Drum Rack pad       | `t0/d0/c0/d0/pF1/c0/d0`           |
+| Simpler inside the nested rack     | `t0/d0/c0/d0/pF1/c0/d0/pC3/c0/d0` |
+| Instrument two Instrument Racks in | `t1/d0/c0/d0/c0/d0`               |
 
-| Shape                           | Path                              |
-| ------------------------------- | --------------------------------- |
-| Drum Rack in an Instrument Rack | `t0/d0/c0/d0`                     |
-| Drum Rack in a Drum Rack pad    | `t0/d0/c0/d0/pF1/c0/d0`           |
-| Simpler inside the nested rack  | `t0/d0/c0/d0/pF1/c0/d0/pC3/c0/d0` |
+Not baked in, because `ppal-create-device` builds them at runtime: a pad holding
+an **empty** rack, a bare Drum Rack on a track, a rack on a chain other than the
+first, a Drum Rack two Instrument Racks deep, and Audio Effect Rack nesting.
+Only macro mappings and rack return chains can't be made through the Live API.
 
-A pad holding an **empty** rack is not baked in — that case is built at test
-runtime, since `ppal-create-device` can create nested racks.
+Every rack here holds its nested device on **chain 0**, and the committed suites
+address it by that path — so don't insert a chain ahead of it.
 
 ---
 
@@ -172,28 +201,34 @@ content beyond built-in devices — no Factory Packs required.
 
 ## Test Coverage Matrix
 
-| Feature                                 | Location                |
-| --------------------------------------- | ----------------------- |
-| Disabled chain gain                     | pC1, pD1                |
-| Disabled chain pan                      | pC1                     |
-| Disabled chain send                     | pC1 send A              |
-| Enabled send on a partly-disabled chain | pC1 send B              |
-| Per-parameter (not per-chain) disabling | pD1                     |
-| Fully enabled control chain             | pE1                     |
-| Disabled return chain gain/pan          | rc0                     |
-| Enabled control return chain            | rc1                     |
-| Disabled device parameter               | pC1 Simpler `Volume`    |
-| Enabled control device parameter        | pE1 Simpler `Volume`    |
-| Rack return chains                      | `t0/d0/c0/d0` rc0, rc1  |
-| Drum Rack in Instrument Rack            | `t0/d0/c0/d0`           |
-| Drum Rack in Drum Rack pad              | `t0/d0/c0/d0/pF1/c0/d0` |
-| Non-default chain trim                  | pF1 chain (-6 dB)       |
-| Unmapped rack (control)                 | "Outer", "Sub Kit"      |
-| Drum Sampler on a pad                   | pAb1                    |
-| Sampler on a pad                        | pA1                     |
+| Feature                                  | Location                |
+| ---------------------------------------- | ----------------------- |
+| Disabled chain gain                      | pC1, pD1                |
+| Disabled chain pan                       | pC1                     |
+| Disabled chain send                      | pC1 send A              |
+| Enabled send on a partly-disabled chain  | pC1 send B              |
+| Per-parameter (not per-chain) disabling  | pD1                     |
+| Fully enabled control chain              | pE1                     |
+| Disabled return chain gain/pan           | rc0                     |
+| Enabled control return chain             | rc1                     |
+| Disabled device parameter                | pC1 Simpler `Volume`    |
+| Enabled control device parameter         | pE1 Simpler `Volume`    |
+| Rack return chains                       | `t0/d0/c0/d0` rc0, rc1  |
+| Drum Rack in Instrument Rack             | `t0/d0/c0/d0`           |
+| Drum Rack in Drum Rack pad               | `t0/d0/c0/d0/pF1/c0/d0` |
+| Non-default chain trim                   | pF1 chain (-6 dB)       |
+| Unmapped rack (control)                  | "Outer", "Sub Kit"      |
+| Drum Sampler on a pad                    | pAb1                    |
+| Sampler on a pad                         | pA1                     |
+| Melodic instrument, two racks deep       | `t1/d0/c0/d0/c0/d0`     |
+| Drum-mode serialization                  | `t0/s0` clip            |
+| Pitched serialization (must not be drum) | `t1/s0` clip            |
 
 Suites that read this Set — change the fixture and these are what break:
 
 - `e2e/mcp/device/ppal-update-device-disabled-params.test.ts`
 - `e2e/mcp/device/ppal-read-device-nested-racks.test.ts`
 - `e2e/mcp/device/ppal-update-device-pad-sample-policy.test.ts`
+- `e2e/mcp/device/nested-rack-drum-detection.test.ts` — asserts both clips'
+  serializations verbatim, in barbeat and stark, so editing either clip breaks
+  it
