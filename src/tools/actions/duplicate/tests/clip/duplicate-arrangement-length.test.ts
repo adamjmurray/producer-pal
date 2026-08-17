@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
@@ -14,7 +14,7 @@ import {
   registerMockObject,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { createShortenedClipInHoldingMock, updateClipMock } from "./setup.ts";
+import { createShortenedClipInHoldingMock, updateClipMock } from "../setup.ts";
 
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", async () => {

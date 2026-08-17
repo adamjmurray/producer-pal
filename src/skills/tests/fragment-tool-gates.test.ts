@@ -59,8 +59,10 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
 // can't act on it. Shrink toward empty as the splits land; an entry that stops
 // bleeding must be deleted, which the "still bleeds" test below enforces.
 const KNOWN_BLEED: Record<string, readonly string[]> = {
-  // Clearing a pad before replacing its sample.
-  "devices-write": ["ppal-delete"],
+  // Pad operations named beside the chain trim they preserve: clearing a pad
+  // before replacing its sample, and copying a whole pad rather than the device
+  // inside it.
+  "devices-write": ["ppal-delete", "ppal-duplicate"],
   // Take-lane clips refuse a delete the same way they refuse an update, so the
   // warning belongs beside the update-clip one it shares a sentence with.
   "arrangement-write": ["ppal-delete"],

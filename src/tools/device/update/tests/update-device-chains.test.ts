@@ -531,12 +531,66 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     });
   });
 
-  it("warns that the source chain's trim stays behind", () => {
+  it("carries the trim onto an untouched destination chain", () => {
+    // chain-1 holds no devices and sits at defaults, so writing its fader
+    // re-levels nothing — the trim follows the sound instead of stranding.
+    const destinationVolume = registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+    });
+
+    registerMockObject("mixer-1", {
+      path: `${rackPath.chain(1)} mixer_device`,
+    });
+
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
+    // Announced, because the caller asked to move a device, not to set a fader.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("stays behind"),
+    );
+  });
+
+  it("warns instead of overwriting a destination chain that holds devices", () => {
+    // Its fader belongs to the devices already there; writing it would change
+    // how they sound, which the caller never asked for.
+    registerMockObject("chain-1", {
+      path: rackPath.chain(1),
+      type: "Chain",
+      properties: { devices: children("resident-device") },
+    });
+    registerMockObject("resident-device", {
+      path: rackPath.chain(1).device(0),
+      type: "SimplerDevice",
+    });
+
     updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
       'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("warns instead of overwriting a destination chain with its own trim", () => {
+    registerMockObject("mixer-1", {
+      path: `${rackPath.chain(1)} mixer_device`,
+    });
+    registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+      properties: { display_value: 6 },
+    });
+
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("stays behind"),
     );
   });
 

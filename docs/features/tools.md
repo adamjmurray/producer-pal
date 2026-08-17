@@ -121,7 +121,7 @@ Live, or make sure your standalone Max is up to date. See
 
 ### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
 
-- Copy tracks, scenes, clips, or devices
+- Copy tracks, scenes, clips, devices, or drum pads
 - Create multiple copies at once
 - Copy clips anywhere in the Session, Arrangement, or from Session to
   Arrangement
@@ -133,6 +133,9 @@ Live, or make sure your standalone Max is up to date. See
   `toPath: "t2/l+,t2/l+"` + transforms — one lane per `l+`, auditioned at the
   same arrangement position
 - Copy devices to any track, return track, or rack chain
+- Copy a whole drum pad to another pad in the same rack, bringing its chain
+  trim, pan, sends, choke group, and devices — a device-only copy leaves the
+  chain (and its trim) behind
 - Route duplicated tracks to source instrument for MIDI layering
 
 Note: Return tracks and devices on return tracks cannot be duplicated (Live API

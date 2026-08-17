@@ -374,6 +374,27 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
   });
 
+  it("omits the pad-move hint when the destination is in another rack", () => {
+    // Both pad operations stay within one rack, so offering them here would
+    // point at something that gets refused.
+    registerChainWithMixer({ gainDb: -15 });
+
+    const otherRack = registerMockObject("other-chain", {
+      path: livePath.track(1).device(0).chain(0),
+      type: "DrumChain",
+    });
+
+    warnIfChainMixerLeftBehind(
+      LiveAPI.from(devicePath),
+      LiveAPI.from(otherRack.path),
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
   it("omits the pad-move hint for a regular chain", () => {
     registerChainWithMixer({ pan: 0.5, type: "Chain" });
 
@@ -388,7 +409,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
   });
 
-  it("phrases a copy as a copy and drops the pad-move hint", () => {
+  it("phrases a copy as a copy and points at a pad copy", () => {
     registerChainWithMixer({ gainDb: -15 });
 
     warnIfChainMixerLeftBehind(
@@ -399,7 +420,7 @@ describe("warnIfChainMixerLeftBehind", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      `chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
     );
   });
 

@@ -107,6 +107,33 @@ describe("updateDevice - drum chain moving", () => {
     expect(result).toStrictEqual({ id: "chain-0" });
   });
 
+  it("should warn and skip when toPath names a different rack", () => {
+    // A pad move is an in_note re-map inside one rack. Honoring only the note
+    // would land the pad on D1 of the SOURCE rack and report success.
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      toPath: "t1/d0/pD1",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("does not name a pad in this rack"),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(result).toStrictEqual({ id: "chain-0" });
+  });
+
+  it("should warn and skip when toPath's track does not exist", () => {
+    updateDevice({ path: "t0/d0/pC1", toPath: "t99/d0/pB1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("does not name a pad in this rack"),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+  });
+
   it("should warn and skip when trying to move a regular Chain to a drum pad", () => {
     const chain = registerMockObject("123", { type: "Chain" });
 

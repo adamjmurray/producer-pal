@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerMockObject,
@@ -21,7 +21,7 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 // updateClip is mocked via duplicate-mocks-test-helpers.ts -> setup.ts
-import { updateClipMock } from "./setup.ts";
+import { updateClipMock } from "../setup.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 /**

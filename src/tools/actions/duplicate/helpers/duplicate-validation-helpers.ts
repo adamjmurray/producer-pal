@@ -68,17 +68,19 @@ export function resolveArrangementPositions(
  * @param type - Type of object to duplicate
  * @param id - ID of the object to duplicate
  * @param count - Number of duplicates to create
+ * @param path - Source path, for drum pads
  */
 export function validateBasicInputs(
   type: string,
-  id: string,
+  id: string | undefined,
   count: number,
+  path?: string,
 ): void {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
 
-  const validTypes = ["track", "scene", "clip", "device"];
+  const validTypes = ["track", "scene", "clip", "device", "drum-pad"];
 
   if (!validTypes.includes(type)) {
     throw new Error(
@@ -86,8 +88,26 @@ export function validateBasicInputs(
     );
   }
 
-  if (!id) {
-    throw new Error("duplicate failed: id is required");
+  // Drum pads have no id of their own worth naming — Live indexes them by MIDI
+  // note within a rack — so they're addressed by path, like ppal-delete.
+  if (type === "drum-pad") {
+    if (!path?.trim()) {
+      throw new Error("duplicate failed: path is required for drum pads");
+    }
+
+    if (id) {
+      console.warn("id ignored: drum pads are addressed by path");
+    }
+  } else {
+    if (!id) {
+      throw new Error("duplicate failed: id is required");
+    }
+
+    if (path?.trim()) {
+      console.warn(
+        `path ignored: only supported for drum pads (type "${type}")`,
+      );
+    }
   }
 
   if (count < 1) {
@@ -168,7 +188,7 @@ export function inferDestination(
     return "arrangement";
   }
 
-  if (type === "device") {
+  if (type === "device" || type === "drum-pad") {
     return undefined;
   }
 

@@ -266,6 +266,24 @@ export async function createTestDevice(
 }
 
 /**
+ * Creates a fresh MIDI track and waits for state to settle.
+ * @param client - Connected MCP client
+ * @returns The new track's index
+ */
+export async function createMidiTrack(client: Client): Promise<number> {
+  const track = parseToolResult<{ trackIndex: number }>(
+    await client.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi" },
+    }),
+  );
+
+  await sleep(150);
+
+  return track.trackIndex;
+}
+
+/**
  * Creates a Drum Rack at `path` with two populated pads (C1 = kick, D1 = the
  * generic sample) and waits for state to settle.
  */

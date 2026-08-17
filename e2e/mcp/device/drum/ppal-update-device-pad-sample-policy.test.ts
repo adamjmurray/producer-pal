@@ -15,14 +15,14 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-pad-sample-policy
  */
 import { describe, expect, it } from "vitest";
-import { KICK_FILE, setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { KICK_FILE, setupMcpTestContext } from "../../mcp-test-helpers.ts";
 import {
   callWithWarnings,
   type DeviceInfo,
   KIT,
   RACKS_TEST_PATH,
   readKitPads,
-} from "./helpers/racks-test-helpers.ts";
+} from "../helpers/racks-test-helpers.ts";
 
 // Not `once: true`: the force case destroys the Drum Sampler, so each test
 // needs the Set reloaded from disk.

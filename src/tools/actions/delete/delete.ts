@@ -6,11 +6,11 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
+  findDrumPad,
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -407,27 +407,6 @@ function resolvePathsToIds(paths: string[], type: string): string[] {
   }
 
   return ids;
-}
-
-/**
- * Finds the DrumPad object for a note on a drum rack
- * @param rackPath - Live API path to the drum rack
- * @param note - Pad note name (e.g. "C1")
- * @returns The DrumPad, or null if the rack or pad doesn't exist
- */
-function findDrumPad(rackPath: string, note: string): LiveAPI | null {
-  const rack = LiveAPI.from(rackPath);
-
-  if (!rack.exists()) return null;
-
-  const midi = noteNameToMidi(note);
-
-  if (midi == null) return null;
-
-  return (
-    rack.getChildren("drum_pads").find((p) => p.getProperty("note") === midi) ??
-    null
-  );
 }
 
 /**

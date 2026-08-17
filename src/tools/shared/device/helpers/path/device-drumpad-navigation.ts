@@ -89,6 +89,29 @@ export function navigateRemainingSegments(
 }
 
 /**
+ * Find the DrumPad object for a note on a drum rack. Pad-level operations need
+ * the pad itself, not its chain — `delete_all_chains` and `copy_pad` are silent
+ * no-ops when aimed at a chain.
+ * @param rackPath - Live API path to the drum rack
+ * @param note - Pad note name (e.g. "C1")
+ * @returns The DrumPad, or null if the rack or pad doesn't exist
+ */
+export function findDrumPad(rackPath: string, note: string): LiveAPI | null {
+  const rack = LiveAPI.from(rackPath);
+
+  if (!rack.exists()) return null;
+
+  const midi = noteNameToMidi(note);
+
+  if (midi == null) return null;
+
+  return (
+    rack.getChildren("drum_pads").find((p) => p.getProperty("note") === midi) ??
+    null
+  );
+}
+
+/**
  * Resolve a drum pad path to its target LiveAPI object. Supports nested drum racks.
  * @param liveApiPath - Live API path to the drum rack device
  * @param drumPadNote - Note name (e.g., "C1", "F#2") or "*" for catch-all

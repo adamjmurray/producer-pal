@@ -18,7 +18,7 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
 

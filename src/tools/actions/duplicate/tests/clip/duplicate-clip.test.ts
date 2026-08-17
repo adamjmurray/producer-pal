@@ -5,11 +5,11 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import "./duplicate-mocks-test-helpers.ts";
+import "../duplicate-mocks-test-helpers.ts";
 import {
   clearClipAtDuplicateTargetMock,
   duplicateSelfOverlappingClipMock,
-} from "./setup.ts";
+} from "../setup.ts";
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {

@@ -14,12 +14,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
   description: {
     default:
-      "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
+      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
       "Use count for multiple track/scene copies; arrangementStart or locator for clip placement, " +
-      "and toPath for the destination track, session slot, or device chain.",
+      "and toPath for the destination track, session slot, device chain, or drum pad.",
     smallModel:
-      "Duplicate an object. Supports tracks, scenes, clips, and devices. " +
-      "Use arrangementStart for clip placement; toPath for the destination track, session slot, or device.",
+      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Use arrangementStart for clip placement; toPath for the destination track, session slot, device, or pad.",
   },
 
   annotations: {
@@ -28,9 +28,16 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
-    id: z.coerce.string().describe("object to duplicate"),
+    id: param(z.coerce.string().optional(), {
+      default: "object to duplicate (required except for drum pads)",
+      smallModel: "object to duplicate (not drum pads: use path)",
+    }),
+    path: param(z.coerce.string().optional(), {
+      default: "drum pad to duplicate, e.g. 't0/d0/pC1' (drum pads only)",
+      smallModel: "drum pad to duplicate, e.g. 't0/d0/pC1'",
+    }),
     type: z
-      .enum(["track", "scene", "clip", "device"])
+      .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
@@ -81,9 +88,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "destination path(s), comma-separated for multiple. Clips: 't2/s1' = session slot (track 2, scene 1), " +
         "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
         "'t2/l1' = a take lane on it and 't2/l+' appends a fresh one (MIDI only); " +
-        "omit for the source clip's own track. Devices: 't1/d0'. Cycles against arrangementStart when the lists differ in length",
+        "omit for the source clip's own track. Devices: 't1/d0'. " +
+        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad. " +
+        "Cycles against arrangementStart when the lists differ in length",
       smallModel:
-        "destination path(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0'",
+        "destination path(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
     routeToSource: param(z.boolean().optional(), {
