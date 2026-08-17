@@ -8,6 +8,10 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
+import {
+  CANCELED_TOOL_RESULT_TEXT,
+  FAILED_TOOL_RESULT_TEXT,
+} from "#webui/chat/sdk/build-model-messages";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { AssistantToolCall } from "#webui/components/chat/assistant/tool-calls/AssistantToolCall";
 
@@ -507,6 +511,53 @@ describe("AssistantToolCall", () => {
 
       expect(details!.className).not.toContain("border-yellow-500");
       expect(details!.className).toContain("border-red-500");
+    });
+  });
+
+  describe("halted calls", () => {
+    // The formatter JSON-stringifies every result, so the placeholder reaches
+    // the card quoted.
+    const stopped = JSON.stringify(CANCELED_TOOL_RESULT_TEXT);
+    const interrupted = JSON.stringify(FAILED_TOOL_RESULT_TEXT);
+
+    it("reads as stopped after a Stop mid-call", () => {
+      render(<AssistantToolCall {...defaultProps} result={stopped} />);
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("— stopped");
+    });
+
+    it("reads as interrupted when the turn died under the call", () => {
+      render(<AssistantToolCall {...defaultProps} result={interrupted} />);
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("— interrupted");
+    });
+
+    it("does not read as still running", () => {
+      render(<AssistantToolCall {...defaultProps} result={interrupted} />);
+      const details = document.querySelector("details")!;
+
+      expect(details.className).not.toContain("animate-pulse");
+      expect(document.querySelector("summary")!.textContent).not.toContain(
+        "using tool:",
+      );
+    });
+
+    it("is not styled as a failure", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={stopped}
+          isError={undefined}
+        />,
+      );
+      const details = document.querySelector("details")!;
+
+      expect(details.className).not.toContain("border-red-500");
+      expect(document.querySelector("summary")!.textContent).not.toContain(
+        "tool failed:",
+      );
     });
   });
 

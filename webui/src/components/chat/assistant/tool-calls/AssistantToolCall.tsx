@@ -5,6 +5,7 @@
 
 import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
 import { extractErrorSummary } from "#webui/components/chat/assistant/helpers/tool-call-error-helpers";
+import { haltedToolStatus } from "#webui/components/chat/assistant/helpers/tool-call-halted-helpers";
 import { extractWarnings } from "#webui/components/chat/assistant/helpers/tool-call-warning-helpers";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
@@ -33,10 +34,12 @@ export function AssistantToolCall({
   isError,
 }: AssistantToolCallProps) {
   const toolNames = useToolNames();
-  const effectiveIsError = isError ?? (result != null && isErrorResult(result));
-  const errorSummary =
-    effectiveIsError && result ? extractErrorSummary(result) : null;
-  const warnings = !effectiveIsError && result ? extractWarnings(result) : [];
+  const {
+    halted,
+    isError: effectiveIsError,
+    errorSummary,
+    warnings,
+  } = describeToolCall(result, isError);
   const hasWarnings = warnings.length > 0;
 
   return (
@@ -55,6 +58,12 @@ export function AssistantToolCall({
           ""
         )}
         {toolNames[name] ?? name}
+        {halted && (
+          <span className="font-normal text-zinc-500 dark:text-zinc-400">
+            {" "}
+            — {halted}
+          </span>
+        )}
         {effectiveIsError && (
           <span className="font-normal text-red-700 dark:text-red-400">
             {" "}
@@ -88,6 +97,44 @@ export function AssistantToolCall({
       )}
     </details>
   );
+}
+
+interface ToolCallState {
+  /** Status label when the turn ended before this call returned. */
+  halted: string | null;
+  isError: boolean;
+  errorSummary: string | null;
+  warnings: string[];
+}
+
+/**
+ * Read what a result says about the call: halted, failed, warned, or plain.
+ *
+ * A halted call carries a synthetic result the reconcile left behind — neither a
+ * failure nor an answer — so it short-circuits the error and warning reads and
+ * the card says what happened instead of showing the placeholder as the result.
+ * @param {string | null} result - Tool result, or null while the call is running
+ * @param {boolean} [isError] - Whether the caller already knows the call failed
+ * @returns {ToolCallState} - The derived display state
+ */
+function describeToolCall(
+  result: string | null,
+  isError?: boolean,
+): ToolCallState {
+  const halted = haltedToolStatus(result);
+  const effectiveIsError =
+    halted == null && (isError ?? (result != null && isErrorResult(result)));
+
+  return {
+    halted,
+    isError: effectiveIsError,
+    errorSummary:
+      effectiveIsError && result ? extractErrorSummary(result) : null,
+    warnings:
+      !effectiveIsError && halted == null && result
+        ? extractWarnings(result)
+        : [],
+  };
 }
 
 /**

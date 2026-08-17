@@ -5,16 +5,16 @@
 
 import { type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import {
-  CANCELED_TOOL_RESULT_TEXT,
-  FAILED_TOOL_RESULT_TEXT,
-} from "#webui/chat/sdk/build-model-messages";
 import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type SubagentRateLimitStatus,
   getSubagentRateLimit,
   subscribeToSubagentRateLimits,
 } from "#webui/chat/sdk/subagent/subagent-rate-limit";
+import {
+  haltedToolStatus,
+  unwrapToolResultText,
+} from "#webui/components/chat/assistant/helpers/tool-call-halted-helpers";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { truncateString } from "#webui/lib/utils/truncate-string";
@@ -75,7 +75,7 @@ export function AssistantSubagentCall({
   // A turn that ended mid-worker leaves a synthetic result here, which is not a
   // failure and certainly not "done" — and the worker is resumable from this
   // card's transcript, so say what actually happened.
-  const halted = running ? null : haltedStatus(returnValue);
+  const halted = haltedToolStatus(result);
   const status = waiting
     ? rateLimit.attempt == null
       ? "waiting"
@@ -214,21 +214,6 @@ function useSecondsUntil(targetMs: number): number {
 }
 
 /**
- * Read a finished run's status off the synthetic result the reconcile left
- * behind: the user stopping the turn and the request failing under it both cut
- * the worker short, and they say different things.
- * @param {string} returnValue - The unwrapped tool-result text
- * @returns {string | null} Status label, or null for a real return value
- */
-function haltedStatus(returnValue: string): string | null {
-  if (returnValue === CANCELED_TOOL_RESULT_TEXT) return "stopped";
-
-  if (returnValue === FAILED_TOOL_RESULT_TEXT) return "interrupted";
-
-  return null;
-}
-
-/**
  * Status-chip color: red for a failed call, amber while rate-limited, muted
  * otherwise.
  * @param {boolean} [isError] - Whether the subagent call failed
@@ -244,26 +229,14 @@ function statusColor(isError?: boolean, isRateLimited?: boolean): string {
 }
 
 /**
- * Unwrap a tool-result string for display. Subagent results are JSON-stringified
- * plain strings (e.g. `"\"Done.\""`); parse those back to the bare text. Anything
- * that isn't a JSON string is shown verbatim.
- *
- * The `[subagent N]` label the model needs in order to resume this worker is
- * dropped here — the card's own header already says which subagent this is.
+ * Unwrap a subagent's tool result for display, dropping the `[subagent N]` label
+ * the model needs in order to resume this worker — the card's own header already
+ * says which subagent this is.
  * @param {string | null} result - The formatted tool result, or null while running
  * @returns {string} The display text
  */
 function unwrapResult(result: string | null): string {
   if (result == null) return "";
 
-  try {
-    const parsed: unknown = JSON.parse(result);
-
-    return (typeof parsed === "string" ? parsed : result).replace(
-      SUBAGENT_LABEL_PATTERN,
-      "",
-    );
-  } catch {
-    return result.replace(SUBAGENT_LABEL_PATTERN, "");
-  }
+  return unwrapToolResultText(result).replace(SUBAGENT_LABEL_PATTERN, "");
 }
