@@ -16,7 +16,10 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
-import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import {
+  holdingAreaStartPast,
+  moveClipFromHolding,
+} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import {
   arrangementPath,
   slotPath,
@@ -178,11 +181,21 @@ export async function createClipsForLength(
       );
     }
 
+    // The holding copy is what gets moved onto the target, so it must not be
+    // sitting there already: moveClipFromHolding would read that as a
+    // self-overlap and skip the clear it needs to avoid the Ableton crash.
+    // Duplicating at the end of the arrangement is exactly that case — the
+    // holding area is only a few bars past the last event.
+    const holdingStart = holdingAreaStartPast(
+      context.holdingAreaStartBeats as number,
+      arrangementStartBeats + arrangementLengthBeats,
+    );
+
     const { holdingClipId } = createShortenedClipInHolding(
       sourceClip,
       track,
       arrangementLengthBeats,
-      context.holdingAreaStartBeats as number,
+      holdingStart,
       isMidiClip,
       context as TilingContext,
     );

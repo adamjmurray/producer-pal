@@ -27,10 +27,13 @@ vi.mock(
 vi.mock(
   import("#src/tools/shared/arrangement/arrangement-tiling-workaround.ts"),
   // @ts-expect-error: Mock returns simplified types that don't match full signature
-  async () => {
+  async (importOriginal) => {
     const s = await import("./setup.ts");
 
     return {
+      // Keep the real holdingAreaStartPast: it is pure arithmetic on the
+      // holding-area start, and stubbing it would hide where callers place it.
+      ...(await importOriginal()),
       clearClipAtDuplicateTarget: s.clearClipAtDuplicateTargetMock,
       duplicateSelfOverlappingClip: s.duplicateSelfOverlappingClipMock,
       moveClipFromHolding: s.moveClipFromHoldingMock,
