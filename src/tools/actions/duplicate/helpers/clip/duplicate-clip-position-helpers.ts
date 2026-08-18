@@ -170,6 +170,11 @@ async function duplicateClipToArrangementPositions(
     resolveDestinationTargets(object, targets),
     takeLane,
   );
+
+  // Only reachable once every named destination was skipped: an omitted toPath
+  // resolves to the source's own track. Nowhere left to copy to.
+  if (destTargets.length === 0) return [];
+
   const liveSet = LiveAPI.from(livePath.liveSet);
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",

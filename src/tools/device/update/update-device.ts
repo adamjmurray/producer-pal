@@ -337,6 +337,8 @@ function updateTarget(
     if (isDeviceType(type)) {
       const outcome = moveDeviceToPath(target, options.toPath);
 
+      // "unresolvable" said why itself. Either way the move is skipped and the
+      // rest of this update — and of the batch — carries on.
       if (outcome === "no-destination") {
         console.warn(`move target at path "${options.toPath}" does not exist`);
       } else if (outcome === "refused") {

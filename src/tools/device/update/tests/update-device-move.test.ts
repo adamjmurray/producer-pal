@@ -8,11 +8,12 @@ import {
   type RegisteredMockObject,
   children,
   livePath,
+  mockNonExistentObjects,
   registerMockObject,
   updateDevice,
 } from "./update-device-test-helpers.ts";
 
-describe("updateDevice - drum chain moving", () => {
+describe("updateDevice - moving a drum chain", () => {
   let chain0: RegisteredMockObject;
   let chain1: RegisteredMockObject;
   let chain2: RegisteredMockObject;
@@ -147,5 +148,60 @@ describe("updateDevice - drum chain moving", () => {
     expect(outlet).toHaveBeenCalledWith(1, "cannot move Chain");
     expect(chain.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "123" });
+  });
+});
+
+// A toPath that names no place a device can go must warn and skip the move, so
+// the rest of the batch still gets its other updates. The bare-track shape
+// always did; the nested ones used to throw and take the whole call with them.
+describe("updateDevice - a toPath that does not resolve", () => {
+  let first: RegisteredMockObject;
+  let second: RegisteredMockObject;
+
+  beforeEach(() => {
+    mockNonExistentObjects();
+
+    first = registerMockObject("123", { type: "PluginDevice" });
+    second = registerMockObject("456", { type: "PluginDevice" });
+
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("track-0", { path: livePath.track(0), type: "Track" });
+
+    // t0/d0 is a Drum Rack (chains can't be auto-created in one) and t0/d1 is a
+    // plain device (no chains at all).
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        chains: children(),
+      },
+    });
+    registerMockObject("plain-device", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+      properties: { can_have_chains: 0 },
+    });
+  });
+
+  it.each([
+    ["t99", 'move target at path "t99" does not exist'],
+    ["t99/d0", 'move target at path "t99/d0" does not exist'],
+    ["t99/d0/c0", 'device not moved: Track in path "t99/d0/c0" does not exist'],
+    ["t0/d5/c0", 'device not moved: Device in path "t0/d5/c0" does not exist'],
+    ["garbage", "device not moved: invalid toPath"],
+    ["t0/d0/c0", "device not moved: Auto-creating chains in Drum Racks"],
+    [
+      "t0/d1/c0",
+      'device not moved: Device at path "t0/d1/c0" does not support chains',
+    ],
+  ])("renames both devices and warns about %s", (toPath, warning) => {
+    const result = updateDevice({ ids: "123,456", toPath, name: "X" });
+
+    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(warning));
+    expect(first.set).toHaveBeenCalledWith("name", "X");
+    expect(second.set).toHaveBeenCalledWith("name", "X");
+    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
   });
 });

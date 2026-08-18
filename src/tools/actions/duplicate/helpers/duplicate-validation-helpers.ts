@@ -177,10 +177,12 @@ export function inferDestination(
 }
 
 /**
- * Resolves and validates the tracks a clip is duplicated onto in the arrangement.
+ * Resolves the tracks a clip is duplicated onto in the arrangement, dropping
+ * the ones it can't be copied to. A destination is skipped rather than fatal,
+ * so one bad entry in a comma-separated toPath doesn't cost the good ones.
  * @param sourceClip - The clip being duplicated
  * @param targets - Requested destinations, or empty for the source's own track
- * @returns The destinations, each with the lane it named
+ * @returns The usable destinations, each with the lane it named
  */
 export function resolveDestinationTargets(
   sourceClip: LiveAPI,
@@ -200,11 +202,13 @@ export function resolveDestinationTargets(
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
-  for (const { trackIndex } of targets) {
+  return targets.filter(({ trackIndex }) => {
     const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
-      throw new Error(`duplicate failed: no track at toPath "t${trackIndex}"`);
+      console.warn(`duplicate: no track at toPath "t${trackIndex}"`);
+
+      return false;
     }
 
     // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
@@ -212,14 +216,16 @@ export function resolveDestinationTargets(
     const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
     if (clipIsMidi !== trackIsMidi) {
-      throw new Error(
-        `duplicate failed: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
+      console.warn(
+        `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
           `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
       );
-    }
-  }
 
-  return targets;
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /**

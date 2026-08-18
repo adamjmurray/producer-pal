@@ -31,8 +31,47 @@ describe("moveDeviceToPath", () => {
   });
 
   it("blames toPath, the param every caller took the path from", () => {
-    expect(() => moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toThrow(
-      'invalid toPath "x9/d0" - "x9" is not a track or scene',
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toBe(
+      "unresolvable",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        'device not moved: invalid toPath "x9/d0" - "x9" is not a track or scene',
+      ),
+    );
+  });
+
+  it("warns and skips a path that names no place a device can go", () => {
+    // Resolution throws for these; a caller moving several ids at once would
+    // lose the whole batch over one bad destination.
+    mockNonExistentObjects();
+
+    expect(moveDeviceToPath(LiveAPI.from(device.path), "t99/d0/c0")).toBe(
+      "unresolvable",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'device not moved: Track in path "t99/d0/c0" does not exist',
+    );
+  });
+
+  it("spells the destination the way the caller sent it", () => {
+    // Device duplication shifts track indices past its temp track, so the path
+    // the move used is not the one the user typed.
+    mockNonExistentObjects();
+
+    expect(
+      moveDeviceToPath(
+        LiveAPI.from(device.path),
+        "t100/d0/c0",
+        LiveAPI.from(device.path),
+        "t99/d0/c0",
+      ),
+    ).toBe("unresolvable");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'device not moved: Track in path "t99/d0/c0" does not exist',
     );
   });
 
@@ -96,7 +135,7 @@ describe("moveDeviceToPath", () => {
   });
 
   it("reports a missing destination, without moving", () => {
-    // Callers report this one themselves: update-device warns, duplicate throws.
+    // Callers word this one themselves; only they know the path the user sent.
     const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
 
     mockNonExistentObjects();
