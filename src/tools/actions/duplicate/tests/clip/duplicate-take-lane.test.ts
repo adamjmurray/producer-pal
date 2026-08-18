@@ -629,9 +629,8 @@ describe("duplicate take lane", () => {
     expect(second.call).toHaveBeenCalledTimes(1);
   });
 
-  // Live has no take-lane delete, so a cap error partway through a multi-track
-  // resolve would strand an empty lane on every track that already succeeded.
-  it("creates no lane at all when a later toPath track is at the lane cap", async () => {
+  // A track at the cap must not take the tracks alongside it down with it.
+  it("skips a toPath track at the lane cap and still serves the others", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
@@ -639,37 +638,41 @@ describe("duplicate take lane", () => {
 
     registerTakeLaneTrack({ trackIndex: 2, initialLanes: MAX_TAKE_LANES });
 
-    await expect(
-      duplicate({
-        type: "clip",
-        id: "src_clip",
-        toPath: "t1, t2",
-        arrangementStart: "5|1",
-        takeLane: "new",
-      }),
-    ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t1, t2",
+      arrangementStart: "5|1",
+      takeLane: "new",
+    });
 
-    expect(ok.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(ok.call).toHaveBeenCalledWith("create_take_lane");
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('duplicate: skipping "t2/l+"'),
+    );
   });
 
   // Same hazard within one track: l7 fills it to the cap, so l+ has nowhere to
   // go. Both destinations read the same pre-call count, so neither sees it.
-  it("creates no lane when two lanes on one track exceed the cap together", async () => {
+  it("skips the lane that pushes one track past the cap", async () => {
     registerLiveSet();
     registerArrangementSource(true);
 
-    const track = registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
 
-    await expect(
-      duplicate({
-        type: "clip",
-        id: "src_clip",
-        toPath: "t1/l7,t1/l+",
-        arrangementStart: "1|1,5|1",
-      }),
-    ).rejects.toThrow(`${MAX_TAKE_LANES} take lane limit`);
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t1/l7,t1/l+",
+      arrangementStart: "1|1,5|1",
+    });
 
-    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(
+      lookupMockObject(undefined, livePath.track(1).takeLane(7))?.call,
+    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('duplicate: skipping "t1/l+"'),
+    );
   });
 
   it("appends one lane per l+ in toPath", async () => {

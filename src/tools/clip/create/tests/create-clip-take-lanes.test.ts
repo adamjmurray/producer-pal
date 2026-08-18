@@ -9,6 +9,7 @@ import {
   registerMockObject,
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { registerArrangementTrack } from "./create-clip-test-helpers.ts";
 
@@ -360,6 +361,30 @@ describe("createClip take lane paths", () => {
     );
   });
 
+  // A destination that can't be served must not take the others down with it.
+  it("skips a destination past the lane cap and still creates the others", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES });
+
+    const mainTrack = registerArrangementTrack(1);
+
+    const result = (await createClip({
+      path: "t0/l+,t1",
+      arrangementStart: "1|1",
+      notes: "C3",
+    })) as { path?: string };
+
+    expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    // Only t1's clip was made, so the result collapses to that one object.
+    expect(result.path).toBe("t1");
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('createClip: skipping "t0/l+"'),
+    );
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('take lane "t0/l+0" was skipped'),
+    );
+  });
+
   // The alias is 1-based and the segment is the Live API index, so takeLane 2
   // and l1 have to land on the same lane.
   it("reads the takeLane alias as the same lane the path segment names", async () => {
@@ -473,17 +498,19 @@ describe("resolveCreateClipTakeLanes (unit)", () => {
   });
 
   // l7 fills the track to the cap, so l+ has nowhere to go. Checking each
-  // destination against the pre-call count misses that and throws mid-resolve,
-  // stranding l7's 8 permanent lanes and creating no clips.
-  it("creates no lane when two destinations on one track exceed the cap together", () => {
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
+  // destination against the pre-call count misses that and fails mid-resolve,
+  // after l7's 8 permanent lanes already exist.
+  it("skips the destination that pushes one track past the cap", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
 
-    expect(() =>
-      resolveCreateClipTakeLanes(null, [
-        { trackIndex: 0, arrangementStart: "1|1", takeLane: 7 },
-        { trackIndex: 0, arrangementStart: "2|1", takeLane: "new" },
-      ]),
-    ).toThrow(/take lane limit/);
-    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    const result = resolveCreateClipTakeLanes(null, [
+      { trackIndex: 0, arrangementStart: "1|1", takeLane: 7 },
+      { trackIndex: 0, arrangementStart: "2|1", takeLane: "new" },
+    ]);
+
+    expect([...result.keys()]).toStrictEqual(["t0/l7"]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('createClip: skipping "t0/l+"'),
+    );
   });
 });

@@ -23,6 +23,7 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { hiddenParamNamesSomething } from "#src/tools/shared/utils.ts";
 
@@ -211,8 +212,8 @@ export function normalizeTakeLaneTarget(
  * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
  * here is permanent. The one residual leak is unfixable: if a later clip write
  * fails on a freshly created lane, that empty lane persists. Do all other
- * throwing validation (e.g. invalid takeLane) before calling this — and run
- * {@link assertAllTakeLanesFit} over the whole call first, or a later
+ * throwing validation (e.g. invalid takeLane) before calling this — and pick
+ * the destinations with {@link takeLaneTargetsThatFit} first, or a later
  * destination's cap error strands the lanes the earlier ones made.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
@@ -244,33 +245,50 @@ export function resolveTakeLane(
   return { lane, laneIndex };
 }
 
+/** A destination {@link takeLaneTargetsThatFit} kept, so its lane is known. */
+export type FittingTakeLaneTarget<T extends ArrangementTrack> = T & {
+  takeLane: TakeLaneTarget;
+};
+
 /**
- * Checks every destination in a call fits before any lane is created.
+ * Picks the take-lane destinations that fit, warning for each one dropped.
  *
  * Checking each destination on its own is not enough: they all read the track's
  * pre-call lane count, so nothing sees the lanes an earlier destination is
- * about to add. "t0/l7,t0/l+" passes that way and then throws mid-resolve,
- * leaving 8 permanent empty lanes and creating no clips.
+ * about to add. "t0/l7,t0/l+" passes that way and then fails mid-resolve,
+ * leaving 8 permanent empty lanes. So count along instead, in the order the
+ * lanes are resolved and skipping repeats the same way {@link takeLaneKey}
+ * does.
  *
- * So count along instead, in the order the lanes are resolved and skipping
- * repeats the same way {@link takeLaneKey} does.
+ * A destination that doesn't fit is dropped rather than failing the call, so
+ * the destinations alongside it — main lane included — still land.
  * @param targets - Every destination in the call, in resolve order
- * @throws If any track would go past MAX_TAKE_LANES
+ * @param tool - Tool name for the warnings
+ * @returns The take-lane destinations that fit, in the order given
  */
-export function assertAllTakeLanesFit(targets: ArrangementTrack[]): void {
+export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
+  targets: T[],
+  tool: string,
+): FittingTakeLaneTarget<T>[] {
   const counts = new Map<number, number>();
   const resolved = new Set<string>();
+  const dropped = new Set<string>();
+  const fitting: FittingTakeLaneTarget<T>[] = [];
 
   for (const target of targets) {
     const { trackIndex, takeLane } = target;
 
     if (takeLane == null) continue;
 
+    const fits = { ...target, takeLane };
     const key = takeLaneKey(target);
 
-    if (resolved.has(key)) continue;
+    if (dropped.has(key)) continue;
 
-    resolved.add(key);
+    if (resolved.has(key)) {
+      fitting.push(fits);
+      continue;
+    }
 
     const count =
       counts.get(trackIndex) ??
@@ -279,17 +297,27 @@ export function assertAllTakeLanesFit(targets: ArrangementTrack[]): void {
     // at least laneIndex + 1 of them.
     const laneIndex = takeLane === "new" ? count : takeLane;
 
-    assertTakeLaneCapacity(laneIndex, takeLane);
+    if (laneIndex + 1 > MAX_TAKE_LANES) {
+      dropped.add(key);
+      console.warn(
+        `${tool}: skipping "t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}" — ` +
+          takeLaneCapacityMessage(laneIndex, takeLane),
+      );
+      continue;
+    }
+
+    resolved.add(key);
+    fitting.push(fits);
     counts.set(trackIndex, Math.max(count, laneIndex + 1));
   }
+
+  return fitting;
 }
 
 /**
- * Checks a lane index is within the per-track cap.
- *
- * The two ways past it need different advice: an `l+` on a full track is out of
- * room, and deleting lanes in Live makes room. An out-of-range `l<n>` is a bad
- * number, and deleting lanes makes it worse.
+ * Checks a lane index is within the per-track cap. Callers pick their
+ * destinations with {@link takeLaneTargetsThatFit} first, so this is a
+ * backstop — reaching it means a lane was resolved that was never checked.
  * @param laneIndex - 0-based index of the lane about to be resolved
  * @param target - What asked for it, so the message names the right problem
  * @throws If the lane would exceed MAX_TAKE_LANES
@@ -300,9 +328,24 @@ function assertTakeLaneCapacity(
 ): void {
   if (laneIndex + 1 <= MAX_TAKE_LANES) return;
 
-  throw new Error(
-    target === "new"
-      ? `Track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`
-      : `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`,
-  );
+  throw new Error(takeLaneCapacityMessage(laneIndex, target));
+}
+
+/**
+ * Says why a lane doesn't fit.
+ *
+ * The two ways past the cap need different advice: an `l+` on a full track is
+ * out of room, and deleting lanes in Live makes room. An out-of-range `l<n>` is
+ * a bad number, and deleting lanes makes it worse.
+ * @param laneIndex - 0-based index of the lane that didn't fit
+ * @param target - What asked for it, so the message names the right problem
+ * @returns The explanation
+ */
+function takeLaneCapacityMessage(
+  laneIndex: number,
+  target: TakeLaneTarget,
+): string {
+  return target === "new"
+    ? `track has reached the ${MAX_TAKE_LANES} take lane limit. Delete unwanted lanes in Live first.`
+    : `take lane "l${laneIndex}" is out of range: a track has "l0" through "l${MAX_TAKE_LANES - 1}"`;
 }

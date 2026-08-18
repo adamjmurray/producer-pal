@@ -6,9 +6,9 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  assertAllTakeLanesFit,
   resolveTakeLane,
   takeLaneKey,
+  takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
@@ -100,7 +100,8 @@ export function resolveClipTimingContext(
 /**
  * Resolve the take lane each arrangement destination names, auto-creating lanes
  * as needed. Like the main lane, creating over an existing clip
- * replaces/truncates it (no overlap guard).
+ * replaces/truncates it (no overlap guard). A destination whose lane doesn't
+ * fit is warned and left out, so the clips around it still get made.
  * @param takeLaneName - Name for a newly created lane
  * @param arrangementPositions - Resolved arrangement destinations
  * @returns Take lane LiveAPI keyed by {@link takeLaneKey}, empty for main lanes
@@ -111,18 +112,15 @@ export function resolveCreateClipTakeLanes(
 ): Map<string, LiveAPI> {
   const lanes = new Map<string, LiveAPI>();
 
-  // Lanes are permanent (Live has no delete), so check the whole call's
-  // capacity before creating a lane on any of it — otherwise a cap error on the
-  // last destination strands empty lanes on all the earlier ones.
-  assertAllTakeLanesFit(arrangementPositions);
+  // Lanes are permanent (Live has no delete), so pick the whole call's
+  // destinations before creating a lane on any of it — otherwise a cap failure
+  // on the last destination strands empty lanes on all the earlier ones.
+  const fitting = takeLaneTargetsThatFit(arrangementPositions, "createClip");
 
   // Resolve once per destination rather than once per clip — otherwise a single
   // "l+" cycled over three arrangementStarts gets three fresh lanes.
-  for (const position of arrangementPositions) {
+  for (const position of fitting) {
     const { trackIndex, takeLane: target } = position;
-
-    if (target == null) continue;
-
     const key = takeLaneKey(position);
 
     if (lanes.has(key)) continue;

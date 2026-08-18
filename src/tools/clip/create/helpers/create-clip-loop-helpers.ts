@@ -9,7 +9,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { interpretNotation } from "#src/notation/notation.ts";
 import { dedupeAndSortNotes, sortNotes } from "#src/notation/note-sort.ts";
-import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
@@ -299,11 +299,17 @@ function takeLaneFor(
   if (position.takeLane == null) return null;
 
   const key = takeLaneKey(position);
+  const lane = lanes.get(key);
 
-  // Every take-lane destination is resolved before the loop, so a miss is a
-  // bug. Say so rather than falling back to the main lane, which would put the
-  // clip somewhere the caller didn't ask for.
-  return assertDefined(lanes.get(key), `no take lane resolved for "${key}"`);
+  // A destination whose lane didn't fit warned during resolution and has no
+  // entry. Fail this clip — the loop catches it and carries on — rather than
+  // falling back to the main lane, which would put the clip somewhere the
+  // caller didn't ask for.
+  if (lane == null) {
+    throw new Error(`take lane "${key}" was skipped`);
+  }
+
+  return lane;
 }
 
 interface PreparedClipData {

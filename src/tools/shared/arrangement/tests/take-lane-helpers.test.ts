@@ -6,15 +6,23 @@
 import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  assertAllTakeLanesFit,
   isTakeLaneClip,
   isTakeLaneRequested,
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  takeLaneTargetsThatFit,
   warnUnusedTakeLane,
+  type ArrangementTrack,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
+import * as consoleMock from "#src/shared/max/v8-max-console.ts";
+
+vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
+  error: vi.fn(),
+  log: vi.fn(),
+  warn: vi.fn(),
+}));
 
 describe("isTakeLaneClip", () => {
   it("matches a take-lane clip path (single- and multi-digit lane index)", () => {
@@ -238,55 +246,102 @@ describe("resolveTakeLane", () => {
   });
 });
 
-describe("assertAllTakeLanesFit", () => {
+describe("takeLaneTargetsThatFit", () => {
   it("counts the lanes earlier destinations will create", () => {
     // l7 auto-creates 8 lanes, leaving no room for l+. Checking each
-    // destination against the pre-call count misses this and throws mid-resolve,
+    // destination against the pre-call count misses this and fails mid-resolve,
     // after those 8 permanent lanes already exist.
-    const track = registerTakeLaneTrack({ initialLanes: 0 });
+    registerTakeLaneTrack({ initialLanes: 0 });
 
-    expect(() =>
-      assertAllTakeLanesFit([
+    const fitting = takeLaneTargetsThatFit(
+      [
         { trackIndex: 0, takeLane: 7 },
         { trackIndex: 0, takeLane: "new" },
-      ]),
-    ).toThrow(/reached the 8 take lane limit/);
-    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+      ],
+      "duplicate",
+    );
+
+    expect(fitting).toStrictEqual([{ trackIndex: 0, takeLane: 7 }]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining('skipping "t0/l+"'),
+    );
   });
 
-  it("allows a call whose lanes all fit", () => {
+  it("keeps the destinations alongside one that does not fit", () => {
+    registerTakeLaneTrack({ trackIndex: 0, initialLanes: MAX_TAKE_LANES });
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: 0 });
+
+    const fitting = takeLaneTargetsThatFit(
+      [
+        { trackIndex: 0, takeLane: "new" },
+        { trackIndex: 1, takeLane: "new" },
+      ],
+      "duplicate",
+    );
+
+    expect(fitting).toStrictEqual([{ trackIndex: 1, takeLane: "new" }]);
+  });
+
+  it("warns once for a repeated destination that does not fit", () => {
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    const fitting = takeLaneTargetsThatFit(
+      [
+        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+        { trackIndex: 0, takeLane: MAX_TAKE_LANES },
+      ],
+      "createClip",
+    );
+
+    expect(fitting).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledTimes(1);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'createClip: skipping "t0/l8" — take lane "l8" is out of range: a track has "l0" through "l7"',
+    );
+  });
+
+  it("keeps a call whose lanes all fit", () => {
     registerTakeLaneTrack({ initialLanes: 0 });
 
     // l+ takes lane 0, then l7 fills up to lane 7: 8 lanes, exactly the cap.
-    expect(() =>
-      assertAllTakeLanesFit([
-        { trackIndex: 0, takeLane: "new" },
-        { trackIndex: 0, takeLane: 7 },
-      ]),
-    ).not.toThrow();
+    const targets: ArrangementTrack[] = [
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 0, takeLane: 7 },
+    ];
+
+    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
   it("counts repeated l+ on one track as the single lane it resolves to", () => {
     registerTakeLaneTrack({ initialLanes: MAX_TAKE_LANES - 1 });
 
-    expect(() =>
-      assertAllTakeLanesFit([
-        { trackIndex: 0, takeLane: "new" },
-        { trackIndex: 0, takeLane: "new" },
-      ]),
-    ).not.toThrow();
+    const targets: ArrangementTrack[] = [
+      { trackIndex: 0, takeLane: "new" },
+      { trackIndex: 0, takeLane: "new" },
+    ];
+
+    expect(takeLaneTargetsThatFit(targets, "duplicate")).toStrictEqual(targets);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 
-  it("counts each track separately and ignores main-lane destinations", () => {
+  it("counts each track separately and drops main-lane destinations", () => {
     registerTakeLaneTrack({ trackIndex: 0, initialLanes: 4 });
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: 4 });
 
-    expect(() =>
-      assertAllTakeLanesFit([
+    const fitting = takeLaneTargetsThatFit(
+      [
         { trackIndex: 0, takeLane: 7 },
         { trackIndex: 1, takeLane: "new" },
         { trackIndex: 0, takeLane: null },
-      ]),
-    ).not.toThrow();
+      ],
+      "duplicate",
+    );
+
+    expect(fitting).toStrictEqual([
+      { trackIndex: 0, takeLane: 7 },
+      { trackIndex: 1, takeLane: "new" },
+    ]);
+    expect(consoleMock.warn).not.toHaveBeenCalled();
   });
 });

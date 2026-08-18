@@ -6,11 +6,10 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  assertAllTakeLanesFit,
   resolveTakeLane,
   takeLaneKey,
+  takeLaneTargetsThatFit,
   type ArrangementTrack,
-  type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 
@@ -20,8 +19,8 @@ import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
  *
  * Lanes are permanent (Live has no delete), so every destination's capacity is
  * checked before any lane is created — a cap error partway through would strand
- * the lanes already made. MIDI only: an audio source warns and gets no lanes,
- * which skips its lane copies while its main-lane copies still run.
+ * the lanes already made. A destination that doesn't fit is warned and dropped,
+ * like an audio source, so the copies around it still run.
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
  * @param targets - Destinations, in copy order
@@ -46,15 +45,12 @@ export function resolveDuplicateTakeLanes(
     return new Map();
   }
 
-  assertAllTakeLanesFit(laneTargets);
-
   const lanes = new Map<string, LiveAPI>();
 
   // Resolve once per destination rather than once per copy — otherwise a single
   // "l+" cycled over three arrangementStarts gets three fresh lanes.
-  for (const destination of laneTargets) {
-    const { trackIndex } = destination;
-    const target = destination.takeLane as TakeLaneTarget;
+  for (const destination of takeLaneTargetsThatFit(laneTargets, "duplicate")) {
+    const { trackIndex, takeLane: target } = destination;
     const key = takeLaneKey(destination);
 
     if (lanes.has(key)) continue;
