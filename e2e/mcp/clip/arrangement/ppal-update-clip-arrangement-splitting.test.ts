@@ -376,7 +376,7 @@ describe("Behavioral splitting tests", () => {
       const result = await splitClip(ctx.client!, clipId, "2|1");
 
       expect(getToolWarnings(result).join("\n")).toContain(
-        "no split points fall inside the clip",
+        "no split point falls inside any of the clips",
       );
 
       await sleep(200);
@@ -500,7 +500,7 @@ describe("Behavioral splitting tests", () => {
       );
 
       expect(getToolWarnings(result).join("\n")).toContain(
-        "no split points fall inside the clip",
+        "no split point falls inside any of the clips",
       );
 
       await sleep(200);
