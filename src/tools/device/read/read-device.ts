@@ -4,20 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
-import { type Notation } from "#src/shared/notation.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
-  DEFAULT_MAX_DEPTH,
-  getDrumMap,
   readDevice as readDeviceShared,
-  type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  drumMapReadDepth,
+  postProcessDrumMap,
+} from "./read-device-drum-map-helpers.ts";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)
@@ -91,41 +91,15 @@ export function readDevice(
   };
 
   const result = readDeviceTarget(deviceId, path, readOptions);
-  const processed = postProcessDrumMap(
-    result,
+  const processed = postProcessDrumMap(result, {
     includeDrumMap,
+    drumMapExplicit: include.includes("drum-map"),
     chainsForDrumMap,
-    context.notation,
-  );
+    notation: context.notation,
+  });
 
   // Cleanup after drum-map processing (getDrumMap needs _processedDrumPads)
   return cleanupInternalDrumPads(processed) as Record<string, unknown>;
-}
-
-/**
- * Depth to walk the device tree at.
- *
- * A kit can sit several racks down, and read-track finds it there because it
- * reads at the shared default depth. Match that when the tree is being walked
- * only to build the map — it gets stripped from the response afterwards, so the
- * extra depth costs nothing visible. When the caller asked for chains too,
- * their maxDepth governs what's rendered; the floor of 1 is what reaches a rack
- * one level in.
- * @param maxDepth - Depth the caller asked for
- * @param includeDrumMap - Whether the drum map was requested
- * @param chainsForDrumMap - Whether chains are being read only for the map
- * @returns Depth to read at
- */
-function drumMapReadDepth(
-  maxDepth: number,
-  includeDrumMap: boolean,
-  chainsForDrumMap: boolean,
-): number {
-  if (chainsForDrumMap) {
-    return Math.max(DEFAULT_MAX_DEPTH, maxDepth);
-  }
-
-  return includeDrumMap ? Math.max(1, maxDepth) : maxDepth;
 }
 
 /**
@@ -176,41 +150,6 @@ function readDeviceTarget(
     }
     /* v8 ignore stop */
   }
-}
-
-/**
- * Add drum map to result and strip internally-fetched chain data
- * @param result - Device result to post-process
- * @param includeDrumMap - Whether drum-map was requested
- * @param chainsForDrumMap - Whether chains were fetched only for drum map building
- * @param notation - Active notation; controls whether drum-map keys are drum names
- * @returns Post-processed result
- */
-function postProcessDrumMap(
-  result: Record<string, unknown>,
-  includeDrumMap: boolean,
-  chainsForDrumMap: boolean,
-  notation?: Notation,
-): Record<string, unknown> {
-  if (includeDrumMap) {
-    const drumMap = getDrumMap(
-      [result as unknown as DeviceWithDrumPads],
-      notation,
-    );
-
-    if (drumMap != null) {
-      result.drumMap = drumMap;
-    }
-  }
-
-  // Strip chains that were only fetched internally for drum map building
-  if (chainsForDrumMap) {
-    delete result.chains;
-    delete result.drumPads;
-    delete result.hasSoloedChain;
-  }
-
-  return result;
 }
 
 /**

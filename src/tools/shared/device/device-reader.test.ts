@@ -258,6 +258,18 @@ describe("device-reader", () => {
       });
     });
 
+    it("cleans the devices of a chain read at the top level", () => {
+      const obj = {
+        type: "Chain",
+        devices: [{ type: "drum-rack", _processedDrumPads: [] }],
+      };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "Chain",
+        devices: [{ type: "drum-rack" }],
+      });
+    });
+
     it("returns chain unchanged when it has no devices property", () => {
       const obj = {
         type: "audio-effect-rack",

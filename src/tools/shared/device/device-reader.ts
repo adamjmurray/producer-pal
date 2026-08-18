@@ -126,6 +126,12 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
     result.chains = chains.map(cleanupChain);
   }
 
+  // A chain read stands at the top of its own result, so its devices hang off
+  // `devices` rather than under `chains` — walk them too.
+  if (Array.isArray(rest.devices)) {
+    result.devices = cleanupInternalDrumPads(rest.devices);
+  }
+
   // A nested drum rack carries its own drumPads, each holding chains that can
   // hold further racks — so the walk has to descend both branches, not just
   // chains, or the internal bookkeeping surfaces in the response.
