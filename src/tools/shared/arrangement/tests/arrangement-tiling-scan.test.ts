@@ -4,13 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { requireMockTrack } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { clearMockRegistry } from "#src/test/mocks/mock-registry.ts";
 import { setArrangementDuplicateCrashWorkaround } from "../arrangement-tiling-workaround.ts";
 import {
+  createQueuedMethod,
   mockContext,
+  setupArrangementClip,
   setupMidiSourceClip,
   setupTileClip,
+  setupTrack,
   setupTrackWithQueuedMethods,
 } from "./helpers/arrangement-tiling-test-helpers.ts";
 
@@ -77,9 +81,10 @@ function countTrackScans(tileCount: number): number {
 }
 
 describe("tileClipToRange track scanning", () => {
-  it("scans the track once for the whole span, not once per tile", () => {
+  it("scans once per clear window, not once per tile", () => {
     // See clearArrangementRange for why per-placement scanning is the problem.
-    expect(countTrackScans(8)).toBe(countTrackScans(2));
+    expect(countTrackScans(8)).toBe(1);
+    expect(countTrackScans(16)).toBe(2);
   });
 
   it("scans exactly once", () => {
@@ -101,36 +106,37 @@ describe("tileClipToRange track scanning", () => {
 });
 
 /**
- * Let the run place `tiles` tiles, then report the deadline as passed.
- * Tiling checks once on entry and once per tile.
- * @param tiles - How many tiles should land before time runs out
+ * Report the deadline as passed once tiling has asked `checks` times.
+ * Tiling asks on entry and then at each clear-window boundary.
+ * @param checks - How many checks answer "still time"
  */
-function stopAfterTiles(tiles: number): void {
-  let checks = 0;
+function stopAfterChecks(checks: number): void {
+  let asked = 0;
 
-  vi.mocked(isDeadlineExceeded).mockImplementation(() => checks++ > tiles);
+  vi.mocked(isDeadlineExceeded).mockImplementation(() => asked++ >= checks);
 }
 
 describe("tileClipToRange deadline", () => {
   it("stops placing tiles once the deadline passes", () => {
-    const { sourceClip, track } = setupTiling(4);
+    // 16 tiles is two clear windows; entry and each window boundary check.
+    const { sourceClip, track } = setupTiling(16);
 
-    stopAfterTiles(2);
+    stopAfterChecks(2);
 
-    const result = tileClipToRange(sourceClip, track, 100, 16, 1000, {
+    const result = tileClipToRange(sourceClip, track, 100, 64, 1000, {
       ...mockContext,
       deadline: 1,
     });
 
-    expect(result).toStrictEqual([{ id: "200" }, { id: "201" }]);
+    expect(result).toHaveLength(8);
   });
 
   it("reports how far it got so the caller can resume", () => {
-    const { sourceClip, track } = setupTiling(4);
+    const { sourceClip, track } = setupTiling(16);
 
-    stopAfterTiles(1);
+    stopAfterChecks(2);
 
-    tileClipToRange(sourceClip, track, 100, 16, 1000, {
+    tileClipToRange(sourceClip, track, 100, 64, 1000, {
       ...mockContext,
       deadline: 1,
     });
@@ -139,7 +145,7 @@ describe("tileClipToRange deadline", () => {
     // position is what makes the partial result actionable.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("placed 1 of 4 tiles, reaching 104 beats"),
+      expect.stringContaining("placed 8 of 16 tiles, reaching 132 beats"),
     );
   });
 
@@ -163,6 +169,27 @@ describe("tileClipToRange deadline", () => {
     ).toHaveLength(0);
   });
 
+  it("stops at any tile when it is clearing per tile", () => {
+    // Nothing is emptied ahead of the tiles on that path, so stopping mid-window
+    // leaves no hole and the deadline can be honoured a tile at a time.
+    setArrangementDuplicateCrashWorkaround(false);
+
+    try {
+      const { sourceClip, track } = setupTiling(4);
+
+      stopAfterChecks(3);
+
+      const result = tileClipToRange(sourceClip, track, 100, 16, 1000, {
+        ...mockContext,
+        deadline: 1,
+      });
+
+      expect(result).toHaveLength(2);
+    } finally {
+      setArrangementDuplicateCrashWorkaround(true);
+    }
+  });
+
   it("places every tile when no deadline is set", () => {
     const { sourceClip, track } = setupTiling(4);
 
@@ -176,5 +203,75 @@ describe("tileClipToRange deadline", () => {
     );
 
     expect(result).toHaveLength(4);
+  });
+});
+
+/**
+ * Tiling onto a track that already holds a clip deep inside the span.
+ * @param tileCount - How many tiles the run will place
+ * @param obstacleStart - Where the existing clip starts, in beats
+ * @returns The source clip and track
+ */
+function setupTilingOverExistingClip(tileCount: number, obstacleStart: number) {
+  clearMockRegistry();
+
+  const sourceClip = setupMidiSourceClip("100", 0, {
+    is_arrangement_clip: 1,
+    start_time: 0,
+    end_time: 4,
+  });
+
+  setupTrack(0, {
+    properties: { arrangement_clips: ["id", "100", "id", "700"] },
+    methods: {
+      duplicate_clip_to_arrangement: createQueuedMethod(
+        Array.from({ length: tileCount }, (_, i) => ["id", String(200 + i)]),
+      ),
+      delete_clip: () => null,
+    },
+  });
+
+  setupArrangementClip(
+    "700",
+    0,
+    { start_time: obstacleStart, end_time: obstacleStart + 4 },
+    1,
+  );
+
+  for (let i = 0; i < tileCount; i++) setupTileClip(String(200 + i));
+
+  return { sourceClip, track: LiveAPI.from(livePath.track(0)) };
+}
+
+describe("tileClipToRange clearing ahead", () => {
+  // Clearing empties a span before anything refills it, so clearing the whole
+  // span up front and then stopping on the deadline would delete this clip and
+  // leave a hole where its replacement tiles should have gone.
+  it("leaves a clip past the deadline stop untouched", () => {
+    const { sourceClip, track } = setupTilingOverExistingClip(16, 140);
+
+    stopAfterChecks(2);
+
+    const result = tileClipToRange(sourceClip, track, 100, 64, 1000, {
+      ...mockContext,
+      deadline: 1,
+    });
+
+    expect(requireMockTrack(0).call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      "id 700",
+    );
+    expect(result).toHaveLength(8);
+  });
+
+  it("clears that same clip once tiling reaches it", () => {
+    const { sourceClip, track } = setupTilingOverExistingClip(16, 140);
+
+    tileClipToRange(sourceClip, track, 100, 64, 1000, mockContext);
+
+    expect(requireMockTrack(0).call).toHaveBeenCalledWith(
+      "delete_clip",
+      "id 700",
+    );
   });
 });

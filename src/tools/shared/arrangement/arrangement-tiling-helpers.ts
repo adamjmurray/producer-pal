@@ -33,6 +33,10 @@ export interface TilingContext {
   deadline?: number | null;
 }
 
+export interface CreatedClip {
+  id: string;
+}
+
 interface SessionClipResult {
   clip: LiveAPI;
   slot: LiveAPI;
