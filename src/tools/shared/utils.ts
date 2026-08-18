@@ -238,7 +238,8 @@ export function roundPan(pan: number): number {
 /**
  * Find the return (track or rack chain) a send name refers to: the exact name,
  * or its letter prefix — "A" matches "A-Reverb" (return tracks) and
- * "a Reverb" (rack return chains). Case-insensitive.
+ * "a Reverb" (rack return chains). Case-insensitive. An exact name anywhere in
+ * the list beats a prefix match, so "Delay" finds "Delay", not "Delay 2".
  * @param names - Return names in send order
  * @param sendReturn - Name or letter to match
  * @returns Index of the match, or -1
@@ -252,13 +253,16 @@ export function findReturnIndex(names: string[], sendReturn: string): number {
     return -1;
   }
 
+  const exact = names.findIndex((name) => name.toLowerCase() === wanted);
+
+  if (exact !== -1) {
+    return exact;
+  }
+
   return names.findIndex((name) => {
     const lower = name.toLowerCase();
     const next = lower[wanted.length];
 
-    return (
-      lower === wanted ||
-      (lower.startsWith(wanted) && (next === "-" || next === " "))
-    );
+    return lower.startsWith(wanted) && (next === "-" || next === " ");
   });
 }

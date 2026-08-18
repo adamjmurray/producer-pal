@@ -794,4 +794,16 @@ describe("findReturnIndex", () => {
   it("matches nothing for an empty name", () => {
     expect(findReturnIndex(names, "")).toBe(-1);
   });
+
+  it("prefers an exact name over an earlier prefix match", () => {
+    expect(findReturnIndex(["Delay 2", "Delay"], "Delay")).toBe(1);
+    expect(findReturnIndex(["Reverb Long", "Reverb"], "Reverb")).toBe(1);
+    expect(findReturnIndex(["A Reverb", "A"], "A")).toBe(1);
+    expect(findReturnIndex(["Delay 2", "delay"], "DELAY")).toBe(1);
+  });
+
+  it("falls back to the first prefix match when no name matches exactly", () => {
+    expect(findReturnIndex(["A-Reverb", "B-Delay"], "A")).toBe(0);
+    expect(findReturnIndex(["A Reverb", "A-Delay"], "A")).toBe(0);
+  });
 });
