@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   firstPartContent,
+  hasErrorPart,
   renderChat,
   restoreHistory,
   sendMessage,
@@ -142,6 +143,44 @@ describe("turn invalidation during setup", () => {
       expect(result.current.getChatHistory()).toStrictEqual(OTHER_CONVERSATION);
       expect(firstPartContent(result, "user")).toBe("hello");
       expect(firstPartContent(result, "model")).toBe("hi");
+    });
+
+    it("keeps it intact when the parked setup fails rather than resolves", async () => {
+      // The bail on a successful setup is only half of it: when the setup
+      // itself rejects (MCP down, a connect torn up by the switch), the
+      // rejection goes straight to the turn's error recovery, which renders and
+      // stashes against whatever conversation is loaded now. B's transcript
+      // grew a stray user bubble and an error from A, and the next autosave
+      // wrote that stray message over B.
+      let releaseCheck!: () => void;
+      const checking = new Promise<void>((resolve) => {
+        releaseCheck = resolve;
+      });
+
+      vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
+        await checking;
+
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderChat(defaultProps);
+      const send = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await tick();
+      await act(() => {
+        result.current.clearConversation();
+      });
+      await restoreHistory(result, OTHER_CONVERSATION);
+
+      releaseCheck();
+      await send;
+      await tick();
+
+      expect(result.current.getChatHistory()).toStrictEqual(OTHER_CONVERSATION);
+      expect(result.current.messages).toHaveLength(2);
+      expect(hasErrorPart(result)).toBe(false);
     });
 
     it("doesn't lock the abandoned turn's settings over the restored ones", async () => {

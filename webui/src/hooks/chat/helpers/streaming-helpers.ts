@@ -246,6 +246,8 @@ interface RunChatTurnDeps<
   pendingForkRef?: PendingForkRef;
   /** Ticket dispenser: bumped per turn, so a late turn knows it was superseded. */
   turnIdRef: { current: number };
+  /** Bumped when the loaded conversation is torn down (switch, new chat). */
+  conversationGenRef: { current: number };
   pendingUserMessageRef: { current: TMessage | null };
   setMessages: (msgs: UIMessage[]) => void;
   setIsAssistantResponding: (responding: boolean) => void;
@@ -287,9 +289,10 @@ export async function runChatTurn<
   userMessage: TMessage | undefined,
   deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
 ): Promise<T | undefined> {
-  const { turnIdRef, pendingUserMessageRef } = deps;
+  const { turnIdRef, conversationGenRef, pendingUserMessageRef } = deps;
   const turnId = ++turnIdRef.current;
   const stillCurrent = () => turnId === turnIdRef.current;
+  const conversationGen = conversationGenRef.current;
 
   deps.setIsAssistantResponding(true);
   // A new request clears any prior tool-limit notice before streaming.
@@ -314,6 +317,14 @@ export async function runChatTurn<
     // reassign the shared client's chatHistory, and autosaves, so a stale one
     // would corrupt the turn now streaming.
     if (!stillCurrent()) return undefined;
+
+    // The user switched conversations while this turn's setup was in flight.
+    // Recovery reads the shared refs, which now hold the conversation they
+    // switched TO, so it would render this turn's stray message and error there
+    // — and the autosave that follows would persist them under it. A switch
+    // sends nothing, so it never bumps the ticket above; this check is what
+    // stops it.
+    if (conversationGen !== conversationGenRef.current) return undefined;
 
     recoverFromChatError({
       ...deps,

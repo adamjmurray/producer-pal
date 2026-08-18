@@ -83,6 +83,9 @@ export function useChat<
   const abortControllerRef = useRef<AbortController | null>(null);
   // Per-turn state runChatTurn owns; see there for why a turn takes a ticket.
   const turnIdRef = useRef(0);
+  // Bumped every time the loaded conversation is torn down. A turn that fails
+  // after a bump has nothing left to recover onto — see runChatTurn.
+  const conversationGenRef = useRef(0);
   const pendingUserMessageRef = useRef<TMessage | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
@@ -162,6 +165,9 @@ export function useChat<
 
   const clearConversation = useCallback(() => {
     setMessages([]);
+    // Every switch/new/delete/back-forward funnels through here, so this is the
+    // one place that knows the conversation a running turn belongs to is gone.
+    conversationGenRef.current++;
     clientRef.current?.dispose?.();
     clientRef.current = null;
     // The client this lock described is gone, so it must not carry into the
@@ -240,6 +246,7 @@ export function useChat<
         autoSaveRef,
         pendingForkRef,
         turnIdRef,
+        conversationGenRef,
         pendingUserMessageRef,
         setMessages,
         setIsAssistantResponding,
