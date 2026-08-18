@@ -59,9 +59,17 @@ export function hiddenParamNamesSomething(value: unknown): boolean {
 
   if (typeof value !== "string") return true;
 
-  const trimmed = value.trim();
+  return value.trim() !== "" && !isCoercedNullish(value);
+}
 
-  return trimmed !== "" && !COERCED_NULLISH.has(trimmed);
+/**
+ * Whether a param's whole value is only what a JSON null coerced into. Useful
+ * where such a value would otherwise count as an entry the caller named.
+ * @param value - Raw param value
+ * @returns True when the value is "null" or "undefined"
+ */
+export function isCoercedNullish(value: string): boolean {
+  return COERCED_NULLISH.has(value.trim());
 }
 
 /**

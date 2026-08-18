@@ -22,6 +22,7 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
+  isCoercedNullish,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -155,13 +156,7 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  // ids and path both name clips to update, so a call may use either or both —
-  // neither contradicts the other the way two destinations would. Entries stay
-  // in place, nulls included, so toPath lines up with what the caller named.
-  const requestedIds = [
-    ...(ids == null ? [] : parseCommaSeparatedIds(ids)),
-    ...(path == null ? [] : clipIdPerPath(path, "updateClip")),
-  ];
+  const requestedIds = requestedClipIds(ids, path);
 
   if (requestedIds.length === 0) {
     console.warn("updateClip: ids or path is required");
@@ -251,6 +246,46 @@ export async function updateClip(
   focusLastUpdatedClip(updatedClips, focus);
 
   return unwrapSingleResult(updatedClips);
+}
+
+/**
+ * The clips a call named, ids first then paths. ids and path both name clips to
+ * update, so a call may use either or both — neither contradicts the other the
+ * way two destinations would. Entries stay in place, nulls included, so toPath
+ * lines up with what the caller named.
+ * @param ids - Raw ids param
+ * @param path - Raw path param
+ * @returns One entry per named clip, null where a path named none
+ */
+function requestedClipIds(
+  ids: string | undefined,
+  path: string | undefined,
+): Array<string | null> {
+  const namedIds = clipsNamedBy(ids, "ids");
+  const namedPaths = clipsNamedBy(path, "path");
+
+  return [
+    ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),
+    ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
+  ];
+}
+
+/**
+ * Reads an ids or path param, dropping the literal a JSON null coerces into.
+ * "null" names no clip, and keeping it as one the caller named shifts every
+ * toPath destination onto the wrong clip.
+ * @param value - Raw param value
+ * @param label - Param name, for the warning
+ * @returns The value, or null when it names no clip
+ */
+function clipsNamedBy(value: string | undefined, label: string): string | null {
+  if (value == null) return null;
+
+  if (!isCoercedNullish(value)) return value;
+
+  console.warn(`updateClip: ${label} "${value.trim()}" names no clip`);
+
+  return null;
 }
 
 /**

@@ -141,7 +141,38 @@ export function resolveRequestedClips(
     );
   }
 
+  dropDestinationsHoldingBatchClips(destinationById, seen);
+
   return { clips, destinationById };
+}
+
+/**
+ * Drops a destination that holds another clip this call updates. The move would
+ * overwrite that clip, and the batch would then work on a clip that no longer
+ * exists and report it as updated — the loss the 1:1 pairing exists to prevent.
+ * @param destinationById - Destinations by clip id, pruned in place
+ * @param batchIds - Ids of every clip this call updates
+ */
+function dropDestinationsHoldingBatchClips(
+  destinationById: Map<string, SlotPosition>,
+  batchIds: Set<string>,
+): void {
+  for (const [clipId, { trackIndex, sceneIndex }] of destinationById) {
+    const occupant = LiveAPI.from(
+      livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+    );
+
+    // A clip's own slot is the no-op the move already handles.
+    if (!occupant.exists() || occupant.id === clipId) continue;
+
+    if (!batchIds.has(occupant.id)) continue;
+
+    console.warn(
+      `clip ${clipId} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
+        `${occupant.id}, which this call also updates; move that clip out in its own call first`,
+    );
+    destinationById.delete(clipId);
+  }
 }
 
 interface HandlePositionOperationsArgs {
