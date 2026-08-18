@@ -15,7 +15,10 @@ import {
   type IndexedSegment,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
-import { resolveDrumPadFromPath } from "./path/device-drumpad-navigation.ts";
+import {
+  navigateRemainingSegments,
+  resolveDrumPadFromPath,
+} from "./path/device-drumpad-navigation.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -232,6 +235,21 @@ export function resolveOrCreateDrumPadChain(
     return existing.target;
   }
 
+  // A second pad segment belongs to a rack nested inside this pad, so the chain
+  // to create is that rack's, not this one's.
+  const nestedIndex = chainSegments.findIndex((segment) =>
+    segment.startsWith("p"),
+  );
+
+  if (nestedIndex >= 0) {
+    return resolveNestedDrumPadChain(
+      rack,
+      drumPadNote,
+      chainSegments,
+      nestedIndex,
+    );
+  }
+
   // Only a missing chain is auto-creatable (a missing device is a real miss).
   if (existing.targetType !== "chain") {
     return null;
@@ -263,6 +281,64 @@ export function resolveOrCreateDrumPadChain(
   }
 
   return resolveDrumPadFromPath(rack.path, drumPadNote, chainSegments).target;
+}
+
+/**
+ * Resolve a pad path that crosses into a rack nested in this pad. Creates this
+ * pad's chain, walks down to the nested rack, and starts over from there, so
+ * every pad along the way gets the same auto-creation as a single-level path.
+ * @param rack - Drum Rack device the outer pad belongs to
+ * @param drumPadNote - The outer pad's note name
+ * @param chainSegments - Path segments after the outer pad note
+ * @param nestedIndex - Index of the nested `p<note>` segment
+ * @returns The resolved chain, or null when it can't be resolved/created
+ */
+function resolveNestedDrumPadChain(
+  rack: LiveAPI,
+  drumPadNote: string,
+  chainSegments: string[],
+  nestedIndex: number,
+): LiveAPI | null {
+  const nestedNote = assertDefined(
+    chainSegments[nestedIndex],
+    "nested pad segment",
+  ).slice(1);
+
+  if (nestedNote.length === 0) {
+    return null;
+  }
+
+  // A leading `c` names the chain within the outer pad; the rest walks down to
+  // the nested rack, which must already exist — a pad only nests under a device.
+  const toNested = chainSegments.slice(0, nestedIndex);
+  const namesChain = toNested[0]?.startsWith("c") ?? false;
+  const walk = namesChain ? toNested.slice(1) : toNested;
+
+  if (walk.length === 0) {
+    return null;
+  }
+
+  const chain = resolveOrCreateDrumPadChain(
+    rack,
+    drumPadNote,
+    namesChain ? toNested.slice(0, 1) : [],
+  );
+
+  if (chain == null) {
+    return null;
+  }
+
+  const { target: nested, targetType } = navigateRemainingSegments(chain, walk);
+
+  if (nested == null || targetType !== "device") {
+    return null;
+  }
+
+  return resolveOrCreateDrumPadChain(
+    nested,
+    nestedNote,
+    chainSegments.slice(nestedIndex + 1),
+  );
 }
 
 /**
