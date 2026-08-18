@@ -67,9 +67,11 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
       notes: FOUR_BARS_OF_NOTES,
     });
 
-    // The documented route is a clean one — no warnings, same clip back.
+    // The documented route is a clean one — no warnings, same clip back, and
+    // the notes confirmed by count so the caller needn't re-read the clip.
     expect(warnings).toStrictEqual([]);
     expect(data.id).toBe(id);
+    expect(data.noteCount).toBe(4);
 
     const clips = clipsInBarRange(await readArrClips(), 111, 114);
 
@@ -94,6 +96,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
     expect(warnings).toStrictEqual([]);
     expect(data.id).toBe(copyId);
+    expect(data.noteCount).toBe(4);
 
     const copies = clipsInBarRange(await readArrClips(), 131, 134);
 
@@ -144,6 +147,11 @@ async function createLoopingArrClip(arrangementStart: string): Promise<string> {
   return parseToolResult<{ id: string }>(result).id;
 }
 
+interface LengthenedClip {
+  id: string;
+  noteCount?: number;
+}
+
 /**
  * Lengthen an arrangement clip to 4 bars, keeping any warnings.
  * @param args - update-clip arguments beyond arrangementLength
@@ -151,7 +159,7 @@ async function createLoopingArrClip(arrangementStart: string): Promise<string> {
  */
 async function lengthenTo4Bars(
   args: Record<string, unknown>,
-): Promise<{ data: { id: string }; warnings: string[] }> {
+): Promise<{ data: LengthenedClip; warnings: string[] }> {
   const result = await callTool(ctx.client!, "ppal-update-clip", {
     ...args,
     arrangementLength: "4bar",
@@ -159,7 +167,7 @@ async function lengthenTo4Bars(
 
   await sleep(200);
 
-  return parseToolResultWithWarnings<{ id: string }>(result);
+  return parseToolResultWithWarnings<LengthenedClip>(result);
 }
 
 /**

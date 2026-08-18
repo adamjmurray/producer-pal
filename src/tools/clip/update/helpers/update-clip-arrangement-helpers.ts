@@ -11,6 +11,7 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
@@ -215,6 +216,7 @@ export function handleArrangementOperations({
 
   // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
+  let finalNoteResult = noteResult;
 
   if (arrangementLengthBeats != null) {
     const results = handleArrangementLengthOperation({
@@ -224,13 +226,47 @@ export function handleArrangementOperations({
       context,
     });
 
+    finalNoteResult = recountNotesAfterLengthChange(finalClipId, noteResult);
+
     if (results.length > 0) {
-      updatedClips.push(...results);
+      // The length helpers return ids only, and their first entry is always the
+      // clip the notes were written to (any tiles follow it), so the note stats
+      // go there.
+      updatedClips.push(
+        ...results.map((result, index) =>
+          index === 0
+            ? buildClipResultObject(result.id, finalNoteResult)
+            : result,
+        ),
+      );
       hasArrangementLengthResults = true;
     }
   }
 
   if (!hasArrangementLengthResults) {
-    updatedClips.push(buildClipResultObject(finalClipId, noteResult));
+    updatedClips.push(buildClipResultObject(finalClipId, finalNoteResult));
   }
+}
+
+/**
+ * Recount a clip's notes after its length changed. The first count was taken
+ * against the old [-length, 2*length] scan window, which misses notes written
+ * past the old end — the whole point of writing notes and lengthening in one
+ * call.
+ * @param clipId - The clip the notes were written to
+ * @param noteResult - The count from the note write, or null when none ran
+ * @returns The note result with a refreshed count, or null
+ */
+function recountNotesAfterLengthChange(
+  clipId: string,
+  noteResult: NoteUpdateResult | null,
+): NoteUpdateResult | null {
+  if (noteResult == null) {
+    return null;
+  }
+
+  return {
+    ...noteResult,
+    noteCount: getClipNoteCount(LiveAPI.from(clipId)),
+  };
 }
