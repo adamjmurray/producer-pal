@@ -65,7 +65,7 @@ export interface SelectResult {
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;
-    /** Where the clip is: "t0/s3", "t0", or "t0/l1". */
+    /** Where the clip is: "t0/s3", "t0", or "t0/l0". */
     path?: string;
     arrangementStart?: string;
   };

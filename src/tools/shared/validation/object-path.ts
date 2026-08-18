@@ -89,7 +89,7 @@ const DEVICE_TAIL_RULES: Record<
 /**
  * Parses a path into what it names. Does not check that the object exists —
  * callers resolve the result against the Live API.
- * @param path - The path (e.g., "t0", "t0/s3", "t0/l1", "t1/d0")
+ * @param path - The path (e.g., "t0", "t0/s3", "t0/l0", "t1/d0")
  * @param label - Param name for error messages
  * @returns What the path names
  */
@@ -435,7 +435,7 @@ function trackChildError(label: string, input: string, segment: string): Error {
     : pathError(
         label,
         input,
-        `a take lane is "t<track>/l<lane>" (e.g. "t0/l1") or "t<track>/l+"; only regular tracks have take lanes`,
+        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0") or "t<track>/l+"; only regular tracks have take lanes`,
       );
 }
 

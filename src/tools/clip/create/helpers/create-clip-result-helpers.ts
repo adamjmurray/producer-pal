@@ -92,7 +92,7 @@ export function buildClipProperties(
 
 export interface ClipResultObject {
   id: string;
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
    * arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
   arrangementStart?: string | null;

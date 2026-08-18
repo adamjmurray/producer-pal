@@ -27,7 +27,7 @@ import {
 
 /**
  * Where a clip can go: a session slot, or a track's arrangement — its main lane
- * (`t0`), one of its take lanes (`t0/l1`), or a fresh one (`t0/l+`).
+ * (`t0`), one of its take lanes (`t0/l0`), or a fresh one (`t0/l+`).
  */
 export type ClipPath = Extract<
   ObjectPath,
@@ -130,7 +130,7 @@ export function slotPath(trackIndex: number, sceneIndex: number): string {
  * @param trackIndex - 0-based track index
  * @param takeLane - 0-based lane index, "new" for an unresolved `l+`, or null
  *   for the main lane
- * @returns The path (e.g. "t0", "t0/l1", or "t0/l+")
+ * @returns The path (e.g. "t0", "t0/l0", or "t0/l+")
  */
 export function arrangementPath(
   trackIndex: number,
@@ -165,7 +165,7 @@ export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
   throw pathError(
     label,
     formatObjectPath(path),
-    `${describeNonClipPath(path)}; clips go to a track ("t0"), a take lane on it ("t0/l1"), or a session slot ("t0/s1")`,
+    `${describeNonClipPath(path)}; clips go to a track ("t0"), a take lane on it ("t0/l0"), or a session slot ("t0/s1")`,
   );
 }
 

@@ -110,7 +110,7 @@ describe("requireClipPath", () => {
     for (const [path, message] of cases) {
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(message);
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(
-        /clips go to a track \("t0"\), a take lane on it \("t0\/l1"\), or a session slot \("t0\/s1"\)/,
+        /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a session slot \("t0\/s1"\)/,
       );
     }
   });

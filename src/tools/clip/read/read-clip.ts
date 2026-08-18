@@ -79,7 +79,7 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l1" in the
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
    * arrangement. A session slot pastes back into any path/toPath param; an
    * arrangement one names a whole track, so only tools that take a track
    * destination accept it — reach a specific arrangement clip by id. */

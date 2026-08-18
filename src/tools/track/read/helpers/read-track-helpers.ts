@@ -27,7 +27,7 @@ import {
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
-  /** The lane's path ("t0/l1"), which pastes back into any path/toPath param.
+  /** The lane's path ("t0/l0"), which pastes back into any path/toPath param.
    * Saves a consumer inferring the index from array position. */
   path: string;
   name: string;
