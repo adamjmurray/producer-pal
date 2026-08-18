@@ -244,7 +244,7 @@ describe("updateDevice - wrapInRack", () => {
       expect(r.type).toBe("instrument-rack");
     });
 
-    it("should throw when toPath container does not exist for instrument wrap", () => {
+    it("should warn and return null when toPath container does not exist for instrument wrap", () => {
       mockNonExistentObjects();
 
       // Re-register the instrument device so it can be resolved
@@ -252,15 +252,24 @@ describe("updateDevice - wrapInRack", () => {
       registerMockObject("track-0", {
         path: livePath.track(0),
       });
-      registerTempTrackMocks();
+      const liveSetMock = registerTempTrackMocks();
 
-      expect(() =>
-        updateDevice({
-          path: "t0/d3",
-          wrapInRack: true,
-          toPath: "t99",
-        }),
-      ).toThrow("target container does not exist");
+      const result = updateDevice({
+        path: "t0/d3",
+        wrapInRack: true,
+        toPath: "t99",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "wrapInRack: target container does not exist",
+      );
+      expect(result).toBeNull();
+      // The check runs before anything is staged, so no temp track is made.
+      expect(liveSetMock.call).not.toHaveBeenCalledWith(
+        "create_midi_track",
+        -1,
+      );
     });
 
     it("should cleanup temp track when instrument wrap throws and cleanup succeeds", () => {

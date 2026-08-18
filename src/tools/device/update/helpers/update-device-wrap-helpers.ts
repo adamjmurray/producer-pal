@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
@@ -251,7 +252,7 @@ function wrapInstrumentsInRack(
   devices: LiveAPI[],
   toPath?: string,
   name?: string,
-): WrapResult {
+): WrapResult | null {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const firstDevice = assertDefined(devices[0], "first device");
 
@@ -267,7 +268,9 @@ function wrapInstrumentsInRack(
     : { container: sourceContainer, position: devicePosition };
 
   if (!container?.exists()) {
-    throw new Error(`wrapInRack: target container does not exist`);
+    console.warn("wrapInRack: target container does not exist");
+
+    return null;
   }
 
   // 3. Create temp MIDI track (appended)
