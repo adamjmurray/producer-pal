@@ -28,13 +28,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
-    id: param(z.coerce.string().optional(), {
-      default: "id of the object to duplicate",
-      smallModel: "id of the object to duplicate",
-    }),
-    path: deprecatedParam(z.coerce.string().optional(), {
-      replacedBy: "id",
-    }),
+    id: z.coerce.string().describe("id of the object to duplicate"),
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of object to duplicate"),

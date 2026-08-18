@@ -68,13 +68,11 @@ export function resolveArrangementPositions(
  * @param type - Type of object to duplicate
  * @param id - ID of the object to duplicate
  * @param count - Number of duplicates to create
- * @param path - Deprecated source drum pad path
  */
 export function validateBasicInputs(
   type: string,
   id: string | undefined,
   count: number,
-  path?: string,
 ): void {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -89,17 +87,7 @@ export function validateBasicInputs(
   }
 
   if (!id) {
-    // path is deprecated but still resolves a drum pad, so a call that only
-    // sent it has named its source.
-    if (type !== "drum-pad" || !path?.trim()) {
-      throw new Error("duplicate failed: id is required");
-    }
-  } else if (path?.trim()) {
-    console.warn(
-      type === "drum-pad"
-        ? "path ignored: id names the drum pad to duplicate"
-        : `path ignored: only supported for drum pads (type "${type}")`,
-    );
+    throw new Error("duplicate failed: id is required");
   }
 
   if (count < 1) {

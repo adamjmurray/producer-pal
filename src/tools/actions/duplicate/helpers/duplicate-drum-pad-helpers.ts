@@ -33,22 +33,6 @@ export interface PadTarget {
 const DRUM_PADS_SEGMENT = / drum_pads \d+$/;
 
 /**
- * Resolves the pad a copy starts from, named either by id or by the deprecated
- * pad path.
- * @param pad - The pad named by id, already type-checked, or null
- * @param path - Pad path, when the call used the deprecated param instead
- * @returns The source pad, or null when neither names one
- */
-export function resolveSourcePad(
-  pad: LiveAPI | null,
-  path: string | undefined,
-): PadTarget | null {
-  return pad == null
-    ? resolvePadTarget(path as string, "path")
-    : padTargetFromPad(pad);
-}
-
-/**
  * Copies a drum pad onto another pad of the same rack, bringing its chains and
  * everything attached to them: trim, pan, sends, choke group, and devices.
  * @param source - The pad to copy from
@@ -132,7 +116,7 @@ function canCopyPads(rack: LiveAPI): boolean {
  * @param pad - The object the id named
  * @returns The pad target, or null when the id doesn't name a pad
  */
-function padTargetFromPad(pad: LiveAPI): PadTarget | null {
+export function padTargetFromPad(pad: LiveAPI): PadTarget | null {
   // A chain id passes the tool's drum-pad type check, but copy_pad copies the
   // whole pad — every chain layered on it — so it would copy more than the
   // caller named. Make them say which pad.
