@@ -58,9 +58,9 @@ function duplicatesTo(position: number): number {
 
 describe("tileClipToRange holding area", () => {
   it("keeps the holding area clear of the tiles it just placed", () => {
-    // The holding area is song_length, so with a 1-bar clip at [0,4) as the
-    // only content it starts at beat 4 — exactly where tile 0 goes. Duplicating
-    // the partial tile's copy there lands it on top of tile 0.
+    // In Live the holding area is song_length, a few bars past the last event,
+    // so it takes a long run to reach it. Here it is beat 4 — exactly where
+    // tile 0 goes — which is the same collision without the 12 bars of tiles.
     const sourceClip = setupMidiSourceClip("100", 0, {
       is_arrangement_clip: 1,
       start_time: 0,

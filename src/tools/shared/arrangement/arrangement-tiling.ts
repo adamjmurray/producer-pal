@@ -80,9 +80,9 @@ export function createPartialTile(
     targetIsEmpty = false,
   }: PartialTileOptions = {},
 ): LiveAPI {
-  // The holding area is the end of the arrangement as it was when the request
-  // started, so a tile placed past that point sits exactly where the holding
-  // copy is about to go. Keep the holding area clear of this tile's own span.
+  // The holding area sits a few bars past where the arrangement ended when the
+  // request started, so a run that tiles further than that puts a tile exactly
+  // where the holding copy goes. Keep it clear of this tile's own span.
   const holdingStart = holdingAreaStartPast(
     holdingAreaStart,
     targetPosition + partialLength,
