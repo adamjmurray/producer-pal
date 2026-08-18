@@ -292,10 +292,11 @@ export function useChat<
           );
 
           if (!clientRef.current) {
-            const pendingHistory = pendingHistoryRef.current ?? undefined;
-
-            pendingHistoryRef.current = null;
-            await initializeChat(pendingHistory, sendOptions, stillLive);
+            await initializeChat(
+              pendingHistoryRef.current ?? undefined,
+              sendOptions,
+              stillLive,
+            );
           } else if (pendingInitRef.current) {
             // A client is here but another turn is still connecting it — the
             // user stopped that turn mid-connect (which re-enables the composer)
@@ -319,6 +320,13 @@ export function useChat<
           if (!client) {
             throw new Error("Failed to initialize chat client");
           }
+
+          // The client owns the restored history now (init baked it in), so
+          // drop the fallback. Deferred until here, same as a fork: a thrown
+          // init leaves it intact so the failure renders the existing
+          // conversation instead of replacing it with the message that failed
+          // to send — which the teardown autosave would then persist.
+          pendingHistoryRef.current = null;
 
           // This turn is the one that streams, so it owns the lock for the
           // client it's about to use — including one published by an init that

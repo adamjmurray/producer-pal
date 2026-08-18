@@ -188,8 +188,8 @@ export function recoverFromChatError<
   // Fall back to the restored-but-not-yet-sent history when no client was built
   // (init threw early, e.g. MCP down) so a failed fork/send renders the existing
   // conversation instead of an empty view. Copy it — createErrorMessage mutates
-  // the array, and pendingHistoryRef must stay clean for a later send to
-  // bootstrap from.
+  // the array, and a failed fork (which stashes nothing) must leave
+  // pendingHistoryRef untouched for a later send to bootstrap from.
   const baseHistory =
     clientRef.current?.chatHistory ??
     (pendingHistoryRef.current ? [...pendingHistoryRef.current] : []);
@@ -200,7 +200,12 @@ export function recoverFromChatError<
   const errorHistory = includeStashed ? [...baseHistory, stashed] : baseHistory;
 
   if (!clientRef.current && includeStashed) {
-    pendingHistoryRef.current = [stashed];
+    // Keep the conversation the message was sent from. Stashing the message
+    // alone truncated a restored conversation to it, and the autosave that
+    // follows the failed turn wrote that truncation over the saved record.
+    // errorHistory picks up the error below, matching what the client branch
+    // persists.
+    pendingHistoryRef.current = errorHistory;
   }
 
   setMessages(adapter.createErrorMessage(error, errorHistory));

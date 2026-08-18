@@ -8,10 +8,12 @@
  */
 import { act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   firstPartContent,
   renderChat,
   restoreHistory,
+  sendMessage,
   stopResponse,
   type MockChatProps,
 } from "./helpers/use-chat-render-test-helpers";
@@ -196,5 +198,55 @@ describe("turn invalidation during setup", () => {
       releaseStreams();
       await send;
     });
+  });
+});
+
+describe("setup failure on a restored conversation", () => {
+  it("renders the restored conversation under the failed send", async () => {
+    // MCP down: validateMcpConnection throws before a client exists, so the
+    // recovery has only the restored history to render against. Nulling it up
+    // front left an empty base, so the whole transcript was replaced by the one
+    // message that failed to send — and the teardown autosave then wrote that
+    // truncation over the saved record.
+    const { result } = renderChat(defaultProps);
+
+    await restoreHistory(result, OTHER_CONVERSATION);
+    vi.mocked(validateMcpConnection).mockRejectedValueOnce(
+      new Error("MCP connection failed"),
+    );
+    await sendMessage(result, "add a hi-hat");
+
+    expect(result.current.getChatHistory()).toStrictEqual([
+      ...OTHER_CONVERSATION,
+      { role: "user", content: "add a hi-hat" },
+      {
+        role: "assistant",
+        content: expect.stringContaining("MCP connection failed"),
+        isError: true,
+      },
+    ]);
+    expect(firstPartContent(result, "user")).toBe("hello");
+  });
+
+  it("bootstraps the next send from the whole conversation", async () => {
+    // The send after the failure builds the client from the pending history. If
+    // the failure left only its own message there, the conversation the user
+    // reopened is gone for good once that client's stream autosaves.
+    const { result } = renderChat(defaultProps);
+
+    await restoreHistory(result, OTHER_CONVERSATION);
+    vi.mocked(validateMcpConnection).mockRejectedValueOnce(
+      new Error("MCP connection failed"),
+    );
+    await sendMessage(result, "add a hi-hat");
+    await sendMessage(result, "add a hi-hat");
+
+    expect(vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[3]).toStrictEqual(
+      [
+        ...OTHER_CONVERSATION,
+        { role: "user", content: "add a hi-hat" },
+        expect.objectContaining({ isError: true }),
+      ],
+    );
   });
 });
