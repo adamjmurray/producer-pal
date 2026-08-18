@@ -72,6 +72,14 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).toHaveBeenCalledWith("in_note", 42);
   });
 
+  it("should resolve every pad note the path grammar accepts", () => {
+    // One parser for pad notes: a lowercase letter or a negative octave that
+    // names a pad everywhere else names one here too. "c-2" is MIDI note 0.
+    updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/pc-2" });
+
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 0);
+  });
+
   it("should move a chain to the wildcard pad (in_note -1)", () => {
     // "p*" targets the all-notes wildcard, which maps to in_note -1.
     updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" });
@@ -123,6 +131,35 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "chain-0" });
+  });
+
+  it("should warn and skip when toPath names a pad in a nested rack", () => {
+    // The path resolves to the OUTER rack, so only the trailing "/d0/pE1" says
+    // the pad the caller meant is somewhere else. Honoring the first pad name
+    // lands C1 on D1 of this rack and reports it as the move they asked for.
+    const result = updateDevice({
+      path: "t0/d0/pC1",
+      toPath: "t0/d0/pD1/d0/pE1",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("does not name a pad in this rack"),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(result).toStrictEqual({ id: "chain-0" });
+  });
+
+  it("should warn and skip when toPath nests under the pad being moved", () => {
+    // Reading the first pad here makes the move a no-op reported as a success.
+    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/d0/pD1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("does not name a pad in this rack"),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
 
   it("should warn and skip when toPath's track does not exist", () => {

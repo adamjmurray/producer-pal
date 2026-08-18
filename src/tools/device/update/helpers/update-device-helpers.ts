@@ -26,30 +26,53 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 // ============================================================================
 
 /**
- * Parse drum pad note from a path
- * @param path - Path that may contain a drum pad segment
- * @returns Note name (e.g., "C1", "F#2") or null if not a drum pad path
+ * The pad a toPath names, when it names one in this rack. Resolution is by path
+ * rather than by object so a toPath pointing at nothing (a track that doesn't
+ * exist) is refused rather than read as "same rack".
+ * @param toPath - Target drum pad path
+ * @param drumRackPath - Live API path of the rack holding the source chain
+ * @returns The pad's note name, "*" for the catch-all pad, or null once the
+ *   reason it can't be the destination has been warned
  */
-function parseDrumPadNoteFromPath(path: string): string | null {
-  const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
+function targetPadNote(toPath: string, drumRackPath: string): string | null {
+  const resolved = resolvePadPath(toPath);
 
-  return match ? (match[1] ?? null) : null;
+  if (resolved?.drumPadNote == null) {
+    console.warn(`toPath "${toPath}" is not a drum pad path`);
+
+    return null;
+  }
+
+  // The move is an in_note re-map within one rack, so a toPath naming a pad
+  // elsewhere can't be honored. Without this it lands on that note in the
+  // SOURCE rack instead — the wrong pad, reported as a success. Resolution
+  // stops at the first pad, so segments after it name a pad of a nested rack,
+  // or one chain of this pad: neither is a pad of this rack either.
+  if (
+    resolved.liveApiPath !== drumRackPath ||
+    resolved.remainingSegments.length > 0
+  ) {
+    console.warn(
+      `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
+        `move the pad's device instead (update-device on the device path)`,
+    );
+
+    return null;
+  }
+
+  return resolved.drumPadNote;
 }
 
 /**
- * Whether a pad path names the rack the chain already lives in. Resolution is
- * by path rather than by object so a toPath pointing at nothing (a track that
- * doesn't exist) is refused rather than read as "same rack".
+ * Resolve a pad toPath, treating a path that doesn't parse as naming no pad.
  * @param toPath - Target drum pad path
- * @param drumRackPath - Live API path of the rack holding the source chain
- * @returns True when toPath's rack is that same rack
+ * @returns The resolved path, or null when it doesn't resolve
  */
-function targetsSameRack(toPath: string, drumRackPath: string): boolean {
+function resolvePadPath(toPath: string) {
   try {
-    return resolvePathToLiveApi(toPath, "toPath").liveApiPath === drumRackPath;
+    return resolvePathToLiveApi(toPath, "toPath");
   } catch {
-    // A path that doesn't parse can't be shown to name this rack.
-    return false;
+    return null;
   }
 }
 
@@ -184,35 +207,17 @@ export function moveDrumChainToPath(
   toPath: string,
   moveEntirePad: boolean,
 ): void {
-  const targetNote = parseDrumPadNoteFromPath(toPath);
+  const drumRackPath = chain.path.replace(/ chains \d+$/, "");
+  const targetNote = targetPadNote(toPath, drumRackPath);
 
   if (targetNote == null) {
-    console.warn(`toPath "${toPath}" is not a drum pad path`);
-
     return;
   }
 
-  const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
-
-  if (targetInNote == null) {
-    console.warn(`invalid note "${targetNote}" in toPath`);
-
-    return;
-  }
-
-  const drumRackPath = chain.path.replace(/ chains \d+$/, "");
-
-  // The move is an in_note re-map within one rack, so a toPath naming a pad
-  // elsewhere can't be honored. Without this it lands on that note in the
-  // SOURCE rack instead — the wrong pad, reported as a success.
-  if (!targetsSameRack(toPath, drumRackPath)) {
-    console.warn(
-      `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
-        `move the pad's device instead (update-device on the device path)`,
-    );
-
-    return;
-  }
+  // The path grammar refuses a note name with no MIDI value, so the only pad
+  // that isn't a note is the catch-all.
+  const targetInNote =
+    targetNote === "*" ? -1 : (noteNameToMidi(targetNote) as number);
 
   if (moveEntirePad) {
     const sourceInNote = chain.getProperty("in_note");

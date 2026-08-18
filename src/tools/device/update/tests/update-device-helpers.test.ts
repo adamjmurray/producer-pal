@@ -171,10 +171,13 @@ describe("moveDrumChainToPath", () => {
   it("should warn and skip when toPath has out-of-range note", () => {
     const chainApi = LiveAPI.from(chain.path);
 
-    // G9 parses as a drum pad path but MIDI value (139) exceeds 127
+    // G9 is note 139, past MIDI's 127, so no pad answers to it.
     moveDrumChainToPath(chainApi, "t0/d0/pG9", false);
 
-    expect(outlet).toHaveBeenCalledWith(1, 'invalid note "G9" in toPath');
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'toPath "t0/d0/pG9" is not a drum pad path',
+    );
     expect(chain.set).not.toHaveBeenCalled();
   });
 });
