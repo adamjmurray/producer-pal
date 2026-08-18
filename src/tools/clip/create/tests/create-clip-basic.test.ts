@@ -34,12 +34,15 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
+  // create-clip has no toSlot, so the error names the param it does have.
   it("should throw error for invalid slot format", async () => {
     await expect(
       createClip({
         slot: "invalid",
       }),
-    ).rejects.toThrow("invalid toSlot");
+    ).rejects.toThrow(
+      'invalid slot "invalid" - expected trackIndex/sceneIndex format',
+    );
   });
 
   it("should validate time signature early when provided", async () => {

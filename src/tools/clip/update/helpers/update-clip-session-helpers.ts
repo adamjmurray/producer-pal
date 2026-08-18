@@ -32,6 +32,22 @@ interface SlotPosition {
 }
 
 /**
+ * The param the caller used to name a destination, so a warning names one they
+ * can act on rather than always saying toPath.
+ * @param rawToPath - Destination path(s) as received
+ * @param rawToSlot - Deprecated destination slot(s) as received
+ * @returns "toSlot" when only the deprecated param named something, else "toPath"
+ */
+export function moveDestinationParam(
+  rawToPath: string | undefined,
+  rawToSlot: string | undefined,
+): "toPath" | "toSlot" {
+  return namedPath(rawToPath) == null && namedHiddenPath(rawToSlot) != null
+    ? "toSlot"
+    : "toPath";
+}
+
+/**
  * Resolves where each clip in the batch moves, from toPath or the deprecated
  * toSlot. Warns and returns nulls for anything update-clip can't do, so the
  * rest of the update still runs.
@@ -72,7 +88,7 @@ export function resolveMoveDestinations(
   try {
     const destinations =
       toSlot != null
-        ? requireDestinations(parseSlotList(toSlot), "toSlot")
+        ? requireDestinations(parseSlotList(toSlot, "toSlot"), "toSlot")
         : pathDestinations(toPath as string);
 
     return pairWithClips(destinations, clipCount, toSlot == null);
@@ -213,6 +229,7 @@ interface HandlePositionOperationsArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
   toSlot?: SlotPosition | null;
+  destinationParam: "toPath" | "toSlot";
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
   tracksWithMovedClips: Map<number, number>;
@@ -230,12 +247,15 @@ export function handlePositionOperations(
   args: HandlePositionOperationsArgs,
 ): void {
   const { clip, toSlot, arrangementStartBeats, arrangementLengthBeats } = args;
+  const { destinationParam } = args;
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (toSlot != null && !isArrangementClip) {
     if (arrangementStartBeats != null || arrangementLengthBeats != null) {
-      console.warn("toPath ignored when arrangement parameters are specified");
+      console.warn(
+        `${destinationParam} ignored when arrangement parameters are specified`,
+      );
     } else {
       handleSessionSlotMove({
         clip,
@@ -248,7 +268,7 @@ export function handlePositionOperations(
     }
   } else if (toSlot != null && isArrangementClip) {
     console.warn(
-      `toPath ignored for arrangement clip (id ${clip.id}): only session clips move to a slot`,
+      `${destinationParam} ignored for arrangement clip (id ${clip.id}): only session clips move to a slot`,
     );
   }
 
@@ -411,11 +431,9 @@ export function handleSessionSlotMove({
     return;
   }
 
-  if (destClipSlot.getProperty("has_clip")) {
-    console.warn(
-      `overwriting existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
-    );
-  }
+  // Read now, warn after the copy: when copyClipToSlot declines, the occupant
+  // is still there and an up-front warning contradicts the one that follows.
+  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
 
   const sourceClipSlot = LiveAPI.from(
     livePath.track(srcTrackIndex).clipSlot(srcSceneIndex),
@@ -434,6 +452,12 @@ export function handleSessionSlotMove({
     updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
     return;
+  }
+
+  if (destinationWasOccupied) {
+    console.warn(
+      `overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
+    );
   }
 
   sourceClipSlot.call("delete_clip");

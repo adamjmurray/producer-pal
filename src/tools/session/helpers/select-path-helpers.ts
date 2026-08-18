@@ -22,6 +22,8 @@ import { type TrackCategory } from "./select-helpers.ts";
 export interface PathTarget {
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
+  /** The param devicePath came from, for messages the caller can act on. */
+  devicePathParam?: "path" | "devicePath";
   trackIndex?: number;
   category?: TrackCategory;
   sceneIndex?: number;
@@ -54,6 +56,7 @@ export function resolvePathParam({
     return {
       parsedClipSlot: slot == null ? undefined : parseClipSlot(slot),
       devicePath,
+      devicePathParam: devicePath == null ? undefined : "devicePath",
     };
   }
 
@@ -99,7 +102,7 @@ export function mergeWithPath<T>(
 function targetFromPath(path: ObjectPath): PathTarget {
   switch (path.kind) {
     case "device":
-      return { devicePath: formatObjectPath(path) };
+      return { devicePath: formatObjectPath(path), devicePathParam: "path" };
     case "track":
       return { trackIndex: path.trackIndex, category: "regular" };
     case "return-track":

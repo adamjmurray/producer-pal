@@ -249,7 +249,7 @@ describe("handleSessionSlotMove", () => {
     // forced-true mutant on the has_clip guard).
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("overwriting existing clip"),
+      expect.stringContaining("overwrote the existing clip"),
     );
   });
 
@@ -418,6 +418,26 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
+  // The old warning fired before the copy, so a declined copy produced two
+  // contradictory warnings and the first one was false.
+  it("should not claim an overwrite when the copy never landed", () => {
+    runSessionMove({
+      toTrackIndex: 0,
+      toSceneIndex: 1,
+      destHasClip: 1,
+      copyLands: false,
+    });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("overwrote the existing clip"),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("so the original was kept"),
+    );
+  });
+
   it("should warn when overwriting existing clip at destination", () => {
     const { updatedClips, sourceSlot } = runSessionMove({
       toTrackIndex: 0,
@@ -427,7 +447,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "overwriting existing clip at t0/s1",
+      "overwrote the existing clip at t0/s1",
     );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
@@ -461,28 +481,53 @@ describe("handleSessionSlotMove", () => {
   });
 });
 
+interface PositionOpsOptions {
+  isArrangementClip?: boolean;
+  destinationParam?: "toPath" | "toSlot";
+  toSlot?: { trackIndex: number; sceneIndex: number };
+  arrangementStartBeats?: number;
+  arrangementLengthBeats?: number;
+}
+
+/**
+ * Run handlePositionOperations against a bare clip stub, so each test says only
+ * what it varies.
+ * @param opts - What this test varies
+ */
+function runPositionOps(opts: PositionOpsOptions = {}): void {
+  const {
+    isArrangementClip = false,
+    destinationParam = "toPath",
+    toSlot,
+    arrangementStartBeats,
+    arrangementLengthBeats,
+  } = opts;
+
+  handlePositionOperations({
+    clip: {
+      id: "789",
+      getProperty: vi.fn((prop: string) =>
+        prop === "is_arrangement_clip" && isArrangementClip ? 1 : 0,
+      ),
+    } as unknown as LiveAPI,
+    isAudioClip: false,
+    destinationParam,
+    toSlot,
+    arrangementStartBeats,
+    arrangementLengthBeats,
+    tracksWithMovedClips: new Map(),
+    context: {},
+    updatedClips: [],
+    noteResult: null,
+    isNonSurvivor: false,
+  });
+}
+
 describe("handlePositionOperations", () => {
   it("should warn when toSlot used on arrangement clip", () => {
-    const mockClip = {
-      id: "789",
-      getProperty: vi.fn((prop: string) => {
-        if (prop === "is_arrangement_clip") return 1;
-
-        return 0;
-      }),
-    };
-
-    const updatedClips: ClipResult[] = [];
-
-    handlePositionOperations({
-      clip: mockClip as unknown as LiveAPI,
-      isAudioClip: false,
+    runPositionOps({
+      isArrangementClip: true,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
-      tracksWithMovedClips: new Map(),
-      context: {},
-      updatedClips,
-      noteResult: null,
-      isNonSurvivor: false,
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -491,24 +536,25 @@ describe("handlePositionOperations", () => {
     );
   });
 
+  // toSlot is deprecated and hidden, so a caller who sent toPath must not be
+  // pointed at it — and one who sent toSlot is told the name they used.
+  it("names the deprecated param when that is what the caller sent", () => {
+    runPositionOps({
+      isArrangementClip: true,
+      destinationParam: "toSlot",
+      toSlot: { trackIndex: 1, sceneIndex: 2 },
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "toSlot ignored for arrangement clip (id 789): only session clips move to a slot",
+    );
+  });
+
   it("should warn when toSlot used with arrangement parameters", () => {
-    const mockClip = {
-      id: "123",
-      getProperty: vi.fn(() => 0),
-    };
-
-    const updatedClips: ClipResult[] = [];
-
-    handlePositionOperations({
-      clip: mockClip as unknown as LiveAPI,
-      isAudioClip: false,
+    runPositionOps({
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementStartBeats: 8,
-      tracksWithMovedClips: new Map(),
-      context: {},
-      updatedClips,
-      noteResult: null,
-      isNonSurvivor: false,
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -518,20 +564,11 @@ describe("handlePositionOperations", () => {
   });
 
   it("should warn when toSlot used with arrangement LENGTH only", () => {
-    const updatedClips: ClipResult[] = [];
-
     // Only arrangementLengthBeats is set (no start): the second operand of the
     // arrangement-params guard must stay live (kills its -> false mutant).
-    handlePositionOperations({
-      clip: { id: "123", getProperty: vi.fn(() => 0) } as unknown as LiveAPI,
-      isAudioClip: false,
+    runPositionOps({
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       arrangementLengthBeats: 8,
-      tracksWithMovedClips: new Map(),
-      context: {},
-      updatedClips,
-      noteResult: null,
-      isNonSurvivor: false,
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -541,25 +578,9 @@ describe("handlePositionOperations", () => {
   });
 
   it("should not warn about arrangement toSlot when no toSlot is given", () => {
-    const updatedClips: ClipResult[] = [];
-
     // Arrangement clip but no toSlot: the else-if (toSlot != null && isArrangement)
     // must stay false (kills forced-true and the && -> || mutant).
-    handlePositionOperations({
-      clip: {
-        id: "789",
-        getProperty: vi.fn((prop: string) =>
-          prop === "is_arrangement_clip" ? 1 : 0,
-        ),
-      } as unknown as LiveAPI,
-      isAudioClip: false,
-      arrangementStartBeats: 8,
-      tracksWithMovedClips: new Map(),
-      context: {},
-      updatedClips,
-      noteResult: null,
-      isNonSurvivor: false,
-    });
+    runPositionOps({ isArrangementClip: true, arrangementStartBeats: 8 });
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,

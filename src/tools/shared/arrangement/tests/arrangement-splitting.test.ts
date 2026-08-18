@@ -413,11 +413,11 @@ describe("performSplitting", () => {
     // 4 beats (1 bar) long and starts at 0, so it spans 1|1 to 2|1.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("arrangementSplit skipped for clip clip_1"),
+      expect.stringContaining("arrangementSplit cut nothing"),
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("the clip spans 1|1 to 2|1"),
+      expect.stringContaining("clip_1 (1|1 to 2|1)"),
     );
   });
 

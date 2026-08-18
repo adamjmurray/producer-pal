@@ -108,6 +108,36 @@ export function warnInapplicableClipParams(
 }
 
 /**
+ * Warns for arrangement position params on a type that lands nowhere on the
+ * timeline. A device or drum pad is copied inside its own chain, so these are
+ * dropped — and every other inapplicable param on this tool warns.
+ * @param type - Type of object being duplicated
+ * @param arrangementStart - Bar|beat position
+ * @param locator - Locator ID or name
+ * @param arrangementLength - Requested arrangement length
+ */
+export function warnUnusedArrangementParams(
+  type: string,
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+  arrangementLength: string | undefined,
+): void {
+  if (type !== "device" && type !== "drum-pad") return;
+
+  const sent = [
+    arrangementStart != null ? "arrangementStart" : null,
+    locator != null ? "locator" : null,
+    arrangementLength != null ? "arrangementLength" : null,
+  ].filter((param) => param != null);
+
+  if (sent.length === 0) return;
+
+  console.warn(
+    `${sent.join("/")} ignored: a ${type} has no arrangement position (type "${type}")`,
+  );
+}
+
+/**
  * Warns when a destination param was sent for a type that has no destination.
  * @param type - Type of object being duplicated
  * @param rawToPath - Destination path(s)
@@ -146,7 +176,7 @@ function legacySlotDestinations(
   toSlot: string,
   hasArrangementParams: boolean,
 ): ClipDestinations {
-  const slots = parseSlotList(toSlot);
+  const slots = parseSlotList(toSlot, "toSlot");
 
   // toSlot only ever named session slots, so it can't be the arrangement
   // destination arrangementStart wants. Drop the weaker of the two rather than

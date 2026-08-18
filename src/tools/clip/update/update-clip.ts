@@ -43,6 +43,7 @@ import {
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import {
+  moveDestinationParam,
   resolveMoveDestinations,
   resolveRequestedClips,
 } from "./helpers/update-clip-session-helpers.ts";
@@ -175,6 +176,7 @@ export async function updateClip(
     requestedIds,
     resolveMoveDestinations(toPath, toSlot, requestedIds.length),
   );
+  const destinationParam = moveDestinationParam(toPath, toSlot);
   const mutableClips = applySplittingIfNeeded(
     clips,
     arrangementSplit,
@@ -234,6 +236,7 @@ export async function updateClip(
       arrangementLengthBeats,
       arrangementStartBeats,
       toSlot: destinationById.get(clip.id) ?? null,
+      destinationParam,
       nonSurvivorClipIds,
       context,
       updatedClips,

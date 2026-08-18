@@ -8,10 +8,19 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { type ArrangementTrack } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  type ArrangementTrack,
+  warnUnusedTakeLane,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type ClipDestinations,
+  warnInapplicableClipParams,
+  warnUnusedArrangementParams,
+  warnUnusedDestination,
+} from "./clip/duplicate-destination-helpers.ts";
 
 /**
  * Resolves arrangement positions from bar|beat or locator(s). Supports
@@ -267,4 +276,70 @@ export function validateArrangementParameters(
       "duplicate failed: arrangementStart and locator are mutually exclusive",
     );
   }
+}
+
+interface DestinationParams {
+  type: string;
+  clipDestinations: ClipDestinations | null;
+  count: number;
+  toPath: string | undefined;
+  toSlot: string | undefined;
+  arrangementStart: string | undefined;
+  locator: string | undefined;
+  arrangementLength: string | undefined;
+  takeLane: number | string | undefined;
+  transforms: string | undefined;
+  code: string | undefined;
+}
+
+/**
+ * Settle where the copies go, warning for every param the chosen type and
+ * destination have no use for. Grouped here so the tool's one rule — an
+ * inapplicable param is warned about, never silently dropped — has one place
+ * to hold.
+ * @param params - The destination and position params as the tool received them
+ * @returns The destination, or undefined when the type has none
+ */
+export function resolveDestinationAndWarn(
+  params: DestinationParams,
+): "session" | "arrangement" | undefined {
+  const { type, clipDestinations, arrangementStart, locator } = params;
+  const { arrangementLength, takeLane } = params;
+
+  warnUnusedDestination(type, params.toPath, params.toSlot);
+  warnUnusedArrangementParams(
+    type,
+    arrangementStart,
+    locator,
+    arrangementLength,
+  );
+
+  if (clipDestinations != null) {
+    warnInapplicableClipParams(
+      clipDestinations,
+      params.count,
+      arrangementLength,
+    );
+  }
+
+  const destination =
+    clipDestinations?.destination ??
+    inferDestination(type, arrangementStart, locator);
+
+  validateDestinationParameter(type, destination);
+  validateArrangementParameters(destination, arrangementStart, locator);
+
+  if (type !== "clip" && (params.transforms != null || params.code != null)) {
+    console.warn(
+      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
+    );
+  }
+
+  // takeLane only applies to arrangement-destination clips; the helper warns
+  // for non-clip types and session destinations so a malformed value doesn't
+  // throw before the warn-and-ignore path. Where it does apply, the destination
+  // resolver folded it onto the paths already.
+  warnUnusedTakeLane(type, destination, takeLane, console.warn);
+
+  return destination;
 }

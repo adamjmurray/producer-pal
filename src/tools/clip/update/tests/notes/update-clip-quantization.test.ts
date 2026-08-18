@@ -116,9 +116,22 @@ describe("handleQuantization", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("quantize parameter ignored for audio clip"),
+      "quantize/quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
     );
     expect(mockClip.call).not.toHaveBeenCalled();
+  });
+
+  // Grid or pitch alone quantizes, so naming `quantize` sends the caller to a
+  // param they never set.
+  it("should name only the quantize params the caller sent", () => {
+    mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
+
+    handleQuantization(mockClip, { quantizeGrid: "1/16" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
+    );
   });
 
   it("should default to a 1/16 grid when quantizeGrid is not provided", () => {

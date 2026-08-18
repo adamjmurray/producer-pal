@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -44,37 +45,37 @@ describe("parseSceneIndexList", () => {
 
 describe("parseSlotList", () => {
   it("should parse a single slot", () => {
-    expect(parseSlotList("0/1")).toStrictEqual([
+    expect(parseSlotList("0/1", "toSlot")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
     ]);
   });
 
   it("should parse multiple comma-separated slots", () => {
-    expect(parseSlotList("0/1, 2/3")).toStrictEqual([
+    expect(parseSlotList("0/1, 2/3", "toSlot")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
       { trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
   it("should handle whitespace around slots", () => {
-    expect(parseSlotList(" 1/2 , 3/4 ")).toStrictEqual([
+    expect(parseSlotList(" 1/2 , 3/4 ", "toSlot")).toStrictEqual([
       { trackIndex: 1, sceneIndex: 2 },
       { trackIndex: 3, sceneIndex: 4 },
     ]);
   });
 
   it("should return empty array for null input", () => {
-    expect(parseSlotList(null)).toStrictEqual([]);
+    expect(parseSlotList(null, "toSlot")).toStrictEqual([]);
   });
 
   it("should throw for missing separator", () => {
-    expect(() => parseSlotList("01")).toThrow(
+    expect(() => parseSlotList("01", "toSlot")).toThrow(
       'invalid toSlot "01" - expected trackIndex/sceneIndex format',
     );
   });
 
   it("should warn and use first two parts when extra separators present", () => {
-    const result = parseSlotList("0/1/2");
+    const result = parseSlotList("0/1/2", "toSlot");
 
     expect(result).toStrictEqual([{ trackIndex: 0, sceneIndex: 1 }]);
     expect(outlet).toHaveBeenCalledWith(
@@ -84,7 +85,7 @@ describe("parseSlotList", () => {
   });
 
   it("should not warn for a clean two-part slot", () => {
-    parseSlotList("0/1");
+    parseSlotList("0/1", "toSlot");
 
     // Exactly two parts must not trigger the extra-parts warning.
     expect(outlet).not.toHaveBeenCalledWith(
@@ -95,7 +96,7 @@ describe("parseSlotList", () => {
 
   // Slots are positional, so a dropped entry moves every later one.
   it("should warn when it drops an empty entry", () => {
-    expect(parseSlotList(",0/1")).toStrictEqual([
+    expect(parseSlotList(",0/1", "toSlot")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
     ]);
     expect(outlet).toHaveBeenCalledWith(
@@ -104,10 +105,30 @@ describe("parseSlotList", () => {
     );
   });
 
+  // playback sends `slots` and create-clip sends `slot`; a message naming
+  // toSlot tells the model to fix a param the tool doesn't have.
+  it("should name the param the caller actually sent", () => {
+    expect(() => parseSlotList("0", "slots")).toThrow(
+      'invalid slots "0" - expected trackIndex/sceneIndex format (e.g., "0/1")',
+    );
+
+    parseSlotList(",0/1", "slot");
+    parseSlotList("0/1/2", "slot");
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'slot ",0/1" has empty entries, which were dropped',
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'slot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
+    );
+  });
+
   it("should not warn for a clean list or a blank param", () => {
-    parseSlotList("0/1, 2/3");
-    parseSlotList("");
-    parseSlotList(undefined);
+    parseSlotList("0/1, 2/3", "toSlot");
+    parseSlotList("", "toSlot");
+    parseSlotList(undefined, "toSlot");
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
@@ -116,19 +137,19 @@ describe("parseSlotList", () => {
   });
 
   it("should throw for non-integer values", () => {
-    expect(() => parseSlotList("a/b")).toThrow(
+    expect(() => parseSlotList("a/b", "toSlot")).toThrow(
       'invalid toSlot "a/b" - trackIndex and sceneIndex must be integers',
     );
   });
 
   it("should throw for negative trackIndex", () => {
-    expect(() => parseSlotList("-1/0")).toThrow(
+    expect(() => parseSlotList("-1/0", "toSlot")).toThrow(
       'invalid toSlot "-1/0" - trackIndex and sceneIndex must be non-negative',
     );
   });
 
   it("should throw for negative sceneIndex", () => {
-    expect(() => parseSlotList("0/-1")).toThrow(
+    expect(() => parseSlotList("0/-1", "toSlot")).toThrow(
       'invalid toSlot "0/-1" - trackIndex and sceneIndex must be non-negative',
     );
   });

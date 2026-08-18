@@ -47,6 +47,13 @@ interface SplitClipRange {
   endTime: number;
 }
 
+/** A clip no split point fell inside, held until the whole call is known. */
+interface SplitMiss {
+  clipId: string;
+  clipArrangementStart: number;
+  clipLength: number;
+}
+
 interface SplitSingleClipArgs {
   clip: LiveAPI;
   splitPoints: number[];
@@ -54,6 +61,7 @@ interface SplitSingleClipArgs {
   holdingAreaStart: number;
   context: SplittingContext;
   splitClipRanges: Map<string, SplitClipRange>;
+  misses: SplitMiss[];
 }
 
 /**
@@ -109,7 +117,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   );
 
   if (validPoints.length === 0) {
-    warnNoPointsInClip(clip.id, clipArrangementStart, clipLength, mode);
+    args.misses.push({ clipId: clip.id, clipArrangementStart, clipLength });
 
     return false;
   }
@@ -208,34 +216,36 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 }
 
 /**
- * Warn that a clip has no usable split points, naming the span the caller
- * should have aimed at in whichever coordinates it used.
- * @param clipId - The clip that was skipped
- * @param clipArrangementStart - The clip's song-timeline start, in beats
- * @param clipLength - The clip's arrangement length, in beats
+ * Warn that nothing was cut, naming the span the caller should have aimed at in
+ * whichever coordinates it used.
+ *
+ * Only fires when no clip in the call took a cut. Cutting several clips at one
+ * song position is what `arrangementSplit` is for, so the clips that position
+ * misses are the expected case, not something to report.
+ * @param misses - The clips no split point fell inside
  * @param mode - How the caller's positions are read
  */
-function warnNoPointsInClip(
-  clipId: string,
-  clipArrangementStart: number,
-  clipLength: number,
-  mode: SplitMode,
-): void {
+function warnNothingSplit(misses: SplitMiss[], mode: SplitMode): void {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const numerator = liveSet.getProperty("signature_numerator") as number;
   const denominator = liveSet.getProperty("signature_denominator") as number;
   const toBarBeat = (beats: number): string =>
     abletonBeatsToBarBeat(beats, numerator, denominator);
+  const spans = misses
+    .map(({ clipId, clipArrangementStart, clipLength }) =>
+      mode.origin === "song"
+        ? `${clipId} (${toBarBeat(clipArrangementStart)} to ${toBarBeat(clipArrangementStart + clipLength)})`
+        : `${clipId} (1|1 to ${toBarBeat(clipLength)})`,
+    )
+    .join(", ");
 
   const where =
     mode.origin === "song"
-      ? `Positions are on the song timeline, and the clip spans ` +
-        `${toBarBeat(clipArrangementStart)} to ${toBarBeat(clipArrangementStart + clipLength)}.`
-      : `Positions are relative to the clip's start (1|1) and must be before ` +
-        `its end at ${toBarBeat(clipLength)}.`;
+      ? "Positions are on the song timeline; the clips span"
+      : "Positions are relative to each clip's start (1|1), and must be before its end; the clips span";
 
   console.warn(
-    `${mode.param} skipped for clip ${clipId}: no split points fall inside the clip. ${where}`,
+    `${mode.param} cut nothing: no split point falls inside any of the clips. ${where} ${spans}.`,
   );
 }
 
@@ -402,6 +412,7 @@ export function performSplitting(
 ): void {
   const holdingAreaStart = _context.holdingAreaStartBeats;
   const splitClipRanges = new Map<string, SplitClipRange>();
+  const misses: SplitMiss[] = [];
 
   for (let i = 0; i < arrangementClips.length; i++) {
     // Between clips, so no clip is left half-cut. One clip's own splitting is
@@ -426,7 +437,12 @@ export function performSplitting(
       holdingAreaStart,
       context: _context,
       splitClipRanges,
+      misses,
     });
+  }
+
+  if (splitClipRanges.size === 0 && misses.length > 0) {
+    warnNothingSplit(misses, mode);
   }
 
   rescanSplitClips(splitClipRanges, clips);

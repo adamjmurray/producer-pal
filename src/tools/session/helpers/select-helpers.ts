@@ -34,6 +34,7 @@ interface ValidateParametersOptions {
   sceneIndex?: number;
   deviceId?: string;
   devicePath?: string;
+  devicePathParam: "path" | "devicePath";
   slot?: { trackIndex: number; sceneIndex: number };
 }
 
@@ -54,6 +55,7 @@ interface UpdateDeviceSelectionOptions {
   songView: LiveAPI;
   deviceId?: string;
   devicePath?: string;
+  devicePathParam: "path" | "devicePath";
 }
 
 interface UpdateHighlightedClipSlotOptions {
@@ -106,6 +108,7 @@ export function buildTrackPath(
  * @param options.sceneIndex - Scene index
  * @param options.deviceId - Device ID
  * @param options.devicePath - Device path
+ * @param options.devicePathParam - The param the device path came from
  * @param options.slot - Clip slot coordinates
  */
 export function validateParameters({
@@ -116,6 +119,7 @@ export function validateParameters({
   sceneIndex,
   deviceId,
   devicePath,
+  devicePathParam,
   slot: _slot,
 }: ValidateParametersOptions): void {
   // Track selection validation
@@ -127,7 +131,7 @@ export function validateParameters({
 
   // Device selection validation
   if (deviceId != null && devicePath != null) {
-    throw new Error("cannot specify both id (device) and devicePath");
+    throw new Error(`cannot specify both id (device) and ${devicePathParam}`);
   }
 
   // Cross-validation for track ID vs index (requires Live API calls)
@@ -248,12 +252,14 @@ export function updateSceneSelection({
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
  * @param options.devicePath - Device path (e.g. "t0/d1")
+ * @param options.devicePathParam - The param the device path came from
  * @returns The resolved device, or undefined if none was targeted/found
  */
 export function updateDeviceSelection({
   songView,
   deviceId,
   devicePath,
+  devicePathParam,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
     const deviceAPI = validateIdType(deviceId, "device", "select");
@@ -266,7 +272,7 @@ export function updateDeviceSelection({
 
     if (resolved.targetType !== "device") {
       throw new Error(
-        `devicePath "${devicePath}" does not resolve to a device`,
+        `${devicePathParam} "${devicePath}" does not resolve to a device`,
       );
     }
 
@@ -294,7 +300,7 @@ export function applyPluginEditorWindow(
 ): boolean {
   if (device == null) {
     console.warn(
-      "select: openPluginWindow requires a plug-in device — specify id or devicePath",
+      "select: openPluginWindow requires a plug-in device — specify id or path",
     );
 
     return false;

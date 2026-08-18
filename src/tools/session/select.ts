@@ -65,7 +65,9 @@ export interface SelectResult {
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;
-    /** Where the clip is: "t0/s3", "t0", or "t0/l0". */
+    /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
+     * arrangement. Only the session form names the clip — an arrangement one
+     * names its track or take lane, which select's own path won't take. */
     path?: string;
     arrangementStart?: string;
   };
@@ -91,6 +93,7 @@ export function select(
   const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
   const { trackIndex, category, sceneIndex, devicePath } = resolved;
+  const devicePathParam = resolved.devicePathParam ?? "path";
 
   validateParameters({
     trackId,
@@ -100,6 +103,7 @@ export function select(
     sceneIndex,
     deviceId,
     devicePath,
+    devicePathParam,
     slot: parsedClipSlot,
   });
 
@@ -158,6 +162,7 @@ export function select(
     songView,
     deviceId,
     devicePath,
+    devicePathParam,
   });
 
   let pluginWindowOpen: boolean | undefined;
@@ -262,6 +267,7 @@ interface ResolvedArgs {
   sceneIndex?: number;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
+  devicePathParam?: "path" | "devicePath";
   hasArgs: boolean;
   viewOnly: boolean;
 }
@@ -284,7 +290,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   }
 
   const fromPath = resolvePathParam(args);
-  const { parsedClipSlot, devicePath } = fromPath;
+  const { parsedClipSlot, devicePath, devicePathParam } = fromPath;
   const trackIndex = mergeWithPath(
     "trackIndex",
     args.trackIndex,
@@ -326,6 +332,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     sceneIndex,
     parsedClipSlot,
     devicePath,
+    devicePathParam,
     hasArgs,
     viewOnly,
   };

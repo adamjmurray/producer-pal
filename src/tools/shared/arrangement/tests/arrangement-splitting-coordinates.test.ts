@@ -15,7 +15,12 @@ import {
   LEGACY_SPLIT_MODE,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { setupSplitTest } from "./helpers/arrangement-splitting-test-helpers.ts";
+import {
+  setupSplittingClipGetMock,
+  setupSplitTest,
+} from "./helpers/arrangement-splitting-test-helpers.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
 
@@ -104,11 +109,11 @@ describe("split position coordinates", () => {
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("arrangementSplit skipped for clip clip_1"),
+      expect.stringContaining("arrangementSplit cut nothing"),
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("the clip spans 5|1 to 9|1"),
+      expect.stringContaining("clip_1 (5|1 to 9|1)"),
     );
   });
 
@@ -132,11 +137,41 @@ describe("split position coordinates", () => {
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("split skipped for clip clip_1"),
+      expect.stringContaining("split cut nothing"),
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("before its end at 5|1"),
+      expect.stringContaining("clip_1 (1|1 to 5|1)"),
+    );
+  });
+
+  // One call cutting several clips at one song position is what the param is
+  // for, so the clips that position misses are the expected case. Warning per
+  // miss spends the model's context saying the tool worked.
+  it("stays quiet about clips the position misses when another one was cut", () => {
+    const { mockClip, clips } = setupSplitTest(CLIP_AT_BAR_5);
+
+    // A second clip on the same track, nowhere near the cut at song beat 24.
+    registerMockObject("clip_2", {
+      path: livePath.track(0).arrangementClip(1),
+      type: "Clip",
+      properties: { track_index: 0 },
+    });
+    setupSplittingClipGetMock("clip_2", { startTime: 100, endTime: 116 });
+
+    const missedClip = LiveAPI.from("id clip_2");
+
+    performSplitting(
+      [mockClip, missedClip],
+      [SONG_BEAT_24],
+      [...clips, missedClip],
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("cut nothing"),
     );
   });
 });

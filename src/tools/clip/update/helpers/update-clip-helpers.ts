@@ -72,6 +72,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   toSlot?: { trackIndex: number; sceneIndex: number } | null;
+  destinationParam: "toPath" | "toSlot";
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
@@ -224,6 +225,7 @@ export function processSingleClipUpdate(
     clip,
     isAudioClip,
     toSlot: params.toSlot,
+    destinationParam: params.destinationParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
     tracksWithMovedClips,

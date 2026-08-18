@@ -206,7 +206,7 @@ function legacyDestinations(
   hasArrangementStarts: boolean,
 ): SplitDestinations {
   const { trackIndex, sceneIndex } = params;
-  const sessionSlots = slot == null ? [] : parseSlotList(slot);
+  const sessionSlots = slot == null ? [] : parseSlotList(slot, "slot");
 
   if (trackIndex == null && sceneIndex == null) {
     return { sessionSlots, tracks: [] };

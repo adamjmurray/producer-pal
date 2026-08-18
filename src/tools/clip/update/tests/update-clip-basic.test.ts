@@ -617,6 +617,7 @@ describe("updateClip - Basic operations", () => {
       clip,
       clipIndex: 0,
       clipCount: 1,
+      destinationParam: "toPath",
       context: {},
       updatedClips: [],
       tracksWithMovedClips: new Map(),

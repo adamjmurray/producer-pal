@@ -483,4 +483,32 @@ describe("duplicate - device duplication", () => {
       expect.any(String),
     );
   });
+
+  // Every other inapplicable param on this tool warns; these were dropped in
+  // silence, so the caller read a copy inside the chain as a timeline placement.
+  it("warns that arrangement params do not apply to a device", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t1/d0",
+      arrangementStart: "5|1",
+      arrangementLength: "4|0",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'arrangementStart/arrangementLength ignored: a device has no arrangement position (type "device")',
+    );
+  });
+
+  it("stays quiet when no arrangement param was sent", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "t1/d0" });
+
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("has no arrangement position"),
+    );
+  });
 });

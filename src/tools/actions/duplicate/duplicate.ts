@@ -5,7 +5,6 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { warnUnusedTakeLane } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -18,11 +17,7 @@ import {
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { duplicateClipWithPositions } from "./helpers/clip/duplicate-clip-position-helpers.ts";
-import {
-  resolveClipDestinations,
-  warnInapplicableClipParams,
-  warnUnusedDestination,
-} from "./helpers/clip/duplicate-destination-helpers.ts";
+import { resolveClipDestinations } from "./helpers/clip/duplicate-destination-helpers.ts";
 import { duplicateDeviceWithPaths } from "./helpers/duplicate-device-helpers.ts";
 import {
   duplicateDrumPad,
@@ -38,11 +33,9 @@ import {
 import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
 import {
   hasArrangementPosition,
-  inferDestination,
+  resolveDestinationAndWarn,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-  validateDestinationParameter,
-  validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.ts";
 
 interface DuplicateArgs {
@@ -151,34 +144,19 @@ export async function duplicate(
         )
       : null;
 
-  warnUnusedDestination(type, toPath, toSlot);
-
-  if (clipDestinations != null) {
-    warnInapplicableClipParams(clipDestinations, count, arrangementLength);
-  }
-
-  const destination =
-    clipDestinations?.destination ??
-    inferDestination(type, arrangementStart, locator);
-
-  // Validate destination parameter compatibility with type
-  validateDestinationParameter(type, destination);
-
-  // Validate arrangement parameters
-  validateArrangementParameters(destination, arrangementStart, locator);
-
-  // transforms/code only apply to clips
-  if (type !== "clip" && (transforms != null || code != null)) {
-    console.warn(
-      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
-    );
-  }
-
-  // takeLane only applies to arrangement-destination clips; the helper warns
-  // for non-clip types and session destinations so a malformed value doesn't
-  // throw before the warn-and-ignore path. Where it does apply, the destination
-  // resolver folded it onto the paths already.
-  warnUnusedTakeLane(type, destination, takeLane, console.warn);
+  const destination = resolveDestinationAndWarn({
+    type,
+    clipDestinations,
+    count,
+    toPath,
+    toSlot,
+    arrangementStart,
+    locator,
+    arrangementLength,
+    takeLane,
+    transforms,
+    code,
+  });
 
   // Both of these take comma-separated toPath for multiple destinations
   if (type === "drum-pad") {

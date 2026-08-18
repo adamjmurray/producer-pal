@@ -50,7 +50,7 @@ export function resolvePlaybackTarget(
   if (named == null) {
     return {
       sceneIndex: null,
-      slotPositions: legacy != null ? parseSlotList(legacy) : null,
+      slotPositions: legacy != null ? parseSlotList(legacy, "slots") : null,
     };
   }
 
