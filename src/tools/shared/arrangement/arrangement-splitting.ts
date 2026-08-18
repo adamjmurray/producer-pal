@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -269,7 +270,8 @@ interface ExtractMiddleSegmentsArgs {
  *
  * Stopping for the deadline is safe HERE and nowhere later in the segment: the
  * caller places the source copy from this index on, so the part of the clip that
- * never got cut goes back whole instead of vanishing.
+ * never got cut goes back whole instead of vanishing. A Live error mid-segment
+ * stops the same way.
  *
  * @param args - Extraction arguments
  * @returns The boundary index the caller should place the tail from
@@ -303,58 +305,77 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
 
     const segStart = boundaries[i] as number; // loop bounds guarantee valid index
     const segEnd = boundaries[i + 1] as number; // loop bounds guarantee valid index
-
-    // Duplicate source to working position
     const workPos = holdingAreaStart + i * (clipLength + 4);
-    const workResult = track.call(
-      "duplicate_clip_to_arrangement",
-      toLiveApiId(sourceClipId),
-      workPos,
-    ) as [string, string | number];
-    const workClip = LiveAPI.from(workResult);
+    let workClipId: string | null = null;
 
-    // Use exists() rather than `id === "0"`: a non-existent object's id can be
-    // "id 0", "0", or 0 (number), so the string-only check missed two of the
-    // three failure shapes.
-    if (!workClip.exists()) {
-      console.warn(
-        `Failed to duplicate source for middle segment ${i}, skipping`,
-      );
-      continue;
-    }
+    // Live can refuse any step here. Bail out the same way the deadline does,
+    // so the uncut rest of the clip goes back whole instead of the throw
+    // escaping and leaving the clip half-cut.
+    try {
+      // Duplicate source to working position
+      const workResult = track.call(
+        "duplicate_clip_to_arrangement",
+        toLiveApiId(sourceClipId),
+        workPos,
+      ) as [string, string | number];
+      const workClip = LiveAPI.from(workResult);
 
-    const workClipId = workClip.id;
+      // Use exists() rather than `id === "0"`: a non-existent object's id can be
+      // "id 0", "0", or 0 (number), so the string-only check missed two of the
+      // three failure shapes.
+      if (!workClip.exists()) {
+        console.warn(
+          `Failed to duplicate source for middle segment ${i}, skipping`,
+        );
+        continue;
+      }
 
-    // Left-trim to remove content before this segment
-    if (segStart > EPSILON) {
-      createAndDeleteTempClip(track, workPos, segStart, isMidiClip, context);
-    }
+      workClipId = workClip.id;
 
-    // Right-trim to remove content after this segment
-    const rightTrim = clipLength - segEnd;
+      // Left-trim to remove content before this segment
+      if (segStart > EPSILON) {
+        createAndDeleteTempClip(track, workPos, segStart, isMidiClip, context);
+      }
 
-    if (rightTrim > EPSILON) {
-      createAndDeleteTempClip(
+      // Right-trim to remove content after this segment
+      const rightTrim = clipLength - segEnd;
+
+      if (rightTrim > EPSILON) {
+        createAndDeleteTempClip(
+          track,
+          workPos + segEnd,
+          rightTrim,
+          isMidiClip,
+          context,
+        );
+      }
+
+      // Move to final arrangement position. The target sits in the span step 2
+      // vacated, and segments are placed left to right at exactly their boundary
+      // widths, so nothing can be there — skip the track scan. Both facts depend
+      // on every trim above having run; see the validPoints margin.
+      moveClipFromHolding(
+        workClipId,
         track,
-        workPos + segEnd,
-        rightTrim,
+        clipArrangementStart + segStart,
         isMidiClip,
         context,
+        true,
       );
-    }
+    } catch (error) {
+      console.warn(
+        `Failed to cut segment ${i} of clip ${clipId}: ${errorMessage(error)}. ` +
+          `The rest of the clip is left whole.`,
+      );
 
-    // Move to final arrangement position. The target sits in the span step 2
-    // vacated, and segments are placed left to right at exactly their boundary
-    // widths, so nothing can be there — skip the track scan. Both facts depend
-    // on every trim above having run; see the validPoints margin.
-    moveClipFromHolding(
-      workClipId,
-      track,
-      clipArrangementStart + segStart,
-      isMidiClip,
-      context,
-      true,
-    );
+      // The caller covers this segment's span with the tail, so the half-built
+      // work copy is redundant.
+      if (workClipId != null) {
+        track.call("delete_clip", toLiveApiId(workClipId));
+      }
+
+      return i;
+    }
   }
 
   return segmentCount - 1;
@@ -430,15 +451,27 @@ export function performSplitting(
       break;
     }
 
-    splitSingleClip({
-      clip: arrangementClips[i] as LiveAPI, // bounded by the loop
-      splitPoints,
-      mode,
-      holdingAreaStart,
-      context: _context,
-      splitClipRanges,
-      misses,
-    });
+    const clip = arrangementClips[i] as LiveAPI; // bounded by the loop
+    const clipId = clip.id;
+
+    try {
+      splitSingleClip({
+        clip,
+        splitPoints,
+        mode,
+        holdingAreaStart,
+        context: _context,
+        splitClipRanges,
+        misses,
+      });
+    } catch (error) {
+      // Whatever Live refused, the rest of the batch is still worth cutting.
+      // This clip is left as it fell; the rescan below reports what survived.
+      console.warn(
+        `${mode.param} failed for clip ${clipId}: ${errorMessage(error)}. ` +
+          `It may be left partly cut, with a copy past the end of the arrangement.`,
+      );
+    }
   }
 
   if (splitClipRanges.size === 0 && misses.length > 0) {

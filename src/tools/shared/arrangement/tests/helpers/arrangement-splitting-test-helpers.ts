@@ -242,17 +242,23 @@ interface DuplicateCounter {
  * @param opts - Options
  * @param opts.failOnDuplicate - 1-based duplicate call that returns the
  *   non-existent id "0" (Live's silent-failure signal) instead of a clip
+ * @param opts.throwOnDuplicate - 1-based duplicate call that throws, the way a
+ *   Live API error surfaces in V8
  * @returns Counter whose `count` tracks duplicate_clip_to_arrangement calls
  */
 export function overrideWithDuplicateCounter(
   trackMock: RegisteredMockObject,
-  opts: { failOnDuplicate?: number } = {},
+  opts: { failOnDuplicate?: number; throwOnDuplicate?: number } = {},
 ): DuplicateCounter {
   const counter: DuplicateCounter = { count: 0 };
 
   trackMock.call.mockImplementation((method: string) => {
     if (method === "duplicate_clip_to_arrangement") {
       counter.count++;
+
+      if (counter.count === opts.throwOnDuplicate) {
+        throw new Error("Live API error");
+      }
 
       if (counter.count === opts.failOnDuplicate) return ["id", "0"];
 

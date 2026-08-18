@@ -18,7 +18,7 @@ import {
 import {
   setupSplittingClipGetMock,
   setupSplitTest,
-} from "./helpers/arrangement-splitting-test-helpers.ts";
+} from "../helpers/arrangement-splitting-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 

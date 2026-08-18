@@ -16,7 +16,7 @@ import {
 import {
   setupClipSplittingMocks,
   SPLIT_CLIP_ID,
-} from "./helpers/arrangement-splitting-test-helpers.ts";
+} from "../helpers/arrangement-splitting-test-helpers.ts";
 
 /**
  * Make every clip the split creates look like a real arrangement clip.

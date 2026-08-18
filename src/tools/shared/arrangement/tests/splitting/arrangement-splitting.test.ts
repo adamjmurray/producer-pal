@@ -20,7 +20,7 @@ import {
   setupSplitTest,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
-} from "./helpers/arrangement-splitting-test-helpers.ts";
+} from "../helpers/arrangement-splitting-test-helpers.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
 
