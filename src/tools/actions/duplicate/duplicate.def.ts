@@ -29,12 +29,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
   inputSchema: {
     id: param(z.coerce.string().optional(), {
-      default: "object to duplicate (required except for drum pads)",
-      smallModel: "object to duplicate (not drum pads: use path)",
+      default: "id of the object to duplicate",
+      smallModel: "id of the object to duplicate",
     }),
-    path: param(z.coerce.string().optional(), {
-      default: "drum pad to duplicate, e.g. 't0/d0/pC1' (drum pads only)",
-      smallModel: "drum pad to duplicate, e.g. 't0/d0/pC1'",
+    path: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "id",
     }),
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
@@ -86,14 +85,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
-        "destination path(s), comma-separated for multiple. Clips: 't2/s1' = session slot (track 2, scene 1), " +
+        "destination(s), comma-separated for multiple. Clips: 't2/s1' = session slot (track 2, scene 1), " +
         "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
         "'t2/l1' = a take lane on it and 't2/l+' appends a fresh one (MIDI only); " +
         "omit for the source clip's own track. Devices: 't1/d0'. " +
-        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad. " +
+        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id names the source; ppal-read-device lists a pad's id). " +
         "Cycles against arrangementStart when the lists differ in length",
       smallModel:
-        "destination path(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
+        "destination(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
     routeToSource: param(z.boolean().optional(), {

@@ -112,6 +112,7 @@ describe("device-reader-drum-helpers", () => {
     });
 
     interface DrumPadInfoResult {
+      id?: string;
       note: number;
       pitch: string | null;
       name?: string;
@@ -151,13 +152,22 @@ describe("device-reader-drum-helpers", () => {
         ),
       }) as Record<string, unknown>;
 
-    // Helper to create mock device
-    const createMockDevice = (chainConfigs: ChainConfig[]) => ({
+    // Helper to create mock device. padsByNote is the rack's own drum_pads,
+    // keyed by the note each answers to; a rack nested in a drum pad has none.
+    const createMockDevice = (
+      chainConfigs: ChainConfig[],
+      padsByNote: Record<number, string> = {},
+    ) => ({
       path: "live_set tracks 0 devices 0",
-      getChildren: vi.fn(() =>
-        chainConfigs.map((config) =>
-          createMockChain(config.inNote, config.name, config.state),
-        ),
+      getChildren: vi.fn((child: string) =>
+        child === "drum_pads"
+          ? Object.entries(padsByNote).map(([note, id]) => ({
+              id,
+              getProperty: vi.fn(() => Number(note)),
+            }))
+          : chainConfigs.map((config) =>
+              createMockChain(config.inNote, config.name, config.state),
+            ),
       ),
     });
 
@@ -166,8 +176,9 @@ describe("device-reader-drum-helpers", () => {
       chainConfigs: ChainConfig[],
       includeChains = false,
       includeDrumPads = true,
+      padsByNote: Record<number, string> = {},
     ): DeviceInfoResult => {
-      const device = createMockDevice(chainConfigs);
+      const device = createMockDevice(chainConfigs, padsByNote);
       const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
 
@@ -190,6 +201,40 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads).toHaveLength(1);
       expect(deviceInfo.drumPads![0]!.note).toBe(36);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
+    });
+
+    it("names each pad by the id of the rack's pad for that note", () => {
+      const deviceInfo = setupAndProcess(
+        [{ inNote: 36, name: "Kick" }],
+        false,
+        true,
+        {
+          36: "pad-36",
+        },
+      );
+
+      expect(deviceInfo.drumPads![0]!.id).toBe("pad-36");
+    });
+
+    it("omits id for a rack with no pads of its own", () => {
+      // A Drum Rack nested in a drum pad has only chains, so its "pads" can't
+      // be named by id — and the absence is how a caller knows.
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }]);
+
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("id");
+    });
+
+    it("omits id for the catch-all pad, which no pad backs", () => {
+      const deviceInfo = setupAndProcess(
+        [{ inNote: -1, name: "Catch All" }],
+        false,
+        true,
+        {
+          36: "pad-36",
+        },
+      );
+
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("id");
     });
 
     it("should process chains with catch-all in_note (-1)", () => {

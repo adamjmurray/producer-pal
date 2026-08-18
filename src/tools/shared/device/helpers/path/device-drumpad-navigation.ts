@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
@@ -89,6 +90,22 @@ export function navigateRemainingSegments(
 }
 
 /**
+ * Map a drum rack's pad IDs by the MIDI note each pad answers to. A Drum Rack
+ * nested inside a drum pad has no pads of its own, so its map is empty.
+ * @param rack - The drum rack device
+ * @returns Pad ID keyed by MIDI note
+ */
+export function drumPadIdsByNote(rack: LiveAPI): Map<number, string> {
+  const idsByNote = new Map<number, string>();
+
+  for (const pad of rack.getChildren("drum_pads")) {
+    idsByNote.set(pad.getProperty("note") as number, pad.id);
+  }
+
+  return idsByNote;
+}
+
+/**
  * Find the DrumPad object for a note on a drum rack. Pad-level operations need
  * the pad itself, not its chain — `delete_all_chains` and `copy_pad` are silent
  * no-ops when aimed at a chain.
@@ -103,12 +120,19 @@ export function findDrumPad(rackPath: string, note: string): LiveAPI | null {
 
   const midi = noteNameToMidi(note);
 
-  if (midi == null) return null;
+  return midi == null ? null : findDrumPadByNote(rack, midi);
+}
 
-  return (
-    rack.getChildren("drum_pads").find((p) => p.getProperty("note") === midi) ??
-    null
-  );
+/**
+ * Find the DrumPad a rack maps a MIDI note to.
+ * @param rack - The drum rack device
+ * @param midi - MIDI note number
+ * @returns The DrumPad, or null when the rack has no pad for that note
+ */
+export function findDrumPadByNote(rack: LiveAPI, midi: number): LiveAPI | null {
+  const padId = drumPadIdsByNote(rack).get(midi);
+
+  return padId == null ? null : LiveAPI.from(padId);
 }
 
 /**

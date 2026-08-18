@@ -32,6 +32,8 @@ export const ID = {
   snareSimpler: "405",
   bassInstrument: "406",
   bassReverb: "407",
+  kickPad: "408",
+  snarePad: "409",
 
   introLocator: "501",
   verseLocator: "502",

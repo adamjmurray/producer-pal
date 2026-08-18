@@ -43,12 +43,14 @@ describe("ppal-duplicate drum-pad", () => {
 
     await sleep(150);
 
+    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+
     const copied = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
         arguments: {
           type: "drum-pad",
-          path: `t${t}/d0/pC1`,
+          id: sourceId,
           toPath: `t${t}/d0/pE1`,
         },
       }),
@@ -84,6 +86,7 @@ describe("ppal-duplicate drum-pad", () => {
 
     await sleep(150);
 
+    // The deprecated path param still names a source pad.
     await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
@@ -112,12 +115,14 @@ describe("ppal-duplicate drum-pad", () => {
   it("copies to several pads in one call and names each copy", async () => {
     const t = await createTrackWithDrumRack(ctx.client!);
 
+    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+
     const results = parseToolResult<{ path: string }[]>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
         arguments: {
           type: "drum-pad",
-          path: `t${t}/d0/pC1`,
+          id: sourceId,
           toPath: `t${t}/d0/pE1,t${t}/d0/pF1`,
           name: "KickA,KickB",
         },
@@ -142,11 +147,13 @@ describe("ppal-duplicate drum-pad", () => {
   it("skips an empty source pad with a warning", async () => {
     const t = await createTrackWithDrumRack(ctx.client!);
 
+    const emptyId = (await readDrumPad(ctx.client!, `t${t}/d0/pA1`)).id;
+
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "drum-pad",
-        path: `t${t}/d0/pA1`,
+        id: emptyId,
         toPath: `t${t}/d0/pE1`,
       },
     });

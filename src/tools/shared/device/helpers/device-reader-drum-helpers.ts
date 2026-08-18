@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
+import { drumPadIdsByNote } from "./path/device-drumpad-navigation.ts";
 import { buildChainInfo, deviceHasInstrument } from "./device-state-helpers.ts";
 import { extractDevicePath } from "./path/device-path-helpers.ts";
 
@@ -28,6 +30,7 @@ export interface ProcessedChain {
 }
 
 export interface DrumPadInfo {
+  id?: string;
   note: number;
   pitch: string | null;
   name?: string;
@@ -151,16 +154,22 @@ function groupChainsByNote(chains: LiveAPI[]): Map<number, LiveAPI[]> {
  * Build drum pad info from grouped chains
  * @param inNote - MIDI note or -1 for catch-all
  * @param processedChains - Processed chain info objects
+ * @param padId - The pad's ID, absent when the rack has no pad for this note
  * @returns Drum pad info object
  */
 function buildDrumPadFromChains(
   inNote: number,
   processedChains: ProcessedChain[],
+  padId: string | undefined,
 ): Record<string, unknown> {
   const firstChain = assertDefined(processedChains[0], "first chain");
   const isCatchAll = inNote === -1;
 
   const drumPadInfo: Record<string, unknown> = {
+    // No id for the catch-all, or for a Drum Rack nested in a drum pad — that
+    // rack has no pads, only chains grouped by in_note. Its absence is how a
+    // caller knows the pad can't be named by id.
+    ...(padId == null ? {} : { id: padId }),
     note: inNote,
     pitch: isCatchAll ? "*" : midiToNoteName(inNote),
     name: firstChain.name,
@@ -242,6 +251,9 @@ export function processDrumPads(
   // position with raw chain indexes, which loses the pad notation the rest of
   // the tree uses (pF1/c0/d0, not c3/d0).
   const parentPath = devicePath ?? extractDevicePath(device.path);
+  // Read the rack's pads once: pads are grouped from chains below, so there is
+  // no pad object in hand to take an id from.
+  const padIdsByNote = drumPadIdsByNote(device);
 
   // Group chains by in_note
   const noteGroups = groupChainsByNote(chains);
@@ -263,7 +275,11 @@ export function processDrumPads(
     );
 
     // Build drum pad info from the chains
-    const drumPadInfo = buildDrumPadFromChains(inNote, processedChains);
+    const drumPadInfo = buildDrumPadFromChains(
+      inNote,
+      processedChains,
+      padIdsByNote.get(inNote),
+    );
 
     // Add chains if requested
     if (includeDrumPads && includeChains) {

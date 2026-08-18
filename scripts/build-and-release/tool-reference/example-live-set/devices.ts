@@ -84,15 +84,21 @@ function registerDrumRack(): void {
       can_have_drum_pads: 1,
       chains: children(ID.kickChain, ID.snareChain),
       return_chains: children(),
-      drum_pads: children("kick_pad", "snare_pad"),
-      visible_drum_pads: children("kick_pad", "snare_pad"),
+      drum_pads: children(ID.kickPad, ID.snarePad),
+      visible_drum_pads: children(ID.kickPad, ID.snarePad),
       parameters: children(...paramIds(ID.drumRack, DRUM_RACK_PARAMS)),
     },
   });
   registerParameters(ID.drumRack, String(rackPath), DRUM_RACK_PARAMS);
 
-  registerDrumPad("kick_pad", rackPath.drumPad(0), "Kick", 36, ID.kickChain);
-  registerDrumPad("snare_pad", rackPath.drumPad(1), "Snare", 38, ID.snareChain);
+  registerDrumPad(ID.kickPad, rackPath.drumPad(36), "Kick", 36, ID.kickChain);
+  registerDrumPad(
+    ID.snarePad,
+    rackPath.drumPad(38),
+    "Snare",
+    38,
+    ID.snareChain,
+  );
 
   registerDrumChain(0, ID.kickChain, "Kick", 36, ID.kickSimpler);
   registerDrumChain(1, ID.snareChain, "Snare", 38, ID.snareSimpler);

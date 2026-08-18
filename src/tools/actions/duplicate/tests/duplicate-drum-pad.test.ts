@@ -141,7 +141,7 @@ function copyC1ToD1(
 ): Promise<object | object[]> {
   return duplicate({
     type: "drum-pad",
-    path: "t0/d0/pC1",
+    id: "pad36",
     toPath: "t0/d0/pD1",
     ...args,
   });
@@ -177,10 +177,15 @@ describe("duplicate - drum pad", () => {
   });
 
   it("skips a path with no device on it", async () => {
-    // A path parses fine against a track/device index that holds nothing.
+    // A path parses fine against a track/device index that holds nothing. An id
+    // can't miss this way, so only the deprecated path route reaches it.
     mockNonExistentObjects();
 
-    await copyC1ToD1();
+    await duplicate({
+      type: "drum-pad",
+      path: "t0/d0/pC1",
+      toPath: "t0/d0/pD1",
+    });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       'duplicate: no device at "t0/d0/pC1"',
@@ -210,7 +215,7 @@ describe("duplicate - drum pad", () => {
 
     expectNoCopy(rack);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('drum pad "t0/d0/pC1" is empty'),
+      expect.stringContaining("drum pad C1 is empty"),
     );
   });
 
@@ -251,7 +256,7 @@ describe("duplicate - drum pad", () => {
 
     await duplicate({
       type: "drum-pad",
-      path: "t0/d0/pC1",
+      id: "pad36",
       toPath: "t1/d0/pD1",
     });
 
@@ -325,11 +330,7 @@ describe("duplicate - drum pad", () => {
   it("returns nothing for a lone copy that was skipped", async () => {
     registerDrumRack([{ note: 36, chainIds: [] }]);
 
-    const result = await duplicate({
-      type: "drum-pad",
-      path: "t0/d0/pC1",
-      toPath: "t0/d0/pD1",
-    });
+    const result = await copyC1ToD1();
 
     expect(result).toStrictEqual([]);
   });
@@ -343,11 +344,7 @@ describe("duplicate - drum pad", () => {
 
     whenCopied(rack, { 38: ["copy38"], 40: ["copy40"] });
 
-    const result = await duplicate({
-      type: "drum-pad",
-      path: "t0/d0/pC1",
-      toPath: "t0/d0/pD1,t0/d0/pE1",
-    });
+    const result = await copyC1ToD1({ toPath: "t0/d0/pD1,t0/d0/pE1" });
 
     expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
     expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 40);
@@ -360,15 +357,15 @@ describe("duplicate - drum pad", () => {
   it("requires toPath, which has no sensible default for a pad", async () => {
     registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
-    await expect(
-      duplicate({ type: "drum-pad", path: "t0/d0/pC1" }),
-    ).rejects.toThrow("toPath is required for drum pads");
+    await expect(duplicate({ type: "drum-pad", id: "pad36" })).rejects.toThrow(
+      "toPath is required for drum pads",
+    );
   });
 
-  it("requires path", async () => {
+  it("requires a source", async () => {
     await expect(
       duplicate({ type: "drum-pad", toPath: "t0/d0/pD1" }),
-    ).rejects.toThrow("path is required for drum pads");
+    ).rejects.toThrow("id is required");
   });
 
   it("warns that count does not apply", async () => {
@@ -381,13 +378,39 @@ describe("duplicate - drum pad", () => {
     );
   });
 
-  it("warns that id is ignored for a pad", async () => {
+  it("still copies from the deprecated path param", async () => {
+    const rack = registerCopyReadyRack();
+
+    const result = await duplicate({
+      type: "drum-pad",
+      path: "t0/d0/pC1",
+      toPath: "t0/d0/pD1",
+    });
+
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+    expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
+  });
+
+  it("warns that path is ignored when id names the pad too", async () => {
     registerCopyReadyRack();
 
-    await copyC1ToD1({ id: "123" });
+    await copyC1ToD1({ path: "t0/d0/pE1" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      "id ignored: drum pads are addressed by path",
+      "path ignored: id names the drum pad to duplicate",
+    );
+  });
+
+  it("refuses a chain id, which would copy the pad's other chains too", async () => {
+    // A chain passes the tool's drum-pad type check, but copy_pad works on the
+    // whole pad — so a chain id names less than the copy would take.
+    const rack = registerCopyReadyRack();
+
+    await copyC1ToD1({ id: "kick" });
+
+    expectNoCopy(rack);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("is a DrumChain, not a drum pad"),
     );
   });
 

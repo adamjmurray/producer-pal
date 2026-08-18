@@ -308,7 +308,13 @@ describe("readDevice", () => {
           is_active: 1,
           parameters: [],
           chains: ["id", "chain-1"],
+          drum_pads: ["id", "pad-36"],
         },
+      });
+
+      registerMockObject("pad-36", {
+        type: "DrumPad",
+        properties: { note: 36 },
       });
 
       registerMockObject("chain-1", {
@@ -378,6 +384,7 @@ describe("readDevice", () => {
 
       expect(drumPads).toHaveLength(1);
       expect(drumPads[0]).toMatchObject({
+        id: "pad-36",
         note: 36,
         pitch: "C1",
         name: "Kick",

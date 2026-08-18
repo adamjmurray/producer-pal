@@ -68,7 +68,7 @@ export function resolveArrangementPositions(
  * @param type - Type of object to duplicate
  * @param id - ID of the object to duplicate
  * @param count - Number of duplicates to create
- * @param path - Source path, for drum pads
+ * @param path - Deprecated source drum pad path
  */
 export function validateBasicInputs(
   type: string,
@@ -88,26 +88,18 @@ export function validateBasicInputs(
     );
   }
 
-  // Drum pads have no id of their own worth naming — Live indexes them by MIDI
-  // note within a rack — so they're addressed by path, like ppal-delete.
-  if (type === "drum-pad") {
-    if (!path?.trim()) {
-      throw new Error("duplicate failed: path is required for drum pads");
-    }
-
-    if (id) {
-      console.warn("id ignored: drum pads are addressed by path");
-    }
-  } else {
-    if (!id) {
+  if (!id) {
+    // path is deprecated but still resolves a drum pad, so a call that only
+    // sent it has named its source.
+    if (type !== "drum-pad" || !path?.trim()) {
       throw new Error("duplicate failed: id is required");
     }
-
-    if (path?.trim()) {
-      console.warn(
-        `path ignored: only supported for drum pads (type "${type}")`,
-      );
-    }
+  } else if (path?.trim()) {
+    console.warn(
+      type === "drum-pad"
+        ? "path ignored: id names the drum pad to duplicate"
+        : `path ignored: only supported for drum pads (type "${type}")`,
+    );
   }
 
   if (count < 1) {
