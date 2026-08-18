@@ -76,6 +76,7 @@ describe("duplicate - device duplication", () => {
       }),
       "t0/d3",
       expect.anything(),
+      expect.any(String),
     );
 
     // Should delete the temp track
@@ -102,6 +103,7 @@ describe("duplicate - device duplication", () => {
       }),
       "t3/d0",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -136,6 +138,7 @@ describe("duplicate - device duplication", () => {
       }),
       "t1/d0/c0/d2",
       expect.objectContaining({ _id: "rack_device1" }),
+      expect.any(String),
     );
 
     // Should delete the temp track at index 2
@@ -207,6 +210,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t2/d0",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -271,6 +275,8 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t100",
       expect.anything(),
+      // The move reports failures in the caller's own coordinates, not t100's.
+      "t99",
     );
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
@@ -333,6 +339,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t0/d2",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -359,6 +366,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t3/d0",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -373,6 +381,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "r0/d0",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -423,6 +432,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t12/d1",
       expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -445,6 +455,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t13/d0",
       expect.anything(),
+      "t12/d0",
     );
   });
 
@@ -469,6 +480,7 @@ describe("duplicate - device duplication", () => {
       expect.anything(),
       "t0/d0/c0",
       expect.anything(),
+      expect.any(String),
     );
   });
 });

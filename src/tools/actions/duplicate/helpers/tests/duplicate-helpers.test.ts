@@ -413,16 +413,18 @@ describe("duplicate-helpers", () => {
       );
     });
 
-    it("throws error when destination clip slot does not exist", () => {
-      // Mock source clip slot exists with clip
+    it("warns and skips when the destination clip slot does not exist", () => {
+      // Per destination, so the copies a multi-slot toPath already made survive.
       (global as Record<string, unknown>).LiveAPI = createClipSlotMockLiveAPI({
         sourceExists: true,
         sourceHasClip: true,
         destExists: false,
       });
 
-      expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
-        "duplicate failed: destination clip slot at track 1, scene 0 does not exist",
+      expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("was not duplicated: no clip slot at t1/s0"),
       );
     });
   });
@@ -467,6 +469,7 @@ interface ClipSlotMockLiveAPIInstance {
   path: string;
   exists: () => boolean;
   getProperty: (prop: string) => boolean | null;
+  child: (name: string) => ClipSlotMockLiveAPIInstance;
   id: string;
 }
 
@@ -499,6 +502,10 @@ function createClipSlotMockLiveAPI({
 
     static from(idOrPath: string | { toString: () => string }): MockLiveAPI {
       return new MockLiveAPI(String(idOrPath));
+    }
+
+    child(name: string): MockLiveAPI {
+      return new MockLiveAPI(`${this.path} ${name}`);
     }
 
     exists(): boolean {

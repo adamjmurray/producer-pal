@@ -123,7 +123,12 @@ function duplicateDevice(
     // caller's toPath, not the adjusted one — the temp track shifted its track
     // index. Either way nothing survives: the copy is still on the temp track,
     // which the cleanup below deletes.
-    const outcome = moveDeviceToPath(tempDevice, adjustedDestination, device);
+    const outcome = moveDeviceToPath(
+      tempDevice,
+      adjustedDestination,
+      device,
+      destination,
+    );
 
     if (outcome === "no-destination") {
       console.warn(`duplicate: no destination at toPath "${destination}"`);
@@ -136,6 +141,11 @@ function duplicateDevice(
         `duplicate: the copy could not be moved to "${destination}"`,
       );
 
+      return null;
+    }
+
+    // A path that didn't resolve at all already warned why, naming this path.
+    if (outcome === "unresolvable") {
       return null;
     }
 

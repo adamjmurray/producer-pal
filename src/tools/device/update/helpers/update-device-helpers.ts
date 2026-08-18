@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -14,6 +15,7 @@ import {
 } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
+  type InsertionPathResolution,
   resolveInsertionPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -52,28 +54,44 @@ function targetsSameRack(toPath: string, drumRackPath: string): boolean {
 }
 
 /**
- * What a device move did. The caller words both failures, because only it knows
- * the path the user asked for — a duplicate's is adjusted for its temp track.
+ * What a device move did. The caller words "no-destination" and "refused",
+ * because only it knows the path the user asked for — a duplicate's is adjusted
+ * for its temp track. "unresolvable" is worded here, where the reason is.
  */
-export type DeviceMoveOutcome = "moved" | "no-destination" | "refused";
+export type DeviceMoveOutcome =
+  | "moved"
+  | "no-destination"
+  | "refused"
+  | "unresolvable";
 
 /**
- * Move a device to a new location
+ * Move a device to a new location. Never throws: a toPath naming no place a
+ * device can go warns and reports "unresolvable", so the other ids and
+ * destinations of the same call still get their work done.
  * @param device - LiveAPI device object
  * @param toPath - Target path
  * @param source - The device the user is really moving or copying, when
  *   `device` is a temp copy of it (device duplication); drives the
  *   left-behind chain mixer warning
+ * @param reportPath - How to spell toPath in warnings, when the caller adjusted
+ *   it (device duplication shifts track indices past its temp track)
  * @returns "moved" once the device is at the destination, "no-destination" when
- *   toPath names nothing, or "refused" when Live wouldn't take it
+ *   toPath names nothing, "refused" when Live wouldn't take it, or
+ *   "unresolvable" when toPath doesn't resolve at all
  */
 export function moveDeviceToPath(
   device: LiveAPI,
   toPath: string,
   source: LiveAPI = device,
+  reportPath: string = toPath,
 ): DeviceMoveOutcome {
-  // Every caller here got the path from a `toPath` param, so name it that.
-  const { container, position } = resolveInsertionPath(toPath, "toPath");
+  const destination = resolveMoveDestination(toPath, reportPath);
+
+  if (destination == null) {
+    return "unresolvable";
+  }
+
+  const { container, position } = destination;
 
   if (!container?.exists()) {
     return "no-destination";
@@ -114,6 +132,32 @@ export function moveDeviceToPath(
   }
 
   return "moved";
+}
+
+/**
+ * Resolve where a move should land. Resolution throws for a path that names
+ * nothing a device can go in — a missing track or device, a chain in a Drum
+ * Rack, a device that isn't a rack — so catch it here and warn instead.
+ * @param toPath - Target path, as handed to the move
+ * @param reportPath - How to spell it in the warning
+ * @returns The destination, or null when the path didn't resolve
+ */
+function resolveMoveDestination(
+  toPath: string,
+  reportPath: string,
+): InsertionPathResolution | null {
+  try {
+    // Every caller here got the path from a `toPath` param, so name it that.
+    return resolveInsertionPath(toPath, "toPath");
+  } catch (error) {
+    const reason = errorMessage(error);
+
+    console.warn(
+      `device not moved: ${toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath)}`,
+    );
+
+    return null;
+  }
 }
 
 /**

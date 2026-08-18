@@ -174,47 +174,58 @@ describe("resolveDestinationTargets", () => {
     ).toStrictEqual([mainLane(7), mainLane(8)]);
   });
 
-  it("throws when toPath names a track that does not exist", () => {
+  it("drops a toPath entry naming a track that does not exist", () => {
     const clip = sourceClip(3);
 
     mockNonExistentObjects();
 
-    expect(() => resolveDestinationTargets(clip, [mainLane(99)])).toThrow(
-      'duplicate failed: no track at toPath "t99"',
+    expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'duplicate: no track at toPath "t99"',
     );
   });
 
-  it("throws when a MIDI clip targets an audio track", () => {
+  it("drops a track a MIDI clip can't go to", () => {
     // Live's duplicate_clip_to_arrangement silently no-ops on a mismatch, so a
     // reported success here would be a lie.
     const clip = sourceClip(3, true);
 
     destTrack(5, false);
 
-    expect(() => resolveDestinationTargets(clip, [mainLane(5)])).toThrow(
-      "MIDI clip cannot be duplicated to audio track 5",
+    expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: MIDI clip cannot be duplicated to audio track 5",
     );
   });
 
-  it("throws when an audio clip targets a MIDI track", () => {
+  it("drops a track an audio clip can't go to", () => {
     const clip = sourceClip(4, false);
 
     destTrack(8, true);
 
-    expect(() => resolveDestinationTargets(clip, [mainLane(8)])).toThrow(
-      "audio clip cannot be duplicated to MIDI track 8",
+    expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: audio clip cannot be duplicated to MIDI track 8",
     );
   });
 
-  it("checks every named track, not just the first", () => {
+  it("keeps the tracks that work when one of them doesn't", () => {
+    // One bad entry in a comma-separated toPath must not cost the good ones.
     const clip = sourceClip(3, true);
 
     destTrack(7, true);
     destTrack(5, false);
 
-    expect(() =>
+    expect(
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
-    ).toThrow("MIDI clip cannot be duplicated to audio track 5");
+    ).toStrictEqual([mainLane(7)]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+    );
   });
 });
 

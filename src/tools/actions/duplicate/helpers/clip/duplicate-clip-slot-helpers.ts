@@ -50,20 +50,25 @@ export function duplicateClipSlot(
     );
   }
 
+  const sourceClip = sourceClipSlot.child("clip");
+
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
     livePath.track(toTrackIndex).clipSlot(toSceneIndex),
   );
 
+  // Skip rather than throw, so the other slots of a comma-separated toPath keep
+  // the copies they already made.
   if (!destClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: destination clip slot at track ${toTrackIndex}, scene ${toSceneIndex} does not exist`,
+    console.warn(
+      `clip ${sourceClip.id} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
+
+    return null;
   }
 
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, so check first rather than reporting a copy that never happened.
-  const sourceClip = sourceClipSlot.child("clip");
   const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
   const blocker = clipCopyBlocker(clipIsMidi, toTrackIndex);
 

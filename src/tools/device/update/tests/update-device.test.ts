@@ -765,5 +765,5 @@ describe("updateDevice", () => {
     });
   });
 
-  // Drum chain move tests are in update-device-drum-chain-move.test.js
+  // Move tests are in update-device-move.test.ts
 });
