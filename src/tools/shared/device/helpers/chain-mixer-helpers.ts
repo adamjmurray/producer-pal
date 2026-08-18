@@ -60,44 +60,60 @@ export function readChainMixer(chain: LiveAPI): Record<string, unknown> {
 }
 
 /**
- * Set a chain's own gain, pan, and send level
+ * Set a chain's own gain, pan, and send level. A write Live ignores (a disabled
+ * parameter, an unmatched return) warns and is left out of the result, so a
+ * caller can report what landed rather than what it asked for.
  * @param chain - Chain or DrumChain LiveAPI object
  * @param params - Mixer values to set
+ * @returns The subset of params that were actually written
  */
 export function applyChainMixer(
   chain: LiveAPI,
   params: ChainMixerParams,
-): void {
+): ChainMixerParams {
   const { gainDb, pan, sendGainDb, sendReturn } = params;
+  const applied: ChainMixerParams = {};
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
     console.warn(`chain ${chain.id} has no mixer device`);
 
-    return;
+    return applied;
   }
 
-  if (gainDb != null) {
+  if (
+    gainDb != null &&
     setParamIfEnabled(
       mixer.child("volume"),
       "display_value",
       gainDb,
       `${chainLabel(chain)} gainDb`,
-    );
+    )
+  ) {
+    applied.gainDb = gainDb;
   }
 
-  if (pan != null) {
+  if (
+    pan != null &&
     setParamIfEnabled(
       mixer.child("panning"),
       "value",
       pan,
       `${chainLabel(chain)} pan`,
-    );
+    )
+  ) {
+    applied.pan = pan;
   }
 
-  if (sendGainDb != null || sendReturn != null) {
-    applyChainSend(chain, mixer, sendGainDb, sendReturn);
+  if (
+    (sendGainDb != null || sendReturn != null) &&
+    applyChainSend(chain, mixer, sendGainDb, sendReturn)
+  ) {
+    applied.sendGainDb = sendGainDb;
+    applied.sendReturn = sendReturn;
   }
+
+  return applied;
 }
 
 /**
@@ -168,6 +184,10 @@ export function sourceChain(device: LiveAPI): LiveAPI | null {
  * them re-levelled by a write the caller never asked for, and a non-default trim
  * is someone's deliberate setting. Those cases warn instead.
  *
+ * So does a destination in a different rack. Sends are matched by return-chain
+ * name, which only lines up within one rack, so a cross-rack carry writes the
+ * gain and pan and drops the sends — a partial trim nobody asked for.
+ *
  * Must be called BEFORE the move — afterward the destination holds the device
  * and no longer reads as untouched.
  * @param chain - The chain the device is coming out of, from {@link sourceChain}
@@ -189,6 +209,7 @@ export function chainMixerToCarry(
   if (
     Object.keys(mixer).length === 0 ||
     !destination.type.endsWith("Chain") ||
+    rackPath(chain) !== rackPath(destination) ||
     destination.getChildren("devices").length > 0 ||
     Object.keys(readChainMixer(destination)).length > 0
   ) {
@@ -201,8 +222,10 @@ export function chainMixerToCarry(
 /**
  * Apply a mixer read off one chain onto another, and say so: the caller asked
  * to move a device, not to touch a fader. Sends go one at a time so they match
- * by return-chain name rather than by index, which only line up when both
- * chains live in the same rack.
+ * by return-chain name rather than by index.
+ *
+ * Announce afterward, naming what landed. A disabled parameter warns and is
+ * skipped, so announcing the intent up front contradicts the very next warning.
  * @param carry - Mixer values from {@link chainMixerToCarry}
  * @param destination - Chain to write them onto
  */
@@ -211,24 +234,37 @@ export function carryChainMixer(
   destination: LiveAPI,
 ): void {
   const { mixer } = carry;
-
-  console.warn(
-    `${carry.from} trim (${summarizeChainMixer(mixer)}) carried onto the destination chain, which was empty and at defaults`,
-  );
-
-  applyChainMixer(destination, {
+  const applied = applyChainMixer(destination, {
     gainDb: mixer.gainDb as number | undefined,
     pan: mixer.pan as number | undefined,
   });
-
   const sends = (mixer.sends ?? []) as { return: string; gainDb: number }[];
+  const landedSends = sends.filter(
+    (send) =>
+      applyChainMixer(destination, {
+        sendGainDb: send.gainDb,
+        sendReturn: send.return,
+      }).sendGainDb != null,
+  );
 
-  for (const send of sends) {
-    applyChainMixer(destination, {
-      sendGainDb: send.gainDb,
-      sendReturn: send.return,
-    });
+  // applied holds only gainDb and pan — the sends went through their own calls.
+  const landed: Record<string, unknown> = { ...applied };
+
+  if (landedSends.length > 0) {
+    landed.sends = landedSends;
   }
+
+  if (Object.keys(landed).length === 0) {
+    console.warn(
+      `${carry.from} trim could not be carried onto the destination chain — it stays on the chain the device left`,
+    );
+
+    return;
+  }
+
+  console.warn(
+    `${carry.from} trim (${summarizeChainMixer(landed)}) carried onto the destination chain, which was empty and at defaults`,
+  );
 }
 
 /**
@@ -301,17 +337,18 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
  * @param mixer - The chain's mixer device
  * @param sendGainDb - Send level in dB
  * @param sendReturn - Return chain name or letter
+ * @returns True when the level was written
  */
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
   sendGainDb: number | undefined,
   sendReturn: string | undefined,
-): void {
+): boolean {
   if (sendGainDb == null || sendReturn == null) {
     console.warn("sendGainDb and sendReturn must both be specified");
 
-    return;
+    return false;
   }
 
   const names = returnChainNames(chain);
@@ -327,7 +364,7 @@ function applyChainSend(
 
     console.warn(`no return chain matching "${sendReturn}"${available}`);
 
-    return;
+    return false;
   }
 
   const send = mixer.getChildren("sends")[index];
@@ -335,10 +372,10 @@ function applyChainSend(
   if (send == null) {
     console.warn(`chain ${chain.id} has no send ${index}`);
 
-    return;
+    return false;
   }
 
-  setParamIfEnabled(
+  return setParamIfEnabled(
     send,
     "display_value",
     sendGainDb,

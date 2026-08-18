@@ -603,4 +603,95 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
       expect.stringContaining("stays behind"),
     );
   });
+
+  it("leaves the trim behind when the destination is in another rack", () => {
+    // Sends match by return-chain name, which only lines up within one rack,
+    // so carrying across racks wrote the gain and pan and dropped the sends.
+    const otherRackPath = livePath.track(1).device(0);
+    const destinationVolume = registerMockObject("other-volume", {
+      path: `${otherRackPath.chain(0)} mixer_device volume`,
+    });
+
+    registerMockObject("other-rack", {
+      path: otherRackPath,
+      properties: { chains: children("other-chain") },
+    });
+    registerMockObject("other-chain", {
+      path: otherRackPath.chain(0),
+      type: "Chain",
+    });
+    registerMockObject("other-mixer", {
+      path: `${otherRackPath.chain(0)} mixer_device`,
+    });
+
+    updateDevice({ ids: "device-0", toPath: "t1/d0/c0" });
+
+    expect(destinationVolume.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+    );
+  });
+
+  it("carries the sends too, counting them in the announcement", () => {
+    registerMockObject("rack", {
+      path: rackPath,
+      properties: {
+        chains: children("chain-0", "chain-1"),
+        can_have_drum_pads: 0,
+        return_chains: children("rc-0"),
+      },
+    });
+    registerMockObject("rc-0", {
+      type: "Chain",
+      properties: { name: "a Rev" },
+    });
+    registerMockObject("mixer-0", {
+      path: sourceMixerPath,
+      properties: { sends: children("send-0") },
+    });
+    registerMockObject("send-0", {
+      properties: { value: 0.5, display_value: -12 },
+    });
+    registerMockObject("mixer-1", {
+      path: `${rackPath.chain(1)} mixer_device`,
+      properties: { sends: children("send-1") },
+    });
+    registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+    });
+
+    const destinationSend = registerMockObject("send-1");
+
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+    );
+  });
+
+  it("names what landed rather than what it set out to carry", () => {
+    // A macro-mapped destination gain is skipped with its own warning, so
+    // announcing the carry up front contradicted the very next line.
+    registerMockObject("mixer-1", {
+      path: `${rackPath.chain(1)} mixer_device`,
+    });
+    registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+      properties: { is_enabled: 0 },
+    });
+
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Trimmed" trim could not be carried onto the destination chain — it stays on the chain the device left',
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("carried onto the destination chain, which was"),
+    );
+  });
 });
