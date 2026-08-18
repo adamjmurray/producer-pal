@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
+  simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
 import { setupSceneMocks, setupTrackMocks } from "./delete-test-helpers.ts";
 import { deleteObject } from "../delete.ts";
@@ -18,6 +19,8 @@ describe("deleteObject", () => {
   let liveSet: RegisteredMockObject;
 
   beforeEach(() => {
+    // delete confirms the object is gone, so the mock has to model it going away
+    simulateMockDeletes();
     liveSet = registerMockObject("live_set", { path: livePath.liveSet });
   });
 
@@ -322,14 +325,16 @@ describe("deleteObject", () => {
   });
 
   it("should return single object for single ID and array for multiple IDs", () => {
+    // Separate tracks per call: a second delete of track_0 would find it gone.
     setupTrackMocks({
       track_0: String(livePath.track(0)),
       track_1: String(livePath.track(1)),
+      track_2: String(livePath.track(2)),
     });
 
     const singleResult = deleteObject({ ids: "track_0", type: "track" });
     const arrayResult = deleteObject({
-      ids: "track_0, track_1",
+      ids: "track_1, track_2",
       type: "track",
     });
 

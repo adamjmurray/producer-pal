@@ -166,10 +166,35 @@ function isRackChain(id: string): boolean {
 }
 
 /**
+ * Confirms a delete landed. Live refuses some of them without saying so — the
+ * call returns the same thing either way — so whether the object is still there
+ * is the only signal.
+ *
+ * Look the id up again rather than asking the object the delete ran through:
+ * measured on 12.4.3, that one still reports its old id and path afterward. A
+ * fresh lookup of a dead id lands nowhere and reads id "0".
+ *
+ * @param type - The tool-level type, for the warning
+ * @param id - The object ID
+ * @returns true if the object is gone, false if it survived
+ */
+function confirmDeleted(type: string, id: string): boolean {
+  if (LiveAPI.from(id).exists()) {
+    console.warn(
+      `delete: ${type} "${id}" still exists, so Live did not delete it`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Deletes a track by its index
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the track is gone, false if skipped or Live refused
  */
 function deleteTrackObject(id: string, object: LiveAPI): boolean {
   // Check for return track first
@@ -181,7 +206,7 @@ function deleteTrackObject(id: string, object: LiveAPI): boolean {
 
     liveSet.call("delete_return_track", returnTrackIndex);
 
-    return true;
+    return confirmDeleted("track", id);
   }
 
   // Regular track
@@ -209,14 +234,14 @@ function deleteTrackObject(id: string, object: LiveAPI): boolean {
 
   liveSet.call("delete_track", trackIndex);
 
-  return true;
+  return confirmDeleted("track", id);
 }
 
 /**
  * Deletes a scene by its index
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the scene is gone, false if skipped or Live refused
  */
 function deleteSceneObject(id: string, object: LiveAPI): boolean {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
@@ -233,14 +258,14 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
 
   liveSet.call("delete_scene", sceneIndex);
 
-  return true;
+  return confirmDeleted("scene", id);
 }
 
 /**
  * Deletes a clip by its track and clip ID
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the clip is gone, false if skipped or Live refused
  */
 function deleteClipObject(id: string, object: LiveAPI): boolean {
   // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
@@ -267,7 +292,7 @@ function deleteClipObject(id: string, object: LiveAPI): boolean {
 
   track.call("delete_clip", toLiveApiId(object.id));
 
-  return true;
+  return confirmDeleted("clip", id);
 }
 
 interface PathSegment {
@@ -341,7 +366,7 @@ function parsePathSegments(path: string): PathSegment[] {
  * Deletes a device by its ID via the parent (track or chain)
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the device is gone, false if skipped or Live refused
  */
 function deleteDeviceObject(id: string, object: LiveAPI): boolean {
   // Find the LAST "devices X" in the path to handle nested devices
@@ -375,7 +400,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   parent.call("delete_device", deviceIndex);
 
-  return true;
+  return confirmDeleted("device", id);
 }
 
 /**

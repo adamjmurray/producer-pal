@@ -15,6 +15,8 @@ import {
 } from "./mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
+  defaultMockCall,
+  isMockObjectDeleted,
   isNonExistentByDefault,
   lookupMockObject,
 } from "./mock-registry.ts";
@@ -119,16 +121,11 @@ export class LiveAPI {
         return getPropertyByType(this.type, prop, this.path) ?? [];
       }) as Mock;
       this.set = vi.fn() as Mock;
-      this.call = vi.fn().mockImplementation((method: string) => {
-        switch (method) {
-          case "get_version_string":
-            return "12.3";
-          case "get_notes_extended":
-            return JSON.stringify({ notes: [] });
-          default:
-            return null;
-        }
-      }) as Mock;
+      this.call = vi
+        .fn()
+        .mockImplementation((method: string, ...args: unknown[]) =>
+          defaultMockCall(method, args, this.path),
+        ) as Mock;
     }
   }
 
@@ -155,6 +152,9 @@ export class LiveAPI {
   }
 
   get id(): string {
+    // Checked before the registration: an object built before a simulated
+    // delete still holds it, and in Live that object goes nonexistent too.
+    if (isMockObjectDeleted(this._id)) return "0";
     if (this._registered) return this._registered.id;
     if (isNonExistentByDefault()) return "0";
 

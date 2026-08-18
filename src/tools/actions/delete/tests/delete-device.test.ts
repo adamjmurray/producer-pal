@@ -3,13 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
+  simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
 import {
   setupDeviceMocks,
@@ -18,6 +19,9 @@ import {
 import { deleteObject } from "../delete.ts";
 
 describe("deleteObject device deletion", () => {
+  // delete confirms the object is gone, so the mock has to model it going away
+  beforeEach(simulateMockDeletes);
+
   function expectDeviceDeleted(
     id: string,
     path: string,

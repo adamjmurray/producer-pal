@@ -101,24 +101,19 @@ function createGetMock(
 /**
  * Create a call() mock with method-based dispatch
  * @param methods - Method implementations
+ * @param path - The object's path, which positional deletes are relative to
  * @returns Configured vi.fn() mock
  */
 function createCallMock(
   methods: Record<string, (...args: unknown[]) => unknown>,
+  path: string,
 ): Mock {
   return vi.fn().mockImplementation((method: string, ...args: unknown[]) => {
     const methodImpl = methods[method];
 
     if (methodImpl) return methodImpl(...args);
 
-    switch (method) {
-      case "get_version_string":
-        return "12.3";
-      case "get_notes_extended":
-        return JSON.stringify({ notes: [] });
-      default:
-        return null;
-    }
+    return defaultMockCall(method, args, path);
   }) as Mock;
 }
 
@@ -142,7 +137,7 @@ export function registerMockObject(
   const mock: RegisteredMockObject = {
     get: createGetMock(properties, type, path),
     set: vi.fn() as Mock,
-    call: createCallMock(methods),
+    call: createCallMock(methods, path),
     id,
     path,
     type,
@@ -182,6 +177,102 @@ export function lookupMockObject(
   return undefined;
 }
 
+let _simulateDeletes = false;
+const deletedIds = new Set<string>();
+
+/**
+ * Make `delete_*` calls remove their target, so exists() goes false afterward
+ * the way it does in Live.
+ *
+ * Off by default, and only ppal-delete's tests turn it on. Everything else that
+ * deletes (update-clip's arrangement moves, the tiling holding area) goes on
+ * reading the clip it just deleted, and a mock that took those deletes
+ * literally would change what those tests exercise.
+ */
+export function simulateMockDeletes(): void {
+  _simulateDeletes = true;
+}
+
+/**
+ * Check whether an ID names an object a simulated delete removed.
+ * @param id - Bare ID, or a path with its spaces replaced by slashes
+ * @returns true if the object was deleted
+ */
+export function isMockObjectDeleted(id?: string): boolean {
+  return id != null && deletedIds.has(id);
+}
+
+/**
+ * Default call() behavior, shared by registered and unregistered mocks.
+ * @param method - Live API method name
+ * @param args - Call arguments
+ * @param path - The calling object's path
+ * @returns The mocked return value
+ */
+export function defaultMockCall(
+  method: string,
+  args: unknown[],
+  path: string,
+): unknown {
+  switch (method) {
+    case "get_version_string":
+      return "12.3";
+    case "get_notes_extended":
+      return JSON.stringify({ notes: [] });
+    default:
+      if (_simulateDeletes) applyMockDelete(method, args, path);
+
+      return null;
+  }
+}
+
+/** Collection each `delete_*` method removes from, relative to the caller. */
+const DELETE_COLLECTIONS: Record<string, string> = {
+  delete_track: "tracks",
+  delete_return_track: "return_tracks",
+  delete_scene: "scenes",
+  delete_device: "devices",
+};
+
+/**
+ * Apply a `delete_*` call to the registry, so the target reads as gone.
+ * @param method - Live API method name
+ * @param args - Call arguments
+ * @param path - The calling object's path
+ */
+function applyMockDelete(method: string, args: unknown[], path: string): void {
+  const collection = DELETE_COLLECTIONS[method];
+
+  if (collection) {
+    deleteMockObject(`${path} ${collection} ${String(args[0])}`);
+  } else if (method === "delete_clip") {
+    // Track.delete_clip takes "id N". ClipSlot.delete_clip takes nothing, and
+    // nothing is registered at the path that builds, so it misses harmlessly.
+    deleteMockObject(String(args[0]).replace(/^id /, ""));
+  }
+}
+
+/**
+ * Mark a registered object gone: lookups miss it and exists() goes false, the
+ * way a deleted object reads in Live.
+ * @param idOrPath - The object's ID or path
+ */
+function deleteMockObject(idOrPath: string): void {
+  const mock = lookupMockObject(idOrPath, idOrPath);
+
+  if (!mock) return;
+
+  // Record both forms, so the object reads as gone however it is reached: by
+  // the id the caller already holds, or by a path lookup afterward.
+  deletedIds.add(mock.id);
+  registryById.delete(mock.id);
+
+  if (mock.path) {
+    deletedIds.add(mock.path.replaceAll(/\s+/g, "/"));
+    registryByPath.delete(mock.path);
+  }
+}
+
 let _nonExistentByDefault = false;
 
 /**
@@ -208,5 +299,7 @@ export function mockNonExistentObjects(): void {
 export function clearMockRegistry(): void {
   registryById.clear();
   registryByPath.clear();
+  deletedIds.clear();
+  _simulateDeletes = false;
   _nonExistentByDefault = false;
 }
