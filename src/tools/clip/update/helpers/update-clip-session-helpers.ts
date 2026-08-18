@@ -106,6 +106,7 @@ export function resolveRequestedClips(
 ): RequestedClips {
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, SlotPosition>();
+  const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
   let repeats = 0;
 
@@ -129,10 +130,10 @@ export function resolveRequestedClips(
 
     seen.add(clip.id);
     clips.push(clip);
-
-    const destination = destinations[index];
-
-    if (destination != null) destinationById.set(clip.id, destination);
+    claimDestination(clip.id, destinations[index], {
+      destinationById,
+      claimedBy,
+    });
   }
 
   if (repeats > 0) {
@@ -144,6 +145,39 @@ export function resolveRequestedClips(
   dropDestinationsHoldingBatchClips(destinationById, seen);
 
   return { clips, destinationById };
+}
+
+/**
+ * Gives a clip the destination named at its position, unless an earlier clip in
+ * the batch is already moving there. Two clips sent to one slot means the second
+ * overwrites the first, and the response then claims both are in it.
+ * @param clipId - The clip being given a destination
+ * @param destination - Where the call named it to go, if anywhere
+ * @param batch - Destinations by clip id, and the clip claiming each slot, both added to
+ */
+function claimDestination(
+  clipId: string,
+  destination: SlotPosition | null | undefined,
+  batch: {
+    destinationById: Map<string, SlotPosition>;
+    claimedBy: Map<string, string>;
+  },
+): void {
+  if (destination == null) return;
+
+  const slot = slotPath(destination.trackIndex, destination.sceneIndex);
+  const claimant = batch.claimedBy.get(slot);
+
+  if (claimant != null) {
+    console.warn(
+      `clip ${clipId} was not moved: clip ${claimant} is already moving to ${slot}; name one slot per clip`,
+    );
+
+    return;
+  }
+
+  batch.claimedBy.set(slot, clipId);
+  batch.destinationById.set(clipId, destination);
 }
 
 /**

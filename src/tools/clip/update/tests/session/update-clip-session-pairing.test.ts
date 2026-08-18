@@ -209,6 +209,35 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     }
   });
 
+  // Both clips landing in one slot means the second overwrites the first, and
+  // the response claims two clips are in it.
+  it("moves only the first clip when toPath names one slot twice", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+    const slots = registerSlots([
+      [0, 0, 1],
+      [1, 1, 1],
+      [1, 2, 0],
+    ]);
+
+    const result = (await updateClip({
+      path: "t0/s0,t1/s1",
+      toPath: "t1/s2,t1/s2",
+    })) as Array<{ id: string; path?: string }>;
+
+    expect(result[0]).toMatchObject({ path: "t1/s2" });
+    expect(result[1]).not.toHaveProperty("path");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "clip 456 was not moved: clip 123 is already moving to t1/s2; " +
+        "name one slot per clip",
+    );
+    expect(slots.get("t1/s1")?.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to",
+      expect.anything(),
+    );
+  });
+
   it("still accepts a clip's own slot as a destination", async () => {
     setupMidiClipMock(mocks.clip123);
     registerSlots([[0, 0, 1]]);
