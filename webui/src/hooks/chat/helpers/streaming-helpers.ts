@@ -188,8 +188,8 @@ export function recoverFromChatError<
   // Fall back to the restored-but-not-yet-sent history when no client was built
   // (init threw early, e.g. MCP down) so a failed fork/send renders the existing
   // conversation instead of an empty view. Copy it — createErrorMessage mutates
-  // the array, and pendingHistoryRef must stay clean for a later send to
-  // bootstrap from.
+  // the array, and a failed fork (which stashes nothing) must leave
+  // pendingHistoryRef untouched for a later send to bootstrap from.
   const baseHistory =
     clientRef.current?.chatHistory ??
     (pendingHistoryRef.current ? [...pendingHistoryRef.current] : []);
@@ -200,7 +200,12 @@ export function recoverFromChatError<
   const errorHistory = includeStashed ? [...baseHistory, stashed] : baseHistory;
 
   if (!clientRef.current && includeStashed) {
-    pendingHistoryRef.current = [stashed];
+    // Keep the conversation the message was sent from. Stashing the message
+    // alone truncated a restored conversation to it, and the autosave that
+    // follows the failed turn wrote that truncation over the saved record.
+    // errorHistory picks up the error below, matching what the client branch
+    // persists.
+    pendingHistoryRef.current = errorHistory;
   }
 
   setMessages(adapter.createErrorMessage(error, errorHistory));
@@ -241,6 +246,8 @@ interface RunChatTurnDeps<
   pendingForkRef?: PendingForkRef;
   /** Ticket dispenser: bumped per turn, so a late turn knows it was superseded. */
   turnIdRef: { current: number };
+  /** Bumped when the loaded conversation is torn down (switch, new chat). */
+  conversationGenRef: { current: number };
   pendingUserMessageRef: { current: TMessage | null };
   setMessages: (msgs: UIMessage[]) => void;
   setIsAssistantResponding: (responding: boolean) => void;
@@ -282,9 +289,10 @@ export async function runChatTurn<
   userMessage: TMessage | undefined,
   deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
 ): Promise<T | undefined> {
-  const { turnIdRef, pendingUserMessageRef } = deps;
+  const { turnIdRef, conversationGenRef, pendingUserMessageRef } = deps;
   const turnId = ++turnIdRef.current;
   const stillCurrent = () => turnId === turnIdRef.current;
+  const conversationGen = conversationGenRef.current;
 
   deps.setIsAssistantResponding(true);
   // A new request clears any prior tool-limit notice before streaming.
@@ -309,6 +317,14 @@ export async function runChatTurn<
     // reassign the shared client's chatHistory, and autosaves, so a stale one
     // would corrupt the turn now streaming.
     if (!stillCurrent()) return undefined;
+
+    // The user switched conversations while this turn's setup was in flight.
+    // Recovery reads the shared refs, which now hold the conversation they
+    // switched TO, so it would render this turn's stray message and error there
+    // — and the autosave that follows would persist them under it. A switch
+    // sends nothing, so it never bumps the ticket above; this check is what
+    // stops it.
+    if (conversationGen !== conversationGenRef.current) return undefined;
 
     recoverFromChatError({
       ...deps,

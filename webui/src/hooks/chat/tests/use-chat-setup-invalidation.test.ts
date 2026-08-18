@@ -8,10 +8,13 @@
  */
 import { act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   firstPartContent,
+  hasErrorPart,
   renderChat,
   restoreHistory,
+  sendMessage,
   stopResponse,
   type MockChatProps,
 } from "./helpers/use-chat-render-test-helpers";
@@ -142,6 +145,44 @@ describe("turn invalidation during setup", () => {
       expect(firstPartContent(result, "model")).toBe("hi");
     });
 
+    it("keeps it intact when the parked setup fails rather than resolves", async () => {
+      // The bail on a successful setup is only half of it: when the setup
+      // itself rejects (MCP down, a connect torn up by the switch), the
+      // rejection goes straight to the turn's error recovery, which renders and
+      // stashes against whatever conversation is loaded now. B's transcript
+      // grew a stray user bubble and an error from A, and the next autosave
+      // wrote that stray message over B.
+      let releaseCheck!: () => void;
+      const checking = new Promise<void>((resolve) => {
+        releaseCheck = resolve;
+      });
+
+      vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
+        await checking;
+
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderChat(defaultProps);
+      const send = act(async () => {
+        await result.current.handleSend("first");
+      });
+
+      await tick();
+      await act(() => {
+        result.current.clearConversation();
+      });
+      await restoreHistory(result, OTHER_CONVERSATION);
+
+      releaseCheck();
+      await send;
+      await tick();
+
+      expect(result.current.getChatHistory()).toStrictEqual(OTHER_CONVERSATION);
+      expect(result.current.messages).toHaveLength(2);
+      expect(hasErrorPart(result)).toBe(false);
+    });
+
     it("doesn't lock the abandoned turn's settings over the restored ones", async () => {
       // The parked init resolved its own model/provider snapshot on the way out
       // and applied it with no currency check, overwriting the settings the
@@ -196,5 +237,55 @@ describe("turn invalidation during setup", () => {
       releaseStreams();
       await send;
     });
+  });
+});
+
+describe("setup failure on a restored conversation", () => {
+  it("renders the restored conversation under the failed send", async () => {
+    // MCP down: validateMcpConnection throws before a client exists, so the
+    // recovery has only the restored history to render against. Nulling it up
+    // front left an empty base, so the whole transcript was replaced by the one
+    // message that failed to send — and the teardown autosave then wrote that
+    // truncation over the saved record.
+    const { result } = renderChat(defaultProps);
+
+    await restoreHistory(result, OTHER_CONVERSATION);
+    vi.mocked(validateMcpConnection).mockRejectedValueOnce(
+      new Error("MCP connection failed"),
+    );
+    await sendMessage(result, "add a hi-hat");
+
+    expect(result.current.getChatHistory()).toStrictEqual([
+      ...OTHER_CONVERSATION,
+      { role: "user", content: "add a hi-hat" },
+      {
+        role: "assistant",
+        content: expect.stringContaining("MCP connection failed"),
+        isError: true,
+      },
+    ]);
+    expect(firstPartContent(result, "user")).toBe("hello");
+  });
+
+  it("bootstraps the next send from the whole conversation", async () => {
+    // The send after the failure builds the client from the pending history. If
+    // the failure left only its own message there, the conversation the user
+    // reopened is gone for good once that client's stream autosaves.
+    const { result } = renderChat(defaultProps);
+
+    await restoreHistory(result, OTHER_CONVERSATION);
+    vi.mocked(validateMcpConnection).mockRejectedValueOnce(
+      new Error("MCP connection failed"),
+    );
+    await sendMessage(result, "add a hi-hat");
+    await sendMessage(result, "add a hi-hat");
+
+    expect(vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[3]).toStrictEqual(
+      [
+        ...OTHER_CONVERSATION,
+        { role: "user", content: "add a hi-hat" },
+        expect.objectContaining({ isError: true }),
+      ],
+    );
   });
 });
