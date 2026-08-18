@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -131,6 +132,11 @@ function isTypeMatch(
     case "device":
       return actualType.endsWith("Device");
     case "drum-pad":
+      // DrumChain passes so a tool can reject it with advice about the pad it
+      // sits on, rather than the generic type mismatch. A pad-level Live call
+      // aimed at a chain is a silent no-op, so any tool letting one through
+      // here must handle it — see delete's isRackChain and duplicate's
+      // padTargetFromPad.
       return actualType === "DrumPad" || actualType === "DrumChain";
     default:
       return false;

@@ -93,9 +93,12 @@ export function deleteObject(
   // same object) must be deleted once. A second positional delete would shift
   // onto and remove a different object.
   const seenIds = new Set<string>();
-  const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
-    skipInvalid: true,
-  })
+  const objectsToDelete = validateIdTypes(
+    objectIds.filter((id) => !isRackChain(id)),
+    type,
+    "delete",
+    { skipInvalid: true },
+  )
     .map((object) => ({ id: object.id, object }))
     .filter(({ id }) => {
       if (seenIds.has(id)) return false;
@@ -134,6 +137,32 @@ export function deleteObject(
   }
 
   return unwrapSingleResult(deletedObjects);
+}
+
+/**
+ * Reports whether an id names a rack chain, warning when it does. Live has no
+ * API to delete a chain, and a DrumChain would otherwise slip past the
+ * drum-pad type check and take a `delete_all_chains` that silently does
+ * nothing.
+ * @param id - The object ID
+ * @returns True when the id names a chain, which delete must skip
+ */
+function isRackChain(id: string): boolean {
+  const object = LiveAPI.from(id);
+
+  // Leave a nonexistent id to validateIdTypes, which already warns about it.
+  if (!object.exists()) return false;
+
+  if (object.type !== "Chain" && object.type !== "DrumChain") return false;
+
+  console.warn(
+    `delete: id "${id}" is a ${object.type}. Deleting rack chains is not supported.` +
+      (object.type === "DrumChain"
+        ? " Did you mean to delete a drum pad instead?"
+        : ""),
+  );
+
+  return true;
 }
 
 /**
@@ -351,14 +380,23 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param _id - The object ID (unused, kept for consistent signature)
+ * @param id - The object ID
  * @param object - The object to delete
- * @returns true (drum-pad clear has no validation failure path)
+ * @returns true if the pad's chains are gone, false if any survived
  */
-function deleteDrumPadObject(_id: string, object: LiveAPI): boolean {
-  const drumPad = LiveAPI.from(toLiveApiId(object.id));
+function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
+  object.call("delete_all_chains");
 
-  drumPad.call("delete_all_chains");
+  // The pad outlives its own delete, so there is no dead object to test for.
+  // Read the chains back instead: a refused clear is otherwise indistinguishable
+  // from a successful one.
+  if (object.getChildren("chains").length > 0) {
+    console.warn(
+      `delete: drum pad "${id}" still has chains, so Live did not clear it`,
+    );
+
+    return false;
+  }
 
   return true;
 }
@@ -410,6 +448,52 @@ function resolvePathsToIds(paths: string[], type: string): string[] {
 }
 
 /**
+ * Resolves a path to the id of the whole drum pad it names. Only a bare pad
+ * path qualifies: `delete_all_chains` clears the pad, so a path naming
+ * something inside one would delete more than the caller asked for.
+ * @param resolved - Result from resolvePathToLiveApi
+ * @param targetPath - Original path for error messages
+ * @returns The pad's ID, or null when the path doesn't name one
+ */
+function resolveDrumPadPathToId(
+  resolved: ResolvedPath,
+  targetPath: string,
+): string | null {
+  if (resolved.targetType !== "drum-pad") {
+    console.warn(
+      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+    );
+
+    return null;
+  }
+
+  // Resolution stops at the first pad, so a further pad segment is a pad of a
+  // nested rack — padless, and worth saying so rather than claiming the path
+  // names nothing.
+  if (resolved.remainingSegments.length > 0) {
+    console.warn(
+      resolved.remainingSegments.some((segment) => segment.startsWith("p"))
+        ? `delete: path "${targetPath}" names a pad of a nested Drum Rack, which can't be deleted`
+        : `delete: path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
+    );
+
+    return null;
+  }
+
+  // resolveDrumPadFromPath returns the pad's *chain*, and delete_all_chains
+  // on a chain is a silent no-op — so find the DrumPad object itself.
+  const pad = findDrumPad(resolved.liveApiPath, resolved.drumPadNote as string);
+
+  if (!pad) {
+    console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
+
+    return null;
+  }
+
+  return pad.id;
+}
+
+/**
  * Resolves a single path resolution result to an ID
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
@@ -421,30 +505,8 @@ function resolvePathToId(
   targetPath: string,
   type: string,
 ): string | null {
-  // For drum-pad type, only accept drum-pad paths (no nested navigation)
   if (type === "drum-pad") {
-    if (resolved.targetType !== "drum-pad") {
-      console.warn(
-        `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
-      );
-
-      return null;
-    }
-
-    // resolveDrumPadFromPath returns the pad's *chain*, and delete_all_chains
-    // on a chain is a silent no-op — so find the DrumPad object itself.
-    const pad = findDrumPad(
-      resolved.liveApiPath,
-      resolved.drumPadNote as string,
-    );
-
-    if (!pad) {
-      console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
-
-      return null;
-    }
-
-    return pad.id;
+    return resolveDrumPadPathToId(resolved, targetPath);
   }
 
   // For device type, handle both direct device paths and nested device paths in drum pads
