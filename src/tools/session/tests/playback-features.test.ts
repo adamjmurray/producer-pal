@@ -73,6 +73,28 @@ describe("playback path param", () => {
       playback({ action: "play-session-clips", path: "t0/s1", slots: "0/1" }),
     ).toThrow("playback failed: path and slots both name clips");
   });
+
+  it("fires a scene a path names", () => {
+    const scene = registerMockObject(livePath.scene(3), {
+      path: livePath.scene(3),
+    });
+
+    playback({ action: "play-scene", path: "s3" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("refuses a scene path alongside session positions", () => {
+    expect(() => playback({ action: "play-scene", path: "s3,t0/s1" })).toThrow(
+      'playback failed: path names one scene ("s<scene>")',
+    );
+  });
+
+  it("refuses a scene path and sceneIndex together", () => {
+    expect(() =>
+      playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
+    ).toThrow("playback failed: path and sceneIndex both name a scene");
+  });
 });
 
 describe("transport", () => {

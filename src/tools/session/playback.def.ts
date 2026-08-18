@@ -65,7 +65,8 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe(
-        "session position(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
+        "session position(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
+          "or one scene 's<scene>' for play-scene (e.g., 's3')",
       ),
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
@@ -75,6 +76,6 @@ stop: session and arrangement`,
       .int()
       .min(0)
       .optional()
-      .describe("0-based scene index for play-scene"),
+      .describe("0-based scene index for play-scene (or use path 's<scene>')"),
   },
 });
