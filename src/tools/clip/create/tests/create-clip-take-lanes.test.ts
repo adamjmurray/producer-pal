@@ -149,6 +149,34 @@ describe("createClip take lanes", () => {
     expect(result.path).toBe("t0/l0");
   });
 
+  // A caller on the old schema still sends takeLane, and z.coerce.string()
+  // turns its null into "null" — which used to throw before any clip was made.
+  it.each([
+    ["omitted", undefined],
+    ["a coerced null", "null"],
+    ["a coerced undefined", "undefined"],
+  ])(
+    "creates on the main lane when takeLane is %s",
+    async (_label, takeLane) => {
+      registerLiveSet();
+      const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+      const result = (await createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        notes: "C3",
+        takeLane,
+      })) as { path?: string };
+
+      expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+      expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+      expect(result.path).toBe("t0");
+      expect(consoleMock.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("takeLane"),
+      );
+    },
+  );
+
   it("warns and ignores takeLane for session-only requests", async () => {
     registerEmptySessionSlot();
 

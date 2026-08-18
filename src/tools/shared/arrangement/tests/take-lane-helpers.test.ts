@@ -88,6 +88,14 @@ describe("isTakeLaneRequested", () => {
     expect(isTakeLaneRequested("0")).toBe(false);
   });
 
+  // z.coerce.string() renders a JSON null as "null" and undefined as
+  // "undefined". takeLane is deprecated, so a caller dropping it can still send
+  // one of those, and it has to read as unset.
+  it("is false for a coerced null", () => {
+    expect(isTakeLaneRequested("null")).toBe(false);
+    expect(isTakeLaneRequested("undefined")).toBe(false);
+  });
+
   it("is true for any non-main value (including invalid ones)", () => {
     expect(isTakeLaneRequested(1)).toBe(true);
     expect(isTakeLaneRequested("new")).toBe(true);
@@ -103,6 +111,11 @@ describe("normalizeTakeLaneTarget", () => {
     expect(normalizeTakeLaneTarget("")).toBeNull();
     expect(normalizeTakeLaneTarget(0)).toBeNull();
     expect(normalizeTakeLaneTarget("0")).toBeNull();
+  });
+
+  it("treats a coerced null as the main lane, not an error", () => {
+    expect(normalizeTakeLaneTarget("null")).toBeNull();
+    expect(normalizeTakeLaneTarget("undefined")).toBeNull();
   });
 
   it('passes "new" through', () => {

@@ -24,6 +24,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { hiddenParamNamesSomething } from "#src/tools/shared/utils.ts";
 
 /** Maximum take lanes per track (soft cap; total non-main lanes). */
 export const MAX_TAKE_LANES = 8;
@@ -155,25 +156,24 @@ export interface ResolvedTakeLane {
 }
 
 /**
- * Whether a raw takeLane value requests a (non-main) take lane. The main lane is
- * the default, selected by `0`, `null`, `undefined`, `""`, or `"0"`.
+ * Whether a raw takeLane value requests a (non-main) take lane. `0` and `"0"`
+ * pick the main lane, and so does anything that names nothing. takeLane is
+ * deprecated, so a caller dropping it may still send a null — which arrives as
+ * the string "null", and which the framework already treats as unsent.
  * @param takeLane - Raw takeLane value from a tool argument
  * @returns true when a non-main take lane was requested
  */
 export function isTakeLaneRequested(
   takeLane: number | string | null | undefined,
 ): boolean {
-  return !(
-    takeLane == null ||
-    takeLane === "" ||
-    takeLane === 0 ||
-    takeLane === "0"
-  );
+  if (!hiddenParamNamesSomething(takeLane)) return false;
+
+  return takeLane !== 0 && takeLane !== "0";
 }
 
 /**
  * Normalize a raw takeLane argument to a target, or null for the main lane.
- * `0`, `null`, `undefined`, and `""` mean the main lane (unchanged behavior).
+ * Everything {@link isTakeLaneRequested} calls unset means the main lane.
  * The param is 1-based and the target is 0-based, so `N` becomes lane `N - 1`.
  * @param takeLane - Raw takeLane value from a tool argument
  * @returns A TakeLaneTarget, or null to target the main lane
