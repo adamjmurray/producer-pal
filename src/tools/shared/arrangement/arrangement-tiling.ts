@@ -19,6 +19,7 @@ import {
 } from "./arrangement-tiling-holding.ts";
 import {
   clearClipAtDuplicateTarget,
+  holdingAreaStartPast,
   moveClipFromHolding,
   preClearTiledSpan,
   sourceOverlapsTarget,
@@ -79,12 +80,20 @@ export function createPartialTile(
     targetIsEmpty = false,
   }: PartialTileOptions = {},
 ): LiveAPI {
+  // The holding area is the end of the arrangement as it was when the request
+  // started, so a tile placed past that point sits exactly where the holding
+  // copy is about to go. Keep the holding area clear of this tile's own span.
+  const holdingStart = holdingAreaStartPast(
+    holdingAreaStart,
+    targetPosition + partialLength,
+  );
+
   // Create shortened clip in holding area
   const { holdingClipId } = createShortenedClipInHolding(
     sourceClip,
     track,
     partialLength,
-    holdingAreaStart,
+    holdingStart,
     isMidiClip,
     context,
   );

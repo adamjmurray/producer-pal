@@ -517,3 +517,26 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
 
   return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
 }
+
+/**
+ * Push a caller-supplied holding-area start past a placement the same request
+ * is about to make.
+ *
+ * The context's holding area is `song_length` — the end of the arrangement as
+ * it was when the request started, with no gap. Anything the request writes
+ * past that point sits on top of it, so a later duplicate-to-holding lands on
+ * content instead of empty space: the Ableton crash, or an overwrite that eats
+ * what was just placed.
+ *
+ * Only a placement that runs past the holding area moves it; a request working
+ * left of `song_length` keeps the start it was given.
+ * @param holdingAreaStart - Holding-area start the caller was given, in beats
+ * @param placementEnd - Right edge of the placement to clear, in beats
+ * @returns Holding-area start position in beats
+ */
+export function holdingAreaStartPast(
+  holdingAreaStart: number,
+  placementEnd: number,
+): number {
+  return Math.max(holdingAreaStart, placementEnd + HOLDING_AREA_GAP_BEATS);
+}
