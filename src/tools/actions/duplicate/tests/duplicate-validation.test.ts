@@ -8,8 +8,10 @@ import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  registerArrangementClip,
   registerMockObject,
   registerSessionClipDuplication,
+  registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
@@ -118,6 +120,41 @@ describe("duplicate - clip session validation", () => {
       expect.stringContaining("arrangementLength ignored"),
     );
   });
+});
+
+// A caller on the old schema still sends takeLane, and z.coerce.string() turns
+// its null into "null" — which used to throw before any copy was made.
+describe("duplicate - coerced-null takeLane", () => {
+  it.each([
+    ["omitted", undefined],
+    ["a coerced null", "null"],
+    ["a coerced undefined", "undefined"],
+  ])(
+    "copies to the main lane when takeLane is %s",
+    async (_label, takeLane) => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+      });
+
+      const track0 = registerTrackWithArrangementDup(0);
+
+      registerArrangementClip(0, 0, 8);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        takeLane,
+      });
+
+      expect(track0.call).not.toHaveBeenCalledWith("create_take_lane");
+      expect(result).toStrictEqual({
+        id: livePath.track(0).arrangementClip(0),
+        path: "t0",
+        arrangementStart: "3|1",
+      });
+    },
+  );
 });
 
 describe("duplicate - return format", () => {
