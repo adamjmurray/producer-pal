@@ -17,7 +17,7 @@ import {
   GEMINI_REALTIME_MODEL,
   OPENAI_REALTIME_MODEL,
 } from "#webui/lib/constants/models";
-import { makeVoiceSettingsProps } from "./settings-voice-props-test-helpers";
+import { makeVoiceSettingsProps } from "./helpers/settings-voice-props-test-helpers";
 
 describe("ThinkingSelector", () => {
   it("calls setThinking when a new option is selected", () => {

@@ -8,11 +8,10 @@ import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  registerArrangementClip,
   registerMockObject,
   registerSessionClipDuplication,
-  registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { registerSessionClipForArrangementDup } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 describe("duplicate - input validation", () => {
@@ -132,13 +131,7 @@ describe("duplicate - coerced-null takeLane", () => {
   ])(
     "copies to the main lane when takeLane is %s",
     async (_label, takeLane) => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 8);
+      const track0 = registerSessionClipForArrangementDup();
 
       const result = await duplicate({
         type: "clip",

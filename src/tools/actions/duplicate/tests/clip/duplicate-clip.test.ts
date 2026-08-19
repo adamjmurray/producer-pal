@@ -13,11 +13,14 @@ import {
 import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
-  registerArrangementClip,
   registerMockObject,
   registerSessionClipDuplication,
-  registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerSessionClipForArrangementDup,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
@@ -163,13 +166,7 @@ describe("duplicate - clip duplication", () => {
 
   describe("arrangement destination", () => {
     it("should duplicate a single clip to the arrangement view", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 8);
+      const track0 = registerSessionClipForArrangementDup();
 
       const result = await duplicate({
         type: "clip",
@@ -572,13 +569,8 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("should duplicate multiple clips to arrangement view with comma-separated positions", async () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
+      const track0 = registerSessionClipForArrangementDup();
 
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 8);
       registerArrangementClip(0, 1, 12);
       registerArrangementClip(0, 2, 16);
 
@@ -631,13 +623,7 @@ describe("duplicate - clip duplication", () => {
       // The deadline arrives on the context, set once per request by the V8
       // adapter; an expired one is what a duplicate sees when an earlier call
       // in the same request has spent the budget.
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      const track0 = registerTrackWithArrangementDup(0);
-
-      registerArrangementClip(0, 0, 8);
+      const track0 = registerSessionClipForArrangementDup();
 
       const result = await duplicate(
         { type: "clip", id: "clip1", arrangementStart: "3|1,4|1,5|1" },

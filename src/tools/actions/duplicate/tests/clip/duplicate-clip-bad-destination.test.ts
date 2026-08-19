@@ -8,11 +8,13 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
-  registerArrangementClip,
   registerClipSlot,
   registerMockObject,
-  registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 // A toPath entry that names nowhere must cost only its own copy. Before this,

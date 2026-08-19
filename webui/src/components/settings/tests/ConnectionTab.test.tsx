@@ -8,7 +8,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectionTab } from "#webui/components/settings/ConnectionTab";
-import { makeVoiceSettingsProps } from "./settings-voice-props-test-helpers";
+import { makeVoiceSettingsProps } from "./helpers/settings-voice-props-test-helpers";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/controls/ProviderSelector"), () => ({

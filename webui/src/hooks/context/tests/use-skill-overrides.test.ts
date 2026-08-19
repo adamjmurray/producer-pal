@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
   deferred,
+  type Deferred,
   installFetchMock,
   jsonResponse,
   raceTwoWrites,
@@ -412,10 +413,15 @@ describe("useSkillOverrides", () => {
     expect(overrideOf(result, 0)).toBe("NEW");
   });
 
-  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
-    // A superseded write's result is discarded, so its resolution says nothing
-    // about what is on disk. Painting "Saved" here tells the user the edit they
-    // just made is persisted while its PUT is still on the wire.
+  /**
+   * Start two saves of the same slot back to back, settle the older one the
+   * way the caller asks, and leave the newer one in flight.
+   * @param settleOlder - How the superseded write ends
+   * @returns The rendered hook and a finisher that resolves the newer write
+   */
+  async function startSupersededSave(
+    settleOlder: (older: Deferred<Response>) => void,
+  ): Promise<{ result: HookResult; finishNewer: () => Promise<void> }> {
     const result = await renderReady([rawSlot({ override: "loaded" })]);
 
     const older = deferred<Response>();
@@ -430,16 +436,32 @@ describe("useSkillOverrides", () => {
       const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
 
       newerPending = result.current.saveSlot("barbeat-standard", "NEW");
-      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) }));
+      settleOlder(older);
       await olderPending;
     });
 
+    return {
+      result,
+      finishNewer: async () => {
+        await act(async () => {
+          newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+          await newerPending;
+        });
+      },
+    };
+  }
+
+  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
+    // A superseded write's result is discarded, so its resolution says nothing
+    // about what is on disk. Painting "Saved" here tells the user the edit they
+    // just made is persisted while its PUT is still on the wire.
+    const { result, finishNewer } = await startSupersededSave((older) =>
+      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) })),
+    );
+
     expect(result.current.saveStatus).toBe("saving");
 
-    await act(async () => {
-      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
-      await newerPending;
-    });
+    await finishNewer();
 
     expect(result.current.saveStatus).toBe("saved");
     expect(overrideOf(result, 0)).toBe("NEW");
@@ -450,31 +472,14 @@ describe("useSkillOverrides", () => {
     // nothing about what is on disk either: reporting it tells the user their
     // edit was lost while the PUT that owns the file is still on the wire (or has
     // already succeeded).
-    const result = await renderReady([rawSlot({ override: "loaded" })]);
-
-    const older = deferred<Response>();
-    const newer = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(older.promise);
-    fetchMock.mockReturnValueOnce(newer.promise);
-
-    let newerPending: Promise<boolean> | undefined;
-
-    await act(async () => {
-      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
-
-      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
-      older.reject(new Error("network died"));
-      await olderPending;
-    });
+    const { result, finishNewer } = await startSupersededSave((older) =>
+      older.reject(new Error("network died")),
+    );
 
     expect(result.current.saveStatus).toBe("saving");
     expect(result.current.saveError).toBeNull();
 
-    await act(async () => {
-      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
-      await newerPending;
-    });
+    await finishNewer();
 
     expect(result.current.saveStatus).toBe("saved");
     expect(overrideOf(result, 0)).toBe("NEW");

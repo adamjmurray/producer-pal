@@ -15,6 +15,7 @@ import {
   type UseChatReturn,
 } from "#webui/hooks/chat/use-chat-types";
 import {
+  tick,
   type MockChatClient,
   type TestConfig,
   type TestMessage,
@@ -225,4 +226,28 @@ export async function sendThenStopDuringRetryDelay(
 
   // Wait for send to complete (it should exit due to the abort).
   await sendPromise;
+}
+
+/**
+ * Start a turn, stop it while it's still in flight, then start a newer one.
+ * This is the overlap window where a superseded turn and its replacement share
+ * a client and an abort ref.
+ * @param result - The rendered useChat result handle
+ * @returns The stopped turn's send promise, still pending — await it to unwind
+ */
+export async function supersedeInFlightTurn(
+  result: ChatResult,
+): Promise<{ stoppedSend: Promise<void> }> {
+  const stoppedSend = act(async () => {
+    await result.current.handleSend("first");
+  });
+
+  await tick();
+  await stopResponse(result);
+  void act(() => {
+    void result.current.handleSend("second");
+  });
+  await tick();
+
+  return { stoppedSend };
 }

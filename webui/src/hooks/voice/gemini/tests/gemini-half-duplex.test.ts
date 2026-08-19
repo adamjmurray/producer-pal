@@ -28,6 +28,20 @@ const turnDone = msg({ serverContent: { turnComplete: true } });
 /** An interrupted server-content message. */
 const interrupted = msg({ serverContent: { interrupted: true } });
 
+/**
+ * Half-duplex deps that have played one audio chunk and still hold queued
+ * audio — where every auto-mute hold/lift case starts.
+ * @returns Everything makeMessageDeps returns, after the first chunk
+ */
+async function startHeldTurn(): Promise<ReturnType<typeof makeMessageDeps>> {
+  const parts = makeMessageDeps({ halfDuplex: true });
+
+  vi.mocked(parts.player.hasQueued).mockReturnValue(true);
+  await handleGeminiMessage(audioChunk("A"), parts.deps);
+
+  return parts;
+}
+
 describe("handleGeminiMessage half-duplex behavior", () => {
   it("auto-mutes the mic on first audio chunk when half-duplex is on", async () => {
     const { deps, mic } = makeMessageDeps({ halfDuplex: true });
@@ -109,11 +123,8 @@ describe("handleGeminiMessage half-duplex behavior", () => {
   // turnComplete only means the server stopped sending — the tail of the turn
   // is still scheduled locally, and that's when a user talks over the assistant.
   it("holds the auto-mute past turnComplete until the queue drains", async () => {
-    const { deps, drain, mic, player } = makeMessageDeps({ halfDuplex: true });
+    const { deps, drain, mic } = await startHeldTurn();
 
-    vi.mocked(player.hasQueued).mockReturnValue(true);
-
-    await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(turnDone, deps);
 
     expect(mic.setMuted).toHaveBeenCalledTimes(1);
@@ -129,11 +140,8 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     // The indicator and the mute have to move together. Clearing it at
     // turnComplete showed "Listening — go ahead" while the assistant was still
     // audible and every word the user said was dropped at the mic.
-    const { deps, drain, player } = makeMessageDeps({ halfDuplex: true });
+    const { deps, drain } = await startHeldTurn();
 
-    vi.mocked(player.hasQueued).mockReturnValue(true);
-
-    await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(turnDone, deps);
 
     expect(deps.setAssistantSpeaking).not.toHaveBeenCalledWith(false);
@@ -149,11 +157,8 @@ describe("handleGeminiMessage half-duplex behavior", () => {
     // interrupt has to — otherwise the mic stays shut for the rest of the
     // session and the Muted indicator disagrees with it. Safe here precisely
     // because turnComplete already ran: no further chunk can re-mute.
-    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+    const { deps, mic } = await startHeldTurn();
 
-    vi.mocked(player.hasQueued).mockReturnValue(true);
-
-    await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(turnDone, deps);
     await handleGeminiMessage(interrupted, deps);
 
@@ -164,11 +169,8 @@ describe("handleGeminiMessage half-duplex behavior", () => {
   it("keeps holding the auto-mute for a mid-stream interrupt", async () => {
     // No turnComplete yet, so the server is still sending: lifting now would
     // let the next chunk re-mute and flicker the indicator.
-    const { deps, mic, player } = makeMessageDeps({ halfDuplex: true });
+    const { deps, mic } = await startHeldTurn();
 
-    vi.mocked(player.hasQueued).mockReturnValue(true);
-
-    await handleGeminiMessage(audioChunk("A"), deps);
     await handleGeminiMessage(interrupted, deps);
 
     expect(mic.setMuted).toHaveBeenCalledTimes(1);

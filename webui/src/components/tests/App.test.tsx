@@ -10,61 +10,14 @@ import { act, fireEvent, render } from "@testing-library/preact";
 import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock all the custom hooks
-vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
-  useSettings: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
-  useTheme: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
-  useMcpConnection: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/chat/use-chat"), () => ({
-  useChat: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/chat/use-conversations"), () => ({
-  useConversations: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
-  useRemoteConfig: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
-  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
-}));
-
-vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
-  useViewState: vi.fn(),
-}));
-
-// App renders the real ContextTabs + system-prompt hook, both of which fetch a
-// same-origin endpoint; stub them so App tests stay focused on the overlay
-// open/close plumbing and don't leak real localhost fetches. See
-// App-context-mocks for details.
-vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
-  useSystemPrompt: systemPromptDocMock,
-}));
-vi.mock(import("#webui/components/context/ContextTabs"), () => ({
-  ContextTabs: ContextTabsStub,
-}));
-
+import "./App-mocks-test-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
-import {
-  ContextTabsStub,
-  setStubLeaveGuard,
-  systemPromptDocMock,
-} from "./App-context-mocks";
+import { setStubLeaveGuard } from "./App-context-mocks";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
 import {

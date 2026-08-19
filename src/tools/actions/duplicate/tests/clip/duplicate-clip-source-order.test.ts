@@ -8,10 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
-  registerArrangementClip,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { registerArrangementClip } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 
 /** A 4-bar source clip at bar 1 on track 0. */
 const SOURCE_END = 16;

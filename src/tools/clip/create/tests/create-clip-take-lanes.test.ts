@@ -10,7 +10,10 @@ import {
   lookupMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  expectTakeLaneMidiClip,
+  registerTakeLaneTrack,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { registerArrangementTrack } from "./create-clip-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)
@@ -250,9 +253,7 @@ describe("createClip take lane paths", () => {
     await createClip({ path: "t0/l+", arrangementStart: "1|1", notes: "C3" });
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(0, 0);
   });
 
   it("appends one lane per l+ in the path", async () => {
@@ -266,12 +267,8 @@ describe("createClip take lane paths", () => {
     });
 
     // Both copies sit at bar 1, one per fresh lane.
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(0, 0);
+    expectTakeLaneMidiClip(1, 0);
   });
 
   // The list cycles, so one written l+ covers all three positions. Numbering
@@ -307,12 +304,8 @@ describe("createClip take lane paths", () => {
       notes: "C3",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 4, 4);
+    expectTakeLaneMidiClip(0, 0);
+    expectTakeLaneMidiClip(2, 4);
   });
 
   it("ignores the takeLane alias when the path already names a lane", async () => {
@@ -326,9 +319,7 @@ describe("createClip take lane paths", () => {
       takeLane: "1",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(2, 0);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('takeLane ignored — "path" already names'),
     );
@@ -350,9 +341,7 @@ describe("createClip take lane paths", () => {
       takeLane: "1",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(2, 0);
     // t1 named no lane, so it stays on the main lane rather than inheriting one.
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(mainTrack.call).not.toHaveBeenCalledWith("create_take_lane");
@@ -398,9 +387,7 @@ describe("createClip take lane paths", () => {
       takeLane: "2",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(1, 0);
   });
 });
 

@@ -233,6 +233,30 @@ export async function startClear(
 }
 
 /**
+ * Render a ready editor with a confirmed Clear already on the wire and held
+ * open, the starting position for every "what happens during a Clear" case.
+ * @returns The autosave spy, the clear spy and its resolver, the hook handle,
+ *   and the still-pending clear promise
+ */
+export async function startHeldClear(): Promise<{
+  save: ReturnType<typeof vi.fn>;
+  clear: ReturnType<typeof vi.fn>;
+  resolveClear: (saved: boolean) => void;
+  result: RenderedEditor["result"];
+  clearPromise: Promise<boolean>;
+}> {
+  const save = vi.fn().mockResolvedValue(true);
+  const { save: clear, resolveSave: resolveClear } = deferredSave();
+  const { result } = renderReadyEditor({ save, clear });
+
+  stubConfirm(true);
+
+  const { pending: clearPromise } = await startClear(result);
+
+  return { save, clear, resolveClear, result, clearPromise };
+}
+
+/**
  * Stub `window.confirm` to return the given answer.
  * @param answer - What confirm() should return (accept vs cancel)
  * @returns The confirm spy, for asserting whether/how it was called

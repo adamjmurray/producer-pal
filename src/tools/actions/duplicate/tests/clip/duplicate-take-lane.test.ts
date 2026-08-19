@@ -11,7 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
+import {
+  expectTakeLaneMidiClip,
+  registerTakeLaneTrack,
+} from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 // Capture take lane warnings
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
@@ -21,11 +24,11 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import {
   registerArrangementClip,
-  registerSessionClipDuplication,
   registerTrackWithArrangementDup,
-} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const SOURCE_NOTE = {
@@ -498,9 +501,7 @@ describe("duplicate take lane", () => {
     });
 
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    expectTakeLaneMidiClip(1, 16);
   });
 
   // Impossible with the takeLane param, which named one lane for the whole
@@ -517,12 +518,8 @@ describe("duplicate take lane", () => {
       arrangementStart: "5|1,9|1",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 32, 4);
+    expectTakeLaneMidiClip(0, 16);
+    expectTakeLaneMidiClip(1, 32);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
   });
 
@@ -539,9 +536,7 @@ describe("duplicate take lane", () => {
       takeLane: "1",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    expectTakeLaneMidiClip(2, 16);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('takeLane ignored — "toPath" already names'),
     );
@@ -567,9 +562,7 @@ describe("duplicate take lane", () => {
       takeLane: "1",
     });
 
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(2))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+    expectTakeLaneMidiClip(2, 16);
     // t1 named no lane, so it stays on the main lane rather than inheriting one.
     expect(mainTrack.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
@@ -688,12 +681,8 @@ describe("duplicate take lane", () => {
     });
 
     // Both copies sit at bar 1, one per fresh lane.
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(
-      lookupMockObject(undefined, livePath.track(0).takeLane(1))?.call,
-    ).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expectTakeLaneMidiClip(0, 0);
+    expectTakeLaneMidiClip(1, 0);
   });
 
   // The list cycles, so one written l+ covers all three positions. Numbering

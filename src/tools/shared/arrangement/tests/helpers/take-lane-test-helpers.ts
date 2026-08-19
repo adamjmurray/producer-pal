@@ -3,14 +3,35 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { expect } from "vitest";
 import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
+  lookupMockObject,
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 
 let uid = 0;
+
+/**
+ * Assert a take lane was told to create a MIDI clip at the given position.
+ * @param laneIndex - Take lane index
+ * @param start - Expected clip start, in beats
+ * @param length - Expected clip length, in beats
+ * @param trackIndex - Track holding the lane
+ */
+export function expectTakeLaneMidiClip(
+  laneIndex: number,
+  start: number,
+  length = 4,
+  trackIndex = 0,
+): void {
+  expect(
+    lookupMockObject(undefined, livePath.track(trackIndex).takeLane(laneIndex))
+      ?.call,
+  ).toHaveBeenCalledWith("create_midi_clip", start, length);
+}
 
 export interface TakeLaneTrackOptions {
   trackIndex?: number;

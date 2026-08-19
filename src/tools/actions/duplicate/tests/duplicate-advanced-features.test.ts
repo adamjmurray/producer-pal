@@ -8,12 +8,14 @@ import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   children,
-  registerArrangementClip,
   type RegisteredMockObject,
   registerMockObject,
   registerSessionClipDuplication,
-  registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 

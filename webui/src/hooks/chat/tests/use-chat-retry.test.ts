@@ -22,6 +22,7 @@ import {
   sendMessage,
   sendThenStopDuringRetryDelay,
   stopResponse,
+  supersedeInFlightTurn,
   userMessageIndex,
   type MockChatProps,
 } from "./helpers/use-chat-render-test-helpers";
@@ -36,6 +37,7 @@ import {
   RESTORED_HISTORY,
   tick,
   trackingAdapter,
+  type ScriptedAttempt,
   type TestMessage,
 } from "./helpers/use-chat-test-helpers";
 
@@ -141,6 +143,18 @@ const defaultProps: MockChatProps = createDefaultProps(mockAdapter);
  */
 function propsWith(adapter: typeof mockAdapter): MockChatProps {
   return { ...defaultProps, adapter };
+}
+
+/**
+ * Assert the rate-limit retry resumed the interrupted turn rather than sending
+ * the user's message a second time.
+ * @param attempts - Attempts recorded by the scripted adapter
+ */
+function expectResumedNotResent(attempts: ScriptedAttempt[]): void {
+  expect(attempts).toStrictEqual([
+    { kind: "send", message: "Hello" },
+    { kind: "resume" },
+  ]);
 }
 
 describe("useChat", () => {
@@ -502,10 +516,7 @@ describe("useChat", () => {
 
       const { result } = await renderAndSend(propsWith(adapter));
 
-      expect(attempts).toStrictEqual([
-        { kind: "send", message: "Hello" },
-        { kind: "resume" },
-      ]);
+      expectResumedNotResent(attempts);
       expect(
         (result.current.getChatHistory() as TestMessage[]).filter(
           (m) => m.role === "user",
@@ -526,10 +537,7 @@ describe("useChat", () => {
 
       const { result } = await renderAndSend(propsWith(adapter));
 
-      expect(attempts).toStrictEqual([
-        { kind: "send", message: "Hello" },
-        { kind: "resume" },
-      ]);
+      expectResumedNotResent(attempts);
       // The partial work survives rather than being rewound.
       expect(
         (result.current.getChatHistory() as TestMessage[]).map(
@@ -694,20 +702,11 @@ describe("useChat", () => {
           },
       );
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       releaseStopped();
       await stoppedSend;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
 
       expect(hasErrorPart(result)).toBe(false);
       expect(result.current.isAssistantResponding).toBe(true);
@@ -739,16 +738,7 @@ describe("useChat", () => {
         }
       });
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await tick();
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await tick();
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       // The stopped turn's client finishes connecting only now, after the newer
       // turn has already claimed it.
@@ -787,16 +777,7 @@ describe("useChat", () => {
         }
       });
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await tick();
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await tick();
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       expect(clients).toHaveLength(1);
       expect(sent).toStrictEqual([]);
@@ -826,16 +807,7 @@ describe("useChat", () => {
       const clients: MockChatClient[] = [];
       const adapter = trackingAdapter({ clients });
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await tick();
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await tick();
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       releaseCheck();
       await stoppedSend;

@@ -8,42 +8,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-
-// Mock App's hook dependencies (vi.mock must be per-file, mirrors App.test.tsx)
-vi.mock(import("#webui/hooks/chat/use-chat"), () => ({ useChat: vi.fn() }));
-vi.mock(import("#webui/hooks/chat/use-conversations"), () => ({
-  useConversations: vi.fn(),
-}));
-vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
-  useMcpConnection: vi.fn(),
-}));
-vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
-  useRemoteConfig: vi.fn(),
-}));
-vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
-  useSettings: vi.fn(),
-}));
-vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
-vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
-  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
-}));
-vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
-  useViewState: vi.fn(),
-}));
-
-// App renders the real ContextTabs + system-prompt hook, both of which fetch a
-// same-origin endpoint; stub them so these tests don't leak real localhost
-// fetches. See App-context-mocks for details.
-vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
-  useSystemPrompt: systemPromptDocMock,
-}));
-vi.mock(import("#webui/components/context/ContextTabs"), () => ({
-  ContextTabs: ContextTabsStub,
-}));
-
-// The stub module must load before anything that pulls in App's tree — the
-// mock factories above close over its exports (see App-conversations.test.tsx).
-import { ContextTabsStub, systemPromptDocMock } from "./App-context-mocks";
+import "./App-mocks-test-helpers";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";

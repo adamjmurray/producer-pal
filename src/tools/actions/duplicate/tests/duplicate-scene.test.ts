@@ -9,14 +9,16 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createStandardMidiClipMock,
-  registerArrangementClip,
   registerClipMocks,
   registerClipSlot,
   registerMockObject,
-  registerTrackWithArrangementDup,
   setupArrangementSceneMocks,
   setupSessionSceneMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 
 interface DuplicateClipResult {
   id: string;

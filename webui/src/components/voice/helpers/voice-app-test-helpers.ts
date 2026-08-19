@@ -21,6 +21,20 @@ export interface VoiceAppMocks {
 }
 
 /**
+ * The mock bag `voice-app-mocks-test-helpers` wires into VoiceApp's collaborators.
+ * Shared so every VoiceApp test file mocks the same set the same way.
+ */
+export const voiceAppMocks: VoiceAppMocks = {
+  getMcpUrl: vi.fn(),
+  useVoiceSession: vi.fn(),
+  useGeminiVoiceSession: vi.fn(),
+  isFirefox: vi.fn(),
+  useUpdateCheck: vi.fn(),
+  useVoicePersistence: vi.fn(),
+  useConversationTransfer: vi.fn(),
+};
+
+/**
  * Wire default return values into the VoiceApp mock bag. Use from `beforeEach`.
  *
  * @param mocks - The hoisted mock bag from the test file
