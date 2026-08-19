@@ -40,18 +40,32 @@ serves a blob this test process can't reproduce.
 
 Tests automatically:
 
-1. Open the `basic-midi-4-track` Live Set in Ableton Live
+1. Open a Live Set from `e2e/live-sets/` in Ableton Live
 2. Handle the "Don't Save" dialog if it appears (via AppleScript)
 3. Wait for the MCP server to become responsive
 4. Run the test suite
 
-## Test Live Set
+## Test Live Sets
 
-The `basic-midi-4-track` Live Set contains:
+Three Sets live in `e2e/live-sets/`, each with a `-spec.md` beside it listing
+everything in it. Those specs are the reference for writing assertions.
 
-- 4 MIDI tracks (the "music" tracks)
-- 1 track with the Producer Pal Max for Live device
-- Total: 5 tracks reported by the API
+| Set                      | Covers                                                |
+| ------------------------ | ----------------------------------------------------- |
+| `e2e-test-set`           | everything else; the default                          |
+| `racks-test`             | nested racks, macro-mapped params, rack return chains |
+| `arrangement-clip-tests` | arrangement clip edits                                |
+
+`e2e-test-set` has 12 tracks (t0-t11) and 2 return tracks: 4 MIDI music tracks,
+2 audio, an FX bus, a Racks track, an empty track, a group parent and its child,
+and the track holding the Producer Pal device. 8 scenes, 108 BPM, A minor.
+
+`setupMcpTestContext()` opens `e2e-test-set`. Pass `liveSetPath` for another,
+using the constant its helpers export:
+
+```ts
+const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
+```
 
 ## Custom MCP URL
 
@@ -69,8 +83,10 @@ Tests are organized by resource type, mirroring `src/tools/`:
 e2e/mcp/
 ├── mcp-test-helpers.ts    # Shared test utilities
 ├── clip/                  # Clip tools (create, read, update, transform)
+├── control/               # Playback, select, and the Direct Live API tool
 ├── device/                # Device tools (create, read, update)
 ├── live-set/              # Live Set tools (read, update)
+├── operations/            # Cross-resource tools (delete, duplicate)
 ├── scene/                 # Scene tools (create, read, update)
 ├── track/                 # Track tools (create, read, update)
 └── workflow/              # Workflow tools (connect, memory)
