@@ -23,10 +23,13 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
 import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
-import { duplicateClipSlot } from "./duplicate-clip-slot-helpers.ts";
+import {
+  copySpanBeats,
+  sourceLastOrder,
+} from "./duplicate-clip-order-helpers.ts";
+import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
 import {
   unreachedPositionsWarning,
   type UnreachedDestination,
@@ -97,52 +100,6 @@ export async function duplicateClipWithPositions(
 }
 
 // --- Helpers below main exports ---
-
-/**
- * Copies a session clip into session slots.
- * @param slots - Destination slots, in order
- * @param object - Live API object to duplicate
- * @param id - ID of the object
- * @param name - Base name for duplicated clips
- * @param color - Color for duplicated clips (cycles if comma-separated)
- * @returns Array of result objects
- */
-function duplicateClipToSlots(
-  slots: SlotPosition[],
-  object: LiveAPI,
-  id: string,
-  name: string | undefined,
-  color: string | undefined,
-): object[] {
-  const trackIndex = object.trackIndex;
-  const sourceSceneIndex = object.sceneIndex;
-
-  if (trackIndex == null || sourceSceneIndex == null) {
-    throw new Error(
-      `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
-    );
-  }
-
-  const parsedNames = parseCommaSeparatedNames(name, slots.length);
-  const parsedColors = parseCommaSeparatedColors(color, slots.length);
-
-  warnExtraNames(parsedNames, slots.length, "duplicate");
-
-  // A copy Live declined warns and reports nothing, so the results only list
-  // the copies that exist.
-  return slots
-    .map((slot, i) =>
-      duplicateClipSlot(
-        trackIndex,
-        sourceSceneIndex,
-        slot.trackIndex,
-        slot.sceneIndex,
-        getNameForIndex(name, i, parsedNames),
-        getColorForIndex(color, i, parsedColors),
-      ),
-    )
-    .filter((clipInfo) => clipInfo != null);
-}
 
 /**
  * Copies a clip into the arrangement at each destination/position pair. A
@@ -240,29 +197,13 @@ async function duplicateClipToArrangementPositions(
     lanes,
   );
 
-  // A take-lane source going to the main lane is re-created there too, for the
-  // same reason a lane destination is: Live's arrangement duplicate can't do it.
-  const promotes =
-    isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null);
-  const canPromote = promotes && object.getProperty("is_midi_clip") === 1;
-
-  // These warnings are per call, not per copy: a mixed toPath like "t1,t1/l0"
-  // repeats them once for every position otherwise.
-  if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
-    console.warn(
-      "duplicate: arrangementLength ignored for the re-created copies (they use the source clip's length)",
-    );
-  }
-
-  if (canPromote) {
-    console.warn(
-      `duplicate: promoted to the main lane by re-creating the clip (${NO_ENVELOPES_NOTE})`,
-    );
-  } else if (promotes) {
-    console.warn(
-      `duplicate: promoting to the main lane re-creates the clip from its notes, so audio clip "${id}" can't be promoted off its take lane; drag it in Live's UI`,
-    );
-  }
+  const canPromote = warnRecreatedCopyLimits(
+    object,
+    id,
+    targetTracks,
+    arrangementLength,
+    lanes,
+  );
 
   const parsedNames = parseCommaSeparatedNames(name, copies);
   const parsedColors = parseCommaSeparatedColors(color, copies);
@@ -271,7 +212,17 @@ async function duplicateClipToArrangementPositions(
 
   // Results keep the order the destinations were asked for, even though the
   // copies are made in another one.
-  const order = sourceLastOrder(object, targetTracks, targetPositions);
+  const order = sourceLastOrder(
+    object,
+    targetTracks,
+    targetPositions,
+    copySpanBeats(
+      object,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  );
   const results: (object | null)[] = Array.from({ length: copies }, () => null);
 
   for (let done = 0; done < order.length; done++) {
@@ -316,48 +267,48 @@ async function duplicateClipToArrangementPositions(
 }
 
 /**
- * Copy order that keeps the source clip whole for as long as possible.
+ * Warns once per call about what re-creating a copy costs, and says whether a
+ * take-lane source may be re-created on the main lane.
  *
- * A copy landing on the source's own span overwrites it — Live's replace
- * behavior — so the source is shorter afterwards and every copy made after it
- * would be a copy of the leftover. Making those last means the rest of the
- * fan-out gets the whole clip, and the result no longer depends on the order
- * the destinations happened to be listed in.
- *
- * Deliberately over-inclusive: everything on the source's track starting before
- * the source ends goes last, whether or not it really reaches the source. Every
- * placement clears forward from its start, so one starting at or after the
- * source's end can never touch it, and that is the only thing this has to get
- * right.
- * @param source - The clip being copied
- * @param targets - Destination per copy
- * @param positions - Start position per copy, in Ableton beats
- * @returns Copy indexes, in the order to make them
+ * Per call, not per copy: a mixed toPath like "t1,t1/l0" would otherwise repeat
+ * every warning for every position.
+ * @param object - The source clip
+ * @param id - ID of the source clip
+ * @param targetTracks - Destination per copy
+ * @param arrangementLength - The raw arrangementLength param
+ * @param lanes - Take lanes resolved for this call
+ * @returns Whether the source can be promoted to the main lane (MIDI only)
  */
-function sourceLastOrder(
-  source: LiveAPI,
-  targets: ArrangementTrack[],
-  positions: number[],
-): number[] {
-  const indexes = positions.map((_, i) => i);
+function warnRecreatedCopyLimits(
+  object: LiveAPI,
+  id: string,
+  targetTracks: ArrangementTrack[],
+  arrangementLength: string | undefined,
+  lanes: Map<string, ResolvedDuplicateLane>,
+): boolean {
+  // A take-lane source going to the main lane is re-created there too, for the
+  // same reason a lane destination is: Live's arrangement duplicate can't do it.
+  const promotes =
+    isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null);
+  const canPromote = promotes && object.getProperty("is_midi_clip") === 1;
 
-  // A session source is never in the way: nothing about it lives on the
-  // arrangement timeline the copies are clearing.
-  if (source.getProperty("is_arrangement_clip") !== 1) return indexes;
+  if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
+    console.warn(
+      "duplicate: arrangementLength ignored for the re-created copies (they use the source clip's length)",
+    );
+  }
 
-  const sourceTrackIndex = source.trackIndex;
-  const sourceEnd = source.getProperty("end_time") as number;
-  // An unknown source track counts as every track, matching
-  // clearClipAtDuplicateTarget: guessing wrong the other way loses content.
-  const overwritesSource = (i: number): boolean =>
-    (sourceTrackIndex == null ||
-      (targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex) &&
-    (positions[i] as number) < sourceEnd;
+  if (canPromote) {
+    console.warn(
+      `duplicate: promoted to the main lane by re-creating the clip (${NO_ENVELOPES_NOTE})`,
+    );
+  } else if (promotes) {
+    console.warn(
+      `duplicate: promoting to the main lane re-creates the clip from its notes, so audio clip "${id}" can't be promoted off its take lane; drag it in Live's UI`,
+    );
+  }
 
-  return [
-    ...indexes.filter((i) => !overwritesSource(i)),
-    ...indexes.filter((i) => overwritesSource(i)),
-  ];
+  return canPromote;
 }
 
 /**

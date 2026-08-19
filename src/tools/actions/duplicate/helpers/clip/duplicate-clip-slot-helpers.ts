@@ -11,6 +11,16 @@ import {
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
   type MinimalClipInfo,
   getMinimalClipInfo,
 } from "../duplicate-helpers.ts";
@@ -96,4 +106,50 @@ export function duplicateClipSlot(
 
   // Return the new clip info directly
   return getMinimalClipInfo(newClip);
+}
+
+/**
+ * Copies a session clip into session slots.
+ * @param slots - Destination slots, in order
+ * @param object - Live API object to duplicate
+ * @param id - ID of the object
+ * @param name - Base name for duplicated clips
+ * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @returns Array of result objects
+ */
+export function duplicateClipToSlots(
+  slots: SlotPosition[],
+  object: LiveAPI,
+  id: string,
+  name: string | undefined,
+  color: string | undefined,
+): object[] {
+  const trackIndex = object.trackIndex;
+  const sourceSceneIndex = object.sceneIndex;
+
+  if (trackIndex == null || sourceSceneIndex == null) {
+    throw new Error(
+      `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
+    );
+  }
+
+  const parsedNames = parseCommaSeparatedNames(name, slots.length);
+  const parsedColors = parseCommaSeparatedColors(color, slots.length);
+
+  warnExtraNames(parsedNames, slots.length, "duplicate");
+
+  // A copy Live declined warns and reports nothing, so the results only list
+  // the copies that exist.
+  return slots
+    .map((slot, i) =>
+      duplicateClipSlot(
+        trackIndex,
+        sourceSceneIndex,
+        slot.trackIndex,
+        slot.sceneIndex,
+        getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
+      ),
+    )
+    .filter((clipInfo) => clipInfo != null);
 }

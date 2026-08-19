@@ -16,6 +16,7 @@ import {
   createTestDevice,
   getToolNotices,
   parseToolResult,
+  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
@@ -337,6 +338,47 @@ describe("ppal-duplicate", () => {
 
     expect(dupSessionToArrangement.id).toBeDefined();
     expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
+  });
+
+  it("copies the whole clip whichever order the positions are listed", async () => {
+    // The bar-58 copy lands on the source and trims it to one bar. The bar-51
+    // copy stops well short of the source, so it must come out full length —
+    // it used to be made from that leftover just for being listed second.
+    const track = 8;
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${track}`,
+        arrangementStart: "57|1",
+        notes: "C3 D3 E3 F3 1|1",
+        length: "2bar",
+      },
+    });
+    const source = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const dupResult = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        arrangementStart: "58|1,51|1",
+      },
+    });
+    const copies = parseToolResult<DuplicateClipResult[]>(dupResult);
+    const early = copies.find((copy) => copy.arrangementStart === "51|1");
+
+    await sleep(100);
+
+    const readEarly = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: early!.id, include: ["timing"] },
+    });
+
+    expect(parseToolResult<ReadClipResult>(readEarly).arrangementLength).toBe(
+      "2bar",
+    );
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {

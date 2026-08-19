@@ -15,8 +15,11 @@ import { registerArrangementClip } from "#src/tools/actions/duplicate/helpers/du
 
 /** A 4-bar source clip at bar 1 on track 0. */
 const SOURCE_END = 16;
+const SOURCE_AT_BAR_1 = { start: 0, end: SOURCE_END } as const;
 /** Where the copies go: bar 2, four beats into the source's own span. */
 const TARGET = "2|1";
+/** A 4-bar source at bar 9, so a copy at bar 1 lands entirely before it. */
+const SOURCE_AT_BAR_9 = { start: 32, end: 48 } as const;
 
 /** Track index per duplicate call, in the order the calls happened. */
 let dupOrder: number[] = [];
@@ -49,8 +52,12 @@ function registerRecordingTrack(trackIndex: number): RegisteredMockObject {
 /**
  * Register the source clip and the tracks a fan-out will copy to.
  * @param isArrangementClip - Whether the source sits in the arrangement
+ * @param span - Where the source sits on the timeline, in beats
  */
-function setupSource(isArrangementClip: boolean): void {
+function setupSource(
+  isArrangementClip: boolean,
+  span: { start: number; end: number } = SOURCE_AT_BAR_1,
+): void {
   registerMockObject("live_set", { path: livePath.liveSet });
   registerMockObject("clip1", {
     // A slot path for a session source, so trackIndex is 0 either way.
@@ -60,8 +67,8 @@ function setupSource(isArrangementClip: boolean): void {
     properties: {
       is_midi_clip: 1,
       is_arrangement_clip: isArrangementClip ? 1 : 0,
-      start_time: 0,
-      end_time: SOURCE_END,
+      start_time: span.start,
+      end_time: span.end,
     },
   });
   registerRecordingTrack(0);
@@ -122,6 +129,56 @@ describe("duplicate clip fan-out order", () => {
     });
 
     expect(dupOrder).toStrictEqual([0, 1]);
+  });
+
+  it("leaves the order alone for a copy that stops short of the source", async () => {
+    // Regression: "starts before the source ends" also caught a copy that never
+    // reaches it. Deferred behind the copy that does truncate the source, it was
+    // then made from the leftover — half length, decided by nothing but the
+    // order the positions were listed in.
+    setupSource(true, SOURCE_AT_BAR_9);
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0,t1",
+      arrangementStart: "1|1",
+    });
+
+    expect(dupOrder).toStrictEqual([0, 1]);
+  });
+
+  it("defers a copy whose arrangementLength tiles into the source", async () => {
+    // Same start, but 16 bars of tiling reaches the source at bar 9, so this
+    // copy does have to go last.
+    setupSource(true, SOURCE_AT_BAR_9);
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0,t1",
+      arrangementStart: "1|1",
+      arrangementLength: "16bar",
+    });
+
+    expect(dupOrder).toStrictEqual([1, 0]);
+  });
+
+  it("still rejects an arrangementLength it can't parse", async () => {
+    // Ordering asks how far a copy reaches, so it parses the length too — but
+    // it must not be the one to decide a bad one, or a lane copy that ignores
+    // the param would start failing.
+    setupSource(true, SOURCE_AT_BAR_9);
+
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        toPath: "t0",
+        arrangementStart: "1|1",
+        arrangementLength: "abc",
+      }),
+    ).rejects.toThrow("Invalid duration format");
   });
 
   it("leaves the order alone for a session source", async () => {
