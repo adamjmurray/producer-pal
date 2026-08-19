@@ -235,20 +235,22 @@ export function useConversations({
 
   const saveCurrentConversation = useCallback(
     (updatedAt?: number): Promise<void> => {
-      // Consume the fork signal first — before the empty-history early-return
-      // below. A fork aborted before it streamed any content (Stop, or a browser
-      // Back/Forward tearing the conversation down) reaches here with empty
-      // history; consuming the signal here rather than after the return keeps it
-      // from lingering and mis-branching the next, unrelated save. Forking needs
-      // a saved source (the active record) to preserve; with no active id it
-      // degrades to a normal save of the forked history as a fresh chat.
+      const chatHistory = getChatHistory();
+
+      // Nothing to write, so leave any pending fork signal alone. A fork stopped
+      // before it streamed reaches here with empty history but the client it
+      // built is still installed, so the next save is that fork continuing and
+      // must still branch. Consuming the signal here let that save reuse the
+      // source id and overwrite it with the fork's history. clearConversation
+      // drops the signal when the conversation goes away.
+      if (chatHistory.length === 0) return Promise.resolve();
+
+      // Forking needs a saved source (the active record) to preserve; with no
+      // active id it degrades to a normal save of the forked history as a fresh
+      // chat.
       const fork = pendingForkRef?.current ?? null;
 
       if (pendingForkRef) pendingForkRef.current = null;
-
-      const chatHistory = getChatHistory();
-
-      if (chatHistory.length === 0) return Promise.resolve();
 
       const reuseId = activeIdRef.current;
       // A fork mints a new id and switches to it (leaving the source intact); a

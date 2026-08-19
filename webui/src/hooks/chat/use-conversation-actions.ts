@@ -131,10 +131,10 @@ export function useConversationActions<
         // client, runWithChat's catch autosaves — and without the signal already
         // set, that save reuses the source id and overwrites it with the
         // truncated history (data loss). With it set, the save mints a new
-        // sibling id and the source survives. The failed-fork autosave consumes
-        // the signal, saveCurrentConversation also consumes it before its
-        // empty-history early-return, and the chat teardown paths
-        // (stopResponse/clearConversation) clear it on abort. When init throws
+        // sibling id and the source survives. The signal is consumed by the
+        // failed-fork autosave, or by the teardown autosave a Stop fires — which
+        // is why stopResponse keeps it — and clearConversation drops it when the
+        // conversation is torn down. When init throws
         // *before* a client exists — forking a restored conversation while MCP
         // is down — no autosave runs at all, so runWithChat's catch drops the
         // signal directly. Either way a fork that streams no content can't

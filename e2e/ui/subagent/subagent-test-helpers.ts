@@ -15,6 +15,8 @@
 import { type Locator, type Page, type Route, expect } from "@playwright/test";
 import { installStubs } from "../ui-test-helpers";
 
+export { sendChatMessage } from "../ui-test-helpers";
+
 /** The client-side delegation tool. Mirrors SPAWN_SUBAGENT_TOOL_NAME in
  * webui/src/lib/utils/enabled-tools.ts. */
 export const SPAWN_TOOL = "spawn_subagent";
@@ -87,24 +89,6 @@ export async function setupSubagentTest(
   await page.goto("/chat-ui.html");
 
   return harness;
-}
-
-/**
- * Send a chat message and wait for the turn to be accepted (the input clears).
- * @param page - Playwright page
- * @param text - The message to send
- */
-export async function sendChatMessage(page: Page, text: string): Promise<void> {
-  const input = page.getByRole("textbox", { name: "Message" });
-
-  await expect(input).toBeVisible();
-  // Real keystrokes: `fill()` goes through Chromium's IME path, which
-  // CodeMirror treats as a composition and then swallows the Enter.
-  await input.click();
-  await input.pressSequentially(text);
-  await input.press("Enter");
-  // The placeholder only renders while the editor is empty.
-  await expect(input.locator(".cm-placeholder")).toBeVisible();
 }
 
 /**

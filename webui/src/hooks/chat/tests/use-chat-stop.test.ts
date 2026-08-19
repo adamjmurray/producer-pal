@@ -10,6 +10,7 @@ import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UIMessage, type UIToolPart } from "#webui/types/messages";
 import {
@@ -353,5 +354,59 @@ describe("useChat stopResponse", () => {
     // Switching/clearing a conversation must drop the queue so follow-ups
     // can't leak into the next conversation.
     expect(result.current.queuedMessages).toStrictEqual([]);
+  });
+
+  it("keeps the fork signal when a retry is stopped mid-turn", async () => {
+    // Regression: Stop cleared the signal, so the teardown autosave that follows
+    // took the normal path — reusing the source id and writing the fork's
+    // truncated history over it. Every turn past the fork point was gone for
+    // good. Keeping the signal makes that save mint a sibling instead.
+    let release!: () => void;
+    const paused = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter = createScriptedAdapter(
+      mockAdapter,
+      (client) =>
+        async function* (message: string) {
+          client.chatHistory.push({ role: "user", content: message });
+          yield [...client.chatHistory];
+
+          await paused;
+        },
+    );
+    const pendingForkRef = { current: null as PendingFork | null };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, adapter, pendingForkRef }),
+    );
+
+    await act(async () => {
+      result.current.restoreChatHistory([
+        { role: "user", content: "m1" },
+        { role: "assistant", content: "m2" },
+        { role: "user", content: "m3" },
+        { role: "assistant", content: "m4" },
+      ]);
+    });
+
+    const retry = result.current.handleRetry(0);
+
+    // Let the fork's client connect and its stream paint the retried message.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    await act(() => {
+      result.current.stopResponse();
+    });
+
+    // The transcript is the fork's truncated history, which is what the save
+    // sees; the surviving signal is what keeps it off the source's id.
+    expect(result.current.messages).toHaveLength(1);
+    expect(pendingForkRef.current).toStrictEqual({ anchorIndex: 1 });
+
+    release();
+    await act(async () => {
+      await retry;
+    });
   });
 });

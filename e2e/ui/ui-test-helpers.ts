@@ -154,6 +154,24 @@ export async function installStubs(page: Page): Promise<void> {
 }
 
 /**
+ * Send a chat message and wait for the turn to be accepted (the input clears).
+ * @param page - Playwright page
+ * @param text - The message to send
+ */
+export async function sendChatMessage(page: Page, text: string): Promise<void> {
+  const input = page.getByRole("textbox", { name: "Message" });
+
+  await expect(input).toBeVisible();
+  // Real keystrokes: `fill()` goes through Chromium's IME path, which
+  // CodeMirror treats as a composition and then swallows the Enter.
+  await input.click();
+  await input.pressSequentially(text);
+  await input.press("Enter");
+  // The placeholder only renders while the editor is empty.
+  await expect(input.locator(".cm-placeholder")).toBeVisible();
+}
+
+/**
  * Open the conversation history side panel and wait for it to render.
  * @param page - Playwright page
  */

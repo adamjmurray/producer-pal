@@ -113,13 +113,17 @@ export function filterOverrides(
 }
 
 /**
- * Show error when API key is not configured. Stashes the user message to
- * pendingHistoryRef so retry/edit can recover after the user fixes settings.
+ * Show error when API key is not configured, against the conversation the
+ * message was sent from. With no client yet, the message is stashed onto that
+ * conversation so retry/edit — and the next send, which bootstraps a client from
+ * the stash — pick up where the user left off.
  * @param adapter - Chat adapter for formatting
  * @param userMessage - The user's message text
  * @param setMessages - State setter for messages
- * @param pendingHistoryRef - Ref to stash the user message entry for retry/edit
- * @param pendingHistoryRef.current - The stashed history (set by this function)
+ * @param clientRef - Ref to the live chat client, or null before one is built
+ * @param clientRef.current - The live client, whose history wins when it exists
+ * @param pendingHistoryRef - Ref holding the restored-but-not-yet-sent history
+ * @param pendingHistoryRef.current - That history, extended by this function
  */
 export function showMissingApiKeyError<
   TClient extends ChatClient<TMessage>,
@@ -129,15 +133,28 @@ export function showMissingApiKeyError<
   adapter: ChatAdapter<TClient, TMessage, TConfig>,
   userMessage: string,
   setMessages: (msgs: UIMessage[]) => void,
+  clientRef: { current: TClient | null },
   pendingHistoryRef: { current: TMessage[] | null },
 ): void {
   const entry = adapter.createUserMessage(userMessage);
+  // Keep the conversation this message was sent from. Showing (and stashing)
+  // the message alone truncated a restored conversation to it, and the next
+  // send bootstrapped a client from that truncation and saved it over the
+  // record. Copy the base: createErrorMessage pushes onto the array it is
+  // given, and nothing was sent, so the live client's history must not grow.
+  const base =
+    clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [];
+  const history = [...base, entry];
 
-  pendingHistoryRef.current = [entry];
+  // Only when no client exists: a client owns the history once it has one, so
+  // the stash would be a stale duplicate. The error rides along, as in
+  // recoverFromChatError — it is skipped when building model messages.
+  if (!clientRef.current) pendingHistoryRef.current = history;
+
   setMessages(
     adapter.createErrorMessage(
       new Error("No API key configured. Please add your API key in Settings."),
-      [entry],
+      history,
     ),
   );
 }

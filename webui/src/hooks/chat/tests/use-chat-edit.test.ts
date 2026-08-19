@@ -193,9 +193,11 @@ describe("useChat handleEdit", () => {
     expect(hasRestored).toBe(true);
   });
 
-  it("clears a pending fork signal on stopResponse", async () => {
-    // A fork aborted (Stop) before it streamed assistant content never autosaves,
-    // so the signal must be dropped here or it mis-branches the next save.
+  it("keeps a pending fork signal on stopResponse", async () => {
+    // Regression: Stop leaves the fork's truncated client installed, so the
+    // teardown autosave that follows must still branch. Clearing the signal here
+    // made that save reuse the source id and overwrite the conversation with the
+    // truncation — every turn after the fork point, permanently gone.
     const pendingForkRef = {
       current: { anchorIndex: 2 } as PendingFork | null,
     };
@@ -207,7 +209,7 @@ describe("useChat handleEdit", () => {
       result.current.stopResponse();
     });
 
-    expect(pendingForkRef.current).toBeNull();
+    expect(pendingForkRef.current).toStrictEqual({ anchorIndex: 2 });
   });
 
   it("clears a pending fork signal on clearConversation", async () => {

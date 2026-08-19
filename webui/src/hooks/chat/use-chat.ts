@@ -150,10 +150,11 @@ export function useChat<
     // and onMessageUpdate drops it, so the card would otherwise sit at
     // "working…" for the rest of the session.
     setMessages(haltRunningToolCalls);
-    // Drop any pending-fork signal on teardown. A fork aborted before it streamed
-    // assistant content never autosaves, so the signal would otherwise linger and
-    // mis-branch the next, unrelated conversation's save into a spurious sibling.
-    if (pendingForkRef) pendingForkRef.current = null;
+    // Leave any pending-fork signal set. Stop ends the turn, but the client it
+    // built still holds the fork's truncated history, so the teardown autosave
+    // that follows must still branch — clearing the signal here made that save
+    // reuse the source id and overwrite the conversation with the truncation.
+    // clearConversation drops the signal when the conversation itself goes away.
     abortRetry();
     setIsAssistantResponding(false);
     setRateLimitState(null);
@@ -161,7 +162,7 @@ export function useChat<
     // Deliberately leave the queue intact: aborting a turn is the same as a
     // failed turn, so queued follow-ups stay visible and flush on the next send.
     // Tearing down for a conversation switch clears the queue in clearConversation.
-  }, [abortRetry, pendingForkRef]);
+  }, [abortRetry]);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -174,12 +175,16 @@ export function useChat<
     // next conversation.
     clearPendingLock();
     pendingHistoryRef.current = null;
+    // The conversation this fork branched from is gone, so nothing is left to
+    // branch: drop the signal here or it mis-branches the next, unrelated save
+    // into a spurious sibling. stopResponse deliberately keeps it.
+    if (pendingForkRef) pendingForkRef.current = null;
     // stopResponse aborts any in-flight stream and resets the transient response
-    // state (incl. the pending-fork signal). A UI-driven switch already called it,
-    // but a browser Back/Forward (hashchange) reaches here directly — without the
-    // abort the orphaned stream's setMessages clobbers the freshly-restored
-    // conversation and autosaves the mixed history under the new id. Idempotent,
-    // so safe for every entry point.
+    // state. A UI-driven switch already called it, but a browser Back/Forward
+    // (hashchange) reaches here directly — without the abort the orphaned
+    // stream's setMessages clobbers the freshly-restored conversation and
+    // autosaves the mixed history under the new id. Idempotent, so safe for
+    // every entry point.
     stopResponse();
     // Switching/clearing a conversation drops any queued follow-ups so they
     // can't leak into the next conversation (stopResponse leaves them intact
@@ -193,6 +198,7 @@ export function useChat<
     clearSettings,
     invalidateCompactionUndo,
     clearPendingLock,
+    pendingForkRef,
   ]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
@@ -280,6 +286,7 @@ export function useChat<
             adapter,
             userMessage,
             setMessages,
+            clientRef,
             pendingHistoryRef,
           );
 
