@@ -254,6 +254,43 @@ export async function createTestDevice(
   deviceName: string,
   path: string,
 ): Promise<string> {
+  return (await createDevice(client, deviceName, path)).id;
+}
+
+/**
+ * Creates a device and returns the path it actually landed at.
+ *
+ * Use this whenever a later step addresses the device — never hardcode `d0`,
+ * `d1`, … A machine with default track presets starts every new track with
+ * devices already on it, so device indices are not portable between machines.
+ *
+ * @param client - Connected MCP client
+ * @param deviceName - Device to create
+ * @param path - Container to create it in (e.g. `t3`, `t3/d0/c0`)
+ * @returns The new device's path (e.g. `t3/d2`)
+ */
+export async function createTestDeviceAt(
+  client: Client,
+  deviceName: string,
+  path: string,
+): Promise<string> {
+  const created = await createDevice(client, deviceName, path);
+
+  return `${path}/d${created.deviceIndex}`;
+}
+
+/**
+ * Shared body for the createTestDevice* helpers.
+ * @param client - Connected MCP client
+ * @param deviceName - Device to create
+ * @param path - Container to create it in
+ * @returns The tool's parsed result
+ */
+async function createDevice(
+  client: Client,
+  deviceName: string,
+  path: string,
+): Promise<CreateDeviceResult> {
   const result = await client.callTool({
     name: "ppal-create-device",
     arguments: { deviceName, path },
@@ -262,7 +299,7 @@ export async function createTestDevice(
 
   await sleep(100);
 
-  return created.id;
+  return created;
 }
 
 /**

@@ -235,6 +235,15 @@ current one, which can destroy work in progress.
 npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
 
+**A new track is not always empty.** Live applies the user's default track
+preset (User Library → `Defaults/Creating Tracks/`) to every track it creates,
+and that preset varies per machine — one dev's new MIDI track arrives bare,
+another's already has a Channel EQ and a Utility on it. So never hardcode a
+device index for a device the test just created: use `createTestDeviceAt()`,
+which returns the path the device actually landed at. A test that assumes `d1`
+passes for whoever wrote it and fails for everyone else. The same goes for any
+other per-machine Live preference a test might lean on.
+
 ## Protected Files (Require User Approval)
 
 These hold quality thresholds — **don't relax any of them without asking:**

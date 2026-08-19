@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   createTestDevice,
+  createTestDeviceAt,
   createTwoPadDrumRack,
   parseToolResult,
   type ReadClipResult,
@@ -232,12 +233,16 @@ describe("nested rack drum detection", () => {
       const trackIndex = await createTrack("Effect Rack");
 
       await createTestDevice(ctx.client!, "Meld", `t${trackIndex}`);
-      await createTestDevice(
+
+      // Ask where the rack landed rather than assuming d1: a default track
+      // preset can put devices on the track before we add any.
+      const rack = await createTestDeviceAt(
         ctx.client!,
         "Audio Effect Rack",
         `t${trackIndex}`,
       );
-      await createTestDevice(ctx.client!, "Reverb", `t${trackIndex}/d1/c0`);
+
+      await createTestDevice(ctx.client!, "Reverb", `${rack}/c0`);
 
       expect(await readDrumMap(trackIndex)).toBeUndefined();
 
