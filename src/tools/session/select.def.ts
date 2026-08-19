@@ -26,7 +26,9 @@ export const toolDefSelect = defineTool("ppal-select", {
     id: z.coerce
       .string()
       .optional()
-      .describe("select by ID (auto-detects track/scene/clip/device)"),
+      .describe(
+        "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
+      ),
 
     trackIndex: z.coerce
       .number()
@@ -51,7 +53,8 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe(
         "select by path, 0-based: 't0/s3' a session position, 't0' a track, 'rt0' a return track, " +
-          "'mt' the master track, 's3' a scene, 't0/d1' a device",
+          "'mt' the master track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
+          "'t0/d0/pC1' a drum pad",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

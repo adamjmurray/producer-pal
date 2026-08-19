@@ -131,7 +131,7 @@ export function validateParameters({
 
   // Device selection validation
   if (deviceId != null && devicePath != null) {
-    throw new Error(`cannot specify both id (device) and ${devicePathParam}`);
+    throw new Error(`cannot specify both id and ${devicePathParam}`);
   }
 
   // Cross-validation for track ID vs index (requires Live API calls)

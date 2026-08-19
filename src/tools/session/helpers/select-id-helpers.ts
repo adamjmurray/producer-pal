@@ -5,13 +5,20 @@
 
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
-export type DetectedType = "track" | "scene" | "clip" | "device";
+export type DetectedType =
+  | "track"
+  | "scene"
+  | "clip"
+  | "device"
+  | "rack-target";
 
 interface ResolveIdResult {
   trackId?: string;
   sceneId?: string;
   clipId?: string;
   deviceId?: string;
+  /** A DrumPad or a rack chain: selected on its rack, not on the song view. */
+  rackTargetId?: string;
   detectedType: DetectedType;
 }
 
@@ -37,6 +44,10 @@ export function resolveIdParam(id: string): ResolveIdResult {
     return { deviceId: id, detectedType: "device" };
   }
 
+  if (type === "DrumPad" || type === "DrumChain" || type === "Chain") {
+    return { rackTargetId: id, detectedType: "rack-target" };
+  }
+
   throw new Error(`select failed: id "${id}" has unsupported type "${type}"`);
 }
 
@@ -56,6 +67,7 @@ interface AutoDetailViewOptions {
   clipId?: string;
   deviceId?: string;
   devicePath?: string;
+  hasRackTarget?: boolean;
   clipSlotHasClip?: boolean;
   viewOnly?: boolean;
 }
@@ -66,6 +78,7 @@ interface AutoDetailViewOptions {
  * @param options.clipId - Clip ID if selected
  * @param options.deviceId - Device ID if selected
  * @param options.devicePath - Device path if selected
+ * @param options.hasRackTarget - Whether a drum pad or rack chain was selected
  * @param options.clipSlotHasClip - Whether the clip slot has a clip
  * @param options.viewOnly - Whether only the view param was provided
  * @returns Detail view to apply, or undefined to leave unchanged
@@ -74,11 +87,12 @@ export function determineAutoDetailView({
   clipId,
   deviceId,
   devicePath,
+  hasRackTarget,
   clipSlotHasClip,
   viewOnly,
 }: AutoDetailViewOptions): "clip" | "device" | "none" | undefined {
   if (clipId != null || clipSlotHasClip) return "clip";
-  if (deviceId != null || devicePath != null) return "device";
+  if (deviceId != null || devicePath != null || hasRackTarget) return "device";
   if (viewOnly) return "none";
 
   return undefined;

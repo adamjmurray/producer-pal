@@ -22,6 +22,8 @@ import { type TrackCategory } from "./select-helpers.ts";
 export interface PathTarget {
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
+  /** A drum pad or rack chain path, which selects on its rack rather than the song view. */
+  rackTargetPath?: string;
   /** The param devicePath came from, for messages the caller can act on. */
   devicePathParam?: "path" | "devicePath";
   trackIndex?: number;
@@ -95,6 +97,23 @@ export function mergeWithPath<T>(
 // --- Helpers below main exports ---
 
 /**
+ * Split a device-chain path by what its last segment names: a device, or
+ * something inside a rack (a chain, a return chain, or a drum pad).
+ * @param path - A parsed device-chain path
+ * @returns What select should select
+ */
+function deviceChainTarget(
+  path: Extract<ObjectPath, { kind: "device" }>,
+): PathTarget {
+  const formatted = formatObjectPath(path);
+  const last = path.segments.at(-1);
+
+  return last == null || last.kind === "device"
+    ? { devicePath: formatted, devicePathParam: "path" }
+    : { rackTargetPath: formatted };
+}
+
+/**
  * Map a parsed path onto the target select acts on.
  * @param path - The parsed path
  * @returns What select should select
@@ -102,7 +121,7 @@ export function mergeWithPath<T>(
 function targetFromPath(path: ObjectPath): PathTarget {
   switch (path.kind) {
     case "device":
-      return { devicePath: formatObjectPath(path), devicePathParam: "path" };
+      return deviceChainTarget(path);
     case "track":
       return { trackIndex: path.trackIndex, category: "regular" };
     case "return-track":

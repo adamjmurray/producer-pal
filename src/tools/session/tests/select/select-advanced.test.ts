@@ -395,14 +395,6 @@ describe("view", () => {
         "does not resolve to a device",
       );
     });
-
-    // devicePath is deprecated and absent from the schema, so a caller told to
-    // fix it has no such param to fix.
-    it("names path, not devicePath, when the caller sent path", () => {
-      expect(() => select({ path: "t0/d0/c0" })).toThrow(
-        'path "t0/d0/c0" does not resolve to a device',
-      );
-    });
   });
 
   describe("validation", () => {
@@ -425,7 +417,7 @@ describe("view", () => {
 
       expect(() => {
         select({ id: "id device_123", devicePath: "t0/d1" });
-      }).toThrow("cannot specify both id (device) and devicePath");
+      }).toThrow("cannot specify both id and devicePath");
     });
 
     it("names path when id and path both name a device", () => {
@@ -436,7 +428,7 @@ describe("view", () => {
 
       expect(() => {
         select({ id: "id device_123", path: "t0/d1" });
-      }).toThrow("cannot specify both id (device) and path");
+      }).toThrow("cannot specify both id and path");
     });
 
     it("throws error when id (track) and trackIndex refer to different tracks", () => {

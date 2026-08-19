@@ -27,6 +27,10 @@ import {
   resolvePathParam,
 } from "./helpers/select-path-helpers.ts";
 import {
+  resolveRackTarget,
+  selectRackTarget,
+} from "./helpers/select-rack-helpers.ts";
+import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
   buildDeviceResponseFromId,
@@ -43,7 +47,7 @@ interface SelectArgs {
   trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
-  /** Session position "t0/s3", a device "t0/d1", or a bare track "t0" */
+  /** Session position "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
   path?: string;
   /** Deprecated session slot, trackIndex/sceneIndex */
   slot?: string;
@@ -72,6 +76,8 @@ export interface SelectResult {
     arrangementStart?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
+  selectedDrumPad?: { id: string; path: string };
+  selectedChain?: { id: string; path: string };
 }
 
 /**
@@ -93,6 +99,7 @@ export function select(
   const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
   const { trackIndex, category, sceneIndex, devicePath } = resolved;
+  const { rackTargetId, rackTargetPath } = resolved;
   const devicePathParam = resolved.devicePathParam ?? "path";
 
   validateParameters({
@@ -101,8 +108,8 @@ export function select(
     trackIndex,
     sceneId,
     sceneIndex,
-    deviceId,
-    devicePath,
+    deviceId: deviceId ?? rackTargetId,
+    devicePath: devicePath ?? rackTargetPath,
     devicePathParam,
     slot: parsedClipSlot,
   });
@@ -120,6 +127,10 @@ export function select(
     clipSlot: parsedClipSlot,
     devicePath,
   });
+
+  // Resolved before any view change, like requireSelectTargets, so a path
+  // naming nothing leaves Live untouched.
+  const rackTarget = resolveRackTarget(rackTargetId, rackTargetPath);
 
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
@@ -176,6 +187,9 @@ export function select(
     if (applied) pluginWindowOpen = args.openPluginWindow;
   }
 
+  const rackSelection =
+    rackTarget == null ? undefined : selectRackTarget(songView, rackTarget);
+
   const clipSlotHasClip =
     parsedClipSlot != null &&
     updateClipSlotSelection({ songView, clipSlot: parsedClipSlot });
@@ -187,6 +201,7 @@ export function select(
     clipId,
     deviceId,
     devicePath,
+    hasRackTarget: rackTarget != null,
     clipSlotHasClip,
     viewOnly: resolved.viewOnly,
   });
@@ -200,6 +215,7 @@ export function select(
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip);
   addDeviceToResponse(result, resolved);
+  Object.assign(result, rackSelection);
 
   if (pluginWindowOpen != null && result.selectedDevice != null) {
     result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
@@ -214,6 +230,7 @@ interface ApplyViewChangesOptions {
   clipId?: string;
   deviceId?: string;
   devicePath?: string;
+  hasRackTarget: boolean;
   clipSlotHasClip: boolean;
   viewOnly: boolean;
 }
@@ -226,6 +243,7 @@ interface ApplyViewChangesOptions {
  * @param options.clipId - Selected clip ID
  * @param options.deviceId - Selected device ID
  * @param options.devicePath - Selected device path
+ * @param options.hasRackTarget - Whether a drum pad or rack chain was selected
  * @param options.clipSlotHasClip - Whether the selected clip slot contains a clip
  * @param options.viewOnly - Whether only the view param was provided
  */
@@ -235,6 +253,7 @@ function applyViewChanges({
   clipId,
   deviceId,
   devicePath,
+  hasRackTarget,
   clipSlotHasClip,
   viewOnly,
 }: ApplyViewChangesOptions): void {
@@ -244,6 +263,7 @@ function applyViewChanges({
       clipId,
       deviceId,
       devicePath,
+      hasRackTarget,
       clipSlotHasClip,
       viewOnly,
     });
@@ -268,6 +288,8 @@ interface ResolvedArgs {
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
   devicePath?: string;
   devicePathParam?: "path" | "devicePath";
+  rackTargetId?: string;
+  rackTargetPath?: string;
   hasArgs: boolean;
   viewOnly: boolean;
 }
@@ -279,6 +301,7 @@ interface ResolvedArgs {
  */
 function resolveArgs(args: SelectArgs): ResolvedArgs {
   let { trackId, sceneId, clipId, deviceId } = args;
+  let rackTargetId: string | undefined;
 
   if (args.id != null) {
     const resolved = resolveIdParam(args.id);
@@ -287,10 +310,12 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     sceneId = resolved.sceneId ?? sceneId;
     clipId = resolved.clipId ?? clipId;
     deviceId = resolved.deviceId ?? deviceId;
+    rackTargetId = resolved.rackTargetId;
   }
 
   const fromPath = resolvePathParam(args);
-  const { parsedClipSlot, devicePath, devicePathParam } = fromPath;
+  const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
+    fromPath;
   const trackIndex = mergeWithPath(
     "trackIndex",
     args.trackIndex,
@@ -316,6 +341,8 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     clipId != null ||
     deviceId != null ||
     devicePath != null ||
+    rackTargetId != null ||
+    rackTargetPath != null ||
     args.openPluginWindow != null ||
     parsedClipSlot != null;
 
@@ -333,6 +360,8 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     parsedClipSlot,
     devicePath,
     devicePathParam,
+    rackTargetId,
+    rackTargetPath,
     hasArgs,
     viewOnly,
   };
