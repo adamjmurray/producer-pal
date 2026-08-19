@@ -600,3 +600,11 @@ Node-side memory code reads/writes real files, so tests point
 (the store is otherwise inert under Vitest by default — see `isConfigDirInert`
 in `config-markdown-store.ts` — so unit tests never touch a developer's real
 `~/.producer-pal`).
+
+Reproducing a **failed** sidecar write by hand needs one non-obvious step. A
+read-only project folder is not enough: while the upgrade-wipe question is still
+open, an edit goes out as `isEdit: false`, Node declines to overwrite a
+differing sidecar and returns `none`, and no write is attempted — so nothing
+warns. Only a load echo carrying content settles that question (see Edit vs.
+load), so save the Set _with_ project context in the box and reload the device
+first, then make the folder read-only.

@@ -13,6 +13,10 @@ import {
   type MockInstance,
 } from "vitest";
 import { error, log, warn } from "#src/shared/max/v8-max-console.ts";
+import {
+  beginWarningCapture,
+  resetWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -260,6 +264,35 @@ describe("v8-max-console", () => {
       warn("first", 42, "third");
       // Multiple args are join(" ")-ed into one outlet string, not concatenated.
       expect(mockOutlet).toHaveBeenCalledWith(1, "first 42 third");
+    });
+  });
+
+  // With a request in flight the warning goes in its capture and rides its own
+  // response. With none there is no response to ride, so it has to be reported
+  // as an error instead of waiting around for someone else's.
+  describe("with no request in flight", () => {
+    it("reports the warning to the Max console", () => {
+      const mockError = vi.fn();
+
+      g.error = mockError;
+      g.outlet = vi.fn();
+      resetWarningCapture();
+
+      warn("nobody asked for this");
+
+      expect(mockError).toHaveBeenCalledWith("nobody asked for this", "\n");
+    });
+
+    it("stays off the Max console while a request can take it", () => {
+      const mockError = vi.fn();
+
+      g.error = mockError;
+      g.outlet = vi.fn();
+      beginWarningCapture();
+
+      warn("belongs to a response");
+
+      expect(mockError).not.toHaveBeenCalled();
     });
   });
 });

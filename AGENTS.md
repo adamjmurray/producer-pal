@@ -108,6 +108,15 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   rest of a multi-item call still succeeds. Warnings are not silent — they're
   appended to the tool response as `WARNING:` blocks the model reads.
 
+- **A warning belongs to the request that raised it.** V8 buffers warnings
+  per-request and appends them to that request's own response, and it has no
+  async context to do that automatically. So: adding an `await` to
+  `handleRequest` needs a matching `resumeWarningCapture()`, and any new promise
+  V8 can suspend on needs `suspendWarningCapture()`. Miss either and warnings
+  silently land on another request's response. Warnings raised with no request
+  in flight go to the Max console instead — don't try to route them into a
+  response. See `src/shared/max/v8-warning-capture.ts`.
+
 - **Tool schemas**: use `z.coerce.string()` for ID params and
   `z.coerce.number()` for numeric ones — models send both strings and numbers,
   and the MCP SDK validates before our handler runs. For choosing a param's

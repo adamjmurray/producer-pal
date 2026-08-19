@@ -23,6 +23,11 @@ import {
   type Notation,
 } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  beginWarningCapture,
+  endWarningCapture,
+  resumeWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -346,8 +351,19 @@ export function tools(): void {}
  *
  * @param requestId - Request identifier
  * @param result - Result object to send
+ * @param warnings - Warnings this request raised, appended after the delimiter
  */
-function sendResponse(requestId: string, result: object): void {
+function sendResponse(
+  requestId: string,
+  result: object,
+  warnings: string[],
+): void {
+  // The patch buffers everything that reached outlet 1 and joins it onto this
+  // message. Wipe that buffer first: it holds a duplicate of every warning in
+  // `warnings`, plus any raised with no request in flight, and appending either
+  // would double-report or misattribute. `warnings` is the only source now.
+  outlet(1, "zlclear");
+
   const jsonString = JSON.stringify(result);
   const { chunks, tooLargeError } = planChunks(jsonString);
 
@@ -360,13 +376,21 @@ function sendResponse(requestId: string, result: object): void {
       requestId,
       JSON.stringify(errorResult),
       MAX_ERROR_DELIMITER,
+      ...warnings,
     );
 
     return;
   }
 
-  // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
-  outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
+  // Send as: ["mcp_response", requestId, chunk1, ..., delimiter, warning1, ...]
+  outlet(
+    0,
+    "mcp_response",
+    requestId,
+    ...chunks,
+    MAX_ERROR_DELIMITER,
+    ...warnings,
+  );
 }
 
 /**
@@ -446,6 +470,9 @@ async function handleRequest(
   argsJSON: string,
   contextJSON?: string | null,
 ): Promise<void> {
+  // Opened before the arg parse so a warning from any part of the request —
+  // including the contextJSON fallback below — reaches this request's response.
+  const warnings = beginWarningCapture();
   let result;
 
   try {
@@ -477,11 +504,13 @@ async function handleRequest(
     // post-await write to sessionState lives in a helper so concurrent requests
     // don't trip require-atomic-updates.
     const contextBeforeSync = sessionState.projectContext.content;
+    const restored = await syncProjectContextBackup(contextBeforeSync);
 
-    applyRestoredProjectContext(
-      await syncProjectContextBackup(contextBeforeSync),
-      contextBeforeSync,
-    );
+    // Re-assert after every await below: a request that started while this one
+    // was parked is the active capture now, and warnings from here on belong to
+    // this one. See v8-warning-capture.ts.
+    resumeWarningCapture(warnings);
+    applyRestoredProjectContext(restored, contextBeforeSync);
 
     // Counts only the tool's own objects, not the project-context sync above.
     // A build without ENABLE_BUILD_STATS gets a stub here and counts nothing.
@@ -494,6 +523,8 @@ async function handleRequest(
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
       const output = (await callTool(tool, args, requestContext)) as object;
+
+      resumeWarningCapture(warnings);
 
       // Per-request override (REST ?format=json|compact) takes precedence
       // over the global compactOutput config.
@@ -522,7 +553,7 @@ async function handleRequest(
   }
 
   // Send response back to Node for Max
-  sendResponse(requestId, result);
+  sendResponse(requestId, result, endWarningCapture(warnings));
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

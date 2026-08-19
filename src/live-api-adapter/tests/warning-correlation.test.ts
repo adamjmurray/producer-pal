@@ -1,0 +1,157 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// A warning has to reach the response of the request that raised it. The Max
+// patch used to buffer warnings with no idea which request they belonged to, so
+// two in flight — parallel subagent tool calls are routine — could swap them, and
+// a warning raised with no request at all rode along on the next one.
+
+import { describe, expect, it, vi } from "vitest";
+import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { warn } from "#src/shared/max/v8-max-console.ts";
+
+vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
+  backupProjectContextOnEdit: vi.fn(),
+  noteProjectContextLoaded: vi.fn(),
+  syncProjectContextBackup: vi.fn(),
+  resetProjectContextSyncMemo: vi.fn(),
+}));
+
+vi.mock(import("#src/tools/clip/create/create-clip.ts"), () => ({
+  createClip: vi.fn(),
+}));
+
+vi.mock(import("#src/tools/track/read/read-track.ts"), () => ({
+  readTrack: vi.fn(),
+}));
+
+const { createClip } = await import("#src/tools/clip/create/create-clip.ts");
+const { readTrack } = await import("#src/tools/track/read/read-track.ts");
+const { requestNode } =
+  await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+const { mcp_request, node_response } =
+  await import("#src/live-api-adapter/live-api-adapter.ts");
+
+/**
+ * The warnings a request's `mcp_response` carried — everything the patch would
+ * hand Node after the delimiter.
+ *
+ * @param requestId - The request whose response to read
+ * @returns The warning strings, or null if that request never responded
+ */
+function warningsSentFor(requestId: string): string[] | null {
+  const call = vi
+    .mocked(outlet)
+    .mock.calls.find(
+      (args) => args[1] === "mcp_response" && args[2] === requestId,
+    );
+
+  if (call == null) return null;
+
+  const delimiter = call.indexOf(MAX_ERROR_DELIMITER);
+
+  return call.slice(delimiter + 1) as string[];
+}
+
+/**
+ * The id of the pending `node_request` a tool sent, so a test can answer it.
+ *
+ * @returns The request id
+ */
+function pendingNodeRequestId(): string {
+  const call = vi
+    .mocked(outlet)
+    .mock.calls.find((args) => args[1] === "node_request");
+
+  return call?.[2] as string;
+}
+
+/**
+ * Answer the outstanding `node_request`, resuming the tool that sent it.
+ */
+function answerNodeRequest(): void {
+  node_response(
+    pendingNodeRequestId(),
+    JSON.stringify({ success: true }),
+    MAX_ERROR_DELIMITER,
+  );
+}
+
+describe("warning correlation", () => {
+  it("keeps each request's warnings on its own response", async () => {
+    // The only way V8 suspends mid-request is a round trip to Node, so that is
+    // where the other request gets to run.
+    vi.mocked(createClip).mockImplementation(async () => {
+      warn("slow tool, before the round trip");
+      await requestNode("any-route");
+      warn("slow tool, after the round trip");
+
+      return {};
+    });
+    vi.mocked(readTrack).mockImplementation(() => {
+      warn("fast tool");
+
+      return {};
+    });
+
+    const slow = mcp_request("req-slow", "ppal-create-clip", "{}");
+
+    // The slow request is parked on its round trip, so this one runs start to
+    // finish inside the gap.
+    await mcp_request("req-fast", "ppal-read-track", "{}");
+
+    answerNodeRequest();
+    await slow;
+
+    expect(warningsSentFor("req-fast")).toStrictEqual(["fast tool"]);
+    expect(warningsSentFor("req-slow")).toStrictEqual([
+      "slow tool, before the round trip",
+      "slow tool, after the round trip",
+    ]);
+  });
+
+  it("sends no warnings for a request that raised none", async () => {
+    vi.mocked(readTrack).mockReturnValue({} as never);
+
+    await mcp_request("req-quiet", "ppal-read-track", "{}");
+
+    expect(warningsSentFor("req-quiet")).toStrictEqual([]);
+  });
+
+  it("wipes the patch's buffer before responding, so nothing rides along", async () => {
+    vi.mocked(readTrack).mockImplementation(() => {
+      warn("mine");
+
+      return {};
+    });
+
+    await mcp_request("req-wipe", "ppal-read-track", "{}");
+
+    const calls = vi.mocked(outlet).mock.calls;
+    const zlclear = calls.findIndex(
+      (args) => args[0] === 1 && args[1] === "zlclear",
+    );
+    const response = calls.findIndex((args) => args[1] === "mcp_response");
+
+    expect(zlclear).toBeGreaterThanOrEqual(0);
+    expect(zlclear).toBeLessThan(response);
+  });
+
+  it("does not attach a warning raised with no request in flight", async () => {
+    // What editing the Project Context box on a read-only folder does: the backup
+    // is fired and forgotten, so it warns long after its own response went out.
+    warn("stray, from no request at all");
+
+    vi.mocked(readTrack).mockImplementation(() => {
+      warn("mine");
+
+      return {};
+    });
+
+    await mcp_request("req-after-stray", "ppal-read-track", "{}");
+
+    expect(warningsSentFor("req-after-stray")).toStrictEqual(["mine"]);
+  });
+});

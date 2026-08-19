@@ -6,6 +6,7 @@
 import { beforeEach, vi } from "vitest";
 import { beginLiveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
 import { resetLiveApiTracking } from "#src/live-api-adapter/live-api-release.ts";
+import { beginWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
 import { LiveAPI } from "./mocks/mock-live-api.ts";
 import { Max, resetMaxMock } from "./mocks/mock-max.ts";
@@ -46,4 +47,10 @@ beforeEach(() => {
   // without this its per-target map would grow across the whole suite. Also
   // what lets a budget test read liveApiBuildStats() for its own call alone.
   beginLiveApiBuildStats();
+
+  // Tool code only ever runs inside a request, so give every test one to warn
+  // into. Without it console.warn() takes the no-request-in-flight path and
+  // reports to the Max console instead. A test covering that path ends the
+  // capture itself.
+  beginWarningCapture();
 });

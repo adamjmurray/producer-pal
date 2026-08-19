@@ -10,6 +10,7 @@
  */
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 
 declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;
@@ -57,46 +58,50 @@ export function requestNode<T = unknown>(
 ): Promise<NodeResponse<T>> {
   const requestId = generateRequestId();
 
-  return new Promise((resolve) => {
-    const timeoutCallback = (): void => {
-      if (pendingNodeRequests.has(requestId)) {
+  // Suspended across the await: another request can start while this one waits,
+  // and its warnings must not be collected against ours. See v8-warning-capture.
+  return suspendWarningCapture(
+    new Promise((resolve) => {
+      const timeoutCallback = (): void => {
+        if (pendingNodeRequests.has(requestId)) {
+          pendingNodeRequests.delete(requestId);
+          resolve({
+            success: false,
+            error: `node_request '${route}' timed out after ${NODE_REQUEST_TIMEOUT_MS}ms`,
+          });
+        }
+      };
+
+      const task = new Task(timeoutCallback);
+
+      task.schedule(NODE_REQUEST_TIMEOUT_MS);
+
+      pendingNodeRequests.set(requestId, {
+        resolve: resolve as (result: NodeResponse) => void,
+        timeoutTask: { cancel: () => task.schedule(-1) },
+      });
+
+      const request = JSON.stringify({ route, args });
+
+      // If outlet throws synchronously (Max IPC failure), cancel the timeout
+      // and resolve immediately so the caller doesn't wait 10s for nothing —
+      // mirrors max-api-adapter.ts which handles the Node→V8 direction the
+      // same way.
+      try {
+        outlet(0, "node_request", requestId, request);
+      } catch (error) {
         pendingNodeRequests.delete(requestId);
+        task.schedule(-1);
+
+        const message = error instanceof Error ? error.message : String(error);
+
         resolve({
           success: false,
-          error: `node_request '${route}' timed out after ${NODE_REQUEST_TIMEOUT_MS}ms`,
+          error: `Failed to send node_request '${route}': ${message}`,
         });
       }
-    };
-
-    const task = new Task(timeoutCallback);
-
-    task.schedule(NODE_REQUEST_TIMEOUT_MS);
-
-    pendingNodeRequests.set(requestId, {
-      resolve: resolve as (result: NodeResponse) => void,
-      timeoutTask: { cancel: () => task.schedule(-1) },
-    });
-
-    const request = JSON.stringify({ route, args });
-
-    // If outlet throws synchronously (Max IPC failure), cancel the timeout
-    // and resolve immediately so the caller doesn't wait 10s for nothing —
-    // mirrors max-api-adapter.ts which handles the Node→V8 direction the
-    // same way.
-    try {
-      outlet(0, "node_request", requestId, request);
-    } catch (error) {
-      pendingNodeRequests.delete(requestId);
-      task.schedule(-1);
-
-      const message = error instanceof Error ? error.message : String(error);
-
-      resolve({
-        success: false,
-        error: `Failed to send node_request '${route}': ${message}`,
-      });
-    }
-  });
+    }),
+  );
 }
 
 /**
