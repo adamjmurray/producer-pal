@@ -125,6 +125,11 @@ approval.
 before running these, and always run a single file — the full suite takes
 minutes.
 
+`setupMcpTestContext` resets the config in a `beforeEach`, which runs _after_
+any `beforeAll` in your own file. So a tool call from a `beforeAll` gets the
+compact output format, not JSON, and `parseToolResult` throws. Call
+`resetConfig()` first when probing Live state that early.
+
 `e2e/portal/` drives the built portal binary against a stub device, so it needs
 neither Live nor a network — just `npm run build` first. See
 `e2e/portal/README.md`.
