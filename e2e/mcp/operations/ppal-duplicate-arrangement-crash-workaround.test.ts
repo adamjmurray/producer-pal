@@ -20,7 +20,6 @@ import {
   KICK_FILE,
   parseToolResult,
   type ReadClipResult,
-  resetConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
@@ -165,10 +164,6 @@ describe("arrangement clip duplication crash workaround", () => {
   let audioShortId: string; // kick.aiff (shorter)
 
   beforeAll(async () => {
-    // Enable JSON output before creating clips (beforeEach hasn't run yet)
-    await resetConfig();
-    await sleep(50);
-
     // 4-bar MIDI session clip on t8/s0
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",

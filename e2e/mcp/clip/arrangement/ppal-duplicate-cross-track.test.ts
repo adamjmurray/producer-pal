@@ -22,14 +22,13 @@
  *
  * Run with: npm run e2e:mcp -- ppal-duplicate-cross-track
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
-  resetConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -42,11 +41,6 @@ const DEST_TRACK_2 = 10;
 const AUDIO_TRACK = 5;
 
 describe("cross-track arrangement clip duplicate", () => {
-  beforeAll(async () => {
-    await resetConfig();
-    await sleep(50);
-  });
-
   it("copies to toPath's track at the source's own position, leaving the source intact", async () => {
     const position = "5|1";
     const source = await createArrClip(position, "Source A");

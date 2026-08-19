@@ -16,7 +16,6 @@ import {
   SAMPLE_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
-  resetConfig,
   setupMcpTestContext,
   sleep,
   supportsSampleLoading,
@@ -29,9 +28,6 @@ const ctx = setupMcpTestContext({ once: true });
 let canLoadSamples = true;
 
 beforeAll(async () => {
-  // The per-test resetConfig hasn't run yet, so ask for JSON output first.
-  await resetConfig();
-
   canLoadSamples = await supportsSampleLoading(ctx.client!);
 });
 

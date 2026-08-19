@@ -224,20 +224,33 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
     await openLiveSet(options?.liveSetPath ?? LIVE_SET_PATH);
     ctx.connection = await connectMcp(MCP_URL);
     ctx.client = ctx.connection.client;
+
+    // The reset below is a beforeEach, so it runs after any beforeAll in the
+    // test file — a tool call from there would get the compact output format
+    // and fail to parse as JSON. Reset here too so that can't happen. Only
+    // needed under `once`: otherwise there is no client yet in a beforeAll.
+    if (options?.once) {
+      await resetConfigAndSettle();
+    }
   });
 
   // Always reset config before each test (even when reusing connection)
-  beforeEach(async () => {
-    await resetConfig();
-    // Small delay to ensure Max processes the config message before test runs
-    await sleep(50);
-  });
+  beforeEach(resetConfigAndSettle);
 
   teardown(async () => {
     await ctx.client?.close();
   });
 
   return ctx;
+}
+
+/**
+ * Reset the server config and give Max time to process the message.
+ * @returns Nothing
+ */
+async function resetConfigAndSettle(): Promise<void> {
+  await resetConfig();
+  await sleep(50);
 }
 
 interface CreateDeviceResult {

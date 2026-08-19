@@ -23,7 +23,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   parseToolResult,
   type ReadClipResult,
-  resetConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -48,9 +47,6 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
   let audioId: string; // session sample clip on t5/s0
 
   beforeAll(async () => {
-    await resetConfig();
-    await sleep(50);
-
     const midi = await callTool(ctx.client!, "ppal-create-clip", {
       path: `t${MIDI_TRACK}/s0`,
       notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
