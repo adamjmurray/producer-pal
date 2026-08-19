@@ -23,17 +23,22 @@ const REAL_CODE_EXEC_MODULES = new Set([
 ]);
 
 // Absence alone would also pass if the import were simply deleted, so each
-// bundle names the stub that has to be standing in its place.
+// bundle names the stub that has to be standing in its place. The portal
+// reaches no code-exec module today, so it has none to name — it is covered
+// because it ships, and an import added later must arrive stubbed.
 const BUNDLES = [
-  { name: "live-api-adapter", index: 0 },
-  { name: "mcp-server", index: 1 },
+  {
+    name: "live-api-adapter",
+    index: 0,
+    stub: "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
+  },
+  {
+    name: "mcp-server",
+    index: 1,
+    stub: "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
+  },
+  { name: "portal", index: 2, stub: null },
 ] as const;
-
-const EXPECTED_STUBS: Record<string, string> = {
-  "live-api-adapter":
-    "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
-  "mcp-server": "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
-};
 
 const moduleIds: Record<string, string[]> = {};
 
@@ -50,16 +55,19 @@ beforeAll(async () => {
   }
 }, 120_000);
 
-describe.each(BUNDLES)("release bundle: $name", ({ name }) => {
+describe.each(BUNDLES)("release bundle: $name", ({ name, stub }) => {
   it("contains no code-execution module", () => {
     expect(
       moduleIds[name]?.filter((id) => REAL_CODE_EXEC_MODULES.has(id)),
     ).toStrictEqual([]);
   });
 
-  it("substituted the stub rather than dropping the import", () => {
-    expect(moduleIds[name]).toContain(EXPECTED_STUBS[name]);
-  });
+  it.skipIf(stub == null)(
+    "substituted the stub rather than dropping the import",
+    () => {
+      expect(moduleIds[name]).toContain(stub);
+    },
+  );
 
   it("does not import node:vm", () => {
     expect(moduleIds[name]).not.toContain("node:vm");

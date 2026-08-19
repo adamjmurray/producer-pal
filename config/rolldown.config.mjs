@@ -149,6 +149,7 @@ export default defineConfig([
     },
     transform: { target: "es2023" },
     plugins: [
+      ...codeExecPlugins,
       addLicenseHeader({
         includeThirdPartyLicenses: true,
         shebang: "#!/usr/bin/env node",
