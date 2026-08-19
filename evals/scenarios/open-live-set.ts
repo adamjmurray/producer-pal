@@ -25,7 +25,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
 
-const ABLETON_APP = "Ableton Live 12 Suite"; // For `open -a`
+// For `open -a`. Override to test against a differently-named bundle
+// (e.g. a side-by-side older version).
+const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
 const ABLETON_PROCESS = "Live"; // For System Events
 const DIALOG_POLL_INTERVAL_MS = 250;
 const DIALOG_TIMEOUT_MS = 2500;
