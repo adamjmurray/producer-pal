@@ -37,7 +37,7 @@ so their content matters more than their musicality.
 
 ## Tracks
 
-### t0: Drums (MIDI, armed)
+### t0: Drums (MIDI)
 
 The whole structure lives here.
 
