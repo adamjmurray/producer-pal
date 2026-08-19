@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
+import { errorMessage } from "#src/shared/error-utils";
 import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   deleteEntryRequest,
@@ -44,6 +45,14 @@ export interface DocCollectionEntry {
   name: string;
 }
 
+/** What a rename resolved to. */
+export interface RenameOutcome<TView> {
+  /** The stored entry, or null if the rename failed. */
+  entry: TView | null;
+  /** Why it failed, or null when it succeeded (or the server echoed nothing). */
+  error: string | null;
+}
+
 /** Status of a whole doc collection. */
 export type DocCollectionStatus<TView> =
   | { kind: "loading" }
@@ -66,14 +75,18 @@ export interface UseDocCollectionReturn<TView, TInput> {
   ) => Promise<TView | null>;
   /**
    * Rename one entry: persist its current fields under `newName` and drop the
-   * old slug. Resolves the stored entry, or null on failure (e.g. a name
-   * collision, surfaced via saveError). A no-op slug change updates in place.
+   * old slug. A no-op slug change updates in place.
+   *
+   * Resolves the stored entry AND, on failure, why it failed — the caller has to
+   * own that message rather than read it off `saveError`, which the very next
+   * save clears (a rename resumes the editor's autosave, so that save is often
+   * moments away).
    */
   renameEntry: (
     oldName: string,
     newName: string,
     input: TInput,
-  ) => Promise<TView | null>;
+  ) => Promise<RenameOutcome<TView>>;
   /** Delete one entry. Resolves true on success, false on failure. */
   deleteEntry: (name: string) => Promise<boolean>;
   /**
@@ -141,22 +154,40 @@ export function useDocCollection<
   );
 
   const renameEntry = useCallback(
-    (oldName: string, newName: string, input: TInput): Promise<TView | null> =>
-      mutate(
-        () =>
-          putRename<TView>(
-            `${entryUrl(oldName)}/rename`,
-            newName,
-            input,
-            label,
-          ),
+    async (
+      oldName: string,
+      newName: string,
+      input: TInput,
+    ): Promise<RenameOutcome<TView>> => {
+      // Keep the failure message here on the way past: mutate reports it through
+      // the shared saveError, which the caller's resumed autosave then clears.
+      let error: string | null = null;
+
+      const entry = await mutate(
+        async () => {
+          try {
+            return await putRename<TView>(
+              `${entryUrl(oldName)}/rename`,
+              newName,
+              input,
+              label,
+            );
+          } catch (failure: unknown) {
+            error = errorMessage(failure);
+
+            throw failure;
+          }
+        },
         // Drop the old slug and merge the new entry (a no-op slug change just
         // re-adds it; the list re-sorts by name, so order is irrelevant).
-        (entry) =>
-          setStatus((prev) => mergeEntry(removeEntry(prev, oldName), entry)),
+        (renamed) =>
+          setStatus((prev) => mergeEntry(removeEntry(prev, oldName), renamed)),
         // A rename touches both slugs, so a later write to EITHER supersedes it.
         [oldName, newName],
-      ),
+      );
+
+      return { entry, error };
+    },
     [mutate, entryUrl, label],
   );
 

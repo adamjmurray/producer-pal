@@ -212,7 +212,7 @@ const DISCARD_NEW_MEMORY_MESSAGE =
 
 /** What {@link useMemoryRename} needs from the editor's live draft. */
 interface MemoryRenameParams {
-  /** The collection hook (owns renameEntry + the shared saveError). */
+  /** The collection hook (owns renameEntry). */
   collection: UseMemoryCollectionReturn;
   /** The entry being edited, or null when creating (no rename in that mode). */
   entry: MemoryEntryView | null;
@@ -236,9 +236,11 @@ interface MemoryRenameParams {
 
 /**
  * The name field's error plus its change/rename handlers. The error is a
- * required-field miss, else the reason a rename was refused (a name collision or
- * a server-rejected slug) — read fresh from the collection each render, not off
- * the stale rename closure — cleared as soon as the user edits the name. An
+ * required-field miss, else the reason a rename was refused (a collision, a
+ * server-rejected slug, a request that timed out), cleared as soon as the user
+ * edits the name. The rename's own message is pinned in local state rather than
+ * read off the shared saveError, which the autosave resumed just below clears
+ * on its next write. An
  * emptied/unchanged name never renames (an emptied one keeps its required error
  * visible; an unchanged one just normalizes whitespace). The current draft
  * fields ride along on the write so a dirty body isn't lost.
@@ -266,16 +268,14 @@ function useMemoryRename(params: MemoryRenameParams): {
   const { collection, entry, setName, description, body } = params;
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
   const { resumePendingSave } = params;
-  const [renameFailed, setRenameFailed] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
-  const nameError =
-    requiredError ??
-    (renameFailed ? (collection.saveError ?? undefined) : undefined);
+  const nameError = requiredError ?? renameError ?? undefined;
 
   // Drive the name input and dismiss any stale rename error as the user edits.
   const onNameChange = (value: string): void => {
     setName(value);
-    setRenameFailed(false);
+    setRenameError(null);
   };
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
@@ -284,10 +284,14 @@ function useMemoryRename(params: MemoryRenameParams): {
     // autosave off for the whole round trip, not just the debounce armed now.
     await settlePendingSave();
 
-    const renamed = await collection.renameEntry(oldName, to, {
-      description,
-      content: body,
-    });
+    const { entry: renamed, error } = await collection.renameEntry(
+      oldName,
+      to,
+      {
+        description,
+        content: body,
+      },
+    );
 
     // The move is over either way, so put the draft back on the clock: nothing
     // here moves draftKey (it follows entry.name, not the name field), so a body
@@ -296,13 +300,13 @@ function useMemoryRename(params: MemoryRenameParams): {
     resumePendingSave();
 
     if (renamed == null) {
-      setRenameFailed(true);
+      setRenameError(error);
       setName(oldName);
 
       return;
     }
 
-    setRenameFailed(false);
+    setRenameError(null);
     setName(renamed.name);
     noteSaved(memoryEntryKey(renamed));
     onRenamed(oldName, renamed.name);

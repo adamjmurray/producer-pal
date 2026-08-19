@@ -16,6 +16,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
+import { type RenameOutcome } from "#webui/hooks/context/use-doc-collection";
 import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   type MemoryEntryInput,
@@ -337,7 +338,9 @@ describe("MemoryEntryEditor — rename", () => {
   };
 
   it("renames on blur, carrying the current fields and following the new slug", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const renameEntry = vi
+      .fn()
+      .mockResolvedValue({ entry: RENAMED, error: null });
     const collection = fakeCollection({ renameEntry });
     const onSaved = vi.fn();
     const onRenamed = vi.fn();
@@ -367,7 +370,9 @@ describe("MemoryEntryEditor — rename", () => {
   });
 
   it("commits the rename on Enter", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const renameEntry = vi
+      .fn()
+      .mockResolvedValue({ entry: RENAMED, error: null });
     const collection = fakeCollection({ renameEntry });
 
     renderEditor({ collection, entry: EXISTING });
@@ -438,12 +443,13 @@ describe("MemoryEntryEditor — rename", () => {
   });
 
   it("reverts the field AND surfaces the collision reason under the name on a failed rename", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(null);
-    const collection = fakeCollection({
-      renameEntry,
-      saveStatus: "error",
-      saveError: 'A memory named "taken" already exists',
+    // The reason rides back on the rename's own result, not the collection's
+    // shared saveError — that one is cleared by whatever writes next.
+    const renameEntry = vi.fn().mockResolvedValue({
+      entry: null,
+      error: 'A memory named "taken" already exists',
     });
+    const collection = fakeCollection({ renameEntry, saveStatus: "error" });
 
     renderEditor({ collection, entry: EXISTING });
 
@@ -483,8 +489,8 @@ describe("MemoryEntryEditor — rename", () => {
     let landRename: (entry: MemoryEntryView) => void = () => {};
     const renameEntry = vi.fn(
       () =>
-        new Promise<MemoryEntryView>((resolve) => {
-          landRename = resolve;
+        new Promise<RenameOutcome<MemoryEntryView>>((resolve) => {
+          landRename = (entry) => resolve({ entry, error: null });
         }),
     );
     const saveEntry = vi.fn().mockResolvedValue(RENAMED);
@@ -542,7 +548,7 @@ describe("MemoryEntryEditor — rename", () => {
     const saveEntry = vi.fn().mockResolvedValue(EXISTING);
     const collection = fakeCollection({
       saveEntry,
-      renameEntry: vi.fn().mockResolvedValue(null),
+      renameEntry: vi.fn().mockResolvedValue({ entry: null, error: null }),
     });
 
     renderEditor({ collection, entry: EXISTING });

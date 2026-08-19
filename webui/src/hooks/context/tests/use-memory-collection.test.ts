@@ -172,7 +172,10 @@ describe("useMemoryCollection", () => {
         body: "Composes in C minor.",
       },
     ]);
-    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      LIST_URL,
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 
   it("falls back to an empty list when entries is missing", async () => {
@@ -316,7 +319,7 @@ describe("useMemoryCollection", () => {
       );
     });
 
-    expect(renamed).toMatchObject({ name: "renamed" });
+    expect(renamed).toMatchObject({ entry: { name: "renamed" }, error: null });
     expect(readyEntries(result).map((e) => e.name)).toStrictEqual(["renamed"]);
     expect(fetchMock).toHaveBeenLastCalledWith(
       `${ENTRY_URL}/rename`,
@@ -347,7 +350,7 @@ describe("useMemoryCollection", () => {
     expect(entries[0]?.body).toBe("kept");
   });
 
-  it("renameEntry returns null and surfaces the server error on a collision", async () => {
+  it("renameEntry reports the server error on a collision, on its own result and on saveError", async () => {
     const result = await mountReady([rawEntry()]);
 
     fetchMock.mockResolvedValueOnce(
@@ -371,7 +374,13 @@ describe("useMemoryCollection", () => {
       );
     });
 
-    expect(renamed).toBeNull();
+    // The message rides back on the result too, so the caller can pin it: the
+    // shared saveError is cleared by whatever writes next (after a rename that
+    // is often the editor's resumed autosave, moments later).
+    expect(renamed).toStrictEqual({
+      entry: null,
+      error: 'A memory named "taken" already exists',
+    });
     expect(result.current.saveStatus).toBe("error");
     expect(result.current.saveError).toMatch(/already exists/i);
     // The original entry is left untouched.

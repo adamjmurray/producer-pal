@@ -10,10 +10,11 @@
 // Typed `number`, not the inferred literal, so a test mock can supply its own.
 
 /**
- * Deadline for one ~/.producer-pal collection write (save, rename, delete).
- * Long enough that a slow local disk never trips it, short enough that a request
- * the local server accepts and never answers can't wedge a caller waiting on it
- * — the memory editor holds autosave off across a rename until the write
- * settles.
+ * Deadline for one ~/.producer-pal collection request — the list read and every
+ * write (save, rename, delete). Long enough that a slow local disk never trips
+ * it, short enough that a request the local server accepts and never answers
+ * can't wedge whoever is waiting on it: the memory editor holds autosave off
+ * across a rename until the write settles, and the collection screens sit on
+ * "Loading…" until the list read does.
  */
-export const COLLECTION_WRITE_TIMEOUT_MS: number = 10_000;
+export const COLLECTION_REQUEST_TIMEOUT_MS: number = 10_000;

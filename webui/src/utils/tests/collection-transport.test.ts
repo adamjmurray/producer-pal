@@ -4,14 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { COLLECTION_WRITE_TIMEOUT_MS } from "#webui/lib/constants/transport";
+import { COLLECTION_REQUEST_TIMEOUT_MS } from "#webui/lib/constants/transport";
 import {
   deleteEntryRequest,
+  fetchEntries,
   putEntry,
   putRename,
 } from "#webui/utils/collection-transport";
 
 const URL = "http://localhost/api/memory/prefers-c-minor";
+const LIST_URL = "http://localhost/api/memory";
 
 /** One collection write, so the deadline tests can run all three channels. */
 interface WriteChannel {
@@ -94,7 +96,7 @@ describe("collection transport write deadline", () => {
 
       const outcome = settlementOf(channel.dispatch());
 
-      await vi.advanceTimersByTimeAsync(COLLECTION_WRITE_TIMEOUT_MS);
+      await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
 
       expect(await outcome).toHaveProperty(
         "message",
@@ -112,7 +114,7 @@ describe("collection transport write deadline", () => {
       settled = true;
     });
 
-    await vi.advanceTimersByTimeAsync(COLLECTION_WRITE_TIMEOUT_MS - 1);
+    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS - 1);
 
     expect(settled).toBe(false);
   });
@@ -132,7 +134,7 @@ describe("collection transport write deadline", () => {
 
     const outcome = settlementOf(putEntry(URL, {}, false, "Memory"));
 
-    await vi.advanceTimersByTimeAsync(COLLECTION_WRITE_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
 
     expect(await outcome).toHaveProperty("message", "Memory update timed out");
   });
@@ -163,5 +165,33 @@ describe("collection transport write deadline", () => {
     await expect(deleteEntryRequest(URL, "Memory")).rejects.toThrow(
       "body must not be empty",
     );
+  });
+
+  // The list read gets the same deadline: without one, a GET the server never
+  // answers leaves the collection screen on "Loading…" with nothing to retry.
+  it("fails a list read the server never answers", async () => {
+    stubUnanswered();
+
+    const outcome = settlementOf(fetchEntries(LIST_URL, "Memory"));
+
+    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
+
+    expect(await outcome).toHaveProperty("message", "Memory request timed out");
+  });
+
+  it("leaves a list read that lands in time alone", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ entries: [{ name: "a" }] }));
+
+    await expect(fetchEntries(LIST_URL, "Memory")).resolves.toStrictEqual([
+      { name: "a" },
+    ]);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    // The read stays a plain no-store GET — no keepalive, which is a write-only
+    // concern (the unload flush).
+    expect(init.cache).toBe("no-store");
+    expect(init.keepalive).toBeUndefined();
+    expect(init.signal?.aborted).toBe(false);
   });
 });

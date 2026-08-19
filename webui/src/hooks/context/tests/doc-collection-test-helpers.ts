@@ -26,7 +26,7 @@ export function fakeDocCollection<TView, TInput>(
     saveStatus: "idle",
     saveError: null,
     saveEntry: vi.fn().mockResolvedValue(null),
-    renameEntry: vi.fn().mockResolvedValue(null),
+    renameEntry: vi.fn().mockResolvedValue({ entry: null, error: null }),
     deleteEntry: vi.fn().mockResolvedValue(true),
     resetSaveStatus: vi.fn(),
     refresh: vi.fn().mockResolvedValue(undefined),

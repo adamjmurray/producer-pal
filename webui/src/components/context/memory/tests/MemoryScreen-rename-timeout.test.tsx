@@ -36,7 +36,7 @@ vi.mock(import("#webui/lib/constants/autosave"), () => ({
 // suite lives apart from the other rename tests: several of theirs deliberately
 // hold a write open longer than this.
 vi.mock(import("#webui/lib/constants/transport"), () => ({
-  COLLECTION_WRITE_TIMEOUT_MS: 400,
+  COLLECTION_REQUEST_TIMEOUT_MS: 400,
 }));
 
 const TAB_SLOT = <div data-testid="tabs">tabs</div>;
@@ -164,6 +164,11 @@ describe("MemoryScreen — a rename the server never answers", () => {
       "value",
       ENTRY.name,
     );
+
+    // And the reason survives that save. The message used to be read off the
+    // collection's shared saveError, which every write clears on dispatch — so
+    // the autosave just above wiped the only account of what went wrong.
+    expect(screen.getByText(/timed out/i)).toBeTruthy();
   });
 
   it("tells the user the rename timed out", async () => {
@@ -180,5 +185,12 @@ describe("MemoryScreen — a rename the server never answers", () => {
     fireEvent.blur(nameInput);
 
     expect(await screen.findByText(/timed out/i)).toBeTruthy();
+
+    // Editing the name is the dismissal, same as for any other rename error.
+    fireEvent.input(nameInput, { target: { value: "Another Slug" } });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/timed out/i)).toBeNull();
+    });
   });
 });
