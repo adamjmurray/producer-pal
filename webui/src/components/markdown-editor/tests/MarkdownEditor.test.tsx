@@ -259,11 +259,17 @@ describe("MarkdownEditor", () => {
 
     view.contentDOM.focus();
     view.dispatch({ userEvent: "select" });
+
+    // Checked here rather than at the end: "both were called" passes just as
+    // well with the two callbacks wired to the wrong event.
+    expect(onFocus).toHaveBeenCalledTimes(1);
+    expect(onBlur).not.toHaveBeenCalled();
+
     view.contentDOM.blur();
     view.dispatch({ userEvent: "select" });
 
-    expect(onFocus).toHaveBeenCalled();
-    expect(onBlur).toHaveBeenCalled();
+    expect(onBlur).toHaveBeenCalledTimes(1);
+    expect(onFocus).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -6,7 +6,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { type UIMessage } from "#webui/types/messages";
+import { type ChatClient } from "#webui/hooks/chat/use-chat-types";
 import {
+  connectClient,
   filterOverrides,
   handleMessageStream,
   resolveInitConnection,
@@ -296,6 +298,76 @@ describe("streaming-helpers", () => {
         validateMcpConnection("error", "Test error", checkMcp),
       ).rejects.toThrow("MCP connection failed");
       expect(checkMcp).toHaveBeenCalled();
+    });
+  });
+
+  describe("connectClient", () => {
+    /** A connect that lands only when the returned `land` is called */
+    function pendingClient() {
+      let land = () => {};
+      let fail = (_error: Error) => {};
+      const client = {
+        initialize: () =>
+          new Promise<void>((resolve, reject) => {
+            land = resolve;
+            fail = reject;
+          }),
+      } as ChatClient<MockMessage>;
+
+      return { client, land: () => land(), fail: (e: Error) => fail(e) };
+    }
+
+    it("publishes the connect while it runs and clears it once it lands", async () => {
+      const pendingInitRef: { current: Promise<void> | null } = {
+        current: null,
+      };
+      const { client, land } = pendingClient();
+      const connecting = connectClient(client, pendingInitRef);
+
+      expect(pendingInitRef.current).not.toBeNull();
+
+      land();
+      await connecting;
+
+      expect(pendingInitRef.current).toBeNull();
+    });
+
+    it("clears the published connect when the connection fails", async () => {
+      // Left published, every later turn would await a promise that already
+      // rejected instead of connecting a fresh client.
+      const pendingInitRef: { current: Promise<void> | null } = {
+        current: null,
+      };
+      const { client, fail } = pendingClient();
+      const connecting = connectClient(client, pendingInitRef);
+
+      fail(new Error("MCP down"));
+
+      await expect(connecting).rejects.toThrow("MCP down");
+      expect(pendingInitRef.current).toBeNull();
+    });
+
+    it("leaves a newer connect published when an older one settles", async () => {
+      const pendingInitRef: { current: Promise<void> | null } = {
+        current: null,
+      };
+      const first = pendingClient();
+      const second = pendingClient();
+      const firstConnect = connectClient(first.client, pendingInitRef);
+      const secondConnect = connectClient(second.client, pendingInitRef);
+      const published = pendingInitRef.current;
+
+      first.land();
+      await firstConnect;
+
+      // The second init owns the ref now. Clearing it would let a turn stream
+      // on a client whose MCP connection hasn't landed.
+      expect(pendingInitRef.current).toBe(published);
+
+      second.land();
+      await secondConnect;
+
+      expect(pendingInitRef.current).toBeNull();
     });
   });
 });

@@ -13,6 +13,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   applyChainMixer,
+  carryChainMixer,
   readChainMixer,
   sourceChain,
   warnIfChainMixerLeftBehind,
@@ -519,5 +520,80 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(outlet).not.toHaveBeenCalled();
+  });
+});
+
+describe("carryChainMixer", () => {
+  const silent = { value: 0, display_value: -70 };
+  const carried = {
+    from: 'chain "Snare"',
+    mixer: {
+      gainDb: -15,
+      sends: [
+        { return: "a Delay", gainDb: -12 },
+        { return: "b Reverb", gainDb: -6 },
+      ],
+    },
+  };
+
+  /**
+   * Register the destination chain with two sends, naming the rack's returns
+   * @param disabledSends - Sends a rack macro owns, by index
+   * @param disabled - Mixer parameters a rack macro owns
+   * @returns The destination's send parameters
+   */
+  function registerDestination(
+    disabledSends: number[] = [],
+    disabled: ("volume" | "panning")[] = [],
+  ): RegisteredMockObject[] {
+    registerChainWithMixer({ sends: [silent, silent], disabled });
+    registerMockObject("rack-1", {
+      path: rackPath,
+      type: "RackDevice",
+      properties: { return_chains: children("rc-0", "rc-1") },
+    });
+
+    for (const [i, name] of ["a Delay", "b Reverb"].entries()) {
+      registerMockObject(`rc-${i}`, { type: "Chain", properties: { name } });
+    }
+
+    return [0, 1].map((i) =>
+      registerMockObject(`send-${i}`, {
+        type: "DeviceParameter",
+        properties: { is_enabled: disabledSends.includes(i) ? 0 : 1 },
+      }),
+    );
+  }
+
+  it("counts only the sends that landed", () => {
+    // A rack macro owns the destination's second send, so Live ignores that
+    // write. Counting it would name a send the chain never got.
+    const [first, second] = registerDestination([1]);
+
+    carryChainMixer(carried, chainApi());
+
+    expect(first?.set).toHaveBeenCalledWith("display_value", -12);
+    expect(second?.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+    );
+  });
+
+  it("reports nothing carried when neither the gain nor a send lands", () => {
+    // Every write is macro-owned, so the send list comes back empty — which is
+    // not a carry, however many sends were offered.
+    registerDestination([0, 1], ["volume"]);
+
+    carryChainMixer(carried, chainApi());
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'chain "Snare" trim could not be carried onto the destination chain — it stays on the chain the device left',
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("carried onto the destination chain, which was"),
+    );
   });
 });

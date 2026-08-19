@@ -694,4 +694,28 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
       expect.stringContaining("carried onto the destination chain, which was"),
     );
   });
+
+  it("leaves the trim alone when Live refuses the move", () => {
+    // Registered without the move_device that lands the device, so the move
+    // reads as refused. The device never arrived, so writing the destination
+    // fader would re-level a chain nothing moved into.
+    registerMockObject("live-set", { path: livePath.liveSet });
+
+    const destinationVolume = registerMockObject("volume-1", {
+      path: `${rackPath.chain(1)} mixer_device volume`,
+    });
+
+    registerMockObject("mixer-1", {
+      path: `${rackPath.chain(1)} mixer_device`,
+    });
+
+    updateDevice({ ids: "device-0", toPath: "t0/d0/c1" });
+
+    expect(outlet).toHaveBeenCalledWith(1, "Live refused the move");
+    expect(destinationVolume.set).not.toHaveBeenCalled();
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("carried onto the destination chain"),
+    );
+  });
 });
