@@ -36,12 +36,15 @@ export function setupSplittingClipBaseMocks(
     },
   });
 
-  // Register the track
+  // Register the track. It reports its arrangement clips because the holding
+  // area is recomputed from them per clip — a track that reports none would
+  // hide a later clip staging onto an earlier one's leftovers.
   registerMockObject("track_0", {
     path: livePath.track(0),
     type: "Track",
     properties: {
       track_index: 0,
+      arrangement_clips: ["id", clipId],
     },
   });
 
@@ -56,7 +59,21 @@ export function setupSplittingClipBaseMocks(
   });
 }
 
-interface SplittingClipProps {
+/**
+ * Add a clip to what the track reports as its arrangement clips.
+ * @param trackMock - The track mock
+ * @param clipId - Id of the clip to add
+ */
+export function addArrangementClip(
+  trackMock: RegisteredMockObject,
+  clipId: string,
+): void {
+  const clips = (trackMock.properties.arrangement_clips ?? []) as string[];
+
+  trackMock.properties.arrangement_clips = [...clips, "id", clipId];
+}
+
+export interface SplittingClipProps {
   isMidi?: boolean;
   looping?: boolean;
   startTime?: number;
@@ -165,11 +182,21 @@ export function createSplittingCallMock(): SplittingCallState {
         id: dupId,
       });
 
-      // Register the new duplicate clip dynamically
+      // Register the copy where it actually landed, and add it to the track:
+      // a copy left behind by a failed split is what the next clip's holding
+      // area has to clear. Trims are not modeled — reporting a copy longer than
+      // it ends up only pushes the next holding area further right.
+      const position = _args[1] as number;
+
       registerMockObject(dupId, {
         path: livePath.track(0).arrangementClip(1),
         type: "Clip",
+        properties: {
+          start_time: position,
+          end_time: position + sourceLength(_args[0]),
+        },
       });
+      addArrangementClip(trackMock, dupId);
 
       return ["id", dupId];
     }
@@ -188,6 +215,21 @@ export function createSplittingCallMock(): SplittingCallState {
   });
 
   return state;
+}
+
+/**
+ * How long the clip a duplicate was made from is, for placing the copy.
+ * @param sourceId - The `id N` the duplicate was called with
+ * @returns Length in beats, or 0 when the source isn't a registered mock
+ */
+function sourceLength(sourceId: unknown): number {
+  const source = lookupMockObject(String(sourceId).replace(/^id /, ""));
+
+  if (!source) return 0;
+
+  const props = source.properties as Record<string, number | undefined>;
+
+  return (props.end_time ?? 0) - (props.start_time ?? 0);
 }
 
 /**
@@ -230,6 +272,35 @@ export function setupSplitTest(
   const mockClip = LiveAPI.from(`id ${SPLIT_CLIP_ID}`);
 
   return { clipId: SPLIT_CLIP_ID, callState, mockClip, clips: [mockClip] };
+}
+
+/**
+ * Make one duplicate call throw, the way a Live API error surfaces in V8,
+ * while the calls around it still register their copies. Unlike
+ * {@link overrideWithDuplicateCounter}, the copies stay on the track — which is
+ * what a later clip's holding area has to account for.
+ * @param trackMock - The track mock
+ * @param nth - 1-based duplicate call that throws
+ */
+export function throwOnNthDuplicate(
+  trackMock: RegisteredMockObject,
+  nth: number,
+): void {
+  const inner = trackMock.call.getMockImplementation() as (
+    method: string,
+    ...args: unknown[]
+  ) => unknown;
+  let count = 0;
+
+  trackMock.call.mockImplementation((method: string, ...args: unknown[]) => {
+    if (method === "duplicate_clip_to_arrangement") {
+      count++;
+
+      if (count === nth) throw new Error("Live refused the duplicate");
+    }
+
+    return inner(method, ...args);
+  });
 }
 
 interface DuplicateCounter {

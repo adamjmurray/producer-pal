@@ -17,7 +17,7 @@ import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arra
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import {
-  holdingAreaStartPast,
+  holdingAreaStartOnTrack,
   moveClipFromHolding,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import {
@@ -153,7 +153,7 @@ export function getMinimalClipInfo(
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
  * @param omitFields - Optional fields to omit from clip info
- * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param context - Context object with silenceWavPath
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
  */
@@ -184,10 +184,10 @@ export async function createClipsForLength(
     // The holding copy is what gets moved onto the target, so it must not be
     // sitting there already: moveClipFromHolding would read that as a
     // self-overlap and skip the clear it needs to avoid the Ableton crash.
-    // Duplicating at the end of the arrangement is exactly that case — the
-    // holding area is only a few bars past the last event.
-    const holdingStart = holdingAreaStartPast(
-      context.holdingAreaStartBeats as number,
+    // Read the track each time — a multi-position duplicate places copies as it
+    // goes, and one of them may already be where an earlier start pointed.
+    const holdingStart = holdingAreaStartOnTrack(
+      track,
       arrangementStartBeats + arrangementLengthBeats,
     );
 
@@ -318,7 +318,7 @@ async function lengthenClipAndCollectInfo(
  * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
- * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param context - Context object with silenceWavPath
  * @returns Clip info or object with trackIndex and clips array
  */
 export async function duplicateClipToArrangement(

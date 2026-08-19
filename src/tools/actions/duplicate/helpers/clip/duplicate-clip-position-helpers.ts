@@ -60,7 +60,7 @@ import {
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Name for a take lane newly created by this call
- * @param context - Context object with holdingAreaStartBeats
+ * @param context - Per-request context
  * @returns Array of result objects
  */
 export async function duplicateClipWithPositions(
@@ -158,7 +158,7 @@ function duplicateClipToSlots(
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Name for a take lane newly created by this call
- * @param context - Context object with holdingAreaStartBeats
+ * @param context - Per-request context
  * @returns Array of result objects
  */
 async function duplicateClipToArrangementPositions(

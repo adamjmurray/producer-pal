@@ -679,7 +679,7 @@ describe("updateClip - splitting mutation coverage", () => {
 
     const result = await updateClip(
       { ids: clipId, arrangementSplit: "2|1" },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     // Splitting ran (arrangement clip kept by the <= 0 / >= 0 boundary)...
@@ -707,7 +707,7 @@ describe("updateClip - splitting mutation coverage", () => {
     // would call performSplitting with null and throw).
     const result = await updateClip(
       { ids: clipId, arrangementSplit: "not-a-position" },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     expect(result).toBeDefined();

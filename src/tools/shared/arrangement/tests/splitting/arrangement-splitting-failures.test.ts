@@ -14,12 +14,15 @@ import {
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
+  addArrangementClip,
   overrideWithDuplicateCounter,
   setupClipSplittingMocks,
   setupSplittingClipGetMock,
+  throwOnNthDuplicate,
+  type SplittingClipProps,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 
-const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+const HOLDING_AREA = {} as const;
 
 /** 12 beats from beat 100, so segment positions are unambiguous. */
 const TWELVE_BEAT_AT_100 = {
@@ -51,15 +54,19 @@ function dupPositions(trackMock: RegisteredMockObject): number[] {
 /**
  * Register a second 8-beat clip on the same track.
  * @param clipId - Id for the new clip
+ * @param props - Where the clip sits (defaults to the same span as the first)
  * @returns The clip
  */
-function registerSecondClip(clipId: string): LiveAPI {
+function registerSecondClip(
+  clipId: string,
+  props: SplittingClipProps = EIGHT_BEAT_AT_100,
+): LiveAPI {
   registerMockObject(clipId, {
     path: livePath.track(0).arrangementClip(1),
     type: "Clip",
     properties: { track_index: 0 },
   });
-  setupSplittingClipGetMock(clipId, EIGHT_BEAT_AT_100);
+  setupSplittingClipGetMock(clipId, props);
 
   return LiveAPI.from(`id ${clipId}`);
 }
@@ -125,6 +132,40 @@ describe("performSplitting when Live refuses a step", () => {
       expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
     );
     expect(dupPositions(trackMock).at(-1)).toBe(104);
+  });
+
+  it("stages the next clip past the copy the failure left behind", () => {
+    // Regression: the holding area was one position for the whole request, so
+    // the copy clip_1's failure stranded there was still in the way when clip_2
+    // staged onto the same spot — an arrangement source duplicated onto an
+    // occupied span, which is the crash this module exists to prevent.
+    const { callState } = setupClipSplittingMocks("clip_1", EIGHT_BEAT_AT_100);
+    const first = LiveAPI.from("id clip_1");
+    const second = registerSecondClip("clip_2", {
+      looping: true,
+      startTime: 200,
+      endTime: 208,
+      loopEnd: 4,
+    });
+
+    addArrangementClip(callState.trackMock, "clip_2");
+
+    // The 2nd duplicate moves clip_1's tail out of holding. Live refusing it
+    // leaves the holding copy where it is.
+    throwOnNthDuplicate(callState.trackMock, 2);
+
+    performSplitting(
+      [first, second],
+      [104, 204],
+      [first, second],
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
+
+    const [stranded, , next] = dupPositions(callState.trackMock);
+
+    // The stranded copy is 8 beats long, so clip_2 has to start past its end.
+    expect(next).toBeGreaterThanOrEqual((stranded as number) + 8);
   });
 
   it("keeps splitting the rest of the batch", () => {

@@ -49,7 +49,7 @@ function expectSkippedWithWarning(
     clip,
     isAudioClip: false,
     arrangementLengthBeats: 16,
-    context: { holdingAreaStartBeats: 40000 },
+    context: {},
   });
 
   expect(result).toStrictEqual([]);
@@ -87,7 +87,7 @@ describe("handleArrangementLengthOperation", () => {
       clip,
       isAudioClip: true,
       arrangementLengthBeats: 16,
-      context: { holdingAreaStartBeats: 40000 },
+      context: {},
     });
 
     expect(lengtheningSpy).toHaveBeenCalledTimes(1);
@@ -104,7 +104,7 @@ describe("handleArrangementLengthOperation", () => {
       clip,
       isAudioClip: false,
       arrangementLengthBeats: 4,
-      context: { holdingAreaStartBeats: 40000 },
+      context: {},
     });
 
     expect(shorteningSpy).toHaveBeenCalledTimes(1);
@@ -120,7 +120,7 @@ describe("handleArrangementLengthOperation", () => {
       clip,
       isAudioClip: false,
       arrangementLengthBeats: 8,
-      context: { holdingAreaStartBeats: 40000 },
+      context: {},
     });
 
     expect(lengtheningSpy).not.toHaveBeenCalled();

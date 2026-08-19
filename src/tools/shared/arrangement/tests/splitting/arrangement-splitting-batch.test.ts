@@ -15,6 +15,7 @@ import {
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
+  addArrangementClip,
   mockArrangementClipsRescan,
   setupClipSplittingMocks,
   setupSplittingClipGetMock,
@@ -22,7 +23,7 @@ import {
   type SplittingCallState,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 
-const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+const HOLDING_AREA = {} as const;
 
 /**
  * Two 16-beat clips on track 0, at beats 0 and 32. Split points [8, 40] give
@@ -45,6 +46,7 @@ function setupBatchSplitTest(): {
     properties: { track_index: 0 },
   });
   setupSplittingClipGetMock("clip_2", { startTime: 32.0, endTime: 48.0 });
+  addArrangementClip(callState.trackMock, "clip_2");
 
   const arrangementClips = [
     LiveAPI.from("id clip_1"),
@@ -52,6 +54,38 @@ function setupBatchSplitTest(): {
   ];
 
   return { callState, arrangementClips, clips: [...arrangementClips] };
+}
+
+/**
+ * Where a clip's split staged its copy of the original.
+ * @param callState - The call-tracking state
+ * @param clipId - The clip whose split to look up
+ * @returns Position in beats, or undefined if that clip was never staged
+ */
+function holdingStartFor(
+  callState: SplittingCallState,
+  clipId: string,
+): number | undefined {
+  return callState.duplicateCalls.find(
+    (call) => call.args[0] === `id ${clipId}`,
+  )?.args[1] as number | undefined;
+}
+
+/**
+ * The right edge of the last copy a clip's split made, holding area included.
+ * @param callState - The call-tracking state
+ * @param clipId - The clip whose split made the copies
+ * @returns Position in beats past the furthest copy
+ */
+function lastDuplicateEnd(
+  callState: SplittingCallState,
+  clipId: string,
+): number {
+  const start = holdingStartFor(callState, clipId) as number;
+
+  // 16-beat clips: the source copy sits at the holding start, and the middle
+  // segments follow it at clipLength + 4 apart.
+  return start + 16;
 }
 
 describe("performSplitting across a batch of clips", () => {
@@ -67,15 +101,12 @@ describe("performSplitting across a batch of clips", () => {
     );
 
     // Each clip's own copy to the holding area: the first thing its split does.
-    expect(callState.trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id clip_1",
-      40000,
-    );
-    expect(callState.trackMock.call).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id clip_2",
-      40000,
+    expect(holdingStartFor(callState, "clip_1")).toBe(148);
+
+    // Past every copy clip_1's split left behind, not the same place clip_1
+    // staged at: a shared start would put this clip on top of those copies.
+    expect(holdingStartFor(callState, "clip_2")).toBeGreaterThan(
+      lastDuplicateEnd(callState, "clip_1"),
     );
   });
 
@@ -99,11 +130,7 @@ describe("performSplitting across a batch of clips", () => {
       "Ran out of time after splitting 1 of 2 clips. " +
         "Not split: clip_2. Re-run for those ids.",
     );
-    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      "id clip_2",
-      40000,
-    );
+    expect(holdingStartFor(callState, "clip_2")).toBeUndefined();
   });
 
   it("replaces both clips with the pieces the rescan finds", () => {

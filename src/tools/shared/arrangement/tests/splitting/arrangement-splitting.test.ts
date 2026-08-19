@@ -23,7 +23,7 @@ import {
   withEachLiveCallCostingASecond,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 
-const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+const HOLDING_AREA = {} as const;
 
 /** An 8-beat arrangement clip looping a 4-beat region. */
 const EIGHT_BEAT_LOOPED = {
@@ -544,7 +544,6 @@ describe("performSplitting", () => {
       [4],
       clips,
       {
-        holdingAreaStartBeats: 40000,
         silenceWavPath: "/tmp/silence.wav",
       },
       ARRANGEMENT_SPLIT_MODE,
@@ -604,21 +603,22 @@ describe("performSplitting", () => {
       .filter((c: unknown[]) => c[0] === "duplicate_clip_to_arrangement")
       .map((c: unknown[]) => c[2]);
 
-    // Step 1 source→holding at 40000; Step 3 middle works at
-    // holdingAreaStart + 1*(clipLength 12 + 4) = 40016, then moves to
-    // clipArrangementStart 100 + segStart 4 = 104; Step 4 last moves to
-    // clipArrangementStart 100 + lastSegStart 8 = 108.
-    expect(dupPositions).toStrictEqual([40000, 40016, 104, 108]);
+    // Holding area: the clip ends at 112, and it is the only one on the track,
+    // so 112 + the 100-beat gap = 212. Step 1 source→holding at 212; Step 3
+    // middle works at holdingAreaStart + 1*(clipLength 12 + 4) = 228, then
+    // moves to clipArrangementStart 100 + segStart 4 = 104; Step 4 last moves
+    // to clipArrangementStart 100 + lastSegStart 8 = 108.
+    expect(dupPositions).toStrictEqual([212, 228, 104, 108]);
 
     // Step 2 right-trim seg0: temp at start 100 + seg0End 4 = 104, length
     // clipLength 12 - seg0End 4 = 8.
     expect(calls).toContainEqual(["create_midi_clip", 104, 8]);
-    // Step 3 middle left-trim at workPos 40016, length segStart 4; right-trim at
-    // workPos 40016 + segEnd 8 = 40024, length clipLength 12 - segEnd 8 = 4.
-    expect(calls).toContainEqual(["create_midi_clip", 40016, 4]);
-    expect(calls).toContainEqual(["create_midi_clip", 40024, 4]);
-    // Step 4 last-segment left-trim at sourcePos 40000, length lastSegStart 8.
-    expect(calls).toContainEqual(["create_midi_clip", 40000, 8]);
+    // Step 3 middle left-trim at workPos 228, length segStart 4; right-trim at
+    // workPos 228 + segEnd 8 = 236, length clipLength 12 - segEnd 8 = 4.
+    expect(calls).toContainEqual(["create_midi_clip", 228, 4]);
+    expect(calls).toContainEqual(["create_midi_clip", 236, 4]);
+    // Step 4 last-segment left-trim at sourcePos 212, length lastSegStart 8.
+    expect(calls).toContainEqual(["create_midi_clip", 212, 8]);
   });
 
   it("excludes a split point that lands exactly on the clip end", () => {
@@ -678,15 +678,7 @@ describe("performSplitting", () => {
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
 
-    performSplitting(
-      [mockClip],
-      [4, 8],
-      clips,
-      {
-        holdingAreaStartBeats: 40000,
-      },
-      ARRANGEMENT_SPLIT_MODE,
-    );
+    performSplitting([mockClip], [4, 8], clips, {}, ARRANGEMENT_SPLIT_MODE);
 
     // clips array should now contain fresh clip references from rescan
     expect(clips).toHaveLength(2);
@@ -708,15 +700,7 @@ describe("performSplitting", () => {
     // Pass an empty clips array so staleIndex will be -1
     const clips: LiveAPI[] = [];
 
-    performSplitting(
-      [mockClip],
-      [4],
-      clips,
-      {
-        holdingAreaStartBeats: 40000,
-      },
-      ARRANGEMENT_SPLIT_MODE,
-    );
+    performSplitting([mockClip], [4], clips, {}, ARRANGEMENT_SPLIT_MODE);
 
     // clips array should remain empty since stale clip was not found
     expect(clips).toHaveLength(0);
@@ -742,13 +726,7 @@ describe("performSplitting", () => {
     const mockClip = LiveAPI.from(`id ${clipId}`);
     const clips = [mockClip];
 
-    performSplitting(
-      [mockClip],
-      [4],
-      clips,
-      { holdingAreaStartBeats: 40000 },
-      ARRANGEMENT_SPLIT_MODE,
-    );
+    performSplitting([mockClip], [4], clips, {}, ARRANGEMENT_SPLIT_MODE);
 
     expect(clips.map((c) => c.id)).toStrictEqual(["fresh_in1", "fresh_in2"]);
   });
@@ -765,13 +743,7 @@ describe("performSplitting", () => {
     // The stale clip is at index 1; the decoy at index 0 must be untouched.
     const clips = [decoy, mockClip];
 
-    performSplitting(
-      [mockClip],
-      [4],
-      clips,
-      { holdingAreaStartBeats: 40000 },
-      ARRANGEMENT_SPLIT_MODE,
-    );
+    performSplitting([mockClip], [4], clips, {}, ARRANGEMENT_SPLIT_MODE);
 
     expect(clips[0]!.id).toBe("decoy");
     expect(clips.some((c) => c.id === "fresh_1")).toBe(true);

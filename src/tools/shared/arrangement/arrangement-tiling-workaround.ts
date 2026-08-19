@@ -273,7 +273,7 @@ export function moveClipFromHolding(
 ): LiveAPI {
   // Clear any *other* clip at the target before placing the holding copy. The
   // holding clip itself can never overlap the target here: callers position the
-  // holding area past the target placement (see holdingAreaStartFromIds's
+  // holding area past the target placement (see holdingAreaStartOnTrack's
   // minStartBeats), so clearClipAtDuplicateTarget's self-overlap branch is
   // unreachable for the holding clip and its boolean return is safely ignored.
   if (!targetIsEmpty) {
@@ -472,17 +472,9 @@ function clearOverlappingClip(
 const HOLDING_AREA_GAP_BEATS = 100;
 
 /**
- * Compute a safe holding-area start position: past both the last arrangement
- * clip AND any planned target placement, guaranteeing an empty region to
- * duplicate into that also cannot overlap the eventual target.
- *
- * `minStartBeats` lets a caller that will place a full-length copy at a target
- * push the holding area past that placement's right edge (targetPosition +
- * length). Without it, a clip longer than HOLDING_AREA_GAP_BEATS duplicated far
- * enough forward would land its target copy on top of the holding clip — which
- * moveClipFromHolding's clearClipAtDuplicateTarget would then misread as a
- * self-overlap, skip clearing the original, and re-trigger the very Ableton
- * crash this module exists to prevent.
+ * A holding-area start past both the last of `clipIds` and any planned target
+ * placement, for a caller that already has the track's clip ids in hand. See
+ * {@link holdingAreaStartOnTrack} for why this is recomputed, never cached.
  * @param clipIds - Arrangement clip IDs to consider
  * @param minStartBeats - Earliest beat the holding area must clear (default 0)
  * @returns Holding-area start position in beats
@@ -500,25 +492,36 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
 }
 
 /**
- * Push a caller-supplied holding-area start past a placement the same request
- * is about to make.
+ * A holding-area start for `track`, read from the track as it is right now.
  *
- * The context's holding area is `song_length`, which Live keeps only a few bars
- * past the last event (~8 bars in 12.4.3). A request that writes further than
- * that pad puts content under its own holding area, so a later
- * duplicate-to-holding lands on that content instead of empty space: the
- * Ableton crash, or an overwrite that eats what was just placed. Verified in
- * Live — a 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
+ * Always recompute at the point of use. A holding area derived from anything
+ * captured earlier in the request — `song_length`, or a start another clip was
+ * given — is blind to what this same call already wrote, so a request that
+ * placed a clip past that point stages the next one on top of it: the Ableton
+ * crash, or an overwrite that eats what was just placed. Verified in Live — a
+ * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
  *
- * Only a placement that runs past the holding area moves it; a request working
- * left of `song_length` keeps the start it was given.
- * @param holdingAreaStart - Holding-area start the caller was given, in beats
- * @param placementEnd - Right edge of the placement to clear, in beats
+ * `minStartBeats` is for a caller that will place its copy at a target: pass
+ * that placement's right edge so the holding area clears it. Without it, a copy
+ * longer than HOLDING_AREA_GAP_BEATS placed far forward lands on the holding
+ * clip — which moveClipFromHolding's clearClipAtDuplicateTarget then misreads
+ * as a self-overlap, skips the clear, and re-triggers the same crash.
+ *
+ * Concurrent requests (parallel subagents) can derive the SAME start: nothing
+ * reserves the range. That is safe only because every consumer stages, uses,
+ * and clears its block synchronously — requests interleave at await points, so
+ * their staged content never coexists. Put an await between staging and
+ * clearing and two requests can overwrite each other there, silently.
+ * @param track - The track the holding area is on
+ * @param minStartBeats - Earliest beat the holding area must clear (default 0)
  * @returns Holding-area start position in beats
  */
-export function holdingAreaStartPast(
-  holdingAreaStart: number,
-  placementEnd: number,
+export function holdingAreaStartOnTrack(
+  track: LiveAPI,
+  minStartBeats = 0,
 ): number {
-  return Math.max(holdingAreaStart, placementEnd + HOLDING_AREA_GAP_BEATS);
+  return holdingAreaStartFromIds(
+    track.getChildIds("arrangement_clips"),
+    minStartBeats,
+  );
 }

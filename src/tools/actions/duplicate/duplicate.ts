@@ -299,7 +299,7 @@ function duplicateDrumPadToPaths(
  * @param name - Base name for duplicated objects
  * @param color - Color for duplicated objects (cycles if comma-separated)
  * @param params - Additional parameters
- * @param context - Context object with holdingAreaStartBeats
+ * @param context - Per-request context
  * @returns Array of result objects
  */
 async function duplicateTrackOrSceneWithCount(

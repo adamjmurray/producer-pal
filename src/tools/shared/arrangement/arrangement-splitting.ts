@@ -13,11 +13,13 @@ import {
   EPSILON,
   type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
-import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import {
+  holdingAreaStartOnTrack,
+  moveClipFromHolding,
+} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 export interface SplittingContext {
-  holdingAreaStartBeats: number;
   silenceWavPath?: string;
   /** When the request's budget runs out; set once per request by the adapter. */
   deadline?: number | null;
@@ -59,7 +61,6 @@ interface SplitSingleClipArgs {
   clip: LiveAPI;
   splitPoints: number[];
   mode: SplitMode;
-  holdingAreaStart: number;
   context: SplittingContext;
   splitClipRanges: Map<string, SplitClipRange>;
   misses: SplitMiss[];
@@ -79,7 +80,7 @@ interface SplitSingleClipArgs {
  * @returns true if splitting succeeded, false if skipped
  */
 function splitSingleClip(args: SplitSingleClipArgs): boolean {
-  const { clip, splitPoints, mode, holdingAreaStart, context } = args;
+  const { clip, splitPoints, mode, context } = args;
   const { splitClipRanges } = args;
 
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -125,6 +126,11 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   const track = LiveAPI.from(livePath.track(trackIndex));
   const originalClipId = clip.id;
+
+  // Per clip, from the track as it stands. An earlier clip in the batch can
+  // fail partway and leave its copy past the end of the arrangement, so a start
+  // shared across the batch would stage this clip on top of that copy.
+  const holdingAreaStart = holdingAreaStartOnTrack(track);
 
   splitClipRanges.set(originalClipId, {
     trackIndex,
@@ -431,7 +437,6 @@ export function performSplitting(
   _context: SplittingContext,
   mode: SplitMode,
 ): void {
-  const holdingAreaStart = _context.holdingAreaStartBeats;
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
 
@@ -459,7 +464,6 @@ export function performSplitting(
         clip,
         splitPoints,
         mode,
-        holdingAreaStart,
         context: _context,
         splitClipRanges,
         misses,

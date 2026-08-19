@@ -18,7 +18,6 @@ import {
   LEGACY_SPLIT_MODE,
   performSplitting,
   type SplitMode,
-  type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -113,7 +112,7 @@ interface ClipResult {
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes (broadcast across ids; use context.clip.{index,count} for per-clip variation)
  * @param args.focus - Select the clip and show clip detail view
- * @param context - Tool execution context with holding area settings
+ * @param context - Per-request context
  * @returns Single clip object or array of clip objects
  */
 export async function updateClip(
@@ -391,13 +390,7 @@ function applySplittingIfNeeded(
   );
 
   if (splitPoints != null) {
-    performSplitting(
-      arrangementClips,
-      splitPoints,
-      clips,
-      context as SplittingContext,
-      mode,
-    );
+    performSplitting(arrangementClips, splitPoints, clips, context, mode);
 
     return clips.filter((clip) => clip.exists());
   }

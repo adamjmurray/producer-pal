@@ -83,7 +83,7 @@ describe("tileClipToRange holding area", () => {
     setupClip("300", { properties: { end_time: 118 } });
 
     // Tiles at 4 and 8, a 2-beat partial at 12: the span ends at 14.
-    const result = tileClipToRange(sourceClip, track, 4, 10, 4, mockContext);
+    const result = tileClipToRange(sourceClip, track, 4, 10, mockContext);
 
     expect(duplicatesTo(4)).toBe(1);
     expect(track.call).toHaveBeenCalledWith(
@@ -92,6 +92,45 @@ describe("tileClipToRange holding area", () => {
       114,
     );
     expect(result).toStrictEqual([{ id: "200" }, { id: "201" }, { id: "302" }]);
+  });
+
+  it("keeps the holding area clear of what an earlier clip in the batch placed", () => {
+    // A batch of clips on one track: the first ran past where the arrangement
+    // ended, so a holding area fixed at request start now points inside its
+    // clips. Clip 900 stands in for that placement.
+    const sourceClip = setupMidiSourceClip("100", 0, {
+      is_arrangement_clip: 1,
+      start_time: 0,
+      end_time: 4,
+    });
+
+    setupArrangementClip("900", 0, { start_time: 100, end_time: 600 }, 1);
+
+    const track = setupTrackWithClips(["100", "900"], {
+      duplicate_clip_to_arrangement: [
+        ["id", "200"],
+        ["id", "201"],
+        ["id", "300"],
+        ["id", "302"],
+      ],
+      create_midi_clip: [["id", "301"]],
+    });
+
+    setupTileClip("200");
+    setupTileClip("201");
+    setupTileClip("302");
+    setupClip("300", { properties: { end_time: 704 } });
+
+    tileClipToRange(sourceClip, track, 4, 10, mockContext);
+
+    // Full tiles duplicate the source to their own positions first; the last
+    // one is the partial tile's copy into the holding area.
+    const holdingTarget = requireMockTrack(0).call.mock.calls.findLast(
+      ([method, source]: unknown[]) =>
+        method === "duplicate_clip_to_arrangement" && source === "id 100",
+    )?.[2] as number;
+
+    expect(holdingTarget).toBeGreaterThanOrEqual(600);
   });
 });
 
@@ -125,7 +164,7 @@ function tileOverSource(): LiveAPI {
     ],
   });
 
-  tileClipToRange(sourceClip, track, 100, 10, 1000, mockContext);
+  tileClipToRange(sourceClip, track, 100, 10, mockContext);
 
   return track;
 }
@@ -177,17 +216,9 @@ describe("tileClipToRange clearing when the span was not pre-cleared", () => {
     });
 
     // Two tiles at 116 and 120; tile 0's 16 beats reach 132.
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      116,
-      8,
-      1000,
-      mockContext,
-      {
-        tileLength: 4,
-      },
-    );
+    const result = tileClipToRange(sourceClip, track, 116, 8, mockContext, {
+      tileLength: 4,
+    });
 
     expect(track.call).toHaveBeenCalledWith("delete_clip", "id 700");
     expect(result).toStrictEqual([{ id: "200" }, { id: "201" }]);

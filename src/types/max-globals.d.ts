@@ -24,7 +24,6 @@ interface ToolContext {
    */
   notation?: "barbeat" | "midi-json" | "stark";
   sampleFolder: string | null;
-  holdingAreaStartBeats?: number;
   silenceWavPath?: string;
   timeoutMs?: number;
   /**

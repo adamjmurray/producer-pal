@@ -38,10 +38,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    await updateClip(
-      { ids: clipId, split: "2|1" },
-      { holdingAreaStartBeats: 40000 },
-    );
+    await updateClip({ ids: clipId, split: "2|1" }, {});
 
     expectDuplicateCalled(callState.trackMock);
   });
@@ -55,7 +52,7 @@ describe("updateClip - splitting smoke tests", () => {
     // They read positions on different timelines, so there is no safe guess.
     await updateClip(
       { ids: clipId, arrangementSplit: "2|1", split: "3|1" },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
@@ -78,7 +75,7 @@ describe("updateClip - splitting smoke tests", () => {
         ids: clipId,
         arrangementSplit: "2|1, 3|1", // Split at bar 2 and bar 3
       },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     // Should call duplicate_clip_to_arrangement (splitting is active)
@@ -96,7 +93,7 @@ describe("updateClip - splitting smoke tests", () => {
         arrangementSplit: "2|1",
         name: "Split Clip",
       },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     // Should call duplicate_clip_to_arrangement (splitting is active)
@@ -141,7 +138,7 @@ describe("updateClip - splitting smoke tests", () => {
         ids: clipId,
         arrangementSplit: "2|1",
       },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     // Should complete successfully, filtering out the non-existent clip (id "0")
@@ -170,7 +167,7 @@ describe("updateClip - splitting smoke tests", () => {
         ids: clipId,
         arrangementSplit: "2|1",
       },
-      { holdingAreaStartBeats: 40000 },
+      {},
     );
 
     expect(consoleSpy).toHaveBeenCalledWith(

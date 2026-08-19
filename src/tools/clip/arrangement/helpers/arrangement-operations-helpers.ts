@@ -12,7 +12,6 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
 export interface ArrangementContext {
-  holdingAreaStartBeats?: number;
   silenceWavPath?: string;
 }
 
@@ -32,7 +31,7 @@ interface TileWithContextOptions {
  * @param track - Track to tile on
  * @param position - Start position
  * @param length - Length to tile
- * @param ctx - Context with holding area info
+ * @param ctx - Per-request context
  * @param options - Tiling options
  * @returns Array of tiled clip info
  */
@@ -49,7 +48,6 @@ function tileWithContext(
     track,
     position,
     length,
-    ctx.holdingAreaStartBeats as number,
     ctx as TilingContext,
     options,
   );
@@ -74,7 +72,7 @@ interface HandleArrangementLengtheningArgs {
  * @param options.currentArrangementLength - Current length in beats
  * @param options.currentStartTime - Current start time in beats
  * @param options.currentEndTime - Current end time in beats
- * @param options.context - Tool execution context with holding area info
+ * @param options.context - Per-request context
  * @returns Array of updated clip info
  */
 export function handleArrangementLengthening({

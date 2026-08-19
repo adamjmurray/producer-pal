@@ -73,7 +73,7 @@ function setupTiling(tileCount: number) {
 function countTrackScans(tileCount: number): number {
   const { sourceClip, track } = setupTiling(tileCount);
 
-  tileClipToRange(sourceClip, track, 100, tileCount * 4, 1000, mockContext);
+  tileClipToRange(sourceClip, track, 100, tileCount * 4, mockContext);
 
   return requireMockTrack(0).get.mock.calls.filter(
     ([property]: unknown[]) => property === "arrangement_clips",
@@ -123,7 +123,7 @@ describe("tileClipToRange deadline", () => {
 
     stopAfterChecks(2);
 
-    const result = tileClipToRange(sourceClip, track, 100, 64, 1000, {
+    const result = tileClipToRange(sourceClip, track, 100, 64, {
       ...mockContext,
       deadline: 1,
     });
@@ -136,7 +136,7 @@ describe("tileClipToRange deadline", () => {
 
     stopAfterChecks(2);
 
-    tileClipToRange(sourceClip, track, 100, 64, 1000, {
+    tileClipToRange(sourceClip, track, 100, 64, {
       ...mockContext,
       deadline: 1,
     });
@@ -156,7 +156,7 @@ describe("tileClipToRange deadline", () => {
 
     vi.mocked(isDeadlineExceeded).mockReturnValue(true);
 
-    const result = tileClipToRange(sourceClip, track, 100, 16, 1000, {
+    const result = tileClipToRange(sourceClip, track, 100, 16, {
       ...mockContext,
       deadline: 1,
     });
@@ -179,7 +179,7 @@ describe("tileClipToRange deadline", () => {
 
       stopAfterChecks(3);
 
-      const result = tileClipToRange(sourceClip, track, 100, 16, 1000, {
+      const result = tileClipToRange(sourceClip, track, 100, 16, {
         ...mockContext,
         deadline: 1,
       });
@@ -193,14 +193,7 @@ describe("tileClipToRange deadline", () => {
   it("places every tile when no deadline is set", () => {
     const { sourceClip, track } = setupTiling(4);
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      16,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 16, mockContext);
 
     expect(result).toHaveLength(4);
   });
@@ -252,7 +245,7 @@ describe("tileClipToRange clearing ahead", () => {
 
     stopAfterChecks(2);
 
-    const result = tileClipToRange(sourceClip, track, 100, 64, 1000, {
+    const result = tileClipToRange(sourceClip, track, 100, 64, {
       ...mockContext,
       deadline: 1,
     });
@@ -267,7 +260,7 @@ describe("tileClipToRange clearing ahead", () => {
   it("clears that same clip once tiling reaches it", () => {
     const { sourceClip, track } = setupTilingOverExistingClip(16, 140);
 
-    tileClipToRange(sourceClip, track, 100, 64, 1000, mockContext);
+    tileClipToRange(sourceClip, track, 100, 64, mockContext);
 
     expect(requireMockTrack(0).call).toHaveBeenCalledWith(
       "delete_clip",

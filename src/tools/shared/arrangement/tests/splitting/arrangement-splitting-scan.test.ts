@@ -77,9 +77,7 @@ function countTrackScans(splitPoints: number[]): number {
     [mockClip],
     splitPoints,
     [mockClip],
-    {
-      holdingAreaStartBeats: 40000,
-    },
+    {},
     ARRANGEMENT_SPLIT_MODE,
   );
 
@@ -99,9 +97,11 @@ describe("performSplitting track scanning", () => {
     expect(eightSegments).toBe(twoSegments);
   });
 
-  it("scans only for the post-split rescan", () => {
-    // One read, and it belongs to rescanSplitClips collecting the new clips.
-    expect(countTrackScans([4, 8, 12])).toBe(1);
+  it("scans once per clip and once for the post-split rescan", () => {
+    // Two reads for one clip: its holding area, computed from the track as it
+    // stands so a failed earlier clip's leftovers are cleared, and
+    // rescanSplitClips collecting the new clips. Per clip, never per segment.
+    expect(countTrackScans([4, 8, 12])).toBe(2);
   });
 
   it("actually performs the split the counts are taken from", () => {
@@ -116,9 +116,7 @@ describe("performSplitting track scanning", () => {
       [LiveAPI.from(`id ${SPLIT_CLIP_ID}`)],
       [4, 8, 12],
       [],
-      {
-        holdingAreaStartBeats: 40000,
-      },
+      {},
       ARRANGEMENT_SPLIT_MODE,
     );
 

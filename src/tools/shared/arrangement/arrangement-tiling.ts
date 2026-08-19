@@ -22,7 +22,7 @@ import {
 import {
   canClearTiledSpan,
   clearArrangementRange,
-  holdingAreaStartPast,
+  holdingAreaStartOnTrack,
   moveClipFromHolding,
   sourceOverlapsTarget,
 } from "./arrangement-tiling-workaround.ts";
@@ -53,7 +53,6 @@ interface PartialTileOptions {
  * @param track - LiveAPI track instance
  * @param targetPosition - Target position in beats
  * @param partialLength - Length of partial tile in beats
- * @param holdingAreaStart - Start position of holding area in beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Context object with silenceWavPath for audio clips
  * @param options - Configuration options
@@ -69,7 +68,6 @@ export function createPartialTile(
   track: LiveAPI,
   targetPosition: number,
   partialLength: number,
-  holdingAreaStart: number,
   isMidiClip: boolean,
   context: TilingContext,
   {
@@ -78,11 +76,11 @@ export function createPartialTile(
     targetIsEmpty = false,
   }: PartialTileOptions = {},
 ): LiveAPI {
-  // The holding area sits a few bars past where the arrangement ended when the
-  // request started, so a run that tiles further than that puts a tile exactly
-  // where the holding copy goes. Keep it clear of this tile's own span.
-  const holdingStart = holdingAreaStartPast(
-    holdingAreaStart,
+  // Read from the track, not from a start captured earlier in the request: a
+  // tile this same run already placed may sit where a stale holding area
+  // points. Keep it clear of this tile's own span too.
+  const holdingStart = holdingAreaStartOnTrack(
+    track,
     targetPosition + partialLength,
   );
 
@@ -130,7 +128,6 @@ export function createPartialTile(
  * @param track - LiveAPI track instance
  * @param startPosition - Start position for tiling in beats
  * @param totalLength - Total length to fill with tiles in beats
- * @param holdingAreaStart - Start position of holding area in beats
  * @param context - Context object with silenceWavPath for audio clips
  * @param options - Configuration options
  * @param options.adjustPreRoll - Whether to adjust pre-roll on subsequent tiles
@@ -143,7 +140,6 @@ export function tileClipToRange(
   track: LiveAPI,
   startPosition: number,
   totalLength: number,
-  holdingAreaStart: number,
   context: TilingContext,
   {
     adjustPreRoll = true,
@@ -254,7 +250,6 @@ export function tileClipToRange(
         track,
         currentPosition,
         remainder,
-        holdingAreaStart,
         isMidiClip,
         context,
         {

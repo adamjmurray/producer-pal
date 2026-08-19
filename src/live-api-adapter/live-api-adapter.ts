@@ -112,31 +112,10 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return context;
 }
 
-/**
- * Initialize holding area start position from current song_length on the
- * given per-request context. This ensures holding area is always just past
- * actual content, avoiding permanent song_length bloat from hardcoded
- * positions.
- *
- * Concurrent requests (parallel subagents) can derive the SAME start position:
- * each reads song_length independently and nothing reserves the range. That is
- * safe only because every consumer stages, uses, and clears its block
- * synchronously — requests interleave at await points, so their staged content
- * never coexists. Put an await between staging and clearing and two requests
- * can overwrite each other there, silently.
- *
- * @param ctx - Per-request context to populate
- */
-function initHoldingArea(ctx: ToolContext): void {
-  const liveSet = LiveAPI.from("live_set");
-
-  ctx.holdingAreaStartBeats = liveSet.getProperty("song_length") as number;
-}
-
 /*
 **IMPORTANT**: Always pass args AND ctx to tool functions
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
-This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
+This ensures all tools have access to context (silenceWavPath, deadline, etc.)
 Exception: ppal-connect takes args only — its signature intentionally dropped ctx
 (see the `connect(args)` line below), so it does not follow this pattern.
 */
@@ -156,22 +135,14 @@ const toolDispatch: Record<
   "ppal-update-scene": (args, ctx) => updateScene(args as any, ctx),
   "ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
   "ppal-read-clip": (args, ctx) => readClip(args as any, ctx),
-  "ppal-update-clip": (args, ctx) => {
-    initHoldingArea(ctx);
-
-    return updateClip(args as any, ctx);
-  },
+  "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
   "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
-  "ppal-duplicate": (args, ctx) => {
-    initHoldingArea(ctx);
-
-    return duplicate(args as any, ctx);
-  },
+  "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),

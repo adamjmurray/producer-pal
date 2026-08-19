@@ -22,7 +22,7 @@ import {
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
-const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
+const HOLDING_AREA = {} as const;
 
 /**
  * A 16-beat clip starting at song beat 16 — song bars 5 through 9, so a

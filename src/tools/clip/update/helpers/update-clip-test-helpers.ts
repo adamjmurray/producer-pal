@@ -66,7 +66,7 @@ export function note(
  * Shared mock context for update-clip tests
  */
 export const mockContext = {
-  holdingAreaStartBeats: 40000,
+  silenceWavPath: "/tmp/test-silence.wav",
 };
 
 export interface UpdateClipMocks {
