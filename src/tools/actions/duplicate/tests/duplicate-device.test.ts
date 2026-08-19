@@ -348,7 +348,7 @@ describe("duplicate - device duplication", () => {
 
     await expect(
       duplicate({ type: "device", id: "device1", toPath: "," }),
-    ).rejects.toThrow('invalid toPath "," - it names no destination');
+    ).rejects.toThrow('invalid toPath "," - it names nothing');
 
     // Refused before anything was created.
     expect(liveSet.call).not.toHaveBeenCalledWith(

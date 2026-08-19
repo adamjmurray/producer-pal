@@ -408,7 +408,7 @@ describe("duplicate - clip duplication", () => {
           arrangementStart: "3|1",
           toPath: ",",
         }),
-      ).rejects.toThrow(/toPath "," - it names no destination/);
+      ).rejects.toThrow(/toPath "," - it names nothing/);
 
       expect(track0.call).not.toHaveBeenCalled();
     });

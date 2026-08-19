@@ -71,19 +71,21 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
 
   const entries = parseCommaSeparatedIds(named);
 
-  // "," names nothing but was still sent. An empty list means "wherever the
-  // caller didn't say" downstream — the source's own track — so accepting it
-  // here is the silent wrong-destination this param exists to prevent.
+  // "," names nothing but was still sent. An empty list reads as "wherever the
+  // caller didn't say" downstream, which is the silent wrong-object these
+  // params exist to prevent. Worded for either role: the same helper splits
+  // toPath, which names where things go, and update-clip's path, which names
+  // the clips to act on.
   if (entries.length === 0) {
-    throw new Error(`invalid ${label} "${input}" - it names no destination`);
+    throw new Error(`invalid ${label} "${input}" - it names nothing`);
   }
 
   // Entries are positional — a clip's are cycled against its positions, a
-  // device's against its names — so a dropped one shifts every later copy
+  // device's against its names — so a dropped one shifts every later one
   // instead of just making one fewer.
   if (entries.length < named.split(",").length) {
     console.warn(
-      `${label} "${input}" has empty entries, which were dropped; later destinations shift up`,
+      `${label} "${input}" has empty entries, which were dropped; later entries shift up`,
     );
   }
 

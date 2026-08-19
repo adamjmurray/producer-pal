@@ -372,18 +372,19 @@ describe("updateClip - Basic operations", () => {
 
   // The silent-no-op twin of duplicate's ",": update-clip warns rather than
   // throwing, but it must not stay quiet about a move that never happened.
-  it.each(["toPath", "toSlot"])(
+  it.each([
+    // toPath is refused when the entries are split; toSlot once they're parsed.
+    ["toPath", 'invalid toPath "," - it names nothing'],
+    ["toSlot", "toSlot names no destination"],
+  ])(
     "should warn when %s was sent but names nothing",
-    async (param) => {
+    async (param, reason) => {
       setupMidiClipMock(mocks.clip123);
       setupToSlotMocks();
 
       const result = await updateClip({ ids: "123", [param]: "," });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("names no destination"),
-      );
+      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
       expect(result).not.toHaveProperty("slot");
     },
   );

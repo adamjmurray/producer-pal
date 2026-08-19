@@ -704,7 +704,7 @@ describe("resolveMoveDestinations", () => {
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("it names no destination"),
+      expect.stringContaining("it names nothing"),
     );
   });
 });

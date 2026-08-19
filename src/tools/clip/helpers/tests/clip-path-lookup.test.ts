@@ -82,7 +82,7 @@ describe("clipIdsAtPaths", () => {
 
     expect(clipIdsAtPaths(",", "updateClip")).toStrictEqual([]);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('invalid path "," - it names no destination'),
+      expect.stringContaining('invalid path "," - it names nothing'),
     );
   });
 

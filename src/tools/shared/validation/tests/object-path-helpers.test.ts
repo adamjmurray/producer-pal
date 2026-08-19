@@ -48,9 +48,7 @@ describe("parseObjectPathList", () => {
   // was sent but names nothing must not quietly become one.
   it("throws for a list that was sent but names nothing", () => {
     for (const input of [",", " , , "]) {
-      expect(() => parseObjectPathList(input)).toThrow(
-        /it names no destination/,
-      );
+      expect(() => parseObjectPathList(input)).toThrow(/it names nothing/);
     }
   });
 
@@ -85,6 +83,22 @@ describe("parseObjectPathList", () => {
     warn.mockClear();
     parseObjectPathList("t1,t2", "toPath");
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  // The same splitting serves toPath, which names where things go, and
+  // update-clip/delete/playback's path, which names the objects to act on. It
+  // used to call every entry a destination either way.
+  it("does not call a source a destination", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(() => parseObjectPathList(",", "path")).toThrow(
+      'invalid path "," - it names nothing',
+    );
+
+    parseObjectPathList("t1,,t2", "path");
+    expect(warn).toHaveBeenCalledWith(
+      'path "t1,,t2" has empty entries, which were dropped; later entries shift up',
+    );
   });
 });
 
