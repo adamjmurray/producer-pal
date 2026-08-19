@@ -348,25 +348,25 @@ object mid-sequence.
 
 Available operation types:
 
-| Type           | Properties used             | Description                                                                                                                      |
-| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                          |
-| `set`          | `property`, `value`         | Write a property value; returns Live's status code                                                                               |
-| `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                          |
-| `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                 |
-| `goto`         | `value` (path)              | Navigate to a different object                                                                                                   |
-| `info`         | —                           | Get object info                                                                                                                  |
-| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array         |
-| `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                             |
-| `exists`       | —                           | Check if the object exists                                                                                                       |
-| `getColor`     | —                           | Read object color                                                                                                                |
-| `setColor`     | `value` (hex string)        | Write object color                                                                                                               |
-| `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property |
-| `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method              |
-| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                               |
-| `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                 |
-| `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                      |
-| `getstring`    | `property`                  | Read a property as a string                                                                                                      |
+| Type           | Properties used             | Description                                                                                                                                  |
+| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                      |
+| `set`          | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected — read the property back to confirm it landed                      |
+| `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                                      |
+| `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                             |
+| `goto`         | `value` (path)              | Navigate to a different object                                                                                                               |
+| `info`         | —                           | Get object info                                                                                                                              |
+| `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                                  |
+| `getstring`    | `property`                  | Read a property as a string                                                                                                                  |
+| `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array                     |
+| `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                                         |
+| `exists`       | —                           | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
+| `getColor`     | —                           | Read object color                                                                                                                            |
+| `setColor`     | `value` (hex string)        | Write object color                                                                                                                           |
+| `get_property` | `property`                  | Read a JavaScript field on the LiveAPI object itself (`path`, `id`, `type`, `mode`, `valid`, `children`, …), not a Live property             |
+| `call_method`  | `method`, `args` (optional) | Call a JavaScript method on the LiveAPI object itself (`getProperty`, `getChildIds`, `child`, …), not a Live method                          |
+| `set_path`     | `value` (path)              | Assign the LiveAPI object's `path`, retargeting it. `""` clears it                                                                           |
+| `set_mode`     | `value` (`0` or `1`)        | Assign the LiveAPI object's `mode`: `0` follows the path, `1` follows the object                                                             |
 
 The last group operates on the JavaScript wrapper, not the Live object it points
 at. Despite the names, `get`/`get_property` and `call`/`call_method` are **not**

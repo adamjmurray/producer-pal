@@ -196,8 +196,15 @@ describe("LiveAPI extensions", () => {
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining(
-          `LiveAPI getProperty: failed to parse "input_routing_type" response:`,
+          `LiveAPI getProperty: failed to parse "input_routing_type" response`,
         ),
+      );
+
+      // The raw payload is the point of the warning — without it there is
+      // nothing to debug from.
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(`"invalid json {"`),
       );
     });
 

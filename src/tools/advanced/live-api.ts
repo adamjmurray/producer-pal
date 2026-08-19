@@ -156,7 +156,7 @@ function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
     case "set_property":
       api.set(property, operation.value);
 
-      // api.set() returns nothing, so echo the input rather than undefined.
+      // api.set() returns 1 whether or not the write lands, so echo the input.
       return operation.value;
 
     case "call": {

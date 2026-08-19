@@ -130,6 +130,59 @@ describe("ppal-live-api", () => {
     }
   });
 
+  // Measured on Live 12.4.3: set() returns 1 whether or not the write lands, so
+  // the number is not a success flag. Every case here is rejected by Live and
+  // still comes back 1 — which is why the declaration in src/types/live-api.d.ts
+  // says to read the property back instead of trusting the return.
+  it("returns 1 from set even when Live rejects the write", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set",
+        operations: [
+          { type: "getProperty", property: "tempo" },
+          // read-only property
+          { type: "set", property: "song_length", value: 999 },
+          // a string into a numeric property
+          { type: "set", property: "tempo", value: "not_a_number" },
+          // property the object doesn't have
+          { type: "set", property: "bogus_property_xyz", value: 1 },
+          // past Live's maximum tempo
+          { type: "set", property: "tempo", value: 9999 },
+          { type: "getProperty", property: "tempo" },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+    const original = parsed.results[0]!.result;
+
+    expect(parsed.results.slice(1, 5).map((r) => r.result)).toStrictEqual([
+      1, 1, 1, 1,
+    ]);
+
+    // None of them landed, so nothing needs restoring.
+    expect(parsed.results[5]!.result).toBe(original);
+  });
+
+  it("returns 1 from set on a nonexistent object", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-live-api",
+      arguments: {
+        path: "live_set tracks 999",
+        operations: [
+          { type: "exists" },
+          { type: "set", property: "name", value: "should not apply" },
+        ],
+      },
+    });
+
+    const parsed = parseToolResult<LiveApiResult>(result);
+
+    expect(parsed.results[0]!.result).toBe(false);
+    expect(parsed.results[1]!.result).toBe(1);
+  });
+
   it("executes multiple operations in a single call", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-live-api",

@@ -128,17 +128,22 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 **Live Object Model:**
 
 - `get` - Get a property's raw value (an array)
-- `set` - Set a property value; returns Live's status code
+- `set` - Set a property value. Always returns 1, even when the write is
+  rejected — read the property back to confirm it landed.
 - `set_property` - The same write as `set`, but returns the value you sent
 - `call` - Call a method on the Live object
 - `goto` - Navigate to a new path
 - `info` - Get object information
+- `getcount` - Count children in a collection
+- `getstring` - Read a property as a string
 
 **Extension methods** (normalized values):
 
 - `getProperty` - Get a property, unwrapped to a scalar
 - `getChildIds` - Get child object IDs
-- `exists` - Check if object exists
+- `exists` - Check if the object exists. Producer Pal's judgment, not Live's:
+  Live's own `valid` field reads 1 for a bad path, a bad index, a bad id, and a
+  cleared path, so this checks the object id instead.
 - `getColor` - Get color as hex string
 - `setColor` - Set color from hex string
 
@@ -153,8 +158,6 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 - `set_path` - Assign `path`, retargeting the object. `""` clears it.
 - `set_mode` - Assign `mode`: `0` follows the path, `1` follows the object. Max
   coerces anything else to 0 or 1.
-- `getcount` - Count children in a collection
-- `getstring` - Read a property as a string
 
 ### Important Limitations
 

@@ -143,7 +143,7 @@ if (typeof LiveAPI !== "undefined") {
             return parsed[property];
           } catch (error) {
             console.warn(
-              `LiveAPI getProperty: failed to parse "${property}" response: ${errorMessage(error)}`,
+              `LiveAPI getProperty: failed to parse "${property}" response ${JSON.stringify(rawValue[0])}: ${errorMessage(error)}`,
             );
             return null;
           }
@@ -194,7 +194,8 @@ if (typeof LiveAPI !== "undefined") {
       case "output_routing_channel": {
         // Convert value to JSON format expected by Live API
         const jsonValue = JSON.stringify({ [property]: val });
-        return this.set(property, jsonValue);
+        this.set(property, jsonValue);
+        return;
       }
       case "selected_track":
       case "selected_scene":
@@ -205,11 +206,12 @@ if (typeof LiveAPI !== "undefined") {
           typeof val === "string" && !val.startsWith("id ") && /^\d+$/.test(val)
             ? `id ${val}`
             : val;
-        return this.set(property, formattedValue);
+        this.set(property, formattedValue);
+        return;
       }
       default:
         // For all other properties, use regular set
-        return this.set(property, val);
+        this.set(property, val);
     }
   };
 

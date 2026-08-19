@@ -61,8 +61,15 @@ declare global {
     /** Get a property value from the Live object (returns array) */
     get(property: string): unknown[];
 
-    /** Set a property value on the Live object */
-    set(property: string, value: unknown): void;
+    /**
+     * Set a property value on the Live object.
+     *
+     * Always returns 1 — it is not a success flag. Measured on Live 12.4.3
+     * (v8), a read-only property, a wrong-typed value, an unknown property, an
+     * out-of-range value, and a nonexistent target all return 1, and none of
+     * them throw. Read the property back to find out whether the write landed.
+     */
+    set(property: string, value: unknown): number;
 
     /** Call a method on the Live object */
     call(method: string, ...args: unknown[]): unknown;
