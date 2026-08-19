@@ -336,7 +336,7 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
  * @param chain - Chain the mixer belongs to
  * @param mixer - The chain's mixer device
  * @param sendGainDb - Send level in dB
- * @param sendReturn - Return chain name or letter
+ * @param sendReturn - Return chain id, name, or letter
  * @returns True when the level was written
  */
 function applyChainSend(
@@ -351,8 +351,13 @@ function applyChainSend(
     return false;
   }
 
-  const names = returnChainNames(chain);
-  const index = findReturnIndex(names, sendReturn);
+  const returns = returnChains(chain);
+  const names = returns.map((rc) => rc.getProperty("name") as string);
+  const index = findReturnIndex(
+    names,
+    sendReturn,
+    returns.map((rc) => rc.id),
+  );
 
   if (index === -1) {
     // The "none" case is where a model would otherwise try to add one, so say
@@ -417,7 +422,9 @@ function readActiveSends(
     return [];
   }
 
-  const names = returnChainNames(chain);
+  const names = returnChains(chain).map(
+    (rc) => rc.getProperty("name") as string,
+  );
 
   return active.map(({ send, index }) => ({
     return: names[index] ?? `Return ${index + 1}`,
@@ -426,14 +433,10 @@ function readActiveSends(
 }
 
 /**
- * Names of the return chains in the rack that owns a chain, in send order
+ * The return chains of the rack that owns a chain, in send order
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns Return chain names
+ * @returns The return chains, index-aligned with the chain's sends
  */
-function returnChainNames(chain: LiveAPI): string[] {
-  const rack = LiveAPI.from(rackPath(chain));
-
-  return rack
-    .getChildren("return_chains")
-    .map((rc) => rc.getProperty("name") as string);
+function returnChains(chain: LiveAPI): LiveAPI[] {
+  return LiveAPI.from(rackPath(chain)).getChildren("return_chains");
 }

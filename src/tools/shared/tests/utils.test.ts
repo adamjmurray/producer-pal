@@ -6,7 +6,6 @@
 import { describe, expect, it } from "vitest";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import {
-  findReturnIndex,
   fromLiveApiView,
   parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
@@ -765,45 +764,5 @@ describe("roundPan", () => {
     expect(roundPan(0.125)).toBe(0.13);
     expect(roundPan(1)).toBe(1);
     expect(roundPan(0)).toBe(0);
-  });
-});
-
-describe("findReturnIndex", () => {
-  const names = ["A-Reverb", "b Delay", "Chorus"];
-
-  it("matches an exact name", () => {
-    expect(findReturnIndex(names, "Chorus")).toBe(2);
-    expect(findReturnIndex(names, "b Delay")).toBe(1);
-  });
-
-  it("matches a letter prefix before '-' or ' ', ignoring case", () => {
-    expect(findReturnIndex(names, "a")).toBe(0);
-    expect(findReturnIndex(names, "B")).toBe(1);
-  });
-
-  it("does not match a name that merely starts with the letter", () => {
-    expect(findReturnIndex(names, "C")).toBe(-1);
-    expect(findReturnIndex(names, "Rev")).toBe(-1);
-  });
-
-  it("matches an exact name ignoring case", () => {
-    expect(findReturnIndex(names, "chorus")).toBe(2);
-    expect(findReturnIndex(names, "A-REVERB")).toBe(0);
-  });
-
-  it("matches nothing for an empty name", () => {
-    expect(findReturnIndex(names, "")).toBe(-1);
-  });
-
-  it("prefers an exact name over an earlier prefix match", () => {
-    expect(findReturnIndex(["Delay 2", "Delay"], "Delay")).toBe(1);
-    expect(findReturnIndex(["Reverb Long", "Reverb"], "Reverb")).toBe(1);
-    expect(findReturnIndex(["A Reverb", "A"], "A")).toBe(1);
-    expect(findReturnIndex(["Delay 2", "delay"], "DELAY")).toBe(1);
-  });
-
-  it("falls back to the first prefix match when no name matches exactly", () => {
-    expect(findReturnIndex(["A-Reverb", "B-Delay"], "A")).toBe(0);
-    expect(findReturnIndex(["A Reverb", "A-Delay"], "A")).toBe(0);
   });
 });

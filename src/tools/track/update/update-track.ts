@@ -168,7 +168,7 @@ function applyMonitoringState(
  * Apply send properties to a track
  * @param track - Track object
  * @param sendGainDb - Send gain in dB (-70 to 0)
- * @param sendReturn - Return track name (exact or letter prefix)
+ * @param sendReturn - Return track id, name, or letter prefix
  */
 function applySendProperties(
   track: LiveAPI,
@@ -203,14 +203,15 @@ function applySendProperties(
     return;
   }
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const names = liveSet
-    .getChildIds("return_tracks")
-    .map(
-      (_, i) =>
-        LiveAPI.from(livePath.returnTrack(i)).getProperty("name") as string,
-    );
-  const sendIndex = findReturnIndex(names, sendReturn);
+  const returnTracks = LiveAPI.from(livePath.liveSet).getChildren(
+    "return_tracks",
+  );
+  const names = returnTracks.map((rt) => rt.getProperty("name") as string);
+  const sendIndex = findReturnIndex(
+    names,
+    sendReturn,
+    returnTracks.map((rt) => rt.id),
+  );
 
   if (sendIndex === -1) {
     console.warn(`no return track found matching "${sendReturn}"`);
@@ -363,7 +364,7 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
  * @param args.outputRoutingChannelId - Optional output routing channel identifier
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
- * @param args.sendReturn - Optional return track name (exact or letter prefix), requires sendGainDb
+ * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param _context - Internal context object (unused)
  * @returns Single track object or array of track objects
  */

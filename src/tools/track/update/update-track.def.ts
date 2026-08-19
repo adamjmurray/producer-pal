@@ -86,9 +86,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       default: "send gain in dB, requires sendReturn",
       smallModel: null,
     }),
-    sendReturn: param(z.string().optional(), {
+    sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: exact name (e.g., "A-Reverb") or letter (e.g., "A")',
+        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
       smallModel: null,
     }),
   },

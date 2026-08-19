@@ -285,6 +285,17 @@ describe("applyChainMixer", () => {
       expect(first?.set).toHaveBeenCalledWith("display_value", 0);
     });
 
+    it("matches a return chain by id", () => {
+      // Same name on both: no name or letter tells them apart, so this is the
+      // case only an id can address.
+      const [first, second] = registerChainWithSends(["Verb", "Verb"]);
+
+      applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "rc-1" });
+
+      expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      expect(first?.set).not.toHaveBeenCalled();
+    });
+
     it("warns when only one of sendGainDb and sendReturn is given", () => {
       const sends = registerChainWithSends();
 

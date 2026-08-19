@@ -272,15 +272,26 @@ export function roundPan(pan: number): number {
 }
 
 /**
- * Find the return (track or rack chain) a send name refers to: the exact name,
- * or its letter prefix — "A" matches "A-Reverb" (return tracks) and
- * "a Reverb" (rack return chains). Case-insensitive. An exact name anywhere in
- * the list beats a prefix match, so "Delay" finds "Delay", not "Delay 2".
+ * Find the return (track or rack chain) a send refers to, by id or by name.
+ *
+ * An id wins: it is exact, and unlike a name it can't be shared by two returns
+ * or shift when one is renamed. Only these returns' ids count, so a return
+ * named after a number stays reachable by name.
+ *
+ * Otherwise the exact name, then its letter prefix — "A" matches "A-Reverb"
+ * (return tracks) and "a Reverb" (rack return chains). Case-insensitive. An
+ * exact name anywhere in the list beats a prefix match, so "Delay" finds
+ * "Delay", not "Delay 2".
  * @param names - Return names in send order
- * @param sendReturn - Name or letter to match
+ * @param sendReturn - Id, name, or letter to match
+ * @param ids - Return ids in send order
  * @returns Index of the match, or -1
  */
-export function findReturnIndex(names: string[], sendReturn: string): number {
+export function findReturnIndex(
+  names: string[],
+  sendReturn: string,
+  ids: string[] = [],
+): number {
   const wanted = sendReturn.toLowerCase();
 
   // Every name "starts with" the empty string, so without this an empty
@@ -289,7 +300,18 @@ export function findReturnIndex(names: string[], sendReturn: string): number {
     return -1;
   }
 
+  const byId = ids.indexOf(sendReturn);
   const exact = names.findIndex((name) => name.toLowerCase() === wanted);
+
+  if (byId !== -1) {
+    if (exact !== -1 && exact !== byId) {
+      console.warn(
+        `sendReturn "${sendReturn}" is the id of "${names[byId]}" and the name of another return; using the id`,
+      );
+    }
+
+    return byId;
+  }
 
   if (exact !== -1) {
     return exact;

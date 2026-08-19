@@ -111,6 +111,42 @@ describe("updateTrack - send properties", () => {
     expect(send1.set).toHaveBeenCalledWith("display_value", 0);
   });
 
+  it("should match a return track by id", () => {
+    // Two returns named the same thing: no name or letter tells them apart, so
+    // this is the case only an id can address.
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "Verb" },
+    });
+    registerMockObject("return_B", {
+      path: livePath.returnTrack(1),
+      properties: { name: "Verb" },
+    });
+
+    updateTrack({
+      ids: "123",
+      sendGainDb: -6,
+      sendReturn: "return_B",
+    });
+
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  it("should warn and skip for an id that is not a return track", () => {
+    const result = updateTrack({
+      ids: "123",
+      sendGainDb: -12,
+      sendReturn: "123",
+    });
+
+    expectSendUpdateSkipped(
+      result,
+      [send1, send2],
+      'no return track found matching "123"',
+    );
+  });
+
   it("should warn and skip when only sendGainDb is provided", () => {
     // Should not throw, just warn and skip the send update
     const result = updateTrack({

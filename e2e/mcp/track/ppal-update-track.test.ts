@@ -306,6 +306,29 @@ describe("ppal-update-track", () => {
     const firstSend = sendTrack.sends![0]!;
 
     expect(firstSend.gainDb).toBeCloseTo(-12, 1);
+
+    // Same send, addressed by the return track's id. Neither name nor letter
+    // gets here reliably: "A" matches A-Delay first, and Live renames the
+    // return it was asked to call "A-TestReturn". Only real Live proves the id
+    // the read tools report is the one the send lookup matches on.
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: { ids: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
+    });
+
+    await sleep(100);
+
+    const byId = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { trackId, include: ["mixer"] },
+      }),
+    );
+
+    // Sends are index-aligned with the return tracks, so the new one is last.
+    expect(byId.sends!.at(-1)!.gainDb).toBeCloseTo(-24, 1);
+    // The send "A" reached is untouched, so the id picked its own return.
+    expect(byId.sends![0]!.gainDb).toBeCloseTo(-12, 1);
   });
 
   it("assigns output routing", async () => {

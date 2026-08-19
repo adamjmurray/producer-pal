@@ -118,9 +118,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       default: "chain's send level in dB, requires sendReturn (chains only)",
       smallModel: null,
     }),
-    sendReturn: param(z.string().optional(), {
+    sendReturn: param(z.coerce.string().optional(), {
       default:
-        'rack return chain for sendGainDb: exact name (e.g. "a Reverb") or letter (e.g. "a"); requires sendGainDb',
+        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
       smallModel: null,
     }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {

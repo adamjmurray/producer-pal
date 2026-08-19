@@ -77,7 +77,7 @@ type ResolvedTarget =
  * @param args.gainDb - Chain gain in dB (chains only)
  * @param args.pan - Chain pan -1 to 1 (chains only)
  * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
- * @param args.sendReturn - Rack return chain name or letter, requires sendGainDb (chains only)
+ * @param args.sendReturn - Rack return chain id, name, or letter, requires sendGainDb (chains only)
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
