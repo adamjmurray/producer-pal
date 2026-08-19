@@ -135,7 +135,7 @@ export default defineConfig({
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
         statements: 99.8,
-        branches: 98.1,
+        branches: 98.3,
         functions: 100,
         lines: 99.8,
       },
