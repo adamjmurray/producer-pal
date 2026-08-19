@@ -75,6 +75,23 @@ Set the `MCP_URL` environment variable to use a different server:
 MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 ```
 
+## Testing another Live version
+
+`ABLETON_APP` names the app bundle the tests open Sets with, so a Live installed
+side-by-side can be tested without changing anything else. It defaults to
+`Ableton Live 12 Suite` and takes the bundle name as it appears in
+`/Applications`, without `.app`:
+
+```bash
+ABLETON_APP="Ableton Live 13 Beta" npm run e2e:mcp -- track/ppal-take-lanes
+```
+
+A Set opens only in the Live that saved it or a newer one. Point an older Live
+at a Set a newer one saved and Live puts up a modal instead of opening it — the
+harness dismisses that and fails with Live's own message, naming the version the
+Set needs. Rebuild the Set in the oldest supported Live to fix it; Live cannot
+save a Set back to an older version.
+
 ## Directory Structure
 
 Tests are organized by resource type, mirroring `src/tools/`:

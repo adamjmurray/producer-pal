@@ -123,7 +123,8 @@ approval.
 
 `e2e/mcp/` drives a real Ableton Live; see `e2e/mcp/README.md`. Always ask
 before running these, and always run a single file — the full suite takes
-minutes.
+minutes. `ABLETON_APP` picks the Live bundle to open Sets with, for testing a
+version installed side-by-side.
 
 Under `once`, `setupMcpTestContext` resets the config in its `beforeAll` as well
 as the per-test `beforeEach`, so a `beforeAll` of your own can call tools and
