@@ -119,6 +119,10 @@ release build.
    This creates:
    - `release/Producer_Pal.mcpb` (Claude Desktop extension)
 
+   It refuses to build if your shell has a debug flag set — they are substituted
+   into the bundles, so a leftover `ENABLE_CODE_EXEC=true` would ship code
+   execution to everyone.
+
    It also prints the **build** these files identify themselves as. The release
    tag has to land on that commit — see
    [How update detection works](#how-update-detection-works).

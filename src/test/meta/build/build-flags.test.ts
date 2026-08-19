@@ -10,6 +10,11 @@ import {
   findSourceFiles,
   projectRoot,
 } from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  buildFlagGuard,
+  DEV_BUILD_OVERRIDE,
+  GUARDED_BUILD_FLAGS,
+} from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
 import packageJson from "../../../../package.json" with { type: "json" };
 
 // Build flags gate code out of release bundles: rolldown substitutes their value
@@ -81,6 +86,40 @@ describe("build flags", () => {
     for (const flag of BUILD_FLAGS) {
       expect(ciWorkflow).toContain(`"\${${flag}:-}" = "true"`);
     }
+  });
+
+  // The CI guard above checks the runner, whose artifacts are thrown away. The
+  // bytes users get are built on the maintainer's machine, so the build itself
+  // has to refuse a flag the shell happened to be exporting.
+  it("runs the release guard before the production build does anything", () => {
+    expect(scripts.build).toMatch(
+      /^node scripts\/build-and-release\/helpers\/check-build-flags\.ts &&/,
+    );
+  });
+
+  it("refuses every build flag at build time", () => {
+    for (const flag of BUILD_FLAGS) {
+      expect(buildFlagGuard({ [flag]: "true" })).toContain(`${flag}=true`);
+    }
+  });
+
+  it("lets runtime flags through, since the build never substitutes them", () => {
+    for (const flag of RUNTIME_FLAGS) {
+      expect(buildFlagGuard({ [flag]: "true" })).toBe(null);
+    }
+  });
+
+  // The guard names its flags rather than matching ENABLE_*, which is not this
+  // project's namespace — GitHub's runners export ENABLE_RUNNER_TRACING. This
+  // is what keeps the list from going stale: a new flag fails here first.
+  it("holds the guard's flag list equal to the inventory above", () => {
+    expect(GUARDED_BUILD_FLAGS.toSorted()).toStrictEqual(
+      BUILD_FLAGS.toSorted(),
+    );
+  });
+
+  it("opts the debug build out of the guard", () => {
+    expect(scripts["build:debug"]).toContain(`${DEV_BUILD_OVERRIDE}=true`);
   });
 });
 

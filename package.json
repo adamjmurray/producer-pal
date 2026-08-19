@@ -31,8 +31,8 @@
     "ai-music-production"
   ],
   "scripts": {
-    "build": "npm run parser:build && npm run ui:build && rolldown -c config/rolldown.config.mjs && npm run dxt:build",
-    "build:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_WARP_MARKERS=true npm run build",
+    "build": "node scripts/build-and-release/helpers/check-build-flags.ts && npm run parser:build && npm run ui:build && rolldown -c config/rolldown.config.mjs && npm run dxt:build",
+    "build:debug": "ALLOW_DEV_BUILD_FLAGS=true ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_WARP_MARKERS=true npm run build",
     "build:watch": "npm run build && rolldown -c config/rolldown.config.mjs -w",
     "dev": "npm run parser:build && rolldown -c config/rolldown.config.mjs -w",
     "dev:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_WARP_MARKERS=true npm run dev",

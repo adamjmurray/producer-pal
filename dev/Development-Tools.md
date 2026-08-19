@@ -196,9 +196,10 @@ The streamable-http URL above is a browser-origin fetch from the inspector UI to
 the device's MCP server, so it needs CORS headers on `localhost:3350`. The
 server reflects CORS for any localhost origin by default, in every build, so the
 inspector (served from a localhost origin) just works — dev or release. Pages
-from a non-localhost origin get no CORS headers and are blocked; set
-`ENABLE_REMOTE_CORS=true` before a build only if you need to reach the server
-from one (a remote inspector, or over the LAN).
+from a non-localhost origin get no CORS headers and are blocked; to reach the
+server from one (a remote inspector, or over the LAN), build with
+`ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build` — a plain
+`npm run build` refuses every debug flag so one can't reach a release.
 
 The stdio portal is another way in (and it pushes config-override flags to the
 device on connect, below):

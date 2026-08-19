@@ -36,9 +36,12 @@ in either direction so e2e tests can exercise both states.
 — so it can be exercised by hand; release builds omit it entirely. Chat UI
 development (`npm run ui:dev`) works against any build: the MCP server reflects
 CORS for localhost origins by default, so a browser page on another local port
-can reach it. Set `ENABLE_REMOTE_CORS=true` before a build only if you need to
-reach the server from a non-localhost browser origin (a remote inspector, or
-over the LAN).
+can reach it. For a non-localhost browser origin (a remote inspector, or over
+the LAN), build with
+`ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
+`npm run build` refuses to run with any of the debug flags set, so an ambient
+one can't be baked into something that ships — `build:debug` and that override
+are the ways past it.
 
 ## Core Development Scripts
 
