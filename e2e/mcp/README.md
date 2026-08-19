@@ -79,11 +79,15 @@ MCP_URL=http://192.168.1.100:3350/mcp npm run e2e:mcp
 
 `ABLETON_APP` names the app bundle the tests open Sets with, so a Live installed
 side-by-side can be tested without changing anything else. It defaults to
-`Ableton Live 12 Suite` and takes the bundle name as it appears in
-`/Applications`, without `.app`:
+`Ableton Live 12 Suite`.
+
+Pass the **full bundle path**. `open -a` resolves the default install by name,
+but has been seen to reject a side-by-side one — `"Ableton Live 12 Suite 12.3"`
+fails with "Unable to find application named" even though the app is there:
 
 ```bash
-ABLETON_APP="Ableton Live 13 Beta" npm run e2e:mcp -- track/ppal-take-lanes
+ABLETON_APP="/Applications/Ableton Live 12 Suite 12.3.app" \
+  npm run e2e:mcp -- track/ppal-take-lanes
 ```
 
 A Set opens only in the Live that saved it or a newer one. Point an older Live
