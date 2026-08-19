@@ -13,6 +13,12 @@ import {
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 
+/** A take lane this call resolved, and where it landed on the track. */
+export interface ResolvedDuplicateLane {
+  lane: LiveAPI;
+  laneIndex: number;
+}
+
 /**
  * Resolve every take lane a duplicate's destinations name, auto-creating as
  * needed.
@@ -32,7 +38,7 @@ export function resolveDuplicateTakeLanes(
   id: string,
   targets: ArrangementTrack[],
   takeLaneName: string | undefined,
-): Map<string, LiveAPI> {
+): Map<string, ResolvedDuplicateLane> {
   const laneTargets = targets.filter((target) => target.takeLane != null);
 
   if (laneTargets.length === 0) return new Map();
@@ -45,7 +51,7 @@ export function resolveDuplicateTakeLanes(
     return new Map();
   }
 
-  const lanes = new Map<string, LiveAPI>();
+  const lanes = new Map<string, ResolvedDuplicateLane>();
 
   // Resolve once per destination rather than once per copy — otherwise a single
   // "l+" cycled over three arrangementStarts gets three fresh lanes.
@@ -61,7 +67,7 @@ export function resolveDuplicateTakeLanes(
       takeLaneName,
     );
 
-    lanes.set(key, lane);
+    lanes.set(key, { lane, laneIndex });
     console.warn(
       `duplicate: created on take lane "t${trackIndex}/l${laneIndex}" ` +
         `(${NO_ENVELOPES_NOTE}). ` +

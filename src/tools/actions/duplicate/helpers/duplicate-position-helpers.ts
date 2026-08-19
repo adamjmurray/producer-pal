@@ -98,7 +98,7 @@ export async function duplicateSceneToArrangementAtPositions(
     if (
       stopForDeadline(context.deadline, () =>
         unreachedPositionsWarning(
-          allPositions.slice(i),
+          allPositions.slice(i).map((beats) => ({ beats })),
           i,
           allPositions.length,
           songTimeSigNumerator,
@@ -126,38 +126,43 @@ export async function duplicateSceneToArrangementAtPositions(
   return createdObjects;
 }
 
+/** One copy a deadline stop never reached. */
+export interface UnreachedDestination {
+  /** Where it was going, in Ableton beats */
+  beats: number;
+  /** Which destination, e.g. "t0" or "t0/l3". Omitted when there is only one. */
+  label?: string;
+}
+
 /**
  * Warning text for a duplicate the deadline cut short, naming what it never
  * reached so the caller can re-run just that. A clip fan-out repeats the same
- * position across tracks, so pass `remainingTracks` to tell those copies apart
- * — without it a caller re-runs tracks that already finished.
+ * position across destinations, so those carry a label to tell them apart —
+ * without it a caller re-runs destinations that already finished.
  *
- * @param remainingBeats - Positions still to do, in Ableton beats
+ * @param remaining - The copies still to make
  * @param done - Copies placed before time ran out
  * @param total - Copies the run set out to place
  * @param timeSigNumerator - Song time signature numerator
  * @param timeSigDenominator - Song time signature denominator
- * @param remainingTracks - Destination track per remaining position, if any
  * @returns The warning message
  */
 export function unreachedPositionsWarning(
-  remainingBeats: number[],
+  remaining: UnreachedDestination[],
   done: number,
   total: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  remainingTracks?: number[],
 ): string {
-  const positions = remainingBeats
-    .map((beats, i) => {
+  const positions = remaining
+    .map(({ beats, label }) => {
       const barBeat = abletonBeatsToBarBeat(
         beats,
         timeSigNumerator,
         timeSigDenominator,
       );
-      const trackIndex = remainingTracks?.[i];
 
-      return trackIndex == null ? barBeat : `t${trackIndex} ${barBeat}`;
+      return label == null ? barBeat : `${label} ${barBeat}`;
     })
     .join(", ");
 

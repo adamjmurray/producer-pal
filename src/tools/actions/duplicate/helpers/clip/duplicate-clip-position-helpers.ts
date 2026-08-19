@@ -27,12 +27,22 @@ import { type SlotPosition } from "#src/tools/shared/validation/position-parsing
 import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
 import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
 import { duplicateClipSlot } from "./duplicate-clip-slot-helpers.ts";
-import { unreachedPositionsWarning } from "../duplicate-position-helpers.ts";
+import {
+  unreachedPositionsWarning,
+  type UnreachedDestination,
+} from "../duplicate-position-helpers.ts";
 import {
   NO_ENVELOPES_NOTE,
   recreateMidiClip,
 } from "./duplicate-clip-recreate-helpers.ts";
-import { resolveDuplicateTakeLanes } from "./duplicate-take-lane-helpers.ts";
+import {
+  labelDuplicateDestinations,
+  noBudgetForCopies,
+} from "./duplicate-clip-deadline-helpers.ts";
+import {
+  resolveDuplicateTakeLanes,
+  type ResolvedDuplicateLane,
+} from "./duplicate-take-lane-helpers.ts";
 import {
   resolveArrangementPositions,
   resolveDestinationTargets,
@@ -199,6 +209,20 @@ async function duplicateClipToArrangementPositions(
   const targetTracks = cycle(destTargets, copies);
   const targetPositions = cycle(positionsInBeats, copies);
 
+  // Nothing below can undo a lane, so check the budget before making any: out
+  // of time here means permanent empty lanes and not one clip on them.
+  if (
+    noBudgetForCopies(
+      targetTracks,
+      targetPositions,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context.deadline,
+    )
+  ) {
+    return [];
+  }
+
   // Lanes are permanent (Live has no delete), so resolve every one up front:
   // a capacity error partway through would strand the lanes already created.
   const lanes = resolveDuplicateTakeLanes(
@@ -206,6 +230,14 @@ async function duplicateClipToArrangementPositions(
     id,
     targetTracks,
     takeLaneName,
+  );
+
+  // Labelled after the lanes exist, so a stop names the lane it created rather
+  // than the "l+" that made it — re-running "l+" would append another one.
+  const destinations = labelDuplicateDestinations(
+    targetTracks,
+    targetPositions,
+    lanes,
   );
 
   // A take-lane source going to the main lane is re-created there too, for the
@@ -249,16 +281,13 @@ async function duplicateClipToArrangementPositions(
     if (
       stopForDeadline(context.deadline, () =>
         unreachedPositionsWarning(
-          order.slice(done).map((index) => targetPositions[index] as number),
+          order
+            .slice(done)
+            .map((index) => destinations[index] as UnreachedDestination),
           done,
           copies,
           songTimeSigNumerator,
           songTimeSigDenominator,
-          order
-            .slice(done)
-            .map(
-              (index) => (targetTracks[index] as ArrangementTrack).trackIndex,
-            ),
         ),
       )
     ) {
@@ -361,7 +390,7 @@ function applyTakeLaneAlias(
 interface CopyOptions {
   target: ArrangementTrack;
   startBeats: number;
-  lanes: Map<string, LiveAPI>;
+  lanes: Map<string, ResolvedDuplicateLane>;
   /** Whether a take-lane source may be re-created on the main lane (MIDI only). */
   canPromote: boolean;
   object: LiveAPI;
@@ -383,12 +412,12 @@ async function duplicateOneCopy(options: CopyOptions): Promise<object | null> {
   const { target, startBeats, lanes, object, id } = options;
 
   if (target.takeLane != null) {
-    const lane = lanes.get(takeLaneKey(target));
+    const resolved = lanes.get(takeLaneKey(target));
 
     // A rejected source (audio, for now) warned once during lane resolution.
-    if (lane == null) return null;
+    if (resolved == null) return null;
 
-    return recreateCopy(options, lane, "take-lane");
+    return recreateCopy(options, resolved.lane, "take-lane");
   }
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
