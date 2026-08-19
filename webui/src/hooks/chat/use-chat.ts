@@ -364,6 +364,7 @@ export function useChat<
               client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
             stillCurrent,
+            stillLive,
           });
         }, userMessageEntry);
 

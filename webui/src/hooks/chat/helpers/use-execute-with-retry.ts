@@ -53,6 +53,16 @@ interface ExecuteWithRetryArgs<TMessage> {
    * instead.
    */
   stillCurrent: () => boolean;
+  /**
+   * Whether the turn is still current AND hasn't been stopped — beginTurn's
+   * check, closed over this turn's own controller rather than the shared ref.
+   *
+   * Stop doesn't throw: the SDK answers an aborted signal by emitting an `abort`
+   * part and closing the stream, so a stopped turn ends the loop below normally.
+   * This is the only thing that tells the success return apart from a real
+   * completion, and the caller drains its queued follow-ups on success.
+   */
+  stillLive: () => boolean;
 }
 
 /**
@@ -87,6 +97,7 @@ export function useExecuteWithRetry<
       resumeStream,
       getHistory,
       stillCurrent,
+      stillLive,
     }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
@@ -127,14 +138,19 @@ export function useExecuteWithRetry<
           // same turn from history, so the message is never replayed — replaying
           // it duplicated the instruction in the transcript AND on the wire,
           // since consecutive user turns are concatenated for the model.
-          await handleMessageStream(
+          const completed = await handleMessageStream(
             attempt === 0 ? executeStream() : resumeStream(),
             adapter.formatMessages,
             onMessageUpdate,
           );
+
           setRateLimitState(null);
 
-          return true;
+          // A stream that ends cleanly is not necessarily a turn that finished
+          // — Stop closes it the same way. Both checks earn their keep: an abort
+          // that races the read throws instead (false from handleMessageStream),
+          // and one raised outside this turn's controller leaves stillLive true.
+          return completed && stillLive();
         } catch (error) {
           // Checked before the abort signal, which by now may belong to the
           // newer turn: a superseded turn's failure is stale, and rendering it

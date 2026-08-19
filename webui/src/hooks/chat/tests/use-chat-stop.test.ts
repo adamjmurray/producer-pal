@@ -17,6 +17,8 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
+  tick,
+  trackingAdapter,
 } from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers
@@ -308,6 +310,37 @@ describe("useChat stopResponse", () => {
     // flushes on the next successful send rather than being silently dropped.
     expect(result.current.queuedMessages).toHaveLength(1);
     expect(result.current.queuedMessages[0]?.text).toBe("queued msg");
+  });
+
+  it("doesn't send the queued follow-up when stop closes the stream cleanly", async () => {
+    // Stop doesn't throw — the SDK emits an `abort` part and ends the stream —
+    // so a stopped turn reaches the same clean exit a finished one does. Report
+    // it as done and handleSend drains the queue, sending a brand-new request
+    // one click after the user asked for it to stop.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sent: string[] = [];
+    const adapter = trackingAdapter({ clients: [], sent, gate });
+    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+    const send = result.current.handleSend("first");
+
+    // Let the stream start and park on the gate, so the Stop lands mid-turn.
+    await act(tick);
+    await act(() => result.current.enqueueMessage("queued follow-up"));
+    await act(() => {
+      result.current.stopResponse();
+    });
+
+    release();
+    await act(async () => {
+      await send;
+    });
+
+    expect(sent).toStrictEqual(["first"]);
+    expect(result.current.queuedMessages).toHaveLength(1);
+    expect(result.current.isAssistantResponding).toBe(false);
   });
 
   it("clears queued messages when the conversation is cleared", async () => {

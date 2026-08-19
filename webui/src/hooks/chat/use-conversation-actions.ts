@@ -38,6 +38,7 @@ interface ConversationActionsDeps<
     resumeStream: () => AsyncIterable<TMessage[]>;
     getHistory: () => TMessage[];
     stillCurrent: () => boolean;
+    stillLive: () => boolean;
   }) => Promise<boolean>;
   invalidateCompactionUndo: () => void;
   /** Set right before streaming a fork so the next save branches the record. */
@@ -173,6 +174,7 @@ export function useConversationActions<
           resumeStream: () => client.resumeStream(controller.signal),
           getHistory: () => client.chatHistory,
           stillCurrent,
+          stillLive,
         });
       });
 
