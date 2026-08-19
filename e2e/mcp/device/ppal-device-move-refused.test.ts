@@ -19,8 +19,8 @@ import {
   createMidiTrack,
   createTestDevice,
   getToolWarnings,
-  parseToolResult,
   parseToolResultWithWarnings,
+  readDeviceCount,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -28,13 +28,17 @@ import {
 const ctx = setupMcpTestContext();
 
 /**
- * Two fresh MIDI tracks, each holding an instrument.
- * @returns The tracks' indices, and the id of the first one's instrument
+ * Two fresh MIDI tracks, each holding an instrument. Reports the device counts
+ * they start with: a default track preset can add devices of its own, so what
+ * "unchanged" means is per-machine.
+ * @returns The tracks' indices, the id of the first one's instrument, and the
+ *   device count of each track before anything is moved
  */
 async function twoInstrumentTracks(): Promise<{
   from: number;
   to: number;
   deviceId: string;
+  before: [number, number];
 }> {
   const from = await createMidiTrack(ctx.client!);
   const deviceId = await createTestDevice(ctx.client!, "Operator", `t${from}`);
@@ -43,28 +47,28 @@ async function twoInstrumentTracks(): Promise<{
   await createTestDevice(ctx.client!, "Operator", `t${to}`);
   await sleep(150);
 
-  return { from, to, deviceId };
+  return { from, to, deviceId, before: await deviceCounts(from, to) };
 }
 
 /**
- * Count the devices on a track.
- * @param trackIndex - Track to read
- * @returns How many devices it holds
+ * Read both tracks' device counts.
+ * @param from - Track the move starts on
+ * @param to - Track the move aims at
+ * @returns Each track's device count
  */
-async function deviceCount(trackIndex: number): Promise<number> {
-  const track = parseToolResult<{ devices?: unknown[] }>(
-    await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { trackIndex, include: ["devices"] },
-    }),
-  );
-
-  return track.devices?.length ?? 0;
+async function deviceCounts(
+  from: number,
+  to: number,
+): Promise<[number, number]> {
+  return [
+    await readDeviceCount(ctx.client!, from),
+    await readDeviceCount(ctx.client!, to),
+  ];
 }
 
 describe("a device move Live refuses", () => {
   it("warns instead of reporting the move as done", async () => {
-    const { from, to, deviceId } = await twoInstrumentTracks();
+    const { from, to, deviceId, before } = await twoInstrumentTracks();
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
@@ -78,12 +82,11 @@ describe("a device move Live refuses", () => {
     await sleep(200);
 
     // Both tracks are as they were: nothing arrived, nothing left.
-    expect(await deviceCount(from)).toBe(1);
-    expect(await deviceCount(to)).toBe(1);
+    expect(await deviceCounts(from, to)).toStrictEqual(before);
   });
 
   it("skips a duplicate rather than naming a copy that no longer exists", async () => {
-    const { to, deviceId } = await twoInstrumentTracks();
+    const { from, to, deviceId, before } = await twoInstrumentTracks();
 
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
@@ -101,6 +104,6 @@ describe("a device move Live refuses", () => {
     await sleep(200);
 
     // And the temp track duplicate_track parks next to the source is gone.
-    expect(await deviceCount(to)).toBe(1);
+    expect(await deviceCounts(from, to)).toStrictEqual(before);
   });
 });

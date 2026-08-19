@@ -303,6 +303,31 @@ async function createDevice(
 }
 
 /**
+ * Count the devices on a track.
+ *
+ * Use this instead of assuming a track the test just made is empty — a default
+ * track preset puts devices on every track Live creates, and that preset varies
+ * per machine. Assert against this count, not a literal.
+ *
+ * @param client - Connected MCP client
+ * @param trackIndex - Track to read
+ * @returns How many devices the track holds
+ */
+export async function readDeviceCount(
+  client: Client,
+  trackIndex: number,
+): Promise<number> {
+  const track = parseToolResult<{ devices?: unknown[] }>(
+    await client.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex, include: ["devices"] },
+    }),
+  );
+
+  return track.devices?.length ?? 0;
+}
+
+/**
  * Creates a fresh MIDI track and waits for state to settle.
  * @param client - Connected MCP client
  * @returns The new track's index

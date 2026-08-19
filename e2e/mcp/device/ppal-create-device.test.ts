@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,6 +14,7 @@ import {
   extractToolResultText,
   parseToolResult,
   parseToolResultWithWarnings,
+  readDeviceCount,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -38,8 +40,11 @@ describe("ppal-create-device", () => {
     expect(list.audioEffects).toContain("Compressor");
     expect(list.midiEffects).toContain("Arpeggiator");
 
-    // Test 2: Create device at position 0 on empty track (t{N}/d0 fallback to append)
-    // First create a new track to ensure it's empty
+    // Test 2: Create device at position 0 on a track (t{N}/d0)
+    // A default track preset may already have put devices here, so this is an
+    // insert at 0 on some machines and the append fallback on others. Index 0
+    // is the answer either way; Test 11 covers the append on a chain that is
+    // reliably empty.
     const newTrackResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
@@ -148,26 +153,34 @@ describe("ppal-create-device", () => {
 
     // Test 10: Position past the end of the chain appends and warns
     // (Live rejects an out-of-range insert position)
-    const emptyTrack2Result = await ctx.client!.callTool({
+    const newTrack2Result = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
     });
-    const emptyTrack2 = parseToolResult<{ id: string; trackIndex: number }>(
-      emptyTrack2Result,
+    const newTrack2 = parseToolResult<{ id: string; trackIndex: number }>(
+      newTrack2Result,
     );
-    const position1Path = `t${emptyTrack2.trackIndex}/d1`;
 
     await sleep(100);
 
+    // Valid positions run 0..count, so count + 1 is past the end wherever the
+    // track started. Hardcoding d1 only tests this on a machine whose default
+    // track preset is empty.
+    const startingDevices = await readDeviceCount(
+      ctx.client!,
+      newTrack2.trackIndex,
+    );
+    const pastEndPath = `t${newTrack2.trackIndex}/d${startingDevices + 1}`;
+
     const position1Result = await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { deviceName: "Compressor", path: position1Path },
+      arguments: { deviceName: "Compressor", path: pastEndPath },
     });
     const position1Device =
       parseToolResultWithWarnings<CreateDeviceResult>(position1Result);
 
     expect(position1Device.data.id).toBeDefined();
-    expect(position1Device.data.deviceIndex).toBe(0);
+    expect(position1Device.data.deviceIndex).toBe(startingDevices);
     expect(position1Device.warnings.join("\n")).toContain(
       "past the end of the device chain",
     );
