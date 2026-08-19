@@ -41,9 +41,14 @@ serves a blob this test process can't reproduce.
 Tests automatically:
 
 1. Open a Live Set from `e2e/live-sets/` in Ableton Live
-2. Handle the "Don't Save" dialog if it appears (via AppleScript)
-3. Wait for the MCP server to become responsive
+2. Click away the dialogs that block the swap — "Save changes before closing?"
+   and, after a crash, "recover your work?" (via AppleScript)
+3. Wait for the running MCP server to go away and the new Set's to answer
 4. Run the test suite
+
+Step 3 is why the wait is a restart rather than a ping. Live keeps the outgoing
+Set serving until the swap really happens, so a server answering proves nothing
+on its own — a test would run against the Set it was replacing.
 
 ## Test Live Sets
 

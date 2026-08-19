@@ -5,8 +5,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Opens an Ableton Live project, handling the "Don't Save" dialog if it appears.
- * Waits for the MCP server to become responsive before returning.
+ * Opens an Ableton Live project and waits until THAT project is the one
+ * serving MCP.
+ *
+ * The waiting is the hard part. Live keeps the outgoing Set's MCP server up
+ * until the swap actually happens, and a dialog can hold the swap off for as
+ * long as it likes, so "a server answered" is not evidence the new Set loaded.
+ * We therefore wait for the running server to go away and a new one to come
+ * back. A dialog watcher runs the whole time to clear the modals that would
+ * otherwise block the swap forever.
  *
  * NOTE: macOS only. Requires Terminal.app with Accessibility permissions
  * (System Settings → Privacy & Security → Accessibility → Terminal)
@@ -15,12 +22,15 @@
  *            If using Live templates, the device must be frozen or the code will be missing
  *            (the device, but not the code, is copied into the template).
  *
- * Usage: node scripts/eval-lib/open-live-set.ts /path/to/project.als
+ * Usage: node evals/scenarios/open-live-set.ts /path/to/project.als
  */
 
+// The MCP poll loop below sleeps between requests, which is exactly what Node's
+// bundled undici stalls. See the module for why.
+import "#evals/shared/install-fetch-dispatcher.ts";
 import { type ChildProcess, exec, execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { resolve as resolvePath } from "node:path";
+import { basename, resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
@@ -30,15 +40,17 @@ import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
 // (e.g. a side-by-side older version).
 const ABLETON_APP = process.env.ABLETON_APP ?? "Ableton Live 12 Suite";
 const ABLETON_PROCESS = "Live"; // For System Events
-const DIALOG_POLL_INTERVAL_MS = 250;
-const DIALOG_TIMEOUT_MS = 2500;
-const MCP_POLL_INTERVAL_MS = 500;
-const MCP_POLL_TIMEOUT_MS = 15000;
+const POLL_INTERVAL_MS = 250;
+// A swap takes ~1.5s once nothing is in its way. The headroom is for the
+// dialogs, which hold Live at the old Set until the watcher clicks them.
+const SERVER_STOP_TIMEOUT_MS = 20000;
+// A cold Live launch, plus the crash-recovery dialog when there was a crash.
+const SERVER_START_TIMEOUT_MS = 45000;
 // Live shows this instead of opening a Set that a newer version saved.
 const UNSUPPORTED_VERSION_TEXT = "newer version of Live";
 
 /**
- * Opens an Ableton Live project, handling the "Don't Save" dialog if it appears.
+ * Opens an Ableton Live project, clearing any dialogs in the way.
  * @param projectPath - Path to the .als file
  */
 export async function openLiveSet(projectPath: string): Promise<void> {
@@ -48,32 +60,45 @@ export async function openLiveSet(projectPath: string): Promise<void> {
     throw new Error(`Project file not found: ${absolutePath}`);
   }
 
-  // Start dialog watcher before opening (it polls for the dialog)
-  const dialogWatcher = startUnsavedChangesDialogWatcher();
+  const watcher = startDialogWatcher();
 
   try {
+    const wasServing = await serverIsAnswering();
+
     await openAbletonLiveProject(absolutePath);
-    await dismissUnsavedChangesDialog(dialogWatcher);
-    await waitForMcpServer();
+
+    // Only wait for a teardown there is something to tear down. With Live shut
+    // (or its Set device-less) nothing is serving, and the wait would just burn
+    // its whole timeout.
+    if (wasServing) await waitForServerToStop();
+
+    await waitForServerToStart();
+    await verifyLoadedSet(absolutePath);
   } finally {
-    // Ensure dialog watcher is cleaned up
-    dialogWatcher.kill();
+    watcher.kill();
   }
 }
 
 /**
- * Starts an AppleScript process that polls for the "Don't Save" dialog
- * and automatically dismisses it without saving.
- * @returns The spawned child process
+ * Starts an AppleScript process that clicks away the modals that block a Set
+ * swap: "Save changes before closing?" (click Don't Save) and, after a crash,
+ * "Would you like to recover your work?" (click No — recovering restores the
+ * mutated session we are reopening to get rid of).
+ *
+ * It runs until killed rather than for a fixed window, because the dialogs turn
+ * up at their own pace: the save prompt right after `open`, the crash prompt
+ * partway through a cold launch.
+ * @returns The spawned child process. Kill it when the open is done.
  */
-function startUnsavedChangesDialogWatcher(): ChildProcess {
-  const pollCount = Math.ceil(DIALOG_TIMEOUT_MS / DIALOG_POLL_INTERVAL_MS);
-  const pollIntervalSeconds = DIALOG_POLL_INTERVAL_MS / 1000;
+function startDialogWatcher(): ChildProcess {
+  const pollCount = Math.ceil(
+    (SERVER_STOP_TIMEOUT_MS + SERVER_START_TIMEOUT_MS) / POLL_INTERVAL_MS,
+  );
 
-  // Live's "unsaved changes" dialog is a window with subrole AXDialog (not a sheet).
-  // The buttons are inside group 1, and their labels are in the "description"
-  // attribute (not "name"). We use `contains "Don"` to avoid apostrophe issues.
-  // After clicking, we delay briefly to let Ableton process before returning.
+  // Both dialogs are AXDialog windows whose buttons live in group 1, labelled
+  // by "description" ("name" and "title" are both `missing value`). "Don" gets
+  // Don't Save without tangling with the curly apostrophe. "No" is too plain a
+  // word to match on alone, so it needs the crash prompt's text alongside it.
   const script = `
     tell application "System Events"
       tell process "${ABLETON_PROCESS}"
@@ -81,23 +106,32 @@ function startUnsavedChangesDialogWatcher(): ChildProcess {
           try
             repeat with w in windows
               if subrole of w is "AXDialog" then
-                tell group 1 of w
-                  repeat with btn in buttons
-                    if description of btn contains "Don" then
-                      click btn
-                      delay 1
-                      return "dismissed"
-                    end if
+                set msg to ""
+                try
+                  repeat with t in static texts of group 1 of w
+                    set msg to msg & (value of t)
                   end repeat
-                end tell
+                end try
+                repeat with b in buttons of group 1 of w
+                  set d to ""
+                  try
+                    set d to description of b as text
+                  end try
+                  if d contains "Don" then
+                    click b
+                    exit repeat
+                  else if d is "No" and msg contains "recover your work" then
+                    click b
+                    exit repeat
+                  end if
+                end repeat
               end if
             end repeat
           end try
-          delay ${pollIntervalSeconds}
+          delay ${POLL_INTERVAL_MS / 1000}
         end repeat
       end tell
     end tell
-    return "no-dialog"
   `;
 
   return spawn("osascript", ["-e", script]);
@@ -148,43 +182,33 @@ function envWithoutTestMarkers(): NodeJS.ProcessEnv {
 }
 
 /**
- * Waits for the dialog watcher process to complete.
- * @param watcher - The dialog watcher child process
- * @returns The output from the watcher ("dismissed" or "no-dialog")
+ * Waits for the Set that was open to stop serving MCP. That teardown is the
+ * only reliable sign Live let go of it — the alternative, trusting the first
+ * server that answers, hands the caller the outgoing Set.
  */
-async function dismissUnsavedChangesDialog(
-  watcher: ChildProcess,
-): Promise<string> {
-  return await new Promise((resolve) => {
-    let output = "";
+async function waitForServerToStop(): Promise<void> {
+  const start = Date.now();
 
-    watcher.stdout?.on("data", (data: Buffer) => {
-      output += data.toString();
-    });
+  while (Date.now() - start < SERVER_STOP_TIMEOUT_MS) {
+    if (!(await serverIsAnswering())) return;
 
-    watcher.on("close", () => {
-      resolve(output.trim());
-    });
+    await sleep(POLL_INTERVAL_MS);
+  }
 
-    // If process is already closed, resolve immediately
-    if (watcher.exitCode !== null) {
-      resolve(output.trim());
-    }
-  });
+  throw new Error(
+    `The Set that was already open never stopped serving MCP ` +
+      `(${SERVER_STOP_TIMEOUT_MS}ms). Live did not swap Sets. ` +
+      (await describeLiveState()),
+  );
 }
 
 /**
- * Waits for the MCP server to become responsive by establishing a real connection
- * and verifying that the expected tools are available.
+ * Waits for the newly opened Set to start serving MCP.
  */
-async function waitForMcpServer(): Promise<void> {
+async function waitForServerToStart(): Promise<void> {
   const start = Date.now();
 
-  while (Date.now() - start < MCP_POLL_TIMEOUT_MS) {
-    // Ask about the alert before probing the server, not after: Live drops the
-    // old Set as soon as it gives up on the new one, but that Set's server
-    // keeps answering for a moment. Probing first can pass on the strength of
-    // a server that is on its way out, leaving the suite on the wrong Set.
+  while (Date.now() - start < SERVER_START_TIMEOUT_MS) {
     const refusal = await dismissUnsupportedVersionAlert();
 
     if (refusal != null) {
@@ -198,10 +222,30 @@ async function waitForMcpServer(): Promise<void> {
 
     if (await mcpServerIsReady()) return;
 
-    await sleep(MCP_POLL_INTERVAL_MS);
+    await sleep(POLL_INTERVAL_MS);
   }
 
-  throw new Error(`MCP server not responsive after ${MCP_POLL_TIMEOUT_MS}ms`);
+  throw new Error(
+    `MCP server not responsive after ${SERVER_START_TIMEOUT_MS}ms. ` +
+      (await describeLiveState()),
+  );
+}
+
+/**
+ * Checks whether anything is serving on the MCP port. Cheaper than a full MCP
+ * handshake, which is all the teardown poll needs.
+ * @returns True if the port answered
+ */
+async function serverIsAnswering(): Promise<boolean> {
+  try {
+    const response = await fetch(new URL("/config", MCP_URL), {
+      signal: AbortSignal.timeout(2000),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -239,19 +283,38 @@ async function mcpServerIsReady(): Promise<boolean> {
 }
 
 /**
+ * Checks that the Set now serving is the one we asked for, by window title.
+ *
+ * Corroboration rather than the guarantee — the server restart is that. Live
+ * titles a saved Set's window with its file name. Every window is searched, not
+ * just the front one, since a floating Max or plugin window is often in front.
+ * No readable titles means no check: a missing Accessibility grant shouldn't
+ * fail every open.
+ * @param projectPath - Absolute path to the .als file
+ */
+async function verifyLoadedSet(projectPath: string): Promise<void> {
+  const expected = basename(projectPath, ".als");
+  const titles = await liveWindowTitles();
+
+  if (titles.length > 0 && !titles.includes(expected)) {
+    throw new Error(
+      `No Live window is showing "${expected}" (open: ${titles.join(", ")}). ` +
+        "The server that answered belongs to a different Set.",
+    );
+  }
+}
+
+/**
  * Dismisses Live's "made with a newer version of Live" alert, if it is showing.
  *
  * Live puts this up INSTEAD of opening the Set, so the Set never loads and the
  * server never comes back. Clicking it away matters as much as reporting it:
  * left up, the alert blocks every later open too, which is what turns one bad
- * Set into a 15s timeout on every remaining test file.
- *
- * The message and its single button sit in group 1 of an AXDialog window, the
- * same shape as the unsaved-changes dialog.
+ * Set into a timeout on every remaining test file.
  * @returns Live's own message, or null if the alert is not showing
  */
 async function dismissUnsupportedVersionAlert(): Promise<string | null> {
-  const script = `
+  return await runAppleScript(`
     tell application "System Events"
       tell process "${ABLETON_PROCESS}"
         repeat with w in windows
@@ -272,21 +335,80 @@ async function dismissUnsupportedVersionAlert(): Promise<string | null> {
       end tell
     end tell
     return ""
-  `;
+  `);
+}
 
+/**
+ * What Live looks like right now, for a timeout message. A bare "not
+ * responsive" leaves you guessing; the Set on screen and any dialog still up
+ * usually name the problem outright.
+ * @returns A one-line description
+ */
+async function describeLiveState(): Promise<string> {
+  const titles = await liveWindowTitles();
+  const dialog = await runAppleScript(`
+    tell application "System Events"
+      tell process "${ABLETON_PROCESS}"
+        set out to ""
+        repeat with w in windows
+          if subrole of w is "AXDialog" then
+            try
+              repeat with t in static texts of group 1 of w
+                set out to out & (value of t) & " "
+              end repeat
+            end try
+          end if
+        end repeat
+        return out
+      end tell
+    end tell
+  `);
+
+  const state =
+    titles.length > 0
+      ? `Live windows: ${titles.join(", ")}.`
+      : "Live has no readable windows (is it running?).";
+
+  return dialog == null ? state : `${state} Dialog on screen: ${dialog}`;
+}
+
+/**
+ * Reads the titles of Live's windows. The loaded Set names one of them.
+ * @returns The titles, or an empty array if Live isn't scriptable right now
+ */
+async function liveWindowTitles(): Promise<string[]> {
+  const output = await runAppleScript(`
+    tell application "System Events"
+      tell process "${ABLETON_PROCESS}"
+        set out to ""
+        repeat with w in windows
+          set n to ""
+          try
+            set n to name of w as text
+          end try
+          if n is not "" then set out to out & n & linefeed
+        end repeat
+        return out
+      end tell
+    end tell
+  `);
+
+  return output == null ? [] : output.split("\n");
+}
+
+/**
+ * Runs an AppleScript and returns its output.
+ * @param script - The AppleScript source
+ * @returns Trimmed output, or null if it failed or printed nothing. Live not
+ *   running and Accessibility not granted both land here, and neither is worth
+ *   failing an open over on its own.
+ */
+async function runAppleScript(script: string): Promise<string | null> {
   return await new Promise((resolve) => {
     execFile("osascript", ["-e", script], (error, stdout) => {
-      // Live is not running yet, or accessibility is not granted. Either way
-      // there is no alert to report.
-      if (error) {
-        resolve(null);
+      const output = error ? "" : stdout.trim();
 
-        return;
-      }
-
-      const message = stdout.trim();
-
-      resolve(message === "" ? null : message);
+      resolve(output === "" ? null : output);
     });
   });
 }
@@ -305,7 +427,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const projectPath = process.argv[2];
 
   if (!projectPath) {
-    console.error("Usage: node scripts/eval-lib/open-live-set.ts <path>");
+    console.error("Usage: node evals/scenarios/open-live-set.ts <path>");
     process.exit(1);
   }
 

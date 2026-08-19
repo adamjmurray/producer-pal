@@ -28,7 +28,10 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     testTimeout: 30000, // Longer timeout for MCP connections
-    hookTimeout: 60000, // beforeAll needs time to open Ableton + wait for MCP
+    // beforeAll opens Ableton and waits for the Set to serve MCP. Has to clear
+    // open-live-set.ts's own stop+start budget so its error wins over a bare
+    // hook timeout, which says nothing about what Live was doing.
+    hookTimeout: 120000,
     // Run test files sequentially - they share a single Ableton instance
     fileParallelism: false,
     // No coverage thresholds - e2e tests are optional
