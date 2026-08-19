@@ -122,6 +122,21 @@ describe("performSplitting when Live refuses a step", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id dup_2");
   });
 
+  it("puts the rest back whole when Live refuses the work copy silently", () => {
+    // Regression: Live answers ["id", 0] instead of throwing, and this used to
+    // skip on to the next segment. Step 2 already trimmed segment 1's span off
+    // the original, so skipping left [104,108) empty and its notes gone. The
+    // same failure as an exception never lost anything.
+    const trackMock = splitWithFailure({ failOnDuplicate: 2 });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+    );
+    // 104, not 108: the tail covers the refused segment's span too.
+    expect(dupPositions(trackMock).at(-1)).toBe(104);
+  });
+
   it("recovers the same way when the duplicate throws outright", () => {
     // 2nd duplicate: the middle segment's working copy, so there is no
     // half-built copy to clean up.

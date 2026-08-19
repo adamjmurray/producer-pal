@@ -638,33 +638,6 @@ describe("performSplitting", () => {
     expect(dups.count).toBe(2);
   });
 
-  it("should warn and skip when middle segment duplication fails", () => {
-    const { callState, mockClip, clips } = setupSplitTest(TWELVE_BEAT_LOOPED);
-
-    // First dup succeeds (source to holding), second fails (middle segment)
-    const dups = overrideWithDuplicateCounter(callState.trackMock, {
-      failOnDuplicate: 2,
-    });
-
-    // Split at 4 and 8 → 3 segments, but middle dup fails
-    performSplitting(
-      [mockClip],
-      [4, 8],
-      clips,
-      HOLDING_AREA,
-      ARRANGEMENT_SPLIT_MODE,
-    );
-
-    // Should warn about the failed middle segment
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Failed to duplicate source for middle segment"),
-    );
-
-    // Should still complete: source dup (1) + failed middle (1) + last move (1) = 3
-    expect(dups.count).toBe(3);
-  });
-
   it("should rescan split clips replacing stale references with fresh ones", () => {
     const clipId = "clip_1";
 

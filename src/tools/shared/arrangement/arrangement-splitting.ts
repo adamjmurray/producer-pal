@@ -329,11 +329,18 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
       // Use exists() rather than `id === "0"`: a non-existent object's id can be
       // "id 0", "0", or 0 (number), so the string-only check missed two of the
       // three failure shapes.
+      //
+      // Stop here, don't skip ahead: step 2 already trimmed this segment's span
+      // off the original, so moving to the next segment leaves it empty and its
+      // notes gone. Returning hands the uncut rest back to the caller whole,
+      // the same as the deadline and the catch below.
       if (!workClip.exists()) {
         console.warn(
-          `Failed to duplicate source for middle segment ${i}, skipping`,
+          `Failed to cut segment ${i} of clip ${clipId}: Live refused the ` +
+            `duplicate. The rest of the clip is left whole.`,
         );
-        continue;
+
+        return i;
       }
 
       workClipId = workClip.id;
