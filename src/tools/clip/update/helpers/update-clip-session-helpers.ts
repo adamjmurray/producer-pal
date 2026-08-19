@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { namedParam, paramNamesSomething } from "#src/tools/shared/utils.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -17,7 +18,6 @@ import {
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
   namedHiddenPath,
-  namedPath,
   parseObjectPathList,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
@@ -42,7 +42,8 @@ export function moveDestinationParam(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
 ): "toPath" | "toSlot" {
-  return namedPath(rawToPath) == null && namedHiddenPath(rawToSlot) != null
+  // Silent: resolveMoveDestinations already warned about anything it dropped.
+  return !paramNamesSomething(rawToPath) && namedHiddenPath(rawToSlot) != null
     ? "toSlot"
     : "toPath";
 }
@@ -68,7 +69,7 @@ export function resolveMoveDestinations(
   const none = Array.from({ length: clipCount }, () => null);
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const toPath = namedPath(rawToPath);
+  const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot);
 
   // Honoring one and dropping the other would move the clip somewhere the

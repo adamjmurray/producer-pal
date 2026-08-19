@@ -129,6 +129,20 @@ describe("createClip path param", () => {
     ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
   });
 
+  // z.coerce.string() renders a JSON null as "null". Counting it as a
+  // destination refused a call that named exactly one.
+  it("creates at the slot when path is a coerced null", async () => {
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+
+    await createClip({ path: "null", slot: "0/0", notes: "C3 1|1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(consoleMock.warn).toHaveBeenCalledWith('path "null" names nothing');
+  });
+
   it("refuses path and slot together rather than picking one", async () => {
     await expect(createClip({ path: "t0/s0", slot: "1/1" })).rejects.toThrow(
       "createClip failed: path and slot both name a destination",

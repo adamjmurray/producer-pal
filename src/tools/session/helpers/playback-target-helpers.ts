@@ -4,14 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  clipsNamedBy,
-  parseCommaSeparatedIds,
-} from "#src/tools/shared/utils.ts";
+import { namedParam, parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { type ObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
-  namedPath,
   namedHiddenPath,
   parseObjectPathList,
   requireSessionSlot,
@@ -61,7 +57,7 @@ export function resolvePlaybackTarget(
   action: string,
   { ids, path, slots }: PlaybackTargetParams,
 ): PlaybackTarget {
-  const namedIds = clipsNamedBy(ids, "playback", "ids") ?? undefined;
+  const namedIds = namedParam(ids, "ids");
 
   // Parsing these for an action that never reads them turns a leftover param
   // into a failed transport command: `stop` has to stop.
@@ -132,7 +128,7 @@ function resolvePathTarget(
   path: string | undefined,
   slots: string | undefined,
 ): Omit<PlaybackTarget, "ids"> {
-  const named = namedPath(path);
+  const named = namedParam(path, "path");
   const legacy = namedHiddenPath(slots);
 
   if (named != null && legacy != null) {
@@ -186,7 +182,7 @@ function warnUnusedTarget(
   ids: string | undefined,
 ): void {
   const sent = [
-    namedPath(path) != null ? "path" : null,
+    namedParam(path, "path") != null ? "path" : null,
     namedHiddenPath(slots) != null ? "slots" : null,
     ids != null ? "ids" : null,
   ].filter((param) => param != null);

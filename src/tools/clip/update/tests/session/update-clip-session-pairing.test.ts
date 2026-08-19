@@ -270,10 +270,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       });
 
       expect(result).toMatchObject({ path: "t1/s2" });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        `updateClip: ${param} "null" names no clip`,
-      );
+      expect(outlet).toHaveBeenCalledWith(1, `${param} "null" names nothing`);
       expect(outlet).not.toHaveBeenCalledWith(
         1,
         expect.stringContaining("destination(s) for"),

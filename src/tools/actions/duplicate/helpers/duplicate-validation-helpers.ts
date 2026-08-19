@@ -120,7 +120,7 @@ function validateSource(
   path: string | undefined,
 ): void {
   if (type === "drum-pad") {
-    validateExclusiveParams(id, path?.trim(), "id", "path");
+    validateExclusiveParams(id, path, "id", "path");
 
     return;
   }
@@ -129,7 +129,7 @@ function validateSource(
     throw new Error("duplicate failed: id is required");
   }
 
-  if (path?.trim()) {
+  if (path != null) {
     console.warn(`path ignored: only supported for drum pads (type "${type}")`);
   }
 }

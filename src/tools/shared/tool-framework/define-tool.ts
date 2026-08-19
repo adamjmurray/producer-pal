@@ -13,7 +13,7 @@ import {
   resolveModalDescription,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
-import { hiddenParamNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 
 // Re-export CallToolResult for use by callers
 export type { CallToolResult };
@@ -108,7 +108,7 @@ export function defineTool(
         // "use X instead" for a blank or null value steers the caller over a
         // value that was never used.
         const usedHidden = Object.keys(hiddenParams).filter((key) =>
-          hiddenParamNamesSomething(args[key]),
+          paramNamesSomething(args[key]),
         );
 
         // Parse with strict schema (strips extra keys for callLiveApi)

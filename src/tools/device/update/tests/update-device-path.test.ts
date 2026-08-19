@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
@@ -13,6 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../update-device.ts";
 
 describe("updateDevice with path parameter", () => {
@@ -26,6 +27,22 @@ describe("updateDevice with path parameter", () => {
     expect(() => updateDevice({ ids: "123", path: "t1/d0" })).toThrow(
       "Provide either ids or path, not both",
     );
+  });
+
+  // Both spellings are published, so a model picking one nulls the other.
+  // z.coerce.string() renders that as "null" — counting it as sent refused the
+  // update over a param the caller deliberately left empty.
+  it("updates by path when ids is a coerced null", () => {
+    const warn = vi.spyOn(console, "warn");
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ ids: "null", path: "t1/d0", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(warn).toHaveBeenCalledWith('ids "null" names nothing');
   });
 
   describe("device paths", () => {

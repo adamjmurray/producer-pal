@@ -25,7 +25,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { hiddenParamNamesSomething } from "#src/tools/shared/utils.ts";
+import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 
 /** Maximum take lanes per track (soft cap; total non-main lanes). */
 export const MAX_TAKE_LANES = 8;
@@ -182,7 +182,7 @@ export interface ResolvedTakeLane {
 export function isTakeLaneRequested(
   takeLane: number | string | null | undefined,
 ): boolean {
-  if (!hiddenParamNamesSomething(takeLane)) return false;
+  if (!paramNamesSomething(takeLane)) return false;
 
   return takeLane !== 0 && takeLane !== "0";
 }

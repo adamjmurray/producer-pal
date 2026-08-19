@@ -8,7 +8,6 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
-  namedPath,
   parseObjectPathList,
   parseSessionSlotList,
   requireClipPath,
@@ -61,12 +60,13 @@ describe("parseObjectPathList", () => {
     );
   });
 
-  // What a JSON null arrives as. An empty list means the source's own track, so
-  // reading it as omitted is a copy landing somewhere nobody asked for.
-  it("throws for a coerced null instead of reading it as omitted", () => {
-    expect(() => parseObjectPathList("null", "toPath")).toThrow(
-      'invalid toPath "null" - "null" is not a track',
-    );
+  // What a JSON null arrives as. The caller named no destination, so read it as
+  // omitted — but say so, since the schema turned a non-answer into a value.
+  it("reads a coerced null as omitted, and says so", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(parseObjectPathList("null", "toPath")).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith('toPath "null" names nothing');
   });
 
   // The list is cycled against a position list, so a dropped entry moves every
@@ -254,26 +254,6 @@ describe("trackSegmentPath", () => {
     expect(trackSegmentPath({ kind: "master-track" }).toString()).toBe(
       "live_set master_track",
     );
-  });
-});
-
-describe("namedPath", () => {
-  it("reads a blank param as naming nothing", () => {
-    expect(namedPath(undefined)).toBeUndefined();
-    expect(namedPath("")).toBeUndefined();
-    expect(namedPath("   ")).toBeUndefined();
-  });
-
-  // z.coerce.string() turns a JSON null into "null" before the handler sees it.
-  // Reading that as "unset" is how a copy lands on the source's own track with
-  // nothing said about it, so it has to reach the parser and fail there.
-  it("keeps a coerced null so it fails to parse instead of reading as omitted", () => {
-    expect(namedPath("null")).toBe("null");
-    expect(namedPath("undefined")).toBe("undefined");
-  });
-
-  it("trims a param that names something", () => {
-    expect(namedPath(" t7/s2 ")).toBe("t7/s2");
   });
 });
 

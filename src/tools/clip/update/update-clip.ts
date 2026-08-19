@@ -22,7 +22,7 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
-  clipsNamedBy,
+  namedParam,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -264,8 +264,8 @@ function requestedClipIds(
   ids: string | undefined,
   path: string | undefined,
 ): Array<string | null> {
-  const namedIds = clipsNamedBy(ids, "updateClip", "ids");
-  const namedPaths = clipsNamedBy(path, "updateClip", "path");
+  const namedIds = namedParam(ids, "ids");
+  const namedPaths = namedParam(path, "path");
 
   return [
     ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),

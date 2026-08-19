@@ -84,7 +84,7 @@ describe("playback ids that names no clip", () => {
     playback({ action: "play-session-clips", path: "t0/s1", ids: "null" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    expect(warn).toHaveBeenCalledWith('playback: ids "null" names no clip');
+    expect(warn).toHaveBeenCalledWith('ids "null" names nothing');
   });
 
   it("fires the path's clip when ids is blank, without a word", () => {

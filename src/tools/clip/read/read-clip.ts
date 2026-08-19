@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
@@ -19,7 +20,6 @@ import {
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   arrangementPath,
-  namedPath,
   namedHiddenPath,
   requireSessionSlot,
   slotPath,
@@ -446,8 +446,8 @@ function resolveClipLocation(args: ReadClipArgs): {
   trackIndex: number | null;
   sceneIndex: number | null;
 } {
-  const clipId = args.clipId ?? null;
-  const path = namedPath(args.path ?? undefined);
+  const clipId = namedParam(args.clipId, "clipId") ?? null;
+  const path = namedParam(args.path, "path");
   const slot = namedHiddenPath(args.slot ?? undefined);
 
   // Honoring one and dropping the other is the silent wrong-clip bug path

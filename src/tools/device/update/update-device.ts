@@ -15,6 +15,7 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
+  namedParam,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -113,6 +114,11 @@ export function updateDevice(
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> | Record<string, unknown>[] | null {
+  // A value the schema coerced from a JSON null names nothing, so it must not
+  // count as the caller having sent both addressing params.
+  ids = namedParam(ids, "ids");
+  path = namedParam(path, "path");
+
   validateExclusiveParams(ids, path, "ids", "path");
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;

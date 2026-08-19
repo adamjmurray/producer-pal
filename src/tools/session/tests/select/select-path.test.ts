@@ -318,6 +318,28 @@ describe("select path param", () => {
     );
   });
 
+  // z.coerce.string() renders a JSON null as "null". Counting it as a target
+  // refused a call that named exactly one.
+  it("selects what slot names when path is a coerced null", () => {
+    const warn = vi.spyOn(console, "warn");
+    const clipSlot = registerMockObject("clipslot_0_1", {
+      path: livePath.track(0).clipSlot(1),
+      type: "ClipSlot",
+      properties: { has_clip: 0 },
+    });
+    const songView = setupSongViewMock();
+
+    setupAppViewMock();
+
+    select({ path: "null", slot: "0/1" });
+
+    expect(songView.set).toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      `id ${clipSlot.id}`,
+    );
+    expect(warn).toHaveBeenCalledWith('path "null" names nothing');
+  });
+
   it("refuses path alongside a param it replaced", () => {
     expect(() => select({ path: "t0/s1", slot: "0/1" })).toThrow(
       "select failed: path and slot/devicePath both name a target",

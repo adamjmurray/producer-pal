@@ -11,6 +11,7 @@
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
+import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
@@ -21,7 +22,6 @@ import {
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   arrangementPath,
-  namedPath,
   namedHiddenPath,
   parseObjectPathList,
   requireClipPath,
@@ -73,7 +73,7 @@ export function resolveCreateClipDestinations(
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const path = namedPath(params.path ?? undefined);
+  const path = namedParam(params.path, "path");
   const slot = namedHiddenPath(params.slot ?? undefined);
 
   // Honoring one and dropping the other is exactly the silent-destination bug

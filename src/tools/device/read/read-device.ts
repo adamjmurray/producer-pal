@@ -17,6 +17,7 @@ import {
   navigateRemainingSegments,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { namedParam } from "#src/tools/shared/utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   drumMapReadDepth,
@@ -64,6 +65,11 @@ export function readDevice(
   { deviceId, path, include = [], maxDepth = 0, paramSearch }: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
+  // A value the schema coerced from a JSON null names nothing, so it must not
+  // count as the caller having sent both addressing params.
+  deviceId = namedParam(deviceId, "deviceId");
+  path = namedParam(path, "path");
+
   validateExclusiveParams(deviceId, path, "deviceId", "path");
 
   const includeAll = include.includes("*");

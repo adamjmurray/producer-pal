@@ -413,15 +413,19 @@ describe("duplicate - clip duplication", () => {
       expect(track0.call).not.toHaveBeenCalled();
     });
 
-    // Same failure as ",": toPath was sent, names nothing, and reading it as
-    // omitted puts the copy on the source's own track without a word.
-    it("creates nothing for a toPath sent as null", async () => {
+    // Unlike ",", a coerced null is a param the caller never filled in. Copy to
+    // the source's own track as if toPath were omitted, and say the param named
+    // nothing so the caller can tell the destination came from us.
+    it("copies to the source track for a toPath sent as null, and says so", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
       });
 
       const track0 = registerTrackWithArrangementDup(0, { has_midi_input: 1 });
+
+      registerArrangementClip(0, 0, 8);
+
       // z.coerce.string() runs before the handler, so a JSON null arrives as "null"
       const toPath = toolDefDuplicate.toolOptions.inputSchema.toPath?.parse(
         null,
@@ -429,16 +433,20 @@ describe("duplicate - clip duplication", () => {
 
       expect(toPath).toBe("null");
 
-      await expect(
-        duplicate({
-          type: "clip",
-          id: "clip1",
-          arrangementStart: "3|1",
-          toPath,
-        }),
-      ).rejects.toThrow('invalid toPath "null" - "null" is not a track');
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        toPath,
+      });
 
-      expect(track0.call).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(1, 'toPath "null" names nothing');
+      expect(track0.call).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        8,
+      );
+      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
     });
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {

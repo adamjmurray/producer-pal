@@ -10,6 +10,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { readDevice } from "../read-device.ts";
 import {
   setupBasicDeviceMock,
@@ -32,6 +33,25 @@ describe("readDevice with path parameter", () => {
     expect(() => readDevice({ deviceId: "device-123", path: "t1/d0" })).toThrow(
       "Provide either deviceId or path, not both",
     );
+  });
+
+  // Both spellings are published, so a model picking one nulls the other.
+  // z.coerce.string() renders that as "null" — counting it as sent refused the
+  // read over a param the caller deliberately left empty.
+  it("reads by path when deviceId is a coerced null", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupBasicDeviceMock({
+      id: "device-456",
+      path: String(livePath.track(1).device(0)),
+      class_display_name: "Operator",
+      type: 1,
+    });
+
+    expect(readDevice({ deviceId: "null", path: "t1/d0" })).toMatchObject({
+      id: "device-456",
+    });
+    expect(warn).toHaveBeenCalledWith('deviceId "null" names nothing');
   });
 
   it("should read device by path", () => {

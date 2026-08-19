@@ -8,6 +8,7 @@
 // works. Resolved before anything is created, so a bad destination fails
 // instead of quietly landing the copy somewhere else.
 
+import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
@@ -16,7 +17,6 @@ import {
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   namedHiddenPath,
-  namedPath,
   parseObjectPathList,
   requireClipPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
@@ -50,7 +50,7 @@ export function resolveClipDestinations(
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
-  const toPath = namedPath(rawToPath);
+  const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot);
 
   // Honoring one and dropping the other is exactly the silent-destination bug
@@ -150,7 +150,7 @@ export function warnUnusedDestination(
 ): void {
   if (type === "clip") return;
 
-  const toPath = namedPath(rawToPath);
+  const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot);
 
   if (type !== "device" && type !== "drum-pad" && toPath != null) {

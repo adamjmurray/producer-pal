@@ -107,6 +107,29 @@ describe("readClip path param", () => {
     );
   });
 
+  // Both addressing params are published side by side ("provide this or path"),
+  // so a model filling in the unused one with null is the expected shape.
+  // z.coerce.string() renders that as "null", and counting it as sent refused
+  // the call over a param the caller deliberately left empty.
+  it.each(["clipId", "path"] as const)(
+    "reads the clip the other param names when %s is a coerced null",
+    (param) => {
+      const warn = vi.spyOn(console, "warn");
+
+      setupMidiClipMock({
+        trackIndex: 1,
+        sceneIndex: 1,
+        clipId: "123",
+        clipProps: { name: "Test Clip" },
+      });
+
+      const named = param === "clipId" ? { path: "t1/s1" } : { clipId: "123" };
+
+      expect(readClip({ ...named, [param]: "null" }).name).toBe("Test Clip");
+      expect(warn).toHaveBeenCalledWith(`${param} "null" names nothing`);
+    },
+  );
+
   // trackIndex/sceneIndex are permanent aliases, not deprecated, so they warn
   // rather than throw — matching create-clip.
   it("warns that trackIndex/sceneIndex went unused when path names the clip", () => {

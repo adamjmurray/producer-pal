@@ -6,6 +6,7 @@
 // Reading select's `path` param. One grammar covers every shape select can act
 // on, so the kind the path parses to picks the target.
 
+import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
   parseObjectPath,
@@ -13,10 +14,7 @@ import {
   type ObjectPath,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
-import {
-  namedHiddenPath,
-  namedPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { namedHiddenPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseClipSlot } from "./select-id-helpers.ts";
 import { type TrackCategory } from "./select-helpers.ts";
 
@@ -92,7 +90,7 @@ function targetFromParams({
   slot: rawSlot,
   devicePath: rawDevicePath,
 }: PathParams): PathTarget {
-  const path = namedPath(rawPath);
+  const path = namedParam(rawPath, "path");
   const slot = namedHiddenPath(rawSlot);
   const devicePath = namedHiddenPath(rawDevicePath);
 

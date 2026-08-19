@@ -388,8 +388,8 @@ describe("updateClip - Basic operations", () => {
     },
   );
 
-  // A silent no-op reads as "moved" to the model. Warn, but don't throw: the
-  // rest of the batch still has to land.
+  // The caller asked for no move. Say the param named nothing rather than
+  // reporting a move that failed, and let the rest of the update land.
   it("should warn when toPath was sent as null", async () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
@@ -405,7 +405,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('clip not moved: invalid toPath "null"'),
+      expect.stringContaining('toPath "null" names nothing'),
     );
     expect(result).not.toHaveProperty("slot");
   });

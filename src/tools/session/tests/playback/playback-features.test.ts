@@ -68,6 +68,20 @@ describe("playback path param", () => {
     );
   });
 
+  // A caller on the current param may still send the deprecated one as null;
+  // counting the coerced "null" as a second target refused the call.
+  it("fires what slots names when path is a coerced null", () => {
+    const warn = vi.spyOn(console, "warn");
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    playback({ action: "play-session-clips", path: "null", slots: "0/1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith('path "null" names nothing');
+  });
+
   it("refuses path and the deprecated slots together", () => {
     expect(() =>
       playback({ action: "play-session-clips", path: "t0/s1", slots: "0/1" }),

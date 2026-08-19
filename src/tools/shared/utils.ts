@@ -48,15 +48,14 @@ export function withoutNulls(
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**
- * Whether a hidden param's value names something. Nullish, blank, and the
- * strings a JSON null coerces into all mean "unset" here, so a caller can stop
- * sending the old param without it counting as sent. Published params get no
- * such pass: "null" is not a track, and reading it as unset is how a value
- * lands somewhere the caller never asked for.
+ * Whether a param's value names something. Nullish, blank, and the strings a
+ * JSON null coerces into all mean "unset", so a caller that meant to send
+ * nothing is never counted as having sent a value. Silent — use
+ * {@link namedParam} to read a published param, which also says so.
  * @param value - Raw param value
  * @returns True when the value names something
  */
-export function hiddenParamNamesSomething(value: unknown): boolean {
+export function paramNamesSomething(value: unknown): boolean {
   if (value == null) return false;
 
   if (typeof value !== "string") return true;
@@ -75,29 +74,27 @@ export function isCoercedNullish(value: string): boolean {
 }
 
 /**
- * Reads a published param naming clips, dropping a value that names none. A
- * blank reads as omitted; a coerced null warns first, since the caller meant to
- * send nothing and the schema turned it into a value. Counting it as one is how
- * a call gets refused, or a destination paired with the wrong clip.
+ * Reads a published param, dropping a value that names nothing. A blank reads
+ * as omitted; a coerced null warns first, since the caller meant to send
+ * nothing and the schema turned it into a value. Counting it as sent is how a
+ * call gets refused, or a value paired with the wrong object.
  * @param value - Raw param value
- * @param tool - Tool name, for the warning
  * @param label - Param name, for the warning
- * @returns The trimmed value, or null when it names no clip
+ * @returns The trimmed value, or undefined when it names nothing
  */
-export function clipsNamedBy(
-  value: string | undefined,
-  tool: string,
+export function namedParam(
+  value: string | null | undefined,
   label: string,
-): string | null {
+): string | undefined {
   const trimmed = value?.trim();
 
-  if (trimmed == null || trimmed === "") return null;
+  if (trimmed == null || trimmed === "") return undefined;
 
   if (!isCoercedNullish(trimmed)) return trimmed;
 
-  console.warn(`${tool}: ${label} "${trimmed}" names no clip`);
+  console.warn(`${label} "${trimmed}" names nothing`);
 
-  return null;
+  return undefined;
 }
 
 /**

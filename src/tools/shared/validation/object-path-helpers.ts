@@ -13,7 +13,8 @@ import {
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
 import {
-  hiddenParamNamesSomething,
+  paramNamesSomething,
+  namedParam,
   parseCommaSeparatedIds,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -64,7 +65,7 @@ export function parseObjectPathList(
  * @returns One trimmed entry per path, in order
  */
 export function pathEntries(input?: string | null, label = "path"): string[] {
-  const named = namedPath(input ?? undefined);
+  const named = namedParam(input, label);
 
   if (named == null) return [];
 
@@ -90,28 +91,15 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
 }
 
 /**
- * Normalizes a path param: a blank value reads the same as an omitted param
- * rather than as a path that failed to parse. Anything else is kept, including
- * "null" — z.coerce.string() produces that for a JSON null, and reading it as
- * unset sends the copy to the source's own track without a word about it.
- * @param value - Raw param value
- * @returns The trimmed value, or undefined when it names nothing
- */
-export function namedPath(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-
-  return trimmed == null || trimmed === "" ? undefined : trimmed;
-}
-
-/**
- * Normalizes a hidden (deprecated or alias) path param. Like {@link namedPath},
- * except a coerced null also reads as unset: a caller moving off the old param
- * may send null for it, and that must not count as a second destination.
+ * Normalizes a hidden (deprecated or alias) path param. Like
+ * {@link namedParam}, except a coerced null passes without a word: a caller
+ * moving off the old param may send null for it, and there is nothing to tell
+ * them about a param they were already meant to stop sending.
  * @param value - Raw param value
  * @returns The trimmed value, or undefined when it names nothing
  */
 export function namedHiddenPath(value: string | undefined): string | undefined {
-  return hiddenParamNamesSomething(value) ? namedPath(value) : undefined;
+  return paramNamesSomething(value) ? value?.trim() : undefined;
 }
 
 /**

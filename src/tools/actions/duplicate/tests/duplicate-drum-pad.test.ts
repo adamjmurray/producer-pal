@@ -411,6 +411,24 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
   });
 
+  // Both spellings are published, so a model that picks one and nulls the other
+  // sends "null" for it. Counting that as sent refused the copy outright.
+  it.each(["id", "path"] as const)(
+    "copies when %s is a coerced null and the other names the pad",
+    async (param) => {
+      const rack = registerCopyReadyRack();
+      const named = param === "id" ? { path: "t0/d0/pC1" } : {};
+
+      const result = await copyC1ToD1({ ...named, [param]: "null" });
+
+      expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+      expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
+      expect(consoleMock.warn).toHaveBeenCalledWith(
+        `${param} "null" names nothing`,
+      );
+    },
+  );
+
   it("warns that path names a source for drum pads only", async () => {
     await expect(
       duplicate({ type: "track", id: "t1", path: "t0/d0/pC1", count: 0 }),
