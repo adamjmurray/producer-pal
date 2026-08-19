@@ -21,6 +21,7 @@
 // schema that gets published.
 
 import { type ZodType } from "zod";
+import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import {
   describeWithTags,
   getSchemaTag,
@@ -138,7 +139,7 @@ export function hiddenParamWarnings(
 
     if (info.kind === "deprecated") {
       warnings.push(
-        `Warning: ${toolName} param "${key}" is deprecated and will be removed; use "${info.replacedBy}" instead`,
+        `${WARNING_PREFIX}${toolName} param "${key}" is deprecated and will be removed; use "${info.replacedBy}" instead`,
       );
       continue;
     }
@@ -157,7 +158,7 @@ export function hiddenParamWarnings(
     const hint = example == null ? "" : ` (e.g. ${canonical}: "${example}")`;
 
     warnings.push(
-      `Warning: ${toolName} accepts ${names} as a fallback; the parameter is "${canonical}"${hint}`,
+      `${WARNING_PREFIX}${toolName} accepts ${names} as a fallback; the parameter is "${canonical}"${hint}`,
     );
   }
 

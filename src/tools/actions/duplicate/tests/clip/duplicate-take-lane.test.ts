@@ -335,6 +335,25 @@ describe("duplicate take lane", () => {
     });
   });
 
+  it("warns and ignores takeLaneName when no destination names a lane", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTrackWithArrangementDup(2);
+    registerArrangementClip(2, 0, 0);
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      toPath: "t2",
+      arrangementStart: "1|1",
+      takeLaneName: "Verse take",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLaneName ignored"),
+    );
+  });
+
   it("warns and ignores takeLane for a session destination", async () => {
     registerSessionClipDuplication({ destClipProperties: {} });
 

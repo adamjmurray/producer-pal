@@ -11,6 +11,7 @@ import {
   takeLaneTargetsThatFit,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
@@ -41,7 +42,15 @@ export function resolveDuplicateTakeLanes(
 ): Map<string, ResolvedDuplicateLane> {
   const laneTargets = targets.filter((target) => target.takeLane != null);
 
-  if (laneTargets.length === 0) return new Map();
+  if (laneTargets.length === 0) {
+    if (paramNamesSomething(takeLaneName)) {
+      console.warn(
+        "duplicate: takeLaneName ignored: no destination names a take lane",
+      );
+    }
+
+    return new Map();
+  }
 
   if (sourceClip.getProperty("is_midi_clip") !== 1) {
     console.warn(

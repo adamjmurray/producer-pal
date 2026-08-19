@@ -3,11 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
+import {
+  warnNothingSplit,
+  warnUnusedSplitPoints,
+  type SplitMiss,
+} from "#src/tools/shared/arrangement/arrangement-splitting-warnings.ts";
 import {
   createAndDeleteTempClip,
   EPSILON,
@@ -50,13 +54,6 @@ interface SplitClipRange {
   endTime: number;
 }
 
-/** A clip no split point fell inside, held until the whole call is known. */
-interface SplitMiss {
-  clipId: string;
-  clipArrangementStart: number;
-  clipLength: number;
-}
-
 interface SplitSingleClipArgs {
   clip: LiveAPI;
   splitPoints: number[];
@@ -64,6 +61,8 @@ interface SplitSingleClipArgs {
   context: SplittingContext;
   splitClipRanges: Map<string, SplitClipRange>;
   misses: SplitMiss[];
+  /** Indices of the split points that fell inside some clip, filled in here. */
+  usedPoints: Set<number>;
 }
 
 /**
@@ -114,9 +113,14 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   // below assume was vacated still occupied. Those moves skip the overlap
   // clear, so Live would crash on the next duplicate. Keep the two thresholds
   // equal. Such a point asks for a zero-length segment anyway.
-  const validPoints = offsets.filter(
-    (p) => p > EPSILON && p < clipLength - EPSILON,
-  );
+  const validPoints: number[] = [];
+
+  for (const [index, p] of offsets.entries()) {
+    if (p > EPSILON && p < clipLength - EPSILON) {
+      validPoints.push(p);
+      args.usedPoints.add(index);
+    }
+  }
 
   if (validPoints.length === 0) {
     args.misses.push({ clipId: clip.id, clipArrangementStart, clipLength });
@@ -220,40 +224,6 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   );
 
   return true;
-}
-
-/**
- * Warn that nothing was cut, naming the span the caller should have aimed at in
- * whichever coordinates it used.
- *
- * Only fires when no clip in the call took a cut. Cutting several clips at one
- * song position is what `arrangementSplit` is for, so the clips that position
- * misses are the expected case, not something to report.
- * @param misses - The clips no split point fell inside
- * @param mode - How the caller's positions are read
- */
-function warnNothingSplit(misses: SplitMiss[], mode: SplitMode): void {
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const numerator = liveSet.getProperty("signature_numerator") as number;
-  const denominator = liveSet.getProperty("signature_denominator") as number;
-  const toBarBeat = (beats: number): string =>
-    abletonBeatsToBarBeat(beats, numerator, denominator);
-  const spans = misses
-    .map(({ clipId, clipArrangementStart, clipLength }) =>
-      mode.origin === "song"
-        ? `${clipId} (${toBarBeat(clipArrangementStart)} to ${toBarBeat(clipArrangementStart + clipLength)})`
-        : `${clipId} (1|1 to ${toBarBeat(clipLength)})`,
-    )
-    .join(", ");
-
-  const where =
-    mode.origin === "song"
-      ? "Positions are on the song timeline; the clips span"
-      : "Positions are relative to each clip's start (1|1), and must be before its end; the clips span";
-
-  console.warn(
-    `${mode.param} cut nothing: no split point falls inside any of the clips. ${where} ${spans}.`,
-  );
 }
 
 interface ExtractMiddleSegmentsArgs {
@@ -446,6 +416,7 @@ export function performSplitting(
 ): void {
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
+  const usedPoints = new Set<number>();
 
   for (let i = 0; i < arrangementClips.length; i++) {
     // Between clips, so no clip is left half-cut. One clip's own splitting is
@@ -474,6 +445,7 @@ export function performSplitting(
         context: _context,
         splitClipRanges,
         misses,
+        usedPoints,
       });
     } catch (error) {
       // Whatever Live refused, the rest of the batch is still worth cutting.
@@ -485,8 +457,12 @@ export function performSplitting(
     }
   }
 
-  if (splitClipRanges.size === 0 && misses.length > 0) {
-    warnNothingSplit(misses, mode);
+  if (splitClipRanges.size === 0) {
+    if (misses.length > 0) warnNothingSplit(misses, mode);
+  } else {
+    // Something was cut, so the caller gets a result that looks like it worked.
+    // A position that landed in no clip at all has to say so itself.
+    warnUnusedSplitPoints(splitPoints, usedPoints, mode);
   }
 
   rescanSplitClips(splitClipRanges, clips);

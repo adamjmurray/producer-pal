@@ -201,6 +201,21 @@ describe("MarkdownEditor", () => {
     expect(new Set(ids).size).toBe(2);
   });
 
+  it("does not claim Tab indents in a read-only pane", () => {
+    // Regression: the hint was attached to every instance, so the Default and
+    // preview panes told screen-reader users to press Escape first — Tab moves
+    // focus there on its own, since indentMore no-ops under readOnly.
+    const { container } = renderEditor({
+      initialValue: "hello",
+      readOnly: true,
+    });
+
+    expect(
+      viewIn(container).contentDOM.getAttribute("aria-describedby"),
+    ).toBeNull();
+    expect(container.querySelector(".sr-only")).toBeNull();
+  });
+
   it("read-only lets Tab move focus instead of trapping it", () => {
     const { container } = renderEditor({
       initialValue: "hello",

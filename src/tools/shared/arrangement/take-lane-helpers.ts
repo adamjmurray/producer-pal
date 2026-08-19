@@ -137,29 +137,36 @@ export function takeLaneLabel(target: ArrangementTrack): string {
 }
 
 /**
- * Warn when `duplicate` was given a takeLane it has no use for — a non-clip
- * type, or a session destination. The value isn't validated here: a malformed
- * takeLane on a duplicate that ignores it should warn, not throw.
+ * Warn when `duplicate` was given take-lane params it has no use for — a
+ * non-clip type, or a session destination. Neither value is validated here: a
+ * malformed one on a duplicate that ignores it should warn, not throw.
  * @param type - The duplicate target type ("clip", "track", etc.)
  * @param destination - "session" | "arrangement" | undefined
  * @param takeLane - Raw takeLane value from the tool args
  * @param warn - console.warn binding (Max-aware in V8, native in tests)
+ * @param takeLaneName - Raw takeLaneName value from the tool args
  */
 export function warnUnusedTakeLane(
   type: string,
   destination: string | undefined,
   takeLane: number | string | null | undefined,
   warn: (...args: unknown[]) => void,
+  takeLaneName?: string | null,
 ): void {
-  if (!isTakeLaneRequested(takeLane)) return;
+  const unusable = [
+    ...(isTakeLaneRequested(takeLane) ? ["takeLane"] : []),
+    ...(paramNamesSomething(takeLaneName) ? ["takeLaneName"] : []),
+  ].join(" and ");
+
+  if (unusable === "") return;
 
   if (type !== "clip") {
     warn(
-      `takeLane ignored: only supported when duplicating clips (type "${type}")`,
+      `${unusable} ignored: only supported when duplicating clips (type "${type}")`,
     );
   } else if (destination === "session") {
     warn(
-      "duplicate: takeLane ignored for session destination (arrangement-only)",
+      `duplicate: ${unusable} ignored for session destination (arrangement-only)`,
     );
   }
 }
@@ -253,8 +260,14 @@ export function resolveTakeLane(
   const lane = track.child("take_lanes", String(laneIndex));
   const laneWasCreated = laneIndex >= currentCount;
 
-  if (laneWasCreated && takeLaneName != null && takeLaneName !== "") {
-    lane.setAll({ name: takeLaneName });
+  if (takeLaneName != null && takeLaneName !== "") {
+    if (laneWasCreated) {
+      lane.setAll({ name: takeLaneName });
+    } else {
+      console.warn(
+        `takeLaneName ignored: take lane ${laneIndex} already exists and keeps its own name`,
+      );
+    }
   }
 
   return { lane, laneIndex };

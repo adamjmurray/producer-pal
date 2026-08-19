@@ -11,6 +11,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
+  WARNING_PREFIX,
   type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
@@ -208,7 +209,7 @@ function handleLiveApiResult(...args: unknown[]): void {
 
       for (const [msg, count] of warningCounts) {
         const repeats = count > 1 ? ` (x${count})` : "";
-        const errorText = `WARNING: ${msg}${repeats}`;
+        const errorText = `${WARNING_PREFIX}${msg}${repeats}`;
 
         result.content.push({ type: "text", text: errorText });
         errorMessageLength += errorText.length;

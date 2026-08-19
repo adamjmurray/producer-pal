@@ -168,7 +168,7 @@ describe("hiddenParamWarnings", () => {
     expect(
       hiddenParamWarnings("ppal-duplicate", ["slot"], hidden),
     ).toStrictEqual([
-      'Warning: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+      'WARNING: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
     ]);
   });
 
@@ -182,7 +182,7 @@ describe("hiddenParamWarnings", () => {
         hidden,
       ),
     ).toStrictEqual([
-      'Warning: ppal-create-clip accepts "trackIndex", "sceneIndex" as a fallback; the parameter is "path" (e.g. path: "t0/s1")',
+      'WARNING: ppal-create-clip accepts "trackIndex", "sceneIndex" as a fallback; the parameter is "path" (e.g. path: "t0/s1")',
     ]);
   });
 
@@ -196,7 +196,7 @@ describe("hiddenParamWarnings", () => {
         }),
       ),
     ).toStrictEqual([
-      'Warning: ppal-select accepts "trackIndex" as a fallback; the parameter is "path"',
+      'WARNING: ppal-select accepts "trackIndex" as a fallback; the parameter is "path"',
     ]);
   });
 
@@ -210,7 +210,7 @@ describe("hiddenParamWarnings", () => {
     expect(
       hiddenParamWarnings("ppal-duplicate", ["name", "slot"], hidden),
     ).toStrictEqual([
-      'Warning: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+      'WARNING: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
     ]);
   });
 });
@@ -248,7 +248,7 @@ describe("defineTool with hidden params", () => {
       const texts = result.content.map((c) => c.text);
 
       expect(texts).toContain(
-        'Warning: test-tool param "toSlot" is deprecated and will be removed; use "toPath" instead',
+        'WARNING: test-tool param "toSlot" is deprecated and will be removed; use "toPath" instead',
       );
       expect(texts.join("\n")).not.toContain("ignored unexpected argument");
     });
@@ -259,7 +259,7 @@ describe("defineTool with hidden params", () => {
 
     return handler(mockServer)({ id: "1", toTrack: 2 }).then((result) => {
       expect(result.content.map((c) => c.text)).toContain(
-        'Warning: test-tool accepts "toTrack" as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
+        'WARNING: test-tool accepts "toTrack" as a fallback; the parameter is "toPath" (e.g. toPath: "t0/s1")',
       );
     });
   });
@@ -293,7 +293,7 @@ describe("defineTool with hidden params", () => {
 
     return handler(mockServer)({ id: "1", bogus: 1 }).then((result) => {
       expect(result.content.map((c) => c.text)).toContain(
-        "Warning: test-tool ignored unexpected argument(s): bogus",
+        "WARNING: test-tool ignored unexpected argument(s): bogus",
       );
     });
   });

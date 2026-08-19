@@ -283,9 +283,13 @@ describe("REST API Routes", () => {
       expect(body.isError).toBe(false);
     });
 
-    it("honors a deprecated param and says it is deprecated", async () => {
+    it("honors a deprecated param and warns that it is deprecated", async () => {
       // The catalog no longer lists it, so this notice is the only signal a
       // REST caller gets. The value is still forwarded.
+      //
+      // Regression: the notice was spelled "Warning: " while the splitter
+      // matches "WARNING: ", so it arrived filed as an appended block — for
+      // every REST caller that didn't ask for compact, which is the default.
       setMcpResponse({ content: [{ type: "text", text: "moved" }] });
 
       const response = await callTool("ppal-duplicate", {
@@ -298,9 +302,10 @@ describe("REST API Routes", () => {
       expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toMatchObject({
         toSlot: "2/0",
       });
-      expect(body.appended?.join("\n")).toContain(
+      expect(body.warnings?.join("\n")).toContain(
         'param "toSlot" is deprecated',
       );
+      expect(body.appended).toBeUndefined();
     });
 
     it("should return isError true when tool reports error", async () => {

@@ -5,6 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z, type ZodType } from "zod";
+import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
@@ -303,8 +304,6 @@ interface UnwrappedResponse {
   warnings?: string[];
   appended?: string[];
 }
-
-const WARNING_PREFIX = "WARNING: ";
 
 /**
  * Unwrap MCP response format into a plain REST response.

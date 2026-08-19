@@ -124,6 +124,12 @@ function nextStepBlock(config: NextStepConfig): string {
  * @returns Names of the empty layers, in injected order
  */
 function emptyLayers(config: NextStepConfig): string[] {
+  // A caller without ppal-context can neither read these layers nor fill them,
+  // and the toolset gate already drops the context skills fragment — so this
+  // would be the only mention of them left, in a response that can do nothing
+  // about it.
+  if (!hasContextTool(config)) return [];
+
   const empty: string[] = [];
 
   if (!config.projectContext.trim()) empty.push("project context");
@@ -155,11 +161,18 @@ function emptyLayers(config: NextStepConfig): string[] {
 function isNewUser(config: NextStepConfig): boolean {
   if (config.smallModelMode) return false;
 
-  if (config.tools != null && !config.tools.includes(CONTEXT_TOOL_ID)) {
-    return false;
-  }
+  if (!hasContextTool(config)) return false;
 
   if (readGlobalContext().trim()) return false;
 
   return listMemoryEntries().length === 0;
+}
+
+/**
+ * Whether this caller can call ppal-context at all.
+ * @param config - Current device settings
+ * @returns True when ppal-context is available, or nothing narrows the toolset
+ */
+function hasContextTool(config: NextStepConfig): boolean {
+  return config.tools == null || config.tools.includes(CONTEXT_TOOL_ID);
 }

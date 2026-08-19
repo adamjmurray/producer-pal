@@ -85,8 +85,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
   const { initialValue, onChange, onFocus, onBlur, onSubmit } = props;
   const { readOnly = false, disabled = false, placeholder } = props;
   const { className, ariaLabel, editorRef, variant = "card" } = props;
-  // Tab indents here, so the way out is Escape-then-Tab. Nothing on screen can
-  // say so, hence a screen-reader-only description on the editable region.
+  // Tab indents where edits land, so the way out is Escape-then-Tab. Nothing on
+  // screen can say so, hence a screen-reader-only description on the editable
+  // region — attached only where it is true (see editableConfig).
   const tabHintId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -133,7 +134,6 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
         extensions: [
           ...(variant === "chat" ? [chatInputExtensions] : []),
           markdownEditorExtensions,
-          EditorView.contentAttributes.of({ "aria-describedby": tabHintId }),
           ...(ariaLabel != null
             ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
             : []),
@@ -141,7 +141,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
             ? [submitKeymap(() => onSubmitRef.current?.())]
             : []),
           updateListener,
-          editableCompartment.current.of(editableConfig(readOnly, disabled)),
+          editableCompartment.current.of(
+            editableConfig(readOnly, disabled, tabHintId),
+          ),
           placeholderCompartment.current.of(
             placeholder != null ? placeholderExt(placeholder) : [],
           ),
@@ -179,10 +181,10 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
 
     view.dispatch({
       effects: editableCompartment.current.reconfigure(
-        editableConfig(readOnly, disabled),
+        editableConfig(readOnly, disabled, tabHintId),
       ),
     });
-  }, [readOnly, disabled]);
+  }, [readOnly, disabled, tabHintId]);
 
   useEffect(() => {
     const view = viewRef.current as EditorView;
@@ -202,9 +204,11 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
         ref={containerRef}
         className="min-h-0 flex-1 overflow-auto text-zinc-900 dark:text-zinc-200"
       />
-      <span id={tabHintId} className="sr-only">
-        Tab indents. Press Escape then Tab to move focus out of the editor.
-      </span>
+      {!readOnly && (
+        <span id={tabHintId} className="sr-only">
+          Tab indents. Press Escape then Tab to move focus out of the editor.
+        </span>
+      )}
     </div>
   );
 }

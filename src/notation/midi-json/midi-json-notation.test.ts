@@ -389,6 +389,21 @@ describe("dropped-note warnings", () => {
     );
   });
 
+  it("names the reason behind most of the drops, not the first one", () => {
+    // Regression: the cap took the reasons in input order, so the one that
+    // accounted for 4 of these 7 notes collapsed into "and 1 more" behind
+    // three one-offs, steering the model at whatever it got wrong first.
+    interpretMidiJson(
+      "[{t:0,d:1,v:100},{p:60,t:0,d:0,v:100},{p:60,t:0,d:0/0,v:100}," +
+        "{p:130,t:0,d:1,v:0},{p:130,t:1,d:1,v:0},{p:130,t:2,d:1,v:0},{p:130,t:3,d:1,v:0}]",
+    );
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 7 invalid MIDI JSON notes: delete marker pitch 130 is outside 0-127 (4), " +
+        "missing or non-numeric p/t, d must be greater than 0, and 1 more",
+    );
+  });
+
   it("serializes a repeating-decimal tuplet as an exact ratio", () => {
     const notes: NoteEvent[] = [
       { pitch: 60, start_time: 1 / 3, duration: 2 / 3, velocity: 100 },

@@ -374,7 +374,7 @@ describe("defineTool", () => {
     expect(result.content).toHaveLength(2);
     expect(result.content[1]).toStrictEqual({
       type: "text",
-      text: "Warning: test-tool ignored unexpected argument(s): unknownParam, anotherExtra",
+      text: "WARNING: test-tool ignored unexpected argument(s): unknownParam, anotherExtra",
     });
   });
 

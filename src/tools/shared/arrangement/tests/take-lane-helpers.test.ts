@@ -69,11 +69,28 @@ describe("warnUnusedTakeLane", () => {
     );
   });
 
+  it("warns for takeLaneName the same way, and names both when both are sent", () => {
+    const warn = vi.fn();
+
+    warnUnusedTakeLane("track", "arrangement", null, warn, "Verse take");
+    warnUnusedTakeLane("clip", "session", 3, warn, "Verse take");
+
+    expect(warn).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("takeLaneName ignored"),
+    );
+    expect(warn).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("takeLane and takeLaneName ignored"),
+    );
+  });
+
   it("stays quiet when no take lane was requested", () => {
     const warn = vi.fn();
 
     warnUnusedTakeLane("track", "arrangement", 0, warn);
     warnUnusedTakeLane("clip", "session", null, warn);
+    warnUnusedTakeLane("track", "arrangement", 0, warn, "");
 
     expect(warn).not.toHaveBeenCalled();
   });
@@ -196,6 +213,13 @@ describe("resolveTakeLane", () => {
     expect(existing.lane.set).not.toHaveBeenCalledWith(
       "name",
       "Should Not Rename",
+    );
+
+    // Regression: it was the one inapplicable param on these tools dropped
+    // without a word, so the caller saw a successful duplicate onto a lane
+    // still carrying its old name.
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLaneName ignored"),
     );
   });
 

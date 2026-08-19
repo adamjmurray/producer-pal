@@ -56,17 +56,26 @@ export function submitKeymap(onSubmit: () => void): Extension {
  * The read-only / editable state for a compartment. `readOnly` blocks edits
  * but keeps focus and selection; `disabled` also drops focus (contenteditable
  * off), like a disabled form control.
+ *
+ * The Tab hint rides along because it is only true where edits land: indentMore
+ * returns false under EditorState.readOnly, so a preview tabs straight out and
+ * must not be told to press Escape first.
  * @param readOnly - Block edits
  * @param disabled - Block edits and focus
+ * @param tabHintId - Id of the screen-reader hint describing Tab
  * @returns The extensions for the editable compartment
  */
 export function editableConfig(
   readOnly: boolean,
   disabled: boolean,
+  tabHintId: string,
 ): Extension {
   return [
     EditorState.readOnly.of(readOnly || disabled),
     EditorView.editable.of(!disabled),
+    ...(readOnly
+      ? []
+      : [EditorView.contentAttributes.of({ "aria-describedby": tabHintId })]),
   ];
 }
 

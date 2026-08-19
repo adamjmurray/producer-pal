@@ -6,6 +6,7 @@
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
+import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { hiddenParamWarnings } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
@@ -137,7 +138,7 @@ export function defineTool(
 
         // Append warning for extra keys so LLMs learn correct usage
         if (extraKeys.length > 0) {
-          const warning = `Warning: ${name} ignored unexpected argument(s): ${extraKeys.join(", ")}`;
+          const warning = `${WARNING_PREFIX}${name} ignored unexpected argument(s): ${extraKeys.join(", ")}`;
 
           result.content.push({ type: "text", text: warning });
         }

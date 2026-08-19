@@ -164,6 +164,7 @@ export async function duplicate(
     locator,
     arrangementLength,
     takeLane,
+    takeLaneName,
     transforms,
     code,
   });

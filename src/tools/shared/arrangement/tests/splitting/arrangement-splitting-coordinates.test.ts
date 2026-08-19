@@ -174,4 +174,24 @@ describe("split position coordinates", () => {
       expect.stringContaining("cut nothing"),
     );
   });
+
+  // But a position that cut nothing ANYWHERE is a different story: the cut the
+  // other position made returns a result that reads like the call worked.
+  it("names a position that landed in no clip, even when another one cut", () => {
+    const { mockClip, clips } = setupSplitTest(CLIP_AT_BAR_5);
+
+    // Song beat 24 falls inside the clip; beat 200 is far past its end.
+    performSplitting(
+      [mockClip],
+      [SONG_BEAT_24, 200],
+      clips,
+      HOLDING_AREA,
+      ARRANGEMENT_SPLIT_MODE,
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("arrangementSplit cut nothing at 51|1"),
+    );
+  });
 });

@@ -318,6 +318,7 @@ interface DestinationParams {
   locator: string | undefined;
   arrangementLength: string | undefined;
   takeLane: number | string | undefined;
+  takeLaneName: string | undefined;
   transforms: string | undefined;
   code: string | undefined;
 }
@@ -334,7 +335,7 @@ export function resolveDestinationAndWarn(
   params: DestinationParams,
 ): "session" | "arrangement" | undefined {
   const { type, clipDestinations, arrangementStart, locator } = params;
-  const { arrangementLength, takeLane } = params;
+  const { arrangementLength, takeLane, takeLaneName } = params;
 
   warnUnusedDestination(type, params.toPath, params.toSlot);
   warnUnusedArrangementParams(
@@ -365,11 +366,12 @@ export function resolveDestinationAndWarn(
     );
   }
 
-  // takeLane only applies to arrangement-destination clips; the helper warns
-  // for non-clip types and session destinations so a malformed value doesn't
-  // throw before the warn-and-ignore path. Where it does apply, the destination
-  // resolver folded it onto the paths already.
-  warnUnusedTakeLane(type, destination, takeLane, console.warn);
+  // takeLane and takeLaneName only apply to arrangement-destination clips; the
+  // helper warns for non-clip types and session destinations so a malformed
+  // value doesn't throw before the warn-and-ignore path. Where they do apply,
+  // the destination resolver folded takeLane onto the paths already, and the
+  // lane resolver warns if it had no new lane to name.
+  warnUnusedTakeLane(type, destination, takeLane, console.warn, takeLaneName);
 
   return destination;
 }

@@ -134,7 +134,11 @@ function warnDroppedNotes(reasons: string[]): void {
     counts.set(reason, (counts.get(reason) ?? 0) + 1);
   }
 
+  // Biggest first. In input order the reason behind most of the drops gets
+  // collapsed into "and N more" behind whatever happened to fail first, which
+  // steers the model at the wrong mistake.
   const listed = [...counts.entries()]
+    .toSorted(([, a], [, b]) => b - a)
     .slice(0, MAX_REPORTED_REASONS)
     .map(([reason, count]) => (count > 1 ? `${reason} (${count})` : reason));
 
