@@ -253,13 +253,14 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
 
+      # No `--with-deps`, and no `install-deps` step: ubuntu-latest already
+      # ships every library Chromium needs. install-deps would only add CJK and
+      # X11 font packages we never render, and its apt fetch stalls for minutes
+      # on a bad day. If a runner image ever drops a library, Playwright says so
+      # at launch.
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: npx playwright install chromium
 
       - name: Test built-in chat UI with Playwright
         id: ui-tests
