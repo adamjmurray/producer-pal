@@ -18,12 +18,13 @@
  * Usage: node scripts/eval-lib/open-live-set.ts /path/to/project.als
  */
 
-import { type ChildProcess, exec, spawn } from "node:child_process";
+import { type ChildProcess, exec, execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { MCP_URL } from "#evals/shared/mcp-url.ts";
+import { MIN_LIVE_VERSION } from "#src/shared/config.ts";
 
 // For `open -a`. Override to test against a differently-named bundle
 // (e.g. a side-by-side older version).
@@ -33,6 +34,8 @@ const DIALOG_POLL_INTERVAL_MS = 250;
 const DIALOG_TIMEOUT_MS = 2500;
 const MCP_POLL_INTERVAL_MS = 500;
 const MCP_POLL_TIMEOUT_MS = 15000;
+// Live shows this instead of opening a Set that a newer version saved.
+const UNSUPPORTED_VERSION_TEXT = "newer version of Live";
 
 /**
  * Opens an Ableton Live project, handling the "Don't Save" dialog if it appears.
@@ -178,38 +181,114 @@ async function waitForMcpServer(): Promise<void> {
   const start = Date.now();
 
   while (Date.now() - start < MCP_POLL_TIMEOUT_MS) {
-    try {
-      const transport = new StreamableHTTPClientTransport(new URL(MCP_URL));
-      const client = new Client(
-        { name: "open-live-set", version: "1.0.0" },
-        { capabilities: {} },
+    // Ask about the alert before probing the server, not after: Live drops the
+    // old Set as soon as it gives up on the new one, but that Set's server
+    // keeps answering for a moment. Probing first can pass on the strength of
+    // a server that is on its way out, leaving the suite on the wrong Set.
+    const refusal = await dismissUnsupportedVersionAlert();
+
+    if (refusal != null) {
+      throw new Error(
+        `Live would not open the Set. ${refusal} ` +
+          "Point ABLETON_APP at a Live that can open it, or rebuild the Set " +
+          `in Live ${MIN_LIVE_VERSION}, the oldest Producer Pal supports. ` +
+          "Live cannot save a Set back to an older version.",
       );
-
-      await client.connect(transport);
-
-      // List tools and verify ppal-connect is present
-      const { tools } = await client.listTools();
-      const toolNames = tools.map((t) => t.name);
-
-      if (!toolNames.includes("ppal-connect")) {
-        throw new Error("ppal-connect tool not found");
-      }
-
-      if (toolNames.length < 2) {
-        throw new Error("Expected more than one tool in the MCP server");
-      }
-
-      await client.close();
-
-      return;
-    } catch {
-      // Server not ready yet
     }
+
+    if (await mcpServerIsReady()) return;
 
     await sleep(MCP_POLL_INTERVAL_MS);
   }
 
   throw new Error(`MCP server not responsive after ${MCP_POLL_TIMEOUT_MS}ms`);
+}
+
+/**
+ * Probes the MCP server once.
+ * @returns True if it answered with the tools a loaded Set serves
+ */
+async function mcpServerIsReady(): Promise<boolean> {
+  try {
+    const transport = new StreamableHTTPClientTransport(new URL(MCP_URL));
+    const client = new Client(
+      { name: "open-live-set", version: "1.0.0" },
+      { capabilities: {} },
+    );
+
+    await client.connect(transport);
+
+    // List tools and verify ppal-connect is present
+    const { tools } = await client.listTools();
+    const toolNames = tools.map((t) => t.name);
+
+    if (!toolNames.includes("ppal-connect")) {
+      throw new Error("ppal-connect tool not found");
+    }
+
+    if (toolNames.length < 2) {
+      throw new Error("Expected more than one tool in the MCP server");
+    }
+
+    await client.close();
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Dismisses Live's "made with a newer version of Live" alert, if it is showing.
+ *
+ * Live puts this up INSTEAD of opening the Set, so the Set never loads and the
+ * server never comes back. Clicking it away matters as much as reporting it:
+ * left up, the alert blocks every later open too, which is what turns one bad
+ * Set into a 15s timeout on every remaining test file.
+ *
+ * The message and its single button sit in group 1 of an AXDialog window, the
+ * same shape as the unsaved-changes dialog.
+ * @returns Live's own message, or null if the alert is not showing
+ */
+async function dismissUnsupportedVersionAlert(): Promise<string | null> {
+  const script = `
+    tell application "System Events"
+      tell process "${ABLETON_PROCESS}"
+        repeat with w in windows
+          try
+            if subrole of w is "AXDialog" then
+              tell group 1 of w
+                repeat with t in static texts
+                  if value of t contains "${UNSUPPORTED_VERSION_TEXT}" then
+                    set alertText to value of t
+                    click button 1
+                    return alertText
+                  end if
+                end repeat
+              end tell
+            end if
+          end try
+        end repeat
+      end tell
+    end tell
+    return ""
+  `;
+
+  return await new Promise((resolve) => {
+    execFile("osascript", ["-e", script], (error, stdout) => {
+      // Live is not running yet, or accessibility is not granted. Either way
+      // there is no alert to report.
+      if (error) {
+        resolve(null);
+
+        return;
+      }
+
+      const message = stdout.trim();
+
+      resolve(message === "" ? null : message);
+    });
+  });
 }
 
 /**
