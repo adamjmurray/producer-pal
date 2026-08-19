@@ -515,6 +515,23 @@ describe("useMemoryCollection", () => {
     });
   });
 
+  it("keeps the loaded entries when a later refresh fails", async () => {
+    // Regression: refresh is also the 5s poll, and its error path replaced the
+    // whole screen — unmounting the entry editor under it and taking an
+    // unsaved draft with it. A failed tick now leaves the loaded list alone.
+    const result = await mountReady([rawEntry({ body: "loaded" })]);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response("boom", { status: 500, statusText: "Server Error" }),
+    );
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(readyEntries(result)[0]?.body).toBe("loaded");
+  });
+
   it("drops an older save's echo for the same entry when a newer save has landed", async () => {
     // Two overlapping saves of one entry (a debounced autosave, then the
     // unmount flush or an explicit Save). The FIRST echo is slow and lands

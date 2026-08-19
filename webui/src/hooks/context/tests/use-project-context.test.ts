@@ -246,6 +246,27 @@ describe("useProjectContext", () => {
     expect(result.current.status).toMatchObject({ content: "v2" });
   });
 
+  it("keeps loaded content when a later refresh fails", async () => {
+    // Regression: refresh is also the focus poll, and its error path replaced
+    // the whole screen — unmounting the editor under it and taking unsaved
+    // edits with it. A failed tick now leaves the loaded content alone.
+    const result = await renderWithLoadedContent(
+      new Response("server boom", {
+        status: 500,
+        statusText: "Internal Server Error",
+      }),
+    );
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.status).toMatchObject({
+      kind: "ready",
+      content: "old",
+    });
+  });
+
   it("falls back to empty string when projectContext is missing", async () => {
     mockResponses({});
 

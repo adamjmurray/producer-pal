@@ -468,6 +468,60 @@ describe("useCollectionEntryAutosave", () => {
     expect(persist).toHaveBeenCalledTimes(1);
   });
 
+  it("does not flush on unmount while a rename is on the wire", async () => {
+    // Regression: the unmount and tab-close flushes fire without an arming
+    // render, so the arming effect's hold never saw them. Every slug such a
+    // flush can name is the one the rename is leaving, so it re-created the
+    // entry under the old name — a duplicate holding the same content. Nothing
+    // is lost by skipping: the rename carries the live draft to the new slug.
+    const persist = vi.fn().mockResolvedValue(null);
+    const { result, rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    rerender({ canSave: true, draftKey: "v1", autosaveOnIdle: true, persist });
+
+    await act(async () => {
+      await result.current.settlePendingSave();
+    });
+
+    unmount();
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("does not re-arm autosave for an editor that unmounted mid-rename", async () => {
+    // resumePendingSave runs from the rename's own continuation, which the
+    // unmount can't cancel — so it fired for a gone editor and armed a flush no
+    // cleanup would clear, writing the draft back to the slug the rename left.
+    const persist = vi.fn().mockResolvedValue(null);
+    const { result, rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      persist,
+    });
+
+    rerender({ canSave: true, draftKey: "v1", autosaveOnIdle: true, persist });
+
+    await act(async () => {
+      await result.current.settlePendingSave();
+    });
+
+    unmount();
+
+    await act(async () => {
+      result.current.resumePendingSave();
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+    });
+
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   it("leaves an already-armed debounce alone when a rename resumes", async () => {
     // A timer already on the clock means the arming effect beat resume to it.
     // Arming a second one leaves the first orphaned — only the ref'd timer is

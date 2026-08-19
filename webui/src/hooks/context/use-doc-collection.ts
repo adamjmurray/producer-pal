@@ -20,6 +20,7 @@ import {
 } from "#webui/utils/collection-transport";
 import {
   runGuardedRefresh,
+  statusAfterFailedRefresh,
   useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
@@ -138,7 +139,8 @@ export function useDocCollection<
         guardRefresh,
         () => fetchEntries<TView>(collectionUrl(), label),
         (entries) => setStatus({ kind: "ready", entries }),
-        (message) => setStatus({ kind: "error", message }),
+        (message) =>
+          setStatus((prev) => statusAfterFailedRefresh(prev, message)),
       ),
     [guardRefresh, collectionUrl, label],
   );
@@ -416,6 +418,14 @@ export function useCollectionEntryAutosave(
     // CollectionScreen's deleted-externally banner).
     if (deletedExternallyRef.current) return;
 
+    // A rename in flight owns this draft. Every slug the flush could name is the
+    // one the rename is leaving, so a flush here re-creates the entry the rename
+    // just moved away from — a duplicate holding the same content. Nothing is
+    // lost by skipping: the rename PUT carries the live draft to the new slug.
+    // (The unmount and tab-close flushes fire without an arming render, so the
+    // arming effect's own heldRef check never sees them.)
+    if (heldRef.current) return;
+
     if (!canSaveRef.current) return;
 
     const key = draftKeyRef.current;
@@ -584,6 +594,12 @@ export function useCollectionEntryAutosave(
   // to the new slug); leave that debounce alone rather than pushing it out.
   const resumePendingSave = useCallback((): void => {
     heldRef.current = false;
+
+    // The editor can close while the rename is on the wire — the unmount can't
+    // cancel the caller's in-flight rename, so this still runs. Re-arming then
+    // puts a flush on the clock that no cleanup will clear, and `persist` still
+    // names the slug the rename left.
+    if (!mountedRef.current) return;
 
     if (timerRef.current != null) return;
 

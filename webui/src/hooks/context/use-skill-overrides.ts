@@ -10,6 +10,7 @@ import {
 } from "#webui/utils/mcp-url";
 import {
   runGuardedRefresh,
+  statusAfterFailedRefresh,
   useCollectionMutator,
   type SaveStatus,
   useRefreshOnFocusAndPoll,
@@ -103,7 +104,8 @@ export function useSkillOverrides(): UseSkillOverridesReturn {
         guardRefresh,
         fetchSlots,
         (slots) => setStatus({ kind: "ready", slots }),
-        (message) => setStatus({ kind: "error", message }),
+        (message) =>
+          setStatus((prev) => statusAfterFailedRefresh(prev, message)),
       ),
     [guardRefresh],
   );
