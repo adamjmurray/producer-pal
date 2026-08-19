@@ -133,6 +133,35 @@ describe("MarkdownEditor", () => {
     expect(view.state.doc.toString()).toBe("hello");
   });
 
+  it("Escape then Tab moves focus out of the chat composer", () => {
+    const { container } = renderEditor({
+      initialValue: "hello",
+      variant: "chat",
+    });
+    const view = viewIn(container);
+
+    // Escape arms CodeMirror's Tab-focus mode for 2s, so Tab moves focus
+    // instead of indenting — and keeps doing so for every Tab in that window,
+    // enough to tab clear of the composer. keyCodes are explicit: CodeMirror
+    // reads them, and happy-dom won't infer them from `key`.
+    fireEvent.keyDown(view.contentDOM, { key: "Escape", keyCode: 27 });
+
+    for (const _ of [1, 2]) {
+      const notPrevented = fireEvent.keyDown(view.contentDOM, {
+        key: "Tab",
+        keyCode: 9,
+      });
+
+      expect(notPrevented).toBe(true);
+      expect(view.state.doc.toString()).toBe("hello");
+    }
+
+    // Any other keystroke ends the window, so Tab indents again.
+    fireEvent.keyDown(view.contentDOM, { key: "a", keyCode: 65 });
+    fireEvent.keyDown(view.contentDOM, { key: "Tab", keyCode: 9 });
+    expect(view.state.doc.toString()).toBe("  hello");
+  });
+
   it("read-only lets Tab move focus instead of trapping it", () => {
     const { container } = renderEditor({
       initialValue: "hello",
