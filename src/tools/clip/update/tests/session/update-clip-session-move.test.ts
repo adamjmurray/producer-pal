@@ -676,4 +676,35 @@ describe("resolveMoveDestinations", () => {
       { trackIndex: 6, sceneIndex: 7 },
     ]);
   });
+
+  it("skips only the entry that won't parse", () => {
+    // Regression: the whole list was parsed at once and one throw discarded all
+    // of it, so a typo cost every move — while an entry that parsed but named
+    // the wrong kind of place cost only its own. Which one you got depended on
+    // nothing but which side of the grammar the typo fell on.
+    expect(
+      resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3),
+    ).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+      null,
+      { trackIndex: 6, sceneIndex: 7 },
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("clip not moved:"),
+    );
+  });
+
+  it("moves no clip when toPath names nothing at all", () => {
+    // Not the same as one bad entry: "," says a destination was meant and
+    // failed to arrive, and moving a clip anywhere else is the wrong guess.
+    expect(resolveMoveDestinations(",", undefined, 2)).toStrictEqual([
+      null,
+      null,
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("it names no destination"),
+    );
+  });
 });

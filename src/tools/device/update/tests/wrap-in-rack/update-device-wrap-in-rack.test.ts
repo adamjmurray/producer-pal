@@ -272,6 +272,31 @@ describe("updateDevice - wrapInRack", () => {
       );
     });
 
+    it("should warn and return null for a toPath that won't resolve", () => {
+      // Same as the effect wrap, but this branch stages instruments on a temp
+      // track — so the bad toPath has to stop it before anything moves.
+      mockNonExistentObjects();
+      registerInstrumentDevice("device-3", 3);
+      registerMockObject("track-0", { path: livePath.track(0) });
+
+      const liveSetMock = registerTempTrackMocks();
+      const result = updateDevice({
+        path: "t0/d3",
+        wrapInRack: true,
+        toPath: "garbage",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("wrapInRack: invalid toPath"),
+      );
+      expect(result).toBeNull();
+      expect(liveSetMock.call).not.toHaveBeenCalledWith(
+        "create_midi_track",
+        -1,
+      );
+    });
+
     it("should cleanup temp track when instrument wrap throws and cleanup succeeds", () => {
       // Make insert_device throw to trigger the catch block
       track0 = registerThrowingTrack0();
@@ -528,6 +553,44 @@ describe("updateDevice - wrapInRack", () => {
       "wrapInRack: target container does not exist",
     );
     expect(result).toBeNull();
+  });
+
+  it("should warn and return null for a path that won't resolve", () => {
+    // The device the caller named, not the destination: it drops out with a
+    // warning like any other device that can't be found, rather than throwing.
+    mockNonExistentObjects();
+
+    const result = updateDevice({ path: "t0/d0/c0/d0", wrapInRack: true });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("wrapInRack: Device at path"),
+    );
+    expect(result).toBeNull();
+  });
+
+  // The sibling move warn-skips every one of these toPaths
+  // (update-device-move.test.ts), so a wrap must not throw the call away.
+  it.each([
+    ["t99/d0/c0", 'Track in path "t99/d0/c0" does not exist'],
+    ["t0/d5/c0", 'Device in path "t0/d5/c0" does not exist'],
+    ["garbage", "invalid toPath"],
+    ["t0/d0/c0", 'Device at path "t0/d0/c0" does not support chains'],
+  ])("should warn and return null for the toPath %s", (toPath, reason) => {
+    mockNonExistentObjects();
+
+    const result = updateDevice({ ids: "device-0", wrapInRack: true, toPath });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(`wrapInRack: ${reason}`),
+    );
+    expect(result).toBeNull();
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "insert_device",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("should warn and return null when device type is unrecognized", () => {

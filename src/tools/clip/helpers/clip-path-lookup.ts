@@ -52,7 +52,7 @@ export function clipIdPerPath(
 ): Array<string | null> {
   const ids: Array<string | null> = [];
 
-  for (const entry of pathEntries(paths, label)) {
+  for (const entry of entriesOrNone(paths, tool, label)) {
     try {
       const slot = requireSessionSlot(parseObjectPath(entry, label), label);
       const clip = LiveAPI.from(
@@ -73,4 +73,23 @@ export function clipIdPerPath(
   }
 
   return ids;
+}
+
+/**
+ * Splits the param into entries, treating a param that names nothing as naming
+ * nothing rather than as an error: the same batch may also have named ids, and
+ * those clips are still there to update.
+ * @param paths - The raw path param
+ * @param tool - Tool name, for warnings
+ * @param label - Param name the paths came from, for warnings
+ * @returns One trimmed entry per path, or none when the param is unusable
+ */
+function entriesOrNone(paths: string, tool: string, label: string): string[] {
+  try {
+    return pathEntries(paths, label);
+  } catch (error) {
+    console.warn(`${tool}: ${errorMessage(error)}`);
+
+    return [];
+  }
 }

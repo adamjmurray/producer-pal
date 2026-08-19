@@ -79,6 +79,28 @@ describe("createClip take lanes", () => {
     expect(result.path).toBe("t0/l0");
   });
 
+  it("creates neither a lane nor a clip when a later position won't parse", async () => {
+    // Regression: positions were converted one clip at a time, so bar 1 got a
+    // clip and a permanent take lane before bar 0 threw — and the caller got
+    // back an error naming neither of them.
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1,0|1",
+        notes: "C3",
+        takeLane: "new",
+      }),
+    ).rejects.toThrow(/1-indexed/);
+
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(lookupMockObject(undefined, livePath.track(0).takeLane(0))).toBe(
+      undefined,
+    );
+  });
+
   it("creates an audio arrangement clip on a take lane", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 0 });

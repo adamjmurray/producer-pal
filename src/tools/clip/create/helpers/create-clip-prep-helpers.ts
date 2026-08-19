@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -95,6 +99,34 @@ export function resolveClipTimingContext(
     firstStartBeats,
     endBeats,
   };
+}
+
+/**
+ * Refuses the whole call when any arrangement position won't parse.
+ *
+ * Positions are converted per clip in the create loop, but a bad one has to be
+ * caught before anything exists. Past the first clip — or the first take lane,
+ * which Live can't delete — the error is all the caller gets back, and it names
+ * none of what was left behind.
+ * @param arrangementPositions - Resolved arrangement destinations
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @throws When a position isn't a usable bar|beat
+ */
+export function validateArrangementPositions(
+  arrangementPositions: ArrangementPosition[],
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
+): void {
+  for (const { arrangementStart } of arrangementPositions) {
+    // The 1-indexing steer first, then the format error the conversion raises.
+    validateBarBeatPosition(arrangementStart);
+    barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+  }
 }
 
 /**

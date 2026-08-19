@@ -23,6 +23,7 @@ import {
 import {
   resolveClipTimingContext,
   resolveCreateClipTakeLanes,
+  validateArrangementPositions,
 } from "./helpers/create-clip-prep-helpers.ts";
 import {
   handleAutoPlayback,
@@ -196,6 +197,14 @@ export async function createClip(
     name,
     color,
     sessionSlots.length + arrangementPositions.length,
+  );
+
+  // Before any clip or take lane exists: a position that won't parse has to
+  // stop the call while there is still nothing to report.
+  validateArrangementPositions(
+    arrangementPositions,
+    timing.songTimeSigNumerator,
+    timing.songTimeSigDenominator,
   );
 
   // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap

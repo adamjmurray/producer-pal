@@ -18,10 +18,13 @@ import {
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
   namedHiddenPath,
-  parseObjectPathList,
+  pathEntries,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
@@ -293,20 +296,27 @@ export function handlePositionOperations(
  * @returns One destination per entry, null where the entry names no slot
  */
 function pathDestinations(toPath: string): Array<SlotPosition | null> {
-  const parsed = requireDestinations(
-    parseObjectPathList(toPath, "toPath"),
-    "toPath",
-  );
+  // pathEntries refuses a toPath that names nothing, so every entry here is real.
+  const entries = pathEntries(toPath, "toPath");
 
-  return parsed.map((entry) => {
-    if (entry.kind === "slot") {
-      return { trackIndex: entry.trackIndex, sceneIndex: entry.sceneIndex };
+  // Per entry, so a typo costs its own move and not the whole batch. An entry
+  // that names the wrong kind of place already worked this way; one that
+  // doesn't parse at all used to discard every destination beside it.
+  return entries.map((entry) => {
+    try {
+      const parsed = parseObjectPath(entry, "toPath");
+
+      if (parsed.kind === "slot") {
+        return { trackIndex: parsed.trackIndex, sceneIndex: parsed.sceneIndex };
+      }
+
+      console.warn(
+        `toPath "${formatObjectPath(parsed)}" is not a session slot, so that clip was not moved; ` +
+          'update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track',
+      );
+    } catch (error) {
+      console.warn(`clip not moved: ${errorMessage(error)}`);
     }
-
-    console.warn(
-      `toPath "${formatObjectPath(entry)}" is not a session slot, so that clip was not moved; ` +
-        'update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track',
-    );
 
     return null;
   });
@@ -346,16 +356,16 @@ function pairWithClips(
 }
 
 /**
- * Refuses a destination param that was sent but names nothing.
+ * Refuses a toSlot that was sent but names nothing (e.g. ","). toPath is
+ * refused earlier, by its own entry splitting.
  * @param destinations - Parsed destinations, in order
  * @param label - Param name for the error
  * @returns The destinations
  * @throws When the param was sent but names nothing
  */
 function requireDestinations<T>(destinations: T[], label: string): T[] {
-  // Only toSlot arrives empty (e.g. ","); parseObjectPathList throws before
-  // toPath can. Throwing rather than warning lets the caller's catch report it
-  // like any other destination that failed to parse.
+  // Throwing rather than warning lets the caller's catch report it like any
+  // other destination that failed to parse.
   if (destinations.length === 0) {
     throw new Error(`${label} names no destination`);
   }

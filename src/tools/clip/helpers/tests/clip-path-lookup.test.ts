@@ -74,6 +74,18 @@ describe("clipIdsAtPaths", () => {
     );
   });
 
+  it("warns and contributes nothing for a param that names no clip at all", () => {
+    // Regression: splitting the param threw above the per-entry catch, so a
+    // stray "," took the whole call down — including the clips the same call
+    // named by id, which are still sitting there ready to be updated.
+    const warn = vi.spyOn(console, "warn");
+
+    expect(clipIdsAtPaths(",", "updateClip")).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('invalid path "," - it names no destination'),
+    );
+  });
+
   it("names the caller's param in warnings", () => {
     const warn = vi.spyOn(console, "warn");
 
