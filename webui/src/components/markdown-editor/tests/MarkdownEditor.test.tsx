@@ -7,6 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { undo } from "@codemirror/commands";
+import { forceParsing } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { fireEvent, render } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +20,7 @@ import {
 type EditorProps = Partial<Parameters<typeof MarkdownEditor>[0]>;
 
 function renderEditor(props: EditorProps = {}) {
-  return render(
+  const rendered = render(
     <MarkdownEditor
       initialValue="x"
       readOnly={false}
@@ -27,6 +28,17 @@ function renderEditor(props: EditorProps = {}) {
       {...props}
     />,
   );
+
+  // CodeMirror budgets the initial parse at 20ms and finishes the rest in an
+  // idle callback. A stall (GC pause, loaded machine) can blow that budget and
+  // leave a tree covering only the first line, so anything built from it —
+  // bullet markers, list continuation — is wrong until the parse catches up.
+  // Force it to completion so assertions don't race it.
+  const view = viewIn(rendered.container);
+
+  forceParsing(view, view.state.doc.length, Infinity);
+
+  return rendered;
 }
 
 /**
