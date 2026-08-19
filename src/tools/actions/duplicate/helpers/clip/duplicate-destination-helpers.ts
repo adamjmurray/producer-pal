@@ -204,14 +204,14 @@ function legacySlotDestinations(
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
-  const arrangementTargets: ArrangementTrack[] = [];
+  const targets: ArrangementTrack[] = [];
   const slots: SlotPosition[] = [];
 
   for (const path of paths) {
     if (path.kind === "slot") {
       slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
     } else {
-      arrangementTargets.push({
+      targets.push({
         trackIndex: path.trackIndex,
         takeLane: takeLaneFromPath(path),
       });
@@ -219,13 +219,13 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   }
 
   // Number the lanes here, off the list the caller wrote: the copy loop cycles
-  // this list, and a cycled repeat must reuse its lane, not append one.
+  // this list, and a cycled repeat must reuse its lane, not append one. Both
+  // arrangement returns below need it — dropped session slots don't change the
+  // numbering, but leaving it off one path collapses two "l+" into one lane.
+  const arrangementTargets = withNewLaneOrdinals(targets);
+
   if (slots.length === 0) {
-    return {
-      destination: "arrangement",
-      slots: [],
-      arrangementTargets: withNewLaneOrdinals(arrangementTargets),
-    };
+    return { destination: "arrangement", slots: [], arrangementTargets };
   }
 
   const named = slots

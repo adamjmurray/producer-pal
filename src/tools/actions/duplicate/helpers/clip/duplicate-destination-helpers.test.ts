@@ -123,6 +123,23 @@ describe("resolveClipDestinations", () => {
       );
     });
 
+    // Same numbering as a list with no slots in it. Without it both "l+" key to
+    // ordinal 0 and share one lane, against "each l+ appends its own lane".
+    it("still numbers the new lanes when a dropped slot shares the list", () => {
+      vi.spyOn(console, "warn");
+
+      expect(
+        resolveClipDestinations("t2/s1,t3/l+,t3/l+", undefined, true),
+      ).toStrictEqual({
+        destination: "arrangement",
+        slots: [],
+        arrangementTargets: [
+          { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
+          { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
+        ],
+      });
+    });
+
     // Warn, don't throw: the same conflict on toPath drops the weaker of the
     // two, and toSlot shouldn't be the harsher spelling of the same mistake.
     it("drops the arrangement position when the deprecated toSlot names a slot", () => {
