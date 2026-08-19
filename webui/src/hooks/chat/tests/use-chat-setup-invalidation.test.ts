@@ -16,6 +16,7 @@ import {
   restoreHistory,
   sendMessage,
   stopResponse,
+  userMessageIndex,
   type MockChatProps,
 } from "./helpers/use-chat-render-test-helpers";
 import {
@@ -54,23 +55,43 @@ function propsWith(adapter: typeof mockAdapter): MockChatProps {
 }
 
 /**
+ * An adapter whose Nth client hangs in its MCP connect until released.
+ * @param nth - 1-based client whose initialize parks
+ * @param recorded - Arrays the adapter records into, plus the stream gate
+ * @returns The adapter and the handle that releases the connect
+ */
+function adapterParkedInConnect(
+  nth: number,
+  recorded: Parameters<typeof trackingAdapter>[0],
+) {
+  let releaseInit!: () => void;
+  const connecting = new Promise<void>((resolve) => {
+    releaseInit = resolve;
+  });
+  const adapter = trackingAdapter(recorded, (client) => {
+    if (recorded.clients.length === nth) {
+      client.initialize = vi.fn(async () => await connecting);
+    }
+  });
+
+  return { adapter, releaseInit };
+}
+
+/**
  * Park a first-ever send inside its MCP connect. Returns the handle to release
  * the connect, plus what the adapter recorded and the in-flight send promise.
  * @param gate - Held open by each stream after its first chunk
  * @returns The parked turn's controls and recordings
  */
 function parkFirstSendInConnect(gate?: Promise<void>) {
-  let releaseInit!: () => void;
-  const connecting = new Promise<void>((resolve) => {
-    releaseInit = resolve;
-  });
   const clients: MockChatClient[] = [];
   const sent: string[] = [];
   const signals: AbortSignal[] = [];
-  const adapter = trackingAdapter({ clients, sent, signals, gate }, (c) => {
-    if (clients.length === 1) {
-      c.initialize = vi.fn(async () => await connecting);
-    }
+  const { adapter, releaseInit } = adapterParkedInConnect(1, {
+    clients,
+    sent,
+    signals,
+    gate,
   });
   const { result } = renderChat(propsWith(adapter));
   const send = act(async () => {
@@ -97,6 +118,36 @@ describe("turn invalidation during setup", () => {
       await tick();
 
       expect(sent).toStrictEqual([]);
+      expect(result.current.isAssistantResponding).toBe(false);
+    });
+
+    it("doesn't stream a retry stopped mid-connect", async () => {
+      // Retry and Edit fork through their own initializeChat, so they need the
+      // same guard as the send path — and only the send path had a test.
+      const clients: MockChatClient[] = [];
+      const sent: string[] = [];
+      // The second client is the fork's, not the one the first send built.
+      const { adapter, releaseInit } = adapterParkedInConnect(2, {
+        clients,
+        sent,
+      });
+      const { result } = renderChat(propsWith(adapter));
+
+      await sendMessage(result, "first");
+
+      const retry = act(async () => {
+        await result.current.handleRetry(userMessageIndex(result));
+      });
+
+      await tick();
+      await stopResponse(result);
+
+      releaseInit();
+      await retry;
+      await tick();
+
+      // Only the original send. The fork never re-sent it.
+      expect(sent).toStrictEqual(["first"]);
       expect(result.current.isAssistantResponding).toBe(false);
     });
 
