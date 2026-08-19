@@ -200,7 +200,7 @@ describe("deleteObject", () => {
 
   it("should throw an error when type arg is invalid", () => {
     const expectedError =
-      'delete failed: type must be one of "track", "scene", "clip", "device", or "drum-pad"';
+      'delete failed: type must be one of "track", "scene", "clip", "device", "drum-pad", "chain"';
 
     expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(
       expectedError,

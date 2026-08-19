@@ -470,7 +470,7 @@ describe("deleteObject device deletion", () => {
       deleteObject({ ids: "track_1", path: "0/0", type: "track" });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'delete: path parameter is only valid for types "clip", "device", or "drum-pad", ignoring paths',
+        'delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths',
       );
     });
 

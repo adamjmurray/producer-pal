@@ -184,8 +184,8 @@ describe("deleteObject drum-pad refusals", () => {
     expect(result).toStrictEqual([]);
     expect(chain.call).not.toHaveBeenCalledWith("delete_all_chains");
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: id "drum-chain-1" is a DrumChain. Deleting rack chains is not ' +
-        "supported. Did you mean to delete a drum pad instead?",
+      'delete: id "drum-chain-1" is a DrumChain. Use type="chain" for this ' +
+        'chain, or type="drum-pad" for the whole pad.',
     );
   });
 

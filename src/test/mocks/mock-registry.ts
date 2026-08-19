@@ -249,7 +249,50 @@ function applyMockDelete(method: string, args: unknown[], path: string): void {
     // Track.delete_clip takes "id N". ClipSlot.delete_clip takes nothing, and
     // nothing is registered at the path that builds, so it misses harmlessly.
     deleteMockObject(String(args[0]).replace(/^id /, ""));
+  } else if (method === "delete_all_chains") {
+    deleteChainsOnPad(path);
   }
+}
+
+/**
+ * Clear a drum pad the way Live does: every chain of the pad's rack routed to
+ * the pad's note goes away. Nothing happens when the rack registers no chains,
+ * which is how most pad tests are set up.
+ * @param padPath - The DrumPad's path
+ */
+function deleteChainsOnPad(padPath: string): void {
+  const note = Number(padPath.match(/ drum_pads (\d+)$/)?.[1]);
+  const rack = lookupMockObject(
+    undefined,
+    padPath.replace(/ drum_pads \d+$/, ""),
+  );
+
+  if (rack == null || Number.isNaN(note)) return;
+
+  const chains = rack.properties.chains;
+
+  if (!Array.isArray(chains)) return;
+
+  // children() interleaves "id" with each child ID.
+  for (const chainId of chains.filter((_, index) => index % 2 === 1)) {
+    const chain = lookupMockObject(String(chainId));
+
+    if (chain != null && effectiveInNote(chain) === note) {
+      deleteMockObject(String(chainId));
+    }
+  }
+}
+
+/**
+ * The note a chain currently sounds on. set() is a spy that leaves `properties`
+ * alone, so a chain moved during the test has to be read from its writes.
+ * @param chain - The chain mock
+ * @returns Its in_note
+ */
+function effectiveInNote(chain: RegisteredMockObject): unknown {
+  const writes = chain.set.mock.calls.filter(([prop]) => prop === "in_note");
+
+  return writes.length > 0 ? writes.at(-1)?.[1] : chain.properties.in_note;
 }
 
 /**

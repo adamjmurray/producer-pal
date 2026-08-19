@@ -131,6 +131,8 @@ function isTypeMatch(
       return actualType === "Clip";
     case "device":
       return actualType.endsWith("Device");
+    case "chain":
+      return actualType === "Chain" || actualType === "DrumChain";
     case "drum-pad":
       // DrumChain passes so a tool can reject it with advice about the pad it
       // sits on, rather than the generic type mismatch. A pad-level Live call
