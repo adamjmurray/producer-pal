@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
@@ -109,8 +110,7 @@ function duplicateDevice(
     }
 
     // 5. Determine destination path
-    const destination =
-      toPath ?? calculateDefaultDestination(device.path, trackIndex);
+    const destination = toPath ?? calculateDefaultDestination(device.path);
 
     // 6. Adjust destination if it references tracks after the source track
     const adjustedDestination = adjustTrackIndicesForTempTrack(
@@ -196,20 +196,15 @@ function extractDevicePathWithinTrack(devicePath: string): string {
 /**
  * Calculate the default destination: position after the original device on the same track
  * @param devicePath - Full Live API path of the source device
- * @param trackIndex - Track index
  * @returns Simplified path for destination
  */
-function calculateDefaultDestination(
-  devicePath: string,
-  trackIndex: number,
-): string {
-  // Get simplified path (e.g., "t1/d0/c2/d1")
-  const simplifiedPath = extractDevicePath(devicePath);
-
-  if (!simplifiedPath) {
-    // Fallback: append to the track
-    return `t${trackIndex}`;
-  }
+function calculateDefaultDestination(devicePath: string): string {
+  // Never null here: extractRegularTrackIndex already matched the same
+  // "live_set tracks N" prefix extractDevicePath needs.
+  const simplifiedPath = assertDefined(
+    extractDevicePath(devicePath),
+    `device path for "${devicePath}"`,
+  );
 
   // Parse the path to increment the last device index
   const segments = simplifiedPath.split("/");

@@ -318,6 +318,21 @@ describe("syncProjectContextBackup — the backup couldn't be read", () => {
     expect(mockWarn).toHaveBeenCalledTimes(1);
   });
 
+  // The retry is what makes the once matter: a permission problem never clears,
+  // so without the memo every tool call for the rest of the session carries the
+  // same warning.
+  it("stays quiet on a retry that couldn't read it either", async () => {
+    setFilePath(SAVED_PATH);
+    mockSyncResult("unreadable");
+    await syncProjectContextBackup("");
+
+    mockSyncResult("unreadable");
+
+    expect(await syncProjectContextBackup("")).toBeNull();
+    expect(mockRequestNode).toHaveBeenCalledTimes(2);
+    expect(mockWarn).toHaveBeenCalledTimes(1);
+  });
+
   it("leaves the wipe question open, so a later edit can't bury the backup", async () => {
     setFilePath(SAVED_PATH);
     mockSyncResult("unreadable");

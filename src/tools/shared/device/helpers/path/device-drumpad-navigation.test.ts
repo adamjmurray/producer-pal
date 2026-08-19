@@ -11,8 +11,10 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  findDrumPad,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
+  resolveDrumPadGroup,
 } from "./device-drumpad-navigation.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
@@ -196,5 +198,55 @@ describe("resolveDrumPadFromPath", () => {
       target: null,
       targetType: "device",
     });
+  });
+});
+
+describe("findDrumPad", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("returns null when the rack device does not exist", () => {
+    registerMockObject("0", { path: RACK_PATH });
+
+    expect(findDrumPad(RACK_PATH, "C1")).toBeNull();
+  });
+
+  it("returns null for a note segment that is not a note name", () => {
+    registerRackWithChain();
+
+    expect(findDrumPad(RACK_PATH, "nope")).toBeNull();
+  });
+});
+
+describe("resolveDrumPadGroup", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("returns null when the rack device does not exist", () => {
+    registerMockObject("0", { path: RACK_PATH });
+
+    expect(resolveDrumPadGroup(RACK_PATH, "C1")).toBeNull();
+  });
+
+  it("returns null for a note segment that is not a note name", () => {
+    registerRackWithChain();
+
+    expect(resolveDrumPadGroup(RACK_PATH, "nope")).toBeNull();
+  });
+
+  it("returns null when the rack routes no chain to the pad", () => {
+    registerRackWithChain();
+
+    expect(resolveDrumPadGroup(RACK_PATH, "C2")).toBeNull();
+  });
+
+  it("returns the pad's chains for a note the rack routes", () => {
+    registerRackWithChain();
+
+    const group = resolveDrumPadGroup(RACK_PATH, "C1");
+
+    expect(group?.chains.map((chain) => chain.id)).toStrictEqual(["chain0"]);
   });
 });

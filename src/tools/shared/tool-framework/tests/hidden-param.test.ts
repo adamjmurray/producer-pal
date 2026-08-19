@@ -203,6 +203,16 @@ describe("hiddenParamWarnings", () => {
   it("says nothing when no hidden param was sent", () => {
     expect(hiddenParamWarnings("ppal-duplicate", [], hidden)).toStrictEqual([]);
   });
+
+  // Both callers filter Object.keys(hidden), but the signature takes any key
+  // list, and a visible param has nothing to correct.
+  it("skips a key that isn't hidden", () => {
+    expect(
+      hiddenParamWarnings("ppal-duplicate", ["name", "slot"], hidden),
+    ).toStrictEqual([
+      'Warning: ppal-duplicate param "slot" is deprecated and will be removed; use "path" instead',
+    ]);
+  });
 });
 
 describe("defineTool with hidden params", () => {

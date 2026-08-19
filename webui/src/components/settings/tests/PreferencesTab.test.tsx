@@ -257,6 +257,24 @@ describe("PreferencesTab", () => {
     expect(input.value).toBe("25");
   });
 
+  it("follows the budget when it changes from outside the field", () => {
+    // A Cancel reverts the buffer, and the post-mount load can replace the
+    // mount-time default. Neither is an echo of this field's own commit, so the
+    // draft has to move with it rather than keep showing the stale number.
+    const stepBudget = (steps: number): preact.JSX.Element => (
+      <PreferencesTab {...defaultProps} maxToolSteps={steps} />
+    );
+    const { container, rerender } = render(stepBudget(25));
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    expect(input.value).toBe("25");
+
+    rerender(stepBudget(60));
+    expect(input.value).toBe("60");
+  });
+
   it("renders cleanup buttons", () => {
     render(<PreferencesTab {...defaultProps} />);
     expect(

@@ -303,6 +303,17 @@ describe("device-reader", () => {
         chains: ["raw-entry"],
       });
     });
+
+    it("returns a non-object drum pad entry unchanged", () => {
+      // Same short-circuit as chains: destructuring a primitive pad would
+      // rebuild it as an empty object and lose the entry.
+      const obj = { type: "drum-rack", drumPads: ["raw-pad", null] };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "drum-rack",
+        drumPads: ["raw-pad", null],
+      });
+    });
   });
 
   describe("getDrumMap", () => {

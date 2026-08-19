@@ -339,21 +339,19 @@ async function duplicateTrackOrSceneWithCount(
       break;
     }
 
-    const result = duplicateTrackOrSceneToSession(
-      type,
-      object,
-      id,
-      i,
-      getNameForIndex(name, i, parsedNames),
-      getColorForIndex(color, i, parsedColors),
-      withoutClips,
-      withoutDevices,
-      routeToSource,
+    createdObjects.push(
+      duplicateTrackOrSceneToSession(
+        type,
+        object,
+        id,
+        i,
+        getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
+        withoutClips,
+        withoutDevices,
+        routeToSource,
+      ),
     );
-
-    if (result != null) {
-      createdObjects.push(result);
-    }
   }
 
   return createdObjects;
@@ -382,7 +380,7 @@ function duplicateTrackOrSceneToSession(
   withoutClips: boolean | undefined,
   withoutDevices: boolean | undefined,
   routeToSource: boolean | undefined,
-): object | undefined {
+): object {
   if (type === "track") {
     const trackIndex = object.trackIndex;
 
@@ -403,24 +401,24 @@ function duplicateTrackOrSceneToSession(
       routeToSource,
       trackIndex,
     );
-  } else if (type === "scene") {
-    const sceneIndex = object.sceneIndex;
+  }
 
-    if (sceneIndex == null) {
-      throw new Error(
-        `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-      );
-    }
+  // Only "track" and "scene" get here: clip, device and drum-pad all return
+  // from duplicate() before the count-based path.
+  const sceneIndex = object.sceneIndex;
 
-    const actualSceneIndex = sceneIndex + i;
-
-    return duplicateScene(
-      actualSceneIndex,
-      objectName,
-      objectColor,
-      withoutClips,
+  if (sceneIndex == null) {
+    throw new Error(
+      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
     );
   }
 
-  return undefined;
+  const actualSceneIndex = sceneIndex + i;
+
+  return duplicateScene(
+    actualSceneIndex,
+    objectName,
+    objectColor,
+    withoutClips,
+  );
 }

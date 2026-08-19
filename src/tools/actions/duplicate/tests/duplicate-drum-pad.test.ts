@@ -306,6 +306,18 @@ describe("duplicate - drum pad", () => {
     );
   });
 
+  it("refuses a path that names no pad at all", async () => {
+    const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
+
+    const result = await copyC1ToD1({ toPath: "t0/d0" });
+
+    expectNoCopy(rack);
+    expect(result).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("does not name a drum pad"),
+    );
+  });
+
   it("says a nested rack's pad is out of reach rather than not a pad", async () => {
     // Path resolution stops at the first pad, so "not a drum pad" would send
     // the reader looking for a typo that isn't there.

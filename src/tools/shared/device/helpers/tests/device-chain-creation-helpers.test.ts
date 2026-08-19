@@ -295,4 +295,65 @@ describe("resolveOrCreateDrumPadChain", () => {
     ).toBeNull();
     expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
   });
+
+  it("refuses a missing device: only a missing chain is auto-creatable", () => {
+    const rack = registerDrumRack([["drum-chain-36", 36]]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d9",
+      ]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a chain segment with an unparseable index", () => {
+    const rack = registerDrumRack([["drum-chain-36", 36]]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["cx"]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose outer chain segment is unparseable", () => {
+    const { inner, outer } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "cx",
+        "d0",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose walk misses the device it nests under", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d9",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose walk lands on a chain, not a device", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "c0",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
 });

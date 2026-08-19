@@ -467,6 +467,45 @@ describe("useCollectionEntryAutosave", () => {
 
     expect(persist).toHaveBeenCalledTimes(1);
   });
+
+  it("leaves an already-armed debounce alone when a rename resumes", async () => {
+    // A timer already on the clock means the arming effect beat resume to it.
+    // Arming a second one leaves the first orphaned — only the ref'd timer is
+    // ever cleared, so the stray one outlives the editor and saves a draft the
+    // user closed without saving.
+    const persist = vi.fn().mockResolvedValue(null);
+    // flushOnLeave off so the unmount flush doesn't hide the stray timer.
+    const { result, rerender, unmount } = setup({
+      canSave: true,
+      draftKey: "seed",
+      autosaveOnIdle: true,
+      flushOnLeave: false,
+      persist,
+    });
+
+    rerender({
+      canSave: true,
+      draftKey: "v1",
+      autosaveOnIdle: true,
+      flushOnLeave: false,
+      persist,
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      result.current.resumePendingSave();
+      await Promise.resolve();
+    });
+
+    // Unmount cancels the debounce this editor armed — all of it.
+    unmount();
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+      await Promise.resolve();
+    });
+
+    expect(persist).not.toHaveBeenCalled();
+  });
 });
 
 /**
