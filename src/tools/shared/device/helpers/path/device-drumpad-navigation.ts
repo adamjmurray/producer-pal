@@ -165,6 +165,22 @@ export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
 }
 
 /**
+ * Every chain on a DrumPad, in the order its `c0`/`c1` path segments name.
+ *
+ * Read from the rack rather than from `pad.chains`: measured on 12.4.3 the two
+ * disagree once a pad holds more than one chain (a copied-on layer comes first
+ * in the rack's list and last in the pad's), and every path resolves against
+ * the rack's, so the pad's would label the layers with each other's paths.
+ * @param pad - The DrumPad
+ * @returns The pad's chains, in rack order
+ */
+export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
+  const rack = LiveAPI.from(pad.path.replace(/ drum_pads \d+$/, ""));
+
+  return chainsForInNote(rack, pad.getProperty("note") as number);
+}
+
+/**
  * Resolve a bare pad path to the whole pad: the DrumPad object plus every chain
  * on it. A layered pad has several chains; a virtual pad has no DrumPad.
  * @param liveApiPath - Live API path to the drum rack device

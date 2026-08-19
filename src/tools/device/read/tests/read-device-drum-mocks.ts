@@ -74,6 +74,19 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
 
   const returnChainIds = returnChainNames.map((_, i) => `return-chain-${i}`);
 
+  // Live indexes `drum_pads` by MIDI note, and keeps every drum chain in the
+  // rack's own `chains` list in note order — so a chain's path is
+  // "<rack> chains N", never nested under "drum_pads N". Getting this wrong
+  // hides bugs in code that walks up from a chain path to find its rack, or
+  // that reads a pad's layers from the rack rather than from the pad.
+  const padsByNote = padIds
+    .map((padId) => ({ padId, padProps: padProperties[padId] ?? {} }))
+    .toSorted((a, b) => (a.padProps.note ?? 36) - (b.padProps.note ?? 36));
+
+  const rackChainIds = padsByNote.flatMap(
+    ({ padProps }) => padProps.chainIds ?? [],
+  );
+
   // Register the main drum rack device
   const device = registerMockObject(deviceId, {
     path: livePath.track(1).device(0),
@@ -81,6 +94,7 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
     properties: {
       can_have_drum_pads: 1,
       drum_pads: padIds.flatMap((p) => ["id", p]),
+      chains: rackChainIds.flatMap((c) => ["id", c]),
       return_chains: returnChainIds.flatMap((c) => ["id", c]),
     },
   });
@@ -94,14 +108,6 @@ export function setupDrumPadMocks(config: DrumPadMockConfig): {
       properties: { name: returnChainNames[returnIndex] },
     });
   }
-
-  // Live indexes `drum_pads` by MIDI note, and keeps every drum chain in the
-  // rack's own `chains` list in note order — so a chain's path is
-  // "<rack> chains N", never nested under "drum_pads N". Getting this wrong
-  // hides bugs in code that walks up from a chain path to find its rack.
-  const padsByNote = padIds
-    .map((padId) => ({ padId, padProps: padProperties[padId] ?? {} }))
-    .toSorted((a, b) => (a.padProps.note ?? 36) - (b.padProps.note ?? 36));
 
   const pads: Record<string, RegisteredMockObject> = {};
   const chains: Record<string, RegisteredMockObject> = {};

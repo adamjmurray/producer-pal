@@ -11,7 +11,10 @@ import {
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
-import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  chainsOnDrumPad,
+  navigateRemainingSegments,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
@@ -275,7 +278,7 @@ function readDrumPadNestedTarget(
   fullPath: string,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const chains = pad.getChildren("chains");
+  const chains = chainsOnDrumPad(pad);
   const firstSegment = assertDefined(
     remainingSegments[0],
     "chain or device segment",
@@ -432,7 +435,7 @@ function buildDrumPadInfo(
 
   // Include chains if requested
   if (options.includeChains || options.includeDrumPads) {
-    const chains = pad.getChildren("chains");
+    const chains = chainsOnDrumPad(pad);
 
     drumPadInfo.chains = chains.map((chain: LiveAPI, chainIndex: number) => {
       const chainPath = `${path}/c${chainIndex}`;

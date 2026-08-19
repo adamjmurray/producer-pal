@@ -97,6 +97,53 @@ describe("readDevice with drum pad path", () => {
     });
   });
 
+  // Live's two chain lists disagree once a pad holds layers: a copied-on layer
+  // comes first in the rack's `chains` and last in the pad's. Every path
+  // resolves against the rack's, so reading the pad's would hand back paths
+  // that address the other layer.
+  it("numbers a layered pad's chains the way its paths resolve", () => {
+    const rackPath = String(livePath.track(1).device(0));
+
+    registerMockObject("drum-rack-1", {
+      path: rackPath,
+      type: "Device",
+      properties: {
+        can_have_drum_pads: 1,
+        drum_pads: children("pad-36"),
+        chains: children("layer-a", "layer-b"),
+      },
+    });
+    registerMockObject("pad-36", {
+      path: `${rackPath} drum_pads 36`,
+      type: "DrumPad",
+      properties: {
+        note: 36,
+        name: "Multi",
+        chains: children("layer-b", "layer-a"),
+      },
+    });
+
+    for (const [index, id] of ["layer-a", "layer-b"].entries()) {
+      registerMockObject(id, {
+        path: `${rackPath} chains ${index}`,
+        type: "DrumChain",
+        properties: { name: id, in_note: 36, out_note: 36 },
+      });
+    }
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as { id: string; path: string }[];
+
+    expect(chains.map((c) => c.id)).toStrictEqual(["layer-a", "layer-b"]);
+    expect(chains.map((c) => c.path)).toStrictEqual([
+      "t1/d0/pC1/c0",
+      "t1/d0/pC1/c1",
+    ]);
+    expect(readDevice({ path: "t1/d0/pC1/c1", include: [] }).id).toBe(
+      "layer-b",
+    );
+  });
+
   it("should read muted drum pad", () => {
     setupKickPadMocks({ padExtra: { mute: 1 } });
 
