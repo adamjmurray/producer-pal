@@ -156,6 +156,13 @@ overrides it for individual messages.
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
 
+The text area is a markdown editor, so **Tab** and **Shift+Tab** indent and
+outdent rather than moving focus. To leave it with the keyboard, press
+**Escape** and then **Tab** — Escape hands Tab back to the page for a couple of
+seconds. **Ctrl+M** makes that permanent: press it once and Tab always moves
+focus, press it again to get indenting back. The same keys work in the context,
+memory, and skill editors.
+
 ### Message Queue
 
 You don't have to wait for the AI to finish. Keep typing and pressing **Send**

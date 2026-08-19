@@ -162,6 +162,33 @@ describe("MarkdownEditor", () => {
     expect(view.state.doc.toString()).toBe("  hello");
   });
 
+  it("describes the Escape-then-Tab way out to screen readers", () => {
+    const { container } = renderEditor();
+    const hintId =
+      viewIn(container).contentDOM.getAttribute("aria-describedby");
+    const hint = container.querySelector(`#${hintId}`);
+
+    expect(hint?.textContent).toContain("Escape then Tab");
+    expect(hint?.className).toContain("sr-only");
+  });
+
+  it("gives sibling editors distinct hint ids, so describedby resolves", () => {
+    // Two editors in one tree — the chat composer alongside a context editor.
+    // Duplicate ids would point both descriptions at whichever came first.
+    const { container } = render(
+      <div>
+        <MarkdownEditor initialValue="a" onChange={() => {}} />
+        <MarkdownEditor initialValue="b" onChange={() => {}} />
+      </div>,
+    );
+    const ids = [...container.querySelectorAll(".cm-content")].map((el) =>
+      el.getAttribute("aria-describedby"),
+    );
+
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+  });
+
   it("read-only lets Tab move focus instead of trapping it", () => {
     const { container } = renderEditor({
       initialValue: "hello",

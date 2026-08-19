@@ -8,6 +8,7 @@ import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
 import {
   type MutableRef,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
 } from "preact/hooks";
@@ -84,6 +85,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
   const { initialValue, onChange, onFocus, onBlur, onSubmit } = props;
   const { readOnly = false, disabled = false, placeholder } = props;
   const { className, ariaLabel, editorRef, variant = "card" } = props;
+  // Tab indents here, so the way out is Escape-then-Tab. Nothing on screen can
+  // say so, hence a screen-reader-only description on the editable region.
+  const tabHintId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const editableCompartment = useRef(new Compartment());
@@ -129,6 +133,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
         extensions: [
           ...(variant === "chat" ? [chatInputExtensions] : []),
           markdownEditorExtensions,
+          EditorView.contentAttributes.of({ "aria-describedby": tabHintId }),
           ...(ariaLabel != null
             ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })]
             : []),
@@ -197,6 +202,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
         ref={containerRef}
         className="min-h-0 flex-1 overflow-auto text-zinc-900 dark:text-zinc-200"
       />
+      <span id={tabHintId} className="sr-only">
+        Tab indents. Press Escape then Tab to move focus out of the editor.
+      </span>
     </div>
   );
 }
