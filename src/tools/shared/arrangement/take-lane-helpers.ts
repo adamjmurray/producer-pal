@@ -112,13 +112,28 @@ export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
  * two written `l+` get two lanes while a cycled repeat of one gets a single
  * lane.
  * @param target - The destination
- * @returns The key, spelled as the path segment it came from
+ * @returns The key, an internal spelling — use {@link takeLaneLabel} in messages
  */
 export function takeLaneKey(target: ArrangementTrack): string {
   const { trackIndex, takeLane, newLaneOrdinal = 0 } = target;
   const lane = takeLane === "new" ? `+${newLaneOrdinal}` : takeLane;
 
   return `t${trackIndex}/l${lane}`;
+}
+
+/**
+ * Spells a destination the way the caller wrote it, for messages. Unlike
+ * {@link takeLaneKey}, an `l+` stays `l+` without the ordinal that tells two of
+ * them apart, and the main lane is the bare track.
+ * @param target - The destination
+ * @returns The path, e.g. "t0/l+", "t0/l3", or "t0"
+ */
+export function takeLaneLabel(target: ArrangementTrack): string {
+  const { trackIndex, takeLane } = target;
+
+  if (takeLane == null) return `t${trackIndex}`;
+
+  return `t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}`;
 }
 
 /**
@@ -300,7 +315,7 @@ export function takeLaneTargetsThatFit<T extends ArrangementTrack>(
     if (laneIndex + 1 > MAX_TAKE_LANES) {
       dropped.add(key);
       console.warn(
-        `${tool}: skipping "t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}" — ` +
+        `${tool}: skipping "${takeLaneLabel(fits)}" — ` +
           takeLaneCapacityMessage(laneIndex, takeLane),
       );
       continue;

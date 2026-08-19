@@ -381,7 +381,7 @@ describe("createClip take lane paths", () => {
       expect.stringContaining('createClip: skipping "t0/l+"'),
     );
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining('take lane "t0/l+0" was skipped'),
+      expect.stringContaining('take lane "t0/l+" was skipped'),
     );
   });
 

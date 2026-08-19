@@ -18,6 +18,7 @@ import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
 import {
   takeLaneKey,
+  takeLaneLabel,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
@@ -298,15 +299,14 @@ function takeLaneFor(
 ): LiveAPI | null {
   if (position.takeLane == null) return null;
 
-  const key = takeLaneKey(position);
-  const lane = lanes.get(key);
+  const lane = lanes.get(takeLaneKey(position));
 
   // A destination whose lane didn't fit warned during resolution and has no
   // entry. Fail this clip — the loop catches it and carries on — rather than
   // falling back to the main lane, which would put the clip somewhere the
   // caller didn't ask for.
   if (lane == null) {
-    throw new Error(`take lane "${key}" was skipped`);
+    throw new Error(`take lane "${takeLaneLabel(position)}" was skipped`);
   }
 
   return lane;

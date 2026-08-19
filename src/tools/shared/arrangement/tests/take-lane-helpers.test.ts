@@ -11,6 +11,7 @@ import {
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
+  takeLaneLabel,
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
   type ArrangementTrack,
@@ -243,6 +244,22 @@ describe("resolveTakeLane", () => {
 
     expect(lane.set).not.toHaveBeenCalledWith("name", expect.anything());
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
+  });
+});
+
+describe("takeLaneLabel", () => {
+  // The ordinal that takeLaneKey appends keeps two written l+ apart internally.
+  // It is not something the caller wrote, so it stays out of messages.
+  it("spells an l+ without its ordinal", () => {
+    expect(takeLaneLabel({ trackIndex: 0, takeLane: "new" })).toBe("t0/l+");
+    expect(
+      takeLaneLabel({ trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 }),
+    ).toBe("t3/l+");
+  });
+
+  it("spells a numbered lane and the main lane", () => {
+    expect(takeLaneLabel({ trackIndex: 2, takeLane: 5 })).toBe("t2/l5");
+    expect(takeLaneLabel({ trackIndex: 2, takeLane: null })).toBe("t2");
   });
 });
 
