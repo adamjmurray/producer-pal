@@ -22,10 +22,7 @@ import {
   determineAutoDetailView,
   resolveIdParam,
 } from "./helpers/select-id-helpers.ts";
-import {
-  mergeWithPath,
-  resolvePathParam,
-} from "./helpers/select-path-helpers.ts";
+import { resolvePath } from "./helpers/select-path-helpers.ts";
 import {
   resolveRackTarget,
   selectRackTarget,
@@ -313,24 +310,10 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     rackTargetId = resolved.rackTargetId;
   }
 
-  const fromPath = resolvePathParam(args);
+  const fromPath = resolvePath(args);
   const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
     fromPath;
-  const trackIndex = mergeWithPath(
-    "trackIndex",
-    args.trackIndex,
-    fromPath.trackIndex,
-  );
-  const category = mergeWithPath(
-    "trackType",
-    args.trackType,
-    fromPath.category,
-  );
-  const sceneIndex = mergeWithPath(
-    "sceneIndex",
-    args.sceneIndex,
-    fromPath.sceneIndex,
-  );
+  const { trackIndex, category, sceneIndex } = fromPath;
 
   const hasSelectionArgs =
     trackId != null ||

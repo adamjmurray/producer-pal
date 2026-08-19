@@ -11,6 +11,7 @@ import {
   parseObjectPath,
   pathError,
   type ObjectPath,
+  type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import {
   namedHiddenPath,
@@ -29,23 +30,64 @@ export interface PathTarget {
   trackIndex?: number;
   category?: TrackCategory;
   sceneIndex?: number;
+  /** The track a slot or device path sits on. Live moves the track selection
+   * there on its own, so this is only checked against an explicit param —
+   * disagreeing would leave the call touching two different tracks. */
+  impliedTrack?: ImpliedTrack;
+  /** The scene a slot path sits on, checked the same way. */
+  impliedScene?: number;
 }
 
-interface PathParams {
+/** A track named by a path but not selected from it. `trackIndex` is unset for
+ * the master track, which has no index, so any explicit one disagrees. */
+interface ImpliedTrack {
+  trackIndex?: number;
+  category: TrackCategory;
+}
+
+/** The params a path can name a second time. */
+interface PathAgreementArgs {
+  trackIndex?: number;
+  trackType?: "return" | "master";
+  sceneIndex?: number;
+}
+
+interface PathParams extends PathAgreementArgs {
   path?: string;
   slot?: string;
   devicePath?: string;
 }
 
 /**
- * Resolve `path` and the two params it replaced into what they name.
+ * Resolve `path` against every param that can name the same thing, refusing to
+ * pick when two of them disagree.
+ * @param args - The path and selection params as the tool received them
+ * @returns The clip slot, device, track, or scene the caller named
+ */
+export function resolvePath(args: PathParams): PathTarget {
+  const fromPath = targetFromParams(args);
+
+  assertPathAgrees(fromPath, args);
+
+  return {
+    ...fromPath,
+    trackIndex: merge("trackIndex", args.trackIndex, fromPath.trackIndex),
+    category: merge("trackType", args.trackType, fromPath.category),
+    sceneIndex: merge("sceneIndex", args.sceneIndex, fromPath.sceneIndex),
+  };
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Read `path` and the two params it replaced as what they name.
  * @param args - The path params as the tool received them
  * @param args.path - The path param
  * @param args.slot - The deprecated session slot
  * @param args.devicePath - The deprecated device path
  * @returns The clip slot, device, track, or scene the caller named
  */
-export function resolvePathParam({
+function targetFromParams({
   path: rawPath,
   slot: rawSlot,
   devicePath: rawDevicePath,
@@ -81,7 +123,7 @@ export function resolvePathParam({
  * @param fromPath - What the path named
  * @returns The agreed value, or whichever one was given
  */
-export function mergeWithPath<T>(
+function merge<T>(
   name: string,
   explicit: T | undefined,
   fromPath: T | undefined,
@@ -89,12 +131,71 @@ export function mergeWithPath<T>(
   if (explicit == null) return fromPath;
   if (fromPath == null || explicit === fromPath) return explicit;
 
-  throw new Error(
+  throw pathConflict(name);
+}
+
+/**
+ * Refuse a param naming a different track or scene than the one a slot or
+ * device path already sits on. These can't be merged like the others — the
+ * path doesn't select them, Live moves there on its own — so honoring both
+ * would quietly leave two different things selected.
+ * @param target - What the path named
+ * @param target.impliedTrack - The track the path sits on
+ * @param target.impliedScene - The scene the path sits on
+ * @param args - The params the caller passed alongside it
+ * @param args.trackIndex - The explicit track index
+ * @param args.trackType - The explicit track type
+ * @param args.sceneIndex - The explicit scene index
+ */
+function assertPathAgrees(
+  { impliedTrack, impliedScene }: PathTarget,
+  { trackIndex, trackType, sceneIndex }: PathAgreementArgs,
+): void {
+  if (impliedTrack != null) {
+    if (trackIndex != null && trackIndex !== impliedTrack.trackIndex) {
+      throw pathConflict("trackIndex");
+    }
+
+    if (trackType != null && trackType !== impliedTrack.category) {
+      throw pathConflict("trackType");
+    }
+  }
+
+  if (
+    impliedScene != null &&
+    sceneIndex != null &&
+    sceneIndex !== impliedScene
+  ) {
+    throw pathConflict("sceneIndex");
+  }
+}
+
+/**
+ * The one error every path-versus-param disagreement is reported as.
+ * @param name - The param that disagreed
+ * @returns The error to throw
+ */
+function pathConflict(name: string): Error {
+  return new Error(
     `select failed: path and ${name} name different targets; use path alone`,
   );
 }
 
-// --- Helpers below main exports ---
+/**
+ * Read a path's track root as a track index and category.
+ * @param root - The parsed track root
+ * @returns The track it names
+ */
+function trackFromRoot(root: TrackSegment): ImpliedTrack {
+  switch (root.kind) {
+    case "track":
+      return { trackIndex: root.trackIndex, category: "regular" };
+    case "return-track":
+      return { trackIndex: root.returnIndex, category: "return" };
+    default:
+      return { category: "master" };
+  }
+}
 
 /**
  * Split a device-chain path by what its last segment names: a device, or
@@ -121,13 +222,14 @@ function deviceChainTarget(
 function targetFromPath(path: ObjectPath): PathTarget {
   switch (path.kind) {
     case "device":
-      return deviceChainTarget(path);
+      return {
+        ...deviceChainTarget(path),
+        impliedTrack: trackFromRoot(path.root),
+      };
     case "track":
-      return { trackIndex: path.trackIndex, category: "regular" };
     case "return-track":
-      return { trackIndex: path.returnIndex, category: "return" };
     case "master-track":
-      return { category: "master" };
+      return trackFromRoot(path);
     case "scene":
       return { sceneIndex: path.sceneIndex };
     case "slot":
@@ -136,6 +238,8 @@ function targetFromPath(path: ObjectPath): PathTarget {
           trackIndex: path.trackIndex,
           sceneIndex: path.sceneIndex,
         },
+        impliedTrack: { trackIndex: path.trackIndex, category: "regular" },
+        impliedScene: path.sceneIndex,
       };
     default:
       throw pathError(

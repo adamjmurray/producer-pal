@@ -259,6 +259,59 @@ describe("select path param", () => {
     );
   });
 
+  // A slot or device path names a track without selecting it — Live moves there
+  // with the slot or device. Honoring a conflicting param anyway would select
+  // one track and highlight something on another.
+  it("refuses a slot or device path that disagrees with a track or scene param", () => {
+    expect(() => select({ path: "t0/s3", trackIndex: 5 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    expect(() => select({ path: "t0/s3", sceneIndex: 7 })).toThrow(
+      "select failed: path and sceneIndex name different targets",
+    );
+    expect(() => select({ path: "t0/s3", trackType: "return" })).toThrow(
+      "select failed: path and trackType name different targets",
+    );
+    expect(() => select({ path: "t0/d1", trackIndex: 5 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    expect(() => select({ path: "rt0/d1", trackType: "master" })).toThrow(
+      "select failed: path and trackType name different targets",
+    );
+    expect(() => select({ path: "t0/d0/pC1", trackIndex: 5 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    // The master track has no index, so any explicit one names another track.
+    expect(() => select({ path: "mt/d0", trackIndex: 5 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+  });
+
+  it("accepts a slot or device path that agrees with a track or scene param", () => {
+    registerMockObject("clipslot_0_3", {
+      path: livePath.track(0).clipSlot(3),
+      type: "ClipSlot",
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("device_at_path", {
+      path: String(livePath.returnTrack(0)) + " devices 1",
+      type: "Device",
+    });
+    const songView = setupSongViewMock();
+
+    setupAppViewMock();
+
+    select({ path: "t0/s3", trackIndex: 0, sceneIndex: 3 });
+    expect(songView.set).toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      "id clipslot_0_3",
+    );
+
+    expect(() =>
+      select({ path: "rt0/d1", trackIndex: 0, trackType: "return" }),
+    ).not.toThrow();
+  });
+
   it("rejects a take lane, which names no one thing to select", () => {
     expect(() => select({ path: "t0/l1" })).toThrow(
       /a take lane is not selectable/,
