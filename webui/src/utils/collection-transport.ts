@@ -10,6 +10,8 @@
 // utilities rather than inside the hook module (see
 // #webui/hooks/context/use-doc-collection).
 
+import { COLLECTION_WRITE_TIMEOUT_MS } from "#webui/lib/constants/transport";
+
 /**
  * GET the full collection.
  * @param url - The collection list endpoint
@@ -41,6 +43,11 @@ export async function fetchEntries<TView>(
 // here — unlike the single-doc context/system-prompt writes (see
 // #webui/hooks/context/use-doc `makeContentTransport`), whose imported
 // bodies can far exceed it, so those deliberately stay a plain fetch.
+//
+// They also carry a deadline (see writeRequest). A caller can't tell a hung
+// write from a slow one, so it keeps waiting: the memory editor holds autosave
+// off across a rename until the write settles, and one that never settles would
+// silently kill autosave for the rest of the editor's mount.
 
 /**
  * PUT one entry.
@@ -89,11 +96,7 @@ export async function deleteEntryRequest(
   url: string,
   label: string,
 ): Promise<void> {
-  const response = await fetch(url, { method: "DELETE", keepalive: true });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
+  await writeRequest(url, { method: "DELETE" }, label, () => Promise.resolve());
 }
 
 /**
@@ -108,20 +111,61 @@ async function putJson<TView>(
   body: unknown,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    keepalive: true,
-  });
+  return await writeRequest(
+    url,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    label,
+    async (response) => ((await response.json()) as { entry: TView }).entry,
+  );
+}
 
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
+/**
+ * Send one write and fail it if the server doesn't answer in time. The deadline
+ * covers the body read too, since a response whose stream stalls hangs the
+ * caller exactly the way an unanswered request does.
+ * @param url - The endpoint to write to
+ * @param init - Method, headers, and body for the request
+ * @param label - Error-message label (e.g. "Memory")
+ * @param readBody - Reads the successful response
+ * @returns Whatever readBody read
+ */
+async function writeRequest<T>(
+  url: string,
+  init: RequestInit,
+  label: string,
+  readBody: (response: Response) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  // Nothing fires it once the page is gone, so a keepalive write dispatched from
+  // the beforeunload/unmount flush still finishes on its own.
+  const timer = setTimeout(
+    controller.abort.bind(controller),
+    COLLECTION_WRITE_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      keepalive: true,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) throw new Error(await writeErrorMessage(response, label));
+
+    return await readBody(response);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`${label} update timed out`, { cause: error });
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const parsed = (await response.json()) as { entry: TView };
-
-  return parsed.entry;
 }
 
 /**
