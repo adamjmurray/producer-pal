@@ -27,9 +27,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
-  getToolErrorMessage,
   getToolNotices,
-  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -261,32 +259,38 @@ describe("take lanes", () => {
 
     expect(overview.takeLaneCount).toBe(8);
 
-    // Out of room, and deleting lanes in Live is what makes room
-    const capped = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${MIDI_TRACK}/l+`,
-        arrangementStart: "5|1",
-        notes: "C3 1|1",
-      },
-    });
+    // Out of room: the lane is warned and dropped, not fatal, so the
+    // destinations alongside it in the same call still land. Deleting lanes in
+    // Live is what makes room.
+    const capped = parseToolResultWithWarnings<unknown[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${MIDI_TRACK}/l+`,
+          arrangementStart: "5|1",
+          notes: "C3 1|1",
+        },
+      }),
+    );
 
-    expect(isToolError(capped)).toBe(true);
-    expect(getToolErrorMessage(capped)).toContain("8 take lane limit");
+    expect(capped.data).toStrictEqual([]);
+    expect(capped.warnings.join(" ")).toContain("8 take lane limit");
 
     // A lane number past the end is a bad number instead, and deleting lanes
     // would only make it worse — so it gets the range, not the delete advice.
-    const outOfRange = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${MIDI_TRACK}/l8`,
-        arrangementStart: "5|1",
-        notes: "C3 1|1",
-      },
-    });
+    const outOfRange = parseToolResultWithWarnings<unknown[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${MIDI_TRACK}/l8`,
+          arrangementStart: "5|1",
+          notes: "C3 1|1",
+        },
+      }),
+    );
 
-    expect(isToolError(outOfRange)).toBe(true);
-    expect(getToolErrorMessage(outOfRange)).toContain(
+    expect(outOfRange.data).toStrictEqual([]);
+    expect(outOfRange.warnings.join(" ")).toContain(
       'take lane "l8" is out of range: a track has "l0" through "l7"',
     );
   });

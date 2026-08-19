@@ -86,12 +86,13 @@ describe("ppal-duplicate drum-pad", () => {
 
     await sleep(150);
 
-    // The deprecated path param still names a source pad.
+    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+
     await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "drum-pad",
-        path: `t${t}/d0/pC1`,
+        id: sourceId,
         toPath: `t${t}/d0/pD1`,
         name: "Layered",
       },
@@ -104,11 +105,13 @@ describe("ppal-duplicate drum-pad", () => {
 
     expect(pad.chains).toHaveLength(2);
 
-    // Naming only the new chain assumes copy_pad appends. Pin that down here:
-    // if Live ever prepended, the resident chain would be the one renamed.
+    // read-device numbers a pad's chains the way its `/cN` paths resolve — the
+    // rack's order, where a copied-on layer comes first. Naming only the new
+    // chain relies on picking the right one out of that list: if it picked
+    // wrong, the resident chain would be the one renamed.
     expect(pad.chains?.map((c) => c.name)).toStrictEqual([
-      "Resident",
       "Layered",
+      "Resident",
     ]);
   });
 

@@ -123,7 +123,9 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.name).toBe("Source C");
   });
 
-  it("refuses a MIDI clip aimed at an audio track rather than silently no-opping", async () => {
+  // Skipped, not fatal: one bad entry in a comma-separated toPath must not cost
+  // the good ones.
+  it("skips a MIDI clip aimed at an audio track rather than silently no-opping", async () => {
     const position = "29|1";
     const source = await createArrClip(position, "Source D");
 
@@ -133,9 +135,10 @@ describe("cross-track arrangement clip duplicate", () => {
       arrangementStart: position,
       toPath: `t${AUDIO_TRACK}`,
     });
+    const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
 
-    expect(isToolError(result)).toBe(true);
-    expect(getToolErrorMessage(result)).toContain(
+    expect(data).toStrictEqual([]);
+    expect(warnings.join(" ")).toContain(
       `MIDI clip cannot be duplicated to audio track ${AUDIO_TRACK}`,
     );
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
