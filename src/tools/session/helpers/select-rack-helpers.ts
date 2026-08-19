@@ -7,8 +7,8 @@
 // Live keeps this on the rack's own view rather than the song view, so it takes
 // different writes from every other selection select makes.
 
-import { midiToNoteName } from "#src/shared/pitch.ts";
 import {
+  drumPadPath,
   findDrumPad,
   findDrumPadByNote,
   resolveDrumPadFromPath,
@@ -90,7 +90,7 @@ export function selectRackTarget(
   revealChain(rack, chain);
 
   return isPad
-    ? { selectedDrumPad: { id: target.id, path: padPath(rack, target) } }
+    ? { selectedDrumPad: { id: target.id, path: drumPadPath(target) } }
     : { selectedChain: { id: target.id, path: chainPath(target) } };
 }
 
@@ -204,18 +204,6 @@ function enclosingChain(device: LiveAPI): LiveAPI | null {
   const parentPath = device.path.replace(DEVICE_TAIL, "");
 
   return CHAIN_TAIL.test(parentPath) ? LiveAPI.from(parentPath) : null;
-}
-
-/**
- * The path spelling of a selected pad.
- * @param rack - The drum rack
- * @param pad - The DrumPad
- * @returns The pad path, e.g. "t0/d0/pC1"
- */
-function padPath(rack: LiveAPI, pad: LiveAPI): string {
-  const note = midiToNoteName(pad.getProperty("note") as number);
-
-  return `${extractDevicePath(rack.path)}/p${note}`;
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import {
   chainsOnDrumPad,
+  drumPadPath,
   navigateRemainingSegments,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -156,10 +157,10 @@ function readDeviceTarget(
 }
 
 /**
- * Read device by ID
- * @param deviceId - Device ID to read
+ * Read a device, or a drum pad, by ID
+ * @param deviceId - Device or DrumPad ID to read
  * @param options - Read options
- * @returns Device information
+ * @returns Device or drum pad information
  */
 function readDeviceById(
   deviceId: string,
@@ -169,6 +170,13 @@ function readDeviceById(
 
   if (!device.exists()) {
     throw new Error(`Device with ID ${deviceId} not found`);
+  }
+
+  // duplicate and delete both hand back pad ids, so reading one has to answer
+  // the same shape the path form does. A DrumPad has none of the properties the
+  // shared reader wants, and comes back describing nothing.
+  if (device.type === "DrumPad") {
+    return buildDrumPadInfo(device, drumPadPath(device), options);
   }
 
   return readDeviceShared(device, options);
@@ -413,8 +421,7 @@ function buildDrumPadInfo(
   options: ReadOptions,
 ): Record<string, unknown> {
   const midiNote = pad.getProperty("note") as number;
-  // readDrumPadByPath matched this pad by the MIDI note parsed from the pad path,
-  // so the note is always in range and always names.
+  // A pad's note is always 0-127, so it always names.
   const noteName = midiToNoteName(midiNote) as string;
   const isMuted = (pad.getProperty("mute") as number) > 0;
   const isSoloed = (pad.getProperty("solo") as number) > 0;

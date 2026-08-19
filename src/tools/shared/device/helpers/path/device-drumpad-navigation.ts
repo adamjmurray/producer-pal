@@ -4,9 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
-import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { buildDrumPadPath, extractDevicePath } from "./device-path-builders.ts";
 
 export type DrumPadTargetType = "chain" | "device";
+
+const DRUM_PADS_TAIL = / drum_pads \d+$/;
 
 export interface DrumPadResolution {
   target: LiveAPI | null;
@@ -175,9 +178,24 @@ export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
  * @returns The pad's chains, in rack order
  */
 export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
-  const rack = LiveAPI.from(pad.path.replace(/ drum_pads \d+$/, ""));
+  const rack = LiveAPI.from(pad.path.replace(DRUM_PADS_TAIL, ""));
 
   return chainsForInNote(rack, pad.getProperty("note") as number);
+}
+
+/**
+ * The path that names a DrumPad, e.g. "t1/d0/pC1". Both casts hold for any real
+ * pad: it always sits on a track's device, and its note is always 0-127.
+ * @param pad - The DrumPad
+ * @returns Its Producer Pal path
+ */
+export function drumPadPath(pad: LiveAPI): string {
+  const rackPath = pad.path.replace(DRUM_PADS_TAIL, "");
+
+  return buildDrumPadPath(
+    extractDevicePath(rackPath) as string,
+    midiToNoteName(pad.getProperty("note") as number) as string,
+  );
 }
 
 /**
