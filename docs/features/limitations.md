@@ -2,8 +2,8 @@
 title: Limitations
 description:
   What Producer Pal can't do, and the workarounds — no control over VST/AU
-  plug-in internals, no automation or clip envelopes, no audio analysis or
-  synthesis, and one drum pitch map per track.
+  plug-in internals, no editing clip envelopes or automation, no audio analysis
+  or synthesis, and one drum pitch map per track.
 ---
 
 # Limitations
@@ -44,12 +44,18 @@ them works fully — no mapping step, nothing to keep in sync.
 
 :::
 
-## Automation and Envelopes Are Not Supported
+## Clip Envelopes and Automation Can't Be Edited
 
-Producer Pal cannot read, create, or edit arrangement automation or clip
-envelopes — parameter values that change over time. Track and device parameters
-like volume, pan, sends, and knobs can be set to static values, but not
-automated.
+Producer Pal cannot read, create, or edit **clip envelopes** — the curves drawn
+inside a clip for pitch bend, MIDI CC, or a device or mixer parameter. Track and
+device parameters like volume, pan, sends, and knobs can be set to static
+values, but not shaped over time. The same goes for **arrangement automation**,
+the curves drawn on the track's timeline rather than inside a clip.
+
+Envelopes you already have are safe, though. They live in the clip, so they
+travel with it through the edits Producer Pal does make. The one exception is
+take lanes: duplicating a clip onto or off a lane re-creates it from its notes
+and leaves the envelopes behind — Producer Pal warns when that happens.
 
 ## Audio Content Can't Be Analyzed or Generated
 
@@ -83,8 +89,7 @@ it to fill the length. It sounds identical, but the result is a row of clips
 rather than one long one — a 2-bar clip stretched to 32 bars lands as 16 clips,
 and nothing in the API merges them back into a loop.
 
-That's the default because each tile is a real copy, so clip envelopes on the
-original survive.
+That's the default because each tile is a real copy — clip envelopes included.
 
 :::
 
@@ -96,8 +101,8 @@ extends the clip, and writes the pattern out across the whole span —
 many repeats you need.
 
 The repeats are then real notes, not a loop, so changing the pattern later means
-changing every repeat. Audio clips have no equivalent — there are no notes to
-write.
+changing every repeat. It stays the same clip, so its envelopes stay with it.
+Audio clips have no equivalent — there are no notes to write.
 
 :::
 
