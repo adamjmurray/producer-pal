@@ -115,6 +115,32 @@ describe("ppal-duplicate drum-pad", () => {
     ]);
   });
 
+  it("copies from a source path, no id lookup needed", async () => {
+    // The pad slots are fixed, so a path names the source as unambiguously as
+    // an id — and saves the read-device call that would find the id.
+    const t = await createTrackWithDrumRack(ctx.client!);
+
+    const copied = parseToolResult<{ path: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "drum-pad",
+          path: `t${t}/d0/pC1`,
+          toPath: `t${t}/d0/pE1`,
+          name: "FromPath",
+        },
+      }),
+    );
+
+    expect(copied.path).toBe(`t${t}/d0/pE1`);
+
+    await sleep(150);
+
+    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pE1`);
+
+    expect(pad.chains?.[0]?.name).toBe("FromPath");
+  });
+
   it("copies to several pads in one call and names each copy", async () => {
     const t = await createTrackWithDrumRack(ctx.client!);
 

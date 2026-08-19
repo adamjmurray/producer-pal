@@ -28,7 +28,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
-    id: z.coerce.string().describe("id of the object to duplicate"),
+    id: z.coerce.string().optional().describe("id of the object to duplicate"),
+    path: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "source drum pad path instead of id, e.g. 't0/d0/pC1' (drum pads only)",
+      ),
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of object to duplicate"),
@@ -83,7 +89,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
         "'t2/l0' = its first take lane and 't2/l+' appends a fresh one (MIDI only); " +
         "omit for the source clip's own track. Devices: 't1/d0'. " +
-        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id names the source; ppal-read-device lists a pad's id). " +
+        "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
         "Cycles against arrangementStart when the lists differ in length",
       smallModel:
         "destination(s): clip session slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",

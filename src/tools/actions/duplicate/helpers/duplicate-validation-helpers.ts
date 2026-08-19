@@ -14,6 +14,7 @@ import {
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ClipDestinations,
@@ -77,11 +78,13 @@ export function resolveArrangementPositions(
  * @param type - Type of object to duplicate
  * @param id - ID of the object to duplicate
  * @param count - Number of duplicates to create
+ * @param path - Source drum pad path, when the call names its source that way
  */
 export function validateBasicInputs(
   type: string,
   id: string | undefined,
   count: number,
+  path?: string,
 ): void {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -95,12 +98,39 @@ export function validateBasicInputs(
     );
   }
 
+  validateSource(type, id, path);
+
+  if (count < 1) {
+    throw new Error("duplicate failed: count must be at least 1");
+  }
+}
+
+/**
+ * Checks the call named its source. A drum pad can say so by path instead of
+ * id: the 128 pad slots are fixed, so p{pitch} names the same pad every time.
+ * Naming it both ways is a conflict, not a preference — a copy has one source,
+ * and picking one would be the wrong-source bug in silence.
+ * @param type - Type of object to duplicate
+ * @param id - ID of the object to duplicate
+ * @param path - Source drum pad path
+ */
+function validateSource(
+  type: string,
+  id: string | undefined,
+  path: string | undefined,
+): void {
+  if (type === "drum-pad") {
+    validateExclusiveParams(id, path?.trim(), "id", "path");
+
+    return;
+  }
+
   if (!id) {
     throw new Error("duplicate failed: id is required");
   }
 
-  if (count < 1) {
-    throw new Error("duplicate failed: count must be at least 1");
+  if (path?.trim()) {
+    console.warn(`path ignored: only supported for drum pads (type "${type}")`);
   }
 }
 
