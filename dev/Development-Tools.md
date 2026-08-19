@@ -297,6 +297,73 @@ with `scripts/open-live-set path/to/set.als`. Trace execution with
 below). After any writes modify the set's state, reopen it with
 `scripts/open-live-set` to reset back to the original.
 
+## Counting LiveAPI Objects
+
+Constructing a LiveAPI object is the expensive part (see
+`src/live-api-adapter/live-api-release.ts`), so a call that builds the same
+object twice pays twice. Pooling can't help a single big call — the free list
+refills only when the last scope closes.
+
+Nothing in the tree counts objects today. This is how to add it back when you
+need to measure, and what to watch out for.
+
+### The shape
+
+All construction funnels through `buildOrReuse()` in
+`src/live-api-adapter/live-api-extensions.ts` — `LiveAPI.from` and `getChildren`
+are its only callers, and `getChildIds` builds nothing. So one line at the top
+of that function sees every object:
+
+```typescript
+recordLiveApiBuild(target);
+```
+
+Put the recorder in a module beside it, holding an array of targets and a
+default-off flag. Two summaries pay for themselves: total vs distinct targets
+(the gap is objects built more than once), and per call site, so you know which
+code rebuilt rather than which built first.
+
+Two things are easy to get wrong:
+
+- **Report before the response is built**, from `handleRequest()` in
+  `live-api-adapter.ts`. The release scope closes _after_ the response is
+  already out, so reporting from there attaches the numbers to a later call.
+  `console.warn()` from `src/shared/max/v8-max-console.ts` reaches the tool
+  response.
+- **Call-site capture only works under vitest**, where stack frames name source
+  files. A bundled V8 stack names bundle offsets. In a real build, read the
+  repeated targets instead. Match filenames with `[\w.-]+\.ts` — without the
+  dot, a `foo.def.ts` frame reports as `def.ts`.
+
+### Two ways to run it
+
+Unit tests install the real extensions over the mock `LiveAPI` (see
+`src/test/test-setup.ts`), so they exercise `buildOrReuse` for real. Tests never
+open a scope, so the pool stays cold and every request is a construction — the
+count is exactly what the call asked for.
+
+1. **Sweep the suite.** Reset the recorder in the global `beforeEach` and dump
+   per-test counts in an `afterEach`, gated on an env var. Good for "did this
+   change add constructions?" across every tool at once.
+2. **A scaling harness.** Build synthetic Live Sets at several sizes and call
+   the tools directly. Absolute counts are fixture-sized and don't transfer, but
+   the ratios and how they move with shape do.
+
+Fixture shape drives the answer more than size does. A Drum Rack makes the
+drum-mode walk _cheaper_, because `devicesContainDrumRack()` returns on the
+first device with pads — the expensive shape is a rack with no drum rack in it,
+which gets recursed through entirely.
+
+### Wiring it into a real build
+
+Only needed to measure against Ableton rather than mocks. Follow
+`ENABLE_REMOTE_CORS` as the model — an opt-in flag, not a debug-build default,
+since it warns on every tool response. `src/test/meta/build/build-flags.test.ts`
+fails until the flag is registered everywhere it belongs, so let it drive you.
+
+Don't ship it: the recorder costs an array push per construction, and a mutable
+enable flag stops the bundler from stripping the body from release builds.
+
 ## Debugging Tips
 
 ### Enable Verbose Logging
