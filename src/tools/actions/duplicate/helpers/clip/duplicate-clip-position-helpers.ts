@@ -232,23 +232,33 @@ async function duplicateClipToArrangementPositions(
     );
   }
 
-  const createdObjects: object[] = [];
   const parsedNames = parseCommaSeparatedNames(name, copies);
   const parsedColors = parseCommaSeparatedColors(color, copies);
 
   warnExtraNames(parsedNames, copies, "duplicate");
 
-  for (let i = 0; i < copies; i++) {
+  // Results keep the order the destinations were asked for, even though the
+  // copies are made in another one.
+  const order = sourceLastOrder(object, targetTracks, targetPositions);
+  const results: (object | null)[] = Array.from({ length: copies }, () => null);
+
+  for (let done = 0; done < order.length; done++) {
+    const i = order[done] as number; // bounded by the loop
+
     // Each copy can tile a long span, so the budget can run out mid-list.
     if (
       stopForDeadline(context.deadline, () =>
         unreachedPositionsWarning(
-          targetPositions.slice(i),
-          i,
+          order.slice(done).map((index) => targetPositions[index] as number),
+          done,
           copies,
           songTimeSigNumerator,
           songTimeSigDenominator,
-          targetTracks.slice(i).map((entry) => entry.trackIndex),
+          order
+            .slice(done)
+            .map(
+              (index) => (targetTracks[index] as ArrangementTrack).trackIndex,
+            ),
         ),
       )
     ) {
@@ -270,10 +280,55 @@ async function duplicateClipToArrangementPositions(
       context,
     });
 
-    if (result != null) createdObjects.push(result);
+    if (result != null) results[i] = result;
   }
 
-  return createdObjects;
+  return results.filter((result) => result != null);
+}
+
+/**
+ * Copy order that keeps the source clip whole for as long as possible.
+ *
+ * A copy landing on the source's own span overwrites it — Live's replace
+ * behavior — so the source is shorter afterwards and every copy made after it
+ * would be a copy of the leftover. Making those last means the rest of the
+ * fan-out gets the whole clip, and the result no longer depends on the order
+ * the destinations happened to be listed in.
+ *
+ * Deliberately over-inclusive: everything on the source's track starting before
+ * the source ends goes last, whether or not it really reaches the source. Every
+ * placement clears forward from its start, so one starting at or after the
+ * source's end can never touch it, and that is the only thing this has to get
+ * right.
+ * @param source - The clip being copied
+ * @param targets - Destination per copy
+ * @param positions - Start position per copy, in Ableton beats
+ * @returns Copy indexes, in the order to make them
+ */
+function sourceLastOrder(
+  source: LiveAPI,
+  targets: ArrangementTrack[],
+  positions: number[],
+): number[] {
+  const indexes = positions.map((_, i) => i);
+
+  // A session source is never in the way: nothing about it lives on the
+  // arrangement timeline the copies are clearing.
+  if (source.getProperty("is_arrangement_clip") !== 1) return indexes;
+
+  const sourceTrackIndex = source.trackIndex;
+  const sourceEnd = source.getProperty("end_time") as number;
+  // An unknown source track counts as every track, matching
+  // clearClipAtDuplicateTarget: guessing wrong the other way loses content.
+  const overwritesSource = (i: number): boolean =>
+    (sourceTrackIndex == null ||
+      (targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex) &&
+    (positions[i] as number) < sourceEnd;
+
+  return [
+    ...indexes.filter((i) => !overwritesSource(i)),
+    ...indexes.filter((i) => overwritesSource(i)),
+  ];
 }
 
 /**
