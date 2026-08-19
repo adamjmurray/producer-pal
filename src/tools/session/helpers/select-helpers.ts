@@ -458,6 +458,12 @@ function normalizeLiveApiId(id: string): string {
   return id.startsWith("id ") ? id.slice(3) : id;
 }
 
-function isSameLiveApiId(idA: string, idB: string): boolean {
+/**
+ * Compare two Live API ids, which reach us with or without the "id " prefix.
+ * @param idA - One id
+ * @param idB - The other id
+ * @returns Whether they name the same object
+ */
+export function isSameLiveApiId(idA: string, idB: string): boolean {
   return normalizeLiveApiId(idA) === normalizeLiveApiId(idB);
 }

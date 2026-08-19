@@ -312,6 +312,45 @@ describe("select path param", () => {
     ).not.toThrow();
   });
 
+  // Regression: trackIndex was compared, trackType was compared, but a
+  // trackIndex sent without a trackType defaults to a regular track — so a
+  // return path "agreed" with it, then selected regular track 0 while the
+  // device went on return track 0.
+  it("refuses a return path against a bare trackIndex", () => {
+    expect(() => select({ path: "rt0/d1", trackIndex: 0 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    expect(() => select({ path: "rt0/d0/pC1", trackIndex: 0 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+  });
+
+  // Regression: `id` was never checked against `path` at all. Both are written
+  // to Live, the last one wins, and the response named the id — so the call
+  // selected the path's target and reported the id's.
+  it.each([
+    ["a track", "track_5", "t0/s3"],
+    ["a track", "track_5", "t0/d1"],
+    ["a scene", "scene_7", "t0/s3"],
+    ["a clip", "clip_elsewhere", "t0/s3"],
+  ])("refuses an id naming %s the path doesn't", (_what, id, path) => {
+    registerIdConflictObjects();
+
+    expect(() => select({ id, path })).toThrow(
+      "select failed: path and id name different targets",
+    );
+  });
+
+  it("accepts an id naming exactly what the path names", () => {
+    registerIdConflictObjects();
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() => select({ id: "track_0", path: "t0/s3" })).not.toThrow();
+    expect(() => select({ id: "scene_3", path: "t0/s3" })).not.toThrow();
+    expect(() => select({ id: "clip_0_3", path: "t0/s3" })).not.toThrow();
+  });
+
   it("rejects a take lane, which names no one thing to select", () => {
     expect(() => select({ path: "t0/l1" })).toThrow(
       /a take lane is not selectable/,
@@ -349,3 +388,24 @@ describe("select path param", () => {
     );
   });
 });
+
+/** The tracks, scenes, and clips the id-versus-path cases pick between. */
+function registerIdConflictObjects(): void {
+  registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+  registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
+  registerMockObject("scene_3", { path: livePath.scene(3), type: "Scene" });
+  registerMockObject("scene_7", { path: livePath.scene(7), type: "Scene" });
+  registerMockObject("clipslot_0_3", {
+    path: livePath.track(0).clipSlot(3),
+    type: "ClipSlot",
+    properties: { has_clip: 1 },
+  });
+  registerMockObject("clip_0_3", {
+    path: livePath.track(0).clipSlot(3).clip(),
+    type: "Clip",
+  });
+  registerMockObject("clip_elsewhere", {
+    path: livePath.track(2).clipSlot(1).clip(),
+    type: "Clip",
+  });
+}

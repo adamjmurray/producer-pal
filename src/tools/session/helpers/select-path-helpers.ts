@@ -6,6 +6,7 @@
 // Reading select's `path` param. One grammar covers every shape select can act
 // on, so the kind the path parses to picks the target.
 
+import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
@@ -16,7 +17,11 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 import { namedHiddenPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseClipSlot } from "./select-id-helpers.ts";
-import { type TrackCategory } from "./select-helpers.ts";
+import {
+  buildTrackPath,
+  isSameLiveApiId,
+  type TrackCategory,
+} from "./select-helpers.ts";
 
 export interface PathTarget {
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
@@ -50,6 +55,13 @@ interface PathAgreementArgs {
   sceneIndex?: number;
 }
 
+/** The ids `id` resolved to, each of which a path can name a second time. */
+interface IdAgreementArgs {
+  trackId?: string;
+  sceneId?: string;
+  clipId?: string;
+}
+
 interface PathParams extends PathAgreementArgs {
   path?: string;
   slot?: string;
@@ -60,12 +72,17 @@ interface PathParams extends PathAgreementArgs {
  * Resolve `path` against every param that can name the same thing, refusing to
  * pick when two of them disagree.
  * @param args - The path and selection params as the tool received them
+ * @param ids - What the `id` param resolved to, checked the same way
  * @returns The clip slot, device, track, or scene the caller named
  */
-export function resolvePath(args: PathParams): PathTarget {
+export function resolvePath(
+  args: PathParams,
+  ids: IdAgreementArgs = {},
+): PathTarget {
   const fromPath = targetFromParams(args);
 
   assertPathAgrees(fromPath, args);
+  assertIdAgrees(fromPath, ids);
 
   return {
     ...fromPath,
@@ -154,8 +171,12 @@ function assertPathAgrees(
       throw pathConflict("trackIndex");
     }
 
-    if (trackType != null && trackType !== impliedTrack.category) {
-      throw pathConflict("trackType");
+    // trackIndex on its own names a regular track, so it disagrees with a
+    // return or master path even though neither param mentions a category.
+    const named = trackType ?? (trackIndex == null ? null : "regular");
+
+    if (named != null && named !== impliedTrack.category) {
+      throw pathConflict(trackType == null ? "trackIndex" : "trackType");
     }
   }
 
@@ -165,6 +186,70 @@ function assertPathAgrees(
     sceneIndex !== impliedScene
   ) {
     throw pathConflict("sceneIndex");
+  }
+}
+
+/**
+ * Refuse an `id` naming something other than what the path names. Both are
+ * written to Live separately and the last write wins, so honoring the pair
+ * selects one object and reports the other.
+ * @param target - What the path named
+ * @param ids - What `id` resolved to
+ * @param ids.trackId - The track `id` named
+ * @param ids.sceneId - The scene `id` named
+ * @param ids.clipId - The clip `id` named
+ */
+function assertIdAgrees(
+  target: PathTarget,
+  { trackId, sceneId, clipId }: IdAgreementArgs,
+): void {
+  const track = target.impliedTrack ?? trackNamedDirectly(target);
+
+  if (trackId != null && track != null) {
+    assertSameObject(trackId, buildTrackPath(track.category, track.trackIndex));
+  }
+
+  const sceneIndex = target.impliedScene ?? target.sceneIndex;
+
+  if (sceneId != null && sceneIndex != null) {
+    assertSameObject(sceneId, livePath.scene(sceneIndex));
+  }
+
+  const slot = target.parsedClipSlot;
+
+  if (clipId != null && slot != null) {
+    assertSameObject(
+      clipId,
+      livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
+    );
+  }
+}
+
+/**
+ * The track a bare track path selects outright, as opposed to the one a slot or
+ * device path only sits on.
+ * @param target - What the path named
+ * @returns The track, or null when the path named none
+ */
+function trackNamedDirectly(target: PathTarget): ImpliedTrack | null {
+  if (target.category == null) return null;
+
+  return { trackIndex: target.trackIndex, category: target.category };
+}
+
+/**
+ * Refuse an id that isn't the object sitting at the path's own location.
+ * @param id - The id the caller passed
+ * @param path - Where the path says that object is
+ */
+function assertSameObject(id: string, path: PathLike | null): void {
+  if (path == null) return;
+
+  const object = LiveAPI.from(path);
+
+  // A path naming nothing is the existence checks' problem, not this one's.
+  if (object.exists() && !isSameLiveApiId(object.id, id)) {
+    throw pathConflict("id");
   }
 }
 

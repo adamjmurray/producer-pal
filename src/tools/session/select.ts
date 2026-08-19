@@ -310,7 +310,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     rackTargetId = resolved.rackTargetId;
   }
 
-  const fromPath = resolvePath(args);
+  const fromPath = resolvePath(args, { trackId, sceneId, clipId });
   const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
     fromPath;
   const { trackIndex, category, sceneIndex } = fromPath;

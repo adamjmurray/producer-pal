@@ -107,6 +107,39 @@ describe("readClip path param", () => {
     );
   });
 
+  // Regression: clipId won in silence, so a model pasting a stale id beside a
+  // fresh path got the stale clip back — reported at its own slot, with nothing
+  // said about the path it asked for.
+  it("refuses a clipId naming a different clip than path", () => {
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipId: "fresh",
+      clipProps: { name: "From path" },
+    });
+    setupMidiClipMock({
+      trackIndex: 2,
+      sceneIndex: 3,
+      clipId: "stale",
+      clipProps: { name: "From clipId" },
+    });
+
+    expect(() => readClip({ path: "t1/s1", clipId: "stale" })).toThrow(
+      "readClip failed: path and clipId name different clips; use one",
+    );
+  });
+
+  it("accepts a clipId naming the same clip as path", () => {
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipId: "fresh",
+      clipProps: { name: "Test Clip" },
+    });
+
+    expect(readClip({ path: "t1/s1", clipId: "fresh" }).name).toBe("Test Clip");
+  });
+
   // Both addressing params are published side by side ("provide this or path"),
   // so a model filling in the unused one with null is the expected shape.
   // z.coerce.string() renders that as "null", and counting it as sent refused

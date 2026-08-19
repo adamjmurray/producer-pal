@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToDuration,
@@ -17,19 +16,16 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   arrangementPath,
-  namedHiddenPath,
-  requireSessionSlot,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
   processWarpMarkers,
   resolveClip,
+  resolveClipLocation,
   WARP_MODE_MAPPING,
 } from "./helpers/read-clip-helpers.ts";
 
@@ -432,51 +428,4 @@ function addClipLocationProperties(
       clip.sceneIndex as number,
     );
   }
-}
-
-/**
- * Resolve clip location from args. `path` wins, then the deprecated `slot`,
- * then the trackIndex/sceneIndex pair — which doubles as the hidden alias and
- * as how batch readers pass indices they already parsed.
- * @param args - ReadClipArgs
- * @returns Resolved clipId, trackIndex, and sceneIndex
- */
-function resolveClipLocation(args: ReadClipArgs): {
-  clipId: string | null;
-  trackIndex: number | null;
-  sceneIndex: number | null;
-} {
-  const clipId = namedParam(args.clipId, "clipId") ?? null;
-  const path = namedParam(args.path, "path");
-  const slot = namedHiddenPath(args.slot ?? undefined);
-
-  // Honoring one and dropping the other is the silent wrong-clip bug path
-  // replaces, so refuse instead of picking — the same trade every other tool
-  // takes.
-  if (path != null && slot != null) {
-    throw new Error(
-      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
-    );
-  }
-
-  if (path != null) {
-    // The aliases are a fallback for a caller that did not use path.
-    if (args.trackIndex != null || args.sceneIndex != null) {
-      console.warn(
-        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
-      );
-    }
-
-    return { clipId, ...requireSessionSlot(parseObjectPath(path, "path")) };
-  }
-
-  if (slot != null) {
-    return { clipId, ...parseSlot(slot) };
-  }
-
-  return {
-    clipId,
-    trackIndex: args.trackIndex ?? null,
-    sceneIndex: args.sceneIndex ?? null,
-  };
 }

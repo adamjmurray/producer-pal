@@ -18,7 +18,14 @@ import {
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  namedHiddenPath,
+  requireSessionSlot,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
+import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import { namedParam } from "#src/tools/shared/utils.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -244,4 +251,95 @@ function mapMarker(marker: WarpMarkerData): WarpMarker {
     sampleTime: marker.sample_time,
     beatTime: marker.beat_time,
   };
+}
+
+/** The read-clip params that say which clip to read. */
+interface ClipLocationArgs {
+  path?: string | null;
+  slot?: string | null;
+  clipId?: string | null;
+  trackIndex?: number | null;
+  sceneIndex?: number | null;
+}
+
+interface ClipLocation {
+  clipId: string | null;
+  trackIndex: number | null;
+  sceneIndex: number | null;
+}
+
+/**
+ * Resolve clip location from args. `path` wins, then the deprecated `slot`,
+ * then the trackIndex/sceneIndex pair — which doubles as the hidden alias and
+ * as how batch readers pass indices they already parsed.
+ * @param args - The location params as read-clip received them
+ * @returns Resolved clipId, trackIndex, and sceneIndex
+ */
+export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
+  const clipId = namedParam(args.clipId, "clipId") ?? null;
+  const path = namedParam(args.path, "path");
+  const slot = namedHiddenPath(args.slot ?? undefined);
+
+  // Honoring one and dropping the other is the silent wrong-clip bug path
+  // replaces, so refuse instead of picking — the same trade every other tool
+  // takes.
+  if (path != null && slot != null) {
+    throw new Error(
+      "readClip failed: path and slot both name a clip; use path alone (slot is deprecated)",
+    );
+  }
+
+  if (path != null) {
+    // The aliases are a fallback for a caller that did not use path.
+    if (args.trackIndex != null || args.sceneIndex != null) {
+      console.warn(
+        'readClip: trackIndex/sceneIndex ignored — "path" already names the clip',
+      );
+    }
+
+    const position = requireSessionSlot(parseObjectPath(path, "path"));
+
+    assertClipIdAtSlot(clipId, position);
+
+    return { clipId, ...position };
+  }
+
+  if (slot != null) {
+    return { clipId, ...parseSlot(slot) };
+  }
+
+  return {
+    clipId,
+    trackIndex: args.trackIndex ?? null,
+    sceneIndex: args.sceneIndex ?? null,
+  };
+}
+
+/**
+ * Refuse a clipId naming a clip other than the one the path names. clipId used
+ * to win in silence, so a stale id pasted beside a fresh path read the stale
+ * clip and reported its own slot as if that's what was asked for.
+ * @param clipId - The clipId param, if the caller sent one
+ * @param position - The slot the path names
+ * @param position.trackIndex - Track index
+ * @param position.sceneIndex - Scene index
+ */
+function assertClipIdAtSlot(
+  clipId: string | null,
+  { trackIndex, sceneIndex }: { trackIndex: number; sceneIndex: number },
+): void {
+  if (clipId == null) return;
+
+  const named = LiveAPI.from(clipId);
+
+  // An id naming nothing is validateIdType's error to report, not this one's.
+  if (!named.exists()) return;
+
+  const atPath = livePath.track(trackIndex).clipSlot(sceneIndex).clip();
+
+  if (named.path !== atPath) {
+    throw new Error(
+      "readClip failed: path and clipId name different clips; use one",
+    );
+  }
 }

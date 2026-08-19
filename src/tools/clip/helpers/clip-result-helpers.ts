@@ -191,3 +191,33 @@ export function prepareSessionClipSlot(
 
   return clipSlot;
 }
+
+/**
+ * The clip Live just put in the slot.
+ *
+ * Live declines a create it can't do — a MIDI clip on an audio track, say —
+ * without raising, and a LiveAPI pointing at nothing reads back as id "0". Left
+ * unchecked that ships as a successful create and poisons every follow-up call
+ * that uses the id.
+ * @param clipSlot - The slot the clip was created in
+ * @param kind - Which clip was asked for
+ * @returns The new clip
+ * @throws When Live created nothing
+ */
+export function requireCreatedSessionClip(
+  clipSlot: LiveAPI,
+  kind: "MIDI" | "audio",
+): LiveAPI {
+  const clip = clipSlot.child("clip");
+
+  if (!clip.exists()) {
+    const needs =
+      kind === "MIDI"
+        ? "a MIDI clip needs a MIDI track"
+        : "an audio clip needs an audio track";
+
+    throw new Error(`Live created no clip - ${needs}`);
+  }
+
+  return clip;
+}

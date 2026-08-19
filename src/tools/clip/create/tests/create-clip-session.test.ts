@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -133,6 +134,38 @@ function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
 }
 
 describe("createClip - session view", () => {
+  // Regression: Live declines a create it can't do — a MIDI clip on an audio
+  // track, say — without raising, and the clip that isn't there reads back as
+  // id "0". Reported as created, that id poisoned every follow-up call.
+  it.each([
+    ["a MIDI clip", {}, "a MIDI clip needs a MIDI track"],
+    [
+      "an audio clip",
+      { sampleFile: "/tmp/kick.wav" },
+      "an audio clip needs an audio track",
+    ],
+  ])(
+    "warns and skips %s Live declined to create",
+    async (_what, extra, reason) => {
+      const warn = vi.spyOn(console, "warn");
+
+      mockNonExistentObjects();
+      setupLiveSet();
+      setupTrack(0);
+      registerMockObject("clip-slot-0-0", {
+        path: livePath.track(0).clipSlot(0),
+        properties: { has_clip: 0 },
+      });
+
+      const result = await createClip({ path: "t0/s0", ...extra });
+
+      expect(result).toStrictEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        `Failed to create clip at t0/s0: Live created no clip - ${reason}`,
+      );
+    },
+  );
+
   it("should create a single clip with notes", async () => {
     setupLiveSet();
     setupTrack(0);
