@@ -22,7 +22,7 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
-  isCoercedNullish,
+  clipsNamedBy,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -264,31 +264,13 @@ function requestedClipIds(
   ids: string | undefined,
   path: string | undefined,
 ): Array<string | null> {
-  const namedIds = clipsNamedBy(ids, "ids");
-  const namedPaths = clipsNamedBy(path, "path");
+  const namedIds = clipsNamedBy(ids, "updateClip", "ids");
+  const namedPaths = clipsNamedBy(path, "updateClip", "path");
 
   return [
     ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),
     ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
   ];
-}
-
-/**
- * Reads an ids or path param, dropping the literal a JSON null coerces into.
- * "null" names no clip, and keeping it as one the caller named shifts every
- * toPath destination onto the wrong clip.
- * @param value - Raw param value
- * @param label - Param name, for the warning
- * @returns The value, or null when it names no clip
- */
-function clipsNamedBy(value: string | undefined, label: string): string | null {
-  if (value == null) return null;
-
-  if (!isCoercedNullish(value)) return value;
-
-  console.warn(`updateClip: ${label} "${value.trim()}" names no clip`);
-
-  return null;
 }
 
 /**

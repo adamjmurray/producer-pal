@@ -104,14 +104,11 @@ export function playback(
     throw new Error("playback failed: action is required");
   }
 
-  const { sceneIndex: scenePathIndex, slotPositions } = resolvePlaybackTarget(
-    path,
-    slots,
-  );
-
-  if (ids != null && slotPositions != null) {
-    throw new Error("playback failed: ids and path are mutually exclusive");
-  }
+  const {
+    sceneIndex: scenePathIndex,
+    slotPositions,
+    ids: namedIds,
+  } = resolvePlaybackTarget(action, { ids, path, slots });
 
   if (scenePathIndex != null && sceneIndex != null) {
     throw new Error(
@@ -176,7 +173,7 @@ export function playback(
       startTimeBeats,
       useLocatorStart,
       sceneIndex: scenePathIndex ?? sceneIndex,
-      ids,
+      ids: namedIds,
       slotPositions,
     },
     { isPlaying, currentTimeBeats },

@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/max/v8-max-console.ts";
+
 /**
  * Sets properties on a target object, but only for non-null values
  * @param target - The object to set properties on
@@ -70,6 +72,32 @@ export function hiddenParamNamesSomething(value: unknown): boolean {
  */
 export function isCoercedNullish(value: string): boolean {
   return COERCED_NULLISH.has(value.trim());
+}
+
+/**
+ * Reads a published param naming clips, dropping a value that names none. A
+ * blank reads as omitted; a coerced null warns first, since the caller meant to
+ * send nothing and the schema turned it into a value. Counting it as one is how
+ * a call gets refused, or a destination paired with the wrong clip.
+ * @param value - Raw param value
+ * @param tool - Tool name, for the warning
+ * @param label - Param name, for the warning
+ * @returns The trimmed value, or null when it names no clip
+ */
+export function clipsNamedBy(
+  value: string | undefined,
+  tool: string,
+  label: string,
+): string | null {
+  const trimmed = value?.trim();
+
+  if (trimmed == null || trimmed === "") return null;
+
+  if (!isCoercedNullish(trimmed)) return trimmed;
+
+  console.warn(`${tool}: ${label} "${trimmed}" names no clip`);
+
+  return null;
 }
 
 /**
