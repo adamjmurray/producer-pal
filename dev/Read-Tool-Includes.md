@@ -39,6 +39,18 @@ comma-separated list, ending with `"*" for all`. Example:
 Expands to all available include options for that tool type. Useful for
 debugging, but should be avoided in production for large Live Sets.
 
+### Small-model trims
+
+Every read tool drops some include options in small-model mode, via
+`excludeEnumValues` on the `include` param (see `dev/Tool-Schemas.md`). The trim
+is enforced: the value is removed from the schema that validates, so sending it
+is an error rather than a no-op. `"*"` is dropped everywhere.
+
+Which options go, and why, is ADR-0026 — the short version is that an option
+goes when nothing the small model can do depends on it. Fields inside a
+surviving option are never suppressed. The per-tool lists live in each
+`.def.ts`; the tables below describe large-model mode.
+
 ### Include propagation
 
 `ppal-read-track` and `ppal-read-scene` pass their full `include` array through
