@@ -209,14 +209,27 @@ describe("updateDevice with path parameter", () => {
         deviceProperties = {},
       } = config;
 
+      // One DrumPad per note the chains land on, the way a real rack has them.
+      const padNotes = [
+        ...new Set(chainIds.map((c) => chainProperties[c]?.inNote ?? 36)),
+      ];
+
       registerMockObject(deviceId, {
         path: livePath.track(1).device(0),
         type: "RackDevice",
         properties: {
           can_have_drum_pads: 1,
           chains: chainIds.flatMap((c) => ["id", c]),
+          drum_pads: padNotes.flatMap((n) => ["id", `pad-${n}`]),
         },
       });
+
+      for (const note of padNotes) {
+        registerMockObject(`pad-${note}`, {
+          type: "DrumPad",
+          properties: { note },
+        });
+      }
 
       const chains = new Map<string, RegisteredMockObject>();
 
@@ -264,8 +277,9 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "t1/d0/pC1", mute: true });
 
-      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "chain-36" });
+      // A bare pad path writes mute to the DrumPad; Live broadcasts from there.
+      expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("mute", 1);
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should update drum chain solo state by path (pNOTE)", () => {
@@ -276,8 +290,8 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "t1/d0/pC1", solo: true });
 
-      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("solo", 1);
-      expect(result).toStrictEqual({ id: "chain-36" });
+      expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("solo", 1);
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should return empty array for non-existent drum chain by path", () => {

@@ -18,12 +18,15 @@ export interface ChainInfo {
   gainDb?: number;
   pan?: number;
   chokeGroup?: number;
+  mappedPitch?: string;
+  state?: string;
   devices?: { type?: string }[];
 }
 
 export interface DrumPadInfo {
   id: string;
   pitch: string;
+  state?: string;
   chains?: ChainInfo[];
 }
 

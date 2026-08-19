@@ -39,6 +39,11 @@ export interface UpdatePropertyOptions {
   force?: boolean;
 }
 
+export interface UpdateTargetOptions extends UpdatePropertyOptions {
+  toPath?: string;
+  name?: string;
+}
+
 /**
  * Update device-specific properties
  * @param target - Device to update

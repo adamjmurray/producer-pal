@@ -13,6 +13,14 @@ export interface DrumPadResolution {
   targetType: DrumPadTargetType;
 }
 
+export interface DrumPadGroup {
+  /** The DrumPad object, or null when the rack has none: the catch-all has no
+   * pad, and neither does a Drum Rack nested inside a drum pad. */
+  pad: LiveAPI | null;
+  /** Every chain on the pad, in rack order */
+  chains: LiveAPI[];
+}
+
 /**
  * Get a child at a specific index from a LiveAPI parent
  * @param parent - Parent LiveAPI object
@@ -136,6 +144,53 @@ export function findDrumPadByNote(rack: LiveAPI, midi: number): LiveAPI | null {
 }
 
 /**
+ * Convert a pad path's note segment to the `in_note` it selects.
+ * @param drumPadNote - Note name (e.g. "C1"), or "*" for the catch-all
+ * @returns The in_note value, or null when the segment isn't a note
+ */
+function padNoteToInNote(drumPadNote: string): number | null {
+  return drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
+}
+
+/**
+ * Every chain a drum rack routes to one pad.
+ * @param rack - The drum rack device
+ * @param inNote - The pad's in_note (-1 for the catch-all)
+ * @returns The chains, in rack order
+ */
+export function chainsForInNote(rack: LiveAPI, inNote: number): LiveAPI[] {
+  return rack
+    .getChildren("chains")
+    .filter((c) => c.getProperty("in_note") === inNote);
+}
+
+/**
+ * Resolve a bare pad path to the whole pad: the DrumPad object plus every chain
+ * on it. A layered pad has several chains; a virtual pad has no DrumPad.
+ * @param liveApiPath - Live API path to the drum rack device
+ * @param drumPadNote - Note name (e.g. "C1"), or "*" for the catch-all
+ * @returns The pad and its chains, or null when the rack or the pad is empty
+ */
+export function resolveDrumPadGroup(
+  liveApiPath: string,
+  drumPadNote: string,
+): DrumPadGroup | null {
+  const rack = LiveAPI.from(liveApiPath);
+
+  if (!rack.exists()) return null;
+
+  const inNote = padNoteToInNote(drumPadNote);
+
+  if (inNote == null) return null;
+
+  const chains = chainsForInNote(rack, inNote);
+
+  if (chains.length === 0) return null;
+
+  return { pad: findDrumPadByNote(rack, inNote), chains };
+}
+
+/**
  * Resolve a drum pad path to its target LiveAPI object. Supports nested drum racks.
  * @param liveApiPath - Live API path to the drum rack device
  * @param drumPadNote - Note name (e.g., "C1", "F#2") or "*" for catch-all
@@ -153,10 +208,7 @@ export function resolveDrumPadFromPath(
     return { target: null, targetType: "chain" };
   }
 
-  const allChains = device.getChildren("chains");
-
-  // Determine target in_note: "*" means catch-all (-1), otherwise convert note name
-  const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
+  const targetInNote = padNoteToInNote(drumPadNote);
 
   if (targetInNote == null) {
     return { target: null, targetType: "chain" };
@@ -181,10 +233,7 @@ export function resolveDrumPadFromPath(
     }
   }
 
-  // Find chains with matching in_note
-  const matchingChains = allChains.filter(
-    (c) => c.getProperty("in_note") === targetInNote,
-  );
+  const matchingChains = chainsForInNote(device, targetInNote);
 
   if (
     chainIndexWithinNote < 0 ||

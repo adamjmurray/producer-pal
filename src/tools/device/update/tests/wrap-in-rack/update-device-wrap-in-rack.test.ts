@@ -11,7 +11,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
   updateDevice,
-} from "./update-device-test-helpers.ts";
+} from "../update-device-test-helpers.ts";
 import {
   INSERT_DEVICE_FAILURE,
   registerAudioEffectDevice,

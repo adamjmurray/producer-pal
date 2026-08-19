@@ -8,7 +8,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
   updateDevice,
-} from "./update-device-test-helpers.ts";
+} from "../update-device-test-helpers.ts";
 import {
   registerAudioEffectDevice,
   registerGrowingChainRack,

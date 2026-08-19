@@ -104,12 +104,14 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
       default:
-        "chain's own gain in dB (chains only; address a drum pad by its pad path)",
+        "chain's own gain in dB (chains only; a pad path works unless the " +
+        "pad has layers, which take a layer path like 't0/d0/pC1/c1')",
       smallModel: null,
     }),
     pan: param(z.coerce.number().min(-1).max(1).optional(), {
       default:
-        "chain's own pan, -1 (left) to 1 (right) (chains only; address a drum pad by its pad path)",
+        "chain's own pan, -1 (left) to 1 (right) (chains only; a pad path " +
+        "works unless the pad has layers, which take a layer path)",
       smallModel: null,
     }),
     sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {

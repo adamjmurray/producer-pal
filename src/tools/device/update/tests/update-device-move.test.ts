@@ -28,8 +28,12 @@ describe("updateDevice - moving a drum chain", () => {
       properties: {
         can_have_drum_pads: 1,
         chains: children("chain-0", "chain-1", "chain-2"),
+        drum_pads: children("pad-36", "pad-38"),
       },
     });
+
+    registerMockObject("pad-36", { type: "DrumPad", properties: { note: 36 } });
+    registerMockObject("pad-38", { type: "DrumPad", properties: { note: 38 } });
 
     // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
     chain0 = registerMockObject("chain-0", {
@@ -98,7 +102,10 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
     // chain-2 has in_note=38 (D1), should not be affected
     expect(chain2.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0" });
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      chainIds: ["chain-0", "chain-1"],
+    });
   });
 
   it("should warn and skip when toPath is not a drum pad path", () => {
@@ -130,7 +137,10 @@ describe("updateDevice - moving a drum chain", () => {
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0" });
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      chainIds: ["chain-0", "chain-1"],
+    });
   });
 
   it("should warn and skip when toPath names a pad in a nested rack", () => {
@@ -148,7 +158,10 @@ describe("updateDevice - moving a drum chain", () => {
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0" });
+    expect(result).toStrictEqual({
+      id: "pad-36",
+      chainIds: ["chain-0", "chain-1"],
+    });
   });
 
   it("should warn and skip when toPath nests under the pad being moved", () => {

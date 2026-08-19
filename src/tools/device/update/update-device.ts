@@ -7,6 +7,10 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
+  type DrumPadGroup,
+  resolveDrumPadGroup,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -30,36 +34,29 @@ import {
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
 import {
-  type UpdatePropertyOptions,
+  type UpdateTargetOptions,
   updateDeviceProperties,
   updateNonDeviceProperties,
 } from "./helpers/update-device-property-helpers.ts";
+import { updateDrumPadGroup } from "./helpers/update-device-drum-pad-helpers.ts";
 import {
   isDeviceType,
   isValidUpdateType,
 } from "./helpers/update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 
-interface UpdateProperties extends UpdatePropertyOptions {
-  toPath?: string;
-  name?: string;
-}
-
-interface UpdateDeviceArgs extends UpdateProperties {
+interface UpdateDeviceArgs extends UpdateTargetOptions {
   ids?: string;
   path?: string;
   wrapInRack?: boolean;
   focus?: boolean;
 }
 
-interface UpdateOptions extends UpdateProperties {
-  isDrumPadPath?: boolean;
-}
-
-interface ResolvedTarget {
-  target: LiveAPI;
-  isDrumPadPath?: boolean;
-}
+/** A bare pad path names the whole pad, so it resolves to a group of objects
+ * rather than to one. Everything else resolves to a single object. */
+type ResolvedTarget =
+  | { kind: "object"; target: LiveAPI }
+  | { kind: "drum-pad"; group: DrumPadGroup; padPath: string };
 
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path
@@ -130,7 +127,7 @@ export function updateDevice(
     const parsedNames = parseNames(name, items.length, "updateDevice");
     const parsedColors = parseCommaSeparatedColors(color, items.length);
 
-    const updateOptions: UpdateOptions = {
+    const updateOptions: UpdateTargetOptions = {
       toPath,
       name,
       params,
@@ -187,7 +184,7 @@ function updateMultipleTargets(
   items: string[],
   resolveItem: (item: string) => ResolvedTarget | null,
   itemType: string,
-  updateOptions: UpdateOptions,
+  updateOptions: UpdateTargetOptions,
   parsedNames: string[] | null,
   parsedColors: string[] | null,
 ): Record<string, unknown> | Record<string, unknown>[] {
@@ -202,18 +199,19 @@ function updateMultipleTargets(
       continue;
     }
 
-    // Merge resolution metadata (like isDrumPadPath) into options
-    const optionsWithMetadata: UpdateOptions = {
+    const options: UpdateTargetOptions = {
       ...updateOptions,
       name: getNameForIndex(updateOptions.name, i, parsedNames),
       color: getColorForIndex(updateOptions.color, i, parsedColors),
-      isDrumPadPath: resolved.isDrumPadPath,
     };
 
-    const result = updateTarget(resolved.target, optionsWithMetadata);
+    const result =
+      resolved.kind === "drum-pad"
+        ? updateDrumPadGroup(resolved.group, resolved.padPath, options)
+        : updateTarget(resolved.target, options);
 
     if (result) {
-      results.push(result);
+      results.push(result as Record<string, unknown>);
     }
   }
 
@@ -228,7 +226,7 @@ function updateMultipleTargets(
 function resolveIdToTarget(id: string): ResolvedTarget | null {
   const target = LiveAPI.from(id);
 
-  return target.exists() ? { target } : null;
+  return target.exists() ? { kind: "object", target } : null;
 }
 
 /**
@@ -261,33 +259,31 @@ function resolvePathToTarget(path: string): ResolvedTarget | null {
     case "return-chain": {
       const target = resolveTargetFromPath(resolved.liveApiPath);
 
-      return target ? { target } : null;
+      return target ? { kind: "object", target } : null;
     }
 
     case "drum-pad": {
       // drumPadNote is guaranteed for drum-pad targetType
       const drumPadNote = resolved.drumPadNote as string;
       const { remainingSegments } = resolved;
+
+      // A bare pad path (pC1) names the whole pad; anything further down
+      // (pC1/c0, pC1/d0) names one object inside it.
+      if (remainingSegments.length === 0) {
+        const group = resolveDrumPadGroup(resolved.liveApiPath, drumPadNote);
+
+        return group ? { kind: "drum-pad", group, padPath: path } : null;
+      }
+
       const drumPadResult = resolveDrumPadFromPath(
         resolved.liveApiPath,
         drumPadNote,
         remainingSegments,
       );
 
-      if (!drumPadResult.target) {
-        return null;
-      }
-
-      // Detect if this is a drum pad path (no explicit chain index) vs chain path
-      // pC1 = pad path, pC1/c0 = chain path
-      const hasExplicitChainIndex =
-        remainingSegments.length > 0 &&
-        (remainingSegments[0] as string).startsWith("c");
-
-      return {
-        target: drumPadResult.target,
-        isDrumPadPath: !hasExplicitChainIndex,
-      };
+      return drumPadResult.target
+        ? { kind: "object", target: drumPadResult.target }
+        : null;
     }
 
     // Unreachable: every TargetType is handled above, and the `never` keeps it
@@ -321,7 +317,7 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
  */
 function updateTarget(
   target: LiveAPI,
-  options: UpdateOptions,
+  options: UpdateTargetOptions,
 ): { id: string } | null {
   const type = target.type;
 
@@ -345,11 +341,7 @@ function updateTarget(
         console.warn(`device not moved to "${options.toPath}"`);
       }
     } else if (type === "DrumChain") {
-      moveDrumChainToPath(
-        target,
-        options.toPath,
-        Boolean(options.isDrumPadPath),
-      );
+      moveDrumChainToPath(target, options.toPath, false);
     } else {
       console.warn(`cannot move ${type}`);
     }

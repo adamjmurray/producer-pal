@@ -7,7 +7,7 @@ import {
   type RegisteredMockObject,
   livePath,
   registerMockObject,
-} from "./update-device-test-helpers.ts";
+} from "../update-device-test-helpers.ts";
 
 /** Error thrown by the mock track's insert_device in wrap-failure tests. */
 export const INSERT_DEVICE_FAILURE = "insert_device failed";
