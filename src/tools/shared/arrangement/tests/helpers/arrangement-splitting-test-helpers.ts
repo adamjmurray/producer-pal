@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -125,7 +126,7 @@ interface DuplicateCall {
   id: string | undefined;
 }
 
-interface SplittingCallState {
+export interface SplittingCallState {
   duplicateCount: number;
   duplicateCalls: DuplicateCall[];
   trackMock: RegisteredMockObject;
@@ -295,4 +296,34 @@ export function mockArrangementClipsRescan(
       ? freshClips.flatMap(([id]) => ["id", id])
       : [0],
   );
+}
+
+/**
+ * Run a split with every Live call on the track costing a second, so a deadline
+ * measured in milliseconds runs out partway through.
+ * @param trackMock - The track mock whose calls should cost time
+ * @param body - The performSplitting call to run
+ */
+export function withEachLiveCallCostingASecond(
+  trackMock: RegisteredMockObject,
+  body: () => void,
+): void {
+  const splitCalls = trackMock.call.getMockImplementation() as (
+    method: string,
+    ...args: unknown[]
+  ) => unknown;
+
+  vi.useFakeTimers({ now: 0 });
+
+  try {
+    trackMock.call.mockImplementation((method: string, ...args: unknown[]) => {
+      vi.advanceTimersByTime(1000);
+
+      return splitCalls(method, ...args);
+    });
+
+    body();
+  } finally {
+    vi.useRealTimers();
+  }
 }

@@ -20,6 +20,7 @@ import {
   setupSplitTest,
   setupSplittingClipBaseMocks,
   setupSplittingClipGetMock,
+  withEachLiveCallCostingASecond,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 
 const HOLDING_AREA = { holdingAreaStartBeats: 40000 } as const;
@@ -841,23 +842,9 @@ describe("performSplitting", () => {
     // Cutting out mid-clip must not strand the segments still in the holding
     // area: what never got cut goes back as one clip.
     const { callState, mockClip, clips } = setupSplitTest();
-    const splitCalls = callState.trackMock.call.getMockImplementation() as (
-      method: string,
-      ...args: unknown[]
-    ) => unknown;
 
-    vi.useFakeTimers({ now: 0 });
-
-    try {
-      // Every Live call costs a second, so the budget runs out inside the split.
-      callState.trackMock.call.mockImplementation(
-        (method: string, ...args: unknown[]) => {
-          vi.advanceTimersByTime(1000);
-
-          return splitCalls(method, ...args);
-        },
-      );
-
+    // The budget runs out inside the split.
+    withEachLiveCallCostingASecond(callState.trackMock, () => {
       performSplitting(
         [mockClip],
         [4, 8, 12],
@@ -868,9 +855,7 @@ describe("performSplitting", () => {
         },
         ARRANGEMENT_SPLIT_MODE,
       );
-    } finally {
-      vi.useRealTimers();
-    }
+    });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
