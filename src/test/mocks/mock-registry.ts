@@ -203,6 +203,13 @@ export function isMockObjectDeleted(id?: string): boolean {
 }
 
 /**
+ * Live version reported by `get_version_string` when a test doesn't register
+ * `live_app` itself. Newest supported, so version-gated features are on by
+ * default and a test that wants an older Live says so explicitly.
+ */
+export const MOCK_LIVE_VERSION = "12.4";
+
+/**
  * Default call() behavior, shared by registered and unregistered mocks.
  * @param method - Live API method name
  * @param args - Call arguments
@@ -216,7 +223,7 @@ export function defaultMockCall(
 ): unknown {
   switch (method) {
     case "get_version_string":
-      return "12.3";
+      return MOCK_LIVE_VERSION;
     case "get_notes_extended":
       return JSON.stringify({ notes: [] });
     default:

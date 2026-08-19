@@ -393,6 +393,34 @@ export async function fetchSkillOverrides(): Promise<SkillOverrides> {
   return { fragments, disabled };
 }
 
+/**
+ * Ask Live which version it is, via ppal-connect.
+ *
+ * @param client - Connected MCP client
+ * @returns The version string (e.g. "12.4.3")
+ */
+export async function readLiveVersion(client: Client): Promise<string> {
+  const result = await client.callTool({ name: "ppal-connect", arguments: {} });
+
+  return parseToolResult<{ abletonLiveVersion: string }>(result)
+    .abletonLiveVersion;
+}
+
+/**
+ * Whether this Live can load a sample into Simpler. Simpler's `replace_sample`
+ * arrived in Live 12.4; on 12.3 a `sample` write warn-skips instead.
+ *
+ * @param client - Connected MCP client
+ * @returns True on Live 12.4 and later
+ */
+export async function supportsSampleLoading(client: Client): Promise<boolean> {
+  const [major = 0, minor = 0] = (await readLiveVersion(client))
+    .split(".")
+    .map(Number);
+
+  return major > 12 || (major === 12 && minor >= 4);
+}
+
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================

@@ -65,6 +65,17 @@ function registerSimplerWithSample(
 }
 
 /**
+ * Register live_app reporting a specific Live version.
+ * @param version - Version string `get_version_string` should return
+ */
+function registerLiveApp(version: string): void {
+  registerMockObject("live_app", {
+    path: "live_app",
+    methods: { get_version_string: () => version },
+  });
+}
+
+/**
  * Register a non-Simpler device (an Operator) at the first track's first slot.
  * @returns The device mock object
  */
@@ -77,6 +88,22 @@ function registerOperator(): RegisteredMockObject {
       parameters: children(),
     },
   });
+}
+
+/**
+ * Assert a sample write warn-skipped: Live untouched, reason relayed.
+ * @param device - The device mock the write was aimed at
+ * @param reason - Substring the warning must contain
+ */
+function expectSampleSkipped(
+  device: RegisteredMockObject,
+  reason: string,
+): void {
+  expect(device.call).not.toHaveBeenCalledWith(
+    "replace_sample",
+    expect.anything(),
+  );
+  expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
 }
 
 describe("setSimplerSample", () => {
@@ -112,16 +139,38 @@ describe("setSimplerSample", () => {
 
     setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "updateDevice");
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "replace_sample",
-      expect.anything(),
+    expectSampleSkipped(
+      device,
+      "updateDevice: 'sample' only applies to Simpler devices (got Operator)",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining(
-        "updateDevice: 'sample' only applies to Simpler devices (got Operator)",
-      ),
+  });
+
+  it("warns and skips when Live is too old for replace_sample", () => {
+    const device = registerSimpler();
+
+    registerLiveApp("12.3.8");
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "/tmp/kick.wav",
+      "updateDevice",
     );
+
+    expectSampleSkipped(device, "updateDevice: 'sample' requires Live 12.4");
+  });
+
+  it("loads the sample on a Live newer than 12.4", () => {
+    const device = registerSimpler();
+
+    registerLiveApp("13.0");
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "/tmp/kick.wav",
+      "updateDevice",
+    );
+
+    expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
   });
 
   it("warns and skips on Simpler in multi-sample mode", () => {
@@ -133,14 +182,7 @@ describe("setSimplerSample", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "replace_sample",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("multi-sample mode"),
-    );
+    expectSampleSkipped(device, "multi-sample mode");
   });
 
   it("warns and skips when the path is empty or whitespace", () => {
@@ -148,14 +190,7 @@ describe("setSimplerSample", () => {
 
     setSimplerSample(LiveAPI.from("id simpler-1"), "   ", "updateDevice");
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "replace_sample",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("non-empty file path"),
-    );
+    expectSampleSkipped(device, "non-empty file path");
   });
 
   it("warns and skips when the path is not absolute", () => {
@@ -167,14 +202,7 @@ describe("setSimplerSample", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "replace_sample",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("absolute file path"),
-    );
+    expectSampleSkipped(device, "absolute file path");
   });
 
   it("rejects a relative path even when a drive-letter appears mid-string", () => {
@@ -188,14 +216,7 @@ describe("setSimplerSample", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "replace_sample",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("absolute file path"),
-    );
+    expectSampleSkipped(device, "absolute file path");
   });
 
   it("trims surrounding whitespace before passing the path to Live", () => {

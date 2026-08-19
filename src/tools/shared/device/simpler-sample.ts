@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
@@ -93,6 +94,14 @@ export function setSimplerSample(
     return;
   }
 
+  if (!supportsReplaceSample()) {
+    console.warn(
+      `${toolName}: 'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`,
+    );
+
+    return;
+  }
+
   device.call("replace_sample", trimmed);
 }
 
@@ -129,6 +138,21 @@ export function setSimplerGain(
   }
 
   sample.set("gain", dbToLiveGain(dB));
+}
+
+/** Simpler's `replace_sample` function was added in Live 12.4. */
+const REPLACE_SAMPLE_MIN_VERSION = "12.4";
+
+/**
+ * Test whether this Live can load a sample into Simpler. Older versions have no
+ * `replace_sample` function, and calling a function Live doesn't have returns
+ * normally and does nothing — so check the version instead of the return value.
+ * @returns True on Live 12.4 and later
+ */
+function supportsReplaceSample(): boolean {
+  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+
+  return !isNewerVersion(version, REPLACE_SAMPLE_MIN_VERSION);
 }
 
 /**

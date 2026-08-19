@@ -10,17 +10,30 @@
  *
  * Run with: npm run e2e:mcp -- ppal-create-device-drum-kit
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   KICK_FILE,
   SAMPLE_FILE,
   parseToolResult,
   parseToolResultWithWarnings,
+  resetConfig,
   setupMcpTestContext,
   sleep,
+  supportsSampleLoading,
 } from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
+
+// Live 12.3 has no Simpler.replace_sample. Everything else here is
+// version-independent, so assert the honest warn-skip rather than skipping.
+let canLoadSamples = true;
+
+beforeAll(async () => {
+  // The per-test resetConfig hasn't run yet, so ask for JSON output first.
+  await resetConfig();
+
+  canLoadSamples = await supportsSampleLoading(ctx.client!);
+});
 
 interface CreateTrackResult {
   id: string;
@@ -78,22 +91,46 @@ async function readChainCount(path: string): Promise<number> {
   return device.chains?.length ?? 0;
 }
 
+/**
+ * Assert a `sample` write landed — or, on Live 12.3, that it warned and left the
+ * Simpler empty instead of silently doing nothing.
+ * @param warnings - Warnings from the tool call that wrote the sample
+ * @param sample - Sample path read back from the pad
+ * @param fileName - Expected sample file name
+ */
+function expectSampleWrite(
+  warnings: string[],
+  sample: string | undefined,
+  fileName: string,
+): void {
+  if (canLoadSamples) {
+    expect(sample).toContain(fileName);
+
+    return;
+  }
+
+  expect(warnings.join("\n")).toContain("requires Live 12.4");
+  expect(sample).toBeUndefined();
+}
+
 describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   it("builds a kit in one call: auto-creates each pad's Simpler and loads its sample", async () => {
     const t = await createMidiTrack();
 
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: {
-        deviceName: "Drum Rack",
-        path: `t${t}`,
-        params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pC#1/d0/sample", value: SAMPLE_FILE },
-          { name: "pC1/d0/gainDb", value: "-6" },
-        ],
-      },
-    });
+    const { warnings } = parseToolResultWithWarnings(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Drum Rack",
+          path: `t${t}`,
+          params: [
+            { name: "pC1/d0/sample", value: KICK_FILE },
+            { name: "pC#1/d0/sample", value: SAMPLE_FILE },
+            { name: "pC1/d0/gainDb", value: "-6" },
+          ],
+        },
+      }),
+    );
 
     await sleep(150);
 
@@ -110,7 +147,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(kickPad.type).toContain("Simpler");
-    expect(kickPad.sample).toContain("kick.aiff");
+    expectSampleWrite(warnings, kickPad.sample, "kick.aiff");
 
     // C#1 pad: the other sample.
     const snarePad = parseToolResult<ReadDeviceResult>(
@@ -121,7 +158,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(snarePad.type).toContain("Simpler");
-    expect(snarePad.sample).toContain("sample.aiff");
+    expectSampleWrite(warnings, snarePad.sample, "sample.aiff");
 
     // gainDb (listed after the sample) applied to the C1 pad's Simpler.
     const kickParams = parseToolResult<{ parameters: { name: string }[] }>(
@@ -134,20 +171,27 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       (p: { name: string; value?: unknown }) => p.name === "gainDb",
     ) as { value?: number } | undefined;
 
-    expect(gainEntry?.value).toBeCloseTo(-6, 0);
+    // gainDb needs a loaded sample, so it can only land where the sample did.
+    if (canLoadSamples) {
+      expect(gainEntry?.value).toBeCloseTo(-6, 0);
+    } else {
+      expect(gainEntry?.value).toBeUndefined();
+    }
   });
 
   it("update-device path-prefixed params set a sample on an existing rack", async () => {
     const t = await createTrackWithDrumRack();
 
     // Load a sample into pad D1 via update-device.
-    await ctx.client!.callTool({
-      name: "ppal-update-device",
-      arguments: {
-        path: `t${t}/d0`,
-        params: [{ name: "pD1/d0/sample", value: KICK_FILE }],
-      },
-    });
+    const { warnings } = parseToolResultWithWarnings(
+      await ctx.client!.callTool({
+        name: "ppal-update-device",
+        arguments: {
+          path: `t${t}/d0`,
+          params: [{ name: "pD1/d0/sample", value: KICK_FILE }],
+        },
+      }),
+    );
 
     await sleep(150);
 
@@ -159,7 +203,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(pad.type).toContain("Simpler");
-    expect(pad.sample).toContain("kick.aiff");
+    expectSampleWrite(warnings, pad.sample, "kick.aiff");
   });
 
   it("skips a sample write onto a DrumSampler pad, and replaces it under force", async () => {
@@ -234,7 +278,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     );
 
     expect(after.type).toContain("Simpler");
-    expect(after.sample).toContain("kick.aiff");
+    expectSampleWrite(forced.warnings, after.sample, "kick.aiff");
   });
 
   it("refuses a drum-pad sample write on a non-drum rack and strands no chain", async () => {
