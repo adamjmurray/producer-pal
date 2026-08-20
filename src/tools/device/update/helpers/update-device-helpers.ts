@@ -215,23 +215,54 @@ export function moveDrumChainToPath(
   }
 
   // The path grammar refuses a note name with no MIDI value, so the only pad
-  // that isn't a note is the catch-all.
+  // that isn't a note is the catch-all. Live 12.4.3 clamps a drum chain's
+  // in_note to 0-127, so this write is a no-op there — reaching the catch-all
+  // needs a different mechanism, not a different value.
   const targetInNote =
     targetNote === "*" ? -1 : (noteNameToMidi(targetNote) as number);
 
-  if (moveEntirePad) {
-    const sourceInNote = chain.getProperty("in_note");
-    const drumRack = LiveAPI.from(drumRackPath);
-    const allChains = drumRack.getChildren("chains");
+  const sourceInNote = chain.getProperty("in_note") as number;
+  const rackChains = LiveAPI.from(drumRackPath).getChildren("chains");
+  const inNotes = rackChains.map((c) => c.getProperty("in_note") as number);
 
-    for (const c of allChains) {
-      if (c.getProperty("in_note") === sourceInNote) {
+  warnIfDestinationOccupied(toPath, inNotes, sourceInNote, targetInNote);
+
+  if (moveEntirePad) {
+    for (const [index, c] of rackChains.entries()) {
+      if (inNotes[index] === sourceInNote) {
         c.set("in_note", targetInNote);
       }
     }
   } else {
     chain.set("in_note", targetInNote);
   }
+}
+
+/**
+ * Live layers a moved chain onto whatever the destination pad already holds
+ * rather than replacing it, so the pad ends up playing both. Say so — the
+ * caller asked for a move and would otherwise read the result as a swap.
+ * @param toPath - Destination pad path as written, for the warning
+ * @param inNotes - Every rack chain's in_note, in rack order
+ * @param sourceInNote - The moving chain's in_note
+ * @param targetInNote - The destination pad's in_note
+ */
+function warnIfDestinationOccupied(
+  toPath: string,
+  inNotes: number[],
+  sourceInNote: number,
+  targetInNote: number,
+): void {
+  if (targetInNote === sourceInNote) return;
+
+  const occupants = inNotes.filter((note) => note === targetInNote).length;
+
+  if (occupants === 0) return;
+
+  console.warn(
+    `updateDevice: drum pad "${toPath}" already had ${occupants} chain(s), ` +
+      `so the move layers on top of them rather than replacing them`,
+  );
 }
 
 // ============================================================================

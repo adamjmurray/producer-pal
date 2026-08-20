@@ -17,6 +17,7 @@ describe("updateDevice - moving a drum chain", () => {
   let chain0: RegisteredMockObject;
   let chain1: RegisteredMockObject;
   let chain2: RegisteredMockObject;
+  let pad36: RegisteredMockObject;
 
   beforeEach(() => {
     // Mock drum rack structure
@@ -32,8 +33,16 @@ describe("updateDevice - moving a drum chain", () => {
       },
     });
 
-    registerMockObject("pad-36", { type: "DrumPad", properties: { note: 36 } });
-    registerMockObject("pad-38", { type: "DrumPad", properties: { note: 38 } });
+    pad36 = registerMockObject("pad-36", {
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
+    registerMockObject("pad-38", {
+      path: livePath.track(0).device(0).drumPad(38),
+      type: "DrumPad",
+      properties: { note: 38 },
+    });
 
     // Chain in_note values: chain-0 and chain-1 are on C1 (36), chain-2 is on D1 (38)
     chain0 = registerMockObject("chain-0", {
@@ -106,6 +115,41 @@ describe("updateDevice - moving a drum chain", () => {
       id: "pad-36",
       chainIds: ["chain-0", "chain-1"],
     });
+  });
+
+  // Live layers rather than replaces, so the destination ends up playing both
+  // the sound that was there and the one that arrived.
+  it("warns that a move onto an occupied pad layers", () => {
+    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pD1" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        'drum pad "t0/d0/pD1" already had 1 chain(s), so the move layers',
+      ),
+    );
+    // The move still happens — the warning is what the caller was missing.
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+    expect(chain1.set).toHaveBeenCalledWith("in_note", 38);
+  });
+
+  it("stays quiet moving onto an empty pad", () => {
+    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pE1" });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("layers on top"),
+    );
+  });
+
+  // A pad that is already where it is asked to go has nothing to layer onto.
+  it("stays quiet moving a pad onto itself", () => {
+    updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1" });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("layers on top"),
+    );
   });
 
   it("should warn and skip when toPath is not a drum pad path", () => {
@@ -198,6 +242,62 @@ describe("updateDevice - moving a drum chain", () => {
     expect(outlet).toHaveBeenCalledWith(1, "cannot move Chain");
     expect(chain.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "123" });
+  });
+
+  // read-device hands out drumPads[].id, so writing one back has to do what
+  // the pad's own path does — otherwise most of what it reports is read-only
+  // through the handle it advertises.
+  describe("addressed by DrumPad id", () => {
+    it("moves the whole pad, the way the pad path does", () => {
+      const result = updateDevice({ ids: "pad-36", toPath: "t0/d0/pE1" });
+
+      expect(chain0.set).toHaveBeenCalledWith("in_note", 40);
+      expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
+      expect(result).toStrictEqual({
+        id: "pad-36",
+        chainIds: ["chain-0", "chain-1"],
+      });
+    });
+
+    it("writes the pad-wide properties to every layer", () => {
+      const result = updateDevice({
+        ids: "pad-36",
+        chokeGroup: 3,
+        mappedPitch: "C3",
+      });
+
+      for (const chain of [chain0, chain1]) {
+        expect(chain.set).toHaveBeenCalledWith("choke_group", 3);
+        expect(chain.set).toHaveBeenCalledWith("out_note", 60);
+      }
+
+      expect(result).toStrictEqual({
+        id: "pad-36",
+        chainIds: ["chain-0", "chain-1"],
+      });
+    });
+
+    it("still mutes through the DrumPad itself", () => {
+      updateDevice({ ids: "pad-36", mute: true });
+
+      expect(pad36.set).toHaveBeenCalledWith("mute", 1);
+      expect(chain0.set).not.toHaveBeenCalledWith("mute", expect.anything());
+    });
+
+    it("skips the per-layer settings on a stacked pad and names the paths", () => {
+      updateDevice({ ids: "pad-36", gainDb: -6 });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("t0/d0/pC1/c0, t0/d0/pC1/c1"),
+      );
+    });
+
+    it("applies a per-layer setting to a single-layer pad", () => {
+      updateDevice({ ids: "pad-38", name: "Snare" });
+
+      expect(chain2.set).toHaveBeenCalledWith("name", "Snare");
+    });
   });
 });
 

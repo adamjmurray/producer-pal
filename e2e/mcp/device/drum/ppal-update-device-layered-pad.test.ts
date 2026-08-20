@@ -34,29 +34,52 @@ interface PadUpdateResult {
 }
 
 describe("ppal-update-device layered drum pad", () => {
-  it("broadcasts the pad-wide properties to every layer", async () => {
+  // By id as well as by path: read-device reports drumPads[].id, so the id has
+  // to reach the same whole-pad update the pad's own path does.
+  it.each(["path", "id"])(
+    "broadcasts the pad-wide properties to every layer, by %s",
+    async (addressedBy) => {
+      const { rackPath, padId } = await createLayeredPad(ctx.client!);
+      const target =
+        addressedBy === "id" ? { ids: padId } : { path: `${rackPath}/pD1` };
+
+      const result = parseToolResult<PadUpdateResult>(
+        await ctx.client!.callTool({
+          name: "ppal-update-device",
+          arguments: { ...target, chokeGroup: 4, mappedPitch: "C3" },
+        }),
+      );
+
+      expect(result.id).toBe(padId);
+      expect(result.chainIds).toHaveLength(2);
+
+      await sleep(200);
+
+      const pad = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
+
+      expect(pad.chains?.map((c) => c.chokeGroup)).toStrictEqual([4, 4]);
+      expect(pad.chains?.map((c) => c.mappedPitch)).toStrictEqual(["C3", "C3"]);
+    },
+  );
+
+  // The pad path moves the whole pad; the id used to warn "cannot move DrumPad"
+  // and report success anyway.
+  it("moves the whole pad through the DrumPad id", async () => {
     const { rackPath, padId } = await createLayeredPad(ctx.client!);
 
-    const result = parseToolResult<PadUpdateResult>(
-      await ctx.client!.callTool({
-        name: "ppal-update-device",
-        arguments: {
-          path: `${rackPath}/pD1`,
-          chokeGroup: 4,
-          mappedPitch: "C3",
-        },
-      }),
-    );
-
-    expect(result.id).toBe(padId);
-    expect(result.chainIds).toHaveLength(2);
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { ids: padId, toPath: `${rackPath}/pF1` },
+    });
 
     await sleep(200);
 
-    const pad = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
-
-    expect(pad.chains?.map((c) => c.chokeGroup)).toStrictEqual([4, 4]);
-    expect(pad.chains?.map((c) => c.mappedPitch)).toStrictEqual(["C3", "C3"]);
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pF1`)).chains,
+    ).toHaveLength(2);
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pD1`)).chains ?? [],
+    ).toHaveLength(0);
   });
 
   it("mutes the whole pad through the DrumPad object", async () => {

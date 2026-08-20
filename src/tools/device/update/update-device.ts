@@ -8,6 +8,8 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
   type DrumPadGroup,
+  chainsOnDrumPad,
+  drumPadPath,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import {
@@ -232,7 +234,33 @@ function updateMultipleTargets(
 function resolveIdToTarget(id: string): ResolvedTarget | null {
   const target = LiveAPI.from(id);
 
-  return target.exists() ? { kind: "object", target } : null;
+  if (!target.exists()) return null;
+
+  return drumPadTarget(target) ?? { kind: "object", target };
+}
+
+/**
+ * A DrumPad id names the same thing its pad path does, so give it the same
+ * whole-pad update. read-device hands these ids out, and without this most of
+ * what it reports on a pad answers "not applicable to DrumPad" when written
+ * back by id.
+ * @param target - The object an id resolved to
+ * @returns The whole-pad target, or null when this isn't a pad with chains
+ */
+function drumPadTarget(target: LiveAPI): ResolvedTarget | null {
+  if (target.type !== "DrumPad") return null;
+
+  const chains = chainsOnDrumPad(target);
+
+  // An empty pad has no chains to write to. Its own mute and solo still work
+  // through the plain object path.
+  if (chains.length === 0) return null;
+
+  return {
+    kind: "drum-pad",
+    group: { pad: target, chains },
+    padPath: drumPadPath(target),
+  };
 }
 
 /**
