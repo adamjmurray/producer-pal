@@ -25,6 +25,9 @@ Objects are tracked as they are built and released when the request ends: mode
 reset to 0, path cleared, then onto a free list that the next request retargets.
 Nothing holds a `LiveAPI` across requests.
 
+Within a request, a few targets are resolved once and reused rather than
+retargeted again — ADR-0028 says which, and why the list is as short as it is.
+
 Both target forms retarget a pooled object. A path uses `goto`; an id is
 assigned to `api.id` as a bare number. See `retargetToId` and `buildOrReuse` in
 `src/live-api-adapter/live-api-extensions.ts`, and the header comment of

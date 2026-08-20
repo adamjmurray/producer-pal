@@ -241,6 +241,25 @@ describe("liveApi", () => {
     });
   });
 
+  describe("memo isolation", () => {
+    // This tool is the only caller that retargets its object in place, so it
+    // must not be handed one the rest of the request is sharing, and must not
+    // leave a retargeted one behind under the path it started from.
+    it("keeps its retargeted object out of the request's memo", () => {
+      const before = LiveAPI.from(livePath.liveSet);
+
+      liveApi({
+        path: "live_set",
+        operations: [{ type: "goto", value: String(livePath.track(0)) }],
+      });
+
+      const after = LiveAPI.from(livePath.liveSet);
+
+      expect(after).not.toBe(before);
+      expect(after.path).toBe(livePath.liveSet);
+    });
+  });
+
   describe("convenience shortcuts", () => {
     it("should handle get operation", () => {
       defaultMock.get.mockReturnValueOnce([120]);

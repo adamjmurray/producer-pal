@@ -5,6 +5,9 @@
 
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 
+/** What `id` reads when the object points at nothing. */
+export const NONEXISTENT_ID = "0";
+
 /**
  * Parse an ID or path value to a path string for LiveAPI constructor
  * @param idOrPath - ID number/string, path string, PathLike object, or ["id", "123"] array

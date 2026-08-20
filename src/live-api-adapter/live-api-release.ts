@@ -103,6 +103,40 @@ export const MAX_POOLED_OBJECTS = 512;
 const freeObjects: LiveAPI[] = [];
 
 /**
+ * Targets already resolved this request, so a repeat hands back the same object
+ * instead of taking another one off the pool.
+ *
+ * Lives here because its lifetime is the request's: it is emptied at the same
+ * moment tracked objects are released, so nothing in it outlives the scope that
+ * filled it. Which targets may go in it — and why almost none may — is in
+ * live-api-build.ts.
+ */
+const memoizedObjects = new Map<string, LiveAPI>();
+
+/**
+ * Look up the object this request already resolved a target to.
+ * @param target - Path or "id N" string, already normalized
+ * @returns The object, or undefined when the target hasn't been resolved yet
+ */
+export function memoizedObject(target: string): LiveAPI | undefined {
+  return memoizedObjects.get(target);
+}
+
+/**
+ * Remember the object a target resolved to, for the rest of the request.
+ * @param target - Path or "id N" string, already normalized
+ * @param api - The object it resolved to
+ */
+export function memoizeObject(target: string, api: LiveAPI): void {
+  memoizedObjects.set(target, api);
+}
+
+/** Forget every memoized object, so the next lookup of each resolves afresh. */
+export function clearLiveApiMemo(): void {
+  memoizedObjects.clear();
+}
+
+/**
  * Open request scopes. Requests overlap whenever a tool awaits (code exec, node
  * requests, parallel tool calls), and releasing an object another request still
  * holds would silently turn it into a nonexistent one — a cleared path reports
@@ -167,6 +201,9 @@ export function endLiveApiScope(): void {
   openScopes--;
 
   if (openScopes === 0) {
+    // Before the release, so a memo entry can never name an object whose path
+    // has already been cleared.
+    clearLiveApiMemo();
     releaseTrackedObjects();
   }
 }
@@ -175,6 +212,7 @@ export function endLiveApiScope(): void {
 export function resetLiveApiTracking(): void {
   trackedObjects.length = 0;
   freeObjects.length = 0;
+  clearLiveApiMemo();
   openScopes = 0;
 }
 

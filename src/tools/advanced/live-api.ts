@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { untrackLiveApiObject } from "#src/live-api-adapter/live-api-release.ts";
+import {
+  clearLiveApiMemo,
+  untrackLiveApiObject,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   MAX_OPERATIONS,
@@ -288,25 +291,37 @@ export function liveApi(
   }
 
   const defaultPath = "live_set";
+
+  // This tool retargets its object in place — goto, set_path, set_id, set_mode
+  // — and can freepeer it outright, none of which any other caller does.
+  // Emptying the memo first means the object it gets is its own rather than one
+  // some other part of the request is still holding, and emptying it after
+  // keeps the retargeted object from being handed out under its original path.
+  clearLiveApiMemo();
+
   const api = LiveAPI.from(path ?? defaultPath);
   const results: OperationResult[] = [];
 
-  for (const operation of operations) {
-    let result: unknown;
+  try {
+    for (const operation of operations) {
+      let result: unknown;
 
-    try {
-      validateOperationParameters(operation);
-      result = executeOperation(api, operation);
-    } catch (error) {
-      throw new Error(`Operation failed: ${errorMessage(error)}`, {
-        cause: error,
+      try {
+        validateOperationParameters(operation);
+        result = executeOperation(api, operation);
+      } catch (error) {
+        throw new Error(`Operation failed: ${errorMessage(error)}`, {
+          cause: error,
+        });
+      }
+
+      results.push({
+        operation,
+        result,
       });
     }
-
-    results.push({
-      operation,
-      result,
-    });
+  } finally {
+    clearLiveApiMemo();
   }
 
   // Include path in result if:

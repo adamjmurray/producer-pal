@@ -8,71 +8,8 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseIdOrPath } from "./live-api-path-utils.ts";
-import { acquirePooledObject, trackLiveApiObject } from "./live-api-release.ts";
-
-/** What `id` reads when the object points at nothing. */
-const NONEXISTENT_ID = "0";
-
-/**
- * Point a pooled object at an "id N" target.
- *
- * Assigning the bare id is the only form that retargets. Measured on 12.4.3, a
- * cleared object given 106 came back at "live_set tracks 0 clip_slots 0 clip"
- * with the clip's name and length; the same value as "id 106" wipes the object,
- * and goto() ignores it either way.
- *
- * A bad id doesn't throw — it leaves the object wherever it already was, so the
- * write is read back. From a cleared object that's "nowhere", which is the right
- * answer for a bad id and counts as success. Anything else means Live ignored
- * the write and the object still points at the last request's target.
- *
- * @param api - The pooled object, its path already cleared
- * @param id - The target id, no "id " prefix
- * @returns Whether the object now points at that id, or at nothing
- */
-function retargetToId(api: LiveAPI, id: string): boolean {
-  (api as unknown as { id: string }).id = id;
-
-  return api.id === id || api.id === NONEXISTENT_ID;
-}
-
-/**
- * Point a pooled object at a target, or build one when the pool is empty.
- *
- * Construction is what registers a context in MxDCore, and nothing takes that
- * back short of a device reload, so reuse is much cheaper than a fresh object.
- * See live-api-release.ts for what pooling does and doesn't buy.
- *
- * @param target - Path or "id N" string, already normalized
- * @returns A tracked object pointing at the target
- */
-function buildOrReuse(target: string): LiveAPI {
-  const pooled = acquirePooledObject();
-
-  if (pooled == null) {
-    return trackLiveApiObject(new LiveAPI(target));
-  }
-
-  // Track before retargeting: an object that throws partway through is off the
-  // free list already, and leaving it untracked too would strand what it armed.
-  trackLiveApiObject(pooled);
-
-  if (!target.startsWith("id ")) {
-    pooled.goto(target);
-
-    return pooled;
-  }
-
-  if (retargetToId(pooled, target.slice(3))) {
-    return pooled;
-  }
-
-  // Only reachable if a non-cleared object reached the free list, which the
-  // release guard exists to prevent. Building is what this did before pooling
-  // covered id targets, so the fallback is just the old behavior.
-  return trackLiveApiObject(new LiveAPI(target));
-}
+import { buildOrReuse } from "./live-api-build.ts";
+import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {
   /**

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Mock, vi } from "vitest";
+import { clearLiveApiMemo } from "#src/live-api-adapter/live-api-release.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
@@ -127,6 +128,12 @@ export function registerMockObject(
   idOrPath: PathLike,
   options: RegisteredMockObjectOptions = {},
 ): RegisteredMockObject {
+  // Re-registering mid-test is how a test says the Live Set changed underneath
+  // the code — a Save-As, a locator inserted, a device moved. Real requests get
+  // a fresh memo each time, so drop it here too rather than letting a memoized
+  // object keep answering from the registration it was built against.
+  clearLiveApiMemo();
+
   const id = normalizeId(String(idOrPath));
   const path = options.path != null ? String(options.path) : "";
   const type = options.type ?? (path ? detectTypeFromPath(path) : "Device");
@@ -347,6 +354,7 @@ export function mockNonExistentObjects(): void {
  * Clear all registered mock objects. Called in beforeEach.
  */
 export function clearMockRegistry(): void {
+  clearLiveApiMemo();
   registryById.clear();
   registryByPath.clear();
   deletedIds.clear();
