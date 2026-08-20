@@ -6,30 +6,46 @@ and the line between them is not where most people would guess.
 
 ## The hazard
 
-A LiveAPI object built from a path is pointed at that path. Mutate the Live Set
-so a different object now sits there — create a clip in an empty slot, delete a
-device, insert a chain — and it is an open question whether the object you are
-still holding reports the new occupant or the old one.
+A LiveAPI object is pointed at a path. Mutate the Live Set so a different object
+now sits there — create a clip in an empty slot, delete a device, insert a chain
+— and what you are still holding may not be what you think.
 
-**We have not measured this against real Live.** Everything the codebase asserts
-about it comes from the unit-test mock, which cannot answer the question:
-`createGetMock` in `src/test/mocks/mock-registry.ts` closes over the property
-bag captured at registration, so a held mock object is stale _by construction_.
-A test simulates a mutation by re-registering, which builds a new `get` the held
-object never sees.
+**An id target is not exempt.** At mode 0 an id resolves to a path once and
+follows that path afterward, so an object built from `id N` is exposed the same
+way one built from `live_set tracks 2 clip_slots 3 clip` is. See the comment at
+the top of `live-api-adapter/live-api-build.ts`. "It came from an id" is not a
+reason to skip the check below.
 
-That makes the mock wrong in both directions:
+### What is measured
 
-- A test that re-registers is **stricter** than Live may be, so a correct
-  refactor can fail.
-- A test that doesn't re-register can't model the mutation at all, so an
-  **incorrect** refactor passes green.
+One case, on Live 12.4.3: **an object whose target is deleted goes stale rather
+than noticing.** It keeps reporting its old id and path; a fresh lookup of the
+dead id lands nowhere and reads id `"0"`. `confirmDeleted` in
+`tools/actions/delete/delete.ts` depends on exactly that difference, and e2e
+covers it.
 
-Which one you get is an accident of how each test was written. Do not read a
-green unit suite as evidence that a reuse refactor is correct.
+So the held object does not track reality. That is the answer for a destroyed
+target.
 
-ADR-0028's rejection of path memoization ("breaks 8 files") is mock evidence.
-Its decision is safe either way, but it is not proof of how Live behaves.
+### What is not
+
+Whether a held object follows an **index shift** (delete `devices 2`, and does
+the object at `devices 3` now read the device that slid down?) and whether it
+sees a **path filled after the fact** (resolve an empty slot, create a clip in
+it, then read) are both open. Treat them as unknown.
+
+The unit-test mock cannot settle either: `createGetMock` in
+`src/test/mocks/mock-registry.ts` closes over the property bag captured at
+registration, so a held mock object is stale _by construction_. A test simulates
+a mutation by re-registering, which builds a new `get` the held object never
+sees. That makes the mock wrong in both directions — a test that re-registers is
+**stricter** than Live may be, and a test that doesn't re-register can't model
+the mutation at all, so an **incorrect** refactor passes green. Which one you
+get is an accident of how each test was written.
+
+Do not read a green unit suite as evidence that a reuse refactor is correct.
+ADR-0028's rejection of path memoization ("breaks 8 files") is mock evidence
+too. Its decision is safe either way, but it is not proof of how Live behaves.
 
 ## The rule
 
@@ -56,11 +72,16 @@ Look for a `LiveAPI` reference that is **live across a mutation**, not for reuse
 in general:
 
 1. Find where a `LiveAPI` variable is assigned, then used again later in the
-   same function or passed down.
+   same function or passed down. Id-built counts; see above.
 2. Ask what happens in between. A `.call()` with a writing method, a `.set()` or
    `setProperty`, or a loop iteration that writes another target all count.
 3. Ask whether the second use reads something the mutation could have changed —
-   `id`, `exists()`, a child list, or a property of the object at that path.
+   `id`, `path`, `exists()`, a child list, or a property at that path.
+
+Deleting or inserting siblings is the sharpest case, because it moves every
+later index. `delete` handles this by sorting tracks, scenes, and devices
+highest-index-first before the loop; anything that mutates a collection while
+holding objects from it needs an equivalent, or an argument for why it doesn't.
 
 All three true is a finding. Batch write tools are the highest-yield place to
 look: they resolve shared context once and then write N targets through it.
@@ -70,10 +91,13 @@ the same path again to check what happened is the exact shape that breaks.
 
 ## Settling it
 
-The open question needs a probe that holds one object while mutating through
+What is left open needs a probe that holds one object while mutating through
 another inside a single V8 request. Nothing available can do that today:
 `ppal-live-api` drives one instance, objects are released at request end so
 nothing survives across MCP calls, and code execution is scoped to clip notes.
 
 Until that probe exists, e2e (`e2e/mcp/`) is the only apparatus that runs
-against real Live and can catch this at all.
+against real Live and can catch this at all — and it can settle a specific site
+without settling the general question. A test that deletes three clips in one
+call and checks the right three died answers that site for good, whatever the
+underlying mechanism turns out to be.
