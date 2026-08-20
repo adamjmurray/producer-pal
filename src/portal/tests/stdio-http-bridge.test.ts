@@ -13,6 +13,10 @@ import {
   type Mock,
 } from "vitest";
 import {
+  CLIENT_TOOL_TIMEOUT_MS,
+  DISABLED_TOOLS_HEADER,
+} from "#src/shared/config.ts";
+import {
   callToolRequest,
   callToolSuccessfully,
   callToolWithMcpError,
@@ -112,7 +116,6 @@ vi.mock(import("../file-logger.ts"), () => ({
 // Import the class after mocking
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { logger } from "../file-logger.ts";
 import { StdioHttpBridge } from "../stdio-http-bridge.ts";
 
@@ -630,10 +633,11 @@ describe("StdioHttpBridge", () => {
         callToolRequest("test-tool", { arg1: "value1" }),
       )) as { result: unknown; toolResult: unknown };
 
-      expect(mockClient.callTool).toHaveBeenCalledWith({
-        name: "test-tool",
-        arguments: { arg1: "value1" },
-      });
+      expect(mockClient.callTool).toHaveBeenCalledWith(
+        { name: "test-tool", arguments: { arg1: "value1" } },
+        undefined,
+        { timeout: CLIENT_TOOL_TIMEOUT_MS },
+      );
       expect(result).toStrictEqual(toolResult);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Tool call successful for test-tool",
@@ -661,10 +665,11 @@ describe("StdioHttpBridge", () => {
         { params: { name: "test-tool" } }, // arguments is undefined
       )) as { result: unknown; toolResult: unknown };
 
-      expect(mockClient.callTool).toHaveBeenCalledWith({
-        name: "test-tool",
-        arguments: {},
-      });
+      expect(mockClient.callTool).toHaveBeenCalledWith(
+        { name: "test-tool", arguments: {} },
+        undefined,
+        { timeout: CLIENT_TOOL_TIMEOUT_MS },
+      );
       expect(result).toStrictEqual(toolResult);
     });
 

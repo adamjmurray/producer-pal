@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import {
   lastMcpContext,
   mcpRequests,
@@ -598,10 +599,20 @@ describe("REST API Routes", () => {
       expect(response.status).toBe(400);
     });
 
-    it("should return 400 for timeoutMs above the cap", async () => {
+    it("should accept timeoutMs exactly at the cap", async () => {
       const response = await callToolWithQuery(
         "ppal-connect",
-        "timeoutMs=60001",
+        `timeoutMs=${MAX_TIMEOUT_MS}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(lastMcpContext()).toMatchObject({ timeoutMs: MAX_TIMEOUT_MS });
+    });
+
+    it("should return 400 for timeoutMs one over the cap", async () => {
+      const response = await callToolWithQuery(
+        "ppal-connect",
+        `timeoutMs=${MAX_TIMEOUT_MS + 1}`,
       );
 
       expect(response.status).toBe(400);

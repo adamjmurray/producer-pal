@@ -101,7 +101,7 @@ node ppal.mjs ppal-read-live-set
 node ppal.mjs ppal-read-track '{"trackIndex": 0}'
 node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16bar","notes":"[{p:60,t:0,d:4,v:100}]"}' --notation midi-json
 
-# Long-running calls — bump the timeout (1–60000 ms)
+# Long-running calls — bump the timeout (1–55000 ms)
 node ppal.mjs ppal-create-clip '{"slot":"0/0","length":"16bar","notes":"..."}' --timeout-ms 10000
 
 # Non-default URL (e.g. remote machine over a tunnel)

@@ -5,6 +5,7 @@
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import {
   callLiveApi,
@@ -290,15 +291,20 @@ describe("Max API Adapter", () => {
       expect(Max.post).not.toHaveBeenCalled();
     });
 
-    it("should reject timeout values above 60000ms", () => {
-      // Call with invalid timeout (too high)
+    it("should clamp timeout values above the cap instead of dropping them", () => {
+      vi.clearAllMocks();
+
       timeoutMsHandler!(70000);
 
-      // Should log an error
       expect(Max.post).toHaveBeenCalledWith(
-        expect.stringContaining("Invalid Live API timeoutMs: 70000"),
-        "error",
+        expect.stringContaining(
+          `Live API timeoutMs 70000 capped at ${MAX_TIMEOUT_MS}`,
+        ),
+        "warn",
       );
+      expect(captureContextJSON()).toMatchObject({
+        timeoutMs: MAX_TIMEOUT_MS,
+      });
     });
 
     it("should reject timeout values at or below 0", () => {

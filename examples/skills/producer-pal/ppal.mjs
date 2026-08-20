@@ -9,7 +9,7 @@
 //
 // Options:
 //   --url <baseUrl>          override Producer Pal URL (default http://localhost:3350)
-//   --timeout-ms <ms>        per-request timeout (1–60000)
+//   --timeout-ms <ms>        per-request timeout (1–55000)
 //   --set-config <json>      update device settings, e.g. '{"liveApiEnabled":true}'
 //   --notation <name>        barbeat | midi-json | stark, for this request only
 //   --disable-tools <names>  withhold tools from this request (comma-separated)
@@ -161,7 +161,7 @@ Usage:
 
 Options:
   --url <baseUrl>          override Producer Pal URL (default ${DEFAULT_BASE_URL})
-  --timeout-ms <ms>        per-request timeout (1–60000)
+  --timeout-ms <ms>        per-request timeout (1–55000)
   --set-config <json>      update device settings, e.g. '{"liveApiEnabled":true}'
                            Global to the device — it moves every other client too.
   --notation <name>        barbeat | midi-json | stark
