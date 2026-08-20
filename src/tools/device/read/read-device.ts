@@ -12,6 +12,7 @@ import {
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import {
+  chainsForInNote,
   chainsOnDrumPad,
   drumPadPath,
   navigateRemainingSegments,
@@ -256,9 +257,26 @@ function readDrumPadByPath(
     throw new Error(`Device not found at path: ${liveApiPath}`);
   }
 
+  // The catch-all "p*" is a chain group, not a drum_pads entry, so it has no
+  // DrumPad to describe — but read-device prints `p*/cN` paths for its chains,
+  // and those resolve through the rack.
+  if (drumPadNote === "*") {
+    const chains = chainsForInNote(device, -1);
+
+    if (chains.length === 0 || remainingSegments.length === 0) {
+      throw new Error(`Drum pad ${drumPadNote} not found`);
+    }
+
+    return readDrumPadNestedTarget(
+      chains,
+      remainingSegments,
+      fullPath,
+      options,
+    );
+  }
+
   // Get drum pads and find the one matching the note. The grammar already
-  // validated the note, so the only one that doesn't convert is the catch-all
-  // "p*" — and Live has no drum_pads entry for it, so it reports as not found.
+  // validated the note, so this always converts.
   const drumPads = device.getChildren("drum_pads");
   const targetMidiNote = noteNameToMidi(drumPadNote);
   const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
@@ -269,7 +287,12 @@ function readDrumPadByPath(
 
   // If there are remaining segments, navigate into chains
   if (remainingSegments.length > 0) {
-    return readDrumPadNestedTarget(pad, remainingSegments, fullPath, options);
+    return readDrumPadNestedTarget(
+      chainsOnDrumPad(pad),
+      remainingSegments,
+      fullPath,
+      options,
+    );
   }
 
   // Return drum pad info
@@ -282,19 +305,18 @@ function readDrumPadByPath(
  * implies chain 0 (so `pC1/d0` == `pC1/c0/d0`). This mirrors the write-side
  * pad-property shortcut (see resolveNestedParamTarget) so reads and writes
  * accept the same drum-pad paths.
- * @param pad - Drum pad Live API object
+ * @param chains - The pad's chains, in the order its `cN` segments name them
  * @param remainingSegments - Segments after drum pad in path
  * @param fullPath - Full simplified path for response
  * @param options - Read options
  * @returns Chain or device information
  */
 function readDrumPadNestedTarget(
-  pad: LiveAPI,
+  chains: LiveAPI[],
   remainingSegments: string[],
   fullPath: string,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const chains = chainsOnDrumPad(pad);
   const firstSegment = assertDefined(
     remainingSegments[0],
     "chain or device segment",

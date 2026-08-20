@@ -70,6 +70,50 @@ function setupKickPadWithChainDevice() {
 }
 
 /**
+ * Setup a rack whose only chain is the catch-all (in_note -1, Live's "All
+ * Notes"). No drum_pads entry exists for it, so it is reachable only through
+ * the rack's own chain list.
+ */
+function setupCatchAllChainMocks() {
+  const rackPath = String(livePath.track(1).device(0));
+
+  registerMockObject("drum-rack-1", {
+    path: rackPath,
+    type: "Device",
+    properties: {
+      class_display_name: "Drum Rack",
+      type: 1,
+      is_active: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: [],
+      chains: children("catch-all"),
+    },
+  });
+  registerMockObject("catch-all", {
+    path: `${rackPath} chains 0`,
+    type: "DrumChain",
+    properties: {
+      name: "All Notes",
+      in_note: -1,
+      out_note: 36,
+      devices: children("device-1"),
+    },
+  });
+  registerMockObject("device-1", {
+    path: `${rackPath} chains 0 devices 0`,
+    type: "Device",
+    properties: {
+      ...simplerDevice,
+      is_active: 1,
+      can_have_chains: 0,
+      can_have_drum_pads: 0,
+      devices: [],
+    },
+  });
+}
+
+/**
  * Assert a read result is the "device-1" Simpler instrument.
  * @param result - The readDevice result to check
  */
@@ -339,11 +383,58 @@ describe("readDevice with drum pad path", () => {
   });
 
   // The catch-all is a chain with in_note -1, not a drum_pads entry, so there
-  // is nothing here to find. read-device reads it through the rack instead.
+  // is no DrumPad here to describe.
   it("should report the catch-all pad as not found", () => {
     setupKickPadMocks();
 
     expect(() => readDevice({ path: "t1/d0/p*" })).toThrow(
+      "Drum pad * not found",
+    );
+  });
+
+  // read-device prints `p*/cN` for a catch-all chain, so it has to read one
+  // back. There is no pad to resolve through — the chains come off the rack.
+  it("reads back the catch-all chain path it prints", () => {
+    setupCatchAllChainMocks();
+
+    const rack = readDevice({
+      path: "t1/d0",
+      include: ["drum-pads", "chains"],
+    });
+    const pads = rack.drumPads as {
+      pitch: string;
+      chains: { path: string }[];
+    }[];
+
+    expect(pads[0]?.pitch).toBe("*");
+    expect(pads[0]?.chains.map((c) => c.path)).toStrictEqual(["t1/d0/p*/c0"]);
+
+    const chain = readDevice({ path: "t1/d0/p*/c0", include: [] });
+
+    expect(chain.id).toBe("catch-all");
+    expect(chain.path).toBe("t1/d0/p*/c0");
+  });
+
+  it("reads a device inside the catch-all chain", () => {
+    setupCatchAllChainMocks();
+
+    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/d0" }));
+    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/c0/d0" }));
+  });
+
+  it("rejects a chain index past the catch-all's chains", () => {
+    setupCatchAllChainMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*/c1" })).toThrow(
+      "Invalid chain index in path: t1/d0/p*/c1",
+    );
+  });
+
+  // A rack with no catch-all chain has nothing for the path to name.
+  it("reports the catch-all as not found when no chain routes to it", () => {
+    setupKickPadMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*/c0" })).toThrow(
       "Drum pad * not found",
     );
   });
