@@ -63,6 +63,18 @@ assigning `"id 2"` to it points the object at nothing.
 
 ## Consequences
 
+Pooling does not change how the Live API behaves. Measured on 12.4.3 by running
+the same `set` failure probes twice: cold, with the free list empty and every
+object freshly constructed, and warm, with every object retargeted from the
+pool. Identical results both ways.
+
+A cold pass is easy to reproduce, which is worth knowing for any later probe.
+`openLiveSet` (the e2e harness) re-opens the Set unconditionally and waits for
+the MCP server to stop and come back — that server lives in the device, so the
+device really is torn down and reloaded and the free list starts empty. Running
+one file with `-t` puts the selected tests first after that reload; running the
+whole file leaves the earlier tests to warm the pool.
+
 A stale `LiveAPI` reference fails quietly rather than loudly. Straight after
 release it reads as nonexistent; once recycled it points at something else, and
 reads and writes land on the wrong Live object with no error. That is why the

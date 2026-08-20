@@ -58,8 +58,19 @@ declare global {
     /** The type of the Live object (e.g., "Track", "Clip", "Device") */
     readonly type: LiveObjectType;
 
-    /** Get a property value from the Live object (returns array) */
-    get(property: string): unknown[];
+    // ===== Live object methods =====
+    //
+    // None of these throw when the object doesn't exist — a bad path, a bad
+    // index, a bad id, or a path cleared to "". Instead, measured on Live
+    // 12.4.3 (v8): get, set, call and getstring all return the number 1,
+    // getcount returns 0, and info returns "No object". Read a bare 1 back as
+    // "no object, no answer".
+    //
+    // Prefer the wrapper methods further down, which normalize all of that into
+    // ordinary empty values (undefined, [], null, false).
+
+    /** Get a property value from the Live object. An array, or 1 if there is no object. */
+    get(property: string): unknown[] | number;
 
     /**
      * Set a property value on the Live object.
@@ -77,13 +88,13 @@ declare global {
     /** Navigate to a different Live Object Model path */
     goto(path: string): void;
 
-    /** Count the object's children in the named collection */
+    /** Count the object's children in the named collection. 0 if there is no object. */
     getcount(name: string): number;
 
-    /** Get a property value as a string */
-    getstring(property: string): string;
+    /** Get a property value as a string, or 1 if there is no object. */
+    getstring(property: string): string | number;
 
-    /** Get information about the current object (properties, children, etc.) */
+    /** Information about the object (properties, children, ...), or "No object". */
     readonly info: string;
 
     // ===== Custom extensions from live-api-extensions.js =====

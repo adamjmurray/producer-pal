@@ -232,9 +232,9 @@ function readSelectedDeviceInfo(
 
   if (!trackView.exists()) return undefined;
 
-  const deviceResult = trackView.get("selected_device") as unknown[] | null;
+  const deviceResult = trackView.getPropertyList("selected_device");
 
-  if (!deviceResult?.[1]) return undefined;
+  if (!deviceResult[1]) return undefined;
 
   const rawId = atomToString(deviceResult[1]);
   const device = LiveAPI.from(`id ${rawId}`);

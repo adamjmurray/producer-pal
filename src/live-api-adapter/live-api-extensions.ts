@@ -135,8 +135,8 @@ if (typeof LiveAPI !== "undefined") {
       case "input_routing_type":
       case "output_routing_channel":
       case "output_routing_type": {
-        const rawValue = this.get(property) as unknown[] | undefined;
-        if (rawValue?.[0]) {
+        const rawValue = this.get(property);
+        if (Array.isArray(rawValue) && rawValue[0]) {
           try {
             const parsed = JSON.parse(rawValue[0] as string);
 
@@ -152,8 +152,11 @@ if (typeof LiveAPI !== "undefined") {
         return null;
       }
       default: {
-        const result = this.get(property) as unknown[] | undefined;
-        return result?.[0];
+        // get() returns the number 1, not an array, when there is no object.
+        // Array.isArray is what keeps that sentinel from reaching callers as a
+        // value. See the note on get() in src/types/live-api.d.ts.
+        const result = this.get(property);
+        return Array.isArray(result) ? result[0] : undefined;
       }
     }
   };
@@ -169,6 +172,8 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     property: string,
   ): unknown[] {
+    // Not defensive coding: get() returns the number 1 when there is no
+    // object, so this is the check that turns "no object" into an empty list.
     const result = this.get(property);
 
     return Array.isArray(result) ? result : [];
@@ -226,6 +231,8 @@ if (typeof LiveAPI !== "undefined") {
   ): string[] {
     const idArray = this.get(name);
 
+    // get() returns the number 1 when there is no object, so this is what makes
+    // a missing collection read as empty rather than throwing.
     if (!Array.isArray(idArray)) {
       return [];
     }

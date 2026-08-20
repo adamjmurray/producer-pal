@@ -165,22 +165,43 @@ describe("ppal-live-api", () => {
     expect(parsed.results[5]!.result).toBe(original);
   });
 
-  it("returns 1 from set on a nonexistent object", async () => {
+  // The nonexistent-object contract, pinned so a Live upgrade that changes it
+  // fails here rather than as wrong values deep inside a tool. See
+  // dev/Coding-Standards.md, "What Live Returns When There Is No Object".
+  it("returns the documented sentinels on a nonexistent object", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-live-api",
       arguments: {
         path: "live_set tracks 999",
         operations: [
-          { type: "exists" },
+          { type: "get", property: "name" },
           { type: "set", property: "name", value: "should not apply" },
+          { type: "call", method: "stop_all_clips" },
+          { type: "getstring", property: "name" },
+          { type: "getcount", property: "devices" },
+          { type: "info" },
+          { type: "exists" },
+          { type: "getProperty", property: "name" },
+          { type: "getChildIds", property: "devices" },
+          { type: "getColor" },
         ],
       },
     });
 
-    const parsed = parseToolResult<LiveApiResult>(result);
+    const r = parseToolResult<LiveApiResult>(result).results.map(
+      (entry) => entry.result,
+    );
 
-    expect(parsed.results[0]!.result).toBe(false);
-    expect(parsed.results[1]!.result).toBe(1);
+    // Live's own calls: a bare 1 means "no object, no answer".
+    expect(r.slice(0, 4)).toStrictEqual([1, 1, 1, 1]);
+    expect(r[4]).toBe(0);
+    expect(r[5]).toBe("No object");
+
+    // The wrapper turns all of that into ordinary empty values.
+    expect(r[6]).toBe(false);
+    expect(r[7]).toBeUndefined();
+    expect(r[8]).toStrictEqual([]);
+    expect(r[9]).toBeNull();
   });
 
   it("executes multiple operations in a single call", async () => {

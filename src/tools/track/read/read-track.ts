@@ -287,7 +287,7 @@ export function readTrackGeneric({
     return handleNonExistentTrack(category, trackIndex);
   }
 
-  const groupId = track.get("group_track")[1];
+  const groupId = track.getPropertyList("group_track")[1];
   const isMidiTrack = (track.getProperty("has_midi_input") as number) > 0;
   const isProducerPalHost =
     category === "regular" && trackIndex === getHostTrackIndex();

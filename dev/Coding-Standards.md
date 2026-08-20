@@ -131,6 +131,45 @@ Use `src/live-api-adapter/live-api-extensions.ts` instead of raw
 
 Return optimistic results for playback operations.
 
+### What Live Returns When There Is No Object
+
+Verified against Live 12.4.3 (v8). A bad path, a bad index, a bad id and a path
+cleared to `""` all behave the same, and none of them throw:
+
+| Call             | Returns                |
+| ---------------- | ---------------------- |
+| `get(any)`       | `1` — **not an array** |
+| `set(any, v)`    | `1`                    |
+| `call(any)`      | `1`                    |
+| `getstring(any)` | `1` — **not a string** |
+| `getcount(any)`  | `0`                    |
+| `info`           | `"No object"`          |
+
+Read a bare `1` as "no object, no answer". It is not a success flag and not a
+status code — `set` returns `1` on a valid object too, whether or not the write
+lands. A read-only property, a wrong-typed value, an unknown property and an
+out-of-range value all return `1` and change nothing. Reading the property back
+is the only way to know a write worked.
+
+Keeping that sentinel out of tool code is most of what the wrapper is for:
+
+| Wrapper call      | On a nonexistent object |
+| ----------------- | ----------------------- |
+| `getProperty`     | `undefined`             |
+| `getPropertyList` | `[]`                    |
+| `getChildIds`     | `[]`                    |
+| `getColor`        | `null`                  |
+| `exists()`        | `false`                 |
+
+So the `Array.isArray` checks in those methods are load-bearing, not defensive
+habit — they are what turns `1` into an ordinary empty value. This is also why
+raw `.get("property")?.[0]` is banned: on a missing object it yields `undefined`
+by luck rather than by check, and `.get("property")[1]` throws outright.
+
+`exists()` can't use Live's `valid` field, obvious as that looks: `valid` reads
+`1` for a bad path, a bad index, a bad id and a cleared path alike — it
+describes the wrapper, not the target. It checks the object id instead.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from

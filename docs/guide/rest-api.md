@@ -350,14 +350,14 @@ Available operation types:
 
 | Type           | Properties used             | Description                                                                                                                                  |
 | -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array                                                                      |
+| `get`          | `property`                  | Read a property's raw value — a `_list` property returns the full array. Returns the number `1`, not an array, when the object doesn't exist |
 | `set`          | `property`, `value`         | Write a property value. Always returns 1, even when the write is rejected — read the property back to confirm it landed                      |
 | `set_property` | `property`, `value`         | The same write as `set`, but returns the value you sent                                                                                      |
 | `call`         | `method`, `args` (optional) | Call a method on the Live object                                                                                                             |
 | `goto`         | `value` (path)              | Navigate to a different object                                                                                                               |
 | `info`         | —                           | Get object info                                                                                                                              |
-| `getcount`     | `property` (child type)     | Count the object's children in a collection                                                                                                  |
-| `getstring`    | `property`                  | Read a property as a string                                                                                                                  |
+| `getcount`     | `property` (child type)     | Count the object's children in a collection. `0` when the object doesn't exist                                                               |
+| `getstring`    | `property`                  | Read a property as a string. Returns the number `1`, not a string, when the object doesn't exist                                             |
 | `getProperty`  | `property`                  | Read a property, unwrapped to a scalar — truncates a `_list` property to its first element; use `get` for the full array                     |
 | `getChildIds`  | `property` (child type)     | Get child object IDs                                                                                                                         |
 | `exists`       | —                           | Check if the object exists. Producer Pal's judgment, not Live's: Live's own `valid` field reads 1 even for a bad path, so this checks the id |
@@ -374,6 +374,27 @@ aliases — `call get_current_beats_song_time` works, while
 `call_method get_current_beats_song_time` fails because that method lives on the
 Live object, not the wrapper. Only `set` and `set_property` perform the same
 write, and even they report different results.
+
+#### When the object doesn't exist
+
+A bad path, a bad index, a bad id and a path cleared to `""` all behave the same
+way, and none of them raise an error. Verified against Live 12.4.3:
+
+- `get`, `set`, `call` and `getstring` return the number `1`
+- `getcount` returns `0`
+- `info` returns `"No object"`
+
+Read a bare `1` as "no object, no answer". It is not a success flag — `set`
+returns `1` on a perfectly valid object too, whether or not the write landed. A
+read-only property, a wrong-typed value, an unknown property and an out-of-range
+value all return `1` and change nothing. Read the property back if you need to
+know whether a write took.
+
+Normalizing that away is most of what the Producer Pal operations add over the
+raw Live ones: `getProperty` gives `undefined`, `getChildIds` gives `[]`,
+`getColor` gives `null`, and `exists` gives `false`. Prefer `exists` over
+reading Live's own `valid` field, which reads `1` in all four cases — it
+describes the wrapper object, not the target it points at.
 
 You don't need to call `set_path ""` yourself for cleanup. Live arms a path
 listener on every collection along a path-based object's path and never takes
