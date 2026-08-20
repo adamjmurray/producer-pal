@@ -68,7 +68,7 @@ stop: session and arrangement`,
       .optional()
       .describe(
         "session position(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
-          "or one scene 's<scene>' for play-scene (e.g., 's3')",
+          "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
       ),
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

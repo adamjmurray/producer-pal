@@ -168,16 +168,12 @@ describe("playback path shaped wrong for the action", () => {
     setupPlaybackLiveSet();
   });
 
-  it("refuses a session position for play-scene, naming the scene to use", () => {
-    expect(() => playback({ action: "play-scene", path: "t0/s1" })).toThrow(
-      'invalid path "t0/s1" - names a session position; action "play-scene" ' +
-        'takes one scene, as path "s1" or sceneIndex 1',
-    );
-  });
-
-  it("refuses a session position from the deprecated slots too", () => {
-    expect(() => playback({ action: "play-scene", slots: "0/1" })).toThrow(
-      'invalid slots "0/1" - names a session position',
+  // A path with no scene in it at all has nothing to recover, so play-scene
+  // says what it needs rather than borrowing the clip actions' wording.
+  it("refuses a track for play-scene, naming the shapes that work", () => {
+    expect(() => playback({ action: "play-scene", path: "t0" })).toThrow(
+      'invalid path "t0" - names no scene; action "play-scene" takes a scene ' +
+        '"s<scene>" or a session position "t<track>/s<scene>"',
     );
   });
 

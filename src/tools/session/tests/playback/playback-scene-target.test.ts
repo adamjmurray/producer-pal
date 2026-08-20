@@ -152,6 +152,100 @@ describe("playback play-scene target agreement", () => {
   });
 });
 
+// A scene launch fires every track, so the track in "t0/s1" is surplus rather
+// than a contradiction. Drop it and fire the scene the caller already named.
+describe("playback play-scene from a session position", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+  });
+
+  it("fires the scene a session position sits in", () => {
+    const scene = mockScene(1);
+
+    playback({ action: "play-scene", path: "t0/s1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("recovers from the deprecated slots the same way", () => {
+    const scene = mockScene(1);
+
+    playback({ action: "play-scene", slots: "0/1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("says nothing about dropping the track", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    mockScene(1);
+    playback({ action: "play-scene", path: "t0/s1" });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("fires the scene when several positions sit in it", () => {
+    const scene = mockScene(1);
+
+    playback({ action: "play-scene", path: "t0/s1,t2/s1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // The old rule refused any list mixing a scene with a position, on shape
+  // alone. Now the shapes both name scene 1, so there is nothing to refuse.
+  it("fires the scene when a scene and a position in it agree", () => {
+    const scene = mockScene(1);
+
+    playback({ action: "play-scene", path: "s1,t0/s1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("fires the scene when a position and sceneIndex agree", () => {
+    const scene = mockScene(1);
+
+    playback({ action: "play-scene", path: "t0/s1", sceneIndex: 1 });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("refuses positions in different scenes, naming each", () => {
+    expect(() =>
+      playback({ action: "play-scene", path: "t0/s1,t2/s3" }),
+    ).toThrow(
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 1 from path "t0/s1", scene 3 from path "t2/s3"',
+    );
+  });
+
+  // Quoting "t0/s1" back at a slots caller would hand them a value slots
+  // rejects, so each entry is named the way the param it came from is written.
+  it("quotes disagreeing slots entries in slots spelling", () => {
+    expect(() => playback({ action: "play-scene", slots: "0/1,2/3" })).toThrow(
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 1 from slots "0/1", scene 3 from slots "2/3"',
+    );
+  });
+
+  it("refuses a position that disagrees with sceneIndex", () => {
+    expect(() =>
+      playback({ action: "play-scene", path: "t0/s1", sceneIndex: 3 }),
+    ).toThrow(
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 1 from path "t0/s1", scene 3 from sceneIndex 3',
+    );
+  });
+
+  // The reverse direction stays refused: firing clips one at a time is not what
+  // launching a scene does, so recovering would swap which Live call runs.
+  it("does not recover a scene path for play-session-clips", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "s3" }),
+    ).toThrow('invalid path "s3" - names a scene');
+  });
+});
+
 // A bad id is a bad id, not a second scene: warn and skip it, the way the rest
 // of the tool treats ids, and let whatever else named a scene carry the call.
 describe("playback play-scene ids that name no scene", () => {
