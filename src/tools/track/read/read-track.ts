@@ -45,6 +45,12 @@ interface ReadTrackArgs {
   trackType?: string;
   returnTrackNames?: string[];
   include?: string[];
+  /**
+   * Session clips on this track, when the caller already knows. A Live Set read
+   * counts every session slot for its scenes anyway, and counting again here
+   * would build the whole grid a second time.
+   */
+  sessionClipCount?: number;
 }
 
 interface ReadTrackGenericArgs {
@@ -54,6 +60,8 @@ interface ReadTrackGenericArgs {
   include?: string[];
   returnTrackNames?: string[];
   notation?: Notation;
+  /** See ReadTrackArgs.sessionClipCount */
+  sessionClipCount?: number;
 }
 
 interface SessionClipsResult {
@@ -119,6 +127,7 @@ export function readTrack(
     include: args.include,
     returnTrackNames,
     notation: context.notation,
+    sessionClipCount: args.sessionClipCount,
   });
 }
 
@@ -144,6 +153,7 @@ function computeTrackType(isMidiTrack: boolean, category: string): string {
  * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
+ * @param knownCount - Session clips on this track, when the caller already counted them
  * @returns Object with session clips data
  */
 function processSessionClips(
@@ -154,6 +164,7 @@ function processSessionClips(
   isDrumMode: () => boolean,
   include: string[] | undefined,
   notation: Notation | undefined,
+  knownCount: number | undefined,
 ): SessionClipsResult {
   if (category !== "regular") {
     return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
@@ -169,7 +180,7 @@ function processSessionClips(
           notation,
         ),
       }
-    : { sessionClipCount: countSessionClips(track, trackIndex) };
+    : { sessionClipCount: knownCount ?? countSessionClips(track, trackIndex) };
 }
 
 /**
@@ -292,6 +303,7 @@ function addDrumMapFromDevices(
  * @param args.include - Array of data to include in the response
  * @param args.returnTrackNames - Array of return track names for sends
  * @param args.notation - Active notation; controls whether drum-map keys are drum names
+ * @param args.sessionClipCount - Session clips on this track, when the caller already counted them
  * @returns Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
@@ -301,6 +313,7 @@ export function readTrackGeneric({
   include,
   returnTrackNames,
   notation,
+  sessionClipCount,
 }: ReadTrackGenericArgs): Record<string, unknown> {
   const {
     includeDrumMap,
@@ -368,6 +381,7 @@ export function readTrackGeneric({
       isDrumMode,
       include,
       notation,
+      sessionClipCount,
     ),
   );
 

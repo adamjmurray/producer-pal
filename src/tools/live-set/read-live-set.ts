@@ -50,6 +50,14 @@ export function readLiveSet(
     return rt.getProperty("name") as string;
   });
 
+  // One pass over the session grid, shared by the scenes and the tracks below.
+  // Each counts the same slots — scenes by column, tracks by row — so counting
+  // in both places built every clip in the Set twice.
+  const clipCounts =
+    includeFlags.includeScenes || includeFlags.includeTracks
+      ? sessionClipCounts(trackIds.length, sceneIds.length)
+      : null;
+
   const liveSetName = liveSet.getProperty("name");
   const result: Record<string, unknown> = {
     ...(liveSetName ? { name: liveSetName } : {}),
@@ -60,7 +68,14 @@ export function readLiveSet(
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene({ sceneIndex, include: trackInclude }, context),
+      readScene(
+        {
+          sceneIndex,
+          include: trackInclude,
+          clipCount: clipCounts?.perScene[sceneIndex],
+        },
+        context,
+      ),
     );
   } else {
     result.sceneCount = sceneIds.length;
@@ -81,6 +96,7 @@ export function readLiveSet(
           trackIndex,
           include: trackInclude,
           returnTrackNames,
+          sessionClipCount: clipCounts?.perTrack[trackIndex],
         },
         context,
       ),
@@ -150,6 +166,45 @@ export function readLiveSet(
   }
 
   return result;
+}
+
+interface SessionClipCounts {
+  /** Clips on each track, indexed by track */
+  perTrack: number[];
+  /** Clips in each scene, indexed by scene */
+  perScene: number[];
+}
+
+/**
+ * Count the session clips once, by track and by scene.
+ *
+ * Testing a slot means building an object for it, so the grid costs one build
+ * per slot however it is counted — the saving is in counting it once. A Live
+ * Set read never asks tracks or scenes for full clips, so both only ever want
+ * these totals.
+ * @param trackCount - Number of regular tracks
+ * @param sceneCount - Number of scenes, which is every track's slot count
+ * @returns Clip counts per track and per scene
+ */
+function sessionClipCounts(
+  trackCount: number,
+  sceneCount: number,
+): SessionClipCounts {
+  const grid = Array.from({ length: trackCount }, (_, trackIndex) =>
+    Array.from({ length: sceneCount }, (__, sceneIndex) =>
+      LiveAPI.from(
+        livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+      ).exists(),
+    ),
+  );
+
+  return {
+    perTrack: grid.map((row) => row.filter(Boolean).length),
+    perScene: Array.from(
+      { length: sceneCount },
+      (_, sceneIndex) => grid.filter((row) => row[sceneIndex]).length,
+    ),
+  };
 }
 
 /**

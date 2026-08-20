@@ -16,6 +16,12 @@ interface ReadSceneArgs {
   sceneIndex?: number;
   sceneId?: string;
   include?: string[];
+  /**
+   * Clips in this scene, when the caller already knows. A Live Set read counts
+   * every session slot for its tracks anyway, and counting again here would
+   * build the whole grid a second time.
+   */
+  clipCount?: number;
 }
 
 interface ReadSceneResult {
@@ -40,6 +46,7 @@ interface ClipResult {
  * @param args.sceneIndex - Scene index (0-based)
  * @param args.sceneId - Scene ID to directly access any scene
  * @param args.include - Array of data to include
+ * @param args.clipCount - Clips in this scene, when the caller already counted them
  * @param context - Internal context object (supplies the active notation)
  * @returns Result object with scene information
  */
@@ -129,7 +136,8 @@ export function readScene(
     result.clips = clips;
   } else {
     // Lightweight clip counting — only check existence instead of reading full clip properties
-    result.clipCount = countSceneClips(liveSet, resolvedSceneIndex as number);
+    result.clipCount =
+      args.clipCount ?? countSceneClips(liveSet, resolvedSceneIndex as number);
   }
 
   return result;
