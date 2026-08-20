@@ -282,7 +282,7 @@ export function handlePlayScene(
 ): PlaybackState {
   if (sceneIndex == null) {
     throw new Error(
-      `playback failed: sceneIndex is required for action "play-scene"`,
+      `playback failed: sceneIndex, path "s<scene>", or a scene id is required for action "play-scene"`,
     );
   }
 

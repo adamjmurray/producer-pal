@@ -60,13 +60,15 @@ stop: session and arrangement`,
     ids: z.coerce
       .string()
       .optional()
-      .describe("comma-separated ID(s) for clip operations"),
+      .describe(
+        "comma-separated clip ID(s); for play-scene, a scene ID (or a clip ID in that scene)",
+      ),
     path: z.coerce
       .string()
       .optional()
       .describe(
         "session position(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
-          "or one scene 's<scene>' for play-scene (e.g., 's3')",
+          "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
       ),
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",

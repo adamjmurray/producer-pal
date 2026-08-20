@@ -105,16 +105,10 @@ export function playback(
   }
 
   const {
-    sceneIndex: scenePathIndex,
+    sceneIndex: sceneTarget,
     slotPositions,
     ids: namedIds,
-  } = resolvePlaybackTarget(action, { ids, path, slots });
-
-  if (scenePathIndex != null && sceneIndex != null) {
-    throw new Error(
-      "playback failed: path and sceneIndex both name a scene; use path alone",
-    );
-  }
+  } = resolvePlaybackTarget(action, { ids, path, slots, sceneIndex });
 
   // Validate mutual exclusivity of time and locator parameters
   validateLocatorOrTime(startTime, startLocator, "startTime");
@@ -172,7 +166,7 @@ export function playback(
       startTime,
       startTimeBeats,
       useLocatorStart,
-      sceneIndex: scenePathIndex ?? sceneIndex,
+      sceneIndex: sceneTarget ?? undefined,
       ids: namedIds,
       slotPositions,
     },

@@ -112,7 +112,7 @@ copying. Deleting and comping stay in Live's UI.
 
 ## Tolerance
 
-Three tiers, in order of preference.
+Four tiers, in order of preference.
 
 1. **Hidden params.** `slot`, `slots`, `toSlot`, `devicePath`, `takeLane` are
    deprecated — accepted, warned, going away. `trackIndex` and `sceneIndex` on
@@ -124,9 +124,20 @@ Three tiers, in order of preference.
    bare `"0"` is honored only where the tool has exactly one legal
    single-segment shape (`create-clip` → `t0`; `read-clip` needs a scene, so it
    errors).
-3. **Conflicts throw.** Two params naming different targets is never resolved by
+3. **Surplus segments narrow.** A path carrying more than the action needs is
+   narrowed rather than refused: `ppal-playback`'s `play-scene` reads `t0/s1` as
+   scene 1, because launching a scene fires every track and the track is spare.
+   Silently — the caller already named the scene, so there is nothing to report.
+   Only surplus bends. A path _missing_ what the action needs still errors,
+   because there is nothing to recover, and it stays an error even where the
+   reverse recovery looks symmetric: `play-session-clips` with `s3` is refused,
+   since firing clips one at a time is a different Live call than launching the
+   scene.
+4. **Conflicts throw.** Two params naming different targets is never resolved by
    picking one. Honoring one and dropping the other is the silent
-   wrong-destination bug this grammar exists to prevent.
+   wrong-destination bug this grammar exists to prevent. A path that names the
+   same target twice over is not a conflict — `play-scene` with `t0/s1,t2/s1`
+   fires scene 1.
 
 ## Results
 

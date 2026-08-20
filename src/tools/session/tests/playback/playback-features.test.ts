@@ -98,16 +98,47 @@ describe("playback path param", () => {
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
 
-  it("refuses a scene path alongside session positions", () => {
+  // A mixed list is no longer a special case: every entry names a scene, so the
+  // ordinary disagreement error covers it and says which entry named which.
+  it("refuses a scene path alongside a position in another scene", () => {
     expect(() => playback({ action: "play-scene", path: "s3,t0/s1" })).toThrow(
-      'playback failed: path names one scene ("s<scene>")',
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 3 from path "s3", scene 1 from path "t0/s1"',
     );
   });
 
-  it("refuses a scene path and sceneIndex together", () => {
+  // Only a disagreement is worth refusing. A model that says the same thing
+  // twice — path plus the param it replaced, in agreement — gets its scene, not
+  // an error about how it phrased the request.
+  it("fires the scene when path and sceneIndex agree", () => {
+    const scene = registerMockObject(livePath.scene(3), {
+      path: livePath.scene(3),
+    });
+
+    playback({ action: "play-scene", path: "s3", sceneIndex: 3 });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // Scene 0 is falsy, and the agreement check and the `??` that picks the
+  // winner both have to read it as a value rather than as "not given".
+  it("fires scene 0 when path and sceneIndex agree on it", () => {
+    const scene = registerMockObject(livePath.scene(0), {
+      path: livePath.scene(0),
+    });
+
+    playback({ action: "play-scene", path: "s0", sceneIndex: 0 });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("refuses a scene path and sceneIndex that disagree, naming both", () => {
     expect(() =>
       playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
-    ).toThrow("playback failed: path and sceneIndex both name a scene");
+    ).toThrow(
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 3 from path "s3", scene 1 from sceneIndex 1',
+    );
   });
 });
 

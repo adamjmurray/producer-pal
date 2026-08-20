@@ -286,7 +286,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => playback({ action: "play-scene" })).toThrow(
-      'playback failed: sceneIndex is required for action "play-scene"',
+      'playback failed: sceneIndex, path "s<scene>", or a scene id is required for action "play-scene"',
     );
   });
 
@@ -502,7 +502,7 @@ describe("transport", () => {
         ids: "clip1",
         slots: "0/0",
       }),
-    ).toThrow("playback failed: ids and path are mutually exclusive");
+    ).toThrow("playback failed: ids and slots are mutually exclusive");
   });
 
   it("should handle play-session-clips via slots with single slot", () => {
