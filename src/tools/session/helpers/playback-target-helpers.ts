@@ -186,7 +186,7 @@ function readPathParam(
   slots: string | undefined,
 ): PathInput {
   const named = namedParam(path, "path");
-  const legacy = namedHiddenPath(slots);
+  const legacy = namedHiddenPath(slots, "slots");
 
   if (named != null && legacy != null) {
     throw new Error(
@@ -203,19 +203,14 @@ function readPathParam(
 
   if (legacy == null) return { entries: [], source: null };
 
-  // parseSlotList drops empty entries with a warning, so a value like ","
-  // parses to no positions at all. An empty list reads downstream as "act on
-  // these zero slots" — a silent no-op — so report it as the nothing it is.
-  const positions = parseSlotList(legacy, "slots");
-
-  if (positions.length === 0) return { entries: [], source: null };
-
   return {
-    entries: positions.map(({ trackIndex, sceneIndex }) => ({
-      kind: "slot" as const,
-      trackIndex,
-      sceneIndex,
-    })),
+    entries: parseSlotList(legacy, "slots").map(
+      ({ trackIndex, sceneIndex }) => ({
+        kind: "slot" as const,
+        trackIndex,
+        sceneIndex,
+      }),
+    ),
     source: { label: "slots", input: legacy },
   };
 }
@@ -415,7 +410,7 @@ function warnUnusedTarget(
 ): void {
   const sent = [
     namedParam(path, "path") != null ? "path" : null,
-    namedHiddenPath(slots) != null ? "slots" : null,
+    namedHiddenPath(slots, "slots") != null ? "slots" : null,
     ids != null ? "ids" : null,
     sceneIndex != null ? "sceneIndex" : null,
   ].filter((param) => param != null);

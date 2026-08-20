@@ -19,6 +19,7 @@ import {
 import {
   namedHiddenPath,
   pathEntries,
+  pathNamesSomething,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
@@ -46,7 +47,7 @@ export function moveDestinationParam(
   rawToSlot: string | undefined,
 ): "toPath" | "toSlot" {
   // Silent: resolveMoveDestinations already warned about anything it dropped.
-  return !paramNamesSomething(rawToPath) && namedHiddenPath(rawToSlot) != null
+  return !paramNamesSomething(rawToPath) && pathNamesSomething(rawToSlot)
     ? "toSlot"
     : "toPath";
 }
@@ -73,7 +74,7 @@ export function resolveMoveDestinations(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot);
+  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
   // Honoring one and dropping the other would move the clip somewhere the
   // caller didn't ask for, so move it nowhere and say so.
@@ -88,11 +89,13 @@ export function resolveMoveDestinations(
   if (toPath == null && toSlot == null) return none;
 
   // A bad destination is one param out of many on a batch update, and the
-  // tool's rule is warn-and-skip so the notes still land.
+  // tool's rule is warn-and-skip so the notes still land. Neither param can be
+  // empty here: namedHiddenPath drops a toSlot that names nothing, and toPath
+  // refuses one when it splits its entries.
   try {
     const destinations =
       toSlot != null
-        ? requireDestinations(parseSlotList(toSlot, "toSlot"), "toSlot")
+        ? parseSlotList(toSlot, "toSlot")
         : pathDestinations(toPath as string);
 
     return pairWithClips(destinations, clipCount, toSlot == null);
@@ -353,24 +356,6 @@ function pairWithClips(
     { length: clipCount },
     (_unused, i) => destinations[i] ?? null,
   );
-}
-
-/**
- * Refuses a toSlot that was sent but names nothing (e.g. ","). toPath is
- * refused earlier, by its own entry splitting.
- * @param destinations - Parsed destinations, in order
- * @param label - Param name for the error
- * @returns The destinations
- * @throws When the param was sent but names nothing
- */
-function requireDestinations<T>(destinations: T[], label: string): T[] {
-  // Throwing rather than warning lets the caller's catch report it like any
-  // other destination that failed to parse.
-  if (destinations.length === 0) {
-    throw new Error(`${label} names no destination`);
-  }
-
-  return destinations;
 }
 
 interface HandleSessionSlotMoveArgs {

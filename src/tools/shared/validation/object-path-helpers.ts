@@ -93,15 +93,42 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
 }
 
 /**
+ * Whether a path param names at least one entry. Silent, for a second read of
+ * a param {@link namedHiddenPath} already reported on.
+ * @param value - Raw param value
+ * @returns True when the value names something
+ */
+export function pathNamesSomething(value: string | null | undefined): boolean {
+  return paramNamesSomething(value) && parseCommaSeparatedIds(value).length > 0;
+}
+
+/**
  * Normalizes a hidden (deprecated or alias) path param. Like
  * {@link namedParam}, except a coerced null passes without a word: a caller
  * moving off the old param may send null for it, and there is nothing to tell
  * them about a param they were already meant to stop sending.
+ *
+ * A value whose entries are all empty (`","`) names nothing, so it reads as
+ * unset — every caller pairs this with a published param and asks "were both
+ * sent?", and counting an empty value as sent refuses a call that had no
+ * conflict, or reports a move that never happened.
  * @param value - Raw param value
+ * @param label - Param name, for the warning
  * @returns The trimmed value, or undefined when it names nothing
  */
-export function namedHiddenPath(value: string | undefined): string | undefined {
-  return paramNamesSomething(value) ? value?.trim() : undefined;
+export function namedHiddenPath(
+  value: string | undefined,
+  label: string,
+): string | undefined {
+  if (pathNamesSomething(value)) return value?.trim();
+
+  // Unlike a coerced null, a comma is something the caller typed, so say the
+  // value went nowhere. Silent otherwise, per the note above.
+  if (paramNamesSomething(value)) {
+    console.warn(`${label} "${value?.trim()}" names nothing`);
+  }
+
+  return undefined;
 }
 
 /**

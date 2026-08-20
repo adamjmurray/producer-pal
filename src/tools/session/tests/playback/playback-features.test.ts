@@ -88,6 +88,20 @@ describe("playback path param", () => {
     ).toThrow("playback failed: path and slots both name clips");
   });
 
+  // The same check, on a slots that named nothing. A comma is not a second
+  // target, so refusing the call reported a conflict the caller never made.
+  it("fires what path names when slots names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s1", slots: "," });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith('slots "," names nothing');
+  });
+
   it("fires a scene a path names", () => {
     const scene = registerMockObject(livePath.scene(3), {
       path: livePath.scene(3),

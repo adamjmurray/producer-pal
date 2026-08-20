@@ -276,7 +276,7 @@ interface ClipLocation {
 export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
   const clipId = namedParam(args.clipId, "clipId") ?? null;
   const path = namedParam(args.path, "path");
-  const slot = namedHiddenPath(args.slot ?? undefined);
+  const slot = namedHiddenPath(args.slot ?? undefined, "slot");
 
   // Honoring one and dropping the other is the silent wrong-clip bug path
   // replaces, so refuse instead of picking — the same trade every other tool

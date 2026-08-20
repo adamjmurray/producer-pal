@@ -387,6 +387,47 @@ describe("select path param", () => {
       "select failed: path and slot/devicePath both name a target",
     );
   });
+
+  // The same check, on a deprecated param that named nothing. A comma is not a
+  // second target, so refusing reported a conflict the caller never made.
+  it("selects what path names when the param it replaced names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+      type: "ClipSlot",
+      properties: { has_clip: 0 },
+    });
+    const songView = setupSongViewMock();
+
+    setupAppViewMock();
+
+    select({ path: "t0/s1", slot: "," });
+
+    expect(songView.set).toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      `id ${clipSlot.id}`,
+    );
+    expect(warn).toHaveBeenCalledWith('slot "," names nothing');
+  });
+
+  // On its own it leaves select with no target, which is select's read mode.
+  // That reports the selection Live actually has, so nothing claims a move that
+  // didn't happen — the warning is what tells the caller why.
+  it("reads the current selection when the only param sent names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+    const songView = setupSongViewMock();
+
+    setupAppViewMock();
+
+    const result = select({ slot: "," });
+
+    expect(result.selectedClip).toBeUndefined();
+    expect(songView.set).not.toHaveBeenCalledWith(
+      "highlighted_clip_slot",
+      expect.anything(),
+    );
+    expect(warn).toHaveBeenCalledWith('slot "," names nothing');
+  });
 });
 
 /** The tracks, scenes, and clips the id-versus-path cases pick between. */

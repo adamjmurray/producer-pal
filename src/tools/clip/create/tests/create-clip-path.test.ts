@@ -168,6 +168,25 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
   });
 
+  // A slot that names nothing is not a destination, so it can't shadow the
+  // aliases the way a real slot list does.
+  it("reads the aliases when the deprecated slot names nothing", async () => {
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+
+    await createClip({
+      slot: ",",
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: "C3 1|1",
+    });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(consoleMock.warn).toHaveBeenCalledWith('slot "," names nothing');
+  });
+
   it("still reads trackIndex alone as the arrangement", async () => {
     const { track } = setupArrangementClipMocks();
 

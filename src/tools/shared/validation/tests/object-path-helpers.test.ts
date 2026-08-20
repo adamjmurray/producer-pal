@@ -10,6 +10,7 @@ import {
   namedHiddenPath,
   parseObjectPathList,
   parseSessionSlotList,
+  pathNamesSomething,
   requireClipPath,
   requireDeviceContainer,
   requireDevicePath,
@@ -275,17 +276,64 @@ describe("namedHiddenPath", () => {
   // A caller moving off toSlot may send null for it; that must not read as a
   // second destination alongside a real toPath.
   it("reads a coerced null as naming nothing", () => {
-    expect(namedHiddenPath("null")).toBeUndefined();
-    expect(namedHiddenPath("undefined")).toBeUndefined();
+    expect(namedHiddenPath("null", "toSlot")).toBeUndefined();
+    expect(namedHiddenPath("undefined", "toSlot")).toBeUndefined();
   });
 
   it("reads a blank param as naming nothing", () => {
-    expect(namedHiddenPath(undefined)).toBeUndefined();
-    expect(namedHiddenPath("")).toBeUndefined();
-    expect(namedHiddenPath("   ")).toBeUndefined();
+    expect(namedHiddenPath(undefined, "toSlot")).toBeUndefined();
+    expect(namedHiddenPath("", "toSlot")).toBeUndefined();
+    expect(namedHiddenPath("   ", "toSlot")).toBeUndefined();
+  });
+
+  it("says nothing about a param the caller left unset", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    namedHiddenPath("null", "toSlot");
+    namedHiddenPath("", "toSlot");
+
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("trims a param that names something", () => {
-    expect(namedHiddenPath(" 2/1 ")).toBe("2/1");
+    expect(namedHiddenPath(" 2/1 ", "toSlot")).toBe("2/1");
+  });
+
+  // Every caller pairs this with a published param and asks "were both sent?",
+  // so a value that names nothing has to read as unset or the pair conflicts.
+  it("reads a value whose entries are all empty as naming nothing", () => {
+    expect(namedHiddenPath(",", "toSlot")).toBeUndefined();
+    expect(namedHiddenPath(" , , ", "toSlot")).toBeUndefined();
+  });
+
+  it("says so, since a comma is something the caller typed", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    namedHiddenPath(",", "toSlot");
+
+    expect(warn).toHaveBeenCalledWith('toSlot "," names nothing');
+  });
+
+  it("keeps a value that names one entry among empties", () => {
+    expect(namedHiddenPath("0/1,,2/3", "toSlot")).toBe("0/1,,2/3");
+  });
+});
+
+describe("pathNamesSomething", () => {
+  it("is true only when the value names an entry", () => {
+    expect(pathNamesSomething("0/1")).toBe(true);
+    expect(pathNamesSomething("0/1,,2/3")).toBe(true);
+    expect(pathNamesSomething(",")).toBe(false);
+    expect(pathNamesSomething("null")).toBe(false);
+    expect(pathNamesSomething("")).toBe(false);
+    expect(pathNamesSomething(undefined)).toBe(false);
+  });
+
+  it("says nothing, so a second read does not repeat the warning", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    pathNamesSomething(",");
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });

@@ -119,8 +119,9 @@ describe("playback ids that names no clip", () => {
   });
 });
 
-// parseSlotList drops empty entries and returns none, and an empty list read as
-// a target is a call that acts on nothing while reporting success.
+// slots reads as unset now, so the call falls through to "you named no target"
+// instead of carrying an empty list that acts on nothing while reporting
+// success.
 describe("playback slots that names no position", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();

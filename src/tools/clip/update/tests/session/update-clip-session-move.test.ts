@@ -625,6 +625,23 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
+  // The worst version of the pairing bug: a toSlot of "," named no second
+  // destination, so the check refused a move the caller had asked for once —
+  // and the result said nothing about the clip staying put.
+  it("moves to toPath when toSlot names nothing", () => {
+    expect(resolveMoveDestinations("t2/s3", ",", 1)).toStrictEqual([
+      { trackIndex: 2, sceneIndex: 3 },
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('toSlot "," names nothing'),
+    );
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("no clip was moved"),
+    );
+  });
+
   it("warns and skips a destination that is not a session slot", () => {
     // update-clip has no cross-track move; duplicate is the tool for that.
     expect(resolveMoveDestinations("t2", undefined, 1)).toStrictEqual([null]);
