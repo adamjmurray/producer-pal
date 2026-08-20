@@ -110,9 +110,15 @@ export function playback(
     ids: namedIds,
   } = resolvePlaybackTarget(action, { ids, path, slots });
 
-  if (scenePathIndex != null && sceneIndex != null) {
+  // Only a disagreement is worth refusing. A model that names the same scene
+  // twice gets its scene, not an error about how it phrased the request.
+  if (
+    scenePathIndex != null &&
+    sceneIndex != null &&
+    scenePathIndex !== sceneIndex
+  ) {
     throw new Error(
-      "playback failed: path and sceneIndex both name a scene; use path alone",
+      "playback failed: path and sceneIndex name different scenes; use path alone",
     );
   }
 

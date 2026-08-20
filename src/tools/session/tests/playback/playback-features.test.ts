@@ -104,10 +104,35 @@ describe("playback path param", () => {
     );
   });
 
-  it("refuses a scene path and sceneIndex together", () => {
+  // Only a disagreement is worth refusing. A model that says the same thing
+  // twice — path plus the param it replaced, in agreement — gets its scene, not
+  // an error about how it phrased the request.
+  it("fires the scene when path and sceneIndex agree", () => {
+    const scene = registerMockObject(livePath.scene(3), {
+      path: livePath.scene(3),
+    });
+
+    playback({ action: "play-scene", path: "s3", sceneIndex: 3 });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // Scene 0 is falsy, and the agreement check and the `??` that picks the
+  // winner both have to read it as a value rather than as "not given".
+  it("fires scene 0 when path and sceneIndex agree on it", () => {
+    const scene = registerMockObject(livePath.scene(0), {
+      path: livePath.scene(0),
+    });
+
+    playback({ action: "play-scene", path: "s0", sceneIndex: 0 });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("refuses a scene path and sceneIndex that disagree", () => {
     expect(() =>
       playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
-    ).toThrow("playback failed: path and sceneIndex both name a scene");
+    ).toThrow("playback failed: path and sceneIndex name different scenes");
   });
 });
 

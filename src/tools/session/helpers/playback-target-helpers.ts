@@ -6,7 +6,10 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { namedParam, parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { type ObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  pathError,
+  type ObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import {
   namedHiddenPath,
   parseObjectPathList,
@@ -34,9 +37,22 @@ export interface PlaybackTargetParams {
   slots?: string;
 }
 
+/** The param a target came from, and its value, for shape errors */
+interface PathSource {
+  label: string;
+  input: string;
+}
+
+interface PathTarget extends Omit<PlaybackTarget, "ids"> {
+  source: PathSource | null;
+}
+
+/** The one targeting action that takes a scene. The others take clips. */
+const PLAY_SCENE = "play-scene";
+
 /** The actions that read a target. The rest act on the transport alone. */
 const TARGETING_ACTIONS = new Set([
-  "play-scene",
+  PLAY_SCENE,
   "play-session-clips",
   "stop-session-clips",
 ]);
@@ -67,11 +83,16 @@ export function resolvePlaybackTarget(
     return { sceneIndex: null, slotPositions: null, ids: undefined };
   }
 
-  const target = resolvePathTarget(path, slots);
+  const { source, ...target } = resolvePathTarget(path, slots);
 
-  if (namedIds != null && target.slotPositions != null) {
-    throw new Error("playback failed: ids and path are mutually exclusive");
+  // Both name what to act on, so refusing beats guessing which the caller meant.
+  if (namedIds != null && source != null) {
+    throw new Error(
+      `playback failed: ids and ${source.label} are mutually exclusive`,
+    );
   }
+
+  assertTargetShape(action, target, source);
 
   return { ...target, ids: namedIds };
 }
@@ -122,12 +143,13 @@ export function resolveClipSlotPositions(
  * Resolve what `path` or the deprecated `slots` names.
  * @param path - A scene, or comma-separated session positions
  * @param slots - Deprecated comma-separated trackIndex/sceneIndex positions
- * @returns The scene or positions named, null where nothing was
+ * @returns The scene or positions named, null where nothing was, and which
+ *   param named it
  */
 function resolvePathTarget(
   path: string | undefined,
   slots: string | undefined,
-): Omit<PlaybackTarget, "ids"> {
+): PathTarget {
   const named = namedParam(path, "path");
   const legacy = namedHiddenPath(slots);
 
@@ -138,12 +160,27 @@ function resolvePathTarget(
   }
 
   if (named == null) {
+    if (legacy == null) {
+      return { sceneIndex: null, slotPositions: null, source: null };
+    }
+
+    // parseSlotList drops empty entries with a warning, so a value like ","
+    // parses to no positions at all. An empty list reads downstream as "act on
+    // these zero slots" — a silent no-op — so report it as the nothing it is.
+    const positions = parseSlotList(legacy, "slots");
+
+    if (positions.length === 0) {
+      return { sceneIndex: null, slotPositions: null, source: null };
+    }
+
     return {
       sceneIndex: null,
-      slotPositions: legacy != null ? parseSlotList(legacy, "slots") : null,
+      slotPositions: positions,
+      source: { label: "slots", input: legacy },
     };
   }
 
+  const source = { label: "path", input: named };
   const parsed = parseObjectPathList(named, "path");
   const scene = parsed.find(
     (entry): entry is Extract<ObjectPath, { kind: "scene" }> =>
@@ -154,6 +191,7 @@ function resolvePathTarget(
     return {
       sceneIndex: null,
       slotPositions: parsed.map((entry) => requireSessionSlot(entry, "path")),
+      source,
     };
   }
 
@@ -165,7 +203,52 @@ function resolvePathTarget(
     );
   }
 
-  return { sceneIndex: scene.sceneIndex, slotPositions: null };
+  return { sceneIndex: scene.sceneIndex, slotPositions: null, source };
+}
+
+/**
+ * Refuse a path whose shape is wrong for the action. Each handler reads only
+ * its own kind of target, so without this a wrong-shaped path falls through to
+ * a "you gave me nothing" error about the very param the caller did send.
+ * @param action - The playback action
+ * @param target - What the path named
+ * @param target.sceneIndex - The scene named, or null
+ * @param target.slotPositions - The session positions named, or null
+ * @param source - The param that named it, or null when neither did
+ */
+function assertTargetShape(
+  action: string,
+  { sceneIndex, slotPositions }: Omit<PlaybackTarget, "ids">,
+  source: PathSource | null,
+): void {
+  if (source == null) return;
+
+  if (action === PLAY_SCENE && slotPositions != null) {
+    // Non-empty by construction: a path or slots naming nothing is reported as
+    // naming nothing, so it never reaches here with an empty list.
+    const { sceneIndex: scene } = slotPositions[0] as SlotPosition;
+
+    throw pathError(
+      source.label,
+      source.input,
+      `names a session position; action "${PLAY_SCENE}" takes one scene, ` +
+        `as path "s${scene}" or sceneIndex ${scene}`,
+    );
+  }
+
+  if (action !== PLAY_SCENE && sceneIndex != null) {
+    const wholeScene =
+      action === "play-session-clips"
+        ? `, or use action "${PLAY_SCENE}" for the whole scene`
+        : "";
+
+    throw pathError(
+      source.label,
+      source.input,
+      `names a scene; action "${action}" takes session positions ` +
+        `"t<track>/s<scene>" (e.g., "t0/s${sceneIndex}")${wholeScene}`,
+    );
+  }
 }
 
 /**

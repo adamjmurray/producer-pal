@@ -109,4 +109,98 @@ describe("playback ids that names no clip", () => {
       playback({ action: "play-session-clips", path: "t0/s1", ids: "clip1" }),
     ).toThrow("playback failed: ids and path are mutually exclusive");
   });
+
+  // A scene path is still a path. Firing the ids and dropping it silently is
+  // the wrong-target bug these params exist to prevent.
+  it("refuses ids alongside a scene path too", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "s3", ids: "clip1" }),
+    ).toThrow("playback failed: ids and path are mutually exclusive");
+  });
+});
+
+// parseSlotList drops empty entries and returns none, and an empty list read as
+// a target is a call that acts on nothing while reporting success.
+describe("playback slots that names no position", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+  });
+
+  it("refuses play-scene rather than crashing on the empty list", () => {
+    expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
+      'playback failed: sceneIndex or path "s<scene>" is required',
+    );
+  });
+
+  it("refuses play-session-clips rather than reporting a launch", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", slots: "," }),
+    ).toThrow("playback failed: ids or path is required");
+  });
+
+  it("refuses stop-session-clips the same way", () => {
+    expect(() =>
+      playback({ action: "stop-session-clips", slots: "," }),
+    ).toThrow("playback failed: ids or path is required");
+  });
+
+  it("lets ids carry the call when slots names nothing", () => {
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+      type: "Clip",
+    });
+
+    playback({ action: "play-session-clips", slots: ",", ids: "clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+});
+
+// Each handler reads only its own kind of target, so a wrong-shaped path used
+// to fall through to a "you gave me nothing" error naming the param that was
+// sent. Say what's wrong with it, and what the right shape looks like.
+describe("playback path shaped wrong for the action", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+  });
+
+  it("refuses a session position for play-scene, naming the scene to use", () => {
+    expect(() => playback({ action: "play-scene", path: "t0/s1" })).toThrow(
+      'invalid path "t0/s1" - names a session position; action "play-scene" ' +
+        'takes one scene, as path "s1" or sceneIndex 1',
+    );
+  });
+
+  it("refuses a session position from the deprecated slots too", () => {
+    expect(() => playback({ action: "play-scene", slots: "0/1" })).toThrow(
+      'invalid slots "0/1" - names a session position',
+    );
+  });
+
+  it("refuses a scene for play-session-clips, pointing at play-scene", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "s3" }),
+    ).toThrow(
+      'invalid path "s3" - names a scene; action "play-session-clips" takes ' +
+        'session positions "t<track>/s<scene>" (e.g., "t0/s3"), or use ' +
+        'action "play-scene" for the whole scene',
+    );
+  });
+
+  // There's no "stop a scene" action to point at, so don't invent one.
+  it("refuses a scene for stop-session-clips without suggesting play-scene", () => {
+    expect(() =>
+      playback({ action: "stop-session-clips", path: "s3" }),
+    ).toThrow(
+      'invalid path "s3" - names a scene; action "stop-session-clips" takes ' +
+        'session positions "t<track>/s<scene>" (e.g., "t0/s3")',
+    );
+    expect(() =>
+      playback({ action: "stop-session-clips", path: "s3" }),
+    ).not.toThrow(/play-scene/);
+  });
 });
