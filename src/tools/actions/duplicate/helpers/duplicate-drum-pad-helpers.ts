@@ -82,7 +82,7 @@ export function duplicateDrumPad(
 
   const sourcePad = findDrumPadByNote(rack, source.midi);
 
-  if (sourcePad == null || sourcePad.getChildren("chains").length === 0) {
+  if (sourcePad == null || sourcePad.getChildCount("chains") === 0) {
     console.warn(
       `duplicate: drum pad ${midiToNoteName(source.midi)} is empty, nothing to copy`,
     );
@@ -91,8 +91,7 @@ export function duplicateDrumPad(
   }
 
   const chainsBefore =
-    findDrumPadByNote(rack, destination.midi)?.getChildren("chains").length ??
-    0;
+    findDrumPadByNote(rack, destination.midi)?.getChildCount("chains") ?? 0;
 
   rack.call("copy_pad", source.midi, destination.midi);
 
@@ -226,9 +225,9 @@ function finishPadCopy(
   name?: string,
 ): DuplicateDrumPadResult | null {
   const pad = findDrumPadByNote(rack, destination.midi);
-  const chains = pad?.getChildren("chains") ?? [];
+  const chainIds = pad?.getChildIds("chains") ?? [];
 
-  if (pad == null || chains.length <= chainsBefore) {
+  if (pad == null || chainIds.length <= chainsBefore) {
     console.warn(`duplicate: copying onto drum pad "${toPath}" had no effect`);
 
     return null;
@@ -243,8 +242,10 @@ function finishPadCopy(
   }
 
   if (name != null) {
-    for (const chain of chains.slice(chainsBefore)) {
-      chain.set("name", name);
+    // Only the chains the copy added, and only when there's a name to set —
+    // the rest never need building.
+    for (const chainId of chainIds.slice(chainsBefore)) {
+      LiveAPI.from(chainId).set("name", name);
     }
   }
 

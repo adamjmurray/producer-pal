@@ -111,7 +111,7 @@ export function wrapDevicesInRack({
     const device = assertDefined(devices[i], `device at index ${i}`);
 
     // Ensure chain exists (create if needed)
-    const currentChainCount = rack.getChildren("chains").length;
+    const currentChainCount = rack.getChildCount("chains");
 
     if (i >= currentChainCount) {
       const chainsNeeded = i + 1 - currentChainCount;
@@ -343,7 +343,7 @@ function wrapInstrumentsInRack(
     for (let i = devices.length - 1; i >= 0; i--) {
       // Create chain
       rack.call("insert_chain");
-      const chainIndex = rack.getChildren("chains").length - 1;
+      const chainIndex = rack.getChildCount("chains") - 1;
       const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
 
       // Get device at position 0 (always 0 since we move from front)
@@ -406,7 +406,7 @@ function restoreStrandedInstruments(
   const sourceId = toLiveApiId(sourceContainer.id);
   // Bounded by the initial count: each move removes device 0, so re-reading
   // slot 0 walks the list; the cap guards against a move that silently no-ops.
-  const count = tempTrack.getChildren("devices").length;
+  const count = tempTrack.getChildCount("devices");
 
   for (let i = 0; i < count; i++) {
     const stranded = tempTrack.child("devices", "0");

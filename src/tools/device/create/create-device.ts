@@ -175,7 +175,7 @@ function createDeviceAtPath(
 
   // Live rejects any position past the end of the chain, including position 0
   // on an empty one. Append instead of failing.
-  const deviceCount = container.getChildren("devices").length;
+  const deviceCount = container.getChildCount("devices");
   const pastEnd = position != null && position > deviceCount;
 
   if (pastEnd) {

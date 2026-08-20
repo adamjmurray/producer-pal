@@ -140,7 +140,7 @@ export function moveDeviceToPath(
   // Live drops some moves without a word. Check rather than assume: the device
   // is still wherever it was, and reporting its id would name a device that
   // never arrived — for a duplicate, one the cleanup is about to delete.
-  if (!container.getChildren("devices").some(({ id }) => id === device.id)) {
+  if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
     console.warn(`Live refused the move${refusalReason(device, container)}`);
 
     return "refused";
@@ -191,7 +191,7 @@ function resolveMoveDestination(
  */
 function refusalReason(device: LiveAPI, container: LiveAPI): string {
   return deviceHasInstrument(device) &&
-    container.getChildren("devices").some(deviceHasInstrument)
+    container.someChild("devices", deviceHasInstrument)
     ? ": the destination already has an instrument, and only one is allowed"
     : "";
 }

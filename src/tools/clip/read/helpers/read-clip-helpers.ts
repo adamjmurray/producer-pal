@@ -215,30 +215,28 @@ export function isDrumRackTrack(trackIndex: number): boolean {
  * @returns True if any device (including nested rack devices) is a Drum Rack
  */
 export function isDrumRackForTrack(track: LiveAPI): boolean {
-  return devicesContainDrumRack(track.getChildren("devices"));
+  return containerHasDrumRack(track);
 }
 
 /**
- * Recursively search a device list for a Drum Rack, descending into rack chains.
- * @param devices - LiveAPI device objects to inspect
- * @returns True if a Drum Rack is found in the list or any nested chain
+ * Recursively search a track or chain's devices for a Drum Rack, descending
+ * into rack chains. Builds one device at a time and stops at the first Drum
+ * Rack, so a drum track pays only for the devices ahead of its kit.
+ * @param container - Track or chain whose devices to inspect
+ * @returns True if a Drum Rack is found in it or any nested chain
  */
-function devicesContainDrumRack(devices: LiveAPI[]): boolean {
-  for (const device of devices) {
+function containerHasDrumRack(container: LiveAPI): boolean {
+  return container.someChild("devices", (device) => {
     if ((device.getProperty("can_have_drum_pads") as number) > 0) {
       return true;
     }
 
-    if ((device.getProperty("can_have_chains") as number) > 0) {
-      for (const chain of device.getChildren("chains")) {
-        if (devicesContainDrumRack(chain.getChildren("devices"))) {
-          return true;
-        }
-      }
+    if ((device.getProperty("can_have_chains") as number) <= 0) {
+      return false;
     }
-  }
 
-  return false;
+    return device.someChild("chains", containerHasDrumRack);
+  });
 }
 
 /**

@@ -82,7 +82,7 @@ export function selectRackTarget(
   // Selecting the rack also selects its track, and puts the pad grid on screen.
   songView.call("select_device", toLiveApiId(rack.id));
 
-  const chain = isPad ? (target.getChildren("chains")[0] ?? null) : target;
+  const chain = isPad ? target.getChildAt("chains", 0) : target;
   const pad = isPad ? target : drumPadOfChain(rack, target);
 
   if (pad != null) revealDrumPad(rack, pad);

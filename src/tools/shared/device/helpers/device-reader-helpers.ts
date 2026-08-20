@@ -83,7 +83,7 @@ function buildChainAtDepth(
   deviceOptions: Record<string, unknown>,
 ): Record<string, unknown> {
   if (depth >= maxDepth) {
-    const deviceCount = chain.getChildren("devices").length;
+    const deviceCount = chain.getChildCount("devices");
 
     return buildChainInfo(chain, { path: chainPath, deviceCount });
   }

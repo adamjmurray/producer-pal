@@ -423,7 +423,7 @@ function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
   // The pad outlives its own delete, so there is no dead object to test for.
   // Read the chains back instead: a refused clear is otherwise indistinguishable
   // from a successful one.
-  if (object.getChildren("chains").length > 0) {
+  if (object.getChildCount("chains") > 0) {
     console.warn(
       `delete: drum pad "${id}" still has chains, so Live did not clear it`,
     );

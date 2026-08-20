@@ -373,26 +373,65 @@ function rescanSplitClips(
   splitClipRanges: Map<string, SplitClipRange>,
   clips: LiveAPI[],
 ): void {
-  for (const [oldClipId, range] of splitClipRanges) {
-    const track = LiveAPI.from(livePath.track(range.trackIndex));
-    const trackClipIds = track.getChildIds("arrangement_clips");
-    const freshClips = trackClipIds
-      .map((id) => LiveAPI.from(id))
-      .filter((c) => {
-        const clipStart = c.getProperty("start_time") as number;
+  const freshByOldId = freshClipsByOldId(splitClipRanges);
 
-        return (
-          clipStart >= range.startTime - EPSILON &&
-          clipStart < range.endTime - EPSILON
-        );
-      });
-
+  // Kept in the original range order: a splice can insert a clip whose id is
+  // itself a later range's key (Live leaves the first piece on the original
+  // id), so which index findIndex lands on depends on this order.
+  for (const [oldClipId] of splitClipRanges) {
     const staleIndex = clips.findIndex((c) => c.id === oldClipId);
 
     if (staleIndex !== -1) {
-      clips.splice(staleIndex, 1, ...freshClips);
+      clips.splice(staleIndex, 1, ...(freshByOldId.get(oldClipId) ?? []));
     }
   }
+}
+
+/**
+ * Collect the fresh pieces of every split clip, scanning each track once.
+ *
+ * The straightforward loop rescans the whole track per split clip, so cutting
+ * one track at 32 points built every clip on it 32 times over. One pass per
+ * track instead, bucketing each clip into whichever ranges contain it.
+ *
+ * @param splitClipRanges - Map of original clip IDs to their ranges
+ * @returns Fresh clips per original clip id, in track order
+ */
+function freshClipsByOldId(
+  splitClipRanges: Map<string, SplitClipRange>,
+): Map<string, LiveAPI[]> {
+  const rangesByTrack = new Map<number, [string, SplitClipRange][]>();
+
+  for (const [oldClipId, range] of splitClipRanges) {
+    const forTrack = rangesByTrack.get(range.trackIndex);
+
+    if (forTrack) forTrack.push([oldClipId, range]);
+    else rangesByTrack.set(range.trackIndex, [[oldClipId, range]]);
+  }
+
+  const freshByOldId = new Map<string, LiveAPI[]>();
+
+  for (const [trackIndex, ranges] of rangesByTrack) {
+    for (const [oldClipId] of ranges) freshByOldId.set(oldClipId, []);
+
+    const track = LiveAPI.from(livePath.track(trackIndex));
+
+    for (const clipId of track.getChildIds("arrangement_clips")) {
+      const clip = LiveAPI.from(clipId);
+      const clipStart = clip.getProperty("start_time") as number;
+
+      for (const [oldClipId, range] of ranges) {
+        if (
+          clipStart >= range.startTime - EPSILON &&
+          clipStart < range.endTime - EPSILON
+        ) {
+          (freshByOldId.get(oldClipId) as LiveAPI[]).push(clip);
+        }
+      }
+    }
+  }
+
+  return freshByOldId;
 }
 
 /**

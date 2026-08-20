@@ -140,6 +140,15 @@ declare global {
     /** Get child objects as LiveAPI instances */
     getChildren(name: string): LiveAPI[];
 
+    /** Count a collection without building any of its children */
+    getChildCount(name: string): number;
+
+    /** Get one child of a collection, building only that one */
+    getChildAt(name: string, index: number): LiveAPI | null;
+
+    /** Whether any child passes the test, building children until one does */
+    someChild(name: string, predicate: (child: LiveAPI) => boolean): boolean;
+
     /** Get the color as a CSS hex string (e.g., "#FF0000") */
     getColor(): string | null;
 

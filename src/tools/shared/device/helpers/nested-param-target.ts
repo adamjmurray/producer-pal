@@ -179,7 +179,7 @@ function resolveDrumPadSampleTarget(
     return null;
   }
 
-  const existing = chain.getChildren("devices")[deviceIndex];
+  const existing = chain.getChildAt("devices", deviceIndex);
 
   if (!existing?.exists()) {
     return createSimplerInChain(chain, toolName);

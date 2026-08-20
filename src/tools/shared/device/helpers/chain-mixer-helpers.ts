@@ -210,7 +210,7 @@ export function chainMixerToCarry(
     Object.keys(mixer).length === 0 ||
     !destination.type.endsWith("Chain") ||
     rackPath(chain) !== rackPath(destination) ||
-    destination.getChildren("devices").length > 0 ||
+    destination.getChildCount("devices") > 0 ||
     Object.keys(readChainMixer(destination)).length > 0
   ) {
     return null;
@@ -372,7 +372,7 @@ function applyChainSend(
     return false;
   }
 
-  const send = mixer.getChildren("sends")[index];
+  const send = mixer.getChildAt("sends", index);
 
   if (send == null) {
     console.warn(`chain ${chain.id} has no send ${index}`);

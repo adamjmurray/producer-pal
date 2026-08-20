@@ -107,7 +107,7 @@ function navigateToChain(
     return chain;
   }
 
-  if (segment.index >= parentDevice.getChildren("chains").length) {
+  if (segment.index >= parentDevice.getChildCount("chains")) {
     autoCreateChains(parentDevice, segment.index, fullPath);
   }
 
@@ -138,7 +138,7 @@ function autoCreateChains(
   }
 
   // Limit how many chains can be auto-created
-  const chainsToCreate = targetIndex + 1 - device.getChildren("chains").length;
+  const chainsToCreate = targetIndex + 1 - device.getChildCount("chains");
 
   if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {
     throw new Error(

@@ -144,7 +144,7 @@ export function deviceHasInstrument(device: LiveAPI): boolean {
     return true;
   }
 
-  return device
-    .getChildren("chains")
-    .some((chain) => chain.getChildren("devices").some(deviceHasInstrument));
+  return device.someChild("chains", (chain) =>
+    chain.someChild("devices", deviceHasInstrument),
+  );
 }

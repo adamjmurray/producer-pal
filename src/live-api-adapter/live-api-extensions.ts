@@ -258,6 +258,55 @@ if (typeof LiveAPI !== "undefined") {
     return this.getChildIds(name).map((id) => buildOrReuse(id));
   };
 
+  /**
+   * Count a collection without building it. Use this instead of
+   * `getChildren(name).length`, which builds every child to read one number.
+   * @param name - Collection name to query
+   * @returns Number of children
+   */
+  LiveAPI.prototype.getChildCount = function (
+    this: LiveAPI,
+    name: string,
+  ): number {
+    return this.getChildIds(name).length;
+  };
+
+  /**
+   * Get one child of a collection, building only that one.
+   * @param name - Collection name to query
+   * @param index - Child index
+   * @returns The child, or null when the index is out of range
+   */
+  LiveAPI.prototype.getChildAt = function (
+    this: LiveAPI,
+    name: string,
+    index: number,
+  ): LiveAPI | null {
+    const id = this.getChildIds(name)[index];
+
+    return id == null ? null : buildOrReuse(id);
+  };
+
+  /**
+   * Whether any child passes a test, building children one at a time and
+   * stopping at the first pass. `getChildren(name).some(...)` builds the whole
+   * collection first, however early the answer is known.
+   * @param name - Collection name to query
+   * @param predicate - Test run against each child in order
+   * @returns True as soon as a child passes
+   */
+  LiveAPI.prototype.someChild = function (
+    this: LiveAPI,
+    name: string,
+    predicate: (child: LiveAPI) => boolean,
+  ): boolean {
+    for (const id of this.getChildIds(name)) {
+      if (predicate(buildOrReuse(id))) return true;
+    }
+
+    return false;
+  };
+
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {
     const colorValue = this.getProperty("color") as number | undefined;
     if (colorValue == null) {

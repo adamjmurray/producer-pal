@@ -36,10 +36,9 @@ function getChildAtIndex(
   childType: string,
   index: number,
 ): LiveAPI | null {
-  if (Number.isNaN(index)) return null;
-  const c = parent.getChildren(childType);
+  if (Number.isNaN(index) || index < 0) return null;
 
-  return index >= 0 && index < c.length ? (c[index] ?? null) : null;
+  return parent.getChildAt(childType, index);
 }
 
 /**

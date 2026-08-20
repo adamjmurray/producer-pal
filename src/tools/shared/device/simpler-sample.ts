@@ -129,7 +129,7 @@ export function setSimplerGain(
     return;
   }
 
-  const sample = device.getChildren("sample")[0];
+  const sample = device.getChildAt("sample", 0);
 
   if (sample?.getProperty("file_path") == null) {
     console.warn(`${toolName}: 'gainDb' requires a loaded sample`);
