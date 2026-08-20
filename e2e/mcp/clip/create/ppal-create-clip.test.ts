@@ -15,8 +15,9 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
-  getToolNotices,
+  getToolWarnings,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
@@ -186,13 +187,12 @@ describe("ppal-create-clip", () => {
       name: "ppal-create-clip",
       arguments: { trackIndex: emptyMidiTrack, sceneIndex: 8, notes: "C3 1|1" },
     });
-    const clip = parseToolResult<CreateClipResult>(result);
+    const { data: clip } =
+      parseToolResultWithWarnings<CreateClipResult>(result);
 
     expect(clip.id).toBeDefined();
     expect(clip.path).toBe(`t${emptyMidiTrack}/s8`);
-    // The nudge rides the framework's "Warning:" channel, not a tool handler's
-    // "WARNING:" one, so it reads back as a notice.
-    expect(getToolNotices(result)).toContainEqual(
+    expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('the parameter is "path"'),
     );
   });
@@ -375,7 +375,7 @@ describe("ppal-create-clip audio warping", () => {
   it("lands an unwarped clip whose region is the sample, not the raw seconds", async () => {
     const song = await readSongTiming(ctx.client!);
     const { created, clip } = await createAndRead(ctx.client!, {
-      slot: `${AUDIO_WARP_TRACK}/6`,
+      path: `t${AUDIO_WARP_TRACK}/s6`,
       name: "unwarped one shot",
       warping: false,
     });
@@ -395,7 +395,7 @@ describe("ppal-create-clip audio warping", () => {
     // arrangementLength comes from Live's end_time - start_time, computed
     // without reference to the marker properties. The two must match.
     const { clip } = await createAndRead(ctx.client!, {
-      trackIndex: AUDIO_WARP_TRACK,
+      path: `t${AUDIO_WARP_TRACK}`,
       arrangementStart: "33|1",
       name: "unwarped arrangement",
       warping: false,
@@ -409,7 +409,7 @@ describe("ppal-create-clip audio warping", () => {
   it("lands a warped clip when warping is requested", async () => {
     const song = await readSongTiming(ctx.client!);
     const { created, clip } = await createAndRead(ctx.client!, {
-      slot: `${AUDIO_WARP_TRACK}/7`,
+      path: `t${AUDIO_WARP_TRACK}/s7`,
       name: "warped",
       warping: true,
     });

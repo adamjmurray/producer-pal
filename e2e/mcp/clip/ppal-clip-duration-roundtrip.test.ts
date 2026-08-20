@@ -53,7 +53,7 @@ async function readClipTiming(
  * @returns The new clip's id
  */
 function createLoopingClip(length: string): Promise<string> {
-  return createClipInSlot(ctx, `${emptyMidiTrack}/0`, {
+  return createClipInSlot(ctx, `t${emptyMidiTrack}/s0`, {
     notes: "C3 1|1",
     looping: true,
     length,

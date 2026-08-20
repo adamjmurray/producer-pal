@@ -110,7 +110,7 @@ async function halvedClip(
   sceneIndex: number,
 ): Promise<string> {
   const clipId = await create(client, {
-    slot: `${kind === "midi" ? MIDI_TRACK : AUDIO_TRACK}/${sceneIndex}`,
+    path: `t${kind === "midi" ? MIDI_TRACK : AUDIO_TRACK}/s${sceneIndex}`,
     name: `loop toggle ${kind}`,
     ...(kind === "midi"
       ? { length: WHOLE, notes: "C3 1|1 E3 1|3" }
@@ -211,7 +211,7 @@ describe("ppal-update-clip loop toggle", () => {
     // region that survives — and it is what read-clip was already reporting as
     // `start`/`length`.
     const clipId = await create(ctx.client!, {
-      slot: `${MIDI_TRACK}/6`,
+      path: `t${MIDI_TRACK}/s6`,
       name: "offset loop",
       length: "2bar",
       notes: "C3 1|1 E3 2|1",
@@ -239,7 +239,7 @@ describe("ppal-update-clip loop toggle", () => {
 
   it("keeps the region of an arrangement clip", async () => {
     const clipId = await create(ctx.client!, {
-      trackIndex: AUDIO_TRACK,
+      path: `t${AUDIO_TRACK}`,
       arrangementStart: "97|1",
       sampleFile: DRUM_LOOP_FILE,
       name: "loop toggle arrangement",
@@ -270,7 +270,7 @@ describe("ppal-update-clip loop toggle", () => {
     // crosses a unit switch on its way into the loop brace.
     const clipId = await create(ctx.client!, {
       sampleFile: DRUM_LOOP_FILE,
-      slot: `${AUDIO_TRACK}/3`,
+      path: `t${AUDIO_TRACK}/s3`,
       name: "loop toggle unwarped",
       warping: false,
     });
@@ -299,7 +299,7 @@ describe("ppal-update-clip loop toggle", () => {
     // those reset markers.
     const clipId = await create(ctx.client!, {
       sampleFile: DRUM_LOOP_FILE,
-      slot: `${AUDIO_TRACK}/4`,
+      path: `t${AUDIO_TRACK}/s4`,
       name: "loop toggle veto",
       warping: true,
     });

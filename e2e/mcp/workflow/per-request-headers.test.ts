@@ -343,7 +343,7 @@ describe("x-producer-pal-notation", () => {
     const created = await restCallTool<CreateClipResult>(
       "ppal-create-clip",
       {
-        slot: `${EMPTY_MIDI_TRACK}/1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "melody: D F A",
         length: "1bar",
       },

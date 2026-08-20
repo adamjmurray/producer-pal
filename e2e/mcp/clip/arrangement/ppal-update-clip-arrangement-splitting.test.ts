@@ -32,7 +32,6 @@ import {
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
-  getToolNotices,
   getToolWarnings,
   parseToolResult,
   type ReadClipResult,
@@ -151,7 +150,8 @@ describe("Out-of-bounds split points", () => {
     // 10|1 should be filtered out, leaving only 1|2 → 2 segments
     expect(resultClips.length).toBe(2);
     expect(trackType).toBe("midi");
-    expect(warnings).toHaveLength(0);
+    // A cut happened, so the dropped position is the part that has to be said.
+    expect(warnings.join("\n")).toContain("cut nothing at");
 
     assertContiguousClips(resultClips);
     assertSpanPreserved(initialClips, resultClips);
@@ -396,8 +396,7 @@ describe("Behavioral splitting tests", () => {
         arguments: { ids: clipId, split: "3|1" },
       });
 
-      // The framework's deprecation channel, not the handler's WARNING one.
-      expect(getToolNotices(result).join("\n")).toContain(
+      expect(getToolWarnings(result).join("\n")).toContain(
         'param "split" is deprecated',
       );
 
@@ -474,7 +473,7 @@ describe("Behavioral splitting tests", () => {
           toSongPositions(`${startBar}|1`, split),
         );
 
-        expect(getToolWarnings(result)).toHaveLength(0);
+        expect(getToolWarnings(result).join("\n")).toContain("cut nothing at");
 
         await sleep(200);
         const resultClips = await clipsInSpan(startBar, 2);

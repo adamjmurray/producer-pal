@@ -147,23 +147,6 @@ export function getToolWarnings(result: unknown): string[] {
 }
 
 /**
- * Extract notices from a tool result — the "Warning: " channel the tool
- * framework itself writes to (deprecated params, ignored arguments), as opposed
- * to the "WARNING: " channel a tool handler writes to.
- */
-export function getToolNotices(result: unknown): string[] {
-  const typed = result as {
-    content?: Array<{ text?: string; type?: string }>;
-  } | null;
-
-  if (!typed?.content) return [];
-
-  return typed.content
-    .filter((item) => item.type === "text" && item.text?.startsWith("Warning:"))
-    .map((item) => item.text ?? "");
-}
-
-/**
  * Result from parsing a tool response, including any warnings.
  */
 export interface ToolResultWithWarnings<T> {

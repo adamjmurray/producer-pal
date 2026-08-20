@@ -43,7 +43,7 @@ export async function createMidiClip(
   const result = await ctx.client!.callTool({
     name: TOOL_CREATE_CLIP,
     arguments: {
-      slot: `${emptyMidiTrack}/${sceneIndex}`,
+      path: `t${emptyMidiTrack}/s${sceneIndex}`,
       notes,
       length: "2bar",
     },
@@ -56,23 +56,23 @@ export async function createMidiClip(
 }
 
 /**
- * Creates a session clip in `slot` with arbitrary create-clip arguments, for
+ * Creates a session clip at `path` with arbitrary create-clip arguments, for
  * suites that vary looping/length/notes per case rather than taking
  * {@link createMidiClip}'s fixed 2-bar shape.
  * @param ctx - MCP test context with client
- * @param slot - Session slot (trackIndex/sceneIndex)
- * @param args - Create-clip arguments beyond the slot (notes, length, looping)
+ * @param path - Session slot path (e.g. "t8/s0")
+ * @param args - Create-clip arguments beyond the path (notes, length, looping)
  * @returns Clip ID
  */
 export async function createClipInSlot(
   ctx: { client: { callTool: CallToolFn } | null },
-  slot: string,
+  path: string,
   args: Record<string, unknown>,
 ): Promise<string> {
   const clip = parseToolResult<CreateClipResult>(
     await ctx.client!.callTool({
       name: TOOL_CREATE_CLIP,
-      arguments: { slot, ...args },
+      arguments: { path, ...args },
     }),
   );
 
@@ -98,7 +98,7 @@ export async function createArrangementClip(
   const result = await ctx.client!.callTool({
     name: TOOL_CREATE_CLIP,
     arguments: {
-      trackIndex: emptyMidiTrack,
+      path: `t${emptyMidiTrack}`,
       arrangementStart,
       notes,
       length,
@@ -269,7 +269,7 @@ export function setupClipTransformTest(): ReturnType<
  * inside the test body is what actually takes effect for the read-back). Shared
  * by the triplet round-trip suites (MIDI JSON ratios and Stark triplets).
  * @param ctx - MCP test context with client
- * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param path - Session slot path (e.g. "t8/s0")
  * @param notes - Notation string for the clip's notes
  * @param notation - Read-back notation mode to configure the server with
  * @param interpret - Re-interprets the read-back notation string into events
@@ -277,7 +277,7 @@ export function setupClipTransformTest(): ReturnType<
  */
 export async function createAndReadback(
   ctx: { client: { callTool: CallToolFn } | null },
-  slot: string,
+  path: string,
   notes: string,
   notation: Notation,
   interpret: (notation: string) => NoteEvent[],
@@ -286,7 +286,7 @@ export async function createAndReadback(
 
   const readback = await readClipNotes(
     ctx,
-    await createClipInSlot(ctx, slot, { notes }),
+    await createClipInSlot(ctx, path, { notes }),
   );
 
   return { notation: readback, events: interpret(readback) };

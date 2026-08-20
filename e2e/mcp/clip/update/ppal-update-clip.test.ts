@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
-  getToolNotices,
+  getToolWarnings,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -47,7 +47,7 @@ const readNotes = (clipId: string): Promise<string> =>
  * @returns The new clip's id
  */
 function createOffGridClip(sceneIndex: number, notes: string): Promise<string> {
-  return createClipInSlot(ctx, `${emptyMidiTrack}/${sceneIndex}`, {
+  return createClipInSlot(ctx, `t${emptyMidiTrack}/s${sceneIndex}`, {
     notes,
     length: "1bar",
   });
@@ -496,10 +496,10 @@ describe("ppal-update-clip", () => {
       arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/7` },
     });
 
-    expect(parseToolResult<{ path: string }>(result).path).toBe(
-      `t${emptyMidiTrack}/s7`,
-    );
-    expect(getToolNotices(result)).toContainEqual(
+    expect(
+      parseToolResultWithWarnings<{ path: string }>(result).data.path,
+    ).toBe(`t${emptyMidiTrack}/s7`);
+    expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "toSlot" is deprecated'),
     );
   });

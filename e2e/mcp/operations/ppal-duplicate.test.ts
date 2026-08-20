@@ -14,8 +14,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
-  getToolNotices,
+  getToolWarnings,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
@@ -407,12 +408,12 @@ describe("ppal-duplicate", () => {
 
     // The copy still lands where an old caller asked for it, and the result
     // reports it in the spelling that replaced the param...
-    expect(parseToolResult<DuplicateClipResult>(result).path).toBe(
-      `t${emptyMidiTrack}/s7`,
-    );
+    expect(
+      parseToolResultWithWarnings<DuplicateClipResult>(result).data.path,
+    ).toBe(`t${emptyMidiTrack}/s7`);
 
     // ...and the model is told to stop using the param.
-    expect(getToolNotices(result)).toContainEqual(
+    expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "toSlot" is deprecated'),
     );
   });

@@ -63,7 +63,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     // it tiles the MIDI clip twice. Measure the loop by Clip.length instead and
     // the scene comes out one bar, fitting the MIDI clip once.
     await call("ppal-create-clip", {
-      slot: `${MIDI_TRACK}/${SCENE}`,
+      path: `t${MIDI_TRACK}/s${SCENE}`,
       notes: "C3 1|1",
       length: "1bar",
     });

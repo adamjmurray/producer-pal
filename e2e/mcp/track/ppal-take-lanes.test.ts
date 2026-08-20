@@ -27,7 +27,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
-  getToolNotices,
+  getToolWarnings,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -168,7 +168,7 @@ describe("take lanes", () => {
       parseToolResultWithWarnings<CreateClipResult>(result);
 
     expect(clip.path).toBe(`t${MIDI_TRACK}/l1`);
-    expect(getToolNotices(result)).toContainEqual(
+    expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "takeLane" is deprecated'),
     );
   });
