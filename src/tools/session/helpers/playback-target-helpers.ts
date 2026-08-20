@@ -159,6 +159,16 @@ export function resolveClipSlotPositions(
     skipInvalid: true,
   });
 
+  // Skipping a bad id among good ones still leaves a call to make. Skipping all
+  // of them leaves none, and an empty list reads downstream as "act on these
+  // zero clips" — so the tool fired nothing and reported playing: true. Each id
+  // already warned why it was skipped; this says the call has no target left.
+  if (clips.length === 0) {
+    throw new Error(
+      `playback failed: ids "${ids}" named no clip for action "${action}"`,
+    );
+  }
+
   return clips.map((clip) => {
     const { trackIndex, sceneIndex } = clip;
 
