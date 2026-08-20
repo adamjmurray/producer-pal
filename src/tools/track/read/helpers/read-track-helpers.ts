@@ -52,6 +52,7 @@ interface MixerResult {
  * Read all session clips from a track
  * @param track - Track object
  * @param trackIndex - Track index
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Array of clip objects (only clips that exist)
@@ -59,10 +60,11 @@ interface MixerResult {
 export function readSessionClips(
   track: LiveAPI,
   trackIndex: number | null,
+  isDrumMode: () => boolean,
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+  const drumMode = isDrumMode();
 
   return track
     .getChildIds("clip_slots")
@@ -109,16 +111,18 @@ export function countSessionClips(
 /**
  * Read all arrangement clips from a track
  * @param track - Track object
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Array of clip objects (only clips that exist)
  */
 export function readArrangementClips(
   track: LiveAPI,
+  isDrumMode: () => boolean,
   include?: string[],
   notation?: Notation,
 ): ReadClipResult[] {
-  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+  const drumMode = isDrumMode();
 
   return track
     .getChildIds("arrangement_clips")
@@ -149,6 +153,7 @@ export function countArrangementClips(track: LiveAPI): number {
  * and the main lane is not included in the track's take_lanes collection.
  * @param track - Track object
  * @param trackIndex - Track index, for the lane paths
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested clip reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Array of take lanes, each with its name and arrangement clips
@@ -156,10 +161,11 @@ export function countArrangementClips(track: LiveAPI): number {
 export function readTakeLanes(
   track: LiveAPI,
   trackIndex: number | null,
+  isDrumMode: () => boolean,
   include?: string[],
   notation?: Notation,
 ): ReadTakeLaneResult[] {
-  const drumMode = clipReadsWantNotes(include) && isDrumRackForTrack(track);
+  const drumMode = isDrumMode();
 
   return track.getChildren("take_lanes").map((lane, i) => {
     const clips = lane
@@ -469,4 +475,26 @@ function readPan(param: LiveAPI): unknown {
  */
 function clipReadsWantNotes(include?: string[]): boolean {
   return parseIncludeArray(include, READ_CLIP_DEFAULTS).includeClipNotes;
+}
+
+/**
+ * Drum-rack detection for one track read, computed at most once and only if
+ * something asks. `isDrumRackForTrack` walks the track's whole device tree, and
+ * a track read can need the answer three times (session clips, arrangement
+ * clips, take lanes) — so the three shared one call instead of walking three
+ * times. Still lazy: a group or return track reads no clips at all, and must
+ * not pay for a walk nothing consumes.
+ *
+ * @param track - The track being read
+ * @param include - The include array threaded to the nested clip reads
+ * @returns A getter for whether nested clip reads should use drum mode
+ */
+export function drumModeForTrack(
+  track: LiveAPI,
+  include?: string[],
+): () => boolean {
+  let answer: boolean | null = null;
+
+  return () =>
+    (answer ??= clipReadsWantNotes(include) && isDrumRackForTrack(track));
 }

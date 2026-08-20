@@ -31,6 +31,7 @@ import {
   countSessionClips,
   getInstrumentName,
   handleNonExistentTrack,
+  drumModeForTrack,
   readArrangementClips,
   readMixerProperties,
   readSessionClips,
@@ -140,6 +141,7 @@ function computeTrackType(isMidiTrack: boolean, category: string): string {
  * @param category - Track category (regular, return, or master)
  * @param trackIndex - Track index
  * @param includeSessionClips - Whether to include full session clip details
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Object with session clips data
@@ -149,6 +151,7 @@ function processSessionClips(
   category: string,
   trackIndex: number | null,
   includeSessionClips: boolean,
+  isDrumMode: () => boolean,
   include: string[] | undefined,
   notation: Notation | undefined,
 ): SessionClipsResult {
@@ -157,7 +160,15 @@ function processSessionClips(
   }
 
   return includeSessionClips
-    ? { sessionClips: readSessionClips(track, trackIndex, include, notation) }
+    ? {
+        sessionClips: readSessionClips(
+          track,
+          trackIndex,
+          isDrumMode,
+          include,
+          notation,
+        ),
+      }
     : { sessionClipCount: countSessionClips(track, trackIndex) };
 }
 
@@ -168,6 +179,7 @@ function processSessionClips(
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full arrangement clip details
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Object with arrangementClips array or arrangementClipCount
@@ -177,6 +189,7 @@ function processArrangementClips(
   isGroup: boolean,
   category: string,
   includeArrangementClips: boolean,
+  isDrumMode: () => boolean,
   include: string[] | undefined,
   notation: Notation | undefined,
 ): ArrangementClipsResult {
@@ -187,7 +200,14 @@ function processArrangementClips(
   }
 
   return includeArrangementClips
-    ? { arrangementClips: readArrangementClips(track, include, notation) }
+    ? {
+        arrangementClips: readArrangementClips(
+          track,
+          isDrumMode,
+          include,
+          notation,
+        ),
+      }
     : { arrangementClipCount: countArrangementClips(track) };
 }
 
@@ -200,6 +220,7 @@ function processArrangementClips(
  * @param isGroup - Whether the track is a group
  * @param category - Track category (regular, return, or master)
  * @param includeArrangementClips - Whether to include full take lane clip details
+ * @param isDrumMode - Whether nested clip reads use drum mode (see drumModeForTrack)
  * @param include - Include array for nested reads
  * @param notation - Active notation for nested clip note formatting
  * @returns Object with takeLanes array, takeLaneCount, or empty
@@ -210,6 +231,7 @@ function processTakeLanes(
   isGroup: boolean,
   category: string,
   includeArrangementClips: boolean,
+  isDrumMode: () => boolean,
   include: string[] | undefined,
   notation: Notation | undefined,
 ): TakeLanesResult {
@@ -225,7 +247,15 @@ function processTakeLanes(
   }
 
   return includeArrangementClips
-    ? { takeLanes: readTakeLanes(track, trackIndex, include, notation) }
+    ? {
+        takeLanes: readTakeLanes(
+          track,
+          trackIndex,
+          isDrumMode,
+          include,
+          notation,
+        ),
+      }
     : { takeLaneCount: count };
 }
 
@@ -324,6 +354,9 @@ export function readTrackGeneric({
 
   addCategoryIndex(result, category, trackIndex);
 
+  // One drum-rack walk for all three clip reads below (see drumModeForTrack).
+  const isDrumMode = drumModeForTrack(track, include);
+
   // Session clips
   Object.assign(
     result,
@@ -332,6 +365,7 @@ export function readTrackGeneric({
       category,
       trackIndex,
       includeSessionClips,
+      isDrumMode,
       include,
       notation,
     ),
@@ -345,6 +379,7 @@ export function readTrackGeneric({
       isGroup,
       category,
       includeArrangementClips,
+      isDrumMode,
       include,
       notation,
     ),
@@ -359,6 +394,7 @@ export function readTrackGeneric({
       isGroup,
       category,
       includeArrangementClips,
+      isDrumMode,
       include,
       notation,
     ),
