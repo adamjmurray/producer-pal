@@ -13,9 +13,12 @@
  * against shapes a real Set produces rather than shapes a hand-written mock
  * happens to cover.
  *
- * Regenerate against a running Live with the Set open:
+ * Regenerate against a running Live with the Set open. Keep all three roots:
+ * tools resolve this_device and live_app directly, and a live_set-only walk
+ * leaves them unresolvable.
  *   node scripts/live-api/dump-live-set/dump-live-set.ts \
- *     src/test/fixtures/live-set-dump.json --gzip --max-objects=200000
+ *     src/test/fixtures/live-set-dump.json --gzip --max-objects=200000 \
+ *     --root=live_set --root=this_device --root=live_app
  */
 
 import { readFileSync } from "node:fs";

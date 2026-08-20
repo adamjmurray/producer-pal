@@ -42,6 +42,17 @@ describe("Live Set dump fixture", () => {
     expect(deepest.match(/ chains \d+/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
+  // The roots are easy to drop when regenerating, and the loss is silent: the
+  // tools would resolve nothing for targets they reach for on every call.
+  it("resolves the roots that are not under live_set", () => {
+    const dump = loadLiveSetDump();
+
+    expect(dump.aliases.this_device).toMatch(
+      /^live_set tracks \d+ devices \d+$/,
+    );
+    expect(dump.objects.live_app?.type).toBe("Application");
+  });
+
   it("names no absolute filesystem path", () => {
     const dump = loadLiveSetDump();
 

@@ -309,8 +309,13 @@ node scripts/live-api/dump-live-set/dump-live-set.ts dev/scratch.json --skip=par
 
 # regenerate the committed fixture
 node scripts/live-api/dump-live-set/dump-live-set.ts \
-  src/test/fixtures/live-set-dump.json --gzip --max-objects=200000
+  src/test/fixtures/live-set-dump.json --gzip --max-objects=200000 \
+  --root=live_set --root=this_device --root=live_app
 ```
+
+Keep all three roots. Tools resolve `this_device` and `live_app` directly, and a
+`live_set`-only walk records neither — `this_device` alone is resolved 20 times
+by one `read-live-set` call. They cost 2 objects.
 
 `--max-objects` defaults to 20000, which a Set with a few drum racks blows
 through — check `meta.truncated` rather than trusting a dump that stopped early.
