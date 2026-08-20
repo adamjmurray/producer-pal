@@ -212,6 +212,12 @@ export interface UseSettingsReturn extends VoiceModeSettingsFields {
    * conversation) and a modal-local buffer persisted on Save. */
   subagentPresetId: string | null;
   setSubagentPresetId: (id: string | null) => void;
+  /** The stored counterpart of `subagentPresetId`, mirrored in state so the
+   * unsaved-changes check has something reactive to compare the buffer against. */
+  savedSubagentPresetId: string | null;
+  /** Drop a just-deleted preset from the Subagent-preset pointer — the buffer,
+   * the saved copy, or both, depending on which named it. */
+  forgetDeletedPreset: (deletedId: string) => void;
   /** Tool steps one turn may spend before the run stops and hands back control.
    * Subagent orchestrators and workers run on the same number (see
    * step-budget.ts). A modal-local buffer persisted on Save. */

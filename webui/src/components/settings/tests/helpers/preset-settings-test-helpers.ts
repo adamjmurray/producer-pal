@@ -24,6 +24,7 @@ export function makePresetSettings(
     applyPreset: vi.fn(),
     subagentPresetId: null,
     setSubagentPresetId: vi.fn(),
+    forgetDeletedPreset: vi.fn(),
     settingsLoaded: true,
     getProviderConnection: vi.fn(() => ({ apiKey: "sk-test" })),
     ...over,

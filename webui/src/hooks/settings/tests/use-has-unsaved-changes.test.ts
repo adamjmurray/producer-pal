@@ -37,6 +37,8 @@ function makeSettings(
     voiceVolume: 1,
     voiceLanguage: "en",
     turnDetection: DEFAULT_TURN_DETECTION,
+    subagentPresetId: null,
+    savedSubagentPresetId: null,
     liveApiEnabledDirty: false,
     notationDirty: false,
     settingsLoaded: true,
@@ -168,6 +170,51 @@ describe("useHasUnsavedChanges", () => {
     const { result, update } = renderWithOpenModal(makeSettings());
 
     update(makeSettings({ subagentPresetId: "cheap-worker" }));
+    expect(result.current).toBe(true);
+  });
+
+  it("detects a subagent preset change away from a saved one", () => {
+    const saved = { subagentPresetId: "cheap", savedSubagentPresetId: "cheap" };
+    const { result, update } = renderWithOpenModal(makeSettings(saved));
+
+    expect(result.current).toBe(false);
+
+    update(makeSettings({ ...saved, subagentPresetId: "big" }));
+    expect(result.current).toBe(true);
+  });
+
+  it("ignores a subagent preset clear that a preset delete already saved", () => {
+    // Deleting the preset the Subagent preset names saves the clear itself
+    // (nothing is left to save), so the modal must stay closable.
+    const { result, update } = renderWithOpenModal(
+      makeSettings({
+        subagentPresetId: "doomed",
+        savedSubagentPresetId: "doomed",
+      }),
+    );
+
+    update(
+      makeSettings({ subagentPresetId: null, savedSubagentPresetId: null }),
+    );
+    expect(result.current).toBe(false);
+  });
+
+  it("still flags the buffer when a delete cleared only the saved copy", () => {
+    // The buffer names a preset that survived, so saving would write it — an
+    // unsaved change, even though the delete cleared the saved copy.
+    const { result, update } = renderWithOpenModal(
+      makeSettings({
+        subagentPresetId: "survivor",
+        savedSubagentPresetId: "doomed",
+      }),
+    );
+
+    update(
+      makeSettings({
+        subagentPresetId: "survivor",
+        savedSubagentPresetId: null,
+      }),
+    );
     expect(result.current).toBe(true);
   });
 

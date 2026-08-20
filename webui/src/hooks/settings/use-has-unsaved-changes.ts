@@ -15,10 +15,11 @@ export interface AppearanceSettings {
 
 /**
  * Build a serializable snapshot string from settings and appearance values.
- * liveApiEnabled and notation are intentionally omitted — they can change out
- * from under the modal (device Setup pane, focus refetch), so comparing against
- * a snapshot taken at open time gives false positives. Their dirty flags track
- * user intent instead.
+ * liveApiEnabled, notation, and subagentPresetId are intentionally omitted —
+ * they can change out from under the modal (device Setup pane, focus refetch,
+ * deleting the preset the subagent points at), so comparing against a snapshot
+ * taken at open time gives false positives. The first two track user intent
+ * with dirty flags; subagentPresetId is compared against its saved value.
  * @param {UseSettingsReturn} s - Settings hook return value
  * @param {AppearanceSettings} a - Appearance settings
  * @returns {string} JSON snapshot for comparison
@@ -32,7 +33,6 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     thinking: s.thinking,
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
-    subagentPresetId: s.subagentPresetId,
     maxToolSteps: s.maxToolSteps,
     realtimeVoice: s.realtimeVoice,
     voiceSpeed: s.voiceSpeed,
@@ -82,7 +82,23 @@ export function useHasUnsavedChanges(
 
   return (
     serialize(settings, appearance) !== snapshot ||
+    subagentPresetChanged(settings) ||
     settings.liveApiEnabledDirty ||
     settings.notationDirty
   );
+}
+
+/**
+ * Whether the buffered Subagent preset differs from the saved one.
+ *
+ * Compared against the saved value rather than the open-time snapshot because
+ * deleting the preset the Subagent preset points at clears the buffer AND saves
+ * on the spot (forgetDeletedPreset in useSettings). A snapshot still naming the
+ * deleted preset reads that already-saved change as an unsaved edit the user
+ * never made, and the modal then refuses to close.
+ * @param {UseSettingsReturn} s - Settings hook return value
+ * @returns {boolean} True if the buffered id differs from the saved one
+ */
+function subagentPresetChanged(s: UseSettingsReturn): boolean {
+  return s.subagentPresetId !== s.savedSubagentPresetId;
 }
