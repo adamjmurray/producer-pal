@@ -136,6 +136,14 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
 - **Exact dependency versions**: no `^`/`~`/ranges anywhere in package.json.
 
+- **The issue tracker is not durable storage** — assume any tracker (Linear,
+  GitHub issues) will be deleted someday, and that not every contributor can
+  read it. A ticket is a to-do, not a record. Anything worth keeping goes in the
+  repo: code comments for local reasoning, `dev/` docs for how a system works,
+  `dev/decisions/` ADRs for why a settled choice went that way, and user-facing
+  docs when it changes what users see. A commit or PR that only points at a
+  ticket has lost the information.
+
 - **No Linear ticket references anywhere in the repo** — this is a public repo
   with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
   commit message; explain the reasoning instead. `npm run check` scans both
