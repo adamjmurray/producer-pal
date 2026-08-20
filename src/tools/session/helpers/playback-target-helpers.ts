@@ -23,7 +23,7 @@ export interface SlotPosition {
 }
 
 export interface PlaybackTarget {
-  /** Scene named by a bare "s<scene>" path, for play-scene */
+  /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
   /** Session positions named by `path` or the deprecated `slots` */
   slotPositions: SlotPosition[] | null;
@@ -35,6 +35,7 @@ export interface PlaybackTargetParams {
   ids?: string;
   path?: string;
   slots?: string;
+  sceneIndex?: number;
 }
 
 /** The param a target came from, and its value, for shape errors */
@@ -45,6 +46,12 @@ interface PathSource {
 
 interface PathTarget extends Omit<PlaybackTarget, "ids"> {
   source: PathSource | null;
+}
+
+/** A scene one param named, and how it named it, for disagreement errors */
+interface SceneRef {
+  scene: number;
+  source: string;
 }
 
 /** The one targeting action that takes a scene. The others take clips. */
@@ -58,32 +65,43 @@ const TARGETING_ACTIONS = new Set([
 ]);
 
 /**
- * Resolve what the target params name: a scene ("s3") for play-scene, or
- * session positions ("t0/s1") for the clip actions. The deprecated `slots`
- * still names positions, and refusing both beats guessing which the caller
- * meant.
+ * Resolve what the target params name: one scene for play-scene, or session
+ * positions ("t0/s1") for the clip actions. play-scene settles on a single
+ * scene every param agrees on; the clip actions take their target from `ids`
+ * or a path, and refusing both beats guessing which the caller meant.
  * @param action - The playback action, which decides whether a target applies
  * @param params - The raw target params
- * @param params.ids - Comma-separated clip IDs
+ * @param params.ids - Comma-separated clip IDs, or scene IDs for play-scene
  * @param params.path - A scene, or comma-separated session positions
  * @param params.slots - Deprecated comma-separated trackIndex/sceneIndex positions
+ * @param params.sceneIndex - Scene index, an alternative to a "s<scene>" path
  * @returns What the params named, null where they named nothing
  */
 export function resolvePlaybackTarget(
   action: string,
-  { ids, path, slots }: PlaybackTargetParams,
+  { ids, path, slots, sceneIndex }: PlaybackTargetParams,
 ): PlaybackTarget {
   const namedIds = namedParam(ids, "ids");
 
   // Parsing these for an action that never reads them turns a leftover param
   // into a failed transport command: `stop` has to stop.
   if (!TARGETING_ACTIONS.has(action)) {
-    warnUnusedTarget(action, path, slots, namedIds);
+    warnUnusedTarget(action, { path, slots, ids: namedIds, sceneIndex });
 
     return { sceneIndex: null, slotPositions: null, ids: undefined };
   }
 
   const { source, ...target } = resolvePathTarget(path, slots);
+
+  if (action === PLAY_SCENE) {
+    assertScenePath(target.slotPositions, source);
+
+    return {
+      sceneIndex: resolveSceneTarget(target.sceneIndex, sceneIndex, namedIds),
+      slotPositions: null,
+      ids: undefined,
+    };
+  }
 
   // Both name what to act on, so refusing beats guessing which the caller meant.
   if (namedIds != null && source != null) {
@@ -92,7 +110,14 @@ export function resolvePlaybackTarget(
     );
   }
 
-  assertTargetShape(action, target, source);
+  assertClipPath(action, target.sceneIndex, source);
+
+  if (sceneIndex != null) {
+    console.warn(
+      `sceneIndex ignored: action "${action}" acts on session positions; ` +
+        `use action "${PLAY_SCENE}" for the whole scene`,
+    );
+  }
 
   return { ...target, ids: namedIds };
 }
@@ -207,72 +232,162 @@ function resolvePathTarget(
 }
 
 /**
- * Refuse a path whose shape is wrong for the action. Each handler reads only
- * its own kind of target, so without this a wrong-shaped path falls through to
- * a "you gave me nothing" error about the very param the caller did send.
- * @param action - The playback action
- * @param target - What the path named
- * @param target.sceneIndex - The scene named, or null
- * @param target.slotPositions - The session positions named, or null
- * @param source - The param that named it, or null when neither did
+ * Settle on the one scene to play. Every param that can name a scene gets a
+ * vote: `path`, `sceneIndex`, and each id in `ids`. Only one scene plays at a
+ * time, so params naming different scenes are refused rather than ranked —
+ * picking a winner would silently drop half of what the caller asked for.
+ * @param pathScene - The scene named by `path`, or null when it named none
+ * @param sceneIndex - The `sceneIndex` param
+ * @param ids - The normalized `ids` param
+ * @returns The scene to play, or null when nothing named one
  */
-function assertTargetShape(
-  action: string,
-  { sceneIndex, slotPositions }: Omit<PlaybackTarget, "ids">,
+function resolveSceneTarget(
+  pathScene: number | null,
+  sceneIndex: number | undefined,
+  ids: string | undefined,
+): number | null {
+  const refs: SceneRef[] = [];
+
+  if (pathScene != null) {
+    refs.push({ scene: pathScene, source: `path "s${pathScene}"` });
+  }
+
+  if (sceneIndex != null) {
+    refs.push({ scene: sceneIndex, source: `sceneIndex ${sceneIndex}` });
+  }
+
+  refs.push(...idSceneRefs(ids));
+
+  // Keep the first param to name each scene, so the error names one source per
+  // scene rather than repeating a scene the caller named two ways.
+  const distinct = new Map<number, string>();
+
+  for (const { scene, source } of refs) {
+    if (!distinct.has(scene)) distinct.set(scene, source);
+  }
+
+  if (distinct.size > 1) {
+    const named = [...distinct]
+      .map(([scene, source]) => `scene ${scene} from ${source}`)
+      .join(", ");
+
+    throw new Error(
+      `playback failed: action "${PLAY_SCENE}" plays one scene, but got ${named}`,
+    );
+  }
+
+  return refs[0]?.scene ?? null;
+}
+
+/**
+ * The scene each id names: a scene id names itself, and a session clip or clip
+ * slot id names the scene it sits in. An id naming no scene is warned and
+ * skipped, the way every other bad id in this tool is.
+ * @param ids - The normalized `ids` param
+ * @returns One ref per id that names a scene
+ */
+function idSceneRefs(ids: string | undefined): SceneRef[] {
+  if (ids == null) return [];
+
+  const refs: SceneRef[] = [];
+
+  for (const id of parseCommaSeparatedIds(ids)) {
+    const object = LiveAPI.from(id);
+
+    if (!object.exists()) {
+      console.warn(`playback: id "${id}" does not exist`);
+      continue;
+    }
+
+    // Arrangement clips and everything off the session grid land here. Say
+    // what would work, since "found Clip" alone reads as a contradiction to a
+    // caller who was asked for a clip id.
+    if (object.sceneIndex == null) {
+      console.warn(
+        `playback: id "${id}" is in no scene (found ${object.type}); ` +
+          `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
+      );
+      continue;
+    }
+
+    refs.push({ scene: object.sceneIndex, source: `ids "${id}"` });
+  }
+
+  return refs;
+}
+
+/**
+ * Refuse a path that names session positions when the action plays one scene.
+ * play-scene reads only the scene, so without this the path falls through to a
+ * "you gave me nothing" error about the very param the caller did send.
+ * @param slotPositions - The session positions the path named, or null
+ * @param source - The param that named them, or null when none did
+ */
+function assertScenePath(
+  slotPositions: SlotPosition[] | null,
   source: PathSource | null,
 ): void {
-  if (source == null) return;
+  if (source == null || slotPositions == null) return;
 
-  if (action === PLAY_SCENE && slotPositions != null) {
-    // Non-empty by construction: a path or slots naming nothing is reported as
-    // naming nothing, so it never reaches here with an empty list.
-    const { sceneIndex: scene } = slotPositions[0] as SlotPosition;
+  // Non-empty by construction: a path or slots naming nothing is reported as
+  // naming nothing, so it never reaches here with an empty list.
+  const { sceneIndex: scene } = slotPositions[0] as SlotPosition;
 
-    throw pathError(
-      source.label,
-      source.input,
-      `names a session position; action "${PLAY_SCENE}" takes one scene, ` +
-        `as path "s${scene}" or sceneIndex ${scene}`,
-    );
-  }
+  throw pathError(
+    source.label,
+    source.input,
+    `names a session position; action "${PLAY_SCENE}" takes one scene, ` +
+      `as path "s${scene}" or sceneIndex ${scene}`,
+  );
+}
 
-  if (action !== PLAY_SCENE && sceneIndex != null) {
-    const wholeScene =
-      action === "play-session-clips"
-        ? `, or use action "${PLAY_SCENE}" for the whole scene`
-        : "";
+/**
+ * Refuse a path that names a scene when the action acts on clips.
+ * @param action - The playback action
+ * @param sceneIndex - The scene the path named, or null
+ * @param source - The param that named it, or null when none did
+ */
+function assertClipPath(
+  action: string,
+  sceneIndex: number | null,
+  source: PathSource | null,
+): void {
+  if (source == null || sceneIndex == null) return;
 
-    throw pathError(
-      source.label,
-      source.input,
-      `names a scene; action "${action}" takes session positions ` +
-        `"t<track>/s<scene>" (e.g., "t0/s${sceneIndex}")${wholeScene}`,
-    );
-  }
+  const wholeScene =
+    action === "play-session-clips"
+      ? `, or use action "${PLAY_SCENE}" for the whole scene`
+      : "";
+
+  throw pathError(
+    source.label,
+    source.input,
+    `names a scene; action "${action}" takes session positions ` +
+      `"t<track>/s<scene>" (e.g., "t0/s${sceneIndex}")${wholeScene}`,
+  );
 }
 
 /**
  * Warns for target params on an action that has no target to apply them to.
  * @param action - The playback action
- * @param path - Raw path param
- * @param slots - Raw deprecated slots param
- * @param ids - Normalized ids param
+ * @param params - The target params, with `ids` already normalized
+ * @param params.path - Raw path param
+ * @param params.slots - Raw deprecated slots param
+ * @param params.ids - Normalized ids param
+ * @param params.sceneIndex - Raw sceneIndex param
  */
 function warnUnusedTarget(
   action: string,
-  path: string | undefined,
-  slots: string | undefined,
-  ids: string | undefined,
+  { path, slots, ids, sceneIndex }: PlaybackTargetParams,
 ): void {
   const sent = [
     namedParam(path, "path") != null ? "path" : null,
     namedHiddenPath(slots) != null ? "slots" : null,
     ids != null ? "ids" : null,
+    sceneIndex != null ? "sceneIndex" : null,
   ].filter((param) => param != null);
 
   if (sent.length === 0) return;
 
-  console.warn(
-    `${sent.join("/")} ignored: action "${action}" names no clips to act on`,
-  );
+  console.warn(`${sent.join("/")} ignored: action "${action}" takes no target`);
 }

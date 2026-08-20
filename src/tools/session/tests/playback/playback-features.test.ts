@@ -129,10 +129,13 @@ describe("playback path param", () => {
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
 
-  it("refuses a scene path and sceneIndex that disagree", () => {
+  it("refuses a scene path and sceneIndex that disagree, naming both", () => {
     expect(() =>
       playback({ action: "play-scene", path: "s3", sceneIndex: 1 }),
-    ).toThrow("playback failed: path and sceneIndex name different scenes");
+    ).toThrow(
+      'playback failed: action "play-scene" plays one scene, but got ' +
+        'scene 3 from path "s3", scene 1 from sceneIndex 1',
+    );
   });
 });
 

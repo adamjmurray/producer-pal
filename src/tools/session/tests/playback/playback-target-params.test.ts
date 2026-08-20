@@ -30,7 +30,7 @@ describe("playback target params on actions that have no target", () => {
     expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
     expect(result.playing).toBe(false);
     expect(warn).toHaveBeenCalledWith(
-      'slots ignored: action "stop" names no clips to act on',
+      'slots ignored: action "stop" takes no target',
     );
   });
 
@@ -53,7 +53,7 @@ describe("playback target params on actions that have no target", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
     expect(warn).toHaveBeenCalledWith(
-      'path/slots/ids ignored: action "stop-all-session-clips" names no clips to act on',
+      'path/slots/ids ignored: action "stop-all-session-clips" takes no target',
     );
   });
 
@@ -128,7 +128,7 @@ describe("playback slots that names no position", () => {
 
   it("refuses play-scene rather than crashing on the empty list", () => {
     expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
-      'playback failed: sceneIndex or path "s<scene>" is required',
+      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
     );
   });
 

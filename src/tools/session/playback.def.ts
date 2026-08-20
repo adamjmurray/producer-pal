@@ -60,7 +60,9 @@ stop: session and arrangement`,
     ids: z.coerce
       .string()
       .optional()
-      .describe("comma-separated ID(s) for clip operations"),
+      .describe(
+        "comma-separated clip ID(s); for play-scene, a scene ID (or a clip ID in that scene)",
+      ),
     path: z.coerce
       .string()
       .optional()

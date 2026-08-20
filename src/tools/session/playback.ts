@@ -105,22 +105,10 @@ export function playback(
   }
 
   const {
-    sceneIndex: scenePathIndex,
+    sceneIndex: sceneTarget,
     slotPositions,
     ids: namedIds,
-  } = resolvePlaybackTarget(action, { ids, path, slots });
-
-  // Only a disagreement is worth refusing. A model that names the same scene
-  // twice gets its scene, not an error about how it phrased the request.
-  if (
-    scenePathIndex != null &&
-    sceneIndex != null &&
-    scenePathIndex !== sceneIndex
-  ) {
-    throw new Error(
-      "playback failed: path and sceneIndex name different scenes; use path alone",
-    );
-  }
+  } = resolvePlaybackTarget(action, { ids, path, slots, sceneIndex });
 
   // Validate mutual exclusivity of time and locator parameters
   validateLocatorOrTime(startTime, startLocator, "startTime");
@@ -178,7 +166,7 @@ export function playback(
       startTime,
       startTimeBeats,
       useLocatorStart,
-      sceneIndex: scenePathIndex ?? sceneIndex,
+      sceneIndex: sceneTarget ?? undefined,
       ids: namedIds,
       slotPositions,
     },
