@@ -87,6 +87,23 @@ describe("readClip path param", () => {
     expect(readClip({ trackIndex: 1, sceneIndex: 1 }).name).toBe("Test Clip");
   });
 
+  // A slot that names nothing is not a second clip, so it can't shadow the
+  // fallback. It used to throw on the way to parsing it.
+  it("falls back to trackIndex/sceneIndex when slot names nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipProps: { name: "Test Clip" },
+    });
+
+    expect(readClip({ slot: ",", trackIndex: 1, sceneIndex: 1 }).name).toBe(
+      "Test Clip",
+    );
+    expect(warn).toHaveBeenCalledWith('slot "," names nothing');
+  });
+
   // Picking one and reading the other clip is the silent wrong-clip bug path
   // replaces — and the framework would then append "the value was honored"
   // about the one that wasn't.

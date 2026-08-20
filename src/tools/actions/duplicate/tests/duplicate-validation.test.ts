@@ -68,7 +68,7 @@ describe("duplicate - input validation", () => {
 });
 
 describe("duplicate - clip session validation", () => {
-  it("should throw an error when toSlot is empty for session clip", async () => {
+  it("should ask for toPath when toSlot names nothing", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -79,7 +79,7 @@ describe("duplicate - clip session validation", () => {
         id: "clip1",
         toSlot: ",",
       }),
-    ).rejects.toThrow("duplicate failed: toSlot is required for session clips");
+    ).rejects.toThrow("duplicate failed: clip requires toPath");
   });
 
   // Every other inapplicable param on this tool warns; these two used to be

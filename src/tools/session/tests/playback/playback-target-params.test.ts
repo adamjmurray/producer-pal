@@ -117,10 +117,59 @@ describe("playback ids that names no clip", () => {
       playback({ action: "play-session-clips", path: "s3", ids: "clip1" }),
     ).toThrow("playback failed: ids and path are mutually exclusive");
   });
+
+  // Bad ids are warned and skipped, which is right until every one is skipped:
+  // the empty list left over read as "act on these zero clips", so the tool
+  // fired nothing and reported playing: true.
+  it("refuses the action when every id is skipped", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+
+    expect(() =>
+      playback({ action: "play-session-clips", ids: "scene3" }),
+    ).toThrow(
+      'playback failed: ids "scene3" named no clip for action "play-session-clips"',
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'playback: id "scene3" is not a clip (found Scene)',
+    );
+  });
+
+  it("refuses stop-session-clips the same way", () => {
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+
+    expect(() =>
+      playback({ action: "stop-session-clips", ids: "scene3" }),
+    ).toThrow(
+      'playback failed: ids "scene3" named no clip for action "stop-session-clips"',
+    );
+  });
+
+  // Nothing warned on this one at all: the entries were dropped before any id
+  // was looked at, so the call reported a launch with no message of any kind.
+  it("refuses an ids that names no id", () => {
+    expect(() => playback({ action: "play-session-clips", ids: "," })).toThrow(
+      'playback failed: ids "," named no clip for action "play-session-clips"',
+    );
+  });
+
+  it("still fires the good ids when only some are skipped", () => {
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+      type: "Clip",
+    });
+
+    playback({ action: "play-session-clips", ids: "scene3,clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
 });
 
-// parseSlotList drops empty entries and returns none, and an empty list read as
-// a target is a call that acts on nothing while reporting success.
+// slots reads as unset now, so the call falls through to "you named no target"
+// instead of carrying an empty list that acts on nothing while reporting
+// success.
 describe("playback slots that names no position", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();

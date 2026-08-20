@@ -108,8 +108,8 @@ function targetFromParams({
   devicePath: rawDevicePath,
 }: PathParams): PathTarget {
   const path = namedParam(rawPath, "path");
-  const slot = namedHiddenPath(rawSlot);
-  const devicePath = namedHiddenPath(rawDevicePath);
+  const slot = namedHiddenPath(rawSlot, "slot");
+  const devicePath = namedHiddenPath(rawDevicePath, "devicePath");
 
   if (path == null) {
     return {

@@ -51,7 +51,7 @@ export function resolveClipDestinations(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot);
+  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // toPath replaces, so refuse instead of picking.
@@ -151,7 +151,7 @@ export function warnUnusedDestination(
   if (type === "clip") return;
 
   const toPath = namedParam(rawToPath, "toPath");
-  const toSlot = namedHiddenPath(rawToSlot);
+  const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
   if (type !== "device" && type !== "drum-pad" && toPath != null) {
     console.warn(
@@ -176,20 +176,18 @@ function legacySlotDestinations(
   toSlot: string,
   hasArrangementParams: boolean,
 ): ClipDestinations {
+  // namedHiddenPath already dropped a toSlot that names nothing, so this always
+  // gets at least one entry.
   const slots = parseSlotList(toSlot, "toSlot");
 
   // toSlot only ever named session slots, so it can't be the arrangement
   // destination arrangementStart wants. Drop the weaker of the two rather than
   // failing the call, the way toPath does for the same conflict.
-  if (hasArrangementParams && slots.length > 0) {
+  if (hasArrangementParams) {
     console.warn(
       "duplicate: arrangementStart/locator ignored — toSlot names a session position; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
-  }
-
-  if (slots.length === 0) {
-    throw new Error("duplicate failed: toSlot is required for session clips");
   }
 
   return { destination: "session", slots, arrangementTargets: [] };

@@ -74,7 +74,7 @@ export function resolveCreateClipDestinations(
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const path = namedParam(params.path, "path");
-  const slot = namedHiddenPath(params.slot ?? undefined);
+  const slot = namedHiddenPath(params.slot ?? undefined, "slot");
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // path replaces, so refuse instead of picking.

@@ -10,6 +10,7 @@ import {
   getCurrentLoopState,
   handlePlayArrangement,
   handlePlayScene,
+  resolveArrangementParams,
   resolveLoopEnd,
   resolveLoopStart,
   resolveStartTime,
@@ -110,10 +111,26 @@ export function playback(
     ids: namedIds,
   } = resolvePlaybackTarget(action, { ids, path, slots, sceneIndex });
 
+  // Dropped before anything reads them, so a session action can't write the
+  // arrangement. Everything below sees only what this action actually uses.
+  const timeline = resolveArrangementParams(action, {
+    startTime,
+    startLocator,
+    loop,
+    loopStart,
+    loopStartLocator,
+    loopEnd,
+    loopEndLocator,
+  });
+
   // Validate mutual exclusivity of time and locator parameters
-  validateLocatorOrTime(startTime, startLocator, "startTime");
-  validateLocatorOrTime(loopStart, loopStartLocator, "loopStart");
-  validateLocatorOrTime(loopEnd, loopEndLocator, "loopEnd");
+  validateLocatorOrTime(timeline.startTime, timeline.startLocator, "startTime");
+  validateLocatorOrTime(
+    timeline.loopStart,
+    timeline.loopStartLocator,
+    "loopStart",
+  );
+  validateLocatorOrTime(timeline.loopEnd, timeline.loopEndLocator, "loopEnd");
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -128,19 +145,19 @@ export function playback(
   // Resolve start time from bar|beat or locator
   const { startTimeBeats, useLocatorStart } = resolveStartTime(
     liveSet,
-    { startTime, startLocator },
+    timeline,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
 
-  if (loop != null) {
-    liveSet.set("loop", loop);
+  if (timeline.loop != null) {
+    liveSet.set("loop", timeline.loop);
   }
 
   // Resolve loop start from bar|beat or locator
   const loopStartBeats = resolveLoopStart(
     liveSet,
-    { loopStart, loopStartLocator },
+    timeline,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -148,7 +165,7 @@ export function playback(
   // Resolve loop end from bar|beat or locator
   resolveLoopEnd(
     liveSet,
-    { loopEnd, loopEndLocator },
+    timeline,
     loopStartBeats,
     songTimeSigNumerator,
     songTimeSigDenominator,
@@ -163,7 +180,7 @@ export function playback(
     action,
     liveSet,
     {
-      startTime,
+      startTime: timeline.startTime,
       startTimeBeats,
       useLocatorStart,
       sceneIndex: sceneTarget ?? undefined,
@@ -195,7 +212,7 @@ export function playback(
   return buildPlaybackResult({
     isPlaying,
     currentTime,
-    loop,
+    loop: timeline.loop,
     currentLoopStart: currentLoop.start,
     currentLoopEnd: currentLoop.end,
     liveSet,

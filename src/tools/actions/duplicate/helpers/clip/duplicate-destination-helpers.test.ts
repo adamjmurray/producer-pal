@@ -39,16 +39,31 @@ describe("resolveClipDestinations", () => {
       });
     });
 
-    it("throws when toSlot names no slot", () => {
+    // A toSlot that names nothing reads as unset, so the caller is told what to
+    // send — under the param they should be using, not the deprecated one.
+    it("reads a toSlot that names no slot as omitted, and says so", () => {
+      const warn = vi.spyOn(console, "warn");
+
       expect(() => resolveClipDestinations(undefined, ",", false)).toThrow(
-        "duplicate failed: toSlot is required for session clips",
+        "duplicate failed: clip requires toPath",
       );
+      expect(warn).toHaveBeenCalledWith('toSlot "," names nothing');
     });
 
     // z.coerce.string() turns a JSON null into "null" before we see it, so a
     // caller unsetting toSlot must not read as naming a second destination.
     it("reads a coerced null alongside a real toPath as omitted", () => {
       expect(resolveClipDestinations("t2/s1", "null", false)).toStrictEqual({
+        destination: "session",
+        slots: [{ trackIndex: 2, sceneIndex: 1 }],
+        arrangementTargets: [],
+      });
+    });
+
+    // The conflict check asks whether both params named a destination. A toSlot
+    // of "," named none, so honoring toPath is not picking between two.
+    it("honors toPath when toSlot names nothing", () => {
+      expect(resolveClipDestinations("t2/s1", ",", false)).toStrictEqual({
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
@@ -155,6 +170,20 @@ describe("resolveClipDestinations", () => {
           "arrangementStart/locator ignored — toSlot names a session position",
         ),
       );
+    });
+
+    // The mirror case. Nothing names a session slot, so arrangementStart is the
+    // only destination left and it carries the call — where this used to refuse
+    // the copy and ask for the deprecated param.
+    it("honors the arrangement position when toSlot names nothing", () => {
+      const warnSpy = vi.spyOn(console, "warn");
+
+      expect(resolveClipDestinations(undefined, ",", true)).toStrictEqual({
+        destination: "arrangement",
+        slots: [],
+        arrangementTargets: [],
+      });
+      expect(warnSpy).toHaveBeenCalledWith('toSlot "," names nothing');
     });
   });
 

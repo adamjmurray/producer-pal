@@ -38,6 +38,46 @@ interface ResolvedStartTime {
   useLocatorStart: boolean;
 }
 
+/** The params that address the arrangement timeline: the playhead and the loop. */
+export interface ArrangementParams
+  extends StartTimeParams, LoopStartParams, LoopEndParams {
+  loop?: boolean;
+}
+
+/** The actions that read the arrangement timeline. The rest work the session. */
+const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
+
+/**
+ * Drop the arrangement-timeline params on an action that doesn't use them.
+ *
+ * These are written to the Live Set before the action runs, so a session action
+ * used to apply them anyway: "play scene 3 from bar 5" fired the scene and moved
+ * the arrangement playhead, without a word. The scene had nothing to do with the
+ * arrangement, so the caller got a change to their Live Set they never asked for.
+ * @param action - The playback action, which decides whether they apply
+ * @param params - The timeline params as the caller sent them
+ * @returns The params, or none of them when the action works the session
+ */
+export function resolveArrangementParams(
+  action: string,
+  params: ArrangementParams,
+): ArrangementParams {
+  if (ARRANGEMENT_ACTIONS.has(action)) return params;
+
+  const sent = (Object.keys(params) as Array<keyof ArrangementParams>).filter(
+    (key) => params[key] != null,
+  );
+
+  if (sent.length > 0) {
+    console.warn(
+      `${sent.join("/")} ignored: action "${action}" does not change the ` +
+        `arrangement; use action "update-arrangement" for the playhead and loop`,
+    );
+  }
+
+  return {};
+}
+
 /**
  * Get the current loop state from liveSet
  * @param liveSet - The live_set LiveAPI object

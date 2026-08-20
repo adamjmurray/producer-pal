@@ -233,19 +233,20 @@ describe("transport", () => {
     );
   });
 
-  it("should log warning when clip doesn't exist for play-session-clips", () => {
+  // Skipping the only id leaves nothing to fire, so the call has no target.
+  // Reporting playing: true here claimed a launch that never happened.
+  it("refuses play-session-clips when no id names a clip", () => {
     mockNonExistentObjects();
 
-    const result = playback({
-      action: "play-session-clips",
-      ids: "nonexistent_clip",
-    });
-
+    expect(() =>
+      playback({ action: "play-session-clips", ids: "nonexistent_clip" }),
+    ).toThrow(
+      'playback failed: ids "nonexistent_clip" named no clip for action "play-session-clips"',
+    );
     expect(outlet).toHaveBeenCalledWith(
       1,
       'playback: id "nonexistent_clip" does not exist',
     );
-    expect(result).toBeDefined(); // Operation continues but with no clips played
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
@@ -361,19 +362,18 @@ describe("transport", () => {
     );
   });
 
-  it("should log warning when clip doesn't exist for stop-session-clips", () => {
+  it("refuses stop-session-clips when no id names a clip", () => {
     mockNonExistentObjects();
 
-    const result = playback({
-      action: "stop-session-clips",
-      ids: "nonexistent_clip",
-    });
-
+    expect(() =>
+      playback({ action: "stop-session-clips", ids: "nonexistent_clip" }),
+    ).toThrow(
+      'playback failed: ids "nonexistent_clip" named no clip for action "stop-session-clips"',
+    );
     expect(outlet).toHaveBeenCalledWith(
       1,
       'playback: id "nonexistent_clip" does not exist',
     );
-    expect(result).toBeDefined(); // Operation continues but with no clips stopped
   });
 
   it("should throw error when clip has no trackIndex for play-session-clips", () => {

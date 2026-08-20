@@ -373,9 +373,10 @@ describe("updateClip - Basic operations", () => {
   // The silent-no-op twin of duplicate's ",": update-clip warns rather than
   // throwing, but it must not stay quiet about a move that never happened.
   it.each([
-    // toPath is refused when the entries are split; toSlot once they're parsed.
+    // toPath is refused when its entries are split; toSlot reads as unset, so
+    // it never reaches a parser — a pairing check must not count it as sent.
     ["toPath", 'invalid toPath "," - it names nothing'],
-    ["toSlot", "toSlot names no destination"],
+    ["toSlot", 'toSlot "," names nothing'],
   ])(
     "should warn when %s was sent but names nothing",
     async (param, reason) => {
