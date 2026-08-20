@@ -409,6 +409,12 @@ mock is measuring the mock: a fixture missing a property the tools read makes a
 walk stop early and the count comes out low — green, and wrong in the flattering
 direction. Only the same call against real Live catches that.
 
+Missing _objects_ mislead the same way. A drum-pads budget test once read 49 on
+a fixture listing the 16 pads its kit filled, while real Live read 137 on a kit
+of 4 — because a Drum Rack carries a pad for all 128 notes and the fixture
+carried none of the empty ones. Give a fixture the objects Live gives it, not
+just the ones the test cares about.
+
 ### What the counts can't see
 
 The counter finds one kind of waste: the same target resolved more than once. It
