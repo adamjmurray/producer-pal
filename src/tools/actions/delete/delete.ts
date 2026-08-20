@@ -119,6 +119,12 @@ export function deleteObject(
   // Tracks, scenes, and devices delete by position, so an earlier delete shifts
   // later siblings. Sort highest-index-first so each delete targets the right
   // object.
+  //
+  // Clips and chains are deliberately NOT sorted: they delete by id
+  // (`delete_clip <id>`, and a chain by parking it on a free pad), so a sibling
+  // shift never reaches them. Measured on 12.4.3 by
+  // e2e/mcp/operations/ppal-delete-batch-ordering.test.ts, which deletes three
+  // of four ascending — the worst case — and checks which one survived.
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
