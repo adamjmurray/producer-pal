@@ -299,13 +299,21 @@ below). After any writes modify the set's state, reopen it with
 
 ## Dumping a Live Set
 
-`scripts/live-api/dump-live-set/` records a running Set's structure as JSON, to
-be checked in as a fixture for budget tests.
+`scripts/live-api/dump-live-set/` records a running Set's structure as JSON. The
+checked-in result is `src/test/fixtures/live-set-dump.json.gz`, loaded by
+`loadLiveSetDump()` beside it.
 
 ```bash
-node scripts/live-api/dump-live-set/dump-live-set.ts dev/set-a.json
-node scripts/live-api/dump-live-set/dump-live-set.ts dev/set-a.json --skip=parameters
+node scripts/live-api/dump-live-set/dump-live-set.ts dev/scratch.json
+node scripts/live-api/dump-live-set/dump-live-set.ts dev/scratch.json --skip=parameters
+
+# regenerate the committed fixture
+node scripts/live-api/dump-live-set/dump-live-set.ts \
+  src/test/fixtures/live-set-dump.json --gzip --max-objects=200000
 ```
+
+`--max-objects` defaults to 20000, which a Set with a few drum racks blows
+through — check `meta.truncated` rather than trusting a dump that stopped early.
 
 Needs Live running with the device loaded and the `ppal-live-api` tool available
 (a `build:debug` build, or the Setup tab toggle). It only reads.
@@ -334,9 +342,20 @@ followed, or every object in the Set would gain an alias nothing builds.
 Absolute filesystem paths are replaced unless `--keep-paths` is passed, so a
 dump doesn't name the machine it came from or the samples on it.
 
-Device parameters are most of the objects in a Set full of instruments.
-`--skip=parameters` shrinks the dump a lot and makes `read-device` budgets
-meaningless; the summary's per-type counts say what you would be dropping.
+Device parameters are most of the objects in a Set full of instruments — 90% of
+the committed fixture. `--skip=parameters` shrinks the dump an order of
+magnitude and makes `read-device` budgets meaningless; the summary's per-type
+counts say what you would be dropping. `--gzip` is the better answer to size: it
+takes 13 MB of JSON down to ~740 KB, which costs 40ms to load and keeps every
+parameter. Slimming the parameter property bags instead is not worth it — the
+bulk is 26k long path keys, not the values.
+
+The Set behind the fixture is deliberately extreme, because the point is to
+measure against shapes a real Set produces rather than shapes a mock happens to
+cover: four drum racks (512 pads, 107 populated), an instrument rack nested four
+levels deep, six rack return chains, take lanes, deactivated devices, and both
+session and arrangement clips. Keep the `.als` outside the repo; `meta` records
+the Live version a dump came from.
 
 ## Counting LiveAPI Objects
 

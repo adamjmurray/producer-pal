@@ -16,6 +16,7 @@
  */
 
 import { writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { createBatchContext, runOperations } from "./live-api-batch.ts";
 import { type LiveSetDump } from "./dump-types.ts";
 import { walkLiveSet } from "./walk-live-set.ts";
@@ -32,6 +33,7 @@ interface Args {
   maxObjects: number;
   redactPaths: boolean;
   compact: boolean;
+  gzip: boolean;
 }
 
 const HELP = `Usage: node scripts/live-api/dump-live-set/dump-live-set.ts [output-file] [options]
@@ -52,6 +54,9 @@ Options:
   --max-objects=N    Stop after N objects (default: ${String(DEFAULT_MAX_OBJECTS)})
   --keep-paths       Record absolute filesystem paths instead of redacting them
   --compact          Write minified JSON instead of indented
+  --gzip             Write gzipped JSON (implies --compact, appends .gz to the
+                     output path). A full dump is ~13 MB of JSON and under 1 MB
+                     gzipped, which is what makes it small enough to check in.
   --help, -h         Show this message`;
 
 /**
@@ -67,35 +72,18 @@ function parseArgs(): Args {
     maxObjects: DEFAULT_MAX_OBJECTS,
     redactPaths: true,
     compact: false,
+    gzip: false,
   };
 
   for (const arg of process.argv.slice(2)) {
-    if (arg === "--help" || arg === "-h") {
-      console.log(HELP);
-      process.exit(0);
-    } else if (arg.startsWith("--url=")) {
-      args.baseUrl = arg.slice("--url=".length);
-    } else if (arg.startsWith("--root=")) {
-      args.roots.push(arg.slice("--root=".length));
-    } else if (arg.startsWith("--skip=")) {
-      for (const name of arg.slice("--skip=".length).split(",")) {
-        if (name !== "") args.skipChildren.add(name);
-      }
-    } else if (arg.startsWith("--max-objects=")) {
-      args.maxObjects = Number(arg.slice("--max-objects=".length));
-    } else if (arg === "--keep-paths") {
-      args.redactPaths = false;
-    } else if (arg === "--compact") {
-      args.compact = true;
-    } else if (arg.startsWith("--")) {
-      console.error(`Unknown option: ${arg}\n\n${HELP}`);
-      process.exit(1);
-    } else {
-      args.outputPath = arg;
-    }
+    applyArg(args, arg);
   }
 
   if (args.roots.length === 0) args.roots.push("live_set");
+
+  if (args.gzip && !args.outputPath.endsWith(".gz")) {
+    args.outputPath += ".gz";
+  }
 
   if (!Number.isInteger(args.maxObjects) || args.maxObjects < 1) {
     console.error("--max-objects must be a positive integer");
@@ -103,6 +91,39 @@ function parseArgs(): Args {
   }
 
   return args;
+}
+
+/**
+ * Apply one command line argument
+ * @param args - Arguments so far, mutated in place
+ * @param arg - The argument to apply
+ */
+function applyArg(args: Args, arg: string): void {
+  if (arg === "--help" || arg === "-h") {
+    console.log(HELP);
+    process.exit(0);
+  } else if (arg.startsWith("--url=")) {
+    args.baseUrl = arg.slice("--url=".length);
+  } else if (arg.startsWith("--root=")) {
+    args.roots.push(arg.slice("--root=".length));
+  } else if (arg.startsWith("--skip=")) {
+    for (const name of arg.slice("--skip=".length).split(",")) {
+      if (name !== "") args.skipChildren.add(name);
+    }
+  } else if (arg.startsWith("--max-objects=")) {
+    args.maxObjects = Number(arg.slice("--max-objects=".length));
+  } else if (arg === "--keep-paths") {
+    args.redactPaths = false;
+  } else if (arg === "--compact") {
+    args.compact = true;
+  } else if (arg === "--gzip") {
+    args.gzip = true;
+  } else if (arg.startsWith("--")) {
+    console.error(`Unknown option: ${arg}\n\n${HELP}`);
+    process.exit(1);
+  } else {
+    args.outputPath = arg;
+  }
 }
 
 /**
@@ -206,12 +227,20 @@ async function main(): Promise<void> {
     },
   });
 
-  const json = args.compact
-    ? JSON.stringify(dump)
-    : JSON.stringify(dump, null, 2);
+  const text = `${
+    args.compact || args.gzip
+      ? JSON.stringify(dump)
+      : JSON.stringify(dump, null, 2)
+  }\n`;
+  const payload = args.gzip ? gzipSync(text, { level: 9 }) : text;
 
-  writeFileSync(args.outputPath, `${json}\n`);
-  printSummary(dump, json.length);
+  writeFileSync(args.outputPath, payload);
+  printSummary(dump, Buffer.byteLength(payload));
+
+  if (args.gzip) {
+    console.log(`gzipped from ${(text.length / 1024 / 1024).toFixed(2)} MB`);
+  }
+
   console.log(`\nOutput: ${args.outputPath}`);
 }
 
