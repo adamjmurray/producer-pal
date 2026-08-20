@@ -125,3 +125,16 @@ e2e/mcp/
 2. Import helpers from `../mcp-test-helpers`
 3. Use `setupMcpTestContext()` for tests that modify state
 4. Use `setupMcpTestContext({ once: true })` for read-only tests (faster)
+
+## Adding a warning to a tool breaks tests that never mention it
+
+`parseToolResult()` throws on any unexpected `WARNING:` block, so a suite fails
+in its own setup — before its first assertion — if a helper call starts warning.
+That is how one new warning took out 73 tests across six suites at once.
+
+When you add or broaden a warning, grep e2e for calls that would now trigger it.
+Either stop triggering it (use the replacement param) or switch that call to
+`parseToolResultWithWarnings()` and assert the warning.
+
+Deprecated and alias params warn on every call, so setup code should always use
+the current param.
