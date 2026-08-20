@@ -11,6 +11,10 @@ import "fake-indexeddb/auto";
 import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
+import {
+  loadSubagentPresetId,
+  saveSubagentPresetId,
+} from "#webui/hooks/settings/settings-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { flushLoad } from "./use-settings-test-helpers";
 
@@ -763,6 +767,91 @@ describe("useSettings", () => {
     expect(result.current.enabledTools).toStrictEqual({});
     // Cleanup
     localStorage.removeItem("producer_pal_enabled_tools");
+  });
+
+  describe("subagent preset", () => {
+    it("seeds the buffer and its saved mirror from storage", () => {
+      saveSubagentPresetId("seed");
+      const { result } = renderHook(() => useSettings());
+
+      expect(result.current.subagentPresetId).toBe("seed");
+      expect(result.current.savedSubagentPresetId).toBe("seed");
+    });
+
+    it("leaves the saved mirror behind until the buffer is saved", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setSubagentPresetId("picked");
+      });
+
+      expect(result.current.subagentPresetId).toBe("picked");
+      expect(result.current.savedSubagentPresetId).toBeNull();
+    });
+
+    it("forgetDeletedPreset clears the buffer and the saved copy", async () => {
+      saveSubagentPresetId("doomed");
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.forgetDeletedPreset("doomed");
+      });
+
+      expect(result.current.subagentPresetId).toBeNull();
+      expect(result.current.savedSubagentPresetId).toBeNull();
+      // Storage too, not just the state: Cancel re-reads this value, and would
+      // otherwise restore an id naming a preset that no longer exists.
+      expect(loadSubagentPresetId()).toBeNull();
+    });
+
+    it("clears the saved copy only, when an unsaved pick named another preset", async () => {
+      saveSubagentPresetId("doomed");
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setSubagentPresetId("survivor");
+      });
+      await act(() => {
+        result.current.forgetDeletedPreset("doomed");
+      });
+
+      // The buffer names a preset that still exists, so it survives untouched —
+      // and still reads as an unsaved change, because saving would write it.
+      expect(result.current.subagentPresetId).toBe("survivor");
+      expect(result.current.savedSubagentPresetId).toBeNull();
+      expect(loadSubagentPresetId()).toBeNull();
+    });
+
+    it("clears the buffer only, when the saved copy named another preset", async () => {
+      saveSubagentPresetId("survivor");
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setSubagentPresetId("doomed");
+      });
+      await act(() => {
+        result.current.forgetDeletedPreset("doomed");
+      });
+
+      expect(result.current.subagentPresetId).toBeNull();
+      expect(result.current.savedSubagentPresetId).toBe("survivor");
+      expect(loadSubagentPresetId()).toBe("survivor");
+    });
+
+    it("cancelSettings puts the buffer and the saved mirror back in step", async () => {
+      saveSubagentPresetId("seed");
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setSubagentPresetId("picked");
+      });
+      await act(() => {
+        result.current.cancelSettings();
+      });
+
+      expect(result.current.subagentPresetId).toBe("seed");
+      expect(result.current.savedSubagentPresetId).toBe("seed");
+    });
   });
 });
 

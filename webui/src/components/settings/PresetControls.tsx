@@ -4,10 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import {
-  loadSubagentPresetId,
-  saveSubagentPresetId,
-} from "#webui/hooks/settings/settings-helpers";
 import { presetMatchesFields } from "#webui/hooks/settings/presets/preset-storage";
 import { type PresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { usePresetDraft } from "#webui/hooks/settings/presets/use-preset-draft";
@@ -139,7 +135,7 @@ export function PresetControls({
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
           if (selected && deletePreset(selected.id) != null) return;
-          if (selected) clearSubagentPreset(settings, selected.id);
+          if (selected) settings.forgetDeletedPreset(selected.id);
           setSelectedId("");
           setEditDescription("");
         }}
@@ -191,31 +187,6 @@ export function PresetControls({
       />
     </div>
   );
-}
-
-/**
- * Drop the Subagent-preset pointer at a just-deleted preset, in both places it
- * lives.
- *
- * Storage is written directly rather than left to the footer Save, because the
- * delete already landed there: buffering the clear alone would let a Cancel —
- * which re-reads this value from storage — restore an id naming nothing.
- *
- * The two are tested separately because they can disagree. With an unsaved pick
- * in the buffer, storage still holds the last saved one, and deleting either
- * preset must clear only the copy that named it.
- * @param settings - The live settings buffer
- * @param deletedId - The preset that was just deleted
- */
-function clearSubagentPreset(
-  settings: UseSettingsReturn,
-  deletedId: string,
-): void {
-  if (settings.subagentPresetId === deletedId) {
-    settings.setSubagentPresetId(null);
-  }
-
-  if (loadSubagentPresetId() === deletedId) saveSubagentPresetId(null);
 }
 
 /**

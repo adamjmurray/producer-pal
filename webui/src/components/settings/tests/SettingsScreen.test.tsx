@@ -146,6 +146,8 @@ describe("SettingsScreen", () => {
     setSmallModelMode: vi.fn(),
     subagentPresetId: null,
     setSubagentPresetId: vi.fn(),
+    savedSubagentPresetId: null,
+    forgetDeletedPreset: vi.fn(),
     maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
     setMaxToolSteps: vi.fn(),
     liveApiEnabled: false,

@@ -110,6 +110,13 @@ export function useSettings(): UseSettingsReturn {
   const [subagentPresetId, setSubagentPresetId] = useState<string | null>(
     loadSubagentPresetId,
   );
+  // What's actually stored, mirrored in state so the unsaved-changes check can
+  // compare against it and re-render when it moves. Deleting a preset writes
+  // storage on the spot (forgetDeletedPreset below), which a plain read of
+  // localStorage during render would never notice.
+  const [savedSubagentPresetId, setSavedSubagentPresetId] = useState<
+    string | null
+  >(loadSubagentPresetId);
   // How many tool steps one turn may spend. Same buffered lifecycle as the two
   // above: persisted on Save, reverted on Cancel.
   const [maxToolSteps, setMaxToolSteps] = useState<number>(loadMaxToolSteps);
@@ -245,6 +252,7 @@ export function useSettings(): UseSettingsReturn {
     }
 
     voiceModeSettings.commit();
+    setSavedSubagentPresetId(subagentPresetId);
     setSavedModel(providerSettings[provider].model);
     setSavedProvider(provider);
     setSavedThinking(providerSettings[provider].thinking);
@@ -269,6 +277,7 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
     setSubagentPresetId(loadSubagentPresetId());
+    setSavedSubagentPresetId(loadSubagentPresetId());
     setMaxToolSteps(loadMaxToolSteps());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
@@ -288,6 +297,26 @@ export function useSettings(): UseSettingsReturn {
     setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
+  // Drop a just-deleted preset from the Subagent-preset pointer, in both places
+  // it lives. The saved copy is written through immediately rather than left to
+  // the footer Save, because the delete already landed in storage: buffering the
+  // clear alone would let a Cancel — which re-reads this value from storage —
+  // restore an id naming nothing.
+  //
+  // The two are cleared separately because they can disagree. With an unsaved
+  // pick in the buffer, the saved copy still holds the last saved one, and
+  // deleting either preset must clear only the copy that named it.
+  const forgetDeletedPreset = useCallback(
+    (deletedId: string): void => {
+      if (subagentPresetId === deletedId) setSubagentPresetId(null);
+
+      if (savedSubagentPresetId === deletedId) {
+        saveSubagentPresetId(null);
+        setSavedSubagentPresetId(null);
+      }
+    },
+    [subagentPresetId, savedSubagentPresetId],
+  );
   const { setApiKey, setModel, setBaseUrl, setThinking } = useProviderSetters(
     provider,
     providerStateSetters,
@@ -344,6 +373,8 @@ export function useSettings(): UseSettingsReturn {
     setSmallModelMode: setSmallModelModeState,
     subagentPresetId,
     setSubagentPresetId,
+    savedSubagentPresetId,
+    forgetDeletedPreset,
     maxToolSteps,
     setMaxToolSteps,
     saveError,
