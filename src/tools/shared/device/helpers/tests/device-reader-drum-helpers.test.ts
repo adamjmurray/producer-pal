@@ -16,9 +16,10 @@ vi.mock(import("../path/device-path-helpers.ts"), () => ({
   extractDevicePath: vi.fn((path) => path),
 }));
 
-// Mock device-state-helpers. buildChainInfo surfaces a chain's `_state`
-// (a test-only marker on the mock chain) as `state`, mirroring how the real
-// helper derives mute/solo state — so buildDrumPadFromChains can aggregate it.
+// Mock device-state-helpers. Both builders surface a chain's `_state` (a
+// test-only marker on the mock chain), mirroring how the real helpers derive
+// mute/solo state — so buildDrumPadFromChains can aggregate it. "active" is
+// STATE.ACTIVE spelled out: a vi.mock factory is hoisted above the imports.
 vi.mock(import("../device-state-helpers.ts"), () => ({
   buildChainInfo: vi.fn((chain, options) => ({
     id: chain._id,
@@ -26,6 +27,7 @@ vi.mock(import("../device-state-helpers.ts"), () => ({
     ...(chain._state !== undefined ? { state: chain._state } : {}),
     ...options,
   })),
+  computeState: vi.fn((chain) => chain._state ?? "active"),
   deviceHasInstrument: vi.fn(() => true),
 }));
 
@@ -149,6 +151,11 @@ describe("device-reader-drum-helpers", () => {
         // One device, so instrument detection has something to inspect
         getChildren: vi.fn((child: string) =>
           child === "devices" ? [{ id: `device-${inNote}` }] : [],
+        ),
+        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
+        someChild: vi.fn(
+          (child: string, predicate: (device: unknown) => boolean) =>
+            child === "devices" && predicate({ id: `device-${inNote}` }),
         ),
       }) as Record<string, unknown>;
 
@@ -347,39 +354,53 @@ describe("device-reader-drum-helpers", () => {
         getChildren: vi.fn((child: string) =>
           child === "devices" ? [{ id: "nested" }] : [],
         ),
+        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
+        someChild: vi.fn(
+          (child: string, predicate: (device: unknown) => boolean) =>
+            child === "devices" && predicate({ id: "nested" }),
+        ),
       }) as Record<string, unknown>;
 
-    it.each([
-      { includeChains: true, includeDrumPads: true, expected: true },
-      { includeChains: true, includeDrumPads: false, expected: false },
-    ])(
-      "passes includeDrumPads && includeChains ($expected) to nested chain devices",
-      ({ includeChains, includeDrumPads, expected }) => {
-        const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
-        const device = {
-          path: "live_set tracks 0 devices 0",
-          getChildren: vi.fn(() => [createChainWithDevice(36)]),
-        };
+    /**
+     * Run processDrumPads over one chain holding one device.
+     * @param includeDrumPads - Whether the pads themselves are returned
+     * @returns The readDeviceFn spy, to assert what the walk descended into
+     */
+    const processOneChain = (includeDrumPads: boolean) => {
+      const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
+      const device = {
+        path: "live_set tracks 0 devices 0",
+        getChildren: vi.fn(() => [createChainWithDevice(36)]),
+      };
 
-        processDrumPads(
-          device as unknown as LiveAPI,
-          {},
-          includeChains,
-          includeDrumPads,
-          0,
-          2,
-          readDeviceFn,
-        );
+      processDrumPads(
+        device as unknown as LiveAPI,
+        {},
+        true,
+        includeDrumPads,
+        0,
+        2,
+        readDeviceFn,
+      );
 
-        expect(readDeviceFn).toHaveBeenCalledWith(
-          { id: "nested" },
-          expect.objectContaining({
-            includeChains: expected,
-            includeDrumPads: expected,
-          }),
-        );
-      },
-    );
+      return readDeviceFn;
+    };
+
+    it("expands a shown chain's devices, and lets them expand too", () => {
+      expect(processOneChain(true)).toHaveBeenCalledWith(
+        { id: "nested" },
+        expect.objectContaining({
+          includeChains: true,
+          includeDrumPads: true,
+        }),
+      );
+    });
+
+    it("does not read the devices of a chain the pad won't show", () => {
+      // Nothing under an unshown chain reaches the output, so reading it is
+      // pure cost — a pad only needs whether an instrument is in there.
+      expect(processOneChain(false)).not.toHaveBeenCalled();
+    });
 
     it.each([
       { order: "already-ascending", notes: [36, 48] },

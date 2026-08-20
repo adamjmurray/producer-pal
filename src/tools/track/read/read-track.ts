@@ -413,7 +413,9 @@ export function readTrackGeneric({
   }
 
   if (includeDrumMap) {
-    const categorized = categorizeDevices(trackDevices, false, true, false);
+    // The chains this walks are read only to find a kit in them, and dropped
+    // straight after — chainsHidden keeps it from pricing them as output.
+    const categorized = categorizeDevices(trackDevices, { chainsHidden: true });
 
     addDrumMapFromDevices(result, categorized, notation);
   }

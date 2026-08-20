@@ -46,6 +46,7 @@ interface ReadOptions {
   includeSample: boolean;
   includeOptions: boolean;
   includeActions: boolean;
+  chainsHidden: boolean;
   maxDepth: number;
   paramSearch?: string;
 }
@@ -96,6 +97,7 @@ export function readDevice(
     includeSample,
     includeOptions,
     includeActions,
+    chainsHidden: chainsForDrumMap,
     maxDepth: drumMapReadDepth(maxDepth, includeDrumMap, chainsForDrumMap),
     paramSearch,
   };

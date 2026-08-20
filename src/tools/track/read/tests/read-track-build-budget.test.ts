@@ -104,14 +104,25 @@ describe("readTrack build budget", () => {
     expect(chainResolves()).toBe(0);
   });
 
-  it("still pays a second walk for drum-map, which the drum-map read owns", () => {
+  it("walks the chains once per question asked, and no more", () => {
     setupRackWithoutDrumRack();
 
     readTrack({ trackIndex: 0, include: ["*"] });
 
-    // Not the bug this file guards: drum-map triggers its own device walk
-    // rather than deriving from the device read that already ran. Pinned so
-    // that fix shows up here as a number that drops, rather than going unseen.
+    // Two questions, two walks: is there a kit in here (drum mode), and what
+    // are its pads (drum-map). Neither can answer from the other, so two is
+    // the floor — pinned so a third walk shows up as a number that moved.
     expect(chainResolves()).toBe(CHAIN_COUNT * 2);
+  });
+
+  it("builds nothing but the chains to find out there is no drum map", () => {
+    setupRackWithoutDrumRack();
+
+    readTrack({ trackIndex: 0, include: ["drum-map"] });
+
+    // The walk reads every chain looking for a kit, finds none, and returns no
+    // drum map at all — so anything it builds beyond the chains themselves is
+    // spent on output that never appears. The chain mixer was the whole cost.
+    expect(liveApiBuildStats().resolved).toBe(CHAIN_COUNT + 3);
   });
 });

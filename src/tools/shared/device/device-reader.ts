@@ -46,6 +46,12 @@ export interface ReadDeviceOptions {
   depth?: number;
   maxDepth?: number;
   parentPath?: string;
+  /**
+   * The caller drops the chains afterwards and is walking only to find a drum
+   * rack. Chain identity and the chain mixer are then pure cost, so the walk
+   * reads devices and nothing else. See processDeviceChains.
+   */
+  chainsHidden?: boolean;
 }
 
 interface DeviceWithChains {
@@ -301,6 +307,7 @@ export function readDevice(
     depth = 0,
     maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
+    chainsHidden = false,
   } = options;
 
   if (depth > maxDepth) {
@@ -346,6 +353,7 @@ export function readDevice(
     includeChains,
     includeReturnChains,
     includeDrumPads,
+    chainsHidden,
     depth,
     maxDepth,
     readDeviceFn: readDevice,

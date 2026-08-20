@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
@@ -23,6 +24,8 @@ export interface ProcessChainsOptions {
   includeChains: boolean;
   includeReturnChains: boolean;
   includeDrumPads: boolean;
+  /** See ReadDeviceOptions.chainsHidden */
+  chainsHidden?: boolean;
   depth: number;
   maxDepth: number;
   readDeviceFn: ReadDeviceFn;
@@ -101,23 +104,22 @@ function buildChainAtDepth(
  * Process regular (non-drum) rack chains
  * @param device - Device object
  * @param deviceInfo - Device info to update
- * @param includeChains - Include chains
- * @param includeDrumPads - Include drum pads
- * @param depth - Current depth
- * @param maxDepth - Max depth
- * @param readDeviceFn - readDevice function
- * @param devicePath - Device path for building nested paths
+ * @param options - Processing options
  */
 function processRegularChains(
   device: LiveAPI,
   deviceInfo: Record<string, unknown>,
-  includeChains: boolean,
-  includeDrumPads: boolean,
-  depth: number,
-  maxDepth: number,
-  readDeviceFn: ReadDeviceFn,
-  devicePath: string | undefined,
+  options: ProcessChainsOptions,
 ): void {
+  const {
+    includeChains,
+    includeDrumPads,
+    chainsHidden = false,
+    depth,
+    maxDepth,
+    readDeviceFn,
+    devicePath,
+  } = options;
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some(
     (chain) => (chain.getProperty("solo") as number) > 0,
@@ -127,27 +129,57 @@ function processRegularChains(
     const deviceOptions = {
       includeChains,
       includeDrumPads,
+      chainsHidden,
       depth: depth + 1,
       maxDepth,
     };
 
-    deviceInfo.chains = chains.map((chain, index) => {
-      const chainPath = devicePath ? buildChainPath(devicePath, index) : null;
-
-      return buildChainAtDepth(
-        chain,
-        chainPath,
-        depth,
-        maxDepth,
-        readDeviceFn,
-        deviceOptions,
-      );
-    });
+    deviceInfo.chains = chains.map((chain, index) =>
+      chainsHidden
+        ? hiddenChainInfo(chain, depth, maxDepth, readDeviceFn, deviceOptions)
+        : buildChainAtDepth(
+            chain,
+            devicePath ? buildChainPath(devicePath, index) : null,
+            depth,
+            maxDepth,
+            readDeviceFn,
+            deviceOptions,
+          ),
+    );
   }
 
   if (hasSoloedChain) {
     deviceInfo.hasSoloedChain = hasSoloedChain;
   }
+}
+
+/**
+ * A chain the caller will throw away, carrying only the devices the drum-rack
+ * search descends into. Skipping buildChainInfo skips the chain mixer, which
+ * is a mixer, a volume, a pan and one send per return chain, per chain.
+ * @param chain - Chain LiveAPI object
+ * @param depth - Current depth
+ * @param maxDepth - Max depth for device expansion
+ * @param readDeviceFn - readDevice function for recursive expansion
+ * @param deviceOptions - Options passed to readDeviceFn for nested devices
+ * @returns Chain info holding devices, or nothing at the depth limit
+ */
+function hiddenChainInfo(
+  chain: LiveAPI,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  deviceOptions: Record<string, unknown>,
+): Record<string, unknown> {
+  if (depth >= maxDepth) {
+    return {};
+  }
+
+  return {
+    devices: chain
+      .getChildren("devices")
+      .map((device) => readDeviceFn(device, deviceOptions)),
+  };
 }
 
 /**
@@ -193,16 +225,7 @@ export function processDeviceChains(
         devicePath,
       );
     } else {
-      processRegularChains(
-        device,
-        deviceInfo,
-        includeChains,
-        includeDrumPads,
-        depth,
-        maxDepth,
-        readDeviceFn,
-        devicePath,
-      );
+      processRegularChains(device, deviceInfo, options);
     }
   }
 
