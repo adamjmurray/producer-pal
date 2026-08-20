@@ -8,7 +8,7 @@
  * Scans the Ableton Live Object Model via the REST API to discover all
  * available children, properties, and functions on key object types.
  *
- * Usage: node scripts/scan-live-api/scan-live-api.ts [output-file] [--url=http://...]
+ * Usage: node scripts/live-api/scan-live-api/scan-live-api.ts [output-file] [--url=http://...]
  *
  * Requires the `ppal-live-api` tool to be available, which means either a
  * `npm run build:debug` build (sets ENABLE_LIVE_API=true) or the Live API
@@ -57,7 +57,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
       baseUrl = arg.slice(6);
     } else if (arg === "--help" || arg === "-h") {
       console.log(
-        "Usage: node scripts/scan-live-api/scan-live-api.ts [output-file] [--url=http://...]",
+        "Usage: node scripts/live-api/scan-live-api/scan-live-api.ts [output-file] [--url=http://...]",
       );
       console.log("");
       console.log(

@@ -12,7 +12,7 @@
 // the "Reproducing the scan" section of
 // dev/Specialized-Devices.md.
 //
-// Usage: node scripts/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]
+// Usage: node scripts/live-api/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -112,7 +112,7 @@ function parseArgs(): { serverUrl: string } {
       serverUrl = arg.slice(6);
     } else if (arg === "--help" || arg === "-h") {
       console.log(
-        "Usage: node scripts/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]",
+        "Usage: node scripts/live-api/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]",
       );
       console.log("");
       console.log(

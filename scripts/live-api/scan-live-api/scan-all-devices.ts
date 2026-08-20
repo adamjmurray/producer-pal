@@ -13,7 +13,7 @@
 // Companion to setup-all-devices.ts (which builds the test bed) and
 // scan-live-api.ts (which surveys core LOM object types rather than devices).
 //
-// Usage: node scripts/scan-live-api/scan-all-devices.ts [output-file] [--url=http://...]
+// Usage: node scripts/live-api/scan-live-api/scan-all-devices.ts [output-file] [--url=http://...]
 //   output-file  Output path (default: dev/per-device-scan.txt)
 //   --url=URL    Server base URL (default: http://localhost:3350)
 
@@ -54,7 +54,7 @@ function parseArgs(): { outputPath: string; baseUrl: string } {
       baseUrl = arg.slice(6);
     } else if (arg === "--help" || arg === "-h") {
       console.log(
-        "Usage: node scripts/scan-live-api/scan-all-devices.ts [output-file] [--url=http://...]",
+        "Usage: node scripts/live-api/scan-live-api/scan-all-devices.ts [output-file] [--url=http://...]",
       );
       console.log("");
       console.log(

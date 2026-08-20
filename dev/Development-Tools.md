@@ -297,6 +297,47 @@ with `scripts/open-live-set path/to/set.als`. Trace execution with
 below). After any writes modify the set's state, reopen it with
 `scripts/open-live-set` to reset back to the original.
 
+## Dumping a Live Set
+
+`scripts/live-api/dump-live-set/` records a running Set's structure as JSON, to
+be checked in as a fixture for budget tests.
+
+```bash
+node scripts/live-api/dump-live-set/dump-live-set.ts dev/set-a.json
+node scripts/live-api/dump-live-set/dump-live-set.ts dev/set-a.json --skip=parameters
+```
+
+Needs Live running with the device loaded and the `ppal-live-api` tool available
+(a `build:debug` build, or the Setup tab toggle). It only reads.
+
+Each object holds the raw `get()` result for **every** property its own `info`
+names — not only the ones the tools read today. A fixture recording just today's
+reads goes stale silently: the walk a tool does stops early against it, the
+count comes out low, and the budget test passes for the wrong reason.
+
+`info` is read **per object**, never cached by class or path shape. Live answers
+differently object by object: a Drum Rack and an Instrument Rack are both
+`RackDevice` at the same path shape, and only the Drum Rack lists `drum_pads`.
+Sharing a listing across a shape cost a real 128-pad Drum Rack every one of its
+pads and reported nothing wrong. Identical listings still share one `types`
+entry; a class that answers more than one way gets an entry per answer, labelled
+with a path where it was seen, and objects name theirs in `typeKey`.
+
+Objects are recorded under the path **Live** reports, not the one the walk asked
+for. Live canonicalizes: it answers `live_set tracks 0 clip_slots 0` for a slot
+reached through a scene. Keying by what was asked filed 96 clip slots under
+`live_set scenes N clip_slots M`, and an arrangement clip under
+`live_set view detail_clip`. Every other spelling becomes an `aliases` entry.
+`canonical_parent` is the exception: its value is recorded but it is never
+followed, or every object in the Set would gain an alias nothing builds.
+
+Absolute filesystem paths are replaced unless `--keep-paths` is passed, so a
+dump doesn't name the machine it came from or the samples on it.
+
+Device parameters are most of the objects in a Set full of instruments.
+`--skip=parameters` shrinks the dump a lot and makes `read-device` budgets
+meaningless; the summary's per-type counts say what you would be dropping.
+
 ## Counting LiveAPI Objects
 
 Constructing a LiveAPI object is the expensive part (see

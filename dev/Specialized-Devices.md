@@ -1331,22 +1331,23 @@ Two scripts automate building the test bed and surveying it. Both talk to a
 running Producer Pal (`npm run build:debug` recommended so the Direct Live API
 tool is always available).
 
-**1. Build the test bed** — `scripts/scan-live-api/setup-all-devices.ts` creates
-a clean device set: every built-in instrument on its own MIDI track, all MIDI
-effects on track 0 (before its instrument), and all audio effects distributed
-across the instrument tracks.
+**1. Build the test bed** —
+`scripts/live-api/scan-live-api/setup-all-devices.ts` creates a clean device
+set: every built-in instrument on its own MIDI track, all MIDI effects on track
+0 (before its instrument), and all audio effects distributed across the
+instrument tracks.
 
 ```bash
-node scripts/scan-live-api/setup-all-devices.ts
+node scripts/live-api/scan-live-api/setup-all-devices.ts
 ```
 
-**2. Survey it** — `scripts/scan-live-api/scan-all-devices.ts` iterates every
-device on every track, groups by `(type, class_name)`, and writes a report
+**2. Survey it** — `scripts/live-api/scan-live-api/scan-all-devices.ts` iterates
+every device on every track, groups by `(type, class_name)`, and writes a report
 (default `dev/per-device-scan.txt`) listing the unique device shapes — the
 specialized classes are the ones that aren't plain `Device`.
 
 ```bash
-node scripts/scan-live-api/scan-all-devices.ts
+node scripts/live-api/scan-live-api/scan-all-devices.ts
 ```
 
 (For core LOM object types rather than devices — Song, Track, Scene, Clip, etc.
