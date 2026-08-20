@@ -7,6 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
 import {
   callToolMock,
@@ -121,7 +122,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenCalledWith(
       { name: "ppal-read-live-set", arguments: { foo: "bar" } },
       undefined,
-      { timeout: 60_000 },
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
     );
     expect(out).toBe("Track 1: Drums\nTrack 2: Bass");
   });
@@ -137,7 +138,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenCalledWith(
       { name: "ppal-x", arguments: {} },
       undefined,
-      { timeout: 60_000 },
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
     );
   });
 
@@ -152,7 +153,7 @@ describe("createRealtimeMcpTools", () => {
     expect(callToolMock).toHaveBeenLastCalledWith(
       expect.anything(),
       undefined,
-      { timeout: 60_000 },
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
     );
   });
 

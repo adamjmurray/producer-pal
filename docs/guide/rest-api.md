@@ -164,8 +164,10 @@ curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' 
   -d '{"path": "t0/s0", "length": "16bar", "notes": "..."}'
 ```
 
-`timeoutMs` must be a positive integer up to **60000** (60 seconds). Other
-values return **400**. Combinable with `?format=`:
+`timeoutMs` must be a positive integer up to **55000** (55 seconds). Other
+values return **400**. The cap stays under 60 seconds because that is where most
+MCP clients give up — past it you lose the partial results and warnings Producer
+Pal returns on a timeout. Combinable with `?format=`:
 
 ```
 POST /api/tools/{name}?format=json&timeoutMs=10000

@@ -5,6 +5,7 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ToolSet, jsonSchema } from "ai";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 import { type Notation } from "#src/shared/notation";
 import { connectAndListTools } from "#webui/chat/helpers/connect-and-list-tools";
 import { extractMcpText } from "#webui/lib/utils/mcp-content";
@@ -52,10 +53,14 @@ export async function createMcpTools(
         t.inputSchema as Parameters<typeof jsonSchema>[0],
       ),
       execute: async (args: Record<string, unknown>) => {
-        const result = await mcpClient.callTool({
-          name: t.name,
-          arguments: args,
-        });
+        // Explicit timeout, not the SDK's 60s default: that default ties the
+        // client's deadline to the device's ceiling, and the device's answer
+        // (partial results plus a warning) has to win that race.
+        const result = await mcpClient.callTool(
+          { name: t.name, arguments: args },
+          undefined,
+          { timeout: CLIENT_TOOL_TIMEOUT_MS },
+        );
 
         if (result.isError) {
           // Content is always the array form for error responses

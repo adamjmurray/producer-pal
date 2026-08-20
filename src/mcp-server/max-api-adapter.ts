@@ -14,6 +14,7 @@ import {
   WARNING_PREFIX,
   type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -21,10 +22,7 @@ import * as console from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
-export {
-  MAX_TIMEOUT_MS,
-  type RequestOverrides,
-} from "./helpers/request-overrides/request-overrides.ts";
+export { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;
@@ -50,9 +48,8 @@ interface PendingRequest {
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
 
-// Kept under 60s on purpose: that is the MCP SDK's own client-side default, so
-// a 60s server timeout races the client and the user gets a generic client
-// abort instead of our partial results and warnings.
+// Under MAX_TIMEOUT_MS, which is itself under the MCP SDK's client-side
+// default — see MAX_TIMEOUT_MS for why that matters.
 const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 45_000;
 
 // Map to store pending requests and their resolve functions
@@ -63,11 +60,19 @@ let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 Max.addHandler("timeoutMs", (input: unknown) => {
   const n = Number(input);
 
-  if (n > 0 && n <= 60_000) {
-    timeoutMs = n;
-  } else {
+  if (!(n > 0)) {
     console.error(`Invalid Live API timeoutMs: ${String(input)}`);
+
+    return;
   }
+
+  // Clamp rather than discard: dropping the value left the old timeout in
+  // place with nothing the user could see to explain it.
+  if (n > MAX_TIMEOUT_MS) {
+    console.warn(`Live API timeoutMs ${n} capped at ${MAX_TIMEOUT_MS}`);
+  }
+
+  timeoutMs = Math.min(n, MAX_TIMEOUT_MS);
 });
 
 /**

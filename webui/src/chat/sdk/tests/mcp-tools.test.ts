@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 
 // Mock MCP client helpers. connectAndListTools is deliberately NOT mocked — it
 // owns the close-on-catalog-failure path asserted below.
@@ -136,10 +137,11 @@ describe("createMcpTools", () => {
       },
     );
 
-    expect(mockCallTool).toHaveBeenCalledWith({
-      name: "ppal-connect",
-      arguments: { arg: "value" },
-    });
+    expect(mockCallTool).toHaveBeenCalledWith(
+      { name: "ppal-connect", arguments: { arg: "value" } },
+      undefined,
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
+    );
     expect(result).toBe("result");
   });
 

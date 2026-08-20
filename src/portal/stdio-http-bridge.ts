@@ -12,7 +12,11 @@ import {
   ErrorCode,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { DISABLED_TOOLS_HEADER, VERSION } from "#src/shared/config.ts";
+import {
+  CLIENT_TOOL_TIMEOUT_MS,
+  DISABLED_TOOLS_HEADER,
+  VERSION,
+} from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
@@ -347,8 +351,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
           };
 
           // httpClient is guaranteed non-null after successful _ensureHttpConnection()
+          // Explicit timeout rather than the SDK's 60s default, which would
+          // sit too close to the device's ceiling. The upstream client's own
+          // deadline still binds first — this only keeps our leg out of the way.
           const result = await (this.httpClient as Client).callTool(
             toolRequest,
+            undefined,
+            { timeout: CLIENT_TOOL_TIMEOUT_MS },
           );
 
           logger.debug(

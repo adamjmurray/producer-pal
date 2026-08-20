@@ -251,7 +251,7 @@
             },
             {
                 "box": {
-                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
+                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds, max 55. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems. The cap stays under 60 seconds because most AI clients give up at 60, and you would lose the partial results Producer Pal returns.",
                     "annotation_name": "Timeout",
                     "id": "obj-68",
                     "maxclass": "live.numbox",
@@ -268,7 +268,7 @@
                             "parameter_initial_enable": 1,
                             "parameter_invisible": 1,
                             "parameter_longname": "timeout",
-                            "parameter_mmax": 60.0,
+                            "parameter_mmax": 55.0,
                             "parameter_mmin": 1.0,
                             "parameter_modmode": 4,
                             "parameter_shortname": "timeout",
@@ -387,7 +387,7 @@
             {
                 "box": {
                     "angle": 270.0,
-                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
+                    "annotation": "Maximum time to wait for AI tool operations to complete. Default is 45 seconds, max 55. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems. The cap stays under 60 seconds because most AI clients give up at 60, and you would lose the partial results Producer Pal returns.",
                     "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
                     "hint": "",
                     "id": "obj-30",

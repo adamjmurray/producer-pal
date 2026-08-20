@@ -5,6 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z, type ZodType } from "zod";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
@@ -22,11 +23,7 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "../helpers/http/request-profile.ts";
-import {
-  MAX_TIMEOUT_MS,
-  type McpResponse,
-  type RequestOverrides,
-} from "../max-api-adapter.ts";
+import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
 interface RestApiConfig {
