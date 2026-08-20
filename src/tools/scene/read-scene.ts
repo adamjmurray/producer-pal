@@ -123,6 +123,7 @@ export function readScene(
             trackIndex,
             sceneIndex: resolvedSceneIndex,
             suppressEmptyWarning: true,
+            slotValidated: true,
             include: args.include,
           },
           { notation: context.notation },

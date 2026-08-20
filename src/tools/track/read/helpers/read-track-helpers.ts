@@ -74,6 +74,7 @@ export function readSessionClips(
           trackIndex,
           sceneIndex,
           suppressEmptyWarning: true,
+          slotValidated: true,
           drumMode,
           ...(include && { include }),
         },

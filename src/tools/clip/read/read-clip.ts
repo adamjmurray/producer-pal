@@ -45,6 +45,9 @@ interface ReadClipArgs {
   /** @internal Precomputed drum mode from a batch reader, so N clips of one
    * track don't each re-walk the track's device tree */
   drumMode?: boolean;
+  /** @internal The caller walked this track's or scene's own slots, so the
+   * address is real by construction and an empty slot needn't prove it */
+  slotValidated?: boolean;
 }
 
 interface WarpMarker {
@@ -125,7 +128,12 @@ export function readClip(
   }
 
   // Resolve clip from ID or location
-  const resolved = resolveClip(clipId, trackIndex, sceneIndex);
+  const resolved = resolveClip(
+    clipId,
+    trackIndex,
+    sceneIndex,
+    args.slotValidated,
+  );
 
   if (!resolved.found) {
     if (!args.suppressEmptyWarning) {

@@ -44,32 +44,21 @@ interface EmptySlotResponse {
  * @param clipId - Clip ID if provided
  * @param trackIndex - Track index (required if clipId not provided)
  * @param sceneIndex - Scene index (required if clipId not provided)
+ * @param slotValidated - The caller already knows the slot is real (see ReadClipArgs)
  * @returns Object with either found clip or empty slot response
  */
 export function resolveClip(
   clipId: string | null,
   trackIndex: number | null,
   sceneIndex: number | null,
+  slotValidated = false,
 ): ResolveClipResult {
   if (clipId != null) {
     return { found: true, clip: validateIdType(clipId, "clip", "readClip") };
   }
 
-  // Validate track exists
-  const track = LiveAPI.from(livePath.track(trackIndex as number));
-
-  if (!track.exists()) {
-    throw new Error(`no track at "t${trackIndex}"`);
-  }
-
-  // Validate scene exists
-  const scene = LiveAPI.from(livePath.scene(sceneIndex as number));
-
-  if (!scene.exists()) {
-    throw new Error(`no scene at "s${sceneIndex}"`);
-  }
-
-  // Track and scene exist - check if clip slot has a clip
+  // Go straight for the clip. A clip that answers proves its track and scene
+  // are there, so checking them first only ever cost two objects per clip.
   const clip = LiveAPI.from(
     livePath
       .track(trackIndex as number)
@@ -77,19 +66,40 @@ export function resolveClip(
       .clip(),
   );
 
-  if (!clip.exists()) {
-    return {
-      found: false,
-      emptySlotResponse: {
-        id: null,
-        type: null,
-        name: null,
-        path: slotPath(trackIndex as number, sceneIndex as number),
-      },
-    };
+  if (clip.exists()) {
+    return { found: true, clip };
   }
 
-  return { found: true, clip };
+  // Nothing there: either the slot is empty or the address names something
+  // that doesn't exist, and only telling those apart needs the track and scene.
+  if (!slotValidated) {
+    assertSlotExists(trackIndex as number, sceneIndex as number);
+  }
+
+  return {
+    found: false,
+    emptySlotResponse: {
+      id: null,
+      type: null,
+      name: null,
+      path: slotPath(trackIndex as number, sceneIndex as number),
+    },
+  };
+}
+
+/**
+ * Throw if a session slot's track or scene isn't there, naming which one.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ */
+function assertSlotExists(trackIndex: number, sceneIndex: number): void {
+  if (!LiveAPI.from(livePath.track(trackIndex)).exists()) {
+    throw new Error(`no track at "t${String(trackIndex)}"`);
+  }
+
+  if (!LiveAPI.from(livePath.scene(sceneIndex)).exists()) {
+    throw new Error(`no scene at "s${String(sceneIndex)}"`);
+  }
 }
 
 export interface RegionBeats {

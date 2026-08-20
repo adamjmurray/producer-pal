@@ -8,6 +8,7 @@ import * as consoleModule from "#src/shared/max/v8-max-console.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
@@ -255,11 +256,11 @@ describe("readClip", () => {
     expect(consoleSpy).toHaveBeenCalledWith("no clip at t2/s3");
   });
 
+  // Nothing is registered, so nothing exists — including the clip the read
+  // goes for first. That is what sends it looking for which half of the
+  // address is wrong.
   it("throws when track does not exist", () => {
-    registerMockObject("0", {
-      path: livePath.track(99),
-      type: "Track",
-    });
+    mockNonExistentObjects();
 
     expect(() => readClip({ trackIndex: 99, sceneIndex: 0 })).toThrow(
       'no track at "t99"',
@@ -267,14 +268,11 @@ describe("readClip", () => {
   });
 
   it("throws when scene does not exist", () => {
+    mockNonExistentObjects();
     // Track exists, but scene does not
     registerMockObject("track0", {
       path: livePath.track(0),
       type: "Track",
-    });
-    registerMockObject("0", {
-      path: livePath.scene(99),
-      type: "Scene",
     });
 
     expect(() => readClip({ trackIndex: 0, sceneIndex: 99 })).toThrow(
