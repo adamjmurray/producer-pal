@@ -578,14 +578,14 @@ describe("device-path-helpers", () => {
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
-    it("auto-creates the catch-all pad chain (p*) with in_note -1", () => {
-      const { deviceMock, createdChainMocks } = setupAutoCreationMocks();
+    it("refuses to create the catch-all pad chain (p*)", () => {
+      // Live clamps in_note to 0-127, so the chain would land on note 36 and
+      // the lookup that follows would find no catch-all chain — an empty chain
+      // stranded in the rack and an error anyway.
+      const { deviceMock } = setupAutoCreationMocks();
 
-      const result = resolveInsertionPath("t0/d0/p*");
-
-      expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
-      expect(createdChainMocks[0]!.set).toHaveBeenCalledWith("in_note", -1);
-      expect(result.container).not.toBeNull();
+      expect(resolveInsertionPath("t0/d0/p*").container).toBeNull();
+      expect(deviceMock.call).not.toHaveBeenCalledWith("insert_chain");
     });
 
     it("rejects a return chain after a pad note before touching the rack", () => {

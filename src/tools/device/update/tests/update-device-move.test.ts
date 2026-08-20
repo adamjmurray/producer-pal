@@ -93,11 +93,19 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).toHaveBeenCalledWith("in_note", 0);
   });
 
-  it("should move a chain to the wildcard pad (in_note -1)", () => {
-    // "p*" targets the all-notes wildcard, which maps to in_note -1.
-    updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" });
+  it("should warn and skip a move to the catch-all pad", () => {
+    // "p*" is in_note -1, and Live clamps a drum chain's in_note to 0-127, so
+    // the set is silently refused. Reporting the no-op as a move is the bug.
+    const result = updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" });
 
-    expect(chain0.set).toHaveBeenCalledWith("in_note", -1);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        'cannot move a drum chain to the catch-all pad "t0/d0/p*"',
+      ),
+    );
+    expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+    expect(result).toStrictEqual({ id: "chain-0" });
   });
 
   it("should move all chains in a drum pad when using pad path", () => {

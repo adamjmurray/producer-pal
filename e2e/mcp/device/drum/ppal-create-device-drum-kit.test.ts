@@ -16,6 +16,7 @@ import {
   SAMPLE_FILE,
   createTestDeviceAt,
   parseToolResult,
+  isToolError,
   parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
@@ -76,16 +77,24 @@ async function createTrackWithDrumRack(): Promise<string> {
   return rack;
 }
 
-/** Read a device's chains (maxDepth 0) and return how many chains it has. */
-async function readChainCount(path: string): Promise<number> {
-  const device = parseToolResult<{ chains?: unknown[] }>(
+/**
+ * Count what a device holds: its chains, or a Drum Rack's pads.
+ * @param path - Device path
+ * @param kind - Which list to count
+ * @returns How many the device reports
+ */
+async function readContentCount(
+  path: string,
+  kind: "chains" | "drum-pads",
+): Promise<number> {
+  const device = parseToolResult<{ chains?: unknown[]; drumPads?: unknown[] }>(
     await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { path, include: ["chains"], maxDepth: 0 },
+      arguments: { path, include: [kind], maxDepth: 0 },
     }),
   );
 
-  return device.chains?.length ?? 0;
+  return (kind === "chains" ? device.chains : device.drumPads)?.length ?? 0;
 }
 
 /**
@@ -295,7 +304,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     await sleep(150);
 
-    const beforeChainCount = await readChainCount(rack);
+    const beforeChainCount = await readContentCount(rack, "chains");
 
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
@@ -314,6 +323,23 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     await sleep(150);
 
     // No stray chain: the guard refused before insert_chain.
-    expect(await readChainCount(rack)).toBe(beforeChainCount);
+    expect(await readContentCount(rack, "chains")).toBe(beforeChainCount);
+  });
+  it("refuses to create a device on the catch-all pad and strands no chain", async () => {
+    const rack = await createTrackWithDrumRack();
+
+    // The catch-all pad is in_note -1 and Live clamps a drum chain's in_note to
+    // 0-127, so there is no chain to create. Without the guard, insert_chain
+    // leaves an empty chain on C1 and the lookup that follows fails anyway.
+    const result = await ctx.client!.callTool({
+      name: "ppal-create-device",
+      arguments: { deviceName: "Operator", path: `${rack}/p*` },
+    });
+
+    expect(isToolError(result)).toBe(true);
+
+    await sleep(150);
+
+    expect(await readContentCount(rack, "drum-pads")).toBe(0);
   });
 });

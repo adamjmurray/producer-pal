@@ -205,19 +205,20 @@ describe("resolveOrCreateDrumPadChain", () => {
   /**
    * A Drum Rack in the outer rack's C1 pad, whose insert_chain grows its own
    * chain list with a D1 pad chain.
+   * @param outerInNote - The outer chain's in_note (-1 for the catch-all pad)
    * @returns The inner rack mock, and the outer rack it sits in
    */
-  function registerNestedDrumRack(): {
+  function registerNestedDrumRack(outerInNote = 36): {
     inner: RegisteredMockObject;
     outer: RegisteredMockObject;
   } {
-    const outer = registerDrumRack([["drum-chain-36", 36]]);
+    const outer = registerDrumRack([["drum-chain-36", outerInNote]]);
     const innerChainIds: string[] = [];
 
     registerMockObject("drum-chain-36", {
       path: `${DEVICE_PATH} chains 0`,
       type: "DrumChain",
-      properties: { in_note: 36, devices: ["id", "inner-rack"] },
+      properties: { in_note: outerInNote, devices: ["id", "inner-rack"] },
     });
     registerMockObject("inner-chain", {
       type: "DrumChain",
@@ -355,5 +356,44 @@ describe("resolveOrCreateDrumPadChain", () => {
       ]),
     ).toBeNull();
     expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+  it("refuses to create a chain for the catch-all pad", () => {
+    // Live clamps in_note to 0-127, so insert_chain would strand an empty chain
+    // on note 36 and then fail to find a catch-all chain to return.
+    const rack = registerDrumRack([]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "*", []),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("resolves a catch-all chain that already exists", () => {
+    const rack = registerDrumRack([["catch-all-chain", -1]]);
+
+    const chain = resolveOrCreateDrumPadChain(
+      LiveAPI.from(DEVICE_PATH),
+      "*",
+      [],
+    );
+
+    expect(chain?.id).toBe("catch-all-chain");
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("creates a pad chain in a rack nested under an existing catch-all chain", () => {
+    // Only creating the catch-all chain is impossible. Once one exists, a path
+    // through it is an ordinary nested pad.
+    const { inner, outer } = registerNestedDrumRack(-1);
+
+    const chain = resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "*", [
+      "c0",
+      "d0",
+      "pD1",
+    ]);
+
+    expect(chain?.id).toBe("inner-chain");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });

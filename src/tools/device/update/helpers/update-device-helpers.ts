@@ -216,10 +216,18 @@ export function moveDrumChainToPath(
 
   // The path grammar refuses a note name with no MIDI value, so the only pad
   // that isn't a note is the catch-all. Live 12.4.3 clamps a drum chain's
-  // in_note to 0-127, so this write is a no-op there — reaching the catch-all
-  // needs a different mechanism, not a different value.
-  const targetInNote =
-    targetNote === "*" ? -1 : (noteNameToMidi(targetNote) as number);
+  // in_note to 0-127, so the move can't happen and Live would refuse it
+  // silently — say so instead of reporting a no-op as a move.
+  if (targetNote === "*") {
+    console.warn(
+      `updateDevice: cannot move a drum chain to the catch-all pad "${toPath}" — ` +
+        `Live has no way to set a chain to "all notes"`,
+    );
+
+    return;
+  }
+
+  const targetInNote = noteNameToMidi(targetNote) as number;
 
   const sourceInNote = chain.getProperty("in_note") as number;
   const rackChains = LiveAPI.from(drumRackPath).getChildren("chains");

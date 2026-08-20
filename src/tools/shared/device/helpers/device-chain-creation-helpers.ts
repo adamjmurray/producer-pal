@@ -182,14 +182,12 @@ export function autoCreateDrumPadChains(
   }
 
   for (let i = 0; i < chainsToCreate; i++) {
-    // Create chain (appends to end with in_note = -1 "All Notes")
+    // A new chain appends to the end on note 36, so move it to the pad we want.
     device.call("insert_chain");
 
-    // Get the new chain (it's at the end)
     const chains = device.getChildren("chains");
     const newChain = chains.at(-1);
 
-    // Set in_note to assign it to the correct pad
     if (newChain) {
       newChain.set("in_note", targetInNote);
     }
@@ -203,7 +201,8 @@ export function autoCreateDrumPadChains(
  * the shared write-path entry used by device insertion and the path-prefixed
  * sample pseudo-param.
  * @param rack - Drum Rack device LiveAPI object
- * @param drumPadNote - Note name (e.g. "C1", "F#1") or "*" for the catch-all pad
+ * @param drumPadNote - Note name (e.g. "C1", "F#1") or "*" for the catch-all
+ *   pad, whose chains resolve but can't be created
  * @param chainSegments - Path segments after the pad note ([] or ["c<n>"])
  * @returns The resolved chain, or null when it can't be resolved/created
  */
@@ -255,7 +254,15 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
-  const targetInNote = drumPadNote === "*" ? -1 : noteNameToMidi(drumPadNote);
+  // The catch-all pad is in_note -1, and Live 12.4.3 clamps a drum chain's
+  // in_note to 0-127, so there is no way to create one: insert_chain would
+  // strand an empty chain on note 36. An existing catch-all chain still
+  // resolves above.
+  if (drumPadNote === "*") {
+    return null;
+  }
+
+  const targetInNote = noteNameToMidi(drumPadNote);
 
   if (targetInNote == null) {
     return null;
