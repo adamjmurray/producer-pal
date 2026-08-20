@@ -9,7 +9,7 @@
  * Exports the same interface but always returns an error.
  *
  * IMPORTANT: If this file is renamed or moved, update its entry in
- * config/rolldown-plugin-stub-code-exec.mjs (STUBS) to match.
+ * config/rolldown-plugin-stub-modules.mjs (CODE_EXEC_STUBS) to match.
  */
 
 import { type SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";

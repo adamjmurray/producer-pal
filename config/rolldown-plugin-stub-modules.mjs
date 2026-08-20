@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Swaps the code-execution modules for stubs that export the same interface and
-// do nothing, keeping node:vm and all execution logic out of release bundles.
+// Swaps dev-only modules for stubs that export the same interface and do
+// nothing, keeping them out of release bundles entirely. A stub module leaves
+// nothing to strip, which an `if (flag)` around a mutable enable check does not.
 //
 // This is a resolveId hook, not a `resolve.alias` entry, because alias never
 // sees a `#src/…` specifier: those are Node subpath imports and resolve first.
@@ -21,7 +22,7 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
  * Real module → the stub that replaces it. Matched against an import's RESOLVED
  * path, so it makes no difference whether a caller wrote `./x.ts` or `#src/…`.
  */
-const STUBS = {
+export const CODE_EXEC_STUBS = {
   "src/live-api-adapter/code-exec-v8-protocol.ts":
     "src/tools/clip/code-exec/code-exec-v8-protocol-disabled.ts",
   "src/mcp-server/code-executor.ts":
@@ -30,16 +31,42 @@ const STUBS = {
     "src/tools/clip/code-exec/code-exec-protocol-disabled.ts",
 };
 
+/** Same, for the LiveAPI object counter. See dev/Development-Tools.md. */
+export const BUILD_STATS_STUBS = {
+  "src/live-api-adapter/live-api-build-stats.ts":
+    "src/live-api-adapter/live-api-build-stats-disabled.ts",
+};
+
 /**
- * Build the stub-substitution plugin. Only add it when code execution is off.
+ * Build the code-execution stub plugin. Only add it when code exec is off.
  *
  * @returns A rolldown plugin
  */
 export function stubCodeExec() {
-  const byRealPath = buildStubMap();
+  return stubModules("stub-code-exec", CODE_EXEC_STUBS);
+}
+
+/**
+ * Build the build-stats stub plugin. Only add it when build stats are off.
+ *
+ * @returns A rolldown plugin
+ */
+export function stubBuildStats() {
+  return stubModules("stub-build-stats", BUILD_STATS_STUBS);
+}
+
+/**
+ * Substitute one set of modules for their stubs.
+ *
+ * @param name - Plugin name, for rolldown's diagnostics
+ * @param stubs - Repo-relative real module → repo-relative stub
+ * @returns A rolldown plugin
+ */
+function stubModules(name, stubs) {
+  const byRealPath = buildStubMap(name, stubs);
 
   return {
-    name: "stub-code-exec",
+    name,
     resolveId(source, importer) {
       const target = resolveSource(source, importer);
 
@@ -49,20 +76,22 @@ export function stubCodeExec() {
 }
 
 /**
- * Resolve the table to absolute paths, failing the build on a stale entry.
+ * Resolve a stub table to absolute paths, failing the build on a stale entry.
  * A rename that missed the table would otherwise silently ship the real module.
  *
+ * @param name - Plugin name, for the error message
+ * @param stubs - Repo-relative real module → repo-relative stub
  * @returns Absolute real-module path → absolute stub path
  */
-function buildStubMap() {
+function buildStubMap(name, stubs) {
   const map = new Map();
 
-  for (const [real, stub] of Object.entries(STUBS)) {
+  for (const [real, stub] of Object.entries(stubs)) {
     for (const path of [real, stub]) {
       if (!existsSync(join(rootDir, path))) {
         throw new Error(
-          `stub-code-exec: ${path} no longer exists. Update STUBS in ` +
-            "config/rolldown-plugin-stub-code-exec.mjs to match the rename.",
+          `${name}: ${path} no longer exists. Update the stub table in ` +
+            "config/rolldown-plugin-stub-modules.mjs to match the rename.",
         );
       }
     }

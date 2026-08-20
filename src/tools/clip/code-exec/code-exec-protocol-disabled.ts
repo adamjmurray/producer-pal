@@ -9,7 +9,7 @@
  * Exports the same interface but does nothing.
  *
  * IMPORTANT: If this file is renamed or moved, update its entry in
- * config/rolldown-plugin-stub-code-exec.mjs (STUBS) to match.
+ * config/rolldown-plugin-stub-modules.mjs (CODE_EXEC_STUBS) to match.
  */
 
 /**

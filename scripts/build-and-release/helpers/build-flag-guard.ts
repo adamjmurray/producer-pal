@@ -18,12 +18,17 @@
  * list equal to the build-flag half of that inventory — so a new flag fails the
  * suite until it is listed here too. Runtime flags stay out on purpose: the
  * portal reads ENABLE_LOGGING when it runs, so the build never bakes it in.
+ *
+ * ENABLE_BUILD_STATS is here even though src/ never reads it: it picks which
+ * module the bundler resolves rather than a value to substitute, and it still
+ * changes the shipped bytes.
  */
 export const GUARDED_BUILD_FLAGS: string[] = [
   "ENABLE_LIVE_API",
   "ENABLE_CODE_EXEC",
   "ENABLE_WARP_MARKERS",
   "ENABLE_REMOTE_CORS",
+  "ENABLE_BUILD_STATS",
 ];
 
 /** Set to "true" alongside the flags to build with them on purpose. */
@@ -50,9 +55,9 @@ export function buildFlagGuard(
   return [
     "\n❌ Refusing to build: dev-only build flags are set in this environment.\n",
     ...set.map((flag) => `     ${flag}=${env[flag]}`),
-    "\n   Their values are baked into the bundles, and they enable Live API access,",
-    "   arbitrary code execution, wildcard CORS, and unfinished features. None of",
-    "   that may ship.\n",
+    "\n   The build bakes them into the bundles, and they enable Live API access,",
+    "   arbitrary code execution, wildcard CORS, unfinished features, and the",
+    "   LiveAPI object counter. None of that may ship.\n",
     "   • For a development build:  npm run build:debug",
     `   • On purpose, this once:    ${DEV_BUILD_OVERRIDE}=true npm run build\n`,
   ].join("\n");

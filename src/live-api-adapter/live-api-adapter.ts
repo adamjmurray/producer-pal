@@ -48,6 +48,10 @@ import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import {
+  beginLiveApiBuildStats,
+  reportLiveApiBuildStats,
+} from "./live-api-build-stats.ts";
 import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 import {
@@ -479,6 +483,10 @@ async function handleRequest(
       contextBeforeSync,
     );
 
+    // Counts only the tool's own objects, not the project-context sync above.
+    // A build without ENABLE_BUILD_STATS gets a stub here and counts nothing.
+    beginLiveApiBuildStats();
+
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
       // Compare this to the old way of passing the JS object directly here,
@@ -501,6 +509,11 @@ async function handleRequest(
       result = formatErrorResponse(
         `Error executing tool '${tool}': ${message}`,
       );
+    } finally {
+      // Before the response is assembled: the patch appends whatever is on
+      // outlet 1 at that moment, so reporting later files the numbers under
+      // some other call. A failed call still built objects, hence the finally.
+      reportLiveApiBuildStats();
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

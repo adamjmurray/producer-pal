@@ -46,6 +46,10 @@
  * once and passing the object down.
  */
 
+import {
+  recordLiveApiConstruct,
+  recordLiveApiResolve,
+} from "./live-api-build-stats.ts";
 import { NONEXISTENT_ID } from "./live-api-path-utils.ts";
 import {
   acquirePooledObject,
@@ -106,7 +110,7 @@ function acquireObject(target: string): LiveAPI {
   const pooled = acquirePooledObject();
 
   if (pooled == null) {
-    return trackLiveApiObject(new LiveAPI(target));
+    return constructObject(target);
   }
 
   // Track before retargeting: an object that throws partway through is off the
@@ -126,6 +130,18 @@ function acquireObject(target: string): LiveAPI {
   // Only reachable if a non-cleared object reached the free list, which the
   // release guard exists to prevent. Building is what this did before pooling
   // covered id targets, so the fallback is just the old behavior.
+  return constructObject(target);
+}
+
+/**
+ * Build a brand-new object, the expensive path the pool exists to avoid.
+ *
+ * @param target - Path or "id N" string, already normalized
+ * @returns A tracked object pointing at the target
+ */
+function constructObject(target: string): LiveAPI {
+  recordLiveApiConstruct();
+
   return trackLiveApiObject(new LiveAPI(target));
 }
 
@@ -140,6 +156,8 @@ function acquireObject(target: string): LiveAPI {
  * @returns A tracked object pointing at the target
  */
 export function buildOrReuse(target: string): LiveAPI {
+  recordLiveApiResolve(target);
+
   if (!STABLE_TARGETS.has(target)) {
     return acquireObject(target);
   }

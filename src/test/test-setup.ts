@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, vi } from "vitest";
+import { beginLiveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
 import { resetLiveApiTracking } from "#src/live-api-adapter/live-api-release.ts";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
 import { LiveAPI } from "./mocks/mock-live-api.ts";
@@ -40,4 +41,9 @@ beforeEach(() => {
   // Drop LiveAPI objects left tracked by the previous test, so a test that
   // closes a request scope doesn't clear their paths out from under it.
   resetLiveApiTracking();
+
+  // Tests run the real recorder (the stub is a build-time substitution), so
+  // without this its per-target map would grow across the whole suite. Also
+  // what lets a budget test read liveApiBuildStats() for its own call alone.
+  beginLiveApiBuildStats();
 });

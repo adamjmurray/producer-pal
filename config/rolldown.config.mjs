@@ -11,7 +11,10 @@ import { replacePlugin } from "rolldown/plugins";
 import { BUILD_SHA } from "./build-sha.mjs";
 import { copyFiles } from "./rolldown-plugin-copy.mjs";
 import { inlineChatUI } from "./rolldown-plugin-inline-chat-ui.mjs";
-import { stubCodeExec } from "./rolldown-plugin-stub-code-exec.mjs";
+import {
+  stubBuildStats,
+  stubCodeExec,
+} from "./rolldown-plugin-stub-modules.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -33,10 +36,14 @@ const envVarReplacements = {
   ),
 };
 
-// Substitute the code-exec modules with do-nothing stubs unless the build asked
-// for code execution. See config/rolldown-plugin-stub-code-exec.mjs.
-const codeExecPlugins =
-  process.env.ENABLE_CODE_EXEC !== "true" ? [stubCodeExec()] : [];
+// Substitute dev-only modules with do-nothing stubs unless the build asked for
+// them. ENABLE_BUILD_STATS is deliberately absent from the replacements above:
+// nothing in src/ reads it, because the flag picks a module rather than a value.
+// See config/rolldown-plugin-stub-modules.mjs.
+const stubPlugins = [
+  ...(process.env.ENABLE_CODE_EXEC !== "true" ? [stubCodeExec()] : []),
+  ...(process.env.ENABLE_BUILD_STATS !== "true" ? [stubBuildStats()] : []),
+];
 
 const resolveOptions = {
   alias: { "#src": join(rootDir, "src") },
@@ -79,7 +86,7 @@ export default defineConfig([
     resolve: resolveOptions,
     transform: { target: "es2023" },
     plugins: [
-      ...codeExecPlugins,
+      ...stubPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       {
         // Max's V8 runs this as a plain script, not a module, so rolldown's
@@ -117,7 +124,7 @@ export default defineConfig([
     resolve: resolveOptions,
     transform: { target: "es2023" },
     plugins: [
-      ...codeExecPlugins,
+      ...stubPlugins,
       replacePlugin(envVarReplacements, { preventAssignment: true }),
       inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       addLicenseHeader({ includeThirdPartyLicenses: true }),
@@ -149,7 +156,7 @@ export default defineConfig([
     },
     transform: { target: "es2023" },
     plugins: [
-      ...codeExecPlugins,
+      ...stubPlugins,
       addLicenseHeader({
         includeThirdPartyLicenses: true,
         shebang: "#!/usr/bin/env node",

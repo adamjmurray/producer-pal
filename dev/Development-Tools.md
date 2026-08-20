@@ -304,81 +304,71 @@ Constructing a LiveAPI object is the expensive part (see
 object twice pays twice. Pooling can't help a single big call — the free list
 refills only when the last scope closes.
 
-Nothing in the tree counts objects today. This is how to add it back when you
-need to measure, and what to watch out for.
+The counter lives in `src/live-api-adapter/live-api-build-stats.ts`. Unit tests
+run it always; a build only carries it with `ENABLE_BUILD_STATS=true`, and every
+other build gets a do-nothing stub in its place.
 
-### The shape
+### Two numbers, and the difference matters
 
-All construction funnels through `buildOrReuse()` in
-`src/live-api-adapter/live-api-extensions.ts` — `LiveAPI.from` and `getChildren`
-are its only callers, and `getChildIds` builds nothing. So one line at the top
-of that function sees every object:
+- **Resolved** is how many times the call asked for an object. It depends on the
+  tool and the Live Set and nothing else, so this is the number to compare
+  against a test.
+- **Constructed** is how many of those had to build one. It depends on how full
+  the pool was, so it moves run to run and compares to nothing.
 
-```typescript
-recordLiveApiBuild(target);
+Repeats are resolved minus distinct. Targets are grouped by shape — indices
+replaced with `*` — so a Set with a target per clip still reports in a few
+lines, and the shapes compare directly between a real Set and a fixture.
+
+### In tests
+
+`liveApiBuildStats()` returns the counts for the current test; the global
+`beforeEach` resets it. Tests never open a release scope, so the pool stays cold
+and every resolution constructs — the count is exactly what the call asked for.
+
+### Against real Ableton
+
+```bash
+ENABLE_BUILD_STATS=true npm run build:debug
 ```
 
-Put the recorder in a module beside it, holding an array of targets and a
-default-off flag. Two summaries pay for themselves: total vs distinct targets
-(the gap is objects built more than once), and per call site, so you know which
-code rebuilt rather than which built first.
+Every tool response then carries a `WARNING: LiveAPI stats: …` line. That line
+is also how you know the device is instrumented: **a plain `npm run build`
+silently overwrites it**, and nothing else says so.
 
-Two things are easy to get wrong:
+Run one call at a time. The counters reset once per request, so overlapping
+calls mix their counts.
 
-- **Report before the response is built**, from `handleRequest()` in
-  `live-api-adapter.ts`. The release scope closes _after_ the response is
-  already out, so reporting from there attaches the numbers to a later call.
-  `console.warn()` from `src/shared/max/v8-max-console.ts` reaches the tool
-  response.
-- **Call-site capture only works under vitest**, where stack frames name source
-  files. A bundled V8 stack names bundle offsets. In a real build, read the
-  repeated targets instead. Match filenames with `[\w.-]+\.ts` — without the
-  dot, a `foo.def.ts` frame reports as `def.ts`.
+Do this whenever a budget test's fixture changes. A test that counts against the
+mock is measuring the mock: a fixture missing a property the tools read makes a
+walk stop early and the count comes out low — green, and wrong in the flattering
+direction. Only the same call against real Live catches that.
 
 ### What the counts can't see
 
-The recorder finds one kind of waste: the same target built more than once. It
+The counter finds one kind of waste: the same target resolved more than once. It
 is blind to the other kind — distinct objects built once, correctly, and then
 thrown away.
 
 Both are worth fixing and only one shows up in the numbers. A `drum-map` read of
 a track whose rack holds no drum rack once built 174 objects, returned no drum
-map at all, and reported 0 redundant. Nearly pure waste, scored clean.
+map at all, and reported zero repeats. Nearly pure waste, scored clean.
 
-So read a redundancy percentage as a floor, not a ceiling, and compare what a
-call returned against what it built.
-
-### Two ways to run it
-
-Unit tests install the real extensions over the mock `LiveAPI` (see
-`src/test/test-setup.ts`), so they exercise `buildOrReuse` for real. Tests never
-open a scope, so the pool stays cold and every request is a construction — the
-count is exactly what the call asked for.
-
-1. **Sweep the suite.** Reset the recorder in the global `beforeEach` and dump
-   per-test counts in an `afterEach`, gated on an env var. Good for "did this
-   change add constructions?" across every tool at once.
-2. **A scaling harness.** Build synthetic Live Sets at several sizes and call
-   the tools directly. Absolute counts are fixture-sized and don't transfer, but
-   the ratios and how they move with shape do.
+So read a repeat count as a floor, not a ceiling, and compare what a call
+returned against what it built.
 
 Fixture shape drives the answer more than size does. A Drum Rack makes the
-drum-mode walk _cheaper_, because `devicesContainDrumRack()` returns on the
-first device with pads — the expensive shape is a rack with no drum rack in it,
-which gets recursed through entirely.
+drum-mode walk _cheaper_, because `containerHasDrumRack()` returns on the first
+device with pads — the expensive shape is a rack with no drum rack in it, which
+gets recursed through entirely.
 
-### Wiring it into a real build
+### Attributing a count to a call site
 
-Only needed to measure against Ableton rather than mocks. Follow
-`ENABLE_REMOTE_CORS` as the model — an opt-in flag, not a debug-build default,
-since it warns on every tool response. `src/test/meta/build/build-flags.test.ts`
-fails until the flag is registered everywhere it belongs, so let it drive you.
-
-Run one call at a time. The recorder is a single array reset per request, so
-overlapping calls mix their counts.
-
-Don't ship it: the recorder costs an array push per construction, and a mutable
-enable flag stops the bundler from stripping the body from release builds.
+The counter says which targets were resolved, not who asked. When the shapes
+aren't enough, capture a stack in `recordLiveApiResolve` — but only under
+vitest, where frames name source files. A bundled V8 stack names bundle offsets.
+Match filenames with `[\w.-]+\.ts`; without the dot, a `foo.def.ts` frame
+reports as `def.ts`.
 
 ## Debugging Tips
 

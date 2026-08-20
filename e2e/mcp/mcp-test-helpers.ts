@@ -117,6 +117,15 @@ export function getToolErrorMessage(result: unknown): string {
 }
 
 /**
+ * The LiveAPI object counter rides the same warning channel, and a build made
+ * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
+ * not something a tool is telling us, so it never counts as a tool warning —
+ * otherwise measuring against real Live would fail this whole suite on the first
+ * parseToolResult(). See dev/Development-Tools.md.
+ */
+const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
+
+/**
  * Extract warning messages from a tool result.
  * Warnings are content items that start with "WARNING: ".
  */
@@ -128,7 +137,12 @@ export function getToolWarnings(result: unknown): string[] {
   if (!typed?.content) return [];
 
   return typed.content
-    .filter((item) => item.type === "text" && item.text?.startsWith("WARNING:"))
+    .filter(
+      (item) =>
+        item.type === "text" &&
+        item.text?.startsWith("WARNING:") &&
+        !item.text.startsWith(BUILD_STATS_WARNING),
+    )
     .map((item) => item.text ?? "");
 }
 
