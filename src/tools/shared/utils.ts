@@ -240,6 +240,15 @@ export function toLiveApiId(id: string | number): string {
 }
 
 /**
+ * Strips the "id " prefix, giving the bare form a result reports.
+ * @param id - ID with or without the prefix (e.g., "id 25" or "25")
+ * @returns Bare ID string (e.g., "25")
+ */
+export function fromLiveApiId(id: string): string {
+  return id.startsWith("id ") ? id.slice(3) : id;
+}
+
+/**
  * Removes specified fields from each object in an array.
  * Used to strip redundant fields from nested results (e.g., clips nested in tracks or scenes).
  * @param items - Array of objects to strip fields from, or undefined

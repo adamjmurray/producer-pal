@@ -11,6 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import {
+  drumPadIdsByNote,
   findDrumPad,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
@@ -248,5 +249,72 @@ describe("resolveDrumPadGroup", () => {
     const group = resolveDrumPadGroup(RACK_PATH, "C1");
 
     expect(group?.chains.map((chain) => chain.id)).toStrictEqual(["chain0"]);
+  });
+});
+
+describe("drumPadIdsByNote", () => {
+  /**
+   * Register a rack the way Live lays one out: a pad for every MIDI note, in
+   * note order, so the list index is the note.
+   * @param padCount - How many pads to register
+   * @returns The rack LiveAPI handle
+   */
+  function registerNoteOrderedRack(padCount: number): LiveAPI {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: {
+        drum_pads: Array.from({ length: padCount }, (_, note) => [
+          "id",
+          `pad${String(note)}`,
+        ]).flat(),
+      },
+    });
+
+    for (let note = 0; note < padCount; note++) {
+      registerMockObject(`pad${String(note)}`, {
+        path: `${RACK_PATH} drum_pads ${String(note)}`,
+        type: "DrumPad",
+        properties: { note },
+      });
+    }
+
+    return LiveAPI.from(RACK_PATH);
+  }
+
+  it("keys a note-ordered rack's pads without the id prefix", () => {
+    const ids = drumPadIdsByNote(registerNoteOrderedRack(8));
+
+    // Bare, because that is the form a pad id goes out in and comes back in.
+    expect(ids.get(0)).toBe("pad0");
+    expect(ids.get(5)).toBe("pad5");
+    expect(ids.size).toBe(8);
+  });
+
+  it("reads each pad's note when the list is not in note order", () => {
+    // A fixture — or a Live that ever reordered the list — puts pad 36 first.
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { drum_pads: ["id", "pad36", "id", "pad38"] },
+    });
+    registerMockObject("pad36", { type: "DrumPad", properties: { note: 36 } });
+    registerMockObject("pad38", { type: "DrumPad", properties: { note: 38 } });
+
+    const ids = drumPadIdsByNote(LiveAPI.from(RACK_PATH));
+
+    expect(ids.get(36)).toBe("pad36");
+    expect(ids.get(38)).toBe("pad38");
+    expect(ids.get(0)).toBeUndefined();
+  });
+
+  it("has no pads for a drum rack nested in a drum pad", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { drum_pads: [] },
+    });
+
+    expect(drumPadIdsByNote(LiveAPI.from(RACK_PATH)).size).toBe(0);
   });
 });

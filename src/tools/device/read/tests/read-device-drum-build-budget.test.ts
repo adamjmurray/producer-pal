@@ -20,16 +20,29 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
 
-/** Pads in the fixture kit, each holding one chain with one instrument. */
+/** Pads the fixture kit fills, each holding one chain with one instrument. */
 const PADS = 16;
 /** Return chains on the rack, so every chain mixer carries that many sends. */
 const RETURNS = 6;
+/** Pads on any Drum Rack, filled or not: Live gives it one per MIDI note. */
+const RACK_PADS = 128;
+/** MIDI note the kit's first pad sits on. */
+const FIRST_NOTE = 36;
 
 const RACK = livePath.track(1).device(0);
 
-/** Register a kit of PADS single-instrument pads on a rack with RETURNS returns. */
+/**
+ * Register a kit of PADS single-instrument pads on a rack with RETURNS returns.
+ *
+ * The rack carries all 128 pads, in note order, because Live's does — a fixture
+ * listing only the filled ones puts them at the wrong notes and hides what a
+ * read pays for the rest.
+ */
 function setupKit(): void {
-  const padIds = Array.from({ length: PADS }, (_, i) => `pad${String(i)}`);
+  const padIds = Array.from(
+    { length: RACK_PADS },
+    (_, note) => `pad${String(note)}`,
+  );
   const chainIds = Array.from({ length: PADS }, (_, i) => `chain${String(i)}`);
   const returnIds = Array.from({ length: RETURNS }, (_, i) => `rc${String(i)}`);
 
@@ -57,37 +70,48 @@ function setupKit(): void {
     });
   }
 
+  for (const [note, padId] of padIds.entries()) {
+    registerFixturePad(note, padId);
+  }
+
   for (let i = 0; i < PADS; i++) {
-    setupPad(i, padIds[i] as string, chainIds[i] as string, returnIds);
+    setupPadChain(i, chainIds[i] as string, returnIds);
   }
 }
 
 /**
- * Register one pad: the DrumPad, its chain, the chain's instrument, and the
- * chain mixer with a send per return chain.
- * @param index - Pad index, which is also its chain index
+ * Register one of the rack's 128 DrumPads. Only the kit's notes carry a chain.
+ * @param note - The MIDI note this pad answers to, and its index in the list
  * @param padId - Id for the DrumPad
- * @param chainId - Id for the pad's chain
- * @param returnIds - The rack's return chain ids, one send each
  */
-function setupPad(
-  index: number,
-  padId: string,
-  chainId: string,
-  returnIds: string[],
-): void {
-  const note = 36 + index;
-  const chainPath = `${RACK} chains ${String(index)}`;
+function registerFixturePad(note: number, padId: string): void {
+  const filled = note >= FIRST_NOTE && note < FIRST_NOTE + PADS;
 
   registerMockObject(padId, {
     path: `${RACK} drum_pads ${String(note)}`,
     type: "DrumPad",
     properties: {
       note,
-      name: `Pad ${String(index)}`,
-      chains: children(chainId),
+      name: filled ? `Pad ${String(note - FIRST_NOTE)}` : "",
+      chains: filled ? children(`chain${String(note - FIRST_NOTE)}`) : [],
     },
   });
+}
+
+/**
+ * Register one pad's chain: the chain, its instrument, and the chain mixer with
+ * a send per return chain.
+ * @param index - Chain index within the rack
+ * @param chainId - Id for the chain
+ * @param returnIds - The rack's return chain ids, one send each
+ */
+function setupPadChain(
+  index: number,
+  chainId: string,
+  returnIds: string[],
+): void {
+  const note = FIRST_NOTE + index;
+  const chainPath = `${RACK} chains ${String(index)}`;
 
   registerMockObject(chainId, {
     path: chainPath,
@@ -149,22 +173,25 @@ function setupPad(
 }
 
 describe("readDevice drum rack build budget", () => {
-  it("reads a pad list without touching the chain mixers", () => {
+  it("reads a pad list without building 128 pads or a chain mixer", () => {
     setupKit();
 
     readDevice({ path: "t1/d0", include: ["drum-pads"], maxDepth: 0 });
 
-    // The rack, then per pad: the DrumPad for its id, its chain for the name
-    // and state, and its device to answer whether the pad makes a sound.
-    expect(liveApiBuildStats().resolved).toBe(1 + PADS * 3);
+    // The rack, one pad to check the list really is in note order, then per
+    // filled pad: its chain for the name and state, and its device to answer
+    // whether the pad makes a sound. Pad ids come off the rack's own list, so
+    // the 112 empty pads cost nothing.
+    expect(liveApiBuildStats().resolved).toBe(2 + PADS * 2);
   });
 
-  it("reads a drum map without building the pads either", () => {
+  it("reads a drum map without looking at the pads at all", () => {
     setupKit();
 
     readDevice({ path: "t1/d0", include: ["drum-map"], maxDepth: 0 });
 
-    // Same, less the DrumPads: a map is keyed by note, so no pad id is shown.
+    // Same, less the order check: a map is keyed by note, so no pad id is
+    // shown and the pad list is never read.
     expect(liveApiBuildStats().resolved).toBe(1 + PADS * 2);
   });
 
@@ -180,6 +207,6 @@ describe("readDevice drum rack build budget", () => {
     // Pins which way round it is: the mixer read is skipped because nothing
     // shows it, not because it stopped happening. Per chain that mixer costs
     // the mixer device, a volume, a pan, and one send per return chain.
-    expect(liveApiBuildStats().resolved).toBe(1 + PADS * (3 + 3 + RETURNS));
+    expect(liveApiBuildStats().resolved).toBe(2 + PADS * (2 + 3 + RETURNS));
   });
 });

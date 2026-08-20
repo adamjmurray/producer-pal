@@ -168,15 +168,29 @@ describe("device-reader-drum-helpers", () => {
       path: "live_set tracks 0 devices 0",
       getChildren: vi.fn((child: string) =>
         child === "drum_pads"
-          ? Object.entries(padsByNote).map(([note, id]) => ({
-              id,
-              getProperty: vi.fn(() => Number(note)),
-            }))
+          ? drumPadMocks(padsByNote)
           : chainConfigs.map((config) =>
               createMockChain(config.inNote, config.name, config.state),
             ),
       ),
+      // Live lists a pad for all 128 notes, in note order. These fixtures list
+      // only the pads they care about, so the reader's note-order check fails
+      // and it falls back to asking each pad its note — the path these cover.
+      getChildIds: vi.fn((child: string) =>
+        child === "drum_pads" ? Object.values(padsByNote) : [],
+      ),
     });
+
+    /**
+     * The rack's pads as the reader sees them.
+     * @param padsByNote - Pad id keyed by the note it answers to
+     * @returns Mock pads, each answering with its own note
+     */
+    const drumPadMocks = (padsByNote: Record<number, string>) =>
+      Object.entries(padsByNote).map(([note, id]) => ({
+        id,
+        getProperty: vi.fn(() => Number(note)),
+      }));
 
     // Helper for common test setup
     const setupAndProcess = (
@@ -321,6 +335,7 @@ describe("device-reader-drum-helpers", () => {
       const device = {
         path: "live_set tracks 0 devices 0",
         getChildren: vi.fn(() => mockChains),
+        getChildIds: vi.fn(() => []),
       };
       const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
@@ -371,6 +386,7 @@ describe("device-reader-drum-helpers", () => {
       const device = {
         path: "live_set tracks 0 devices 0",
         getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        getChildIds: vi.fn(() => []),
       };
 
       processDrumPads(
@@ -543,6 +559,7 @@ describe("device-reader-drum-helpers", () => {
       const device = {
         path: PARENT,
         getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        getChildIds: vi.fn(() => []),
       };
 
       processDrumPads(

@@ -10,7 +10,11 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
+import {
+  fromLiveApiId,
+  toLiveApiId,
+  toLiveApiView,
+} from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
@@ -454,10 +458,6 @@ export function updateClipSelection({
   }
 }
 
-function normalizeLiveApiId(id: string): string {
-  return id.startsWith("id ") ? id.slice(3) : id;
-}
-
 /**
  * Compare two Live API ids, which reach us with or without the "id " prefix.
  * @param idA - One id
@@ -465,5 +465,5 @@ function normalizeLiveApiId(id: string): string {
  * @returns Whether they name the same object
  */
 export function isSameLiveApiId(idA: string, idB: string): boolean {
-  return normalizeLiveApiId(idA) === normalizeLiveApiId(idB);
+  return fromLiveApiId(idA) === fromLiveApiId(idB);
 }

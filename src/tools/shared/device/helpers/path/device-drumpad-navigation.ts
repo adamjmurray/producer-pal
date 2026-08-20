@@ -5,6 +5,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { fromLiveApiId } from "#src/tools/shared/utils.ts";
 import { buildDrumPadPath, extractDevicePath } from "./device-path-builders.ts";
 
 export type DrumPadTargetType = "chain" | "device";
@@ -102,10 +103,27 @@ export function navigateRemainingSegments(
 /**
  * Map a drum rack's pad IDs by the MIDI note each pad answers to. A Drum Rack
  * nested inside a drum pad has no pads of its own, so its map is empty.
+ *
+ * Live gives a rack one pad per MIDI note — 128 of them, whatever the kit — and
+ * lists them in note order, so the ids come straight off the list and the index
+ * is the note. Building all 128 to read `note` off each cost 128 objects on
+ * every drum read, to name the handful of pads a kit uses.
+ *
+ * The order is checked, not trusted: one pad is built and asked its note. A
+ * mapping that quietly comes out shifted would rename every drum, and the list
+ * order is Live's convention rather than a documented guarantee.
  * @param rack - The drum rack device
  * @returns Pad ID keyed by MIDI note
  */
 export function drumPadIdsByNote(rack: LiveAPI): Map<number, string> {
+  const padIds = rack.getChildIds("drum_pads");
+  const first = padIds.length > 0 ? LiveAPI.from(padIds[0] as string) : null;
+
+  if (first != null && first.getProperty("note") === 0) {
+    // getChildIds gives the "id N" form; a pad id that reaches a result is bare.
+    return new Map(padIds.map((padId, note) => [note, fromLiveApiId(padId)]));
+  }
+
   const idsByNote = new Map<number, string>();
 
   for (const pad of rack.getChildren("drum_pads")) {
