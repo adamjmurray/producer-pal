@@ -456,6 +456,23 @@ export async function supportsSampleLoading(client: Client): Promise<boolean> {
   return major > 12 || (major === 12 && minor >= 4);
 }
 
+/**
+ * Whether the SERVED build has code execution compiled in. The flag is baked in
+ * at build time (`build:debug` forces it on), so this process's own
+ * ENABLE_CODE_EXEC says nothing about the device under test. `ppal-create-clip`
+ * publishes its `code` param only when the feature is on, which makes the
+ * published schema the honest signal.
+ *
+ * @param client - Connected MCP client
+ * @returns True when the running device was built with code exec enabled
+ */
+export async function serverHasCodeExec(client: Client): Promise<boolean> {
+  const { tools } = await client.listTools();
+  const createClip = tools.find((tool) => tool.name === "ppal-create-clip");
+
+  return createClip?.inputSchema.properties?.code != null;
+}
+
 // ============================================================================
 // Shared Result Interfaces
 // ============================================================================

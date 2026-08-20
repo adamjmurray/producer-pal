@@ -31,11 +31,6 @@ environment. Run it explicitly with:
 ENABLE_CODE_EXEC=true npm run e2e:mcp
 ```
 
-`workflow/ppal-connect.test.ts` needs the same variable for a different reason:
-it asserts the served skills equal a locally assembled `buildSkills()`, and the
-`code-transforms` fragment ships only under the flag. Without it, a debug build
-serves a blob this test process can't reproduce.
-
 ## How It Works
 
 Tests automatically:

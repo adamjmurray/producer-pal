@@ -9,12 +9,13 @@
  *
  * Run with: npm run e2e:mcp
  */
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
   fetchSkillOverrides,
   parseToolResult,
+  serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -77,6 +78,20 @@ function expectConnected(result: unknown): ConnectResult {
 }
 
 describe("ppal-connect", () => {
+  // buildSkills() below reads ENABLE_CODE_EXEC from THIS process, but the device
+  // bakes the flag in at build time — and `build:debug` forces it on. Left alone
+  // the two disagree on every debug build, so take the answer from the server.
+  beforeAll(async () => {
+    vi.stubEnv(
+      "ENABLE_CODE_EXEC",
+      (await serverHasCodeExec(ctx.client!)) ? "true" : "false",
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active, with notation pinned so the assertion is
     // deterministic regardless of any notation left set by a prior test.
