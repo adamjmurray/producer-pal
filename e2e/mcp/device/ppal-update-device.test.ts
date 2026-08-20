@@ -120,7 +120,7 @@ describe("ppal-update-device", () => {
     // Test 1: Update multiple via comma-separated IDs
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: `${deviceId}, ${deviceId2}`, collapsed: true },
+      arguments: { ids: `${deviceId}, ${deviceId2}`, name: "Batch Renamed" },
     });
     const batch = parseToolResult<UpdateDeviceResult[]>(batchResult);
 
