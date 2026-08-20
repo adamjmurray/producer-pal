@@ -32,6 +32,24 @@ schema tolerant. There's no built-in "degrade to a comma-separated string"
 switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 `params` array adds a `preprocess` that also accepts a JSON-stringified array.
 
+## Params that don't apply to every action
+
+A modal tool publishes one schema for every action, so a caller can always send
+a param the chosen action has no use for. **Warn and skip it — never apply it,
+never drop it quietly.** Applying it is the worse half: `ppal-playback` used to
+write the arrangement playhead on `play-scene`, so "play scene 3 from bar 5"
+changed the Live Set in a way nobody asked for.
+
+Say which action ignored it, and point at the one that would have used it:
+
+```
+startTime ignored: action "play-scene" does not change the arrangement;
+use action "update-arrangement" for the playhead and loop
+```
+
+Group the params that share a reason into one warning rather than repeating the
+sentence per param.
+
 ## Length caps
 
 `z.string().max(n)` emits `maxLength: n`. llama.cpp-based clients (Jan, LM
