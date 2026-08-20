@@ -335,6 +335,19 @@ Two things are easy to get wrong:
   repeated targets instead. Match filenames with `[\w.-]+\.ts` — without the
   dot, a `foo.def.ts` frame reports as `def.ts`.
 
+### What the counts can't see
+
+The recorder finds one kind of waste: the same target built more than once. It
+is blind to the other kind — distinct objects built once, correctly, and then
+thrown away.
+
+Both are worth fixing and only one shows up in the numbers. A `drum-map` read of
+a track whose rack holds no drum rack once built 174 objects, returned no drum
+map at all, and reported 0 redundant. Nearly pure waste, scored clean.
+
+So read a redundancy percentage as a floor, not a ceiling, and compare what a
+call returned against what it built.
+
 ### Two ways to run it
 
 Unit tests install the real extensions over the mock `LiveAPI` (see
@@ -360,6 +373,9 @@ Only needed to measure against Ableton rather than mocks. Follow
 `ENABLE_REMOTE_CORS` as the model — an opt-in flag, not a debug-build default,
 since it warns on every tool response. `src/test/meta/build/build-flags.test.ts`
 fails until the flag is registered everywhere it belongs, so let it drive you.
+
+Run one call at a time. The recorder is a single array reset per request, so
+overlapping calls mix their counts.
 
 Don't ship it: the recorder costs an array push per construction, and a mutable
 enable flag stops the bundler from stripping the body from release builds.
