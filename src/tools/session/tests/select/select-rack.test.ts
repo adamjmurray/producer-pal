@@ -121,6 +121,45 @@ describe("select inside a rack", () => {
     expect(pad.set).not.toHaveBeenCalled();
   });
 
+  // Measured on 12.4.3: a copied-on layer comes first in the rack's chain list
+  // and last in the pad's. Paths resolve against the rack's, so revealing the
+  // pad's would open a layer the reported path doesn't name.
+  it("reveals the layer a layered pad's c0 path names", () => {
+    registerMockObject("rack-id", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: {
+        chains: children("layer-a", "layer-b"),
+        drum_pads: children("pad-0"),
+      },
+    });
+
+    const rackView = registerMockObject("rack-view", {
+      path: `${RACK_PATH} view`,
+      type: "RackDevice.View",
+    });
+
+    registerMockObject("pad-0", {
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      // The pad lists them the other way round — this is the disagreement.
+      properties: { note: 36, chains: children("layer-b", "layer-a") },
+    });
+
+    for (const [index, id] of ["layer-a", "layer-b"].entries()) {
+      registerMockObject(id, {
+        path: livePath.track(0).device(0).chain(index),
+        type: "DrumChain",
+        properties: { in_note: 36 },
+      });
+    }
+
+    setupSongViewMock();
+    select({ path: "t0/d0/pC1" });
+
+    expect(rackView.set).toHaveBeenCalledWith("selected_chain", "id layer-a");
+  });
+
   it("selects a rack chain by path", () => {
     registerMockObject("rack-id", {
       path: RACK_PATH,

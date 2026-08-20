@@ -152,6 +152,40 @@ describe("ppal-select inside a rack", () => {
     expect(view.selectedPadId).toBe(padId);
   });
 
+  // Live's two chain lists disagree once a pad is layered: a copied-on layer
+  // comes first in the rack's and last in the pad's. Paths resolve against the
+  // rack's, so reading the pad's would reveal a layer c0 doesn't name.
+  it("reveals the layer a layered pad's c0 path names", async () => {
+    const kit = await createTrackWithDrumRack(ctx.client!);
+
+    await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "drum-pad",
+        path: `${kit.rackPath}/pC1`,
+        toPath: `${kit.rackPath}/pD1`,
+        name: "CopiedLayer",
+      },
+    });
+
+    await sleep(200);
+
+    const pad = await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`);
+
+    expect(pad.chains).toHaveLength(2);
+
+    await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { path: `${kit.rackPath}/pD1` },
+    });
+
+    await sleep(200);
+
+    const view = await readRackView(ctx.client!, liveApiRack(kit));
+
+    expect(view.selectedChainId).toBe(pad.chains?.[0]?.id);
+  });
+
   it("selects a pad layer, and the pad it sounds on", async () => {
     const kit = await createTrackWithDrumRack(ctx.client!);
     const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`)).id;

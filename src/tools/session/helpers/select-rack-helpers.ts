@@ -8,6 +8,7 @@
 // different writes from every other selection select makes.
 
 import {
+  chainsOnDrumPad,
   drumPadPath,
   findDrumPad,
   findDrumPadByNote,
@@ -82,7 +83,10 @@ export function selectRackTarget(
   // Selecting the rack also selects its track, and puts the pad grid on screen.
   songView.call("select_device", toLiveApiId(rack.id));
 
-  const chain = isPad ? target.getChildAt("chains", 0) : target;
+  // Read the pad's layers off the rack, not off the pad: measured on 12.4.3
+  // the two lists disagree once a pad holds more than one, and c0 is the
+  // rack's first. Revealing the pad's would show a layer the path doesn't name.
+  const chain = isPad ? (chainsOnDrumPad(target)[0] ?? null) : target;
   const pad = isPad ? target : drumPadOfChain(rack, target);
 
   if (pad != null) revealDrumPad(rack, pad);

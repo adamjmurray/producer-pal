@@ -15,6 +15,7 @@ import {
 } from "../../mcp-test-helpers";
 
 export interface ChainInfo {
+  id?: string;
   name?: string;
   gainDb?: number;
   pan?: number;
