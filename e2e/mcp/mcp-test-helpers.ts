@@ -284,9 +284,34 @@ export async function createTestDeviceAt(
   deviceName: string,
   path: string,
 ): Promise<string> {
-  const created = await createDevice(client, deviceName, path);
+  return createdDevice(path, await createDevice(client, deviceName, path)).path;
+}
 
-  return `${path}/d${created.deviceIndex}`;
+export interface CreatedDevice {
+  /** Producer Pal path to the device, e.g. `t3/d2` */
+  path: string;
+  /** The device's index in its container */
+  deviceIndex: number;
+}
+
+/**
+ * Where a just-created device landed.
+ * @param containerPath - Container the device was created in
+ * @param created - The create-device result
+ * @returns The device's path and index
+ */
+function createdDevice(
+  containerPath: string,
+  created: CreateDeviceResult,
+): CreatedDevice {
+  if (created.deviceIndex == null) {
+    throw new Error(`create-device gave no index for "${containerPath}"`);
+  }
+
+  return {
+    path: `${containerPath}/d${created.deviceIndex}`,
+    deviceIndex: created.deviceIndex,
+  };
 }
 
 /**
@@ -358,24 +383,31 @@ export async function createMidiTrack(client: Client): Promise<number> {
 /**
  * Creates a Drum Rack at `path` with two populated pads (C1 = kick, D1 = the
  * generic sample) and waits for state to settle.
+ * @param client - Connected MCP client
+ * @param path - Container to create it in (e.g. `t3`, `t3/d0/c0`)
+ * @returns Where the rack landed — never assume `d0`
  */
 export async function createTwoPadDrumRack(
   client: Client,
   path: string,
-): Promise<void> {
-  await client.callTool({
-    name: "ppal-create-device",
-    arguments: {
-      deviceName: "Drum Rack",
-      path,
-      params: [
-        { name: "pC1/d0/sample", value: KICK_FILE },
-        { name: "pD1/d0/sample", value: SAMPLE_FILE },
-      ],
-    },
-  });
+): Promise<CreatedDevice> {
+  const created = parseToolResult<CreateDeviceResult>(
+    await client.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        deviceName: "Drum Rack",
+        path,
+        params: [
+          { name: "pC1/d0/sample", value: KICK_FILE },
+          { name: "pD1/d0/sample", value: SAMPLE_FILE },
+        ],
+      },
+    }),
+  );
 
   await sleep(200);
+
+  return createdDevice(path, created);
 }
 
 /**

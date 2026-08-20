@@ -14,7 +14,6 @@
  * Run with: npm run e2e:mcp -- ppal-delete-drum-chain
  */
 import { describe, expect, it } from "vitest";
-import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   getToolWarnings,
   parseToolResult,
@@ -22,6 +21,7 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import {
+  createLayeredPad,
   createTrackWithDrumRack,
   readDrumPad,
 } from "./drum-pad-test-helpers.ts";
@@ -34,36 +34,15 @@ interface DeleteResult {
   deleted: boolean;
 }
 
-/**
- * Build a rack whose D1 pad holds two layers, by copying C1's pad onto it.
- * @param client - Connected MCP client
- * @returns The track index
- */
-async function createLayeredPad(client: Client): Promise<number> {
-  const t = await createTrackWithDrumRack(client);
-  const sourceId = (await readDrumPad(client, `t${t}/d0/pC1`)).id;
-
-  await client.callTool({
-    name: "ppal-duplicate",
-    arguments: { type: "drum-pad", id: sourceId, toPath: `t${t}/d0/pD1` },
-  });
-
-  await sleep(200);
-
-  expect((await readDrumPad(client, `t${t}/d0/pD1`)).chains).toHaveLength(2);
-
-  return t;
-}
-
 describe("ppal-delete drum rack chain", () => {
   it("removes one layer and leaves the rest of the pad", async () => {
-    const t = await createLayeredPad(ctx.client!);
-    const before = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const { rackPath } = await createLayeredPad(ctx.client!);
+    const before = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     const result = parseToolResult<DeleteResult>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { type: "chain", path: `t${t}/d0/pD1/c0` },
+        arguments: { type: "chain", path: `${rackPath}/pD1/c0` },
       }),
     );
 
@@ -71,7 +50,7 @@ describe("ppal-delete drum rack chain", () => {
 
     await sleep(200);
 
-    const after = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const after = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     // The surviving layer is the one that was second, still on D1.
     expect(after.chains).toHaveLength(1);
@@ -80,12 +59,12 @@ describe("ppal-delete drum rack chain", () => {
   });
 
   it("removes the last chain, emptying the pad", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     const result = parseToolResult<DeleteResult>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { type: "chain", path: `t${t}/d0/pC1/c0` },
+        arguments: { type: "chain", path: `${rackPath}/pC1/c0` },
       }),
     );
 
@@ -97,7 +76,7 @@ describe("ppal-delete drum rack chain", () => {
     const rack = parseToolResult<{ drumPads?: { pitch: string }[] }>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0`, include: ["drum-pads"] },
+        arguments: { path: rackPath, include: ["drum-pads"] },
       }),
     );
 
@@ -105,12 +84,12 @@ describe("ppal-delete drum rack chain", () => {
   });
 
   it("refuses a bare pad path, pointing at the whole-pad delete", async () => {
-    const t = await createLayeredPad(ctx.client!);
+    const { rackPath } = await createLayeredPad(ctx.client!);
 
     const warnings = getToolWarnings(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { type: "chain", path: `t${t}/d0/pD1` },
+        arguments: { type: "chain", path: `${rackPath}/pD1` },
       }),
     );
 
@@ -121,17 +100,17 @@ describe("ppal-delete drum rack chain", () => {
     await sleep(200);
 
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pD1`)).chains,
+      (await readDrumPad(ctx.client!, `${rackPath}/pD1`)).chains,
     ).toHaveLength(2);
   });
 
   it("refuses a chain of an Instrument Rack", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     // Wrap the Drum Rack so there is an Instrument Rack chain to aim at.
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0`, wrapInRack: true },
+      arguments: { path: rackPath, wrapInRack: true },
     });
 
     await sleep(200);
@@ -139,7 +118,7 @@ describe("ppal-delete drum rack chain", () => {
     const warnings = getToolWarnings(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { type: "chain", path: `t${t}/d0/c0` },
+        arguments: { type: "chain", path: `${rackPath}/c0` },
       }),
     );
 
@@ -151,7 +130,7 @@ describe("ppal-delete drum rack chain", () => {
 
     // The wrapped Drum Rack is still in there.
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/c0/d0/pC1`)).chains,
+      (await readDrumPad(ctx.client!, `${rackPath}/c0/d0/pC1`)).chains,
     ).toHaveLength(1);
   });
 });

@@ -28,13 +28,13 @@ const ctx = setupMcpTestContext();
 
 describe("ppal-duplicate drum-pad", () => {
   it("copies a pad's chain state and devices to an empty pad", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     // Mark the source chain so the copy is identifiable by more than position.
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: {
-        path: `t${t}/d0/pC1/c0`,
+        path: `${rackPath}/pC1/c0`,
         name: "KickSource",
         pan: -0.4,
         chokeGroup: 2,
@@ -43,7 +43,7 @@ describe("ppal-duplicate drum-pad", () => {
 
     await sleep(150);
 
-    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+    const sourceId = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
 
     const copied = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
@@ -51,16 +51,16 @@ describe("ppal-duplicate drum-pad", () => {
         arguments: {
           type: "drum-pad",
           id: sourceId,
-          toPath: `t${t}/d0/pE1`,
+          toPath: `${rackPath}/pE1`,
         },
       }),
     );
 
-    expect(copied.path).toBe(`t${t}/d0/pE1`);
+    expect(copied.path).toBe(`${rackPath}/pE1`);
 
     await sleep(150);
 
-    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pE1`);
+    const pad = await readDrumPad(ctx.client!, `${rackPath}/pE1`);
     const chain = pad.chains?.[0];
 
     expect(pad.id).toBe(copied.id);
@@ -70,30 +70,30 @@ describe("ppal-duplicate drum-pad", () => {
     expect(chain?.devices).toHaveLength(1);
 
     // The source is untouched — this is a copy, not a move.
-    const source = await readDrumPad(ctx.client!, `t${t}/d0/pC1`);
+    const source = await readDrumPad(ctx.client!, `${rackPath}/pC1`);
 
     expect(source.chains).toHaveLength(1);
     expect(source.chains?.[0]?.name).toBe("KickSource");
   });
 
   it("layers onto an occupied pad instead of replacing it", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pD1/c0`, name: "Resident" },
+      arguments: { path: `${rackPath}/pD1/c0`, name: "Resident" },
     });
 
     await sleep(150);
 
-    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+    const sourceId = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
 
     await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "drum-pad",
         id: sourceId,
-        toPath: `t${t}/d0/pD1`,
+        toPath: `${rackPath}/pD1`,
         name: "Layered",
       },
     });
@@ -101,7 +101,7 @@ describe("ppal-duplicate drum-pad", () => {
     await sleep(150);
 
     // D1 already had its own chain, so it now plays both.
-    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const pad = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     expect(pad.chains).toHaveLength(2);
 
@@ -118,33 +118,33 @@ describe("ppal-duplicate drum-pad", () => {
   it("copies from a source path, no id lookup needed", async () => {
     // The pad slots are fixed, so a path names the source as unambiguously as
     // an id — and saves the read-device call that would find the id.
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     const copied = parseToolResult<{ path: string }>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
         arguments: {
           type: "drum-pad",
-          path: `t${t}/d0/pC1`,
-          toPath: `t${t}/d0/pE1`,
+          path: `${rackPath}/pC1`,
+          toPath: `${rackPath}/pE1`,
           name: "FromPath",
         },
       }),
     );
 
-    expect(copied.path).toBe(`t${t}/d0/pE1`);
+    expect(copied.path).toBe(`${rackPath}/pE1`);
 
     await sleep(150);
 
-    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pE1`);
+    const pad = await readDrumPad(ctx.client!, `${rackPath}/pE1`);
 
     expect(pad.chains?.[0]?.name).toBe("FromPath");
   });
 
   it("copies to several pads in one call and names each copy", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
-    const sourceId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+    const sourceId = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
 
     const results = parseToolResult<{ path: string }[]>(
       await ctx.client!.callTool({
@@ -152,38 +152,38 @@ describe("ppal-duplicate drum-pad", () => {
         arguments: {
           type: "drum-pad",
           id: sourceId,
-          toPath: `t${t}/d0/pE1,t${t}/d0/pF1`,
+          toPath: `${rackPath}/pE1,${rackPath}/pF1`,
           name: "KickA,KickB",
         },
       }),
     );
 
     expect(results.map((r) => r.path)).toStrictEqual([
-      `t${t}/d0/pE1`,
-      `t${t}/d0/pF1`,
+      `${rackPath}/pE1`,
+      `${rackPath}/pF1`,
     ]);
 
     await sleep(150);
 
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pE1`)).chains?.[0]?.name,
+      (await readDrumPad(ctx.client!, `${rackPath}/pE1`)).chains?.[0]?.name,
     ).toBe("KickA");
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pF1`)).chains?.[0]?.name,
+      (await readDrumPad(ctx.client!, `${rackPath}/pF1`)).chains?.[0]?.name,
     ).toBe("KickB");
   });
 
   it("skips an empty source pad with a warning", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
-    const emptyId = (await readDrumPad(ctx.client!, `t${t}/d0/pA1`)).id;
+    const emptyId = (await readDrumPad(ctx.client!, `${rackPath}/pA1`)).id;
 
     const result = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "drum-pad",
         id: emptyId,
-        toPath: `t${t}/d0/pE1`,
+        toPath: `${rackPath}/pE1`,
       },
     });
 
@@ -192,7 +192,7 @@ describe("ppal-duplicate drum-pad", () => {
     await sleep(150);
 
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pE1`)).chains ?? [],
+      (await readDrumPad(ctx.client!, `${rackPath}/pE1`)).chains ?? [],
     ).toHaveLength(0);
   });
 });

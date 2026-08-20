@@ -15,13 +15,13 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-layered-pad
  */
 import { describe, expect, it } from "vitest";
-import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
 import {
+  createLayeredPad,
   createTrackWithDrumRack,
   readDrumPad,
 } from "./drum-pad-test-helpers.ts";
@@ -33,39 +33,18 @@ interface PadUpdateResult {
   chainIds?: string[];
 }
 
-/**
- * Build a rack whose D1 pad holds two layers, by copying C1's pad onto it.
- * @param client - Connected MCP client
- * @returns The track index and D1's pad id
- */
-async function createLayeredPad(
-  client: Client,
-): Promise<{ t: number; padId: string }> {
-  const t = await createTrackWithDrumRack(client);
-  const sourceId = (await readDrumPad(client, `t${t}/d0/pC1`)).id;
-
-  await client.callTool({
-    name: "ppal-duplicate",
-    arguments: { type: "drum-pad", id: sourceId, toPath: `t${t}/d0/pD1` },
-  });
-
-  await sleep(200);
-
-  const pad = await readDrumPad(client, `t${t}/d0/pD1`);
-
-  expect(pad.chains).toHaveLength(2);
-
-  return { t, padId: pad.id };
-}
-
 describe("ppal-update-device layered drum pad", () => {
   it("broadcasts the pad-wide properties to every layer", async () => {
-    const { t, padId } = await createLayeredPad(ctx.client!);
+    const { rackPath, padId } = await createLayeredPad(ctx.client!);
 
     const result = parseToolResult<PadUpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
-        arguments: { path: `t${t}/d0/pD1`, chokeGroup: 4, mappedPitch: "C3" },
+        arguments: {
+          path: `${rackPath}/pD1`,
+          chokeGroup: 4,
+          mappedPitch: "C3",
+        },
       }),
     );
 
@@ -74,19 +53,19 @@ describe("ppal-update-device layered drum pad", () => {
 
     await sleep(200);
 
-    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const pad = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     expect(pad.chains?.map((c) => c.chokeGroup)).toStrictEqual([4, 4]);
     expect(pad.chains?.map((c) => c.mappedPitch)).toStrictEqual(["C3", "C3"]);
   });
 
   it("mutes the whole pad through the DrumPad object", async () => {
-    const { t, padId } = await createLayeredPad(ctx.client!);
+    const { rackPath, padId } = await createLayeredPad(ctx.client!);
 
     const result = parseToolResult<PadUpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
-        arguments: { path: `t${t}/d0/pD1`, mute: true },
+        arguments: { path: `${rackPath}/pD1`, mute: true },
       }),
     );
 
@@ -95,7 +74,7 @@ describe("ppal-update-device layered drum pad", () => {
 
     await sleep(200);
 
-    const pad = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const pad = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     // Live broadcasts a pad's mute down to its chains.
     expect(pad.state).toBe("muted");
@@ -103,23 +82,23 @@ describe("ppal-update-device layered drum pad", () => {
   });
 
   it("skips the per-layer settings and names the layer paths", async () => {
-    const { t } = await createLayeredPad(ctx.client!);
+    const { rackPath } = await createLayeredPad(ctx.client!);
 
-    const before = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const before = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pD1`, gainDb: -6, name: "Both" },
+      arguments: { path: `${rackPath}/pD1`, gainDb: -6, name: "Both" },
     });
 
     // The warning is the retry: it hands back the exact paths to reissue on.
     expect(JSON.stringify(result)).toContain(
-      `t${t}/d0/pD1/c0, t${t}/d0/pD1/c1`,
+      `${rackPath}/pD1/c0, ${rackPath}/pD1/c1`,
     );
 
     await sleep(200);
 
-    const after = await readDrumPad(ctx.client!, `t${t}/d0/pD1`);
+    const after = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
 
     expect(after.chains?.map((c) => c.gainDb)).toStrictEqual(
       before.chains?.map((c) => c.gainDb),
@@ -130,12 +109,12 @@ describe("ppal-update-device layered drum pad", () => {
   });
 
   it("still applies the per-layer settings to a single-layer pad", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     const result = parseToolResult<PadUpdateResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
-        arguments: { path: `t${t}/d0/pC1`, gainDb: -6, name: "Kick" },
+        arguments: { path: `${rackPath}/pC1`, gainDb: -6, name: "Kick" },
       }),
     );
 
@@ -143,7 +122,8 @@ describe("ppal-update-device layered drum pad", () => {
 
     await sleep(200);
 
-    const chain = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).chains?.[0];
+    const chain = (await readDrumPad(ctx.client!, `${rackPath}/pC1`))
+      .chains?.[0];
 
     expect(chain?.gainDb).toBe(-6);
     expect(chain?.name).toBe("Kick");

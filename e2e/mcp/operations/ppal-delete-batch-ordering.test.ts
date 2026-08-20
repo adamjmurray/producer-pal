@@ -95,7 +95,7 @@ describe("ppal-delete batch ordering", () => {
   });
 
   it("deletes the chains it was given, and leaves the survivor on its own pad", async () => {
-    const track = await createFourPadRack();
+    const rackPath = await createFourPadRack();
 
     // Deleting a chain parks it on a free pad and clears that pad, reading
     // in_note off the held object first. If a prior delete in this batch had
@@ -106,7 +106,7 @@ describe("ppal-delete batch ordering", () => {
       arguments: {
         type: "chain",
         path: ["pC1", "pD1", "pE1"]
-          .map((pad) => `t${track}/d0/${pad}/c0`)
+          .map((pad) => `${rackPath}/${pad}/c0`)
           .join(","),
       },
     });
@@ -118,12 +118,12 @@ describe("ppal-delete batch ordering", () => {
     await sleep(250);
 
     for (const pad of ["C1", "D1", "E1"]) {
-      expect(await padChainCount(track, pad)).toBe(0);
+      expect(await padChainCount(rackPath, pad)).toBe(0);
     }
 
     // F1 was never named. It keeps its chain AND its note — the note is what
     // the corrupting path would overwrite.
-    const survivor = await readDrumPad(ctx.client!, `t${track}/d0/pF1`);
+    const survivor = await readDrumPad(ctx.client!, `${rackPath}/pF1`);
 
     expect(survivor.chains).toHaveLength(1);
     expect(survivor.pitch).toBe("F1");
@@ -133,37 +133,33 @@ describe("ppal-delete batch ordering", () => {
 /**
  * A track holding a Drum Rack with four single-chain pads (C1, D1, E1, F1),
  * built by copying the stock C1 pad onto the two empty notes.
- * @returns The new track's index
+ * @returns The rack's path
  */
-async function createFourPadRack(): Promise<number> {
-  const track = await createTrackWithDrumRack(ctx.client!);
-  const source = (await readDrumPad(ctx.client!, `t${track}/d0/pC1`)).id;
+async function createFourPadRack(): Promise<string> {
+  const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+  const source = (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).id;
 
   for (const pad of ["pE1", "pF1"]) {
     await ctx.client!.callTool({
       name: "ppal-duplicate",
-      arguments: {
-        type: "drum-pad",
-        id: source,
-        toPath: `t${track}/d0/${pad}`,
-      },
+      arguments: { type: "drum-pad", id: source, toPath: `${rackPath}/${pad}` },
     });
     await sleep(200);
   }
 
-  return track;
+  return rackPath;
 }
 
 /**
  * How many chains a pad currently holds.
- * @param track - Track index of the rack
+ * @param rackPath - Producer Pal path to the Drum Rack
  * @param pitch - The pad's note name (e.g. "C1")
  * @returns The chain count, 0 when the pad is empty
  */
-async function padChainCount(track: number, pitch: string): Promise<number> {
+async function padChainCount(rackPath: string, pitch: string): Promise<number> {
   const pad: DrumPadInfo = await readDrumPad(
     ctx.client!,
-    `t${track}/d0/p${pitch}`,
+    `${rackPath}/p${pitch}`,
   );
 
   return pad.chains?.length ?? 0;

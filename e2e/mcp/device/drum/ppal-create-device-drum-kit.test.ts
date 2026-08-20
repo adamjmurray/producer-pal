@@ -14,6 +14,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   KICK_FILE,
   SAMPLE_FILE,
+  createTestDeviceAt,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -34,6 +35,10 @@ beforeAll(async () => {
 interface CreateTrackResult {
   id: string;
   trackIndex: number;
+}
+
+interface CreateDeviceResult {
+  deviceIndex: number;
 }
 
 interface ReadDeviceResult {
@@ -60,19 +65,15 @@ async function createMidiTrack(): Promise<number> {
 
 /**
  * Create a fresh MIDI track carrying an empty Drum Rack.
- * @returns The new track's index (its rack sits at `t<index>/d0`)
+ * @returns The rack's path — a default track preset decides its index
  */
-async function createTrackWithDrumRack(): Promise<number> {
+async function createTrackWithDrumRack(): Promise<string> {
   const t = await createMidiTrack();
-
-  await ctx.client!.callTool({
-    name: "ppal-create-device",
-    arguments: { deviceName: "Drum Rack", path: `t${t}` },
-  });
+  const rack = await createTestDeviceAt(ctx.client!, "Drum Rack", `t${t}`);
 
   await sleep(100);
 
-  return t;
+  return rack;
 }
 
 /** Read a device's chains (maxDepth 0) and return how many chains it has. */
@@ -113,20 +114,22 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   it("builds a kit in one call: auto-creates each pad's Simpler and loads its sample", async () => {
     const t = await createMidiTrack();
 
-    const { warnings } = parseToolResultWithWarnings(
-      await ctx.client!.callTool({
-        name: "ppal-create-device",
-        arguments: {
-          deviceName: "Drum Rack",
-          path: `t${t}`,
-          params: [
-            { name: "pC1/d0/sample", value: KICK_FILE },
-            { name: "pC#1/d0/sample", value: SAMPLE_FILE },
-            { name: "pC1/d0/gainDb", value: "-6" },
-          ],
-        },
-      }),
-    );
+    const { data: created, warnings } =
+      parseToolResultWithWarnings<CreateDeviceResult>(
+        await ctx.client!.callTool({
+          name: "ppal-create-device",
+          arguments: {
+            deviceName: "Drum Rack",
+            path: `t${t}`,
+            params: [
+              { name: "pC1/d0/sample", value: KICK_FILE },
+              { name: "pC#1/d0/sample", value: SAMPLE_FILE },
+              { name: "pC1/d0/gainDb", value: "-6" },
+            ],
+          },
+        }),
+      );
+    const rack = `t${t}/d${created.deviceIndex}`;
 
     await sleep(150);
 
@@ -138,7 +141,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const kickPad = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pC1/c0/d0`, include: ["sample"] },
+        arguments: { path: `${rack}/pC1/c0/d0`, include: ["sample"] },
       }),
     );
 
@@ -149,7 +152,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const snarePad = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pC#1/c0/d0`, include: ["sample"] },
+        arguments: { path: `${rack}/pC#1/c0/d0`, include: ["sample"] },
       }),
     );
 
@@ -160,7 +163,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const kickParams = parseToolResult<{ parameters: { name: string }[] }>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pC1/c0/d0`, include: ["params"] },
+        arguments: { path: `${rack}/pC1/c0/d0`, include: ["params"] },
       }),
     );
     const gainEntry = kickParams.parameters.find(
@@ -176,14 +179,14 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   });
 
   it("update-device path-prefixed params set a sample on an existing rack", async () => {
-    const t = await createTrackWithDrumRack();
+    const rack = await createTrackWithDrumRack();
 
     // Load a sample into pad D1 via update-device.
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
-          path: `t${t}/d0`,
+          path: rack,
           params: [{ name: "pD1/d0/sample", value: KICK_FILE }],
         },
       }),
@@ -194,7 +197,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const pad = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pD1/c0/d0`, include: ["sample"] },
+        arguments: { path: `${rack}/pD1/c0/d0`, include: ["sample"] },
       }),
     );
 
@@ -203,12 +206,12 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
   });
 
   it("skips a sample write onto a DrumSampler pad, and replaces it under force", async () => {
-    const t = await createTrackWithDrumRack();
+    const rack = await createTrackWithDrumRack();
 
     // Put a DrumSampler on pad E1.
     await ctx.client!.callTool({
       name: "ppal-create-device",
-      arguments: { deviceName: "DrumSampler", path: `t${t}/d0/pE1/d0` },
+      arguments: { deviceName: "DrumSampler", path: `${rack}/pE1/d0` },
     });
 
     await sleep(150);
@@ -219,7 +222,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const before = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pE1/c0/d0` },
+        arguments: { path: `${rack}/pE1/c0/d0` },
       }),
     );
 
@@ -231,7 +234,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
-          path: `t${t}/d0`,
+          path: rack,
           params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
         },
       }),
@@ -245,7 +248,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const kept = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pE1/c0/d0` },
+        arguments: { path: `${rack}/pE1/c0/d0` },
       }),
     );
 
@@ -255,7 +258,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
-          path: `t${t}/d0`,
+          path: rack,
           params: [{ name: "pE1/d0/sample", value: KICK_FILE }],
           force: true,
         },
@@ -269,7 +272,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     const after = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { path: `t${t}/d0/pE1/c0/d0`, include: ["sample"] },
+        arguments: { path: `${rack}/pE1/c0/d0`, include: ["sample"] },
       }),
     );
 
@@ -284,20 +287,21 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     // (can_have_chains true, can_have_drum_pads false). A pad path aimed at it
     // must warn-skip before insert_chain, or an empty chain gets stranded in the
     // wrong rack (the C2 guard in resolveOrCreateDrumPadChain).
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: { deviceName: "Instrument Rack", path: `t${t}` },
-    });
+    const rack = await createTestDeviceAt(
+      ctx.client!,
+      "Instrument Rack",
+      `t${t}`,
+    );
 
     await sleep(150);
 
-    const beforeChainCount = await readChainCount(`t${t}/d0`);
+    const beforeChainCount = await readChainCount(rack);
 
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
-          path: `t${t}/d0`,
+          path: rack,
           params: [{ name: "pC1/d0/sample", value: KICK_FILE }],
         },
       }),
@@ -310,6 +314,6 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
     await sleep(150);
 
     // No stray chain: the guard refused before insert_chain.
-    expect(await readChainCount(`t${t}/d0`)).toBe(beforeChainCount);
+    expect(await readChainCount(rack)).toBe(beforeChainCount);
   });
 });

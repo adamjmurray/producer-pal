@@ -186,21 +186,31 @@ describe("nested rack drum detection", () => {
       {
         name: "on a chain other than the first",
         build: async (track: number): Promise<void> => {
-          await createTestDevice(ctx.client!, "Instrument Rack", `t${track}`);
+          const wrapper = await createTestDeviceAt(
+            ctx.client!,
+            "Instrument Rack",
+            `t${track}`,
+          );
+
           // c1 auto-creates chains 0 and 1, so the kit lands on the second.
-          await createTwoPadDrumRack(ctx.client!, `t${track}/d0/c1`);
+          await createTwoPadDrumRack(ctx.client!, `${wrapper}/c1`);
         },
       },
       {
         name: "two Instrument Racks deep",
         build: async (track: number): Promise<void> => {
-          await createTestDevice(ctx.client!, "Instrument Rack", `t${track}`);
-          await createTestDevice(
+          const outer = await createTestDeviceAt(
             ctx.client!,
             "Instrument Rack",
-            `t${track}/d0/c0`,
+            `t${track}`,
           );
-          await createTwoPadDrumRack(ctx.client!, `t${track}/d0/c0/d0/c0`);
+          const inner = await createTestDeviceAt(
+            ctx.client!,
+            "Instrument Rack",
+            `${outer}/c0`,
+          );
+
+          await createTwoPadDrumRack(ctx.client!, `${inner}/c0`);
         },
       },
     ];

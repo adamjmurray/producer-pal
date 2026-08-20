@@ -44,15 +44,15 @@ async function readDrumPadById(
 
 describe("ppal-read-device with a drum pad id", () => {
   it("answers the same thing the pad's path does", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
-    const byPath = await readDrumPad(ctx.client!, `t${t}/d0/pC1`);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+    const byPath = await readDrumPad(ctx.client!, `${rackPath}/pC1`);
 
     expect(await readDrumPadById(ctx.client!, byPath.id)).toStrictEqual(byPath);
   });
 
   it("hands back the path that reaches the pad", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
-    const padId = (await readDrumPad(ctx.client!, `t${t}/d0/pD1`)).id;
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+    const padId = (await readDrumPad(ctx.client!, `${rackPath}/pD1`)).id;
 
     const pad = parseToolResult<{ path: string; pitch: string }>(
       await ctx.client!.callTool({
@@ -61,7 +61,7 @@ describe("ppal-read-device with a drum pad id", () => {
       }),
     );
 
-    expect(pad.path).toBe(`t${t}/d0/pD1`);
+    expect(pad.path).toBe(`${rackPath}/pD1`);
     expect(pad.pitch).toBe("D1");
   });
 });

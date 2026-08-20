@@ -24,6 +24,7 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import {
+  type TrackDrumRack,
   createTrackWithDrumRack,
   readDrumPad,
 } from "./drum-pad-test-helpers.ts";
@@ -37,6 +38,16 @@ interface SelectRackResult {
 
 interface LiveApiResult {
   results: { result: unknown }[];
+}
+
+/**
+ * The LiveAPI path of a rack, which ppal-live-api takes in place of a Producer
+ * Pal one.
+ * @param kit - The track and rack under test
+ * @returns The rack's LiveAPI path
+ */
+function liveApiRack({ trackIndex, deviceIndex }: TrackDrumRack): string {
+  return `live_set tracks ${trackIndex} devices ${deviceIndex}`;
 }
 
 /**
@@ -84,14 +95,14 @@ describe("ppal-select inside a rack", () => {
   });
 
   it("selects a drum pad by path and scrolls it into view", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
-    const padId = (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).id;
+    const kit = await createTrackWithDrumRack(ctx.client!);
+    const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pC1`)).id;
 
     // Park the grid somewhere else first, so the scroll write is visible.
     await ctx.client!.callTool({
       name: "ppal-live-api",
       arguments: {
-        path: `live_set tracks ${t} devices 0 view`,
+        path: `${liveApiRack(kit)} view`,
         operations: [
           { type: "set", property: "drum_pads_scroll_position", value: 0 },
         ],
@@ -101,21 +112,18 @@ describe("ppal-select inside a rack", () => {
     const result = parseToolResult<SelectRackResult>(
       await ctx.client!.callTool({
         name: "ppal-select",
-        arguments: { path: `t${t}/d0/pC1` },
+        arguments: { path: `${kit.rackPath}/pC1` },
       }),
     );
 
     expect(result.selectedDrumPad).toStrictEqual({
       id: padId,
-      path: `t${t}/d0/pC1`,
+      path: `${kit.rackPath}/pC1`,
     });
 
     await sleep(200);
 
-    const view = await readRackView(
-      ctx.client!,
-      `live_set tracks ${t} devices 0`,
-    );
+    const view = await readRackView(ctx.client!, liveApiRack(kit));
 
     expect(view.selectedPadId).toBe(padId);
     expect(view.showingChainDevices).toBe(1);
@@ -124,8 +132,8 @@ describe("ppal-select inside a rack", () => {
   });
 
   it("selects a drum pad by id", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
-    const padId = (await readDrumPad(ctx.client!, `t${t}/d0/pD1`)).id;
+    const kit = await createTrackWithDrumRack(ctx.client!);
+    const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`)).id;
 
     const result = parseToolResult<SelectRackResult>(
       await ctx.client!.callTool({
@@ -135,26 +143,23 @@ describe("ppal-select inside a rack", () => {
     );
 
     expect(result.selectedDrumPad?.id).toBe(padId);
-    expect(result.selectedDrumPad?.path).toBe(`t${t}/d0/pD1`);
+    expect(result.selectedDrumPad?.path).toBe(`${kit.rackPath}/pD1`);
 
     await sleep(200);
 
-    const view = await readRackView(
-      ctx.client!,
-      `live_set tracks ${t} devices 0`,
-    );
+    const view = await readRackView(ctx.client!, liveApiRack(kit));
 
     expect(view.selectedPadId).toBe(padId);
   });
 
   it("selects a pad layer, and the pad it sounds on", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
-    const padId = (await readDrumPad(ctx.client!, `t${t}/d0/pD1`)).id;
+    const kit = await createTrackWithDrumRack(ctx.client!);
+    const padId = (await readDrumPad(ctx.client!, `${kit.rackPath}/pD1`)).id;
 
     const result = parseToolResult<SelectRackResult>(
       await ctx.client!.callTool({
         name: "ppal-select",
-        arguments: { path: `t${t}/d0/pD1/c0` },
+        arguments: { path: `${kit.rackPath}/pD1/c0` },
       }),
     );
 
@@ -163,10 +168,7 @@ describe("ppal-select inside a rack", () => {
 
     await sleep(200);
 
-    const view = await readRackView(
-      ctx.client!,
-      `live_set tracks ${t} devices 0`,
-    );
+    const view = await readRackView(ctx.client!, liveApiRack(kit));
 
     expect(view.selectedChainId).toBe(result.selectedChain!.id);
     // The layer's own pad, so Live shows the chain under the right pad.

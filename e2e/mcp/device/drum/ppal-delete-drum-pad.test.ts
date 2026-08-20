@@ -17,6 +17,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createMidiTrack,
+  createTestDeviceAt,
   createTwoPadDrumRack,
   parseToolResult,
   setupMcpTestContext,
@@ -38,40 +39,28 @@ interface DeleteResult {
 describe("ppal-delete drum-pad", () => {
   it("clears a pad on a Drum Rack directly on the track", async () => {
     const t = await createMidiTrack(ctx.client!);
+    const rack = await createTwoPadDrumRack(ctx.client!, `t${t}`);
 
-    await createTwoPadDrumRack(ctx.client!, `t${t}`);
-
-    expect(await readPadPitches(`t${t}/d0`)).toStrictEqual(["C1", "D1"]);
-
-    const deleted = parseToolResult<DeleteResult>(
-      await ctx.client!.callTool({
-        name: "ppal-delete",
-        arguments: { type: "drum-pad", path: `t${t}/d0/pC1` },
-      }),
-    );
-
-    expect(deleted.deleted).toBe(true);
-
-    await sleep(150);
-
-    // C1 is gone; D1 untouched.
-    expect(await readPadPitches(`t${t}/d0`)).toStrictEqual(["D1"]);
+    await expectPadCleared(rack.path);
   });
 
   it("clears a pad on a Drum Rack nested inside an Instrument Rack", async () => {
     const t = await createMidiTrack(ctx.client!);
+    const wrapper = await createTestDeviceAt(
+      ctx.client!,
+      "Instrument Rack",
+      `t${t}`,
+    );
+    const rack = await createTwoPadDrumRack(ctx.client!, `${wrapper}/c0`);
 
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: { deviceName: "Instrument Rack", path: `t${t}` },
-    });
+    await expectPadCleared(rack.path);
+  });
 
-    await sleep(150);
-
-    await createTwoPadDrumRack(ctx.client!, `t${t}/d0/c0`);
-
-    const rack = `t${t}/d0/c0/d0`;
-
+  /**
+   * Delete pad C1 from a two-pad rack and prove only C1 went.
+   * @param rack - Producer Pal path to the Drum Rack
+   */
+  async function expectPadCleared(rack: string): Promise<void> {
     expect(await readPadPitches(rack)).toStrictEqual(["C1", "D1"]);
 
     const deleted = parseToolResult<DeleteResult>(
@@ -85,8 +74,9 @@ describe("ppal-delete drum-pad", () => {
 
     await sleep(150);
 
+    // C1 is gone; D1 untouched.
     expect(await readPadPitches(rack)).toStrictEqual(["D1"]);
-  });
+  }
 
   /**
    * Read a drum rack's populated pad pitches.

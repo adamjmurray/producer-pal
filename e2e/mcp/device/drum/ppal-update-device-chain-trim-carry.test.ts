@@ -29,11 +29,11 @@ const ctx = setupMcpTestContext();
 
 describe("ppal-update-device drum chain trim carry", () => {
   it("carries the trim when the device moves to an empty pad", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1/c0`, gainDb: -15, pan: -0.4 },
+      arguments: { path: `${rackPath}/pC1/c0`, gainDb: -15, pan: -0.4 },
     });
 
     await sleep(150);
@@ -41,12 +41,12 @@ describe("ppal-update-device drum chain trim carry", () => {
     // Move the device alone — E1 is empty, so its chain is created by this call.
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1/d0`, toPath: `t${t}/d0/pE1` },
+      arguments: { path: `${rackPath}/pC1/d0`, toPath: `${rackPath}/pE1` },
     });
 
     await sleep(200);
 
-    const destination = (await readDrumPad(ctx.client!, `t${t}/d0/pE1`))
+    const destination = (await readDrumPad(ctx.client!, `${rackPath}/pE1`))
       .chains?.[0];
 
     expect(destination?.devices).toHaveLength(1);
@@ -55,34 +55,34 @@ describe("ppal-update-device drum chain trim carry", () => {
   });
 
   it("leaves the trim behind and warns when the destination chain has devices", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1/c0`, gainDb: -15 },
+      arguments: { path: `${rackPath}/pC1/c0`, gainDb: -15 },
     });
 
     // E1 holds an effect and a trim of its own. It has to be an effect: a chain
     // takes only one instrument, so Live would turn down a move onto D1.
-    await createTestDevice(ctx.client!, "Reverb", `t${t}/d0/pE1`);
+    await createTestDevice(ctx.client!, "Reverb", `${rackPath}/pE1`);
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pE1/c0`, gainDb: 6 },
+      arguments: { path: `${rackPath}/pE1/c0`, gainDb: 6 },
     });
 
     await sleep(150);
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1/d0`, toPath: `t${t}/d0/pE1` },
+      arguments: { path: `${rackPath}/pC1/d0`, toPath: `${rackPath}/pE1` },
     });
 
     expect(JSON.stringify(result)).toContain("stays behind");
 
     await sleep(200);
 
-    const destination = (await readDrumPad(ctx.client!, `t${t}/d0/pE1`))
+    const destination = (await readDrumPad(ctx.client!, `${rackPath}/pE1`))
       .chains?.[0];
 
     // The device arrived, and E1's own fader is what it was.
@@ -91,11 +91,14 @@ describe("ppal-update-device drum chain trim carry", () => {
   });
 
   it("refuses a pad move whose toPath names a different rack", async () => {
-    const t = await createTrackWithDrumRack(ctx.client!);
+    const { trackIndex, rackPath } = await createTrackWithDrumRack(ctx.client!);
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { path: `t${t}/d0/pC1`, toPath: `t${t + 50}/d0/pB1` },
+      arguments: {
+        path: `${rackPath}/pC1`,
+        toPath: `t${trackIndex + 50}/d0/pB1`,
+      },
     });
 
     expect(JSON.stringify(result)).toContain(
@@ -106,10 +109,10 @@ describe("ppal-update-device drum chain trim carry", () => {
 
     // The pad stayed on C1 rather than landing on B1 of its own rack.
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pC1`)).chains ?? [],
+      (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).chains ?? [],
     ).toHaveLength(1);
     expect(
-      (await readDrumPad(ctx.client!, `t${t}/d0/pB1`)).chains ?? [],
+      (await readDrumPad(ctx.client!, `${rackPath}/pB1`)).chains ?? [],
     ).toHaveLength(0);
   });
 });

@@ -49,13 +49,13 @@ describe("ppal-delete nested rack device ordering", () => {
     await sleep(150);
 
     // Drum Rack with two pads => two chains, each with an auto-created Simpler.
-    await createTwoPadDrumRack(ctx.client!, `t${t}`);
+    const rack = (await createTwoPadDrumRack(ctx.client!, `t${t}`)).path;
 
     // Append a SECOND device into pad C1's chain -> same-chain siblings (d0, d1).
     const reverb = parseToolResult<{ id: string; deviceIndex: number }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Reverb", path: `t${t}/d0/pC1/c0/d1` },
+        arguments: { deviceName: "Reverb", path: `${rack}/pC1/c0/d1` },
       }),
     );
 
@@ -64,9 +64,9 @@ describe("ppal-delete nested rack device ordering", () => {
     await sleep(150);
 
     // Resolve the three device ids by path.
-    const c1d0 = await readDeviceIdByPath(`t${t}/d0/pC1/d0`); // C1 chain, index 0
+    const c1d0 = await readDeviceIdByPath(`${rack}/pC1/d0`); // C1 chain, index 0
     const c1d1 = reverb.id; // C1 chain, index 1
-    const d1d0 = await readDeviceIdByPath(`t${t}/d0/pD1/d0`); // sibling chain
+    const d1d0 = await readDeviceIdByPath(`${rack}/pD1/d0`); // sibling chain
 
     // Delete in the order that trips a length-based comparator: same-chain d0,
     // then the sibling-chain device (the interposer), then same-chain d1.
