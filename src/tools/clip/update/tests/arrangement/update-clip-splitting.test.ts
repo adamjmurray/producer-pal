@@ -38,7 +38,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const { callState } = setupClipSplittingMocks(clipId);
 
-    await updateClip({ ids: clipId, split: "2|1" }, {});
+    await updateClip({ id: clipId, split: "2|1" }, {});
 
     expectDuplicateCalled(callState.trackMock);
   });
@@ -50,10 +50,7 @@ describe("updateClip - splitting smoke tests", () => {
     const { callState } = setupClipSplittingMocks(clipId);
 
     // They read positions on different timelines, so there is no safe guess.
-    await updateClip(
-      { ids: clipId, arrangementSplit: "2|1", split: "3|1" },
-      {},
-    );
+    await updateClip({ id: clipId, arrangementSplit: "2|1", split: "3|1" }, {});
 
     expect(callState.trackMock.call).not.toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
@@ -72,7 +69,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     await updateClip(
       {
-        ids: clipId,
+        id: clipId,
         arrangementSplit: "2|1, 3|1", // Split at bar 2 and bar 3
       },
       {},
@@ -89,7 +86,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     await updateClip(
       {
-        ids: clipId,
+        id: clipId,
         arrangementSplit: "2|1",
         name: "Split Clip",
       },
@@ -135,7 +132,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const result = await updateClip(
       {
-        ids: clipId,
+        id: clipId,
         arrangementSplit: "2|1",
       },
       {},
@@ -164,7 +161,7 @@ describe("updateClip - splitting smoke tests", () => {
 
     const result = await updateClip(
       {
-        ids: clipId,
+        id: clipId,
         arrangementSplit: "2|1",
       },
       {},
@@ -189,7 +186,7 @@ describe("updateClip - splitting smoke tests", () => {
     setupSplittingClipGetMock(clipId);
     createSplittingCallMock();
 
-    await updateClip({ ids: clipId, name: "renamed" }, {});
+    await updateClip({ id: clipId, name: "renamed" }, {});
 
     expect(consoleSpy).not.toHaveBeenCalledWith(
       expect.stringContaining("ignored for take-lane clip"),

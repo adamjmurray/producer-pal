@@ -7,7 +7,10 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -24,14 +27,18 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    ids: z.coerce
+    id: z.coerce
       .string()
       .optional()
-      .describe("comma-separated clip ID(s) to update"),
+      .describe("clip ID(s) to update, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     path: param(z.coerce.string().optional(), {
       default:
-        "clip slot(s) to update instead of ids, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
-      smallModel: "clip slot to update instead of ids (e.g., 't0/s1')",
+        "clip slot(s) to update instead of id, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
+      smallModel: "clip slot to update instead of id (e.g., 't0/s1')",
     }),
     name: param(z.string().optional(), {
       default:
@@ -40,7 +47,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the clips)",
       smallModel: "#RRGGBB",
     }),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
@@ -96,7 +103,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "clip slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
           "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
-          "ids/path, in order - destinations don't cycle, so name one slot per clip",
+          "id/path, in order - destinations don't cycle, so name one slot per clip",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged
@@ -150,19 +157,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions applied AFTER merging notes (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
       smallModel: null,
     }),
     preTransforms: param(z.string().optional(), {
       default:
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: delete'), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: delete'), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
       smallModel:
         "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: param(boundedString(MAX_CODE_LENGTH).optional(), {
-            default: `JS function body (broadcast across ids; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
+            default: `JS function body (broadcast across the clips; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
             smallModel: null,
           }),
         }

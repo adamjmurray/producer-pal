@@ -17,32 +17,45 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../update-device.ts";
 
 describe("updateDevice with path parameter", () => {
-  it("should throw error when neither ids nor path is provided", () => {
+  it("should throw error when neither id nor path is provided", () => {
     expect(() => updateDevice({})).toThrow(
-      "Either ids or path must be provided",
+      "Either id or path must be provided",
     );
   });
 
-  it("should throw error when both ids and path are provided", () => {
-    expect(() => updateDevice({ ids: "123", path: "t1/d0" })).toThrow(
-      "Provide either ids or path, not both",
+  it("should throw error when both id and path are provided", () => {
+    expect(() => updateDevice({ id: "123", path: "t1/d0" })).toThrow(
+      "Provide either id or path, not both",
     );
   });
 
   // Both spellings are published, so a model picking one nulls the other.
   // z.coerce.string() renders that as "null" — counting it as sent refused the
   // update over a param the caller deliberately left empty.
-  it("updates by path when ids is a coerced null", () => {
+  it("updates by path when id is a coerced null", () => {
     const warn = vi.spyOn(console, "warn");
     const device = registerMockObject("device-456", {
       path: livePath.track(1).device(0),
       type: "Device",
     });
 
-    updateDevice({ ids: "null", path: "t1/d0", name: "Renamed" });
+    updateDevice({ id: "null", path: "t1/d0", name: "Renamed" });
 
     expect(device.set).toHaveBeenCalledWith("name", "Renamed");
-    expect(warn).toHaveBeenCalledWith('ids "null" names nothing');
+    expect(warn).toHaveBeenCalledWith('id "null" names nothing');
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", () => {
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ ids: "device-456", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
   describe("device paths", () => {
@@ -398,7 +411,7 @@ describe("updateDevice with path parameter", () => {
   describe("path validation", () => {
     it("should throw error for empty path (treated as no path)", () => {
       expect(() => updateDevice({ path: "", name: "Test" })).toThrow(
-        "Either ids or path must be provided",
+        "Either id or path must be provided",
       );
     });
 

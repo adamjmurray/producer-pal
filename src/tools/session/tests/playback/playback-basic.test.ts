@@ -178,7 +178,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "play-session-clips",
-      ids: "clip1",
+      id: "clip1",
     });
 
     expect(clipSlot0.call).toHaveBeenCalledWith("fire");
@@ -194,6 +194,22 @@ describe("transport", () => {
     });
   });
 
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still fires a clip named by the ids alias", () => {
+    setupPlaybackLiveSet({ current_song_time: 5 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
+    });
+    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
+
+    playback({ action: "play-session-clips", ids: "clip1" });
+
+    expect(clipSlot0.call).toHaveBeenCalledWith("fire");
+  });
+
   it("should handle play-session-clips action with multiple clips", () => {
     const { liveSet: ls, clipSlots } = setupMultiClipMocks();
 
@@ -201,7 +217,7 @@ describe("transport", () => {
 
     playback({
       action: "play-session-clips",
-      ids: "clip1,clip2,clip3",
+      id: "clip1,clip2,clip3",
     });
 
     expectAllClipSlotsFired(clipSlots);
@@ -217,7 +233,7 @@ describe("transport", () => {
 
     playback({
       action: "play-session-clips",
-      ids: "clip1, clip2 , clip3",
+      id: "clip1, clip2 , clip3",
     });
 
     // Should fire all 3 clips despite whitespace
@@ -229,7 +245,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: ids or path is required for action "play-session-clips"',
+      'playback failed: id or path is required for action "play-session-clips"',
     );
   });
 
@@ -239,9 +255,9 @@ describe("transport", () => {
     mockNonExistentObjects();
 
     expect(() =>
-      playback({ action: "play-session-clips", ids: "nonexistent_clip" }),
+      playback({ action: "play-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: ids "nonexistent_clip" named no clip for action "play-session-clips"',
+      'playback failed: id "nonexistent_clip" named no clip for action "play-session-clips"',
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -259,7 +275,7 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "play-session-clips",
-        ids: "clip1",
+        id: "clip1",
       }),
     ).toThrow(
       "playback play-session-clips action failed: no clip slot at t99/s0",
@@ -315,7 +331,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "stop-session-clips",
-      ids: "clip1",
+      id: "clip1",
     });
 
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
@@ -348,7 +364,7 @@ describe("transport", () => {
 
     playback({
       action: "stop-session-clips",
-      ids: "clip1,clip2,clip3",
+      id: "clip1,clip2,clip3",
     });
 
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
@@ -358,7 +374,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: ids or path is required for action "stop-session-clips"',
+      'playback failed: id or path is required for action "stop-session-clips"',
     );
   });
 
@@ -366,9 +382,9 @@ describe("transport", () => {
     mockNonExistentObjects();
 
     expect(() =>
-      playback({ action: "stop-session-clips", ids: "nonexistent_clip" }),
+      playback({ action: "stop-session-clips", id: "nonexistent_clip" }),
     ).toThrow(
-      'playback failed: ids "nonexistent_clip" named no clip for action "stop-session-clips"',
+      'playback failed: id "nonexistent_clip" named no clip for action "stop-session-clips"',
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -382,7 +398,7 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "play-session-clips",
-        ids: "clip1",
+        id: "clip1",
       }),
     ).toThrow(
       "playback play-session-clips action failed: could not determine track/scene for clipId=clip1",
@@ -395,7 +411,7 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "stop-session-clips",
-        ids: "clip1",
+        id: "clip1",
       }),
     ).toThrow(
       "playback stop-session-clips action failed: could not determine track/scene for clipId=clip1",
@@ -412,7 +428,7 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "stop-session-clips",
-        ids: "clip1",
+        id: "clip1",
       }),
     ).toThrow(
       "playback stop-session-clips action failed: track at index 99 does not exist",
@@ -495,14 +511,14 @@ describe("transport", () => {
     expect(result.currentTime).toBe("1|1");
   });
 
-  it("should throw error when both ids and slots are provided", () => {
+  it("should throw error when both id and slots are provided", () => {
     expect(() =>
       playback({
         action: "play-session-clips",
-        ids: "clip1",
+        id: "clip1",
         slots: "0/0",
       }),
-    ).toThrow("playback failed: ids and slots are mutually exclusive");
+    ).toThrow("playback failed: id and slots are mutually exclusive");
   });
 
   it("should handle play-session-clips via slots with single slot", () => {

@@ -88,7 +88,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should find correct raw value via binary search", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "AEG1 Rel", value: "600" }],
       });
 
@@ -98,14 +98,14 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should handle target at min boundary", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "AEG1 Rel", value: "5" }] });
+      updateDevice({ id: "dev1", params: [{ name: "AEG1 Rel", value: "5" }] });
 
       expect(expectValueSet(param)).toBeCloseTo(0, 1);
     });
 
     it("should handle target at max boundary", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "AEG1 Rel", value: "15000" }],
       });
 
@@ -145,7 +145,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should handle s to ms unit normalization during binary search", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "Decay", value: "5000" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Decay", value: "5000" }] });
 
       expect(1 + expectValueSet(param) * 9999).toBeCloseTo(5000, -2);
     });
@@ -177,7 +177,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should fall back to raw value when min label is unparseable", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "Special", value: "0.7" }],
       });
 
@@ -213,7 +213,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should fall back when max label is unparseable", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "HalfParsed", value: "0.3" }],
       });
 
@@ -247,7 +247,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should warn and not write when string input can't be interpreted", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "Mode", value: "custom-value" }],
       });
 
@@ -269,7 +269,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should converge toward min when mid-range labels parse as NaN", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "Flaky", value: "500" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Flaky", value: "500" }] });
 
       // "---" parses as NaN (leading hyphens match the number regex).
       // NaN comparisons always false, so binary search treats it as
@@ -303,7 +303,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should resolve param via absolute numeric ID fallback", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "42", value: "0.8" }] });
+      updateDevice({ id: "dev1", params: [{ name: "42", value: "0.8" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.8);
     });
@@ -342,7 +342,7 @@ describe("updateDevice - param value conversion", () => {
       // Param keys are either a name or an absolute numeric id — there is no
       // device-relative "parameters N" key form, so a param at that path is
       // reached by name like any other.
-      updateDevice({ ids: "dev1", params: [{ name: "Freq", value: "0.6" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Freq", value: "0.6" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.6);
     });
@@ -372,7 +372,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should warn when note name is valid but out of MIDI range", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
-      updateDevice({ ids: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -396,7 +396,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should return mid when binary search encounters string-typed label", () => {
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "NoteParam", value: "500" }],
       });
 
@@ -437,7 +437,7 @@ describe("updateDevice - param value conversion", () => {
         },
       });
 
-      updateDevice({ ids: "dev1", params: [{ name: "Pan", value: "25R" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Pan", value: "25R" }] });
 
       // normalizePan("25R", 50) = 0.5 → internal ((0.5+1)/2)*2 - 1 = 0.5
       expect(expectValueSet(param)).toBeCloseTo(0.5, 5);
@@ -468,7 +468,7 @@ describe("updateDevice - param value conversion", () => {
         },
       });
 
-      updateDevice({ ids: "dev1", params: [{ name: "Div", value: "2" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Div", value: "2" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 2);
     });
@@ -495,7 +495,7 @@ describe("updateDevice - param value conversion", () => {
         },
       });
 
-      updateDevice({ ids: "dev1", params: [{ name: "Fixed", value: "5" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Fixed", value: "5" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 5);
     });
@@ -510,7 +510,7 @@ describe("updateDevice - param value conversion", () => {
       });
 
       updateDevice({
-        ids: "dev1",
+        id: "dev1",
         params: [{ name: "NonExistentParam", value: "0.5" }],
       });
 
@@ -527,7 +527,7 @@ describe("updateDevice - sample pseudo-param", () => {
     const simpler = registerSimplerDevice();
 
     const result = updateDevice({
-      ids: "simpler-1",
+      id: "simpler-1",
       params: [{ name: "sample", value: "/tmp/kick.wav" }],
     });
 
@@ -542,7 +542,7 @@ describe("updateDevice - sample pseudo-param", () => {
     registerSimplerDevice();
 
     updateDevice({
-      ids: "simpler-1",
+      id: "simpler-1",
       params: [{ name: "sample", value: "/tmp/kick.wav" }],
     });
 
@@ -567,7 +567,7 @@ describe("updateDevice - sample pseudo-param", () => {
     });
 
     updateDevice({
-      ids: "simpler-1",
+      id: "simpler-1",
       params: [
         { name: "sample", value: "/tmp/kick.wav" },
         { name: "Volume", value: "0.8" },
@@ -586,7 +586,7 @@ describe("updateDevice - actions arg", () => {
   it("dispatches a device action to its specialized handler", () => {
     const simpler = registerSimplerDevice();
 
-    const result = updateDevice({ ids: "simpler-1", actions: ["reverse"] });
+    const result = updateDevice({ id: "simpler-1", actions: ["reverse"] });
 
     expect(simpler.call).toHaveBeenCalledWith("reverse");
     expect(result).toStrictEqual({ id: "simpler-1" });
@@ -596,7 +596,7 @@ describe("updateDevice - actions arg", () => {
     const simpler = registerSimplerDevice();
 
     updateDevice({
-      ids: "simpler-1",
+      id: "simpler-1",
       params: [{ name: "sample", value: "/tmp/kick.wav" }],
       actions: ["reverse"],
     });
@@ -615,7 +615,7 @@ describe("updateDevice - actions arg", () => {
       properties: { name: "Chain", mute: 0, solo: 0, devices: [] },
     });
 
-    updateDevice({ ids: "chain-1", actions: ["reverse"] });
+    updateDevice({ id: "chain-1", actions: ["reverse"] });
 
     expect(outlet).toHaveBeenCalledWith(
       1,

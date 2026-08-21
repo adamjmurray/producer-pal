@@ -55,7 +55,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     setupArrangementMidiClipMock(clip, { ...MIDI_CLIP_PROPS, looping: 0 });
 
     const result = await updateClip(
-      { ids: "789", notes: "C3 1|1 E3 2|1", arrangementLength: "2bar" },
+      { id: "789", notes: "C3 1|1 E3 2|1", arrangementLength: "2bar" },
       mockContext,
     );
 
@@ -67,7 +67,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     trackNotesInScanWindow(clip);
 
     const result = await updateClip(
-      { ids: "789", notes: "C3 1|1 D3 2|1 E3 3|1", arrangementLength: "3bar" },
+      { id: "789", notes: "C3 1|1 D3 2|1 E3 3|1", arrangementLength: "3bar" },
       mockContext,
     );
 
@@ -81,7 +81,7 @@ describe("updateClip - note stats alongside arrangementLength", () => {
     setupArrangementMidiClipMock(clip, { ...MIDI_CLIP_PROPS, looping: 1 });
 
     const result = await updateClip(
-      { ids: "789", notes: "C3 1|1", arrangementLength: "3bar" },
+      { id: "789", notes: "C3 1|1", arrangementLength: "3bar" },
       mockContext,
     );
 

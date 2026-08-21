@@ -50,7 +50,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
 
   it("applies a transform string to one clip", async () => {
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       transforms: "velocity = 50",
     });
 
@@ -60,7 +60,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
 
   it("broadcasts one transform string across multiple clips", async () => {
     await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       transforms: "velocity = 42",
     });
 
@@ -70,7 +70,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
 
   it("supports multiple expressions via newline separation", async () => {
     await updateClip({
-      ids: "123",
+      id: "123",
       transforms: "velocity = 60\nvelocity += 10",
     });
 
@@ -82,7 +82,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     // for every clip (a naive per-clip updateClip call would see count = 1).
     // Values stay <=127 so velocity clamping doesn't mask the assertion.
     await updateClip({
-      ids: "123, 456, 789",
+      id: "123, 456, 789",
       transforms: "velocity = clip.index * 20 + clip.count",
     });
 
@@ -93,7 +93,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
 
   it("warns and continues when a transform string is malformed", async () => {
     await updateClip({
-      ids: "123, 456, 789",
+      id: "123, 456, 789",
       transforms: "!!!bad!!!",
     });
 

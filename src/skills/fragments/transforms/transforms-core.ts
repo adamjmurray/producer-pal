@@ -81,7 +81,7 @@ timing += n/8                    // nudge every note an eighth note later (relat
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in, so don't re-apply earlier ones.
 MIDI params ignored for audio clips, vice versa.
-Across a batch (update-clip \`ids\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
+Across a batch (update-clip \`id\` / duplicate copies / create-clip multiple slots or arrangement positions), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\`; see Shape above.`;
 
 /**
  * Everything about changing a clip that already has notes in it. A SIBLING of

@@ -51,7 +51,7 @@ async function transformAndReadGain(
 ): Promise<number> {
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms },
+    arguments: { id: clipId, transforms },
   });
 
   await sleep(100);

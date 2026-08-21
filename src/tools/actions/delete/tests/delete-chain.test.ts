@@ -80,7 +80,7 @@ describe("deleteObject chain deletion", () => {
   it("parks the chain on an unused pad and clears that pad", () => {
     const { chains, pads } = registerDrumRack([36, 36]);
 
-    const result = deleteObject({ ids: "chain-1", type: "chain" });
+    const result = deleteObject({ id: "chain-1", type: "chain" });
 
     // 36 holds both chains, so 37 is the first pad free to borrow.
     expect(chains[1]?.set).toHaveBeenCalledWith("in_note", 37);
@@ -142,7 +142,7 @@ describe("deleteObject chain deletion", () => {
       type: "Chain",
     });
 
-    const result = deleteObject({ ids: "rack-chain", type: "chain" });
+    const result = deleteObject({ id: "rack-chain", type: "chain" });
 
     expect(result).toStrictEqual({
       id: "rack-chain",
@@ -176,7 +176,7 @@ describe("deleteObject chain deletion", () => {
 
     registerDrumRack([36], []);
 
-    const result = deleteObject({ ids: "chain-0", type: "chain" });
+    const result = deleteObject({ id: "chain-0", type: "chain" });
 
     expect(result).toStrictEqual({
       id: "chain-0",
@@ -201,7 +201,7 @@ describe("deleteObject chain deletion", () => {
       methods: { delete_all_chains: () => null },
     });
 
-    const result = deleteObject({ ids: "chain-0", type: "chain" });
+    const result = deleteObject({ id: "chain-0", type: "chain" });
 
     expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 37);
     expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 36);

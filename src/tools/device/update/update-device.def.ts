@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -18,10 +19,16 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   },
 
   inputSchema: {
-    ids: z.coerce
+    id: z.coerce
       .string()
       .optional()
-      .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
+      .describe(
+        "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
+      ),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     path: param(z.coerce.string().optional(), {
       default:
         "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
@@ -99,7 +106,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the chains; chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {

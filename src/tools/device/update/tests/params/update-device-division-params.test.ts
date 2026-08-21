@@ -43,7 +43,7 @@ describe("updateDevice - division params", () => {
 
   it("should set raw value for division param by matching label", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       params: [{ name: "793", value: "1/16" }],
     });
 
@@ -54,7 +54,7 @@ describe("updateDevice - division params", () => {
 
   it("should handle setting division to max value (1)", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       params: [{ name: "793", value: "1" }],
     });
 
@@ -65,7 +65,7 @@ describe("updateDevice - division params", () => {
 
   it("should log error for invalid division value", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       params: [{ name: "793", value: "1/128" }],
     });
 

@@ -111,7 +111,7 @@ describe("deleteObject when Live refuses the delete", () => {
 
     setup();
 
-    expect(deleteObject({ ids: id, type })).toStrictEqual({
+    expect(deleteObject({ id: id, type })).toStrictEqual({
       id,
       type,
       deleted: false,
@@ -125,7 +125,7 @@ describe("deleteObject when Live refuses the delete", () => {
     setupTrackMocks({ track_1: String(livePath.track(1)) });
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    expect(deleteObject({ ids: "track_1", type: "track" })).toStrictEqual({
+    expect(deleteObject({ id: "track_1", type: "track" })).toStrictEqual({
       id: "track_1",
       type: "track",
       deleted: true,

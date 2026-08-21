@@ -30,7 +30,7 @@ describe("deleteObject device deletion", () => {
   ): void {
     const { parents } = setupDeviceMocks(id, path);
 
-    const result = deleteObject({ ids: id, type: "device" });
+    const result = deleteObject({ id: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
     expect(parents.get(parentPath)?.call).toHaveBeenCalledWith(
@@ -112,7 +112,7 @@ describe("deleteObject device deletion", () => {
     });
 
     const result = deleteObject({
-      ids: "device_0_0,device_0_1",
+      id: "device_0_0,device_0_1",
       type: "device",
     });
 
@@ -136,7 +136,7 @@ describe("deleteObject device deletion", () => {
       d13: String(livePath.track(0).device(13)),
     });
 
-    deleteObject({ ids: "d2,d13", type: "device" });
+    deleteObject({ id: "d2,d13", type: "device" });
 
     const parent = parents.get(String(livePath.track(0)));
 
@@ -151,7 +151,7 @@ describe("deleteObject device deletion", () => {
     );
 
     const result = deleteObject({
-      ids: "dupe_device, dupe_device",
+      id: "dupe_device, dupe_device",
       type: "device",
     });
 
@@ -177,7 +177,7 @@ describe("deleteObject device deletion", () => {
     });
 
     const result = deleteObject({
-      ids: "good_device,bad_device",
+      id: "good_device,bad_device",
       type: "device",
     });
 
@@ -206,7 +206,7 @@ describe("deleteObject device deletion", () => {
 
     setupDeviceMocks(id, "invalid_path_without_devices");
 
-    const result = deleteObject({ ids: id, type: "device" });
+    const result = deleteObject({ id: id, type: "device" });
 
     expect(result).toStrictEqual({
       id,
@@ -265,7 +265,7 @@ describe("deleteObject device deletion", () => {
       });
 
       const result = deleteObject({
-        ids: "c0_d0, c1_d0, c0_d1",
+        id: "c0_d0, c1_d0, c0_d1",
         type: "device",
       });
 
@@ -352,7 +352,7 @@ describe("deleteObject device deletion", () => {
         nested: "live_set tracks 0 devices 0 chains 0 devices 1",
       });
 
-      deleteObject({ ids: "rack, nested", type: "device" });
+      deleteObject({ id: "rack, nested", type: "device" });
 
       const nestedParent = parents.get("live_set tracks 0 devices 0 chains 0");
       const trackParent = parents.get(String(livePath.track(0)));
@@ -410,7 +410,7 @@ describe("deleteObject device deletion", () => {
       });
 
       const result = deleteObject({
-        ids: "dev_by_id",
+        id: "dev_by_id",
         path: "t0/d0",
         type: "device",
       });
@@ -467,7 +467,7 @@ describe("deleteObject device deletion", () => {
         type: "Track",
       });
 
-      deleteObject({ ids: "track_1", path: "0/0", type: "track" });
+      deleteObject({ id: "track_1", path: "0/0", type: "track" });
 
       expect(consoleSpy).toHaveBeenCalledWith(
         'delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths',

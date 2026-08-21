@@ -118,7 +118,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     // duplicate_loop doubles the clip, so running it twice quadruples it.
     const result = await updateClip({
-      ids: "456",
+      id: "456",
       path: "t1/s1",
       duplicateLoop: true,
     });
@@ -127,14 +127,14 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result).toStrictEqual({ id: "456", noteCount: 0 });
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "ids/path named 1 clip(s) more than once; each clip was updated once",
+      "id/path named 1 clip(s) more than once; each clip was updated once",
     );
   });
 
   it("updates a clip once when an id repeats", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    const result = await updateClip({ ids: "123,123", name: "Once" });
+    const result = await updateClip({ id: "123,123", name: "Once" });
 
     expect(callsNamed(mocks.clip123.set, "name")).toBe(1);
     expect(result).toStrictEqual({ id: "123" });
@@ -144,7 +144,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     setupMidiClipMock(mocks.clip456);
     mockNonExistentObjects();
 
-    await updateClip({ ids: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
+    await updateClip({ id: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
     expect(outlet).toHaveBeenCalledWith(1, "destination t5/s0 does not exist");
     expect(outlet).not.toHaveBeenCalledWith(
@@ -261,7 +261,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
         [0, 0, 1],
         [1, 2, 0],
       ]);
-      const named = param === "ids" ? { path: "t0/s0" } : { ids: "123" };
+      const named = param === "ids" ? { path: "t0/s0" } : { id: "123" };
 
       const result = await updateClip({
         ...named,

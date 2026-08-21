@@ -27,7 +27,7 @@ describe("deleteObject", () => {
   it("should delete a single track when type is 'track'", () => {
     setupTrackMocks({ track_2: String(livePath.track(1)) });
 
-    const result = deleteObject({ ids: "track_2", type: "track" });
+    const result = deleteObject({ id: "track_2", type: "track" });
 
     expect(result).toStrictEqual({
       id: "track_2",
@@ -35,6 +35,18 @@ describe("deleteObject", () => {
       deleted: true,
     });
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still deletes by the ids alias", () => {
+    setupTrackMocks({ track_2: String(livePath.track(1)) });
+
+    expect(deleteObject({ ids: "track_2", type: "track" })).toStrictEqual({
+      id: "track_2",
+      type: "track",
+      deleted: true,
+    });
   });
 
   it("should delete multiple tracks in descending index order", () => {
@@ -45,7 +57,7 @@ describe("deleteObject", () => {
     });
 
     const result = deleteObject({
-      ids: "track_0,track_1,track_2",
+      id: "track_0,track_1,track_2",
       type: "track",
     });
 
@@ -64,7 +76,7 @@ describe("deleteObject", () => {
   it("should delete a single scene when type is 'scene'", () => {
     setupSceneMocks({ scene_2: livePath.scene(1) });
 
-    const result = deleteObject({ ids: "scene_2", type: "scene" });
+    const result = deleteObject({ id: "scene_2", type: "scene" });
 
     expect(result).toStrictEqual({
       id: "scene_2",
@@ -80,7 +92,7 @@ describe("deleteObject", () => {
       scene_2: livePath.scene(2),
     });
 
-    const result = deleteObject({ ids: "scene_0, scene_2", type: "scene" });
+    const result = deleteObject({ id: "scene_0, scene_2", type: "scene" });
 
     // Should delete in descending order (2, 0) to maintain indices
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_scene", 2);
@@ -164,7 +176,7 @@ describe("deleteObject", () => {
       path: livePath.track(0),
     });
 
-    const result = deleteObject({ ids: "take_lane_clip", type: "clip" });
+    const result = deleteObject({ id: "take_lane_clip", type: "clip" });
 
     expect(track0.call).not.toHaveBeenCalledWith(
       "delete_clip",
@@ -180,10 +192,10 @@ describe("deleteObject", () => {
     });
   });
 
-  it("should throw an error when neither ids nor path is provided", () => {
-    const expectedError = "delete failed: ids or path is required";
+  it("should throw an error when neither id nor path is provided", () => {
+    const expectedError = "delete failed: id or path is required";
 
-    expect(() => deleteObject({ ids: undefined, type: "clip" })).toThrow(
+    expect(() => deleteObject({ id: undefined, type: "clip" })).toThrow(
       expectedError,
     );
   });
@@ -192,7 +204,7 @@ describe("deleteObject", () => {
     const expectedError = "delete failed: type is required";
 
     expect(() =>
-      deleteObject({ ids: "clip_1" } as unknown as Parameters<
+      deleteObject({ id: "clip_1" } as unknown as Parameters<
         typeof deleteObject
       >[0]),
     ).toThrow(expectedError);
@@ -202,7 +214,7 @@ describe("deleteObject", () => {
     const expectedError =
       'delete failed: type must be one of "track", "scene", "clip", "device", "drum-pad", "chain"';
 
-    expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(
+    expect(() => deleteObject({ id: "clip_1", type: "invalid" })).toThrow(
       expectedError,
     );
   });
@@ -212,7 +224,7 @@ describe("deleteObject", () => {
 
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
-    const result = deleteObject({ ids: "999", type: "track" });
+    const result = deleteObject({ id: "999", type: "track" });
 
     expect(result).toStrictEqual([]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -228,7 +240,7 @@ describe("deleteObject", () => {
 
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
-    const result = deleteObject({ ids: "scene_1", type: "track" });
+    const result = deleteObject({ id: "scene_1", type: "track" });
 
     expect(result).toStrictEqual([]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -246,7 +258,7 @@ describe("deleteObject", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({
-      ids: "track_0, nonexistent, track_2",
+      id: "track_0, nonexistent, track_2",
       type: "track",
     });
 
@@ -269,7 +281,7 @@ describe("deleteObject", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn");
 
     const result = deleteObject({
-      ids: "nonexistent1, nonexistent2",
+      id: "nonexistent1, nonexistent2",
       type: "track",
     });
 
@@ -294,7 +306,7 @@ describe("deleteObject", () => {
       type: "Track",
     });
 
-    const result = deleteObject({ ids: "track_1", type: "track" });
+    const result = deleteObject({ id: "track_1", type: "track" });
 
     expect(result).toStrictEqual({
       id: "track_1",
@@ -332,9 +344,9 @@ describe("deleteObject", () => {
       track_2: String(livePath.track(2)),
     });
 
-    const singleResult = deleteObject({ ids: "track_0", type: "track" });
+    const singleResult = deleteObject({ id: "track_0", type: "track" });
     const arrayResult = deleteObject({
-      ids: "track_1, track_2",
+      id: "track_1, track_2",
       type: "track",
     });
 
@@ -355,7 +367,7 @@ describe("deleteObject", () => {
       type: "Track",
     });
 
-    const result = deleteObject({ ids: "track_0", type: "track" });
+    const result = deleteObject({ id: "track_0", type: "track" });
 
     expect(result).toStrictEqual({
       id: "track_0",
@@ -376,7 +388,7 @@ describe("deleteObject", () => {
       type: "Scene",
     });
 
-    const result = deleteObject({ ids: "scene_0", type: "scene" });
+    const result = deleteObject({ id: "scene_0", type: "scene" });
 
     expect(result).toStrictEqual({
       id: "scene_0",
@@ -397,7 +409,7 @@ describe("deleteObject", () => {
       type: "Clip",
     });
 
-    const result = deleteObject({ ids: "clip_0", type: "clip" });
+    const result = deleteObject({ id: "clip_0", type: "clip" });
 
     expect(result).toStrictEqual({
       id: "clip_0",
@@ -419,7 +431,7 @@ describe("deleteObject", () => {
       type: "Track",
     });
 
-    const result = deleteObject({ ids: id, type: "track" });
+    const result = deleteObject({ id: id, type: "track" });
 
     expect(result).toStrictEqual({ id, type: "track", deleted: true });
     expect(liveSet.call).toHaveBeenCalledWith(
@@ -461,7 +473,7 @@ describe("deleteObject", () => {
       track_13: String(livePath.track(13)),
     });
 
-    deleteObject({ ids: "track_2,track_13", type: "track" });
+    deleteObject({ id: "track_2,track_13", type: "track" });
 
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_track", 13);
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_track", 2);
@@ -473,7 +485,7 @@ describe("deleteObject", () => {
       type: "Track",
     });
 
-    const result = deleteObject({ ids: "return_12", type: "track" });
+    const result = deleteObject({ id: "return_12", type: "track" });
 
     expect(result).toStrictEqual({
       id: "return_12",
@@ -489,7 +501,7 @@ describe("deleteObject", () => {
       scene_12: livePath.scene(12),
     });
 
-    deleteObject({ ids: "scene_3,scene_12", type: "scene" });
+    deleteObject({ id: "scene_3,scene_12", type: "scene" });
 
     expect(liveSet.call).toHaveBeenNthCalledWith(1, "delete_scene", 12);
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_scene", 3);
@@ -504,7 +516,7 @@ describe("deleteObject", () => {
       path: livePath.track(10),
     });
 
-    const result = deleteObject({ ids: "clip_10_0", type: "clip" });
+    const result = deleteObject({ id: "clip_10_0", type: "clip" });
 
     expect(result).toStrictEqual({
       id: "clip_10_0",

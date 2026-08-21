@@ -148,7 +148,7 @@ describe("MCP Express App", () => {
         },
         "ppal-update-clip": {
           inputSchema: {
-            properties: { ids: expect.anything() },
+            properties: { id: expect.anything() },
           },
         },
         "ppal-create-track": {

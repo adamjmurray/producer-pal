@@ -40,7 +40,7 @@ describe("updateDevice - focus functionality", () => {
   });
 
   it("should select device and show device detail when focus=true", () => {
-    updateDevice({ ids: "123", name: "Test", focus: true });
+    updateDevice({ id: "123", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
       deviceId: "123",
@@ -51,7 +51,7 @@ describe("updateDevice - focus functionality", () => {
   it("should select last device when focus=true with multiple devices", () => {
     // Three devices so "last" (789) is distinct from index +1 (456): pins
     // result.at(-1), not a coincidental two-element match.
-    updateDevice({ ids: "123,456,789", name: "Test", focus: true });
+    updateDevice({ id: "123,456,789", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
       deviceId: "789",
@@ -61,13 +61,13 @@ describe("updateDevice - focus functionality", () => {
   });
 
   it("should not call select when focus=false", () => {
-    updateDevice({ ids: "123", name: "Test", focus: false });
+    updateDevice({ id: "123", name: "Test", focus: false });
 
     expect(selectMock.get()).not.toHaveBeenCalled();
   });
 
   it("should not call select when focus is omitted", () => {
-    updateDevice({ ids: "123", name: "Test" });
+    updateDevice({ id: "123", name: "Test" });
 
     expect(selectMock.get()).not.toHaveBeenCalled();
   });

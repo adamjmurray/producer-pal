@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { namedParam, parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+  parseCommaSeparatedIds,
+} from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
@@ -28,11 +32,13 @@ export interface PlaybackTarget {
   sceneIndex: number | null;
   /** Clip slots named by `path` or the deprecated `slots` */
   slotPositions: SlotPosition[] | null;
-  /** `ids` as the caller named it, or undefined when it names no clip */
+  /** `id` as the caller named it, or undefined when it names no clip */
   ids: string | undefined;
 }
 
 export interface PlaybackTargetParams {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
   slots?: string;
@@ -77,7 +83,8 @@ const TARGETING_ACTIONS = new Set([
  * or a path, and refusing both beats guessing which the caller meant.
  * @param action - The playback action, which decides whether a target applies
  * @param params - The raw target params
- * @param params.ids - Comma-separated clip IDs, or scene IDs for play-scene
+ * @param params.id - Comma-separated clip IDs, or scene IDs for play-scene
+ * @param params.ids - Hidden alias for id
  * @param params.path - A scene, or comma-separated clip slots
  * @param params.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param params.sceneIndex - Scene index, an alternative to a "s<scene>" path
@@ -85,9 +92,9 @@ const TARGETING_ACTIONS = new Set([
  */
 export function resolvePlaybackTarget(
   action: string,
-  { ids, path, slots, sceneIndex }: PlaybackTargetParams,
+  { id, ids, path, slots, sceneIndex }: PlaybackTargetParams,
 ): PlaybackTarget {
-  const namedIds = namedParam(ids, "ids");
+  const namedIds = namedIdParam(id, ids, "ids");
 
   // Parsing these for an action that never reads them turns a leftover param
   // into a failed transport command: `stop` has to stop.
@@ -114,7 +121,7 @@ export function resolvePlaybackTarget(
   // Both name what to act on, so refusing beats guessing which the caller meant.
   if (namedIds != null && source != null) {
     throw new Error(
-      `playback failed: ids and ${source.label} are mutually exclusive`,
+      `playback failed: id and ${source.label} are mutually exclusive`,
     );
   }
 
@@ -150,7 +157,7 @@ export function resolveClipSlotPositions(
 
   if (ids == null) {
     throw new Error(
-      `playback failed: ids or path is required for action "${action}"`,
+      `playback failed: id or path is required for action "${action}"`,
     );
   }
 
@@ -165,7 +172,7 @@ export function resolveClipSlotPositions(
   // already warned why it was skipped; this says the call has no target left.
   if (clips.length === 0) {
     throw new Error(
-      `playback failed: ids "${ids}" named no clip for action "${action}"`,
+      `playback failed: id "${ids}" named no clip for action "${action}"`,
     );
   }
 
@@ -297,12 +304,12 @@ function slotPositionsFrom(
 
 /**
  * Settle on the one scene to play. Every param that can name a scene gets a
- * vote: `path`, `sceneIndex`, and each id in `ids`. Only one scene plays at a
+ * vote: `path`, `sceneIndex`, and each id in `id`. Only one scene plays at a
  * time, so params naming different scenes are refused rather than ranked —
  * picking a winner would silently drop half of what the caller asked for.
  * @param pathRefs - The scenes the path param named, one per entry
  * @param sceneIndex - The `sceneIndex` param
- * @param ids - The normalized `ids` param
+ * @param ids - The normalized `id` param
  * @returns The scene to play, or null when nothing named one
  */
 function resolveSceneTarget(
@@ -343,7 +350,7 @@ function resolveSceneTarget(
  * The scene each id names: a scene id names itself, and a session clip or clip
  * slot id names the scene it sits in. An id naming no scene is warned and
  * skipped, the way every other bad id in this tool is.
- * @param ids - The normalized `ids` param
+ * @param ids - The normalized `id` param
  * @returns One ref per id that names a scene
  */
 function idSceneRefs(ids: string | undefined): SceneRef[] {
@@ -370,7 +377,7 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
       continue;
     }
 
-    refs.push({ scene: object.sceneIndex, source: `ids "${id}"` });
+    refs.push({ scene: object.sceneIndex, source: `id "${id}"` });
   }
 
   return refs;
@@ -408,10 +415,10 @@ function assertClipPath(
 /**
  * Warns for target params on an action that has no target to apply them to.
  * @param action - The playback action
- * @param params - The target params, with `ids` already normalized
+ * @param params - The target params, with `id` already normalized
  * @param params.path - Raw path param
  * @param params.slots - Raw deprecated slots param
- * @param params.ids - Normalized ids param
+ * @param params.ids - Normalized id param
  * @param params.sceneIndex - Raw sceneIndex param
  */
 function warnUnusedTarget(
@@ -421,7 +428,7 @@ function warnUnusedTarget(
   const sent = [
     namedParam(path, "path") != null ? "path" : null,
     namedHiddenPath(slots, "slots") != null ? "slots" : null,
-    ids != null ? "ids" : null,
+    ids != null ? "id" : null,
     sceneIndex != null ? "sceneIndex" : null,
   ].filter((param) => param != null);
 

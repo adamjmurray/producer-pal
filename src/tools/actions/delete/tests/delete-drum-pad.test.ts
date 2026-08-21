@@ -23,7 +23,7 @@ describe("deleteObject drum-pad deletion", () => {
       "live_set tracks 0 devices 0 drum_pads 36",
     );
 
-    const result = deleteObject({ ids: id, type: "drum-pad" });
+    const result = deleteObject({ id: id, type: "drum-pad" });
 
     expect(result).toStrictEqual({ id, type: "drum-pad", deleted: true });
     expect(devices.get(id)?.call).toHaveBeenCalledWith("delete_all_chains");
@@ -35,7 +35,7 @@ describe("deleteObject drum-pad deletion", () => {
       pad_2: "live_set tracks 0 devices 0 drum_pads 37",
     });
 
-    const result = deleteObject({ ids: "pad_1, pad_2", type: "drum-pad" });
+    const result = deleteObject({ id: "pad_1, pad_2", type: "drum-pad" });
 
     expect(result).toStrictEqual([
       { id: "pad_1", type: "drum-pad", deleted: true },
@@ -121,7 +121,7 @@ describe("deleteObject drum-pad deletion", () => {
     });
 
     const result = deleteObject({
-      ids: "pad_by_id",
+      id: "pad_by_id",
       path: "t0/d0/pC1",
       type: "drum-pad",
     });
@@ -179,7 +179,7 @@ describe("deleteObject drum-pad refusals", () => {
       type: "DrumChain",
     });
 
-    const result = deleteObject({ ids: "drum-chain-1", type: "drum-pad" });
+    const result = deleteObject({ id: "drum-chain-1", type: "drum-pad" });
 
     expect(result).toStrictEqual([]);
     expect(chain.call).not.toHaveBeenCalledWith("delete_all_chains");
@@ -197,7 +197,7 @@ describe("deleteObject drum-pad refusals", () => {
       type: "Chain",
     });
 
-    const result = deleteObject({ ids: "chain-1", type: "device" });
+    const result = deleteObject({ id: "chain-1", type: "device" });
 
     expect(result).toStrictEqual([]);
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -220,7 +220,7 @@ describe("deleteObject drum-pad refusals", () => {
     });
 
     const result = deleteObject({
-      ids: `drum-chain-1, ${padId}`,
+      id: `drum-chain-1, ${padId}`,
       type: "drum-pad",
     });
 
@@ -241,7 +241,7 @@ describe("deleteObject drum-pad refusals", () => {
       properties: { chains: children("surviving-chain") },
     });
 
-    const result = deleteObject({ ids: "stuck-pad", type: "drum-pad" });
+    const result = deleteObject({ id: "stuck-pad", type: "drum-pad" });
 
     expect(result).toStrictEqual({
       id: "stuck-pad",

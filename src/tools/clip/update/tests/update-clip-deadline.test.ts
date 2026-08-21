@@ -59,7 +59,7 @@ describe("updateClip - deadline exceeded", () => {
     const deadline = Date.now() + 5_000;
 
     await updateClip(
-      { ids: "123", name: "Updated" },
+      { id: "123", name: "Updated" },
       { timeoutMs: 30_000, deadline },
     );
 
@@ -74,7 +74,7 @@ describe("updateClip - deadline exceeded", () => {
     vi.mocked(isDeadlineExceeded).mockReturnValue(true);
 
     const result = await updateClip(
-      { ids: "123, 456", name: "Updated" },
+      { id: "123, 456", name: "Updated" },
       { timeoutMs: 1 },
     );
 
@@ -93,7 +93,7 @@ describe("updateClip - deadline exceeded", () => {
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
 
-    await updateClip({ ids: "123, 456", name: "Updated" }, { timeoutMs: 100 });
+    await updateClip({ id: "123, 456", name: "Updated" }, { timeoutMs: 100 });
 
     // A bare count doesn't say which id to re-run.
     expect(outlet).toHaveBeenCalledWith(
@@ -111,7 +111,7 @@ describe("updateClip - deadline exceeded", () => {
       .mockReturnValueOnce(true);
 
     const result = await updateClip(
-      { ids: "123, 456", name: "Updated" },
+      { id: "123, 456", name: "Updated" },
       { timeoutMs: 100 },
     );
 

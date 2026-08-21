@@ -75,14 +75,14 @@ async function resetOffGridAndQuantize(
 ): Promise<void> {
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, preTransforms: "v0", notes: OFF_GRID_NOTES },
+    arguments: { id: clipId, preTransforms: "v0", notes: OFF_GRID_NOTES },
   });
 
   await sleep(100);
 
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, quantize: 1.0, quantizeGrid },
+    arguments: { id: clipId, quantize: 1.0, quantizeGrid },
   });
 
   await sleep(100);
@@ -230,7 +230,7 @@ describe("ppal-update-clip", () => {
     // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, quantize: 1.0, quantizeGrid: "n/4" },
+      arguments: { id: clipId, quantize: 1.0, quantizeGrid: "n/4" },
     });
 
     await sleep(100);
@@ -255,7 +255,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, quantizeGrid: "1/4" },
+      arguments: { id: clipId, quantizeGrid: "1/4" },
     });
 
     await sleep(100);
@@ -271,7 +271,7 @@ describe("ppal-update-clip", () => {
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: clipId,
+        id: clipId,
         quantize: 1.0,
         quantizeGrid: "1/4",
         quantizePitch: "C3",
@@ -373,7 +373,7 @@ describe("ppal-update-clip", () => {
     // Test: Update multiple clips with comma-separated IDs
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1.id},${clip2.id}`, name: "Batch Updated" },
+      arguments: { id: `${clip1.id},${clip2.id}`, name: "Batch Updated" },
     });
 
     await sleep(100);

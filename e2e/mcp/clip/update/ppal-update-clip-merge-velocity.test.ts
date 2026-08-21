@@ -60,7 +60,7 @@ async function updateClip(
 ): Promise<unknown> {
   return await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, ...args },
+    arguments: { id: clipId, ...args },
   });
 }
 

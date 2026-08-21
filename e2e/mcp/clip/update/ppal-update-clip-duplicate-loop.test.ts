@@ -84,7 +84,7 @@ async function duplicateLoopAndRead(
 }> {
   const result = await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, duplicateLoop: true, ...edits },
+    arguments: { id: clipId, duplicateLoop: true, ...edits },
   });
   const { data, warnings } =
     parseToolResultWithWarnings<UpdateClipResult>(result);
@@ -116,7 +116,7 @@ describe("ppal-update-clip duplicateLoop", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, duplicateLoop: true },
+      arguments: { id: clipId, duplicateLoop: true },
     });
     const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
 
@@ -213,7 +213,7 @@ describe("ppal-update-clip duplicateLoop", () => {
     // into the new half alongside the copied C3 there.
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, duplicateLoop: true, notes: "v100 G3 3|1" },
+      arguments: { id: clipId, duplicateLoop: true, notes: "v100 G3 3|1" },
     });
     const { data } = parseToolResultWithWarnings<UpdateClipResult>(result);
 

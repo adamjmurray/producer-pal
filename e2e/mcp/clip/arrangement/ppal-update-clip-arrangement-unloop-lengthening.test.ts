@@ -44,7 +44,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
   it("tiles a looping clip into a row of copies (the default)", async () => {
     const id = await createLoopingArrClip("101|1");
 
-    await lengthenTo4Bars({ ids: id });
+    await lengthenTo4Bars({ id: id });
 
     const clips = clipsInBarRange(await readArrClips(), 101, 104);
 
@@ -62,7 +62,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
     const id = await createLoopingArrClip("111|1");
 
     const { data, warnings } = await lengthenTo4Bars({
-      ids: id,
+      id: id,
       looping: false,
       notes: FOUR_BARS_OF_NOTES,
     });
@@ -89,7 +89,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
     // ppal-duplicate has no looping param, so its description points here.
     const { data, warnings } = await lengthenTo4Bars({
-      ids: copyId,
+      id: copyId,
       looping: false,
       notes: FOUR_BARS_OF_NOTES,
     });

@@ -90,7 +90,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Should not crash (clearClipAtDuplicateTarget handles existing clip)
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movingId, arrangementStart: "101|1" },
+      arguments: { id: movingId, arrangementStart: "101|1" },
     });
     const movedClip = parseToolResult<{ id: string }>(result);
 
@@ -117,7 +117,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${idA},${idB},${idC}`,
+        id: `${idA},${idB},${idC}`,
         arrangementStart: "170|1",
       },
     });
@@ -149,7 +149,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${id1},${id2},${id3}`,
+        id: `${id1},${id2},${id3}`,
         arrangementStart: "220|1",
       },
     });
@@ -181,7 +181,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${idA},${idB},${idC}`,
+        id: `${idA},${idB},${idC}`,
         arrangementStart: "270|1",
       },
     });

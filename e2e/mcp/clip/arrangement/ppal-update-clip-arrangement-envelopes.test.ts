@@ -72,7 +72,7 @@ describe("arrangementLength preserves clip envelopes", () => {
     );
 
     await callTool(ctx.client!, "ppal-update-clip", {
-      ids: id,
+      id: id,
       arrangementLength: "4bar",
     });
     await sleep(200);
@@ -97,7 +97,7 @@ describe("arrangementLength preserves clip envelopes", () => {
     );
 
     const result = await callTool(ctx.client!, "ppal-update-clip", {
-      ids: id,
+      id: id,
       arrangementLength: "4bar",
       looping: false,
       notes: FOUR_BARS_OF_NOTES,

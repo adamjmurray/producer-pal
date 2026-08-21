@@ -252,7 +252,7 @@ describe("Behavioral splitting tests", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: clipId,
+        id: clipId,
         arrangementSplit: "211|1",
         name: "Split Section",
       },
@@ -314,7 +314,7 @@ describe("Behavioral splitting tests", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${clip1Id},${clip2Id}`,
+        id: `${clip1Id},${clip2Id}`,
         // One position per clip. Each falls outside the other clip, which
         // ignores it — that filtering is what lets one call cut both.
         arrangementSplit: "221|1, 231|1",
@@ -393,7 +393,7 @@ describe("Behavioral splitting tests", () => {
       // 3|1 means "2 bars in" here, so the cut lands on song bar 422.
       const result = await ctx.client!.callTool({
         name: "ppal-update-clip",
-        arguments: { ids: clipId, split: "3|1" },
+        arguments: { id: clipId, split: "3|1" },
       });
 
       expect(getToolWarnings(result).join("\n")).toContain(
@@ -415,7 +415,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const result = await ctx.client!.callTool({
         name: "ppal-update-clip",
-        arguments: { ids: clipId, arrangementSplit: "432|1", split: "3|1" },
+        arguments: { id: clipId, arrangementSplit: "432|1", split: "3|1" },
       });
 
       expect(getToolWarnings(result).join("\n")).toContain(

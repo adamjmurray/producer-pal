@@ -56,7 +56,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const { track } = setupFourBarArrangementClip();
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "2bar", // 2 bars = 8 beats (50% of 4 bars)
     });
 
@@ -77,7 +77,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     const { track } = setupFourBarArrangementClip();
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "n/4", // 1 beat
     });
 
@@ -105,7 +105,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       arrangementLength: "2bar",
     });
 
@@ -124,7 +124,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     await expect(
       updateClip({
-        ids: "789",
+        id: "789",
         arrangementLength: "0bar",
       }),
     ).rejects.toThrow("arrangementLength must be greater than 0");
@@ -136,7 +136,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     track.call.mockClear();
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "4bar", // Same as current length
     });
 
@@ -192,7 +192,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "2bar", // Shorten to 2 bars
       arrangementStart: "9|1", // Move to bar 9
     });
@@ -282,7 +282,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     await updateClip(
       {
-        ids: "789",
+        id: "789",
         arrangementLength: "2bar", // Shorten to 2 bars (8 beats)
       },
       { silenceWavPath },

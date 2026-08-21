@@ -156,7 +156,7 @@ export async function halveDrumLoopRegion(
 ): Promise<void> {
   await client.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, start: "1|1", length: "n/2" },
+    arguments: { id: clipId, start: "1|1", length: "n/2" },
   });
 
   await sleep(100);

@@ -21,6 +21,7 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
+  namedIdParam,
   namedParam,
   parseCommaSeparatedIds,
   parseTimeSignature,
@@ -48,6 +49,8 @@ import {
 } from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
   notes?: string;
@@ -80,10 +83,11 @@ interface ClipResult {
  * Updates properties of existing clips
  *
  * @param args - The clip parameters
- * @param args.ids - Clip ID or comma-separated list of clip IDs to update
- * @param args.path - Clip slot(s) of clips to update, instead of ids
+ * @param args.id - Clip ID or comma-separated list of clip IDs to update
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Clip slot(s) of clips to update, instead of id
  * @param args.notes - Musical notation string
- * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
+ * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all the clips
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
@@ -110,13 +114,14 @@ interface ClipResult {
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
- * @param args.code - JavaScript code to transform notes (broadcast across ids; use context.clip.{index,count} for per-clip variation)
+ * @param args.code - JavaScript code to transform notes (broadcast across the clips; use context.clip.{index,count} for per-clip variation)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Per-request context
  * @returns Single clip object or array of clip objects
  */
 export async function updateClip(
   {
+    id,
     ids,
     path,
     notes: notationString,
@@ -156,10 +161,10 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  const requestedIds = requestedClipIds(ids, path);
+  const requestedIds = requestedClipIds(namedIdParam(id, ids, "ids"), path);
 
   if (requestedIds.length === 0) {
-    console.warn("updateClip: ids or path is required");
+    console.warn("updateClip: id or path is required");
 
     return [];
   }
@@ -251,19 +256,18 @@ export async function updateClip(
 }
 
 /**
- * The clips a call named, ids first then paths. ids and path both name clips to
+ * The clips a call named, ids first then paths. id and path both name clips to
  * update, so a call may use either or both — neither contradicts the other the
  * way two destinations would. Entries stay in place, nulls included, so toPath
  * lines up with what the caller named.
- * @param ids - Raw ids param
+ * @param namedIds - The id param, already coalesced with its alias
  * @param path - Raw path param
  * @returns One entry per named clip, null where a path named none
  */
 function requestedClipIds(
-  ids: string | undefined,
+  namedIds: string | undefined,
   path: string | undefined,
 ): Array<string | null> {
-  const namedIds = namedParam(ids, "ids");
   const namedPaths = namedParam(path, "path");
 
   return [

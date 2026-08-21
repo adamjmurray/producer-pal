@@ -37,7 +37,7 @@ describe("updateDevice", () => {
 
   it("should update a single device name", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       name: "My Device",
     });
 
@@ -49,7 +49,7 @@ describe("updateDevice", () => {
 
   it("should update multiple devices", () => {
     const result = updateDevice({
-      ids: "123, 456",
+      id: "123, 456",
       name: "Same Name",
     });
 
@@ -62,7 +62,7 @@ describe("updateDevice", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
-      ids: "123, 999, 456",
+      id: "123, 999, 456",
       name: "Test",
     });
 
@@ -77,7 +77,7 @@ describe("updateDevice", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
-      ids: "998, 999",
+      id: "998, 999",
       name: "Test",
     });
 
@@ -86,7 +86,7 @@ describe("updateDevice", () => {
 
   it("should handle 'id ' prefixed device IDs", () => {
     const result = updateDevice({
-      ids: "id 123",
+      id: "id 123",
       name: "Prefixed ID",
     });
 
@@ -96,7 +96,7 @@ describe("updateDevice", () => {
 
   it("should not call set when no properties provided", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
     });
 
     expect(device123.set).not.toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe("updateDevice", () => {
 
     it("should set value for numeric params", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "789", value: "0.8" }],
       });
 
@@ -124,7 +124,7 @@ describe("updateDevice", () => {
 
     it("should set multiple param values", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [
           { name: "789", value: "0.3" },
           { name: "790", value: "0.7" },
@@ -140,7 +140,7 @@ describe("updateDevice", () => {
       mockNonExistentObjects();
 
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "999", value: "0.5" }],
       });
 
@@ -153,7 +153,7 @@ describe("updateDevice", () => {
 
     it("should warn and skip entries with an empty name", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "  ", value: "0.5" }],
       });
 
@@ -166,7 +166,7 @@ describe("updateDevice", () => {
 
     it("should warn and skip entries with an empty value", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "789", value: "  " }],
       });
 
@@ -192,7 +192,7 @@ describe("updateDevice", () => {
 
     it("should convert string value to index for quantized param", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "791", value: "Fade" }],
       });
 
@@ -202,7 +202,7 @@ describe("updateDevice", () => {
 
     it("should log error for invalid enum value", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "791", value: "InvalidValue" }],
       });
 
@@ -228,7 +228,7 @@ describe("updateDevice", () => {
       });
 
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "793", value: "4" }],
       });
 
@@ -240,7 +240,7 @@ describe("updateDevice", () => {
       // A bare index that isn't a label (value_items are words) must warn with
       // the options, not silently binary-search a garbage raw value.
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "791", value: "1" }],
       });
 
@@ -262,7 +262,7 @@ describe("updateDevice", () => {
 
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "789", value: "C3" }],
       });
 
@@ -272,7 +272,7 @@ describe("updateDevice", () => {
 
     it("should handle sharps and flats", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "789", value: "F#-1" }],
       });
 
@@ -292,7 +292,7 @@ describe("updateDevice", () => {
 
     it("should convert -1 to 1 range to internal range for pan", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "792", value: "-0.5" }],
       });
 
@@ -303,7 +303,7 @@ describe("updateDevice", () => {
 
     it("should handle full left pan", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "792", value: "-1" }],
       });
 
@@ -313,7 +313,7 @@ describe("updateDevice", () => {
 
     it("should handle full right pan", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "792", value: "1" }],
       });
 
@@ -334,19 +334,19 @@ describe("updateDevice", () => {
         },
       });
 
-      updateDevice({ ids: "123", params: [{ name: "793", value: "50L" }] });
+      updateDevice({ id: "123", params: [{ name: "793", value: "50L" }] });
       expect(panDir.set).toHaveBeenCalledWith("value", -1); // full left
 
-      updateDevice({ ids: "123", params: [{ name: "793", value: "50R" }] });
+      updateDevice({ id: "123", params: [{ name: "793", value: "50R" }] });
       expect(panDir.set).toHaveBeenCalledWith("value", 1); // full right
 
-      updateDevice({ ids: "123", params: [{ name: "793", value: "25L" }] });
+      updateDevice({ id: "123", params: [{ name: "793", value: "25L" }] });
       expect(panDir.set).toHaveBeenCalledWith("value", -0.5); // half left
     });
 
     it("warns and skips a non-pan string instead of writing NaN", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "792", value: "hard-left" }],
       });
 
@@ -398,7 +398,7 @@ describe("updateDevice", () => {
 
     it("should resolve param by exact name", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "Filter Freq", value: "1000" }],
       });
 
@@ -407,7 +407,7 @@ describe("updateDevice", () => {
 
     it("should resolve param by name case-insensitively", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "filter freq", value: "1000" }],
       });
 
@@ -415,14 +415,14 @@ describe("updateDevice", () => {
     });
 
     it("should resolve rack macro by raw name", () => {
-      updateDevice({ ids: "123", params: [{ name: "Reverb", value: "0.8" }] });
+      updateDevice({ id: "123", params: [{ name: "Reverb", value: "0.8" }] });
 
       expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
 
     it("should resolve rack macro by formatted name", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "Reverb (Macro 1)", value: "0.8" }],
       });
 
@@ -431,7 +431,7 @@ describe("updateDevice", () => {
 
     it("should resolve multiple params by name", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [
           { name: "Filter Freq", value: "1000" },
           { name: "Reverb", value: "0.8" },
@@ -444,7 +444,7 @@ describe("updateDevice", () => {
 
     it("should warn for unresolvable non-integer key", () => {
       updateDevice({
-        ids: "123",
+        id: "123",
         params: [{ name: "Nonexistent", value: "0.5" }],
       });
 
@@ -477,7 +477,7 @@ describe("updateDevice", () => {
 
     it("should reject non-rack devices with error", () => {
       const result = updateDevice({
-        ids: "456",
+        id: "456",
         macroCount: 8,
       });
 
@@ -491,7 +491,7 @@ describe("updateDevice", () => {
 
     it("should call add_macro when increasing count (macros added in pairs)", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         macroCount: 8, // 4 -> 8 = diff of 4 = 2 pairs
       });
 
@@ -502,7 +502,7 @@ describe("updateDevice", () => {
 
     it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         macroCount: 0, // 4 -> 0 = diff of 4 = 2 pairs
       });
 
@@ -513,7 +513,7 @@ describe("updateDevice", () => {
 
     it("should do nothing when count matches", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         macroCount: 4, // 4 -> 4 = no change
       });
 
@@ -523,7 +523,7 @@ describe("updateDevice", () => {
 
     it("should round odd counts up to next even and warn", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
       });
 
@@ -554,7 +554,7 @@ describe("updateDevice", () => {
 
     it("should reject devices without AB Compare support", () => {
       const result = updateDevice({
-        ids: "456",
+        id: "456",
         abCompare: "b",
       });
 
@@ -569,7 +569,7 @@ describe("updateDevice", () => {
 
     it("should set is_using_compare_preset_b to 0 for 'a'", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         abCompare: "a",
       });
 
@@ -582,7 +582,7 @@ describe("updateDevice", () => {
 
     it("should set is_using_compare_preset_b to 1 for 'b'", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         abCompare: "b",
       });
 
@@ -595,7 +595,7 @@ describe("updateDevice", () => {
 
     it("should call save_preset_to_compare_ab_slot for 'save'", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         abCompare: "save",
       });
 
@@ -628,7 +628,7 @@ describe("updateDevice", () => {
 
     it("should move device to a different track", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t1",
       });
 
@@ -644,7 +644,7 @@ describe("updateDevice", () => {
 
     it("should move device to a specific position", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t1/d2",
       });
 
@@ -659,7 +659,7 @@ describe("updateDevice", () => {
 
     it("should move device into a rack chain", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t0/d0/c1",
       });
 
@@ -677,7 +677,7 @@ describe("updateDevice", () => {
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t1",
       });
 
@@ -697,7 +697,7 @@ describe("updateDevice", () => {
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t1",
       });
 
@@ -710,7 +710,7 @@ describe("updateDevice", () => {
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t99",
       });
 
@@ -730,7 +730,7 @@ describe("updateDevice", () => {
 
     it("should allow combining move with other updates", () => {
       const result = updateDevice({
-        ids: "123",
+        id: "123",
         toPath: "t1",
         name: "Moved Device",
       });
@@ -757,7 +757,7 @@ describe("updateDevice", () => {
         type: "Track",
       });
 
-      const result = updateDevice({ ids: "999", name: "Nope" });
+      const result = updateDevice({ id: "999", name: "Nope" });
 
       expect(outlet).toHaveBeenCalledWith(1, "cannot update Track objects");
       // Nothing is written to an unsupported object, and it drops from results.

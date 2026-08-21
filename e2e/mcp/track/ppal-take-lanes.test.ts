@@ -523,7 +523,7 @@ describe("take lanes", () => {
     const deleteResult = parseToolResultWithWarnings<{ deleted: boolean }>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { ids: clipId, type: "clip" },
+        arguments: { id: clipId, type: "clip" },
       }),
     );
 

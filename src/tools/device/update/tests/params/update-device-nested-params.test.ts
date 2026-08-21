@@ -126,7 +126,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       },
     });
 
-    updateDevice({ ids: "dev1", params: [{ name: "Dry/Wet", value: "50" }] });
+    updateDevice({ id: "dev1", params: [{ name: "Dry/Wet", value: "50" }] });
 
     expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
   });

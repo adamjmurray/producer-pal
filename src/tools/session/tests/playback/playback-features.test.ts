@@ -223,7 +223,7 @@ describe("transport", () => {
 
       playback({
         action: "play-session-clips",
-        ids: "clip1",
+        id: "clip1",
         focus: true,
       });
 

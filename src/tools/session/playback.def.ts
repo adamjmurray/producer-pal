@@ -5,7 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
@@ -57,12 +60,16 @@ stop: session and arrangement`,
       default: "locator ID or name for loop end",
       smallModel: null,
     }),
-    ids: z.coerce
+    id: z.coerce
       .string()
       .optional()
       .describe(
-        "comma-separated clip ID(s); for play-scene, a scene ID (or a clip ID in that scene)",
+        "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
       ),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     path: z.coerce
       .string()
       .optional()

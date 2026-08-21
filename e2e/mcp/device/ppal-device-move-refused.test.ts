@@ -72,7 +72,7 @@ describe("a device move Live refuses", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: deviceId, toPath: `t${to}` },
+      arguments: { id: deviceId, toPath: `t${to}` },
     });
 
     expect(getToolWarnings(result)).toContainEqual(

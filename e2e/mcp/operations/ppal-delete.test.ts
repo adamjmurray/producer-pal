@@ -69,7 +69,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleTracks = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${track1.id},${track2.id}`, type: "track" },
+      arguments: { id: `${track1.id},${track2.id}`, type: "track" },
     });
     const deletedMultiple =
       parseToolResult<DeleteResult[]>(deleteMultipleTracks);
@@ -162,7 +162,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleScenes = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${scene1.id},${scene2.id}`, type: "scene" },
+      arguments: { id: `${scene1.id},${scene2.id}`, type: "scene" },
     });
     const deletedScenes = parseToolResult<DeleteResult[]>(deleteMultipleScenes);
 
@@ -226,7 +226,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleClips = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${clip1.id},${clip2.id}`, type: "clip" },
+      arguments: { id: `${clip1.id},${clip2.id}`, type: "clip" },
     });
     const deletedClips = parseToolResult<DeleteResult[]>(deleteMultipleClips);
 
@@ -243,7 +243,7 @@ describe("ppal-delete", () => {
 
     const deleteDevice = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: deviceId, type: "device" },
+      arguments: { id: deviceId, type: "device" },
     });
     const deletedDevice = parseToolResult<DeleteResult>(deleteDevice);
 
@@ -291,7 +291,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleDevices = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${device1Id},${device2Id}`, type: "device" },
+      arguments: { id: `${device1Id},${device2Id}`, type: "device" },
     });
     const deletedDevices = parseToolResult<DeleteResult[]>(
       deleteMultipleDevices,

@@ -43,7 +43,7 @@ describe("updateClip - code execution", () => {
     vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess(notes));
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       code: "return notes.map(n => ({ ...n, pitch: n.pitch + 12 }))",
     });
 
@@ -82,7 +82,7 @@ describe("updateClip - code execution", () => {
     );
 
     const result = await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       code: "return [{ pitch: 72, start: 0, duration: 1, velocity: 100, velocityDeviation: 0, probability: 1 }]",
     });
 
@@ -124,7 +124,7 @@ describe("updateClip - code execution", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       code: "invalid code {{",
     });
 
@@ -153,7 +153,7 @@ describe("updateClip - code execution", () => {
       .mockResolvedValueOnce(codeExecFailure("Runtime error"));
 
     const result = await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       code: "return notes",
     });
 
@@ -179,7 +179,7 @@ describe("updateClip - code execution", () => {
     vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess([]));
 
     await updateClip({
-      ids: "789",
+      id: "789",
       code: "return []",
     });
 

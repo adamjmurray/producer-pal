@@ -93,6 +93,10 @@ describe("hidden params", () => {
       "ppal-read-device": "deviceId",
       "ppal-update-track": "ids",
       "ppal-update-scene": "ids",
+      "ppal-update-clip": "ids",
+      "ppal-update-device": "ids",
+      "ppal-delete": "ids",
+      "ppal-playback": "ids",
     };
 
     const shape = Object.fromEntries(
@@ -131,6 +135,10 @@ describe("hidden params", () => {
       "ppal-read-scene": folded,
       "ppal-read-device": folded,
       "ppal-update-track": folded,
+      "ppal-update-clip": folded,
+      "ppal-update-device": folded,
+      "ppal-delete": folded,
+      "ppal-playback": folded,
       "ppal-update-scene": folded,
     });
   });

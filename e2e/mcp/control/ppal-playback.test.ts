@@ -108,7 +108,7 @@ describe("ppal-playback", () => {
       name: "ppal-playback",
       arguments: {
         action: "play-session-clips",
-        ids: `${clip1.id},${clip2.id}`,
+        id: `${clip1.id},${clip2.id}`,
       },
     });
     const playingClips = parseToolResult<PlaybackResult>(playClipsResult);

@@ -28,7 +28,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-select", args: { path: "t0/s0" } },
   { toolName: "ppal-library", args: { query: "kick", limit: 2 } },
 
-  { toolName: "ppal-delete", args: { ids: ID.vocalSessionClip, type: "clip" } },
+  { toolName: "ppal-delete", args: { id: ID.vocalSessionClip, type: "clip" } },
   {
     toolName: "ppal-duplicate",
     args: { type: "clip", id: ID.drumSessionClip, toPath: "t0/s1" },
@@ -41,14 +41,14 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-read-track", args: { trackIndex: 0, include: ALL } },
   {
     toolName: "ppal-update-track",
-    args: { ids: ID.vocalTrack, mute: false, gainDb: -3 },
+    args: { id: ID.vocalTrack, mute: false, gainDb: -3 },
   },
 
   { toolName: "ppal-create-scene", args: { sceneIndex: 2, name: "Chorus" } },
   { toolName: "ppal-read-scene", args: { sceneIndex: 1, include: ALL } },
   {
     toolName: "ppal-update-scene",
-    args: { ids: ID.verseScene, name: "Verse A", tempo: 96 },
+    args: { id: ID.verseScene, name: "Verse A", tempo: 96 },
   },
 
   {
@@ -68,7 +68,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   {
     toolName: "ppal-update-clip",
     args: {
-      ids: ID.bassSessionClip,
+      id: ID.bassSessionClip,
       name: "Bass Line A",
       transform: "pitch + 12",
     },
@@ -85,7 +85,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   {
     toolName: "ppal-update-device",
     args: {
-      ids: ID.bassInstrument,
+      id: ID.bassInstrument,
       params: [{ name: "Filter Freq", value: "0.6" }],
     },
   },

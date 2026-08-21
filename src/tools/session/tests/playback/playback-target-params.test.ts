@@ -48,12 +48,12 @@ describe("playback target params on actions that have no target", () => {
       action: "stop-all-session-clips",
       path: "t0/s0",
       slots: "0/0",
-      ids: "clip1",
+      id: "clip1",
     });
 
     expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
     expect(warn).toHaveBeenCalledWith(
-      'path/slots/ids ignored: action "stop-all-session-clips" takes no target',
+      'path/slots/id ignored: action "stop-all-session-clips" takes no target',
     );
   });
 
@@ -81,16 +81,16 @@ describe("playback ids that names no clip", () => {
   it("fires the path's clip when ids is a coerced null, and says so", () => {
     const warn = vi.spyOn(console, "warn");
 
-    playback({ action: "play-session-clips", path: "t0/s1", ids: "null" });
+    playback({ action: "play-session-clips", path: "t0/s1", id: "null" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
-    expect(warn).toHaveBeenCalledWith('ids "null" names nothing');
+    expect(warn).toHaveBeenCalledWith('id "null" names nothing');
   });
 
   it("fires the path's clip when ids is blank, without a word", () => {
     const warn = vi.spyOn(console, "warn");
 
-    playback({ action: "play-session-clips", path: "t0/s1", ids: "  " });
+    playback({ action: "play-session-clips", path: "t0/s1", id: "  " });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
     expect(warn).not.toHaveBeenCalled();
@@ -100,22 +100,22 @@ describe("playback ids that names no clip", () => {
   // says that rather than reporting a launch that didn't happen.
   it("refuses the action when a coerced-null ids is all there is", () => {
     expect(() =>
-      playback({ action: "play-session-clips", ids: "null" }),
-    ).toThrow("playback failed: ids or path is required for action");
+      playback({ action: "play-session-clips", id: "null" }),
+    ).toThrow("playback failed: id or path is required for action");
   });
 
   it("still refuses ids and path together when both name clips", () => {
     expect(() =>
-      playback({ action: "play-session-clips", path: "t0/s1", ids: "clip1" }),
-    ).toThrow("playback failed: ids and path are mutually exclusive");
+      playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" }),
+    ).toThrow("playback failed: id and path are mutually exclusive");
   });
 
   // A scene path is still a path. Firing the ids and dropping it silently is
   // the wrong-target bug these params exist to prevent.
   it("refuses ids alongside a scene path too", () => {
     expect(() =>
-      playback({ action: "play-session-clips", path: "s3", ids: "clip1" }),
-    ).toThrow("playback failed: ids and path are mutually exclusive");
+      playback({ action: "play-session-clips", path: "s3", id: "clip1" }),
+    ).toThrow("playback failed: id and path are mutually exclusive");
   });
 
   // Bad ids are warned and skipped, which is right until every one is skipped:
@@ -127,9 +127,9 @@ describe("playback ids that names no clip", () => {
     registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
 
     expect(() =>
-      playback({ action: "play-session-clips", ids: "scene3" }),
+      playback({ action: "play-session-clips", id: "scene3" }),
     ).toThrow(
-      'playback failed: ids "scene3" named no clip for action "play-session-clips"',
+      'playback failed: id "scene3" named no clip for action "play-session-clips"',
     );
     expect(warn).toHaveBeenCalledWith(
       'playback: id "scene3" is not a clip (found Scene)',
@@ -140,17 +140,17 @@ describe("playback ids that names no clip", () => {
     registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
 
     expect(() =>
-      playback({ action: "stop-session-clips", ids: "scene3" }),
+      playback({ action: "stop-session-clips", id: "scene3" }),
     ).toThrow(
-      'playback failed: ids "scene3" named no clip for action "stop-session-clips"',
+      'playback failed: id "scene3" named no clip for action "stop-session-clips"',
     );
   });
 
   // Nothing warned on this one at all: the entries were dropped before any id
   // was looked at, so the call reported a launch with no message of any kind.
   it("refuses an ids that names no id", () => {
-    expect(() => playback({ action: "play-session-clips", ids: "," })).toThrow(
-      'playback failed: ids "," named no clip for action "play-session-clips"',
+    expect(() => playback({ action: "play-session-clips", id: "," })).toThrow(
+      'playback failed: id "," named no clip for action "play-session-clips"',
     );
   });
 
@@ -161,7 +161,7 @@ describe("playback ids that names no clip", () => {
       type: "Clip",
     });
 
-    playback({ action: "play-session-clips", ids: "scene3,clip1" });
+    playback({ action: "play-session-clips", id: "scene3,clip1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
   });
@@ -184,13 +184,13 @@ describe("playback slots that names no position", () => {
   it("refuses play-session-clips rather than reporting a launch", () => {
     expect(() =>
       playback({ action: "play-session-clips", slots: "," }),
-    ).toThrow("playback failed: ids or path is required");
+    ).toThrow("playback failed: id or path is required");
   });
 
   it("refuses stop-session-clips the same way", () => {
     expect(() =>
       playback({ action: "stop-session-clips", slots: "," }),
-    ).toThrow("playback failed: ids or path is required");
+    ).toThrow("playback failed: id or path is required");
   });
 
   it("lets ids carry the call when slots names nothing", () => {
@@ -203,7 +203,7 @@ describe("playback slots that names no position", () => {
       type: "Clip",
     });
 
-    playback({ action: "play-session-clips", slots: ",", ids: "clip1" });
+    playback({ action: "play-session-clips", slots: ",", id: "clip1" });
 
     expect(clipSlot.call).toHaveBeenCalledWith("fire");
   });

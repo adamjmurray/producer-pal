@@ -54,7 +54,7 @@ describe("playback play-scene target agreement", () => {
   it("fires the scene a lone scene id names", () => {
     const scene = mockScene(3, "scene3");
 
-    playback({ action: "play-scene", ids: "scene3" });
+    playback({ action: "play-scene", id: "scene3" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -63,7 +63,7 @@ describe("playback play-scene target agreement", () => {
     const scene = mockScene(3);
 
     mockSessionClip("clip1", 0, 3);
-    playback({ action: "play-scene", ids: "clip1" });
+    playback({ action: "play-scene", id: "clip1" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -74,7 +74,7 @@ describe("playback play-scene target agreement", () => {
     const scene = mockScene(0);
 
     mockSessionClip("clip1", 0, 0);
-    playback({ action: "play-scene", ids: "clip1" });
+    playback({ action: "play-scene", id: "clip1" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -83,7 +83,7 @@ describe("playback play-scene target agreement", () => {
     const scene = mockScene(3);
 
     mockSessionClip("clip1", 0, 3);
-    playback({ action: "play-scene", path: "s3", ids: "clip1" });
+    playback({ action: "play-scene", path: "s3", id: "clip1" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -91,7 +91,7 @@ describe("playback play-scene target agreement", () => {
   it("fires the scene when sceneIndex and an id agree", () => {
     const scene = mockScene(3, "scene3");
 
-    playback({ action: "play-scene", sceneIndex: 3, ids: "scene3" });
+    playback({ action: "play-scene", sceneIndex: 3, id: "scene3" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -101,7 +101,7 @@ describe("playback play-scene target agreement", () => {
 
     mockSessionClip("clip1", 0, 3);
     mockSessionClip("clip2", 2, 3);
-    playback({ action: "play-scene", ids: "clip1,clip2" });
+    playback({ action: "play-scene", id: "clip1,clip2" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });
@@ -110,10 +110,10 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip1", 0, 5);
 
     expect(() =>
-      playback({ action: "play-scene", path: "s3", ids: "clip1" }),
+      playback({ action: "play-scene", path: "s3", id: "clip1" }),
     ).toThrow(
       'playback failed: action "play-scene" plays one scene, but got ' +
-        'scene 3 from path "s3", scene 5 from ids "clip1"',
+        'scene 3 from path "s3", scene 5 from id "clip1"',
     );
   });
 
@@ -121,10 +121,10 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip1", 0, 5);
 
     expect(() =>
-      playback({ action: "play-scene", sceneIndex: 3, ids: "clip1" }),
+      playback({ action: "play-scene", sceneIndex: 3, id: "clip1" }),
     ).toThrow(
       'playback failed: action "play-scene" plays one scene, but got ' +
-        'scene 3 from sceneIndex 3, scene 5 from ids "clip1"',
+        'scene 3 from sceneIndex 3, scene 5 from id "clip1"',
     );
   });
 
@@ -132,11 +132,9 @@ describe("playback play-scene target agreement", () => {
     mockSessionClip("clip1", 0, 3);
     mockSessionClip("clip2", 0, 5);
 
-    expect(() =>
-      playback({ action: "play-scene", ids: "clip1,clip2" }),
-    ).toThrow(
+    expect(() => playback({ action: "play-scene", id: "clip1,clip2" })).toThrow(
       'playback failed: action "play-scene" plays one scene, but got ' +
-        'scene 3 from ids "clip1", scene 5 from ids "clip2"',
+        'scene 3 from id "clip1", scene 5 from id "clip2"',
     );
   });
 
@@ -145,7 +143,7 @@ describe("playback play-scene target agreement", () => {
 
     mockSessionClip("clip1", 0, 5);
     expect(() =>
-      playback({ action: "play-scene", path: "s3", ids: "clip1" }),
+      playback({ action: "play-scene", path: "s3", id: "clip1" }),
     ).toThrow('action "play-scene" plays one scene');
 
     expect(scene.call).not.toHaveBeenCalledWith("fire");
@@ -258,7 +256,7 @@ describe("playback play-scene ids that name no scene", () => {
     const scene = mockScene(3);
 
     mockNonExistentObjects();
-    playback({ action: "play-scene", sceneIndex: 3, ids: "gone" });
+    playback({ action: "play-scene", sceneIndex: 3, id: "gone" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith('playback: id "gone" does not exist');
@@ -272,7 +270,7 @@ describe("playback play-scene ids that name no scene", () => {
       path: livePath.track(0).arrangementClip(0),
       type: "Clip",
     });
-    playback({ action: "play-scene", sceneIndex: 3, ids: "clip1" });
+    playback({ action: "play-scene", sceneIndex: 3, id: "clip1" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
@@ -286,7 +284,7 @@ describe("playback play-scene ids that name no scene", () => {
     const scene = mockScene(3);
 
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
-    playback({ action: "play-scene", sceneIndex: 3, ids: "track9" });
+    playback({ action: "play-scene", sceneIndex: 3, id: "track9" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
@@ -298,7 +296,7 @@ describe("playback play-scene ids that name no scene", () => {
   it("refuses the action when no id named a scene and nothing else did", () => {
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
 
-    expect(() => playback({ action: "play-scene", ids: "track9" })).toThrow(
+    expect(() => playback({ action: "play-scene", id: "track9" })).toThrow(
       'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
     );
   });

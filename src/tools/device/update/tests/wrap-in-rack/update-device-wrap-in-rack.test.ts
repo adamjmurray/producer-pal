@@ -485,7 +485,7 @@ describe("updateDevice - wrapInRack", () => {
 
   it("should work with device IDs", () => {
     const result = updateDevice({
-      ids: "device-0",
+      id: "device-0",
       wrapInRack: true,
     });
 
@@ -500,7 +500,7 @@ describe("updateDevice - wrapInRack", () => {
     mockNonExistentObjects();
 
     const result = updateDevice({
-      ids: "nonexistent",
+      id: "nonexistent",
       wrapInRack: true,
     });
 
@@ -579,7 +579,7 @@ describe("updateDevice - wrapInRack", () => {
   ])("should warn and return null for the toPath %s", (toPath, reason) => {
     mockNonExistentObjects();
 
-    const result = updateDevice({ ids: "device-0", wrapInRack: true, toPath });
+    const result = updateDevice({ id: "device-0", wrapInRack: true, toPath });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -621,7 +621,7 @@ describe("updateDevice - wrapInRack", () => {
     });
 
     const result = updateDevice({
-      ids: "not-a-device",
+      id: "not-a-device",
       wrapInRack: true,
     });
 
@@ -715,7 +715,7 @@ describe("updateDevice - wrapInRack", () => {
       methods: { insert_device: () => ["id", "new-rack"] },
     });
 
-    const result = updateDevice({ ids: "odd-device", wrapInRack: true });
+    const result = updateDevice({ id: "odd-device", wrapInRack: true });
 
     expect(oddDevice.call).toHaveBeenCalledWith(
       "insert_device",

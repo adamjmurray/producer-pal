@@ -41,7 +41,7 @@ describe("ppal-update-device layered drum pad", () => {
     async (addressedBy) => {
       const { rackPath, padId } = await createLayeredPad(ctx.client!);
       const target =
-        addressedBy === "id" ? { ids: padId } : { path: `${rackPath}/pD1` };
+        addressedBy === "id" ? { id: padId } : { path: `${rackPath}/pD1` };
 
       const result = parseToolResult<PadUpdateResult>(
         await ctx.client!.callTool({
@@ -69,7 +69,7 @@ describe("ppal-update-device layered drum pad", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: padId, toPath: `${rackPath}/pF1` },
+      arguments: { id: padId, toPath: `${rackPath}/pF1` },
     });
 
     await sleep(200);

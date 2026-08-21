@@ -27,7 +27,7 @@ describe("ppal-update-device", () => {
     // Test 1: Update device name
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: deviceId, name: "My Compressor" },
+      arguments: { id: deviceId, name: "My Compressor" },
     });
 
     await sleep(100);
@@ -43,13 +43,13 @@ describe("ppal-update-device", () => {
     // so we just verify the update calls succeed without error)
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: deviceId, collapsed: true },
+      arguments: { id: deviceId, collapsed: true },
     });
 
     // Test 3: Update collapsed state to false (restore)
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: deviceId, collapsed: false },
+      arguments: { id: deviceId, collapsed: false },
     });
   });
 
@@ -82,7 +82,7 @@ describe("ppal-update-device", () => {
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: {
-        ids: deviceId,
+        id: deviceId,
         params: [{ name: ratioParam!.name, value: String(newRatio) }],
       },
     });
@@ -128,7 +128,7 @@ describe("ppal-update-device", () => {
     // Test 1: Update multiple via comma-separated IDs
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: `${deviceId}, ${deviceId2}`, name: "Batch Renamed" },
+      arguments: { id: `${deviceId}, ${deviceId2}`, name: "Batch Renamed" },
     });
     const batch = parseToolResult<UpdateDeviceResult[]>(batchResult);
 
@@ -138,7 +138,7 @@ describe("ppal-update-device", () => {
     // Test 2: Update non-existent device - should return empty with warning
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: "99999", name: "Won't Work" },
+      arguments: { id: "99999", name: "Won't Work" },
     });
     const { data: nonExistent, warnings } =
       parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
@@ -163,7 +163,7 @@ describe("ppal-update-device", () => {
     const wrapResult = parseToolResult<WrapResult>(
       await ctx.client!.callTool({
         name: "ppal-update-device",
-        arguments: { ids: compressorId, wrapInRack: true },
+        arguments: { id: compressorId, wrapInRack: true },
       }),
     );
 
@@ -187,7 +187,7 @@ describe("ppal-update-device", () => {
     // Set visible macro count (macros come in pairs)
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: rackId, macroCount: 4 },
+      arguments: { id: rackId, macroCount: 4 },
     });
 
     await sleep(100);
@@ -203,12 +203,12 @@ describe("ppal-update-device", () => {
     // Create two macro variations
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: rackId, macroVariation: "create" },
+      arguments: { id: rackId, macroVariation: "create" },
     });
     await sleep(100);
     await ctx.client!.callTool({
       name: "ppal-update-device",
-      arguments: { ids: rackId, macroVariation: "create" },
+      arguments: { id: rackId, macroVariation: "create" },
     });
     await sleep(100);
 
@@ -225,7 +225,7 @@ describe("ppal-update-device", () => {
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: {
-        ids: rackId,
+        id: rackId,
         macroVariation: "delete",
         macroVariationIndex: 0,
       },

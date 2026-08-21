@@ -57,7 +57,7 @@ export function moveDestinationParam(
  * toSlot. Warns and returns nulls for anything update-clip can't do, so the
  * rest of the update still runs.
  *
- * Destinations pair 1:1 with ids and never cycle, unlike name and color: two
+ * Destinations pair 1:1 with the clips and never cycle, unlike name and color: two
  * clips can share a name, but the second one sent to a slot overwrites the
  * first — which is a move that reports success and loses a clip.
  * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3")
@@ -161,7 +161,7 @@ export function resolveRequestedClips(
 
   if (repeats > 0) {
     console.warn(
-      `ids/path named ${repeats} clip(s) more than once; each clip was updated once`,
+      `id/path named ${repeats} clip(s) more than once; each clip was updated once`,
     );
   }
 

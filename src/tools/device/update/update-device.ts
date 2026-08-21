@@ -17,6 +17,7 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
+  namedIdParam,
   namedParam,
   parseCommaSeparatedIds,
   unwrapSingleResult,
@@ -49,6 +50,8 @@ import {
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
   wrapInRack?: boolean;
@@ -64,7 +67,8 @@ type ResolvedTarget =
 /**
  * Update device(s), chain(s), or drum pad(s) by ID or path
  * @param args - The parameters
- * @param args.ids - Comma-separated ID(s)
+ * @param args.id - Comma-separated ID(s)
+ * @param args.ids - Hidden alias for id
  * @param args.path - Device/chain/drum-pad path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
@@ -91,6 +95,7 @@ type ResolvedTarget =
  */
 export function updateDevice(
   {
+    id,
     ids,
     path,
     toPath,
@@ -118,10 +123,10 @@ export function updateDevice(
 ): Record<string, unknown> | Record<string, unknown>[] | null {
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
-  ids = namedParam(ids, "ids");
+  ids = namedIdParam(id, ids, "ids");
   path = namedParam(path, "path");
 
-  validateExclusiveParams(ids, path, "ids", "path");
+  validateExclusiveParams(ids, path, "id", "path");
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;
 

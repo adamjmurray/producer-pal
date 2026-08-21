@@ -43,6 +43,8 @@ interface PlaybackArgs {
   loopEnd?: string;
   loopEndLocator?: string;
   sceneIndex?: number;
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
   slots?: string;
@@ -76,7 +78,8 @@ interface BuildPlaybackResultParams {
  * @param args.loopEnd - Loop end position in bar|beat format
  * @param args.loopEndLocator - Locator ID or name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
- * @param args.ids - Comma-separated clip IDs for Session view operations
+ * @param args.id - Comma-separated clip IDs for Session view operations
+ * @param args.ids - Hidden alias for id
  * @param args.path - A scene "s<scene>", or comma-separated clip slots "t<track>/s<scene>"
  * @param args.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param args.focus - Switch to arrangement or session view based on action
@@ -94,6 +97,7 @@ export function playback(
     loopEnd,
     loopEndLocator,
     sceneIndex,
+    id,
     ids,
     path,
     slots,
@@ -109,7 +113,7 @@ export function playback(
     sceneIndex: sceneTarget,
     slotPositions,
     ids: namedIds,
-  } = resolvePlaybackTarget(action, { ids, path, slots, sceneIndex });
+  } = resolvePlaybackTarget(action, { id, ids, path, slots, sceneIndex });
 
   // Dropped before anything reads them, so a session action can't write the
   // arrangement. Everything below sees only what this action actually uses.

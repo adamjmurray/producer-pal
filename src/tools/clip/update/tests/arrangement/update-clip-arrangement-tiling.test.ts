@@ -109,7 +109,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "3bar", // 3 bars = 12 beats, matches clip.length exactly
     });
 
@@ -176,7 +176,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "2bar", // 8 beats > 4 beats (clip.length), tiles existing content twice
     });
 
@@ -198,7 +198,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     setupLiveSetAndTrackMocks();
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "1bar", // Same as clip.length (no tiling needed)
     });
 
@@ -260,7 +260,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "3bar", // 12 beats total - needs 3 tiles after original
     });
 
@@ -364,7 +364,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     const result = await updateClip(
       {
-        ids: "789",
+        id: "789",
         arrangementLength: "3bar", // 12 beats
       },
       mockContext,

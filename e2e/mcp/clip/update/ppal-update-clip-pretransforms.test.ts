@@ -46,7 +46,7 @@ async function expectUpdatedNoteCount(
   const updated = parseToolResult<UpdateClipResult>(
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, ...args },
+      arguments: { id: clipId, ...args },
     }),
   );
 

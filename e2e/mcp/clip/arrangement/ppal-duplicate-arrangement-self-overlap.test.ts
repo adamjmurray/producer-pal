@@ -175,7 +175,7 @@ async function moveArrClip(
   arrangementStart: string,
 ): Promise<void> {
   await callTool(ctx.client!, "ppal-update-clip", {
-    ids: id,
+    id: id,
     arrangementStart,
   });
   await sleep(100);

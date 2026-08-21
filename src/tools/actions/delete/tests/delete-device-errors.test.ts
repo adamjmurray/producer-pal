@@ -92,7 +92,7 @@ describe("deleteObject device path error cases", () => {
       type: "Device",
     });
 
-    const result = deleteObject({ ids: "orphan-device", type: "device" });
+    const result = deleteObject({ id: "orphan-device", type: "device" });
 
     expect(result).toStrictEqual({
       id: "orphan-device",

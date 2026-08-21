@@ -34,7 +34,7 @@ export async function splitClip(
   return await client.callTool({
     name: "ppal-update-clip",
     arguments: {
-      ids: clipId,
+      id: clipId,
       arrangementSplit: splitPoint,
     },
   });

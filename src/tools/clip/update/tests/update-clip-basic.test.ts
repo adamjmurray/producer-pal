@@ -42,19 +42,27 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should warn and return empty when neither ids nor path is given", async () => {
+  it("should warn and return empty when neither id nor path is given", async () => {
     expect(await updateClip({})).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "updateClip: ids or path is required",
+      "updateClip: id or path is required",
     );
 
     vi.mocked(outlet).mockClear();
     expect(await updateClip({ name: "Test" })).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "updateClip: ids or path is required",
+      "updateClip: id or path is required",
     );
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", async () => {
+    await updateClip({ ids: "123", name: "Renamed" });
+
+    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
   it("should overlay new notes onto existing notes", async () => {
@@ -66,7 +74,7 @@ describe("updateClip - Basic operations", () => {
     mockMergeNoteTracking(mocks.clip123, [createNote()]);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "D3 1|2",
     });
 
@@ -87,7 +95,7 @@ describe("updateClip - Basic operations", () => {
     mockNonExistentObjects();
 
     const result = await updateClip({
-      ids: "nonexistent",
+      id: "nonexistent",
       notes: "1|1 60",
     });
 
@@ -127,7 +135,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       name: "Updated Clip",
       color: "#FF0000",
       looping: true,
@@ -147,7 +155,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       name: "Arrangement Clip",
       start: "1|3", // 2 beats = bar 1 beat 3 in 4/4
       length: "1bar", // 4 beats = 1 bar
@@ -168,7 +176,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     const result = await updateClip({
-      ids: "999",
+      id: "999",
       name: "Test Arrangement Clip",
     });
 
@@ -181,7 +189,7 @@ describe("updateClip - Basic operations", () => {
     setupAudioClipMock(mocks.clip456);
 
     const result = await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       color: "#00FF00",
       looping: false,
     });
@@ -201,7 +209,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       timeSignature: "6/8",
     });
 
@@ -214,7 +222,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       // n/2 = half = 2 quarters; n/4 = quarter
       notes: "v80 n/2 C4 1|1 v120 n/4 D4 1|3",
     });
@@ -240,7 +248,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       timeSignature: "6/8",
       notes: "C3 1|1 D3 2|1",
     });
@@ -266,7 +274,7 @@ describe("updateClip - Basic operations", () => {
     }); // 3/4 time
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
     });
 
@@ -284,7 +292,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes:
         "v100 n/16 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
     });
@@ -301,7 +309,7 @@ describe("updateClip - Basic operations", () => {
 
     await expect(
       updateClip({
-        ids: "123",
+        id: "123",
         timeSignature: "invalid",
       }),
     ).rejects.toThrow("Time signature must be in format");
@@ -329,7 +337,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ ids: "123", toSlot: "1/2" });
+    const result = await updateClip({ id: "123", toSlot: "1/2" });
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
@@ -341,7 +349,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ ids: "123", toPath: "t1/s2" });
+    const result = await updateClip({ id: "123", toPath: "t1/s2" });
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
@@ -356,7 +364,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ ids: "123", toPath: "1/2" });
+    const result = await updateClip({ id: "123", toPath: "1/2" });
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
@@ -383,7 +391,7 @@ describe("updateClip - Basic operations", () => {
       setupMidiClipMock(mocks.clip123);
       setupToSlotMocks();
 
-      const result = await updateClip({ ids: "123", [param]: "," });
+      const result = await updateClip({ id: "123", [param]: "," });
 
       expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
       expect(result).not.toHaveProperty("slot");
@@ -403,7 +411,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(toPath).toBe("null");
 
-    const result = await updateClip({ ids: "123", toPath });
+    const result = await updateClip({ id: "123", toPath });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -421,7 +429,7 @@ describe("updateClip - Basic operations", () => {
     const toSlot = toolDefUpdateClip.toolOptions.inputSchema.toSlot?.parse(
       null,
     ) as string;
-    const result = await updateClip({ ids: "123", toSlot });
+    const result = await updateClip({ id: "123", toSlot });
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
@@ -434,7 +442,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    const result = await updateClip({ ids: "123", toSlot: "" });
+    const result = await updateClip({ id: "123", toSlot: "" });
 
     expect(result).not.toHaveProperty("slot");
   });
@@ -446,7 +454,7 @@ describe("updateClip - Basic operations", () => {
     const consoleModule = await import("#src/shared/max/v8-max-console.ts");
     const warnSpy = vi.spyOn(consoleModule, "warn");
 
-    const result = await updateClip({ ids: "123", toSlot: "1/2, 3/4" });
+    const result = await updateClip({ id: "123", toSlot: "1/2, 3/4" });
 
     expect(warnSpy).toHaveBeenCalledWith(
       "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
@@ -462,7 +470,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    await updateClip({ ids: "123", toSlot: "1/2" });
+    await updateClip({ id: "123", toSlot: "1/2" });
 
     // slots.length is exactly 1 here: the > 1 guard must stay false so no
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
@@ -476,7 +484,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    await updateClip({ ids: "123, 456", name: "A, B, C" });
+    await updateClip({ id: "123, 456", name: "A, B, C" });
 
     // The "updateClip" tool-name literal must be preserved in the warning.
     expect(outlet).toHaveBeenCalledWith(
@@ -492,7 +500,7 @@ describe("updateClip - Basic operations", () => {
         .spyOn(selectModule, "select")
         .mockReturnValue({} as never);
 
-      await updateClip({ ids: "123", focus: true });
+      await updateClip({ id: "123", focus: true });
 
       expect(selectSpy).toHaveBeenCalledWith({
         clipId: "123",
@@ -506,7 +514,7 @@ describe("updateClip - Basic operations", () => {
         .spyOn(selectModule, "select")
         .mockReturnValue({} as never);
 
-      await updateClip({ ids: "123" });
+      await updateClip({ id: "123" });
 
       // focus is falsy so the whole guard must be false (kills forced-true).
       expect(selectSpy).not.toHaveBeenCalled();
@@ -520,7 +528,7 @@ describe("updateClip - Basic operations", () => {
 
       // updatedClips.length is 0; the > 0 guard must stay false (kills >= 0,
       // which would read updatedClips.at(-1).id on an empty array and throw).
-      const result = await updateClip({ ids: "nonexistent", focus: true });
+      const result = await updateClip({ id: "nonexistent", focus: true });
 
       expect(result).toStrictEqual([]);
       expect(selectSpy).not.toHaveBeenCalled();
@@ -530,7 +538,7 @@ describe("updateClip - Basic operations", () => {
   it("should quantize a MIDI clip via the call-site options object", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ ids: "123", quantize: 1 });
+    await updateClip({ id: "123", quantize: 1 });
 
     // The options object passed to handleQuantization must carry quantize;
     // blanking it to {} would skip quantization entirely. 5 == QUANTIZE_GRID 1/16.
@@ -540,7 +548,7 @@ describe("updateClip - Basic operations", () => {
   it("should run warp marker operations when warpOp is provided", async () => {
     setupAudioClipMock(mocks.clip456, { file_path: "/audio/test.wav" });
 
-    await updateClip({ ids: "456", warpOp: "add" });
+    await updateClip({ id: "456", warpOp: "add" });
 
     // handleWarpMarkerOperation runs only inside the warpOp != null guard; with
     // no warpBeatTime it warns, proving the guarded block executed.
@@ -553,7 +561,7 @@ describe("updateClip - Basic operations", () => {
   it("should write notes and not treat a MIDI clip as audio", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    const result = await updateClip({ ids: "123", notes: "C3 1|1" });
+    const result = await updateClip({ id: "123", notes: "C3 1|1" });
 
     // isAudioClip must be false: notes are written and the audio-only warning
     // must not fire (forced-true would suppress notes and warn instead).
@@ -571,7 +579,7 @@ describe("updateClip - Basic operations", () => {
   it("should warn that audio-only parameters were ignored on a MIDI clip", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ ids: "123", warping: false, gainDb: -6 });
+    await updateClip({ id: "123", warping: false, gainDb: -6 });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -583,7 +591,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     vi.mocked(applyCodeToSingleClip).mockResolvedValue(3);
 
-    const result = await updateClip({ ids: "123", code: "return notes" });
+    const result = await updateClip({ id: "123", code: "return notes" });
 
     // Loop bound is j < length: exactly one call, no extra iteration that would
     // dereference undefined and emit a "Failed to update clip" warning.
@@ -599,7 +607,7 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     vi.mocked(applyCodeToSingleClip).mockResolvedValue(null);
 
-    const result = await updateClip({ ids: "123", code: "return notes" });
+    const result = await updateClip({ id: "123", code: "return notes" });
 
     // noteCount != null guard: a null result must not set the field.
     expect(result).toStrictEqual({ id: "123" });
@@ -640,7 +648,7 @@ describe("updateClip - splitting mutation coverage", () => {
 
     setupMidiClipMock(mocks.clip123); // session clip: is_arrangement_clip = 0
 
-    const result = await updateClip({ ids: "123", arrangementSplit: "2|1" });
+    const result = await updateClip({ id: "123", arrangementSplit: "2|1" });
 
     // Session clips are excluded from arrangementClips, so prepareSplitParams
     // sees an empty list and warns. The <= 0 guard must return false for them
@@ -680,7 +688,7 @@ describe("updateClip - splitting mutation coverage", () => {
     });
 
     const result = await updateClip(
-      { ids: clipId, arrangementSplit: "2|1" },
+      { id: clipId, arrangementSplit: "2|1" },
       {},
     );
 
@@ -708,7 +716,7 @@ describe("updateClip - splitting mutation coverage", () => {
     // splitPoints != null term must stay honored (forced-true / || mutants
     // would call performSplitting with null and throw).
     const result = await updateClip(
-      { ids: clipId, arrangementSplit: "not-a-position" },
+      { id: clipId, arrangementSplit: "not-a-position" },
       {},
     );
 

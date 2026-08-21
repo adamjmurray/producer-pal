@@ -242,7 +242,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     // Should not throw, just warn and skip the move
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       toPath: "t0/d0/pD1",
     });
 
@@ -257,7 +257,7 @@ describe("updateDevice - moving a drum chain", () => {
   // through the handle it advertises.
   describe("addressed by DrumPad id", () => {
     it("moves the whole pad, the way the pad path does", () => {
-      const result = updateDevice({ ids: "pad-36", toPath: "t0/d0/pE1" });
+      const result = updateDevice({ id: "pad-36", toPath: "t0/d0/pE1" });
 
       expect(chain0.set).toHaveBeenCalledWith("in_note", 40);
       expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
@@ -269,7 +269,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     it("writes the pad-wide properties to every layer", () => {
       const result = updateDevice({
-        ids: "pad-36",
+        id: "pad-36",
         chokeGroup: 3,
         mappedPitch: "C3",
       });
@@ -286,14 +286,14 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("still mutes through the DrumPad itself", () => {
-      updateDevice({ ids: "pad-36", mute: true });
+      updateDevice({ id: "pad-36", mute: true });
 
       expect(pad36.set).toHaveBeenCalledWith("mute", 1);
       expect(chain0.set).not.toHaveBeenCalledWith("mute", expect.anything());
     });
 
     it("skips the per-layer settings on a stacked pad and names the paths", () => {
-      updateDevice({ ids: "pad-36", gainDb: -6 });
+      updateDevice({ id: "pad-36", gainDb: -6 });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -302,7 +302,7 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     it("applies a per-layer setting to a single-layer pad", () => {
-      updateDevice({ ids: "pad-38", name: "Snare" });
+      updateDevice({ id: "pad-38", name: "Snare" });
 
       expect(chain2.set).toHaveBeenCalledWith("name", "Snare");
     });
@@ -355,7 +355,7 @@ describe("updateDevice - a toPath that does not resolve", () => {
       'device not moved: Device at path "t0/d1/c0" does not support chains',
     ],
   ])("renames both devices and warns about %s", (toPath, warning) => {
-    const result = updateDevice({ ids: "123,456", toPath, name: "X" });
+    const result = updateDevice({ id: "123,456", toPath, name: "X" });
 
     expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(warning));
     expect(first.set).toHaveBeenCalledWith("name", "X");

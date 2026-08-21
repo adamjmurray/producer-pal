@@ -105,7 +105,7 @@ describe("updateTrack", () => {
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", () => {
-    expect(updateTrack({ ids: "123", name: "Renamed" })).toStrictEqual({
+    expect(updateTrack({ id: "123", name: "Renamed" })).toStrictEqual({
       id: "123",
     });
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");

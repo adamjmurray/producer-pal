@@ -11,6 +11,7 @@ import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
 import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
 import {
+  namedIdParam,
   parseCommaSeparatedIds,
   toLiveApiId,
   unwrapSingleResult,
@@ -39,6 +40,8 @@ interface DeleteResult {
 }
 
 interface DeleteArgs {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
   type: string;
@@ -47,16 +50,20 @@ interface DeleteArgs {
 /**
  * Deletes objects by ids and/or paths
  * @param args - The parameters
- * @param args.ids - Comma-separated list of object IDs
+ * @param args.id - Comma-separated list of object IDs
+ * @param args.ids - Hidden alias for id
  * @param args.path - Comma-separated paths for clip/device/drum-pad/chain
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
  */
 export function deleteObject(
-  { ids, path, type }: DeleteArgs,
+  args: DeleteArgs,
   _context: Partial<ToolContext> = {},
 ): DeleteResult | DeleteResult[] {
+  const { path, type } = args;
+  const targets = namedIdParam(args.id, args.ids, "ids");
+
   if (!type) {
     throw new Error("delete failed: type is required");
   }
@@ -75,7 +82,7 @@ export function deleteObject(
   }
 
   // Collect IDs from both sources
-  const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
+  const objectIds = targets ? parseCommaSeparatedIds(targets) : [];
 
   // Resolve paths to IDs for the types that can be addressed by location
   if (path && PATH_SUPPORTED_TYPES.has(type)) {
@@ -87,8 +94,8 @@ export function deleteObject(
   }
 
   if (objectIds.length === 0) {
-    if (!ids && !path) {
-      throw new Error("delete failed: ids or path is required");
+    if (!targets && !path) {
+      throw new Error("delete failed: id or path is required");
     }
 
     return [];

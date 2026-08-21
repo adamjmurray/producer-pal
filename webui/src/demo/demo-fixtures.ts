@@ -246,7 +246,7 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: TOOL_UPDATE_CLIP,
-        args: { ids: "44", quantize: 0.5, quantizeGrid: "1/8" },
+        args: { id: "44", quantize: 0.5, quantizeGrid: "1/8" },
         result: toolResult(
           UPDATE_CLIP_RESULT,
           "WARNING: quantize parameter ignored for audio clip (id 44)",
@@ -263,7 +263,7 @@ export const demoMessages: UIMessage[] = [
       {
         name: TOOL_UPDATE_CLIP,
         args: {
-          ids: "44",
+          id: "44",
           quantize: 0.5,
           quantizeGrid: "1/8",
           color: "#ZZZZZZ",

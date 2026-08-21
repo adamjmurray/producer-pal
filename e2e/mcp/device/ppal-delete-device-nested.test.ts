@@ -73,7 +73,7 @@ describe("ppal-delete nested rack device ordering", () => {
     const deleted = parseToolResult<DeleteResult[]>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { ids: `${c1d0}, ${d1d0}, ${c1d1}`, type: "device" },
+        arguments: { id: `${c1d0}, ${d1d0}, ${c1d1}`, type: "device" },
       }),
     );
 

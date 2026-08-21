@@ -65,7 +65,7 @@ export async function lengthenClipTo4Bars(
   return await client.callTool({
     name: "ppal-update-clip",
     arguments: {
-      ids: clipId,
+      id: clipId,
       arrangementLength: TARGET_LENGTH,
     },
   });

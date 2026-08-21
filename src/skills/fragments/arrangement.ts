@@ -37,7 +37,7 @@ One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in
 
 create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
 
-\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot instead of \`ids\`, so knowing where a clip is saves reading it first just to learn its id.
+\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id.
 
 ### Moving Clips
 

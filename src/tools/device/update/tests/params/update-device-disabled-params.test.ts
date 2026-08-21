@@ -45,7 +45,7 @@ describe("updateDevice - disabled params", () => {
   it("warns and skips a param a rack macro controls", () => {
     const param = registerParam(0);
 
-    updateDevice({ ids: "dev1", params: [{ name: "Volume", value: "0.8" }] });
+    updateDevice({ id: "dev1", params: [{ name: "Volume", value: "0.8" }] });
 
     expect(param.set).not.toHaveBeenCalled();
     expect(outlet).toHaveBeenCalledWith(
@@ -57,7 +57,7 @@ describe("updateDevice - disabled params", () => {
   it("writes the param when nothing is mapped to it", () => {
     const param = registerParam(1);
 
-    updateDevice({ ids: "dev1", params: [{ name: "Volume", value: "0.8" }] });
+    updateDevice({ id: "dev1", params: [{ name: "Volume", value: "0.8" }] });
 
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
     expect(outlet).not.toHaveBeenCalled();

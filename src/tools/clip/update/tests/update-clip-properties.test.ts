@@ -34,7 +34,7 @@ describe("updateClip - Properties and ID handling", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "id 123",
+      id: "id 123",
       name: "Prefixed ID Clip",
     });
 
@@ -46,7 +46,7 @@ describe("updateClip - Properties and ID handling", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       name: "Only Name Update",
     });
 
@@ -69,7 +69,7 @@ describe("updateClip - Properties and ID handling", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       looping: false,
     });
 
@@ -85,7 +85,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     const result = await updateClip({
-      ids: "123, nonexistent",
+      id: "123, nonexistent",
       name: "Test",
     });
 
@@ -101,8 +101,8 @@ describe("updateClip - Properties and ID handling", () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    const singleResult = await updateClip({ ids: "123", name: "Single" });
-    const arrayResult = await updateClip({ ids: "123, 456", name: "Multiple" });
+    const singleResult = await updateClip({ id: "123", name: "Single" });
+    const arrayResult = await updateClip({ id: "123, 456", name: "Multiple" });
 
     expect(singleResult).toStrictEqual({ id: "123" });
     expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
@@ -117,7 +117,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     const result = await updateClip({
-      ids: " 123 , 456 , 789 ",
+      id: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
@@ -129,7 +129,7 @@ describe("updateClip - Properties and ID handling", () => {
     setupMidiClipMock(mocks.clip456);
 
     const result = await updateClip({
-      ids: "123,,456,  ,",
+      id: "123,,456,  ,",
       name: "Filtered",
     });
 
@@ -165,7 +165,7 @@ describe("updateClip - Properties and ID handling", () => {
       setupColorMock(16725558); // #FF3636 (quantized from #FF0000)
 
       await updateClip({
-        ids: "123",
+        id: "123",
         color: "#FF0000",
       });
 
@@ -183,7 +183,7 @@ describe("updateClip - Properties and ID handling", () => {
       setupColorMock(16711680); // #FF0000 (exact match)
 
       await updateClip({
-        ids: "123",
+        id: "123",
         color: "#FF0000",
       });
 
@@ -199,7 +199,7 @@ describe("updateClip - Properties and ID handling", () => {
       setupMidiClipMock(mocks.clip123);
 
       await updateClip({
-        ids: "123",
+        id: "123",
         name: "No color update",
       });
 
@@ -221,7 +221,7 @@ describe("updateClip - focus functionality", () => {
   it("should select clip and show clip detail when focus=true", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ ids: "123", name: "Test", focus: true });
+    await updateClip({ id: "123", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: "123",
@@ -233,7 +233,7 @@ describe("updateClip - focus functionality", () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    await updateClip({ ids: "123,456", name: "Test", focus: true });
+    await updateClip({ id: "123,456", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: "456",
@@ -245,7 +245,7 @@ describe("updateClip - focus functionality", () => {
   it("should not call select when focus=false", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ ids: "123", name: "Test", focus: false });
+    await updateClip({ id: "123", name: "Test", focus: false });
 
     expect(selectMock.get()).not.toHaveBeenCalled();
   });
@@ -253,7 +253,7 @@ describe("updateClip - focus functionality", () => {
   it("should not call select when focus is omitted", async () => {
     setupMidiClipMock(mocks.clip123);
 
-    await updateClip({ ids: "123", name: "Test" });
+    await updateClip({ id: "123", name: "Test" });
 
     expect(selectMock.get()).not.toHaveBeenCalled();
   });

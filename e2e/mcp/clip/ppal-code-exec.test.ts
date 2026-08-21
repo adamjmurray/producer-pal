@@ -220,7 +220,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const updateResult = await ctx.client!.callTool({
         name: "ppal-update-clip",
         arguments: {
-          ids: "1",
+          id: "1",
           code: tooLongCode,
         },
       });

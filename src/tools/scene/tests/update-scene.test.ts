@@ -184,7 +184,7 @@ describe("updateScene", () => {
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", () => {
-    expect(updateScene({ ids: "123", name: "Renamed" })).toStrictEqual({
+    expect(updateScene({ id: "123", name: "Renamed" })).toStrictEqual({
       id: "123",
     });
     expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
