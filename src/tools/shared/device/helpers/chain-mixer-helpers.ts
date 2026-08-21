@@ -8,9 +8,9 @@ import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
 
 export interface ChainMixerParams {
-  gainDb?: number | null;
-  pan?: number | null;
-  sendGainDb?: number | null;
+  gainDb?: number;
+  pan?: number;
+  sendGainDb?: number;
   sendReturn?: string;
 }
 
@@ -342,7 +342,7 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
-  sendGainDb: number | null | undefined,
+  sendGainDb: number | undefined,
   sendReturn: string | undefined,
 ): boolean {
   if (sendGainDb == null || sendReturn == null) {

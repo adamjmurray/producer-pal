@@ -4,13 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { select } from "#src/tools/session/select.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import {
   resetSelectTestState,
   setupAppViewMock,
@@ -245,6 +248,25 @@ describe("select path param", () => {
 
     select({ path: "s3", sceneIndex: 3 });
     expect(songView.set).toHaveBeenCalledWith("selected_scene", "id scene_3");
+  });
+
+  // A caller that sends every param, filling the ones it has no value for with
+  // null, must not be read as having named a second, conflicting target. This
+  // goes through the schema the tool registers, not straight to the handler.
+  it.each([
+    ["null", null],
+    ["blank", ""],
+  ])("ignores a %s trackIndex/sceneIndex beside a path", (_label, empty) => {
+    registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
+
+    const songView = setupSongViewMock();
+    const schema = z.object(
+      resolveToolSchema(toolDefSelect.toolOptions.inputSchema, {}).validating,
+    );
+
+    select(schema.parse({ path: "t5", trackIndex: empty, sceneIndex: empty }));
+
+    expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_5");
   });
 
   it("refuses a path that disagrees with the param it duplicates", () => {

@@ -50,9 +50,9 @@ interface ImpliedTrack {
 
 /** The params a path can name a second time. */
 interface PathAgreementArgs {
-  trackIndex?: number | null;
+  trackIndex?: number;
   trackType?: "return" | "master";
-  sceneIndex?: number | null;
+  sceneIndex?: number;
 }
 
 /** The ids `id` resolved to, each of which a path can name a second time. */
@@ -140,7 +140,7 @@ function targetFromParams({
  */
 function merge<T>(
   name: string,
-  explicit: T | null | undefined,
+  explicit: T | undefined,
   fromPath: T | undefined,
 ): T | undefined {
   if (explicit == null) return fromPath;

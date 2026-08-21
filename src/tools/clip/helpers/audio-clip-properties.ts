@@ -17,9 +17,9 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 export interface AudioClipProperties {
   /** Audio clip gain in decibels (-70 to 24) */
-  gainDb?: number | null;
+  gainDb?: number;
   /** Audio clip pitch shift in semitones (-48 to 48) */
-  pitchShift?: number | null;
+  pitchShift?: number;
   /** Audio clip warp mode */
   warpMode?: string;
 }

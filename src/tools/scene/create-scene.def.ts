@@ -28,7 +28,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel:
         "required: 0-based index for the new scene, shifts existing scenes down",
     }),
-    count: param(z.coerce.number().int().min(1).default(1), {
+    count: param(optionalNumber(z.coerce.number().int().min(1).default(1)), {
       default: "number to create",
       smallModel: null,
     }),

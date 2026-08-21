@@ -303,7 +303,7 @@ export { setParamValues } from "../update-device-param-setters.ts";
 export function updateMacroVariation(
   device: LiveAPI,
   action?: string,
-  index?: number | null,
+  index?: number,
 ): void {
   const canHaveChains = device.getProperty("can_have_chains");
 
@@ -336,7 +336,7 @@ export function updateMacroVariation(
  */
 function validateMacroVariationParams(
   action: string | undefined,
-  index: number | null | undefined,
+  index: number | undefined,
 ): boolean {
   if (index != null && action == null) {
     console.warn(
@@ -364,7 +364,7 @@ function validateMacroVariationParams(
  */
 function warnIfIndexIgnored(
   action: string | undefined,
-  index: number | null | undefined,
+  index: number | undefined,
 ): void {
   if (index == null) {
     return;
@@ -391,7 +391,7 @@ function warnIfIndexIgnored(
 function setVariationIndex(
   device: LiveAPI,
   action: string | undefined,
-  index: number | null | undefined,
+  index: number | undefined,
 ): boolean {
   if ((action !== "load" && action !== "delete") || index == null) {
     return true;

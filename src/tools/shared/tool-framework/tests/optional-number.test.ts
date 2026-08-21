@@ -8,15 +8,16 @@ import { z } from "zod";
 import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 const index = optionalNumber(z.coerce.number().int().min(0));
+const count = optionalNumber(z.coerce.number().int().min(1).default(1));
 
 describe("optionalNumber", () => {
-  it("reads a null as null, not 0", () => {
-    expect(index.parse(null)).toBeNull();
+  it("reads a null as unset, not 0", () => {
+    expect(index.parse(null)).toBeUndefined();
   });
 
-  it("reads a blank string as null, not 0", () => {
-    expect(index.parse("")).toBeNull();
-    expect(index.parse("   ")).toBeNull();
+  it("reads a blank string as unset, not 0", () => {
+    expect(index.parse("")).toBeUndefined();
+    expect(index.parse("   ")).toBeUndefined();
   });
 
   it("leaves an omitted value undefined", () => {
@@ -30,17 +31,21 @@ describe("optionalNumber", () => {
     expect(index.safeParse("abc").success).toBe(false);
   });
 
-  it("only adds null to the JSON Schema", () => {
+  // Without this, `count: null` coerces to 0, fails min(1), and takes the whole
+  // call down instead of falling back to the default.
+  it("hands a defaulted param its default, not a rejection", () => {
+    expect(count.parse(null)).toBe(1);
+    expect(count.parse("")).toBe(1);
+    expect(count.parse(undefined)).toBe(1);
+    expect(count.parse(3)).toBe(3);
+  });
+
+  it("leaves the JSON Schema alone", () => {
     expect(z.toJSONSchema(z.object({ index }), { io: "input" })).toStrictEqual({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
       properties: {
-        index: {
-          anyOf: [
-            { type: "integer", minimum: 0, maximum: 9007199254740991 },
-            { type: "null" },
-          ],
-        },
+        index: { type: "integer", minimum: 0, maximum: 9007199254740991 },
       },
     });
   });

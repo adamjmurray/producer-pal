@@ -19,7 +19,7 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     trackIndex: optionalNumber(z.coerce.number().int().min(-1)).describe(
       "0-based index, -1 or omit to append",
     ),
-    count: param(z.coerce.number().int().min(1).default(1), {
+    count: param(optionalNumber(z.coerce.number().int().min(1).default(1)), {
       default: "number to create",
       smallModel: null,
     }),

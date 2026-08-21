@@ -40,8 +40,8 @@ describe("createClip location params through the tool schema", () => {
     async (_l, v) => {
       const args = schema.parse({ trackIndex: v, sceneIndex: v });
 
-      expect(args.trackIndex).toBeNull();
-      expect(args.sceneIndex).toBeNull();
+      expect(args.trackIndex).toBeUndefined();
+      expect(args.sceneIndex).toBeUndefined();
       await expect(createClip(args)).rejects.toThrow("path is required");
     },
   );

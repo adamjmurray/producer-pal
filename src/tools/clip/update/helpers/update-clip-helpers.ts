@@ -41,15 +41,15 @@ interface ClipResult {
 }
 
 export interface ClipAudioWarpQuantizeParams {
-  gainDb?: number | null;
-  pitchShift?: number | null;
+  gainDb?: number;
+  pitchShift?: number;
   warpMode?: string;
   warping?: boolean;
   warpOp?: string;
-  warpBeatTime?: number | null;
-  warpSampleTime?: number | null;
-  warpDistance?: number | null;
-  quantize?: number | null;
+  warpBeatTime?: number;
+  warpSampleTime?: number;
+  warpDistance?: number;
+  quantize?: number;
   quantizeGrid?: string;
   quantizePitch?: string;
 }

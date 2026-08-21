@@ -18,7 +18,7 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 
 interface CreateTrackArgs {
-  trackIndex?: number | null;
+  trackIndex?: number;
   count?: number;
   name?: string;
   color?: string;
@@ -75,7 +75,7 @@ function createSingleTrack(
 function validateTrackCreation(
   count: number,
   type: string,
-  trackIndex: number | null | undefined,
+  trackIndex: number | undefined,
   effectiveTrackIndex: number,
 ): void {
   if (count < 1) {

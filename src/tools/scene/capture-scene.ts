@@ -17,7 +17,7 @@ interface CaptureSceneResult {
 }
 
 interface CaptureSceneArgs {
-  sceneIndex?: number | null;
+  sceneIndex?: number;
   name?: string;
 }
 

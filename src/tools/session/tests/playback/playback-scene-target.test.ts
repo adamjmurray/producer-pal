@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -11,7 +12,9 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { playback } from "#src/tools/session/playback.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
 
 /**
@@ -75,6 +78,25 @@ describe("playback play-scene target agreement", () => {
 
     mockSessionClip("clip1", 0, 0);
     playback({ action: "play-scene", id: "clip1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A caller that sends every param, filling the ones it has no value for with
+  // null, must not be read as having named a second, conflicting scene. This
+  // goes through the schema the tool registers, not straight to the handler.
+  it.each([
+    ["null", null],
+    ["blank", ""],
+  ])("ignores a %s sceneIndex beside a path", (_label, empty) => {
+    const scene = mockScene(3);
+    const schema = z.object(
+      resolveToolSchema(toolDefPlayback.toolOptions.inputSchema, {}).validating,
+    );
+
+    playback(
+      schema.parse({ action: "play-scene", path: "s3", sceneIndex: empty }),
+    );
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });

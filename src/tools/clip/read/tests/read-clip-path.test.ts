@@ -27,8 +27,8 @@ describe("readClip location params through the tool schema", () => {
   ])("refuses a %s trackIndex/sceneIndex instead of reading t0/s0", (_l, v) => {
     const args = schema.parse({ id: null, trackIndex: v, sceneIndex: v });
 
-    expect(args.trackIndex).toBeNull();
-    expect(args.sceneIndex).toBeNull();
+    expect(args.trackIndex).toBeUndefined();
+    expect(args.sceneIndex).toBeUndefined();
     expect(() => readClip(args)).toThrow("id or path is required");
   });
 });

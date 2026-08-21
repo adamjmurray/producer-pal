@@ -7,6 +7,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
@@ -58,7 +59,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
         },
       },
     ),
-    maxDepth: param(z.coerce.number().int().min(0).default(0), {
+    maxDepth: param(optionalNumber(z.coerce.number().int().min(0).default(0)), {
       default:
         "Device tree depth for chains/drum-pads. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
       smallModel:
