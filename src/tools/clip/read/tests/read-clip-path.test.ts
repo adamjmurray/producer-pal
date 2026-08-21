@@ -4,10 +4,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
+
+// A caller that sends every param, filling the ones it has no value for with
+// null, must not be read as having named t0/s0. z.coerce.number() turns both a
+// null and a blank into 0, so this goes through the schema the tool registers,
+// not straight to the handler.
+describe("readClip location params through the tool schema", () => {
+  const schema = z.object(
+    resolveToolSchema(toolDefReadClip.toolOptions.inputSchema, {}).validating,
+  );
+
+  it.each([
+    ["null", null],
+    ["blank", ""],
+  ])("refuses a %s trackIndex/sceneIndex instead of reading t0/s0", (_l, v) => {
+    const args = schema.parse({ id: null, trackIndex: v, sceneIndex: v });
+
+    expect(args.trackIndex).toBeNull();
+    expect(args.sceneIndex).toBeNull();
+    expect(() => readClip(args)).toThrow("id or path is required");
+  });
+});
 
 describe("readClip path param", () => {
   it("reads the clip at a clip slot", () => {

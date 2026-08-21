@@ -11,14 +11,41 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
+import { z } from "zod";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import {
   registerArrangementTrack,
   setupArrangementClipMocks,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
+
+// A caller that sends every param, filling the ones it has no value for with
+// null, must not be read as having named t0/s0. z.coerce.number() turns both a
+// null and a blank into 0, so this goes through the schema the tool registers,
+// not straight to the handler.
+describe("createClip location params through the tool schema", () => {
+  const schema = z.object(
+    resolveToolSchema(toolDefCreateClip.toolOptions.inputSchema, {}).validating,
+  );
+
+  it.each([
+    ["null", null],
+    ["blank", ""],
+  ])(
+    "refuses a %s trackIndex/sceneIndex instead of filling t0/s0",
+    async (_l, v) => {
+      const args = schema.parse({ trackIndex: v, sceneIndex: v });
+
+      expect(args.trackIndex).toBeNull();
+      expect(args.sceneIndex).toBeNull();
+      await expect(createClip(args)).rejects.toThrow("path is required");
+    },
+  );
+});
 
 describe("createClip path param", () => {
   beforeEach(() => {

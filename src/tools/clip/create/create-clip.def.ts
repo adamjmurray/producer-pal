@@ -11,6 +11,7 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -50,12 +51,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     // Models reach for these on their own, well-foundedly: they name a track
     // and a scene everywhere else in the toolset. Catching the guess costs a
     // warning; refusing it costs a round trip.
-    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+    trackIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
       canonical: "path",
       example: "t0/s0",
     }),
 
-    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
+    sceneIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
       canonical: "path",
       example: "t0/s0",
     }),
