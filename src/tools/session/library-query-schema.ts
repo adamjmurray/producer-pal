@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 // Shared enum value lists so the single-search params (library.def.ts) and
 // the per-query batch schema stay in lockstep and avoid duplicated literals.
@@ -97,7 +98,9 @@ export const batchQuerySchema = z.object({
     .describe(
       "stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed",
     ),
-  limit: z.coerce.number().optional().describe("max results; defaults to 50"),
+  limit: optionalNumber(z.coerce.number()).describe(
+    "max results; defaults to 50",
+  ),
 });
 
 /**

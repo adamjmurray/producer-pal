@@ -8,6 +8,7 @@ import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
@@ -37,27 +38,21 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than the tracks)",
       smallModel: "#RRGGBB",
     }),
-    gainDb: z.coerce
-      .number()
-      .min(-70)
-      .max(6)
-      .optional()
-      .describe("track gain in dB"),
-    pan: z.coerce
-      .number()
-      .min(-1)
-      .max(1)
-      .optional()
-      .describe("pan: -1 (left) to 1 (right)"),
+    gainDb: optionalNumber(z.coerce.number().min(-70).max(6)).describe(
+      "track gain in dB",
+    ),
+    pan: optionalNumber(z.coerce.number().min(-1).max(1)).describe(
+      "pan: -1 (left) to 1 (right)",
+    ),
     panningMode: param(z.enum(["stereo", "split"]).optional(), {
       default: "panning mode: stereo or split",
       smallModel: null,
     }),
-    leftPan: param(z.coerce.number().min(-1).max(1).optional(), {
+    leftPan: param(optionalNumber(z.coerce.number().min(-1).max(1)), {
       default: "left channel pan in split mode (-1 to 1)",
       smallModel: null,
     }),
-    rightPan: param(z.coerce.number().min(-1).max(1).optional(), {
+    rightPan: param(optionalNumber(z.coerce.number().min(-1).max(1)), {
       default: "right channel pan in split mode (-1 to 1)",
       smallModel: null,
     }),
@@ -90,7 +85,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
         smallModel: null,
       },
     ),
-    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
+    sendGainDb: param(optionalNumber(z.coerce.number().min(-70).max(0)), {
       default: "send gain in dB, requires sendReturn",
       smallModel: null,
     }),

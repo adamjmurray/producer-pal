@@ -29,7 +29,7 @@ import {
 } from "./helpers/update-live-set-locator-helpers.ts";
 
 interface UpdateLiveSetArgs {
-  tempo?: number;
+  tempo?: number | null;
   timeSignature?: string;
   scale?: string;
   locatorOperation?: string;

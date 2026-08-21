@@ -58,7 +58,7 @@ export const QUANTIZE_GRID_ALIASES: Record<string, string> = {
 
 interface QuantizationOptions {
   /** Quantization strength 0-1 */
-  quantize?: number;
+  quantize?: number | null;
   /** Note grid value */
   quantizeGrid?: string;
   /** Limit to specific pitch as note name, e.g., C3, D#4 (optional) */

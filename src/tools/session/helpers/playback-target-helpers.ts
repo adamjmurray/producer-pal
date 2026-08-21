@@ -42,7 +42,7 @@ export interface PlaybackTargetParams {
   ids?: string;
   path?: string;
   slots?: string;
-  sceneIndex?: number;
+  sceneIndex?: number | null;
 }
 
 /** The param a target came from, and its value, for shape errors */
@@ -314,7 +314,7 @@ function slotPositionsFrom(
  */
 function resolveSceneTarget(
   pathRefs: SceneRef[],
-  sceneIndex: number | undefined,
+  sceneIndex: number | null | undefined,
   ids: string | undefined,
 ): number | null {
   const refs: SceneRef[] = [...pathRefs];

@@ -40,7 +40,7 @@ import {
 } from "./helpers/read-track-helpers.ts";
 
 interface ReadTrackArgs {
-  trackIndex?: number;
+  trackIndex?: number | null;
   id?: string;
   /** Hidden alias for id */
   trackId?: string;

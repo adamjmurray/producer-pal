@@ -7,6 +7,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
@@ -34,7 +35,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than the scenes)",
       smallModel: "#RRGGBB",
     }),
-    tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
+    tempo: optionalNumber(z.coerce.number()).describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
   },
 });

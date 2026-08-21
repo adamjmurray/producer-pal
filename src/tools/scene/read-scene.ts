@@ -13,7 +13,7 @@ import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
-  sceneIndex?: number;
+  sceneIndex?: number | null;
   id?: string;
   /** Hidden alias for id */
   sceneId?: string;

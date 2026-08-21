@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
@@ -15,12 +16,9 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
     destructiveHint: true,
   },
   inputSchema: {
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(-1)
-      .optional()
-      .describe("0-based index, -1 or omit to append"),
+    trackIndex: optionalNumber(z.coerce.number().int().min(-1)).describe(
+      "0-based index, -1 or omit to append",
+    ),
     count: param(z.coerce.number().int().min(1).default(1), {
       default: "number to create",
       smallModel: null,

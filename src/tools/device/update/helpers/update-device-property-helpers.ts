@@ -24,17 +24,17 @@ export interface UpdatePropertyOptions {
   params?: ParamEntry[];
   actions?: string[];
   macroVariation?: string;
-  macroVariationIndex?: number;
-  macroCount?: number;
+  macroVariationIndex?: number | null;
+  macroCount?: number | null;
   abCompare?: string;
   mute?: boolean;
   solo?: boolean;
   color?: string;
-  gainDb?: number;
-  pan?: number;
-  sendGainDb?: number;
+  gainDb?: number | null;
+  pan?: number | null;
+  sendGainDb?: number | null;
   sendReturn?: string;
-  chokeGroup?: number;
+  chokeGroup?: number | null;
   mappedPitch?: string;
   force?: boolean;
 }

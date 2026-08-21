@@ -36,7 +36,7 @@ interface SceneProperties {
 }
 
 interface CreateSceneArgs {
-  sceneIndex?: number;
+  sceneIndex?: number | null;
   count?: number;
   capture?: boolean;
   name?: string;
@@ -152,7 +152,7 @@ function applySceneProperties(scene: LiveAPI, props: SceneProperties): void {
  * @param count - The number of scenes to create
  */
 function validateCreateSceneArgs(
-  sceneIndex: number | undefined,
+  sceneIndex: number | null | undefined,
   count: number,
 ): void {
   if (sceneIndex == null) {

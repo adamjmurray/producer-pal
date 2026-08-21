@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
@@ -21,7 +22,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    sceneIndex: param(z.coerce.number().int().min(0).optional(), {
+    sceneIndex: param(optionalNumber(z.coerce.number().int().min(0)), {
       default:
         "0-based index for new scene(s), shifts existing scenes. Required when capture=false, optional when capture=true",
       smallModel:
@@ -44,7 +45,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than count)",
       smallModel: "#RRGGBB",
     }),
-    tempo: param(z.coerce.number().optional(), {
+    tempo: param(optionalNumber(z.coerce.number()), {
       default: "BPM (-1 disables when capturing)",
       smallModel: null,
     }),

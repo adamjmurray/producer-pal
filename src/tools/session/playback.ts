@@ -42,7 +42,7 @@ interface PlaybackArgs {
   loopStartLocator?: string;
   loopEnd?: string;
   loopEndLocator?: string;
-  sceneIndex?: number;
+  sceneIndex?: number | null;
   id?: string;
   /** Hidden alias for id */
   ids?: string;

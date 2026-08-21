@@ -38,11 +38,11 @@ interface RoutingParams {
 }
 
 interface MixerParams {
-  gainDb?: number;
-  pan?: number;
+  gainDb?: number | null;
+  pan?: number | null;
   panningMode?: string;
-  leftPan?: number;
-  rightPan?: number;
+  leftPan?: number | null;
+  rightPan?: number | null;
 }
 
 interface UpdateTrackArgs {
@@ -51,11 +51,11 @@ interface UpdateTrackArgs {
   ids?: string;
   name?: string;
   color?: string;
-  gainDb?: number;
-  pan?: number;
+  gainDb?: number | null;
+  pan?: number | null;
   panningMode?: string;
-  leftPan?: number;
-  rightPan?: number;
+  leftPan?: number | null;
+  rightPan?: number | null;
   mute?: boolean;
   solo?: boolean;
   arm?: boolean;
@@ -64,7 +64,7 @@ interface UpdateTrackArgs {
   outputRoutingTypeId?: string;
   outputRoutingChannelId?: string;
   monitoringState?: string;
-  sendGainDb?: number;
+  sendGainDb?: number | null;
   sendReturn?: string;
 }
 
@@ -175,7 +175,7 @@ function applyMonitoringState(
  */
 function applySendProperties(
   track: LiveAPI,
-  sendGainDb: number | undefined,
+  sendGainDb: number | null | undefined,
   sendReturn: string | undefined,
 ): void {
   // Validate both params provided together
@@ -245,9 +245,9 @@ function applySendProperties(
  */
 function applyStereoPan(
   mixer: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
+  pan: number | null | undefined,
+  leftPan: number | null | undefined,
+  rightPan: number | null | undefined,
 ): void {
   if (pan != null) {
     const panning = mixer.child("panning");
@@ -274,9 +274,9 @@ function applyStereoPan(
  */
 function applySplitPan(
   mixer: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
+  pan: number | null | undefined,
+  leftPan: number | null | undefined,
+  rightPan: number | null | undefined,
 ): void {
   if (leftPan != null) {
     const leftSplit = mixer.child("left_split_stereo");

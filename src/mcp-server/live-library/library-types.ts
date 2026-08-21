@@ -33,7 +33,7 @@ export const MAX_LIBRARY_LIMIT = 1_000;
  * @returns Integer between 1 and MAX_LIBRARY_LIMIT
  */
 export function clampLibraryLimit(
-  requested: number | undefined,
+  requested: number | null | undefined,
   defaultLimit: number,
 ): number {
   if (requested == null || !Number.isFinite(requested) || requested <= 0) {
@@ -99,7 +99,7 @@ export interface LibrarySearchArgs {
   /** Absolute folder path; restrict results to immediate children of that folder */
   inFolder?: string;
   sort?: LibrarySort;
-  limit?: number;
+  limit?: number | null;
   /**
    * When true, stat each result's reconstructed path and report whether the
    * file still exists on disk via LibraryItem.pathExists. Off by default
@@ -324,7 +324,7 @@ export interface ListPluginsArgs {
   /** Case-insensitive substring match on any of a plugin's subcategories. */
   subcategory?: string;
   /** Max plugins to return. */
-  limit?: number;
+  limit?: number | null;
 }
 
 export interface PluginItem {

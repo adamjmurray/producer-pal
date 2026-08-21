@@ -41,6 +41,15 @@ describe("setAudioParameters", () => {
     expect(mockClip.set.mock.calls[0]![1]).toBeLessThan(0.4);
   });
 
+  // optionalNumber() lets an unset numeric param arrive as null instead of
+  // being coerced to 0. A `!== undefined` check here would read that as a real
+  // request and rewrite the clip's gain and pitch.
+  it("leaves gain and pitch alone when they arrive as null", () => {
+    setAudioParameters(mockClip, { gainDb: null, pitchShift: null });
+
+    expect(mockClip.set).not.toHaveBeenCalled();
+  });
+
   it("should set pitchShift with coarse and fine values", () => {
     setAudioParameters(mockClip, { pitchShift: 5.25 });
 

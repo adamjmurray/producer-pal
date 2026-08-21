@@ -14,6 +14,7 @@ import {
 } from "#src/tools/session/library-query-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
@@ -166,7 +167,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       smallModel: null,
     }),
 
-    limit: param(z.coerce.number().optional(), {
+    limit: param(optionalNumber(z.coerce.number()), {
       default: "max results; defaults to 50 (search) or 200 (listTags)",
       smallModel: "max results; defaults to 50 (search) or 200 (listTags)",
     }),
