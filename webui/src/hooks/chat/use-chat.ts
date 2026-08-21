@@ -136,6 +136,7 @@ export function useChat<
   } = useCompaction({
     clientRef,
     bootstrapClientRef,
+    pendingHistoryRef,
     adapter,
     autoSaveRef,
     messages,
@@ -231,8 +232,13 @@ export function useChat<
 
     if (!pendingHistory || !apiKey) return;
 
-    pendingHistoryRef.current = null;
     await initializeChat(pendingHistory);
+    // The client owns the restored history now (init baked it in), so drop the
+    // fallback. Deferred until after init, same as the send and fork paths: a
+    // thrown init (MCP down, unusable provider config) leaves it intact so the
+    // conversation is still there for the next send. Nulling it up front left
+    // that send nothing to continue from, and it persisted the empty start.
+    pendingHistoryRef.current = null;
   }, [apiKey, initializeChat]);
 
   useEffect(() => {

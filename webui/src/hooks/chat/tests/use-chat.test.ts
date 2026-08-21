@@ -607,6 +607,51 @@ describe("useChat", () => {
       expect(result.current.messages.at(-1)?.parts[0]?.type).toBe("error");
     });
 
+    it("keeps the restored conversation when the bootstrap fails early", async () => {
+      // MCP down, or a provider config that can't be built: initializeChat
+      // throws before it makes a client, so the restored conversation still
+      // lives only in pendingHistory. Nulling that up front left the next send
+      // with nothing to continue from — and it persisted the empty start.
+      const adapter = adapterWithClient(() => {});
+      let initFails = true;
+
+      adapter.buildConfig = vi.fn((model: string, thinking: string) => {
+        if (initFails) throw new Error("no connection");
+
+        return { model, thinking };
+      });
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+      await act(async () => {
+        await result.current.compact(1);
+      });
+
+      expect(adapter.createClient).not.toHaveBeenCalled();
+      // The conversation is still on screen, with the error behind it.
+      expect(result.current.messages).toHaveLength(RESTORED_HISTORY.length + 1);
+
+      initFails = false;
+
+      await act(async () => {
+        await result.current.handleSend("next");
+      });
+
+      // The send continued the restored conversation instead of starting empty.
+      expect(adapter.buildConfig).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        RESTORED_HISTORY,
+        expect.anything(),
+      );
+    });
+
     it("compacts the existing client without re-initializing", async () => {
       let created: MockChatClient | undefined;
       const adapter = adapterWithClient((client) => {

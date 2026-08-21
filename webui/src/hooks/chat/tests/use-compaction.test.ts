@@ -61,6 +61,7 @@ interface SetupOptions {
   isAssistantResponding?: boolean;
   noClient?: boolean;
   bootstrapClientRef?: { current: (() => Promise<void>) | null };
+  pendingHistory?: TestMessage[];
 }
 
 function setup(opts: SetupOptions = {}) {
@@ -73,11 +74,13 @@ function setup(opts: SetupOptions = {}) {
   const setMessages = vi.fn();
   const autoSave = vi.fn();
   const messages = opts.messages ?? uiTurns(1);
+  const pendingHistoryRef = { current: opts.pendingHistory ?? null };
 
   const { result } = renderHook(() =>
     useCompaction({
       clientRef,
       bootstrapClientRef: opts.bootstrapClientRef,
+      pendingHistoryRef,
       adapter,
       autoSaveRef: { current: autoSave },
       messages,
@@ -86,7 +89,15 @@ function setup(opts: SetupOptions = {}) {
     }),
   );
 
-  return { result, client, clientRef, adapter, setMessages, autoSave };
+  return {
+    result,
+    client,
+    clientRef,
+    adapter,
+    setMessages,
+    autoSave,
+    pendingHistoryRef,
+  };
 }
 
 type CompactionHook = ReturnType<typeof setup>["result"];
@@ -298,6 +309,28 @@ describe("useCompaction", () => {
       expect.any(Array),
     );
     expect(setMessages).toHaveBeenCalled();
+  });
+
+  it("renders the pending history behind a failed bootstrap's error", async () => {
+    // Same failure, but the conversation is restored-but-not-sent: it lives in
+    // pendingHistory, so the error belongs behind it. Rendering from an empty
+    // history collapsed the whole transcript to a lone error bubble.
+    const bootstrap = vi.fn().mockRejectedValue(new Error("bootstrap boom"));
+    const { result, setMessages, pendingHistoryRef } = setup({
+      noClient: true,
+      bootstrapClientRef: { current: bootstrap },
+      pendingHistory: turns(2),
+    });
+
+    await compactAt(result, 1);
+
+    const rendered = setMessages.mock.calls[0]?.[0] as UIMessage[];
+
+    expect(rendered).toHaveLength(5);
+    expect(rendered.at(-1)?.parts[0]?.type).toBe("error");
+    // The ref's own array is untouched, so the next send bootstraps from the
+    // conversation rather than from the conversation plus a stray error turn.
+    expect(pendingHistoryRef.current).toStrictEqual(turns(2));
   });
 
   it("invalidateCompactionUndo clears the undo availability", async () => {
