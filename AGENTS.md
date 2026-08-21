@@ -215,7 +215,8 @@ The practical consequences:
   touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
   tool, code execution, and work-in-progress warp markers, none of which exist
-  in a release build.
+  in a release build. `npm run check:build` overwrites it with a release build,
+  so re-run `build:debug` afterwards or the device in Live is the wrong one.
 - **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
   use `console.warn()` — it shows up in the CLI and in the live MCP response.
   `console.log()` and `console.error()` don't.

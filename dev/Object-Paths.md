@@ -49,8 +49,10 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1        |
 | `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0` |
 
-Chains auto-create when referenced (up to 16). Take lanes auto-create up to the
-index named, capped at `MAX_TAKE_LANES`.
+Chains auto-create when referenced (up to 16), except the catch-all pad: Live
+clamps a drum chain's `in_note` to 0-127, so a `p*` chain can't be made and a
+write that would create one refuses instead. An existing one still resolves.
+Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
 
 Each `l+` in a list appends its own lane, in the order written — `t0/l+,t0/l+`
 gets two. Cycling doesn't multiply them: when a shorter destination list repeats
