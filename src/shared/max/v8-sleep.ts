@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,18 +8,27 @@
  * Uses Max's Task object for scheduling
  */
 
+import { suspendWarningCapture } from "./v8-warning-capture.ts";
+
 // Declare global Task type from Max for Live environment
 declare const Task: new (callback: () => void) => {
   schedule: (ms: number) => void;
 };
 
 /**
- * Sleep for the specified number of milliseconds
+ * Sleep for the specified number of milliseconds.
+ *
+ * A scheduled Task is a real macrotask, so V8 runs whatever Max dispatches next
+ * while this is parked. Suspending the warning capture is what keeps the
+ * caller's warnings on the caller's response. See v8-warning-capture.ts.
+ *
  * @param ms - Milliseconds to sleep
  * @returns Resolves after the delay
  */
 const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => new Task(resolve).schedule(ms));
+  suspendWarningCapture(
+    new Promise((resolve) => new Task(resolve).schedule(ms)),
+  );
 
 interface WaitUntilOptions {
   pollingInterval?: number;

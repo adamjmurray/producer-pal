@@ -21,8 +21,9 @@
 //     active: another request that started while it was parked has since made
 //     itself active.
 //  2. Every promise V8 can suspend on clears the capture for the wait and
-//     restores it on resume (suspendWarningCapture). Only two exist —
-//     requestNode and requestCodeExecution — and a third has to do the same.
+//     restores it on resume (suspendWarningCapture). Three exist —
+//     requestNode, requestCodeExecution, and the Task-backed sleep — and a
+//     fourth has to do the same.
 //  3. A capture that has responded is dead, and never becomes active again.
 //     Fire-and-forget work outlives its request, so the capture a resume hands
 //     back may be one nobody is going to read.

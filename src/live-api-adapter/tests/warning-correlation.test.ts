@@ -11,6 +11,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
+import { waitUntil } from "#src/shared/max/v8-sleep.ts";
+import { installCapturingTask } from "./v8-protocol-test-helpers.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
   backupProjectContextOnEdit: vi.fn(),
@@ -110,6 +112,48 @@ describe("warning correlation", () => {
       "slow tool, before the round trip",
       "slow tool, after the round trip",
     ]);
+  });
+
+  // The other way V8 suspends: a Task-backed sleep, reached from any locator op
+  // in ppal-update-live-set. The capturing Task parks it until the test fires
+  // the callback, the way answerNodeRequest() does for the round trip.
+  it("keeps each request's warnings on its own response across a sleep", async () => {
+    const captured: Array<() => void> = [];
+    const restoreTask = installCapturingTask(captured);
+
+    try {
+      vi.mocked(createClip).mockImplementation(async () => {
+        warn("slow tool, before the sleep");
+        await waitUntil(() => false, { maxRetries: 1 });
+        warn("slow tool, after the sleep");
+
+        return {};
+      });
+      vi.mocked(readTrack).mockImplementation(() => {
+        warn("fast tool");
+
+        return {};
+      });
+
+      const slow = mcp_request("req-sleeping", "ppal-create-clip", "{}");
+
+      await vi.waitFor(() => expect(captured).toHaveLength(1));
+
+      // The slow request is parked in the sleep, so this one runs start to
+      // finish inside the gap.
+      await mcp_request("req-awake", "ppal-read-track", "{}");
+
+      captured[0]?.();
+      await slow;
+
+      expect(warningsSentFor("req-awake")).toStrictEqual(["fast tool"]);
+      expect(warningsSentFor("req-sleeping")).toStrictEqual([
+        "slow tool, before the sleep",
+        "slow tool, after the sleep",
+      ]);
+    } finally {
+      restoreTask();
+    }
   });
 
   it("sends no warnings for a request that raised none", async () => {
