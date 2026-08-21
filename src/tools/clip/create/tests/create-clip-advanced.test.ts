@@ -208,7 +208,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "live_set/tracks/0/clip_slots/0/clip",
+        id: "live_set/tracks/0/clip_slots/0/clip",
         detailView: "clip",
       });
     });
@@ -223,7 +223,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "arrangement_clip",
+        id: "arrangement_clip",
         detailView: "clip",
       });
     });
@@ -253,7 +253,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "live_set/tracks/0/clip_slots/1/clip",
+        id: "live_set/tracks/0/clip_slots/1/clip",
         detailView: "clip",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
@@ -273,7 +273,7 @@ describe("createClip - advanced features", () => {
 
       // Arrangement clip gets focus priority over session clip
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "arrangement_clip",
+        id: "arrangement_clip",
         detailView: "clip",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);

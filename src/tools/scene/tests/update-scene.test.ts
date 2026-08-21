@@ -341,7 +341,7 @@ describe("updateScene", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "123",
+        id: "123",
       });
     });
 
@@ -350,7 +350,7 @@ describe("updateScene", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "456",
+        id: "456",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
     });

@@ -67,6 +67,32 @@ describe("duplicate - input validation", () => {
   });
 });
 
+// Every other write tool takes `ids`, so a model carries the plural here too.
+describe("duplicate - the ids alias", () => {
+  it("takes ids as the source when id is unset", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    await expect(
+      duplicate({ type: "track", ids: "track1" }),
+    ).resolves.toBeDefined();
+  });
+
+  // duplicate copies one object per call, so the list `ids` implies has to be
+  // refused by name — handing "track1,track2" to Live reads as a missing object.
+  it("refuses a source list rather than looking one up", async () => {
+    await expect(
+      duplicate({ type: "track", ids: "track1,track2" }),
+    ).rejects.toThrow(
+      'duplicate failed: id "track1,track2" names more than one source; duplicate copies one object per call',
+    );
+  });
+
+  it("refuses a list sent as id too", async () => {
+    await expect(
+      duplicate({ type: "track", id: "track1,track2" }),
+    ).rejects.toThrow("names more than one source");
+  });
+});
+
 describe("duplicate - clip session validation", () => {
   it("should ask for toPath when toSlot names nothing", async () => {
     registerMockObject("clip1", {

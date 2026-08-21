@@ -80,7 +80,7 @@ export function createScene(
     applyCaptureProperties(result, { color, tempo, timeSignature });
 
     if (focus) {
-      select({ view: "session", sceneId: result.id });
+      select({ view: "session", id: result.id });
     }
 
     return result;
@@ -124,7 +124,7 @@ export function createScene(
   if (focus && createdScenes.length > 0) {
     const lastScene = createdScenes.at(-1) as SceneResult;
 
-    select({ view: "session", sceneId: lastScene.id });
+    select({ view: "session", id: lastScene.id });
   }
 
   return count === 1 ? (createdScenes[0] as SceneResult) : createdScenes;

@@ -22,7 +22,7 @@ import {
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   namedIdParam,
-  namedParam,
+  namedPathParam,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -53,6 +53,8 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   notes?: string;
   transforms?: string;
   preTransforms?: string;
@@ -86,6 +88,7 @@ interface ClipResult {
  * @param args.id - Clip ID or comma-separated list of clip IDs to update
  * @param args.ids - Hidden alias for id
  * @param args.path - Clip slot(s) of clips to update, instead of id
+ * @param args.paths - Hidden alias for path
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all the clips
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
@@ -124,6 +127,7 @@ export async function updateClip(
     id,
     ids,
     path,
+    paths,
     notes: notationString,
     transforms,
     preTransforms,
@@ -161,7 +165,7 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  const requestedIds = requestedClipIds(namedIdParam(id, ids, "ids"), path);
+  const requestedIds = requestedClipIds({ id, ids, path, paths });
 
   if (requestedIds.length === 0) {
     console.warn("updateClip: id or path is required");
@@ -260,15 +264,23 @@ export async function updateClip(
  * update, so a call may use either or both — neither contradicts the other the
  * way two destinations would. Entries stay in place, nulls included, so toPath
  * lines up with what the caller named.
- * @param namedIds - The id param, already coalesced with its alias
- * @param path - Raw path param
+ * @param args - The target params as the tool received them
+ * @param args.id - Clip id(s)
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Clip slot(s)
+ * @param args.paths - Hidden alias for path
  * @returns One entry per named clip, null where a path named none
  */
-function requestedClipIds(
-  namedIds: string | undefined,
-  path: string | undefined,
-): Array<string | null> {
-  const namedPaths = namedParam(path, "path");
+function requestedClipIds({
+  id,
+  ids,
+  path,
+  paths,
+}: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">): Array<
+  string | null
+> {
+  const namedIds = namedIdParam(id, ids, "ids");
+  const namedPaths = namedPathParam(path, paths);
 
   return [
     ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),
@@ -288,7 +300,7 @@ function focusLastUpdatedClip(
   if (focus && updatedClips.length > 0) {
     const lastClip = updatedClips.at(-1) as ClipResult;
 
-    select({ clipId: lastClip.id, detailView: "clip" });
+    select({ id: lastClip.id, detailView: "clip" });
   }
 }
 

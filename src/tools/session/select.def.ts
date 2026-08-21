@@ -5,7 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
@@ -29,6 +32,18 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe(
         "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
       ),
+
+    // select is the one tool that takes every object type by id, so all four
+    // prefixed spellings are names a model reaches for here. Each folds onto
+    // `id`, which detects the type anyway — a guess costs a warning, not a
+    // dropped argument and a selection that never happened.
+    trackId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    sceneId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    clipId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    deviceId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
 
     trackIndex: z.coerce
       .number()

@@ -8,6 +8,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   namedIdParam,
   namedParam,
+  namedPathParam,
   paramNamesSomething,
 } from "#src/tools/shared/utils.ts";
 
@@ -74,6 +75,29 @@ describe("namedIdParam", () => {
     expect(namedIdParam("42", "99", "clipId")).toBe("42");
     expect(warn).toHaveBeenCalledWith(
       'clipId "99" ignored — "id" names the target',
+    );
+  });
+});
+
+describe("namedPathParam", () => {
+  it("reads the canonical path", () => {
+    expect(namedPathParam(" t0/s1 ", undefined)).toBe("t0/s1");
+  });
+
+  it("falls back to paths when path is unset", () => {
+    expect(namedPathParam(undefined, " t0/s1,t2/s3 ")).toBe("t0/s1,t2/s3");
+  });
+
+  it("names nothing when neither is set", () => {
+    expect(namedPathParam(undefined, undefined)).toBeUndefined();
+  });
+
+  it("keeps path and says paths went nowhere when they disagree", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedPathParam("t0/s1", "t9/s9")).toBe("t0/s1");
+    expect(warn).toHaveBeenCalledWith(
+      'paths "t9/s9" ignored — "path" names the target',
     );
   });
 });

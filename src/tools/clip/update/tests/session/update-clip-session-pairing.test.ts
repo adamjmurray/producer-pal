@@ -131,6 +131,15 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     );
   });
 
+  // `path` takes a list too, so the plural is the same guess `ids` is.
+  it("still updates by the paths alias", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ paths: "t1/s1", name: "Renamed" });
+
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Renamed");
+  });
+
   it("updates a clip once when an id repeats", async () => {
     setupMidiClipMock(mocks.clip123);
 

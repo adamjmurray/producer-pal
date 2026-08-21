@@ -29,9 +29,11 @@ export const toolDefDelete = defineTool("ppal-delete", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "comma-separated paths to delete: session clips ('t0/s1'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1')",
+        "path(s) to delete, comma-separated for multiple: session clips ('t0/s1'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1')",
       smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",
     }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad", "chain"])

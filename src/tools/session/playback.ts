@@ -14,7 +14,7 @@ import {
   resolveLoopEnd,
   resolveLoopStart,
   resolveStartTime,
-  validateLocatorOrTime,
+  validateTimelineParams,
   type PlaybackState,
 } from "./helpers/playback-helpers.ts";
 import {
@@ -47,6 +47,8 @@ interface PlaybackArgs {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   slots?: string;
   focus?: boolean;
 }
@@ -81,6 +83,7 @@ interface BuildPlaybackResultParams {
  * @param args.id - Comma-separated clip IDs for Session view operations
  * @param args.ids - Hidden alias for id
  * @param args.path - A scene "s<scene>", or comma-separated clip slots "t<track>/s<scene>"
+ * @param args.paths - Hidden alias for path
  * @param args.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param args.focus - Switch to arrangement or session view based on action
  * @param _context - Internal context object (unused, for consistent tool interface)
@@ -100,6 +103,7 @@ export function playback(
     id,
     ids,
     path,
+    paths,
     slots,
     focus,
   }: PlaybackArgs = {},
@@ -113,7 +117,14 @@ export function playback(
     sceneIndex: sceneTarget,
     slotPositions,
     ids: namedIds,
-  } = resolvePlaybackTarget(action, { id, ids, path, slots, sceneIndex });
+  } = resolvePlaybackTarget(action, {
+    id,
+    ids,
+    path,
+    paths,
+    slots,
+    sceneIndex,
+  });
 
   // Dropped before anything reads them, so a session action can't write the
   // arrangement. Everything below sees only what this action actually uses.
@@ -127,14 +138,7 @@ export function playback(
     loopEndLocator,
   });
 
-  // Validate mutual exclusivity of time and locator parameters
-  validateLocatorOrTime(timeline.startTime, timeline.startLocator, "startTime");
-  validateLocatorOrTime(
-    timeline.loopStart,
-    timeline.loopStartLocator,
-    "loopStart",
-  );
-  validateLocatorOrTime(timeline.loopEnd, timeline.loopEndLocator, "loopEnd");
+  validateTimelineParams(timeline);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 

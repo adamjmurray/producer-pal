@@ -518,7 +518,7 @@ describe("createScene", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "live_set/scenes/0",
+        id: "live_set/scenes/0",
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
@@ -542,7 +542,7 @@ describe("createScene", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "live_set/scenes/2",
+        id: "live_set/scenes/2",
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
@@ -583,7 +583,7 @@ describe("createScene", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "live_set/scenes/2",
+        id: "live_set/scenes/2",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
       expect(Array.isArray(result)).toBe(true);

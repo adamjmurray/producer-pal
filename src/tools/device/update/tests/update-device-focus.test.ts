@@ -43,7 +43,7 @@ describe("updateDevice - focus functionality", () => {
     updateDevice({ id: "123", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      deviceId: "123",
+      id: "123",
       detailView: "device",
     });
   });
@@ -54,7 +54,7 @@ describe("updateDevice - focus functionality", () => {
     updateDevice({ id: "123,456,789", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      deviceId: "789",
+      id: "789",
       detailView: "device",
     });
     expect(selectMock.get()).toHaveBeenCalledTimes(1);

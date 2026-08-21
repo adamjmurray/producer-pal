@@ -151,6 +151,21 @@ export function validateLocatorOrTime(
 }
 
 /**
+ * Refuse a timeline whose position is named twice — once as a bar|beat and
+ * once as a locator. All three positions get the same rule.
+ * @param timeline - The arrangement params this action kept
+ */
+export function validateTimelineParams(timeline: ArrangementParams): void {
+  validateLocatorOrTime(timeline.startTime, timeline.startLocator, "startTime");
+  validateLocatorOrTime(
+    timeline.loopStart,
+    timeline.loopStartLocator,
+    "loopStart",
+  );
+  validateLocatorOrTime(timeline.loopEnd, timeline.loopEndLocator, "loopEnd");
+}
+
+/**
  * Resolve start time from either bar|beat string or locator reference
  * @param liveSet - The live_set LiveAPI object
  * @param params - Start time parameters

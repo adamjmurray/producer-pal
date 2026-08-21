@@ -7,6 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   namedIdParam,
   namedParam,
+  namedPathParam,
   parseCommaSeparatedIds,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
@@ -41,6 +42,8 @@ export interface PlaybackTargetParams {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   slots?: string;
   sceneIndex?: number;
 }
@@ -86,25 +89,32 @@ const TARGETING_ACTIONS = new Set([
  * @param params.id - Comma-separated clip IDs, or scene IDs for play-scene
  * @param params.ids - Hidden alias for id
  * @param params.path - A scene, or comma-separated clip slots
+ * @param params.paths - Hidden alias for path
  * @param params.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param params.sceneIndex - Scene index, an alternative to a "s<scene>" path
  * @returns What the params named, null where they named nothing
  */
 export function resolvePlaybackTarget(
   action: string,
-  { id, ids, path, slots, sceneIndex }: PlaybackTargetParams,
+  { id, ids, path, paths, slots, sceneIndex }: PlaybackTargetParams,
 ): PlaybackTarget {
   const namedIds = namedIdParam(id, ids, "ids");
+  const namedPaths = namedPathParam(path, paths);
 
   // Parsing these for an action that never reads them turns a leftover param
   // into a failed transport command: `stop` has to stop.
   if (!TARGETING_ACTIONS.has(action)) {
-    warnUnusedTarget(action, { path, slots, ids: namedIds, sceneIndex });
+    warnUnusedTarget(action, {
+      path: namedPaths,
+      slots,
+      ids: namedIds,
+      sceneIndex,
+    });
 
     return { sceneIndex: null, slotPositions: null, ids: undefined };
   }
 
-  const { entries, source } = readPathParam(path, slots);
+  const { entries, source } = readPathParam(namedPaths, slots);
 
   if (action === PLAY_SCENE) {
     return {

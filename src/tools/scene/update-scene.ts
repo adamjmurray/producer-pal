@@ -124,7 +124,7 @@ export function updateScene(
   if (focus && updatedScenes.length > 0) {
     const lastScene = updatedScenes.at(-1) as UpdateSceneResult;
 
-    select({ view: "session", sceneId: lastScene.id });
+    select({ view: "session", id: lastScene.id });
   }
 
   return unwrapSingleResult(updatedScenes);

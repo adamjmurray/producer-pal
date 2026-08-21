@@ -35,6 +35,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
 
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+
     toPath: param(z.coerce.string().optional(), {
       default:
         "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1'). To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device; a pad move stays within one rack and layers onto an occupied destination rather than replacing it. Moving just a device carries its chain's trim only when the destination chain is empty and untouched, and warns otherwise",

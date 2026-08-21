@@ -7,7 +7,10 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
@@ -29,6 +32,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
   inputSchema: {
     id: z.coerce.string().optional().describe("id of the object to duplicate"),
+
+    // Every other write tool takes `ids`, so a model carries the plural over to
+    // this one. It still copies one source at a time — a list is refused by
+    // name rather than handed to Live as an id.
+    ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
     path: z.coerce
       .string()
       .optional()

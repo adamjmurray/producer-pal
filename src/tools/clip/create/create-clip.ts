@@ -295,7 +295,7 @@ function finalizeCreatedClips(
   if (focus && createdClips.length > 0) {
     const lastClip = createdClips.at(-1) as { id: string };
 
-    select({ clipId: lastClip.id, detailView: "clip" });
+    select({ id: lastClip.id, detailView: "clip" });
   }
 
   return unwrapSingleResult(createdClips);

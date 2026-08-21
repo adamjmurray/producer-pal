@@ -66,6 +66,46 @@ describe("playback target params on actions that have no target", () => {
   });
 });
 
+// `path` takes a comma-separated list, so a model reaches for the plural the
+// same way it reaches for `ids`.
+describe("playback paths alias", () => {
+  let clipSlot: RegisteredMockObject;
+
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+  });
+
+  it("fires the clip paths names when path is unset", () => {
+    playback({ action: "play-session-clips", paths: "t0/s1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("keeps path and says paths went nowhere when they disagree", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "play-session-clips", path: "t0/s1", paths: "t9/s9" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith(
+      'paths "t9/s9" ignored — "path" names the target',
+    );
+  });
+
+  it("names the ignored target as path on an action that takes none", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "stop", paths: "t0/s1" });
+
+    expect(warn).toHaveBeenCalledWith(
+      'path ignored: action "stop" takes no target',
+    );
+  });
+});
+
 describe("playback ids that names no clip", () => {
   let clipSlot: RegisteredMockObject;
 

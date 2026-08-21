@@ -51,9 +51,9 @@ export function focusIfRequested(
   const lastId = lastObject?.id;
 
   if (type === "clip" && lastId) {
-    select({ clipId: lastId, detailView: "clip" });
+    select({ id: lastId, detailView: "clip" });
   } else if (type === "scene" && lastId) {
-    select({ view: "session", sceneId: lastId });
+    select({ view: "session", id: lastId });
   } else {
     const targetView = determineTargetView(destination, type);
 

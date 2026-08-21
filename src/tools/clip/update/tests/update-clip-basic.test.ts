@@ -497,7 +497,7 @@ describe("updateClip - Basic operations", () => {
       await updateClip({ id: "123", focus: true });
 
       expect(selectSpy).toHaveBeenCalledWith({
-        clipId: "123",
+        id: "123",
         detailView: "clip",
       });
     });

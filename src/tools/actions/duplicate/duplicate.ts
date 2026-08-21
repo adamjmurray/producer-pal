@@ -9,7 +9,7 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
@@ -42,6 +42,8 @@ import {
 interface DuplicateArgs {
   type: string;
   id?: string;
+  /** Hidden alias for id */
+  ids?: string;
   path?: string;
   count?: number;
 
@@ -76,6 +78,7 @@ interface DuplicateParams {
  * @param args - The parameters
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID
+ * @param args.ids - Hidden alias for id
  * @param args.path - Source drum pad path, instead of id
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
@@ -100,6 +103,7 @@ export async function duplicate(
   {
     type,
     id,
+    ids,
     path,
     count = 1,
     arrangementStart,
@@ -122,7 +126,7 @@ export async function duplicate(
 ): Promise<object | object[]> {
   // A value the schema coerced from a JSON null names nothing. Counting it as
   // sent refuses the call over a param the caller deliberately left empty.
-  id = namedParam(id, "id");
+  id = namedIdParam(id, ids, "ids");
   path = namedParam(path, "path");
 
   // Validate basic inputs

@@ -224,7 +224,7 @@ describe("updateClip - focus functionality", () => {
     await updateClip({ id: "123", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      clipId: "123",
+      id: "123",
       detailView: "clip",
     });
   });
@@ -236,7 +236,7 @@ describe("updateClip - focus functionality", () => {
     await updateClip({ id: "123,456", name: "Test", focus: true });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      clipId: "456",
+      id: "456",
       detailView: "clip",
     });
     expect(selectMock.get()).toHaveBeenCalledTimes(1);

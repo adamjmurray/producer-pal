@@ -119,6 +119,14 @@ function validateSource(
   id: string | undefined,
   path: string | undefined,
 ): void {
+  // `id` takes a comma-separated list on every other tool, so say what this one
+  // does instead of handing "1,2" to Live as an id and reporting it as missing.
+  if (id?.includes(",")) {
+    throw new Error(
+      `duplicate failed: id "${id}" names more than one source; duplicate copies one object per call`,
+    );
+  }
+
   if (type === "drum-pad") {
     validateExclusiveParams(id, path, "id", "path");
 

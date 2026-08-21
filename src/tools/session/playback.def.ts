@@ -77,6 +77,8 @@ stop: session and arrangement`,
         "clip slot(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
           "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
       ),
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),

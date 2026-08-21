@@ -58,6 +58,18 @@ describe("updateDevice with path parameter", () => {
     expect(device.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
+  // `path` takes a list too, so the plural is the same guess `ids` is.
+  it("still updates by the paths alias", () => {
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ paths: "t1/d0", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+  });
+
   describe("device paths", () => {
     let device456: RegisteredMockObject;
     let returnDevice: RegisteredMockObject;

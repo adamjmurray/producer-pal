@@ -97,7 +97,7 @@ export function createDevice(
   if (focus && results.length > 0) {
     const lastResult = results.at(-1) as CreateDeviceResult;
 
-    select({ deviceId: lastResult.id, detailView: "device" });
+    select({ id: lastResult.id, detailView: "device" });
   }
 
   return unwrapSingleResult(results);

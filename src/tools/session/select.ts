@@ -5,7 +5,12 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+  paramNamesSomething,
+  toLiveApiView,
+} from "#src/tools/shared/utils.ts";
 import {
   applyDetailView,
   applyPluginEditorWindow,
@@ -52,11 +57,14 @@ interface SelectArgs {
   devicePath?: string;
   openPluginWindow?: boolean;
 
-  // Internal-only params (used by other tools calling select() directly)
+  // Hidden aliases for id. They all fold onto it, so they carry no type
+  // information — the type comes from the object, as it does for `id`.
   trackId?: string;
   sceneId?: string;
   clipId?: string;
   deviceId?: string;
+
+  // Internal-only param (used by other tools calling select() directly)
   detailView?: "clip" | "device" | "none";
 }
 
@@ -76,6 +84,9 @@ export interface SelectResult {
   selectedDrumPad?: { id: string; path: string };
   selectedChain?: { id: string; path: string };
 }
+
+/** The alias params that fold onto `id`, in the order a caller's is read. */
+const ID_ALIASES = ["trackId", "sceneId", "clipId", "deviceId"] as const;
 
 /**
  * Reads or updates the view state and selection in Ableton Live.
@@ -297,16 +308,20 @@ interface ResolvedArgs {
  * @returns Resolved arguments with parsed clipSlot
  */
 function resolveArgs(args: SelectArgs): ResolvedArgs {
-  let { trackId, sceneId, clipId, deviceId } = args;
+  const id = namedSelectId(args);
+  let trackId: string | undefined;
+  let sceneId: string | undefined;
+  let clipId: string | undefined;
+  let deviceId: string | undefined;
   let rackTargetId: string | undefined;
 
-  if (args.id != null) {
-    const resolved = resolveIdParam(args.id);
+  if (id != null) {
+    const resolved = resolveIdParam(id);
 
-    trackId = resolved.trackId ?? trackId;
-    sceneId = resolved.sceneId ?? sceneId;
-    clipId = resolved.clipId ?? clipId;
-    deviceId = resolved.deviceId ?? deviceId;
+    trackId = resolved.trackId;
+    sceneId = resolved.sceneId;
+    clipId = resolved.clipId;
+    deviceId = resolved.deviceId;
     rackTargetId = resolved.rackTargetId;
   }
 
@@ -348,6 +363,24 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     hasArgs,
     viewOnly,
   };
+}
+
+/**
+ * The id the caller named, whatever they called it. The first alias that names
+ * something stands in for `id`, so every spelling ends up type-detected and
+ * existence-checked the same way.
+ * @param args - Raw select arguments
+ * @returns The id, or undefined when no spelling named one
+ */
+function namedSelectId(args: SelectArgs): string | undefined {
+  // Which alias was sent is checked silently: none of the four is published, so
+  // "trackId names nothing" is a line about a param the caller can't act on —
+  // and it would be four of them for a client that nulls every unused field.
+  const label = ID_ALIASES.find((key) => paramNamesSomething(args[key]));
+
+  return label == null
+    ? namedParam(args.id, "id")
+    : namedIdParam(args.id, args[label], label);
 }
 
 /**

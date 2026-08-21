@@ -12,6 +12,7 @@ import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
 import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
 import {
   namedIdParam,
+  namedPathParam,
   parseCommaSeparatedIds,
   toLiveApiId,
   unwrapSingleResult,
@@ -44,6 +45,8 @@ interface DeleteArgs {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   type: string;
 }
 
@@ -53,6 +56,7 @@ interface DeleteArgs {
  * @param args.id - Comma-separated list of object IDs
  * @param args.ids - Hidden alias for id
  * @param args.path - Comma-separated paths for clip/device/drum-pad/chain
+ * @param args.paths - Hidden alias for path
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
@@ -61,7 +65,8 @@ export function deleteObject(
   args: DeleteArgs,
   _context: Partial<ToolContext> = {},
 ): DeleteResult | DeleteResult[] {
-  const { path, type } = args;
+  const { type } = args;
+  const path = namedPathParam(args.path, args.paths);
   const targets = namedIdParam(args.id, args.ids, "ids");
 
   if (!type) {

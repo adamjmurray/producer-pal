@@ -139,7 +139,7 @@ describe("duplicate - focus functionality", () => {
     });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      clipId: livePath.track(0).arrangementClip(0),
+      id: livePath.track(0).arrangementClip(0),
       detailView: "clip",
     });
   });
@@ -157,7 +157,7 @@ describe("duplicate - focus functionality", () => {
     });
 
     expect(selectMock.get()).toHaveBeenCalledWith({
-      clipId: expect.any(String),
+      id: expect.any(String),
       detailView: "clip",
     });
   });
@@ -194,7 +194,7 @@ describe("duplicate - focus functionality", () => {
 
     expect(selectMock.get()).toHaveBeenCalledWith({
       view: "session",
-      sceneId: expect.any(String),
+      id: expect.any(String),
     });
   });
 

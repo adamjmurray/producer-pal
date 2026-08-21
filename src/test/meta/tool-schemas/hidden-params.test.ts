@@ -34,6 +34,64 @@ function publishedParams(toolName: string): string[] {
   );
 }
 
+/**
+ * What each (tool, alias) pair actually does with its canonical param.
+ * @param aliases - Tool name and alias param name pairs
+ * @param canonical - The param the aliases fold onto
+ * @returns One shape per pair, keyed "tool.alias"
+ */
+function aliasShapes(
+  aliases: Array<[string, string]>,
+  canonical: string,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    aliases.map(([toolName, alias]) => {
+      const def = STANDARD_TOOL_DEFS.find(
+        (td: ToolDefFunction) => td.toolName === toolName,
+      ) as ToolDefFunction;
+      const { validating, hidden } = resolveToolSchema(
+        def.toolOptions.inputSchema,
+        {},
+      );
+      const published = publishedParams(toolName);
+
+      return [
+        `${toolName}.${alias}`,
+        {
+          publishesCanonical: published.includes(canonical),
+          publishesAlias: published.includes(alias),
+          validatesAlias: Object.keys(validating).includes(alias),
+          alias: hidden[alias],
+        },
+      ];
+    }),
+  );
+}
+
+/**
+ * The shape every folded alias must have: canonical published, alias accepted
+ * but not published.
+ * @param aliases - Tool name and alias param name pairs
+ * @param canonical - The param the aliases fold onto
+ * @returns The expected shapes, keyed the same way as {@link aliasShapes}
+ */
+function foldedShapes(
+  aliases: Array<[string, string]>,
+  canonical: string,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    aliases.map(([toolName, alias]) => [
+      `${toolName}.${alias}`,
+      {
+        publishesCanonical: true,
+        publishesAlias: false,
+        validatesAlias: true,
+        alias: { kind: "alias", canonical },
+      },
+    ]),
+  );
+}
+
 describe("hidden params", () => {
   it("publishes toPath and hides the destination params it replaced", () => {
     const duplicate = publishedParams("ppal-duplicate");
@@ -86,61 +144,55 @@ describe("hidden params", () => {
   // reaches for on its own stay accepted for good, so a well-founded guess
   // costs a warning rather than a round trip.
   it("publishes id and hides the spelling it replaced", () => {
-    const aliases = {
-      "ppal-read-clip": "clipId",
-      "ppal-read-track": "trackId",
-      "ppal-read-scene": "sceneId",
-      "ppal-read-device": "deviceId",
-      "ppal-update-track": "ids",
-      "ppal-update-scene": "ids",
-      "ppal-update-clip": "ids",
-      "ppal-update-device": "ids",
-      "ppal-delete": "ids",
-      "ppal-playback": "ids",
-    };
+    const aliases: Array<[string, string]> = [
+      ["ppal-read-clip", "clipId"],
+      ["ppal-read-track", "trackId"],
+      ["ppal-read-scene", "sceneId"],
+      ["ppal-read-device", "deviceId"],
+      ["ppal-update-track", "ids"],
+      ["ppal-update-scene", "ids"],
+      ["ppal-update-clip", "ids"],
+      ["ppal-update-device", "ids"],
+      ["ppal-delete", "ids"],
+      ["ppal-playback", "ids"],
+      // Takes one source, so `ids` is a guess rather than a rename — caught all
+      // the same, and refused by name when it holds a list.
+      ["ppal-duplicate", "ids"],
+    ];
 
-    const shape = Object.fromEntries(
-      Object.entries(aliases).map(([toolName, alias]) => {
-        const def = STANDARD_TOOL_DEFS.find(
-          (td: ToolDefFunction) => td.toolName === toolName,
-        ) as ToolDefFunction;
-        const { validating, hidden } = resolveToolSchema(
-          def.toolOptions.inputSchema,
-          {},
-        );
-        const published = publishedParams(toolName);
-
-        return [
-          toolName,
-          {
-            publishesId: published.includes("id"),
-            publishesAlias: published.includes(alias),
-            validatesAlias: Object.keys(validating).includes(alias),
-            alias: hidden[alias],
-          },
-        ];
-      }),
+    expect(aliasShapes(aliases, "id")).toStrictEqual(
+      foldedShapes(aliases, "id"),
     );
+  });
 
-    const folded = {
-      publishesId: true,
-      publishesAlias: false,
-      validatesAlias: true,
-      alias: { kind: "alias", canonical: "id" },
-    };
+  // select is the only tool that takes every object type by id, so all four
+  // prefixed spellings are ones a model reaches for here.
+  it("folds every prefixed spelling onto select's id", () => {
+    const aliases: Array<[string, string]> = [
+      ["ppal-select", "trackId"],
+      ["ppal-select", "sceneId"],
+      ["ppal-select", "clipId"],
+      ["ppal-select", "deviceId"],
+    ];
 
-    expect(shape).toStrictEqual({
-      "ppal-read-clip": folded,
-      "ppal-read-track": folded,
-      "ppal-read-scene": folded,
-      "ppal-read-device": folded,
-      "ppal-update-track": folded,
-      "ppal-update-clip": folded,
-      "ppal-update-device": folded,
-      "ppal-delete": folded,
-      "ppal-playback": folded,
-      "ppal-update-scene": folded,
-    });
+    expect(aliasShapes(aliases, "id")).toStrictEqual(
+      foldedShapes(aliases, "id"),
+    );
+  });
+
+  // `path` takes a comma-separated list on these four, so the plural is the
+  // same well-founded guess `ids` is.
+  it("publishes path and accepts paths as a fallback", () => {
+    const aliases: Array<[string, string]> = [
+      ["ppal-update-clip", "paths"],
+      ["ppal-update-device", "paths"],
+      ["ppal-delete", "paths"],
+      ["ppal-playback", "paths"],
+    ];
+
+    expect(aliasShapes(aliases, "path")).toStrictEqual(
+      foldedShapes(aliases, "path"),
+    );
   });
 
   it("still validates the params it stopped publishing", () => {

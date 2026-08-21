@@ -18,7 +18,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   namedIdParam,
-  namedParam,
+  namedPathParam,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -54,6 +54,8 @@ interface UpdateDeviceArgs extends UpdateTargetOptions {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   wrapInRack?: boolean;
   focus?: boolean;
 }
@@ -70,6 +72,7 @@ type ResolvedTarget =
  * @param args.id - Comma-separated ID(s)
  * @param args.ids - Hidden alias for id
  * @param args.path - Device/chain/drum-pad path
+ * @param args.paths - Hidden alias for path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
  * @param args.params - {name, value} entries to set (devices only)
@@ -98,6 +101,7 @@ export function updateDevice(
     id,
     ids,
     path,
+    paths,
     toPath,
     name,
     params,
@@ -124,7 +128,7 @@ export function updateDevice(
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
   ids = namedIdParam(id, ids, "ids");
-  path = namedParam(path, "path");
+  path = namedPathParam(path, paths);
 
   validateExclusiveParams(ids, path, "id", "path");
 
@@ -176,7 +180,7 @@ export function updateDevice(
     const lastId = lastResult?.id as string | undefined;
 
     if (lastId) {
-      select({ deviceId: lastId, detailView: "device" });
+      select({ id: lastId, detailView: "device" });
     }
   }
 

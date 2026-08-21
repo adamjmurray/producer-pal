@@ -154,6 +154,21 @@ describe("deleteObject", () => {
     });
   });
 
+  // `path` takes a list too, so the plural is the same guess `ids` is.
+  it("still deletes by the paths alias", () => {
+    registerMockObject("clip_0_0", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    const track0 = registerMockObject("live_set/tracks/0", {
+      path: livePath.track(0),
+    });
+
+    deleteObject({ paths: "t0/s0", type: "clip" });
+
+    expect(track0.call).toHaveBeenCalledWith("delete_clip", "id clip_0_0");
+  });
+
   it("should warn and skip a clip path with no clip", () => {
     const consoleWarnSpy = vi.spyOn(console, "warn");
 

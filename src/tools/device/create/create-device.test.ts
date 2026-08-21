@@ -555,7 +555,7 @@ describe("createDevice", () => {
       createDevice({ deviceName: "EQ Eight", path: "t0", focus: true });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        deviceId: "device123",
+        id: "device123",
         detailView: "device",
       });
     });
@@ -577,7 +577,7 @@ describe("createDevice", () => {
 
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        deviceId: "device456",
+        id: "device456",
         detailView: "device",
       });
     });

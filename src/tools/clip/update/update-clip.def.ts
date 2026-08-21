@@ -40,6 +40,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "clip slot(s) to update instead of id, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
       smallModel: "clip slot to update instead of id (e.g., 't0/s1')",
     }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated for each (extras keep existing name)",

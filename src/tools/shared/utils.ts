@@ -99,12 +99,12 @@ export function namedParam(
 }
 
 /**
- * Reads a target from the canonical `id` param, falling back to the legacy name
- * a tool still accepts (`clipId`, `ids`, ...). The alias only fills in for a
- * caller that did not send `id`. Both arriving with different values means one
- * was about to be dropped in silence, so say which.
+ * Reads a target from the canonical `id` param, falling back to a name the tool
+ * still accepts (`clipId`, `ids`, ...). The alias only fills in for a caller
+ * that did not send `id`. Both arriving with different values means one was
+ * about to be dropped in silence, so say which.
  * @param id - The `id` param
- * @param alias - The legacy alias param
+ * @param alias - The alias param
  * @param aliasLabel - The alias's name, for the warnings
  * @returns The trimmed value, or undefined when neither names anything
  */
@@ -113,14 +113,46 @@ export function namedIdParam(
   alias: string | null | undefined,
   aliasLabel: string,
 ): string | undefined {
-  const named = namedParam(id, "id");
+  return namedAliasedParam(id, "id", alias, aliasLabel);
+}
+
+/**
+ * Reads a target from the canonical `path` param, falling back to `paths`. Same
+ * deal as {@link namedIdParam}: `path` already takes a comma-separated list, so
+ * the plural is a guess worth catching rather than dropping.
+ * @param path - The `path` param
+ * @param paths - The `paths` alias param
+ * @returns The trimmed value, or undefined when neither names anything
+ */
+export function namedPathParam(
+  path: string | null | undefined,
+  paths: string | null | undefined,
+): string | undefined {
+  return namedAliasedParam(path, "path", paths, "paths");
+}
+
+/**
+ * Folds an alias onto the param it stands in for.
+ * @param value - The canonical param's value
+ * @param canonical - The canonical param's name
+ * @param alias - The alias param's value
+ * @param aliasLabel - The alias param's name
+ * @returns The trimmed value, or undefined when neither names anything
+ */
+function namedAliasedParam(
+  value: string | null | undefined,
+  canonical: string,
+  alias: string | null | undefined,
+  aliasLabel: string,
+): string | undefined {
+  const named = namedParam(value, canonical);
   const namedAlias = namedParam(alias, aliasLabel);
 
   if (named == null) return namedAlias;
 
   if (namedAlias != null && namedAlias !== named) {
     console.warn(
-      `${aliasLabel} "${namedAlias}" ignored — "id" names the target`,
+      `${aliasLabel} "${namedAlias}" ignored — "${canonical}" names the target`,
     );
   }
 
