@@ -27,6 +27,7 @@ import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
 import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
 import {
   copySpanBeats,
+  planCopies,
   sourceLastOrder,
 } from "./duplicate-clip-order-helpers.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
@@ -133,38 +134,24 @@ async function duplicateClipToArrangementPositions(
 ): Promise<object[]> {
   // The alias folds on after resolution, because an omitted toPath means the
   // source clip's own track — which only exists as a destination once resolved.
-  const destTargets = applyTakeLaneAlias(
+  const requested = applyTakeLaneAlias(
     resolveDestinationTargets(object, targets),
     takeLane,
   );
 
   // Only reachable once every named destination was skipped: an omitted toPath
   // resolves to the source's own track. Nowhere left to copy to.
-  if (destTargets.length === 0) return [];
+  if (requested.every((target) => target == null)) return [];
 
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
+  const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
+    resolveSongPositions(arrangementStart, locator);
 
-  // Resolve positions from locator or bar|beat (both comma-separated for
-  // multiple); shared with scene duplication.
-  const positionsInBeats = resolveArrangementPositions(
-    liveSet,
-    arrangementStart,
-    locator,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  // toPath and arrangementStart each set a copy count; the longer list wins and
-  // the shorter one cycles, the way comma-separated colors do.
-  const copies = Math.max(destTargets.length, positionsInBeats.length);
-  const targetTracks = cycle(destTargets, copies);
-  const targetPositions = cycle(positionsInBeats, copies);
+  const {
+    copies,
+    targets: targetTracks,
+    positions: targetPositions,
+    requestIndices,
+  } = planCopies(requested, positionsInBeats);
 
   // Nothing below can undo a lane, so check the budget before making any: out
   // of time here means permanent empty lanes and not one clip on them.
@@ -223,10 +210,14 @@ async function duplicateClipToArrangementPositions(
       songTimeSigDenominator,
     ),
   );
-  const results: (object | null)[] = Array.from({ length: copies }, () => null);
+  const results: (object | null)[] = Array.from(
+    { length: targetTracks.length },
+    () => null,
+  );
 
   for (let done = 0; done < order.length; done++) {
     const i = order[done] as number; // bounded by the loop
+    const requestIndex = requestIndices[i] as number; // one per copy
 
     // Each copy can tile a long span, so the budget can run out mid-list.
     if (
@@ -236,7 +227,7 @@ async function duplicateClipToArrangementPositions(
             .slice(done)
             .map((index) => destinations[index] as UnreachedDestination),
           done,
-          copies,
+          targetTracks.length,
           songTimeSigNumerator,
           songTimeSigDenominator,
         ),
@@ -252,8 +243,8 @@ async function duplicateClipToArrangementPositions(
       canPromote,
       object,
       id,
-      name: getNameForIndex(name, i, parsedNames),
-      color: getColorForIndex(color, i, parsedColors),
+      name: getNameForIndex(name, requestIndex, parsedNames),
+      color: getColorForIndex(color, requestIndex, parsedColors),
       arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,
@@ -264,6 +255,43 @@ async function duplicateClipToArrangementPositions(
   }
 
   return results.filter((result) => result != null);
+}
+
+/**
+ * Reads the song meter and resolves the positions the copies land on.
+ * @param arrangementStart - Comma-separated bar|beat positions
+ * @param locator - Arrangement locator ID(s) or name(s) for position
+ * @returns The song time signature and one position per entry, in Ableton beats
+ */
+function resolveSongPositions(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): {
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  positionsInBeats: number[];
+} {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const songTimeSigNumerator = liveSet.getProperty(
+    "signature_numerator",
+  ) as number;
+  const songTimeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
+
+  return {
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+    // Positions come from a locator or bar|beat (both comma-separated for
+    // multiple); shared with scene duplication.
+    positionsInBeats: resolveArrangementPositions(
+      liveSet,
+      arrangementStart,
+      locator,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  };
 }
 
 /**
@@ -315,17 +343,19 @@ function warnRecreatedCopyLimits(
  * Folds the `takeLane` alias onto the destinations. It names one lane for the
  * whole call, so a toPath that already named its own lane wins — the alias is a
  * fallback for a caller that didn't use the segment.
- * @param targets - Resolved arrangement destinations
+ * @param targets - Resolved arrangement destinations, null where unusable
  * @param takeLane - The raw takeLane param
  * @returns The destinations, with the alias applied where a lane was unnamed
  */
 function applyTakeLaneAlias(
-  targets: ArrangementTrack[],
+  targets: (ArrangementTrack | null)[],
   takeLane: number | string | undefined,
-): ArrangementTrack[] {
+): (ArrangementTrack | null)[] {
   if (!isTakeLaneRequested(takeLane)) return targets;
 
-  if (targets.some((target) => target.takeLane != null)) {
+  // A destination this call can't use is null and names no lane, so it can't
+  // block the alias for the ones around it.
+  if (targets.some((target) => target?.takeLane != null)) {
     console.warn(
       'duplicate: takeLane ignored — "toPath" already names the take lane',
     );
@@ -335,7 +365,9 @@ function applyTakeLaneAlias(
 
   const target = normalizeTakeLaneTarget(takeLane);
 
-  return targets.map((entry) => ({ ...entry, takeLane: target }));
+  return targets.map((entry) =>
+    entry == null ? null : { ...entry, takeLane: target },
+  );
 }
 
 interface CopyOptions {
@@ -425,20 +457,4 @@ function recreateCopy(
 
     return null;
   }
-}
-
-/**
- * Repeats a list until it reaches the given length. Built by repeating the
- * whole list and trimming, so nothing has to promise the list is non-empty: an
- * empty one gives an empty result, which is what `length` would be anyway.
- * @param values - Values to cycle
- * @param length - Wanted length
- * @returns A list of that length
- */
-function cycle<T>(values: T[], length: number): T[] {
-  const repeats = Math.ceil(length / Math.max(values.length, 1));
-
-  return Array.from({ length: repeats }, () => values)
-    .flat()
-    .slice(0, length);
 }

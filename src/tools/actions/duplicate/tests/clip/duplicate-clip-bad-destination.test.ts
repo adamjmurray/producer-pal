@@ -110,3 +110,73 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     expect(result).toStrictEqual([]);
   });
 });
+
+// A destination the clip can't be copied to still takes its turn in a
+// comma-separated name/color list. Renumbering around it named the surviving
+// copies wrong, and shrinking the count could stop a color list from splitting
+// at all.
+describe("duplicate clip - a toPath entry the clip can't go to", () => {
+  /** Register the MIDI source clip and the live_set. */
+  function registerMidiSource(): void {
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      properties: { is_midi_clip: 1 },
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+  }
+
+  /**
+   * Register a destination track and the clip a copy to it would land on.
+   * @param trackIndex - Track index
+   * @param hasMidiInput - Whether the track takes MIDI input
+   * @returns The arrangement clip mock
+   */
+  function registerDestTrack(trackIndex: number, hasMidiInput: boolean) {
+    registerTrackWithArrangementDup(trackIndex, {
+      has_midi_input: hasMidiInput ? 1 : 0,
+    });
+
+    return registerArrangementClip(trackIndex, 0, 8);
+  }
+
+  it("gives the copies that land the names they were asked for", async () => {
+    registerMidiSource();
+    registerDestTrack(1, true);
+    registerDestTrack(2, false);
+
+    const clip3 = registerDestTrack(3, true);
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t1,t2,t3",
+      name: "A,B,C",
+    });
+
+    expect(clip3.set).toHaveBeenCalledWith("name", "C");
+  });
+
+  it("still splits a two-copy color list when one destination drops out", async () => {
+    registerMidiSource();
+
+    const clip1 = registerDestTrack(1, true);
+
+    registerDestTrack(2, false);
+
+    // Counting only the survivor left one copy, so the list stopped splitting
+    // and "#ff0000,#00ff00" reached Live as a single color — a hard tool
+    // failure, with the first copy already made.
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t1,t2",
+      name: "Verse,Chorus",
+      color: "#ff0000,#00ff00",
+    });
+
+    expect(clip1.set).toHaveBeenCalledWith("name", "Verse");
+    expect(clip1.set).toHaveBeenCalledWith("color", 0xff0000);
+  });
+});

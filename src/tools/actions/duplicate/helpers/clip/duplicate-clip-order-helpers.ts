@@ -90,3 +90,62 @@ export function copySpanBeats(
     return sourceLength;
   }
 }
+
+/** The copies a call makes, and where each one sits in what was requested. */
+interface CopyPlan {
+  /** How many copies were asked for, including any that can't be made. */
+  copies: number;
+  targets: ArrangementTrack[];
+  positions: number[];
+  /** Per copy, its place in the requested list — the name and color it takes. */
+  requestIndices: number[];
+}
+
+/**
+ * Pairs each requested destination with a position, dropping the copies that
+ * can't be made but keeping the count and numbering of what was asked for.
+ *
+ * The count outlives the drop: name and color are counted per requested copy, so
+ * renumbering here would slide every name after a gap onto the wrong clip — and
+ * a 2-copy call collapsing to 1 stops splitting them at all, sending Live the
+ * whole comma-separated string as one color.
+ * @param requested - Resolved destinations, null where the copy can't be made
+ * @param positionsInBeats - Start positions, in Ableton beats
+ * @returns The copies to make, and how many were asked for
+ */
+export function planCopies(
+  requested: (ArrangementTrack | null)[],
+  positionsInBeats: number[],
+): CopyPlan {
+  // toPath and arrangementStart each set a copy count; the longer list wins and
+  // the shorter one cycles, the way comma-separated colors do.
+  const copies = Math.max(requested.length, positionsInBeats.length);
+  const cycledTargets = cycle(requested, copies);
+  const cycledPositions = cycle(positionsInBeats, copies);
+  const requestIndices = cycledTargets.flatMap((target, i) =>
+    target == null ? [] : [i],
+  );
+
+  return {
+    copies,
+    targets: requestIndices.map((i) => cycledTargets[i] as ArrangementTrack),
+    positions: requestIndices.map((i) => cycledPositions[i] as number),
+    requestIndices,
+  };
+}
+
+/**
+ * Repeats a list until it reaches the given length. Built by repeating the
+ * whole list and trimming, so nothing has to promise the list is non-empty: an
+ * empty one gives an empty result, which is what `length` would be anyway.
+ * @param values - Values to cycle
+ * @param length - Wanted length
+ * @returns A list of that length
+ */
+function cycle<T>(values: T[], length: number): T[] {
+  const repeats = Math.ceil(length / Math.max(values.length, 1));
+
+  return Array.from({ length: repeats }, () => values)
+    .flat()
+    .slice(0, length);
+}

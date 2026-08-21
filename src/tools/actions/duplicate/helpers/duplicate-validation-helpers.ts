@@ -216,17 +216,21 @@ export function inferDestination(
 }
 
 /**
- * Resolves the tracks a clip is duplicated onto in the arrangement, dropping
- * the ones it can't be copied to. A destination is skipped rather than fatal,
- * so one bad entry in a comma-separated toPath doesn't cost the good ones.
+ * Resolves the tracks a clip is duplicated onto in the arrangement, marking the
+ * ones it can't be copied to. A destination is skipped rather than fatal, so one
+ * bad entry in a comma-separated toPath doesn't cost the good ones.
+ *
+ * A skipped entry comes back as null rather than being removed. Name and color
+ * are counted per requested destination, so a shorter list here would slide
+ * every name after the gap onto the wrong copy.
  * @param sourceClip - The clip being duplicated
  * @param targets - Requested destinations, or empty for the source's own track
- * @returns The usable destinations, each with the lane it named
+ * @returns One entry per request: the destination, or null where it can't be used
  */
 export function resolveDestinationTargets(
   sourceClip: LiveAPI,
   targets: ArrangementTrack[],
-): ArrangementTrack[] {
+): (ArrangementTrack | null)[] {
   if (targets.length === 0) {
     const sourceTrackIndex = sourceClip.trackIndex;
 
@@ -241,30 +245,40 @@ export function resolveDestinationTargets(
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
-  return targets.filter(({ trackIndex }) => {
-    const track = LiveAPI.from(livePath.track(trackIndex));
+  return targets.map((target) =>
+    canCopyClipToTrack(target.trackIndex, clipIsMidi) ? target : null,
+  );
+}
 
-    if (!track.exists()) {
-      console.warn(`duplicate: no track at toPath "t${trackIndex}"`);
+/**
+ * Whether a clip can be copied to a track, warning about why not.
+ * @param trackIndex - Destination track index
+ * @param clipIsMidi - Whether the clip being copied is MIDI
+ * @returns True when the copy can be made
+ */
+function canCopyClipToTrack(trackIndex: number, clipIsMidi: boolean): boolean {
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
-      return false;
-    }
+  if (!track.exists()) {
+    console.warn(`duplicate: no track at toPath "t${trackIndex}"`);
 
-    // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
-    // failing, so check first rather than reporting a copy that never happened.
-    const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
+    return false;
+  }
 
-    if (clipIsMidi !== trackIsMidi) {
-      console.warn(
-        `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
-          `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
-      );
+  // Live's duplicate_clip_to_arrangement no-ops on a type mismatch instead of
+  // failing, so check first rather than reporting a copy that never happened.
+  const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
-      return false;
-    }
+  if (clipIsMidi !== trackIsMidi) {
+    console.warn(
+      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
+        `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
+    );
 
-    return true;
-  });
+    return false;
+  }
+
+  return true;
 }
 
 /**
