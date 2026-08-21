@@ -45,6 +45,27 @@ describe("computeLoopDeadline", () => {
     expect(deadline).not.toBeNull();
     expect(isDeadlineExceeded(deadline!)).toBe(true);
   });
+
+  // The Timeout setting bottoms out at 1 second. Subtracting a flat 4s buffer
+  // put the deadline in the past, so every loop stopped before its first
+  // iteration and the whole call did nothing.
+  it.each([1000, 2000, 4000])(
+    "leaves time to work at a %ims timeout",
+    (timeoutMs) => {
+      const deadline = computeLoopDeadline(timeoutMs);
+
+      expect(isDeadlineExceeded(deadline)).toBe(false);
+    },
+  );
+
+  it("gives a short timeout half its budget", () => {
+    const before = Date.now();
+    const deadline = computeLoopDeadline(1000);
+    const after = Date.now();
+
+    expect(deadline).toBeGreaterThanOrEqual(before + 500);
+    expect(deadline).toBeLessThanOrEqual(after + 500);
+  });
 });
 
 describe("isDeadlineExceeded", () => {
