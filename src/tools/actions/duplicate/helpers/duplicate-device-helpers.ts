@@ -13,6 +13,10 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /**
@@ -112,9 +116,11 @@ function duplicateDevice(
     // 5. Determine destination path
     const destination = toPath ?? calculateDefaultDestination(device.path);
 
-    // 6. Adjust destination if it references tracks after the source track
+    // 6. Adjust destination if it references tracks after the source track.
+    // Canonicalize first: the adjuster only knows the "t<n>" spelling, so a
+    // bare "2" went through unshifted and the copy landed a track short.
     const adjustedDestination = adjustTrackIndicesForTempTrack(
-      destination,
+      canonicalPath(destination),
       trackIndex,
     );
 
@@ -220,6 +226,20 @@ function calculateDefaultDestination(devicePath: string): string {
 
   // Fallback: append to the container
   return simplifiedPath;
+}
+
+/**
+ * The canonical spelling of a path, or the path unchanged when it doesn't
+ * parse — moveDeviceToPath reports the bad one as it warns and skips.
+ * @param path - The destination path as the caller wrote it
+ * @returns The canonical spelling
+ */
+function canonicalPath(path: string): string {
+  try {
+    return formatObjectPath(parseObjectPath(path, "toPath"));
+  } catch {
+    return path;
+  }
 }
 
 /**

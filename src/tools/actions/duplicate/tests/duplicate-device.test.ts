@@ -214,6 +214,23 @@ describe("duplicate - device duplication", () => {
     );
   });
 
+  // The old bare-index spelling is still accepted, so it needs the same temp
+  // track adjustment as "t2" — without it the copy landed a track short, on
+  // whatever the caller's t1 is, and was reported as a success.
+  it("adjusts a bare track index for the temp track", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "2" });
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t3",
+      expect.anything(),
+      // Warnings keep the spelling the caller sent.
+      "2",
+    );
+  });
+
   it("should throw and cleanup if device not found in duplicated track", async () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(0),
