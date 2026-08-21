@@ -18,7 +18,7 @@ import {
   navigateRemainingSegments,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   drumMapReadDepth,
@@ -30,6 +30,8 @@ import {
 // ============================================================================
 
 interface ReadDeviceArgs {
+  id?: string;
+  /** Hidden alias for id */
   deviceId?: string;
   path?: string;
   include?: string[];
@@ -55,7 +57,8 @@ interface ReadOptions {
 /**
  * Read information about a specific device by ID or path
  * @param args - The parameters
- * @param args.deviceId - Device ID to read
+ * @param args.id - Device ID to read
+ * @param args.deviceId - Hidden alias for id
  * @param args.path - Device/chain/drum-pad path
  * @param args.include - Array of data to include in the response
  * @param args.maxDepth - Device tree depth for chains/drum-pads
@@ -64,15 +67,22 @@ interface ReadOptions {
  * @returns Device, chain, or drum pad information
  */
 export function readDevice(
-  { deviceId, path, include = [], maxDepth = 0, paramSearch }: ReadDeviceArgs,
+  {
+    id,
+    deviceId,
+    path,
+    include = [],
+    maxDepth = 0,
+    paramSearch,
+  }: ReadDeviceArgs,
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   // A value the schema coerced from a JSON null names nothing, so it must not
   // count as the caller having sent both addressing params.
-  deviceId = namedParam(deviceId, "deviceId");
+  deviceId = namedIdParam(id, deviceId, "deviceId");
   path = namedParam(path, "path");
 
-  validateExclusiveParams(deviceId, path, "deviceId", "path");
+  validateExclusiveParams(deviceId, path, "id", "path");
 
   const includeAll = include.includes("*");
   const includeChains = includeAll || include.includes("chains");

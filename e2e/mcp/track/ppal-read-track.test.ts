@@ -33,7 +33,7 @@ describe("ppal-read-track", () => {
     // Test 1: Read track by trackId
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const byId = parseToolResult<ReadTrackResult>(byIdResult);
 
@@ -85,7 +85,7 @@ describe("ppal-read-track", () => {
     // Test 6: Read with include: ["mixer"]
     const mixerResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const mixer = parseToolResult<ReadTrackResult>(mixerResult);
 
@@ -95,7 +95,7 @@ describe("ppal-read-track", () => {
     // Test 7: Read with include: ["color"]
     const colorResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["color"] },
+      arguments: { id: trackId, include: ["color"] },
     });
     const color = parseToolResult<ReadTrackResult>(colorResult);
 
@@ -105,7 +105,7 @@ describe("ppal-read-track", () => {
     // Test 8: Read with include: ["*"] (all data)
     const allResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["*"] },
+      arguments: { id: trackId, include: ["*"] },
     });
     const all = parseToolResult<ReadTrackResult>(allResult);
 

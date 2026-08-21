@@ -283,8 +283,8 @@ describe("readScene", () => {
     expect(resultWildcard.clips).toHaveLength(2);
   });
 
-  describe("sceneId parameter", () => {
-    it("reads scene by sceneId", () => {
+  describe("id parameter", () => {
+    it("reads scene by id", () => {
       setupLiveSetTracks([]);
       setupScene(
         "123",
@@ -298,7 +298,7 @@ describe("readScene", () => {
         }),
       );
 
-      const result = readScene({ sceneId: "123" });
+      const result = readScene({ id: "123" });
 
       expect(result).toStrictEqual({
         id: "123",
@@ -311,7 +311,19 @@ describe("readScene", () => {
       });
     });
 
-    it("includes clips when reading scene by sceneId", () => {
+    // A permanent alias, not a migration: models reach for the prefixed
+    // spelling on their own, so it keeps working.
+    it("still reads a scene by the sceneId alias", () => {
+      setupLiveSetTracks([]);
+      setupScene("123", 5, defaultSceneConfig({ name: "Scene by ID" }));
+
+      expect(readScene({ sceneId: "123" })).toMatchObject({
+        id: "123",
+        name: "Scene by ID",
+      });
+    });
+
+    it("includes clips when reading scene by id", () => {
       setupLiveSetTracks(["track1", "track2"]);
       setupScene(
         "456",
@@ -326,7 +338,7 @@ describe("readScene", () => {
       setupSessionClip("clip_1_2", 1, 2);
 
       const result = readScene({
-        sceneId: "456",
+        id: "456",
         include: ["clips", "notes"],
       });
 
@@ -355,21 +367,21 @@ describe("readScene", () => {
       });
     });
 
-    it("throws error when sceneId does not exist", () => {
+    it("throws error when id does not exist", () => {
       mockNonExistentObjects();
 
       expect(() => {
-        readScene({ sceneId: "nonexistent" });
+        readScene({ id: "nonexistent" });
       }).toThrow('readScene failed: id "nonexistent" does not exist');
     });
 
-    it("throws error when neither sceneId nor sceneIndex provided", () => {
+    it("throws error when neither id nor sceneIndex provided", () => {
       expect(() => {
         readScene({});
-      }).toThrow("Either sceneId or sceneIndex must be provided");
+      }).toThrow("Either id or sceneIndex must be provided");
     });
 
-    it("prioritizes sceneId over sceneIndex when both provided", () => {
+    it("prioritizes id over sceneIndex when both provided", () => {
       setupLiveSetTracks([]);
       setupScene(
         "789",
@@ -388,7 +400,7 @@ describe("readScene", () => {
       );
 
       // sceneId should take priority over sceneIndex
-      const result = readScene({ sceneId: "789", sceneIndex: 3 });
+      const result = readScene({ id: "789", sceneIndex: 3 });
 
       // Should use scene with ID "789" (index 7) not sceneIndex 3
       expect(result.sceneIndex).toBe(7);

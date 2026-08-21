@@ -96,7 +96,7 @@ async function readClipNotes(clipId: string): Promise<string> {
   const clip = parseToolResult<ReadClipResult>(
     await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId, include: ["notes"] },
+      arguments: { id: clipId, include: ["notes"] },
     }),
   );
 

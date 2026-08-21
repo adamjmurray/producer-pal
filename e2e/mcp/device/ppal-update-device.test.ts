@@ -33,7 +33,7 @@ describe("ppal-update-device", () => {
     await sleep(100);
     const afterName = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId },
+      arguments: { id: deviceId },
     });
     const namedDevice = parseToolResult<ReadDeviceResult>(afterName);
 
@@ -60,7 +60,11 @@ describe("ppal-update-device", () => {
     // Test 1: Get params and update a numeric param value
     const paramsResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId, include: ["param-values"], paramSearch: "ratio" },
+      arguments: {
+        id: deviceId,
+        include: ["param-values"],
+        paramSearch: "ratio",
+      },
     });
     const deviceWithParams = parseToolResult<ReadDeviceResult>(paramsResult);
 
@@ -86,7 +90,11 @@ describe("ppal-update-device", () => {
     await sleep(100);
     const afterParam = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId, include: ["param-values"], paramSearch: "ratio" },
+      arguments: {
+        id: deviceId,
+        include: ["param-values"],
+        paramSearch: "ratio",
+      },
     });
     const updatedDevice = parseToolResult<ReadDeviceResult>(afterParam);
     const updatedRatio = updatedDevice.parameters?.find((p) =>
@@ -170,7 +178,7 @@ describe("ppal-update-device", () => {
     const rackRead = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: rackId, include: ["chains"], maxDepth: 1 },
+        arguments: { id: rackId, include: ["chains"], maxDepth: 1 },
       }),
     );
 
@@ -186,7 +194,7 @@ describe("ppal-update-device", () => {
     const afterMacroCount = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: rackId, include: ["params"] },
+        arguments: { id: rackId, include: ["params"] },
       }),
     );
 
@@ -207,7 +215,7 @@ describe("ppal-update-device", () => {
     const afterCreate = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: rackId, include: ["params"] },
+        arguments: { id: rackId, include: ["params"] },
       }),
     );
 
@@ -227,7 +235,7 @@ describe("ppal-update-device", () => {
     const afterDelete = parseToolResult<ReadDeviceResult>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: rackId, include: ["params"] },
+        arguments: { id: rackId, include: ["params"] },
       }),
     );
 

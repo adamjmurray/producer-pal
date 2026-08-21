@@ -48,8 +48,8 @@ function registerEmptyChain(
 }
 
 describe("readTrack", () => {
-  describe("trackId parameter", () => {
-    it("reads track by trackId", () => {
+  describe("id parameter", () => {
+    it("reads track by id", () => {
       registerMockObject("123", {
         path: livePath.track(2),
         type: "Track",
@@ -60,7 +60,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackId: "123" });
+      const result = readTrack({ id: "123" });
 
       expect(result).toStrictEqual({
         id: "123",
@@ -74,7 +74,22 @@ describe("readTrack", () => {
       });
     });
 
-    it("reads return track by trackId", () => {
+    // A permanent alias, not a migration: models reach for the prefixed
+    // spelling on their own, so it keeps working.
+    it("still reads a track by the trackId alias", () => {
+      registerMockObject("123", {
+        path: livePath.track(2),
+        type: "Track",
+        properties: mockTrackProperties({ name: "Track by ID" }),
+      });
+
+      expect(readTrack({ trackId: "123" })).toMatchObject({
+        id: "123",
+        name: "Track by ID",
+      });
+    });
+
+    it("reads return track by id", () => {
       registerMockObject("456", {
         path: livePath.returnTrack(1),
         type: "Track",
@@ -86,7 +101,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackId: "456" });
+      const result = readTrack({ id: "456" });
 
       expect(result).toStrictEqual({
         id: "456",
@@ -99,7 +114,7 @@ describe("readTrack", () => {
       });
     });
 
-    it("reads master track by trackId", () => {
+    it("reads master track by id", () => {
       registerMockObject("789", {
         path: livePath.masterTrack(),
         type: "Track",
@@ -111,7 +126,7 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackId: "789" });
+      const result = readTrack({ id: "789" });
 
       expect(result).toStrictEqual({
         id: "789",
@@ -123,21 +138,21 @@ describe("readTrack", () => {
       });
     });
 
-    it("throws error when trackId does not exist", () => {
+    it("throws error when id does not exist", () => {
       mockNonExistentObjects();
 
       expect(() => {
-        readTrack({ trackId: "nonexistent" });
+        readTrack({ id: "nonexistent" });
       }).toThrow('readTrack failed: id "nonexistent" does not exist');
     });
 
-    it("throws error when neither trackId nor trackIndex provided", () => {
+    it("throws error when neither id nor trackIndex provided", () => {
       expect(() => {
         readTrack({});
-      }).toThrow("Either trackId or trackIndex must be provided");
+      }).toThrow("Either id or trackIndex must be provided");
     });
 
-    it("ignores trackType when trackId is provided", () => {
+    it("ignores trackType when id is provided", () => {
       registerMockObject("999", {
         path: livePath.track(0),
         type: "Track",
@@ -147,7 +162,7 @@ describe("readTrack", () => {
       });
 
       // trackType should be ignored when trackId is provided
-      const result = readTrack({ trackId: "999", trackType: "return" });
+      const result = readTrack({ id: "999", trackType: "return" });
 
       // Should read as regular track (from path) not return track
       expect(result.trackIndex).toBe(0);

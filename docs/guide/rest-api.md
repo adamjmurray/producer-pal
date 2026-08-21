@@ -204,7 +204,7 @@ the response are formatted.
 curl -X POST http://localhost:3350/api/tools/ppal-read-clip \
   -H 'Content-Type: application/json' \
   -H 'x-producer-pal-notation: midi-json' \
-  -d '{"clipId": "123", "include": ["notes"]}'
+  -d '{"id": "123", "include": ["notes"]}'
 ```
 
 This is the header to reach for in a coding agent: `midi-json` gives you notes

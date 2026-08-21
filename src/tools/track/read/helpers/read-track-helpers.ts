@@ -130,7 +130,7 @@ export function readArrangementClips(
     .map((clipId) =>
       readClip(
         {
-          clipId,
+          id: clipId,
           drumMode,
           ...(include && { include }),
         },
@@ -173,7 +173,7 @@ export function readTakeLanes(
       .getChildIds("arrangement_clips")
       .map((clipId) =>
         readClip(
-          { clipId, drumMode, ...(include && { include }) },
+          { id: clipId, drumMode, ...(include && { include }) },
           { notation },
         ),
       )

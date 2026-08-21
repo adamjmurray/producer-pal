@@ -153,7 +153,7 @@ async function createAndReadback(
   const read = parseToolResult<ReadClipResult>(
     await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId, include: ["notes", "timing"] },
+      arguments: { id: clipId, include: ["notes", "timing"] },
     }),
   );
   const notation = read.notes ?? "";

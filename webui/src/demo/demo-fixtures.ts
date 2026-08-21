@@ -359,7 +359,7 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: "ppal-read-clip",
-        args: { clipId: "13", include: ["notes", "timing"] },
+        args: { id: "13", include: ["notes", "timing"] },
         result: toolResult(READ_CLIP_RESULT),
       },
       {

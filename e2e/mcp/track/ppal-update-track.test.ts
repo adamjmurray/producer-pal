@@ -44,7 +44,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterName = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const namedTrack = parseToolResult<ReadTrackResult>(afterName);
 
@@ -59,7 +59,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterColor = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["color"] },
+      arguments: { id: trackId, include: ["color"] },
     });
     const coloredTrack = parseToolResult<ReadTrackResult>(afterColor);
 
@@ -75,7 +75,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterGain = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const gainTrack = parseToolResult<ReadTrackResult>(afterGain);
 
@@ -103,7 +103,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterMute = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const mutedTrack = parseToolResult<ReadTrackResult>(afterMute);
 
@@ -124,7 +124,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterSolo = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const soloedTrack = parseToolResult<ReadTrackResult>(afterSolo);
 
@@ -145,7 +145,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterArm = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const armedTrack = parseToolResult<ReadTrackResult>(afterArm);
 
@@ -171,7 +171,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterPan = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const panTrack = parseToolResult<ReadTrackResult>(afterPan);
 
@@ -191,7 +191,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterSplit = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const splitTrack = parseToolResult<ReadTrackResult>(afterSplit);
 
@@ -230,11 +230,11 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId },
+      arguments: { id: trackId },
     });
     const verifySecond = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: secondTrackId },
+      arguments: { id: secondTrackId },
     });
     const firstTrack = parseToolResult<ReadTrackResult>(verifyFirst);
     const secondTrack = parseToolResult<ReadTrackResult>(verifySecond);
@@ -262,7 +262,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterMonitor = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["routings"] },
+      arguments: { id: trackId, include: ["routings"] },
     });
     const monitorTrack = parseToolResult<ReadTrackResult>(afterMonitor);
 
@@ -294,7 +294,7 @@ describe("ppal-update-track", () => {
     await sleep(100);
     const afterSend = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const sendTrack = parseToolResult<ReadTrackResult>(afterSend);
 
@@ -321,7 +321,7 @@ describe("ppal-update-track", () => {
     const byId = parseToolResult<ReadTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackId, include: ["mixer"] },
+        arguments: { id: trackId, include: ["mixer"] },
       }),
     );
 
@@ -341,7 +341,7 @@ describe("ppal-update-track", () => {
     const before = parseToolResult<ReadTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackId, include: ["routings", "available-routings"] },
+        arguments: { id: trackId, include: ["routings", "available-routings"] },
       }),
     );
 
@@ -363,7 +363,7 @@ describe("ppal-update-track", () => {
     const afterOut = parseToolResult<ReadTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackId, include: ["routings"] },
+        arguments: { id: trackId, include: ["routings"] },
       }),
     );
 

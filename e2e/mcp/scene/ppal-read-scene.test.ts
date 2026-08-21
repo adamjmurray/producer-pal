@@ -33,7 +33,7 @@ describe("ppal-read-scene", () => {
     // Test 1: Read scene by sceneId
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const byId = parseToolResult<ReadSceneResult>(byIdResult);
 
@@ -57,7 +57,7 @@ describe("ppal-read-scene", () => {
     // Test 4: Read with include: ["clips"]
     const clipsResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["clips"] },
+      arguments: { id: sceneId, include: ["clips"] },
     });
     const withClips = parseToolResult<ReadSceneResult>(clipsResult);
 
@@ -66,7 +66,7 @@ describe("ppal-read-scene", () => {
     // Test 5: Read with include: ["color"]
     const colorResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["color"] },
+      arguments: { id: sceneId, include: ["color"] },
     });
     const withColor = parseToolResult<ReadSceneResult>(colorResult);
 
@@ -76,7 +76,7 @@ describe("ppal-read-scene", () => {
     // Test 6: Read with include: ["*"] (all data)
     const allResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["*"] },
+      arguments: { id: sceneId, include: ["*"] },
     });
     const all = parseToolResult<ReadSceneResult>(allResult);
 

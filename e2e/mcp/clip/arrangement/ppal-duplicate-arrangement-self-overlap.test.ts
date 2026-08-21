@@ -201,7 +201,7 @@ async function readClip(
   include: string[],
 ): Promise<ReadClipResult> {
   const result = await callTool(ctx.client!, "ppal-read-clip", {
-    clipId,
+    id: clipId,
     include,
   });
 

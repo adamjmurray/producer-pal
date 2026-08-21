@@ -9,11 +9,13 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;
+  id?: string;
+  /** Hidden alias for id */
   sceneId?: string;
   include?: string[];
   /**
@@ -44,7 +46,7 @@ interface ClipResult {
  * Read comprehensive information about a scene
  * @param args - The parameters
  * @param args.sceneIndex - Scene index (0-based)
- * @param args.sceneId - Scene ID to directly access any scene
+ * @param args.id - Scene ID to directly access any scene
  * @param args.include - Array of data to include
  * @param args.clipCount - Clips in this scene, when the caller already counted them
  * @param context - Internal context object (supplies the active notation)
@@ -54,11 +56,12 @@ export function readScene(
   args: ReadSceneArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadSceneResult {
-  const { sceneIndex, sceneId } = args;
+  const { sceneIndex } = args;
+  const sceneId = namedIdParam(args.id, args.sceneId, "sceneId");
 
   // Validate parameters
   if (sceneId == null && sceneIndex == null) {
-    throw new Error("Either sceneId or sceneIndex must be provided");
+    throw new Error("Either id or sceneIndex must be provided");
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -71,13 +74,13 @@ export function readScene(
   let resolvedSceneIndex: number | null | undefined = sceneIndex;
 
   if (sceneId != null) {
-    // Use sceneId to access scene directly and validate it's a scene
+    // Use the id to access the scene directly and validate it's a scene
     scene = validateIdType(sceneId, "scene", "readScene");
 
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
-    // sceneIndex guaranteed defined here: null-check at function start covers sceneId==null case
+    // sceneIndex guaranteed defined here: null-check at function start covers the id==null case
     scene = LiveAPI.from(livePath.scene(sceneIndex as number));
   }
 

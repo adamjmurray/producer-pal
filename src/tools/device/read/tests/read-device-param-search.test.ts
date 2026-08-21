@@ -107,7 +107,7 @@ describe("readDevice paramSearch filtering", () => {
     setupTwoParamDevice();
 
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["params"],
       paramSearch: "vol",
     });
@@ -122,7 +122,7 @@ describe("readDevice paramSearch filtering", () => {
     setupTwoParamDevice();
 
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["params"],
       paramSearch: "FILTER",
     });
@@ -137,7 +137,7 @@ describe("readDevice paramSearch filtering", () => {
     setupTwoParamDevice();
 
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["params"],
       paramSearch: "nonexistent",
     });
@@ -149,7 +149,7 @@ describe("readDevice paramSearch filtering", () => {
     setupTwoParamDevice(true); // Include full properties
 
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["param-values"],
       paramSearch: "vol",
     });

@@ -635,7 +635,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ deviceId: "comp-1", include: ["params"] });
+    const result = readDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "sidechainSourceTrackId",
@@ -653,7 +653,7 @@ describe("Compressor via read-device", () => {
     registerReadableCompressor();
 
     const result = readDevice({
-      deviceId: "comp-1",
+      id: "comp-1",
       include: ["params", "options"],
     });
 
@@ -667,7 +667,7 @@ describe("Compressor via read-device", () => {
     registerLiveSetTracks();
     registerReadableCompressor();
 
-    const result = readDevice({ deviceId: "comp-1", include: ["params"] });
+    const result = readDevice({ id: "comp-1", include: ["params"] });
 
     expect(result.options).toBeUndefined();
   });
@@ -677,7 +677,7 @@ describe("Compressor via read-device", () => {
     registerReadableCompressor();
 
     const result = readDevice({
-      deviceId: "comp-1",
+      id: "comp-1",
       include: ["params", "options"],
     });
 

@@ -40,7 +40,7 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyNamed = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: named.id },
+      arguments: { id: named.id },
     });
     const namedScene = parseToolResult<ReadSceneResult>(verifyNamed);
 
@@ -56,7 +56,7 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyColored = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: colored.id, include: ["color"] },
+      arguments: { id: colored.id, include: ["color"] },
     });
     const coloredScene = parseToolResult<ReadSceneResult>(verifyColored);
 
@@ -73,7 +73,7 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyTempo = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: tempo.id },
+      arguments: { id: tempo.id },
     });
     const tempoScene = parseToolResult<ReadSceneResult>(verifyTempo);
 
@@ -89,7 +89,7 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyTimeSig = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: timeSig.id },
+      arguments: { id: timeSig.id },
     });
     const timeSigScene = parseToolResult<ReadSceneResult>(verifyTimeSig);
 
@@ -129,11 +129,11 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: multiName[0]!.id },
+      arguments: { id: multiName[0]!.id },
     });
     const verifySecond = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: multiName[1]!.id },
+      arguments: { id: multiName[1]!.id },
     });
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);
@@ -158,11 +158,11 @@ describe("ppal-create-scene", () => {
     await sleep(100);
     const verifyCsv1 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: csv[0]!.id, include: ["color"] },
+      arguments: { id: csv[0]!.id, include: ["color"] },
     });
     const verifyCsv2 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: csv[1]!.id, include: ["color"] },
+      arguments: { id: csv[1]!.id, include: ["color"] },
     });
     const csvScene1 = parseToolResult<ReadSceneResult>(verifyCsv1);
     const csvScene2 = parseToolResult<ReadSceneResult>(verifyCsv2);
@@ -232,7 +232,7 @@ describe("ppal-create-scene", () => {
     const captured = parseToolResult<ReadSceneResult>(
       await ctx.client!.callTool({
         name: "ppal-read-scene",
-        arguments: { sceneId: capture.id },
+        arguments: { id: capture.id },
       }),
     );
 

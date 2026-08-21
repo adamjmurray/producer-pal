@@ -420,7 +420,7 @@ export async function readClipWithNotes(
 ): Promise<ReadClipResult> {
   const result = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
+    arguments: { id: clipId, include: ["notes"] },
   });
 
   return parseToolResult<ReadClipResult>(result);

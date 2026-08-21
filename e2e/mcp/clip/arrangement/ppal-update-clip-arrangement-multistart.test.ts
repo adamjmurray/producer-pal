@@ -98,7 +98,7 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: movedClip.id, include: ["timing"] },
+      arguments: { id: movedClip.id, include: ["timing"] },
     });
     const clip = parseToolResult<ReadClipResult>(readResult);
 

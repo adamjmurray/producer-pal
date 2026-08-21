@@ -89,11 +89,11 @@ describe("ppal-duplicate", () => {
     // Verify both tracks have the same name
     const readTrack1 = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: dupMultiple[0]!.id },
+      arguments: { id: dupMultiple[0]!.id },
     });
     const readTrack2 = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: dupMultiple[1]!.id },
+      arguments: { id: dupMultiple[1]!.id },
     });
 
     expect(parseToolResult<{ name: string }>(readTrack1).name).toBe(
@@ -182,11 +182,11 @@ describe("ppal-duplicate", () => {
     // Verify both scenes have the same name
     const readScene1 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: dupMultipleScenes[0]!.id },
+      arguments: { id: dupMultipleScenes[0]!.id },
     });
     const readScene2 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: dupMultipleScenes[1]!.id },
+      arguments: { id: dupMultipleScenes[1]!.id },
     });
 
     expect(parseToolResult<{ name: string }>(readScene1).name).toBe(
@@ -259,7 +259,7 @@ describe("ppal-duplicate", () => {
     for (const dupClip of dupClipMultiSlots) {
       const readClip = await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: dupClip.id },
+        arguments: { id: dupClip.id },
       });
 
       expect(parseToolResult<{ name: string }>(readClip).name).toBe(
@@ -374,7 +374,7 @@ describe("ppal-duplicate", () => {
 
     const readEarly = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: early!.id, include: ["timing"] },
+      arguments: { id: early!.id, include: ["timing"] },
     });
 
     expect(parseToolResult<ReadClipResult>(readEarly).arrangementLength).toBe(
@@ -446,7 +446,7 @@ describe("ppal-duplicate", () => {
     // Verify duplicated device exists by reading it
     const readDupDeviceResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: dupDevice.id },
+      arguments: { id: dupDevice.id },
     });
     const readDupDevice =
       parseToolResult<ReadDeviceResult>(readDupDeviceResult);
@@ -479,7 +479,7 @@ describe("ppal-duplicate", () => {
     // Verify duplicated device exists on target track
     const readDupDevice2Result = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: dupDeviceToTrack.id },
+      arguments: { id: dupDeviceToTrack.id },
     });
     const readDupDevice2 =
       parseToolResult<ReadDeviceResult>(readDupDevice2Result);

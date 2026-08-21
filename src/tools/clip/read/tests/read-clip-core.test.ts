@@ -440,7 +440,7 @@ describe("readClip", () => {
     });
 
     const result = readClip({
-      clipId: "id session_clip_id",
+      id: "id session_clip_id",
       include: ["timing"],
     });
 
@@ -477,7 +477,7 @@ describe("readClip", () => {
     });
 
     const result = readClip({
-      clipId: "id arrangement_clip_id",
+      id: "id arrangement_clip_id",
       include: ["timing"],
     });
 
@@ -530,7 +530,7 @@ describe("readClip", () => {
       livePath.track(3).takeLane(0).arrangementClip(0),
     );
 
-    const result = readClip({ clipId: "id take_lane_clip_id" });
+    const result = readClip({ id: "id take_lane_clip_id" });
 
     // take_lanes 0 is the first take lane (the main lane is excluded from the collection)
     expect(result.path).toBe("t3/l0");
@@ -543,7 +543,7 @@ describe("readClip", () => {
       livePath.track(3).arrangementClip(0),
     );
 
-    const result = readClip({ clipId: "id main_lane_clip_id" });
+    const result = readClip({ id: "id main_lane_clip_id" });
 
     expect(result.view).toBe("arrangement");
   });
@@ -600,15 +600,15 @@ describe("readClip", () => {
 
   // The message names path, not the deprecated slot: a caller who sent neither
   // can't see slot, so pointing at it is advice they can't act on.
-  it("throws an error when neither clipId nor path are provided", () => {
+  it("throws an error when neither id nor path are provided", () => {
     expect(() => readClip({})).toThrow(
-      "readClip failed: clipId or path is required",
+      "readClip failed: id or path is required",
     );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "readClip failed: clipId or path is required",
+      "readClip failed: id or path is required",
     );
     expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "readClip failed: clipId or path is required",
+      "readClip failed: id or path is required",
     );
   });
 });

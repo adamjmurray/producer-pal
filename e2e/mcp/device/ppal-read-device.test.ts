@@ -27,10 +27,10 @@ describe("ppal-read-device", () => {
     expect(byPath.id).toBeDefined();
     expect(byPath.type).toContain("Compressor");
 
-    // Test 2: Read device by deviceId
+    // Test 2: Read device by id
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: String(byPath.id) },
+      arguments: { id: String(byPath.id) },
     });
     const byId = parseToolResult<ReadDeviceResult>(byIdResult);
 

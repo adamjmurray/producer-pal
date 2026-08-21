@@ -37,7 +37,7 @@ async function readDrumPadById(
   return parseToolResult<DrumPadInfo>(
     await client.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId, include: ["chains"] },
+      arguments: { id: deviceId, include: ["chains"] },
     }),
   );
 }
@@ -57,7 +57,7 @@ describe("ppal-read-device with a drum pad id", () => {
     const pad = parseToolResult<{ path: string; pitch: string }>(
       await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: padId },
+        arguments: { id: padId },
       }),
     );
 

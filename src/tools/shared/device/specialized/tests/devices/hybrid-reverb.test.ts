@@ -497,7 +497,7 @@ describe("Hybrid Reverb via read-device", () => {
     registerReadableHybridReverb();
 
     const result = readDevice({
-      deviceId: "hr-1",
+      id: "hr-1",
       include: ["params", "options"],
     });
 
@@ -536,7 +536,7 @@ describe("Hybrid Reverb via read-device", () => {
     registerReadableHybridReverb();
 
     const result = readDevice({
-      deviceId: "hr-1",
+      id: "hr-1",
       include: ["params"],
     });
 
@@ -547,7 +547,7 @@ describe("Hybrid Reverb via read-device", () => {
     registerReadableHybridReverb();
 
     const result = readDevice({
-      deviceId: "hr-1",
+      id: "hr-1",
       include: ["params", "options"],
     });
 

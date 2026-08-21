@@ -113,11 +113,11 @@ async function applyGainTransformToTwoAudioClips(
 
   const read0 = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId: clip0.id, include: ["sample"] },
+    arguments: { id: clip0.id, include: ["sample"] },
   });
   const read1 = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId: clip1.id, include: ["sample"] },
+    arguments: { id: clip1.id, include: ["sample"] },
   });
 
   return {
@@ -145,7 +145,7 @@ async function readClipSampleProperty(
 ): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
+    arguments: { id: clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 

@@ -46,7 +46,7 @@ describe("ppal-read-clip", () => {
     // Test 2: Read clip by clipId
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: midiClip.id! },
+      arguments: { id: midiClip.id! },
     });
     const byIdClip = parseToolResult<ReadClipResult>(byIdResult);
 
@@ -134,7 +134,7 @@ describe("ppal-read-clip", () => {
     const arrClipId = track.arrangementClips![0]!.id;
     const arrResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: arrClipId, include: ["timing"] },
+      arguments: { id: arrClipId, include: ["timing"] },
     });
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 

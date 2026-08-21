@@ -85,7 +85,7 @@ describe("ppal-delete nested rack device ordering", () => {
     for (const id of [c1d0, c1d1, d1d0]) {
       const read = await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: id },
+        arguments: { id: id },
       });
 
       expect(extractToolResultText(read).toLowerCase()).toMatch(

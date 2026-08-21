@@ -53,7 +53,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyMinimal = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: minimal.id },
+      arguments: { id: minimal.id },
     });
     const minimalClip = parseToolResult<ReadClipResult>(verifyMinimal);
 
@@ -76,7 +76,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyNotes = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: notes.id, include: ["notes"] },
+      arguments: { id: notes.id, include: ["notes"] },
     });
     const notesClip = parseToolResult<ReadClipResult>(verifyNotes);
 
@@ -95,7 +95,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyNamed = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: named.id },
+      arguments: { id: named.id },
     });
     const namedClip = parseToolResult<ReadClipResult>(verifyNamed);
 
@@ -114,7 +114,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyColored = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: colored.id, include: ["color"] },
+      arguments: { id: colored.id, include: ["color"] },
     });
     const coloredClip = parseToolResult<ReadClipResult>(verifyColored);
 
@@ -134,7 +134,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyLength = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: lengthClip.id, include: ["timing"] },
+      arguments: { id: lengthClip.id, include: ["timing"] },
     });
     const readLengthClip = parseToolResult<ReadClipResult>(verifyLength);
 
@@ -153,7 +153,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyLooping = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: loopingClip.id, include: ["timing"] },
+      arguments: { id: loopingClip.id, include: ["timing"] },
     });
     const readLoopingClip = parseToolResult<ReadClipResult>(verifyLooping);
 
@@ -172,7 +172,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyTimeSig = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: timeSigClip.id, include: ["timing"] },
+      arguments: { id: timeSigClip.id, include: ["timing"] },
     });
     const readTimeSigClip = parseToolResult<ReadClipResult>(verifyTimeSig);
 
@@ -213,7 +213,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyArrangement = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: arrangement.id },
+      arguments: { id: arrangement.id },
     });
     const arrangementClip = parseToolResult<ReadClipResult>(verifyArrangement);
 
@@ -244,7 +244,7 @@ describe("ppal-create-clip", () => {
     for (const clip of multiSession) {
       const readClip = await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: clip.id },
+        arguments: { id: clip.id },
       });
 
       expect(parseToolResult<{ name: string }>(readClip).name).toBe(
@@ -270,7 +270,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: multiArrangement[0]!.id },
+      arguments: { id: multiArrangement[0]!.id },
     });
     const firstClip = parseToolResult<ReadClipResult>(verifyFirst);
 
@@ -304,7 +304,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyAudioSession = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioSession.id },
+      arguments: { id: audioSession.id },
     });
     const audioSessionClip =
       parseToolResult<ReadClipResult>(verifyAudioSession);
@@ -330,7 +330,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyAudioArrangement = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioArrangement.id },
+      arguments: { id: audioArrangement.id },
     });
     const audioArrangementClip = parseToolResult<ReadClipResult>(
       verifyAudioArrangement,
@@ -355,7 +355,7 @@ describe("ppal-create-clip", () => {
     await sleep(100);
     const verifyAudioNamed = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioNamed.id, include: ["color"] },
+      arguments: { id: audioNamed.id, include: ["color"] },
     });
     const audioNamedClip = parseToolResult<ReadClipResult>(verifyAudioNamed);
 

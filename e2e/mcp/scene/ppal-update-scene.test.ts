@@ -40,7 +40,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterName = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const namedScene = parseToolResult<ReadSceneResult>(afterName);
 
@@ -55,7 +55,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterColor = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["color"] },
+      arguments: { id: sceneId, include: ["color"] },
     });
     const coloredScene = parseToolResult<ReadSceneResult>(afterColor);
 
@@ -71,7 +71,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterTempo = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const tempoScene = parseToolResult<ReadSceneResult>(afterTempo);
 
@@ -86,7 +86,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterTimeSig = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const timeSigScene = parseToolResult<ReadSceneResult>(afterTimeSig);
 
@@ -101,7 +101,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterDisableTempo = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const disabledTempoScene =
       parseToolResult<ReadSceneResult>(afterDisableTempo);
@@ -118,7 +118,7 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const afterDisableTimeSig = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const disabledTimeSigScene =
       parseToolResult<ReadSceneResult>(afterDisableTimeSig);
@@ -137,11 +137,11 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const verifySecond = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: secondSceneId },
+      arguments: { id: secondSceneId },
     });
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);

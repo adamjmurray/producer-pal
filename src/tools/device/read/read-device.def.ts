@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadDevice = defineTool("ppal-read-device", {
@@ -18,10 +19,11 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   },
 
   inputSchema: {
-    deviceId: z.coerce
-      .string()
-      .optional()
-      .describe("device or drum pad ID to read"),
+    id: z.coerce.string().optional().describe("device or drum pad ID to read"),
+
+    deviceId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     path: z.coerce
       .string()
       .optional()

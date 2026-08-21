@@ -308,7 +308,7 @@ describe("readClip - include flag gating", () => {
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
 
-    const result = readClip({ clipId: "id arr_clip", include: [] });
+    const result = readClip({ id: "id arr_clip", include: [] });
 
     expect(result.view).toBe("arrangement");
     expect(result.arrangementStart).toBe("3|1"); // start_time 8 in 4/4

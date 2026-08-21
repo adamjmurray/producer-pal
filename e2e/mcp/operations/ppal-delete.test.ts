@@ -46,7 +46,7 @@ describe("ppal-delete", () => {
     // Verify track no longer exists
     const verifyTrack = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: track.id },
+      arguments: { id: track.id },
     });
     const verifyTrackText = extractToolResultText(verifyTrack);
 
@@ -120,7 +120,7 @@ describe("ppal-delete", () => {
     // Verify host track still exists
     const verifyHost = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: hostTrack.id },
+      arguments: { id: hostTrack.id },
     });
     const verifiedHost = parseToolResult<{ id: string }>(verifyHost);
 
@@ -199,7 +199,7 @@ describe("ppal-delete", () => {
     // Verify clip no longer exists
     const verifyClip = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { id: clip.id },
     });
     const verifyClipText = extractToolResultText(verifyClip);
 
@@ -253,7 +253,7 @@ describe("ppal-delete", () => {
     // Verify device no longer exists
     const verifyDevice = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId },
+      arguments: { id: deviceId },
     });
     const verifyDeviceText = extractToolResultText(verifyDevice);
 

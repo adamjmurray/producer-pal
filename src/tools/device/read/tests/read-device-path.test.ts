@@ -23,22 +23,35 @@ describe("readDevice with path parameter", () => {
     clearMockRegistry();
   });
 
-  it("should throw error when neither deviceId nor path is provided", () => {
-    expect(() => readDevice({})).toThrow(
-      "Either deviceId or path must be provided",
+  it("should throw error when neither id nor path is provided", () => {
+    expect(() => readDevice({})).toThrow("Either id or path must be provided");
+  });
+
+  it("should throw error when both id and path are provided", () => {
+    expect(() => readDevice({ id: "device-123", path: "t1/d0" })).toThrow(
+      "Provide either id or path, not both",
     );
   });
 
-  it("should throw error when both deviceId and path are provided", () => {
-    expect(() => readDevice({ deviceId: "device-123", path: "t1/d0" })).toThrow(
-      "Provide either deviceId or path, not both",
-    );
+  // A permanent alias, not a migration: models reach for the prefixed spelling
+  // on their own, so it keeps working.
+  it("still reads a device by the deviceId alias", () => {
+    setupBasicDeviceMock({
+      id: "device-456",
+      path: String(livePath.track(1).device(0)),
+      class_display_name: "Operator",
+      type: 1,
+    });
+
+    expect(readDevice({ deviceId: "device-456" })).toMatchObject({
+      id: "device-456",
+    });
   });
 
   // Both spellings are published, so a model picking one nulls the other.
   // z.coerce.string() renders that as "null" — counting it as sent refused the
   // read over a param the caller deliberately left empty.
-  it("reads by path when deviceId is a coerced null", () => {
+  it("reads by path when id is a coerced null", () => {
     const warn = vi.spyOn(console, "warn");
 
     setupBasicDeviceMock({
@@ -48,10 +61,10 @@ describe("readDevice with path parameter", () => {
       type: 1,
     });
 
-    expect(readDevice({ deviceId: "null", path: "t1/d0" })).toMatchObject({
+    expect(readDevice({ id: "null", path: "t1/d0" })).toMatchObject({
       id: "device-456",
     });
-    expect(warn).toHaveBeenCalledWith('deviceId "null" names nothing');
+    expect(warn).toHaveBeenCalledWith('id "null" names nothing');
   });
 
   it("should read device by path", () => {
@@ -216,7 +229,7 @@ describe("readDevice with path parameter", () => {
 
   it("should throw error for empty path (treated as no path)", () => {
     expect(() => readDevice({ path: "" })).toThrow(
-      "Either deviceId or path must be provided",
+      "Either id or path must be provided",
     );
   });
 

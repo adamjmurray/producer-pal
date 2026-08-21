@@ -82,6 +82,55 @@ describe("hidden params", () => {
     });
   });
 
+  // Every tool names its target with "id". The prefixed spellings a model
+  // reaches for on its own stay accepted for good, so a well-founded guess
+  // costs a warning rather than a round trip.
+  it("publishes id and hides the prefixed spelling on the read tools", () => {
+    const aliases = {
+      "ppal-read-clip": "clipId",
+      "ppal-read-track": "trackId",
+      "ppal-read-scene": "sceneId",
+      "ppal-read-device": "deviceId",
+    };
+
+    const shape = Object.fromEntries(
+      Object.entries(aliases).map(([toolName, alias]) => {
+        const def = STANDARD_TOOL_DEFS.find(
+          (td: ToolDefFunction) => td.toolName === toolName,
+        ) as ToolDefFunction;
+        const { validating, hidden } = resolveToolSchema(
+          def.toolOptions.inputSchema,
+          {},
+        );
+        const published = publishedParams(toolName);
+
+        return [
+          toolName,
+          {
+            publishesId: published.includes("id"),
+            publishesAlias: published.includes(alias),
+            validatesAlias: Object.keys(validating).includes(alias),
+            alias: hidden[alias],
+          },
+        ];
+      }),
+    );
+
+    const folded = {
+      publishesId: true,
+      publishesAlias: false,
+      validatesAlias: true,
+      alias: { kind: "alias", canonical: "id" },
+    };
+
+    expect(shape).toStrictEqual({
+      "ppal-read-clip": folded,
+      "ppal-read-track": folded,
+      "ppal-read-scene": folded,
+      "ppal-read-device": folded,
+    });
+  });
+
   it("still validates the params it stopped publishing", () => {
     for (const toolName of ["ppal-duplicate", "ppal-update-clip"]) {
       const def = STANDARD_TOOL_DEFS.find(

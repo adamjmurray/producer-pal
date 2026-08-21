@@ -58,7 +58,7 @@ async function transformAndReadGain(
 
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
+    arguments: { id: clipId, include: ["sample"] },
   });
 
   return parseToolResult<ReadClipResult>(result).gainDb!;

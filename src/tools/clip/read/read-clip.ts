@@ -34,6 +34,8 @@ interface ReadClipArgs {
   path?: string | null;
   /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
+  id?: string | null;
+  /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
   /** @internal Suppress warning for empty clip slots (used by batch readers) */
@@ -104,7 +106,7 @@ export interface ReadClipResult {
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
  * @param args.path - Session clip slot (e.g., "t0/s3")
- * @param args.clipId - Clip ID to directly access any clip
+ * @param args.id - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
  * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
@@ -124,7 +126,7 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("readClip failed: clipId or path is required");
+    throw new Error("readClip failed: id or path is required");
   }
 
   // Resolve clip from ID or location

@@ -13,7 +13,7 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   categorizeDevices,
@@ -41,6 +41,8 @@ import {
 
 interface ReadTrackArgs {
   trackIndex?: number;
+  id?: string;
+  /** Hidden alias for id */
   trackId?: string;
   trackType?: string;
   returnTrackNames?: string[];
@@ -89,12 +91,13 @@ export function readTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
-  const { trackIndex, trackId, trackType, returnTrackNames } = args;
+  const { trackIndex, trackType, returnTrackNames } = args;
+  const trackId = namedIdParam(args.id, args.trackId, "trackId");
   const category = trackType ?? "regular";
 
   // Validate parameters
   if (trackId == null && trackIndex == null && category !== "master") {
-    throw new Error("Either trackId or trackIndex must be provided");
+    throw new Error("Either id or trackIndex must be provided");
   }
 
   let track: LiveAPI;
@@ -102,7 +105,7 @@ export function readTrack(
   let resolvedCategory = category;
 
   if (trackId != null) {
-    // Use trackId to access track directly and validate it's a track
+    // Use the id to access the track directly and validate it's a track
     track = validateIdType(trackId, "track", "readTrack");
     // Determine track category and index from the track's path
     resolvedCategory = (track.category as string | undefined) ?? "regular";

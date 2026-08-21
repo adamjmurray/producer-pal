@@ -22,7 +22,7 @@ describe("readDevice with a drum pad id", () => {
       padProperties: { "pad-36": { note: 36, name: "Kick" } },
     });
 
-    expect(readDevice({ deviceId: "pad-36" })).toStrictEqual({
+    expect(readDevice({ id: "pad-36" })).toStrictEqual({
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
@@ -39,7 +39,7 @@ describe("readDevice with a drum pad id", () => {
       padProperties: { "pad-42": { note: 42, name: "Hat", solo: 1 } },
     });
 
-    expect(readDevice({ deviceId: "pad-42" })).toStrictEqual(
+    expect(readDevice({ id: "pad-42" })).toStrictEqual(
       readDevice({ path: "t1/d0/pGb1" }),
     );
   });
@@ -56,7 +56,7 @@ describe("readDevice with a drum pad id", () => {
       },
     });
 
-    const result = readDevice({ deviceId: "pad-36", include: ["chains"] });
+    const result = readDevice({ id: "pad-36", include: ["chains"] });
 
     expect(result.chains).toMatchObject([
       { id: "chain-1", path: "t1/d0/pC1/c0", name: "Layer 1" },

@@ -127,7 +127,7 @@ describe("readClip path param", () => {
   // Regression: clipId won in silence, so a model pasting a stale id beside a
   // fresh path got the stale clip back — reported at its own slot, with nothing
   // said about the path it asked for.
-  it("refuses a clipId naming a different clip than path", () => {
+  it("refuses an id naming a different clip than path", () => {
     setupMidiClipMock({
       trackIndex: 1,
       sceneIndex: 1,
@@ -141,12 +141,12 @@ describe("readClip path param", () => {
       clipProps: { name: "From clipId" },
     });
 
-    expect(() => readClip({ path: "t1/s1", clipId: "stale" })).toThrow(
-      "readClip failed: path and clipId name different clips; use one",
+    expect(() => readClip({ path: "t1/s1", id: "stale" })).toThrow(
+      "readClip failed: path and id name different clips; use one",
     );
   });
 
-  it("accepts a clipId naming the same clip as path", () => {
+  it("accepts an id naming the same clip as path", () => {
     setupMidiClipMock({
       trackIndex: 1,
       sceneIndex: 1,
@@ -154,14 +154,14 @@ describe("readClip path param", () => {
       clipProps: { name: "Test Clip" },
     });
 
-    expect(readClip({ path: "t1/s1", clipId: "fresh" }).name).toBe("Test Clip");
+    expect(readClip({ path: "t1/s1", id: "fresh" }).name).toBe("Test Clip");
   });
 
   // Both addressing params are published side by side ("provide this or path"),
   // so a model filling in the unused one with null is the expected shape.
   // z.coerce.string() renders that as "null", and counting it as sent refused
   // the call over a param the caller deliberately left empty.
-  it.each(["clipId", "path"] as const)(
+  it.each(["id", "path"] as const)(
     "reads the clip the other param names when %s is a coerced null",
     (param) => {
       const warn = vi.spyOn(console, "warn");
@@ -173,12 +173,25 @@ describe("readClip path param", () => {
         clipProps: { name: "Test Clip" },
       });
 
-      const named = param === "clipId" ? { path: "t1/s1" } : { clipId: "123" };
+      const named = param === "id" ? { path: "t1/s1" } : { id: "123" };
 
       expect(readClip({ ...named, [param]: "null" }).name).toBe("Test Clip");
       expect(warn).toHaveBeenCalledWith(`${param} "null" names nothing`);
     },
   );
+
+  // A permanent alias, not a migration: models reach for the prefixed spelling
+  // on their own, so it keeps working.
+  it("still reads a clip by the clipId alias", () => {
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipId: "123",
+      clipProps: { name: "Test Clip" },
+    });
+
+    expect(readClip({ clipId: "123" }).name).toBe("Test Clip");
+  });
 
   // trackIndex/sceneIndex are permanent aliases, not deprecated, so they warn
   // rather than throw — matching create-clip.

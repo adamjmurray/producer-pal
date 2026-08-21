@@ -163,7 +163,7 @@ describe("Roar via read-device", () => {
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableRoar();
 
-    const result = readDevice({ deviceId: "roar-1", include: ["params"] });
+    const result = readDevice({ id: "roar-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "routingMode", value: "multi-band" },
@@ -175,7 +175,7 @@ describe("Roar via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableRoar();
 
-    const result = readDevice({ deviceId: "roar-1", include: ["options"] });
+    const result = readDevice({ id: "roar-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

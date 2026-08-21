@@ -88,7 +88,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
 
     for (const copy of midiCopies) {
       const clip = await call<ReadClipResult>("ppal-read-clip", {
-        clipId: copy.id,
+        id: copy.id,
       });
 
       starts.push(clip.arrangementStart);
@@ -118,7 +118,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
       arrangementLength: "1bar",
     });
     const clip = await call<ReadClipResult>("ppal-read-clip", {
-      clipId: copy.id,
+      id: copy.id,
       include: ["*"],
     });
 

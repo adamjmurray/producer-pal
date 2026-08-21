@@ -379,7 +379,7 @@ describe("Spectral Resonator via read-device", () => {
     registerReadableSpectralResonator();
 
     const result = readDevice({
-      deviceId: "spectral-resonator-1",
+      id: "spectral-resonator-1",
       include: ["params"],
     });
 
@@ -398,7 +398,7 @@ describe("Spectral Resonator via read-device", () => {
     registerReadableSpectralResonator();
 
     const result = readDevice({
-      deviceId: "spectral-resonator-1",
+      id: "spectral-resonator-1",
       include: ["options"],
     });
 

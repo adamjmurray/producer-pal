@@ -25,7 +25,7 @@ import {
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -265,6 +265,7 @@ function mapMarker(marker: WarpMarkerData): WarpMarker {
 interface ClipLocationArgs {
   path?: string | null;
   slot?: string | null;
+  id?: string | null;
   clipId?: string | null;
   trackIndex?: number | null;
   sceneIndex?: number | null;
@@ -284,7 +285,7 @@ interface ClipLocation {
  * @returns Resolved clipId, trackIndex, and sceneIndex
  */
 export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
-  const clipId = namedParam(args.clipId, "clipId") ?? null;
+  const clipId = namedIdParam(args.id, args.clipId, "clipId") ?? null;
   const path = namedParam(args.path, "path");
   const slot = namedHiddenPath(args.slot ?? undefined, "slot");
 
@@ -324,10 +325,10 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
 }
 
 /**
- * Refuse a clipId naming a clip other than the one the path names. clipId used
- * to win in silence, so a stale id pasted beside a fresh path read the stale
- * clip and reported its own slot as if that's what was asked for.
- * @param clipId - The clipId param, if the caller sent one
+ * Refuse an id naming a clip other than the one the path names. The id used to
+ * win in silence, so a stale one pasted beside a fresh path read the stale clip
+ * and reported its own slot as if that's what was asked for.
+ * @param clipId - The resolved id, if the caller sent one
  * @param position - The slot the path names
  * @param position.trackIndex - Track index
  * @param position.sceneIndex - Scene index
@@ -347,7 +348,7 @@ function assertClipIdAtSlot(
 
   if (named.path !== atPath) {
     throw new Error(
-      "readClip failed: path and clipId name different clips; use one",
+      "readClip failed: path and id name different clips; use one",
     );
   }
 }

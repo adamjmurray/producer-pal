@@ -33,7 +33,7 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyMidi = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: midi.id },
+      arguments: { id: midi.id },
     });
     const midiTrack = parseToolResult<ReadTrackResult>(verifyMidi);
 
@@ -52,7 +52,7 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyAudio = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: audio.id },
+      arguments: { id: audio.id },
     });
     const audioTrack = parseToolResult<ReadTrackResult>(verifyAudio);
 
@@ -92,7 +92,7 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyNamed = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: named.id },
+      arguments: { id: named.id },
     });
     const namedTrack = parseToolResult<ReadTrackResult>(verifyNamed);
 
@@ -108,7 +108,7 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyColored = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: colored.id, include: ["color"] },
+      arguments: { id: colored.id, include: ["color"] },
     });
     const coloredTrack = parseToolResult<ReadTrackResult>(verifyColored);
 
@@ -125,7 +125,7 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyMuted = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: muted.id },
+      arguments: { id: muted.id },
     });
     const mutedTrack = parseToolResult<ReadTrackResult>(verifyMuted);
 
@@ -173,13 +173,13 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyKick = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: multiName[0]!.id },
+      arguments: { id: multiName[0]!.id },
     });
     const kickTrack = parseToolResult<ReadTrackResult>(verifyKick);
 
     const verifySnare = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: multiName[1]!.id },
+      arguments: { id: multiName[1]!.id },
     });
     const snareTrack = parseToolResult<ReadTrackResult>(verifySnare);
 
@@ -198,15 +198,15 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyBass = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: fewerNames[0]!.id },
+      arguments: { id: fewerNames[0]!.id },
     });
     const verifyLead = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: fewerNames[1]!.id },
+      arguments: { id: fewerNames[1]!.id },
     });
     const verifyDefault = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: fewerNames[2]!.id },
+      arguments: { id: fewerNames[2]!.id },
     });
     const bassTrack = parseToolResult<ReadTrackResult>(verifyBass);
     const leadTrack = parseToolResult<ReadTrackResult>(verifyLead);
@@ -229,11 +229,11 @@ describe("ppal-create-track", () => {
     await sleep(100);
     const verifyRed = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: multiColor[0]!.id, include: ["color"] },
+      arguments: { id: multiColor[0]!.id, include: ["color"] },
     });
     const verifyGreen = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: multiColor[1]!.id, include: ["color"] },
+      arguments: { id: multiColor[1]!.id, include: ["color"] },
     });
     const redTrack = parseToolResult<ReadTrackResult>(verifyRed);
     const greenTrack = parseToolResult<ReadTrackResult>(verifyGreen);

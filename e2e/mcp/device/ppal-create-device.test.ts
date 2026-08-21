@@ -80,7 +80,7 @@ describe("ppal-create-device", () => {
     await sleep(100);
     const verifyResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: comp.id },
+      arguments: { id: comp.id },
     });
     const verified = parseToolResult<ReadDeviceResult>(verifyResult);
 
@@ -99,7 +99,7 @@ describe("ppal-create-device", () => {
     await sleep(100);
     const verifyArp = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: arp.id },
+      arguments: { id: arp.id },
     });
     const arpDevice = parseToolResult<ReadDeviceResult>(verifyArp);
 

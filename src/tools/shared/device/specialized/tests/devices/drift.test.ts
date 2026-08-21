@@ -519,7 +519,7 @@ describe("Drift via read-device", () => {
   it("includes all pseudo-params in parameters and omits modulations", () => {
     registerReadableDrift();
 
-    const result = readDevice({ deviceId: "drift-1", include: ["params"] });
+    const result = readDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterMod1Source",
@@ -547,7 +547,7 @@ describe("Drift via read-device", () => {
   it("includes all 15 pseudo-params", () => {
     registerReadableDrift();
 
-    const result = readDevice({ deviceId: "drift-1", include: ["params"] });
+    const result = readDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toHaveLength(15);
   });
@@ -555,7 +555,7 @@ describe("Drift via read-device", () => {
   it("reads 'None' target correctly via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ deviceId: "drift-1", include: ["params"] });
+    const result = readDevice({ id: "drift-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "mod2Target",
@@ -566,7 +566,7 @@ describe("Drift via read-device", () => {
   it("omits a free-slot source whose target is 'None' via read-device", () => {
     registerReadableDrift({ mod_matrix_target_2_index: 0 });
 
-    const result = readDevice({ deviceId: "drift-1", include: ["params"] });
+    const result = readDevice({ id: "drift-1", include: ["params"] });
     const names = (result.parameters as Array<{ name: string }>).map(
       (p) => p.name,
     );
@@ -580,7 +580,7 @@ describe("Drift via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableDrift();
 
-    const result = readDevice({ deviceId: "drift-1", include: ["options"] });
+    const result = readDevice({ id: "drift-1", include: ["options"] });
     const paramOptions = (result.options as Record<string, unknown>)
       .paramOptions as Record<string, unknown>;
 

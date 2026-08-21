@@ -98,6 +98,35 @@ export function namedParam(
 }
 
 /**
+ * Reads a target from the canonical `id` param, falling back to the legacy name
+ * a tool still accepts (`clipId`, `ids`, ...). The alias only fills in for a
+ * caller that did not send `id`. Both arriving with different values means one
+ * was about to be dropped in silence, so say which.
+ * @param id - The `id` param
+ * @param alias - The legacy alias param
+ * @param aliasLabel - The alias's name, for the warnings
+ * @returns The trimmed value, or undefined when neither names anything
+ */
+export function namedIdParam(
+  id: string | null | undefined,
+  alias: string | null | undefined,
+  aliasLabel: string,
+): string | undefined {
+  const named = namedParam(id, "id");
+  const namedAlias = namedParam(alias, aliasLabel);
+
+  if (named == null) return namedAlias;
+
+  if (namedAlias != null && namedAlias !== named) {
+    console.warn(
+      `${aliasLabel} "${namedAlias}" ignored — "id" names the target`,
+    );
+  }
+
+  return named;
+}
+
+/**
  * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
  * @param ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
  * @returns Array of trimmed ID strings

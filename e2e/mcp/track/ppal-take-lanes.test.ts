@@ -341,7 +341,7 @@ describe("take lanes", () => {
     const readClip = parseToolResult<ReadClipResult>(
       await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: clip.id },
+        arguments: { id: clip.id },
       }),
     );
 
@@ -390,7 +390,7 @@ describe("take lanes", () => {
     const copy = parseToolResult<ReadClipResult>(
       await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: midiDup.data.id, include: ["notes"] },
+        arguments: { id: midiDup.data.id, include: ["notes"] },
       }),
     );
 
@@ -495,7 +495,7 @@ describe("take lanes", () => {
     const copy = parseToolResult<ReadClipResult>(
       await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: promoted.data.id, include: ["notes"] },
+        arguments: { id: promoted.data.id, include: ["notes"] },
       }),
     );
 

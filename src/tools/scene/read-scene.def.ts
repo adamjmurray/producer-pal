@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
@@ -15,10 +16,11 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    sceneId: z.coerce
-      .string()
-      .optional()
-      .describe("provide this or sceneIndex"),
+    id: z.coerce.string().optional().describe("provide this or sceneIndex"),
+
+    sceneId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     sceneIndex: z.coerce
       .number()
       .int()

@@ -194,7 +194,7 @@ async function expectFourBarClipAt(
 
   const read = parseToolResult<ReadClipResult>(
     await callTool(ctx.client!, "ppal-read-clip", {
-      clipId: clip.id,
+      id: clip.id,
       include: ["notes", "timing"],
     }),
   );

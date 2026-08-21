@@ -179,7 +179,7 @@ function removedLines(full: string, gated: string): string[] {
 async function readNotes(client: Client, clipId: string): Promise<string> {
   const result = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
+    arguments: { id: clipId, include: ["notes"] },
   });
 
   return parseToolResult<ReadClipResult>(result).notes ?? "";
@@ -354,7 +354,7 @@ describe("x-producer-pal-notation", () => {
 
     const starkClip = await restCallTool<ReadClipResult>(
       "ppal-read-clip",
-      { clipId: created.id, include: ["notes"] },
+      { id: created.id, include: ["notes"] },
       { [NOTATION_HEADER]: "stark" },
     );
 

@@ -537,7 +537,7 @@ async function readClip(
 ): Promise<ReadClipResult> {
   const result = await client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include },
+    arguments: { id: clipId, include },
   });
 
   return parseToolResult<ReadClipResult>(result);

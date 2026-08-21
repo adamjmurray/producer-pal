@@ -20,12 +20,16 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    clipId: z.coerce.string().optional().describe("provide this or path"),
+    id: z.coerce.string().optional().describe("provide this or path"),
+
+    clipId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     path: z.coerce
       .string()
       .optional()
       .describe(
-        "clip slot 't<track>/s<scene>', both 0-based (e.g., 't0/s3'). provide this or clipId",
+        "clip slot 't<track>/s<scene>', both 0-based (e.g., 't0/s3'). provide this or id",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

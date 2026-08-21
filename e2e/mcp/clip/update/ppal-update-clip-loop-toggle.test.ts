@@ -90,7 +90,7 @@ async function updateAndRead(
 
   const read = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["*"] },
+    arguments: { id: clipId, include: ["*"] },
   });
 
   return { clip: parseToolResult<ReadClipResult>(read), warnings };
