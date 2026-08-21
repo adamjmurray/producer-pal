@@ -102,7 +102,9 @@ export function navigateRemainingSegments(
 
 /**
  * Map a drum rack's pad IDs by the MIDI note each pad answers to. A Drum Rack
- * nested inside a drum pad has no pads of its own, so its map is empty.
+ * nested inside a drum pad has no pads of its own, so its map is empty and its
+ * pads serialize without an id — that's Live, not a short read. See
+ * dev/Coding-Standards.md, "A Drum Rack Inside a Drum Pad Has No Pads".
  *
  * Live gives a rack one pad per MIDI note — 128 of them, whatever the kit — and
  * lists them in note order, so the ids come straight off the list and the index

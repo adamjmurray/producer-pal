@@ -31,6 +31,32 @@ environment. Run it explicitly with:
 ENABLE_CODE_EXEC=true npm run e2e:mcp
 ```
 
+### The direct Live API tool is off during e2e
+
+`ppal-live-api` is **not** available to an e2e test unless the test asks for it.
+`resetConfig()` posts `tools: [...TOOL_NAMES]`, which is the standard tools only
+— so every `beforeEach` drops it, on a debug build too. A test that needs it
+re-enables it per test:
+
+```ts
+beforeEach(async () => {
+  await setConfig({ liveApiEnabled: true });
+});
+```
+
+That one flag is enough: turning it on also puts the name back in the `tools`
+whitelist. See `control/ppal-live-api.test.ts`.
+
+Two of the three e2e Sets also have the device's own Setup-tab toggle saved off,
+which is why the flag is needed and not just assumed. A debug build
+(`ENABLE_LIVE_API=true`) forces it on and ignores the device's `false`, but
+`POST /config` stays authoritative in both directions even then — that asymmetry
+is what lets a test exercise the disabled state.
+
+The flip side: after any e2e run the server is left with the tool whitelisted
+out, so a later `ppal-client` call gets "Tool ppal-live-api not found" until you
+POST `liveApiEnabled: true` back (or rebuild).
+
 ## How It Works
 
 Tests automatically:

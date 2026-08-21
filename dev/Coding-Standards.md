@@ -170,6 +170,20 @@ by luck rather than by check, and `.get("property")[1]` throws outright.
 `1` for a bad path, a bad index, a bad id and a cleared path alike — it
 describes the wrapper, not the target. It checks the object id instead.
 
+### A Drum Rack Inside a Drum Pad Has No Pads
+
+Verified against Live 12.4.3. A Drum Rack nested in another rack's drum pad has
+an **empty `drum_pads` collection**. Live's own UI shows no pad grid for it
+either — this is how Live works, not a bug and not a read that came out short.
+
+So such a rack serializes its pads with no `id`. The pads themselves still come
+through: they are grouped from the rack's `chains` by `in_note`, which is why
+`processDrumPads` works off chains rather than the pad collection. Only the pad
+id is missing, because there is no pad object to take one from.
+
+Don't "fix" this by falling back to another lookup, and don't assert a pad id in
+a test for a rack nested on a pad.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from

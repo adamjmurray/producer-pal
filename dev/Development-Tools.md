@@ -80,6 +80,10 @@ update state in Ableton Live.
 
 Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
 
+If it's missing from `tools/list`, an e2e run whitelisted it out — see
+`e2e/mcp/README.md`, "The direct Live API tool is off during e2e", for how to
+POST it back.
+
 ### Purpose
 
 Direct Live API access for investigation, debugging, and exploring API behavior.
