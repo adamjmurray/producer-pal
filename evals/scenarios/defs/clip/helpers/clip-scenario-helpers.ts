@@ -569,7 +569,7 @@ export async function clearSessionSlots(
   if (ids.length > 0) {
     await mcpClient.callTool({
       name: "ppal-delete",
-      arguments: { ids: ids.join(","), type: "clip" },
+      arguments: { id: ids.join(","), type: "clip" },
     });
   }
 }

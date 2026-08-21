@@ -144,7 +144,7 @@ function midiJsonNotesAssertion(
     type: "state",
     tool: TOOL_READ_CLIP,
     args: (turns) => ({
-      clipId: getCreatedClip(turns).id ?? "",
+      id: getCreatedClip(turns).id ?? "",
       include: ["notes", "timing"],
     }),
     notation: "midi-json",

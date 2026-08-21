@@ -127,7 +127,9 @@ function assertSurgicalNotRewrite(
 
       // Match the original read to the clip the model actually edited — the
       // first read may be a scene read returning several clips with notes.
-      const editedId = argText(calls[0]?.args.ids) || undefined;
+      // `ids` stays accepted as an alias, so read whichever spelling it sent.
+      const editedId =
+        argText(calls[0]?.args.id ?? calls[0]?.args.ids) || undefined;
       const original =
         readClipNotesFromTurn(turns, readTurn, editedId)?.notes ?? null;
 
