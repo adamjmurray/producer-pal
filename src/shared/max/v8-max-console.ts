@@ -112,9 +112,8 @@ export const error = (...args: unknown[]): void => {
  * response to append to, so it goes to the Max console — the user can act on it,
  * and no other request's result gets polluted.
  *
- * Outlet 1 still carries every warning as a patch-level debug stream. The patch
- * buffers those, and the response path wipes that buffer before it sends, so this
- * copy never reaches the AI. See sendResponse() in live-api-adapter.ts.
+ * Outlet 1 still carries every warning, as a debug stream nothing in the patch
+ * is wired to — hang a print on it when you need to watch warnings live.
  *
  * @param args - Values to log as warnings
  */

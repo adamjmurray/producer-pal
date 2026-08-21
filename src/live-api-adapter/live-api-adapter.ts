@@ -358,12 +358,6 @@ function sendResponse(
   result: object,
   warnings: string[],
 ): void {
-  // The patch buffers everything that reached outlet 1 and joins it onto this
-  // message. Wipe that buffer first: it holds a duplicate of every warning in
-  // `warnings`, plus any raised with no request in flight, and appending either
-  // would double-report or misattribute. `warnings` is the only source now.
-  outlet(1, "zlclear");
-
   const jsonString = JSON.stringify(result);
   const { chunks, tooLargeError } = planChunks(jsonString);
 

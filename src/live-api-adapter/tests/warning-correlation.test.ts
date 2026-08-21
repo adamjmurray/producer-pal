@@ -120,23 +120,21 @@ describe("warning correlation", () => {
     expect(warningsSentFor("req-quiet")).toStrictEqual([]);
   });
 
-  it("wipes the patch's buffer before responding, so nothing rides along", async () => {
+  it("still mirrors a warning to outlet 1, and wipes no buffer", async () => {
     vi.mocked(readTrack).mockImplementation(() => {
       warn("mine");
 
       return {};
     });
 
-    await mcp_request("req-wipe", "ppal-read-track", "{}");
+    await mcp_request("req-debug", "ppal-read-track", "{}");
 
     const calls = vi.mocked(outlet).mock.calls;
-    const zlclear = calls.findIndex(
-      (args) => args[0] === 1 && args[1] === "zlclear",
-    );
-    const response = calls.findIndex((args) => args[1] === "mcp_response");
 
-    expect(zlclear).toBeGreaterThanOrEqual(0);
-    expect(zlclear).toBeLessThan(response);
+    // Outlet 1 is a debug stream now: the patch buffers nothing, so there is
+    // nothing to clear before the response goes out.
+    expect(calls).toContainEqual([1, "mine"]);
+    expect(calls.some((args) => args[1] === "zlclear")).toBe(false);
   });
 
   it("does not attach a warning raised with no request in flight", async () => {
