@@ -74,6 +74,17 @@ export function duplicateDrumPad(
     return null;
   }
 
+  // What Live does for copy_pad(n, n) isn't documented, and both answers are
+  // bad: layering a pad onto itself doubles its chains, and a no-op reports a
+  // copy that never happened. A repeated toPath entry is all it takes.
+  if (source.midi === destination.midi) {
+    console.warn(
+      `duplicate: drum pad ${midiToNoteName(source.midi)} can't be copied onto itself, so toPath "${toPath}" was skipped`,
+    );
+
+    return null;
+  }
+
   const rack = LiveAPI.from(source.rackPath);
 
   if (!canCopyPads(rack)) {

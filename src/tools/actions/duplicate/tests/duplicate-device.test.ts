@@ -519,6 +519,45 @@ describe("duplicate - device duplication", () => {
     );
   });
 
+  it("re-reads the source device for each destination", async () => {
+    // A LiveAPI follows its path. The first copy lands in the source's own
+    // container at or before its index, so Live shifts the source up one and
+    // an object built before that now names whatever took its place.
+    registerMockObject("src_device", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/1", {
+      path: livePath.track(1).device(1),
+    });
+    registerMockObject("live_set/tracks/1/devices/2", {
+      path: livePath.track(1).device(2),
+    });
+
+    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
+      // The copy inserted at t0/d0 pushed the source from d1 to d2.
+      registerMockObject("src_device", {
+        path: livePath.track(0).device(2),
+        type: "PluginDevice",
+      });
+
+      return "moved";
+    });
+
+    await duplicate({
+      type: "device",
+      id: "src_device",
+      toPath: "t0/d0,t2/d0",
+    });
+
+    // The temp track mirrors the source track, so the copy the second
+    // destination moves is the one at the source's CURRENT index.
+    expect(vi.mocked(moveDeviceToPathMock).mock.calls[1]?.[0]).toMatchObject({
+      _path: String(livePath.track(1).device(2)),
+    });
+  });
+
   it("stays quiet when no arrangement param was sent", async () => {
     setupDeviceDuplicationMocks(1);
 

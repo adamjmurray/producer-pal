@@ -268,6 +268,21 @@ describe("duplicate - drum pad", () => {
     );
   });
 
+  it("refuses a pad copied onto itself", async () => {
+    const rack = registerCopyReadyRack();
+
+    const result = await copyC1ToD1({ toPath: "t0/d0/pC1,t0/d0/pD1" });
+
+    // Only the real destination is copied to. Nothing says what Live does for
+    // copy_pad(n, n), and neither answer is one to hand a caller.
+    expect(rack.call).not.toHaveBeenCalledWith("copy_pad", 36, 36);
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+    expect(result).toStrictEqual([{ id: "pad38", path: "t0/d0/pD1" }]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("can't be copied onto itself"),
+    );
+  });
+
   it("refuses the catch-all pad, which copy_pad cannot address", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 

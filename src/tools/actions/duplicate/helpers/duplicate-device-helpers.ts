@@ -47,11 +47,22 @@ export function duplicateDeviceWithPaths(
 
   warnExtraNames(parsedNames, paths.length, "duplicate");
 
+  // Read the source fresh per destination. A LiveAPI object follows its path,
+  // and an earlier copy inserted at or before the source's own index shifts it
+  // up — so reusing this one would duplicate whatever moved into its place.
+  // Take the id before anything moves; after the first copy the path is stale.
+  const sourceId = object.id;
+
   // Always an array here: one object back from a two-destination call would
   // read as a one-destination call that worked.
   return paths
     .map((path, i) =>
-      duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
+      duplicateDevice(
+        LiveAPI.from(sourceId),
+        path,
+        getNameForIndex(name, i, parsedNames),
+        1,
+      ),
     )
     .filter((result) => result != null);
 }

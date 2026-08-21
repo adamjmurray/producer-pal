@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
 // Capture the deadline warning, which shares the outlet with the take-lane ones
@@ -101,6 +102,31 @@ describe("duplicate to a take lane, cut short", () => {
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 2. " +
         "Not duplicated: t1/l0 5|1. Re-run for those positions.",
+    );
+  });
+
+  it("counts the copies it placed, not the destinations it walked", async () => {
+    // A destination can be skipped without a copy — here the lane limit. The
+    // tally has to match what exists, or the caller reads a copy it never got.
+    registerSource(2000);
+    registerTakeLaneTrack({ trackIndex: 1, initialLanes: MAX_TAKE_LANES });
+
+    const result = await duplicate(
+      {
+        type: "clip",
+        id: "src_clip",
+        toPath: "t1/l+,t1/l0,t1/l1",
+        arrangementStart: "1|1,5|1,9|1",
+      },
+      { deadline: 1000 },
+    );
+
+    // One copy for three destinations: the first was refused, the third never
+    // reached. A lone result comes back unwrapped.
+    expect(result).toMatchObject({ path: "t1/l0", arrangementStart: "5|1" });
+    expect(unreachedWarning()).toBe(
+      "Ran out of time after duplicating 1 of 3. " +
+        "Not duplicated: t1/l1 9|1. Re-run for those positions.",
     );
   });
 

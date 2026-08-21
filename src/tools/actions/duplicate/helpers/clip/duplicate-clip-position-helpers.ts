@@ -226,7 +226,10 @@ async function duplicateClipToArrangementPositions(
           order
             .slice(done)
             .map((index) => destinations[index] as UnreachedDestination),
-          done,
+          // Copies that actually landed, not iterations: one can be
+          // skipped (a full take-lane track, an audio source Live refuses, a
+          // throw in recreateCopy) and the tally has to match what exists.
+          results.filter((result) => result != null).length,
           targetTracks.length,
           songTimeSigNumerator,
           songTimeSigDenominator,
