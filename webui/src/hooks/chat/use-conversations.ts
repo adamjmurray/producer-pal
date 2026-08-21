@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -33,8 +34,6 @@ import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   type ConversationSummary,
-  deleteAllConversations as dbDeleteAllConversations,
-  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listAllConversationSummaries,
   listConversations,
   loadConversation,
@@ -358,6 +357,16 @@ export function useConversations({
     clearActiveId();
   }, [clearConversation, clearActiveId]);
 
+  // A fork branches off the active conversation, minting its id inside the save
+  // — an id canceledIdsRef can't have pre-canceled. With that conversation going
+  // away there is nothing left to branch from, so drop the signal before the
+  // teardown autosave reads it. That save then reuses the canceled active id and
+  // bails, instead of writing a sibling of the deleted row and moving the active
+  // id onto it (which also skipped the delete's own clear).
+  const dropPendingFork = useCallback(() => {
+    if (pendingForkRef) pendingForkRef.current = null;
+  }, [pendingForkRef]);
+
   const deleteConversation = useCallback(
     async (id: string) => {
       // Mark this id canceled before any async work. handleDelete calls
@@ -367,6 +376,9 @@ export function useConversations({
       // otherwise resurrect the row; instead it checks canceledIdsRef right
       // before its write and bails.
       canceledIdsRef.current.add(id);
+
+      if (activeIdRef.current === id) dropPendingFork();
+
       // Drain any autosave already in flight before removing the row, so its
       // write can't land afterward and resurrect the record. The save chain
       // never rejects (saveCurrentConversation's chained body swallows its own
@@ -381,55 +393,27 @@ export function useConversations({
 
       await refreshList();
     },
-    [clearConversation, clearActiveId, refreshList, undoDelete],
+    [
+      clearConversation,
+      clearActiveId,
+      refreshList,
+      undoDelete,
+      dropPendingFork,
+    ],
   );
 
-  const deleteAllConversations = useCallback(async () => {
-    // Cancel the active (streaming) conversation's pending/in-flight autosave,
-    // then drain the chain, mirroring deleteConversation. handleDeleteAll stops
-    // the stream first, so the two producers are the in-flight save (the drain
-    // covers it) and the stream-teardown autosave effect (the id guard covers
-    // it). A brand-new chat streaming its first turn has no active id yet — its
-    // id is minted lazily inside that teardown save — so reserve it here
-    // (pendingNewIdRef) and cancel that; the save adopts the reserved id instead
-    // of a fresh uncancelable one. Either way the just-cleared row can't be
-    // resurrected.
-    const activeId = activeIdRef.current;
-    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
-
-    canceledIdsRef.current.add(liveId);
-
-    await saveChainRef.current;
-    await dbDeleteAllConversations();
-    clearConversation();
-    clearActiveId();
-    await refreshList();
-  }, [clearConversation, clearActiveId, refreshList]);
-
-  const deleteUnbookmarkedConversations = useCallback(async () => {
-    // The active conversation is removed only when it's unbookmarked. A
-    // brand-new chat streaming its first turn (no active id yet) is implicitly
-    // unbookmarked, so it's swept too — reserve its lazily-minted id
-    // (pendingNewIdRef) so the teardown autosave adopts it and the guard cancels
-    // it. When it clears, cancel that live id (same resurrection guard as the
-    // other delete paths); a bookmarked active conversation survives, so its
-    // save must still land — hence the conditional add but unconditional drain.
-    const activeId = activeIdRef.current;
-    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
-    const clearsActive = activeId == null || !activeMetaRef.current?.bookmarked;
-
-    if (clearsActive) canceledIdsRef.current.add(liveId);
-
-    await saveChainRef.current;
-    await dbDeleteUnbookmarkedConversations();
-
-    if (clearsActive) {
-      clearConversation();
-      clearActiveId();
-    }
-
-    await refreshList();
-  }, [clearConversation, clearActiveId, refreshList]);
+  const { deleteAllConversations, deleteUnbookmarkedConversations } =
+    useBulkDeletes({
+      activeIdRef,
+      activeMetaRef,
+      pendingNewIdRef,
+      canceledIdsRef,
+      saveChainRef,
+      clearConversation,
+      clearActiveId,
+      refreshList,
+      dropPendingFork,
+    });
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {

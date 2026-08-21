@@ -7,14 +7,21 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, waitFor } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
-import { loadConversation } from "#webui/lib/conversation-db";
 import {
+  listAllConversationSummaries,
+  loadConversation,
+} from "#webui/lib/conversation-db";
+import {
+  createConversationsProps,
   resetConversationsTestState,
   saveWithMessage,
   setupConversationsHook as setupHook,
+  waitForEffects,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -132,6 +139,45 @@ async function expectBulkDeleteDropsNeverSavedLateAutosave(
   );
 }
 
+/**
+ * Drive a delete against an active conversation with a fork signal raised.
+ *
+ * Stop deliberately keeps that signal, so the teardown autosave the delete
+ * triggers still arrives wanting to branch. Branching mints a fresh id the
+ * canceled set can't cover, so the save wrote a sibling of the row being deleted
+ * — and moved the active id onto it, which skipped the delete's own clear. The
+ * conversation was gone but the view still showed it.
+ * @param deleteOp - the delete under test, given the hook result and the saved id
+ */
+async function expectForkDroppedOnDelete(
+  deleteOp: (result: HookHandle["result"], savedId: string) => Promise<void>,
+): Promise<void> {
+  const { props, state } = createConversationsProps();
+  const pendingForkRef = { current: null as PendingFork | null };
+  const { result } = renderHook(() =>
+    useConversations({ ...props, pendingForkRef }),
+  );
+
+  await waitForEffects();
+  await saveWithMessage(state, result, "original");
+
+  const savedId = result.current.activeConversationId!;
+
+  pendingForkRef.current = { anchorIndex: 0 };
+
+  await expectLateAutosaveDropped(
+    { props, state, result },
+    () => deleteOp(result, savedId),
+    async () => {
+      expect(await loadConversation(savedId)).toBeUndefined();
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.clearConversation).toHaveBeenCalled();
+    },
+    // No sibling branched off the row that just went away.
+    async () => expect(await listAllConversationSummaries()).toHaveLength(0),
+  );
+}
+
 describe("useConversations delete/save races", () => {
   beforeEach(resetConversationsTestState);
 
@@ -157,6 +203,18 @@ describe("useConversations delete/save races", () => {
         expect(result.current.conversations).toHaveLength(0);
       },
       async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    );
+  });
+
+  it("drops a pending fork when the active conversation is deleted", async () => {
+    await expectForkDroppedOnDelete((result, savedId) =>
+      result.current.deleteConversation(savedId),
+    );
+  });
+
+  it("drops a pending fork when delete-all clears the conversation", async () => {
+    await expectForkDroppedOnDelete((result) =>
+      result.current.deleteAllConversations(),
     );
   });
 
