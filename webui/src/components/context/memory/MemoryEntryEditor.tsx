@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   BodyField,
   DescriptionField,
@@ -116,6 +116,7 @@ export function MemoryEntryEditor(
     setName,
     description,
     body,
+    canSave,
     requiredError: validation.errors.name,
     noteSaved,
     settlePendingSave,
@@ -222,6 +223,8 @@ interface MemoryRenameParams {
   description: string;
   /** The current body draft (carried into the rename write). */
   body: string;
+  /** Whether the draft's content is savable — the autosave's own gate. */
+  canSave: boolean;
   /** The client-side required-name error; it takes priority over a rename error. */
   requiredError?: string;
   /** Advance the autosave baseline to the renamed entry's echo. */
@@ -229,7 +232,7 @@ interface MemoryRenameParams {
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
   /** Put a dirty draft back on the autosave clock once the rename is over. */
-  resumePendingSave: () => void;
+  resumePendingSave: () => boolean;
   /** Follow the entry to its new slug, keeping this editor mounted. */
   onRenamed: (from: string, to: string) => void;
 }
@@ -267,8 +270,17 @@ function useMemoryRename(params: MemoryRenameParams): {
 } {
   const { collection, entry, setName, description, body } = params;
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
-  const { resumePendingSave } = params;
+  const { resumePendingSave, canSave } = params;
   const [renameError, setRenameError] = useState<string | null>(null);
+  // The live draft, for the close-during-rename catch-up below: commitRename's
+  // own closure is blur-time stale, and what the user typed after the rename
+  // went out is exactly what the rename didn't carry. Synced in an effect
+  // (never during render); the catch-up only ever reads it after an await.
+  const draftRef = useRef({ description, body, canSave });
+
+  useEffect(() => {
+    draftRef.current = { description, body, canSave };
+  });
 
   const nameError = requiredError ?? renameError ?? undefined;
 
@@ -296,8 +308,9 @@ function useMemoryRename(params: MemoryRenameParams): {
     // The move is over either way, so put the draft back on the clock: nothing
     // here moves draftKey (it follows entry.name, not the name field), so a body
     // edit typed before or during the rename would otherwise sit off the clock
-    // until the next keystroke.
-    resumePendingSave();
+    // until the next keystroke. False means the editor closed meanwhile, so
+    // there is no clock left and the draft is this continuation's to write.
+    const onTheClock = resumePendingSave();
 
     if (renamed == null) {
       setRenameError(error);
@@ -310,6 +323,10 @@ function useMemoryRename(params: MemoryRenameParams): {
     setName(renamed.name);
     noteSaved(memoryEntryKey(renamed));
     onRenamed(oldName, renamed.name);
+
+    if (!onTheClock) {
+      await saveDraftAfterClose(collection, renamed, draftRef.current);
+    }
   };
 
   const onRename = (raw: string): void => {
@@ -326,6 +343,38 @@ function useMemoryRename(params: MemoryRenameParams): {
   };
 
   return { nameError, onNameChange, onRename };
+}
+
+/**
+ * Write a draft the closing editor's autosave never got to, once a rename it
+ * was held off for has landed.
+ *
+ * Closing during the round trip is the one gap the hold leaves: it suppresses
+ * the unmount flush too, and by then the entry has moved, so nothing typed after
+ * the rename was dispatched has anywhere to go. This writes it under the NEW
+ * slug — the old one is gone, and re-creating it would resurrect the entry the
+ * rename moved away from. A refused rename gets nothing, for the same reason.
+ * @param collection - The collection hook (still mounted above the editor)
+ * @param renamed - The rename's echo: what the server actually stored
+ * @param draft - The editor's last live draft, and its own savable gate
+ */
+async function saveDraftAfterClose(
+  collection: UseMemoryCollectionReturn,
+  renamed: MemoryEntryView,
+  draft: { description: string; body: string; canSave: boolean },
+): Promise<void> {
+  const { description, body } = draft;
+
+  if (!draft.canSave) return;
+
+  if (
+    memoryEntryKey({ ...renamed, description, body }) ===
+    memoryEntryKey(renamed)
+  ) {
+    return;
+  }
+
+  await collection.saveEntry(renamed.name, { description, content: body });
 }
 
 /**

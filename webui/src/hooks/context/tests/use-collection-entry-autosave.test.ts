@@ -472,8 +472,8 @@ describe("useCollectionEntryAutosave", () => {
     // Regression: the unmount and tab-close flushes fire without an arming
     // render, so the arming effect's hold never saw them. Every slug such a
     // flush can name is the one the rename is leaving, so it re-created the
-    // entry under the old name — a duplicate holding the same content. Nothing
-    // is lost by skipping: the rename carries the live draft to the new slug.
+    // entry under the old name — a duplicate holding the same content. What the
+    // rename didn't carry is covered by resumePendingSave, below.
     const persist = vi.fn().mockResolvedValue(null);
     const { result, rerender, unmount } = setup({
       canSave: true,
@@ -497,6 +497,8 @@ describe("useCollectionEntryAutosave", () => {
     // resumePendingSave runs from the rename's own continuation, which the
     // unmount can't cancel — so it fired for a gone editor and armed a flush no
     // cleanup would clear, writing the draft back to the slug the rename left.
+    // It reports the bail instead: the hold also swallowed the unmount flush,
+    // so this dirty draft reaches disk only if the caller writes it.
     const persist = vi.fn().mockResolvedValue(null);
     const { result, rerender, unmount } = setup({
       canSave: true,
@@ -513,11 +515,15 @@ describe("useCollectionEntryAutosave", () => {
 
     unmount();
 
+    let resumed: boolean | null = null;
+
     await act(async () => {
-      result.current.resumePendingSave();
+      resumed = result.current.resumePendingSave();
       vi.advanceTimersByTime(2000);
       await Promise.resolve();
     });
+
+    expect(resumed).toBe(false);
 
     expect(persist).not.toHaveBeenCalled();
   });
@@ -547,7 +553,9 @@ describe("useCollectionEntryAutosave", () => {
 
     await act(async () => {
       vi.advanceTimersByTime(400);
-      result.current.resumePendingSave();
+      // Still mounted: the draft is on the clock either way, armed here or by
+      // the effect, so the caller has nothing left to write.
+      expect(result.current.resumePendingSave()).toBe(true);
       await Promise.resolve();
     });
 

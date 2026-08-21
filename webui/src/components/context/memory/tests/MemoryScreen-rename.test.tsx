@@ -187,6 +187,27 @@ function routeFetch(): Deferred<Response> {
 }
 
 /**
+ * Like {@link routeFetch}, but the mount GET lists a second memory to navigate
+ * to while the rename is open.
+ * @returns The rename PUT's deferred response
+ */
+function routeFetchWithOther(): Deferred<Response> {
+  const renamePut = deferred<Response>();
+
+  fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY, OTHER] }));
+  fetchMock.mockReturnValueOnce(renamePut.promise);
+  (fetchMock as unknown as FetchMock).mockImplementation((url, init) =>
+    Promise.resolve(
+      (init?.method ?? "GET") === "GET"
+        ? jsonResponse({ entries: [RENAMED, OTHER] })
+        : jsonResponse({ entry: echoOf(url, init) }),
+    ),
+  );
+
+  return renamePut;
+}
+
+/**
  * The entry PUTs the editor issued — the save channel, excluding the rename.
  * @returns One record per captured write, in dispatch order
  */
@@ -412,6 +433,77 @@ describe("MemoryScreen — navigating away during a rename", () => {
       expect(put.url).toContain("likes-swing");
       expect(put.body.description).toBe(OTHER.description);
     }
+  });
+
+  it("saves an edit typed during the rename after the editor closes", async () => {
+    // Closing mid-rename is the one gap the autosave hold leaves: it suppresses
+    // the unmount flush too, and resumePendingSave then bails on the gone
+    // editor, so this edit used to reach disk nowhere.
+    const renamePut = routeFetchWithOther();
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    // Typed AFTER the rename PUT went out, so the rename's own body doesn't
+    // carry it and only a later save can.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+
+    // Opening another memory unmounts the editor holding that edit.
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+    await settleAutosave();
+
+    expect(entryPuts()).toStrictEqual([
+      {
+        url: expect.stringContaining("new-slug") as string,
+        body: {
+          description: ENTRY.description,
+          content: "Composes in C minor and F minor.",
+        },
+      },
+    ]);
+  });
+
+  it("writes nothing when the closed draft matches the rename's echo", async () => {
+    const renamePut = routeFetchWithOther();
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+    await settleAutosave();
+
+    expect(entryPuts()).toStrictEqual([]);
+  });
+
+  it("writes nothing when the closed draft is one the autosave would refuse", async () => {
+    const renamePut = routeFetchWithOther();
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    // An empty body is exactly what the idle autosave refuses to write. This
+    // write stands in for that autosave, so it has to refuse the same draft.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+    await settleAutosave();
+
+    expect(entryPuts()).toStrictEqual([]);
   });
 });
 

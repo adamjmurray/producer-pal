@@ -330,8 +330,13 @@ export interface CollectionEntryAutosaveReturn {
    * moves `draftKey` (it derives from the entry's slug, not the name field), so
    * nothing re-arms on its own until the next keystroke. No-op when the draft is
    * clean, unsavable, doesn't autosave, or something already re-armed it.
+   *
+   * Returns false when this editor unmounted during the move: the hold blocked
+   * its unmount flush and there is no clock left to put the draft back on, so
+   * anything typed after the move was dispatched reaches disk only if the caller
+   * writes it. True otherwise, including the no-op cases.
    */
-  resumePendingSave: () => void;
+  resumePendingSave: () => boolean;
 }
 
 /**
@@ -420,10 +425,12 @@ export function useCollectionEntryAutosave(
 
     // A rename in flight owns this draft. Every slug the flush could name is the
     // one the rename is leaving, so a flush here re-creates the entry the rename
-    // just moved away from — a duplicate holding the same content. Nothing is
-    // lost by skipping: the rename PUT carries the live draft to the new slug.
-    // (The unmount and tab-close flushes fire without an arming render, so the
-    // arming effect's own heldRef check never sees them.)
+    // just moved away from — a duplicate holding the same content. The rename
+    // PUT carries the draft as of its dispatch; anything typed after that is
+    // covered by resumePendingSave re-arming the clock, or — if the editor
+    // closed meanwhile — by the false it returns, which hands the draft to the
+    // caller. (The unmount and tab-close flushes fire without an arming render,
+    // so the arming effect's own heldRef check never sees them.)
     if (heldRef.current) return;
 
     if (!canSaveRef.current) return;
@@ -592,26 +599,29 @@ export function useCollectionEntryAutosave(
   // can't help here, because neither rename outcome necessarily changes its
   // deps. A timer already armed means the effect beat us to it (the draft moved
   // to the new slug); leave that debounce alone rather than pushing it out.
-  const resumePendingSave = useCallback((): void => {
+  const resumePendingSave = useCallback((): boolean => {
     heldRef.current = false;
 
     // The editor can close while the rename is on the wire — the unmount can't
     // cancel the caller's in-flight rename, so this still runs. Re-arming then
     // puts a flush on the clock that no cleanup will clear, and `persist` still
-    // names the slug the rename left.
-    if (!mountedRef.current) return;
+    // names the slug the rename left. Say so, because the hold also swallowed
+    // the unmount flush: the caller owns whatever the draft still holds.
+    if (!mountedRef.current) return false;
 
-    if (timerRef.current != null) return;
+    if (timerRef.current != null) return true;
 
     if (
       !autosaveOnIdleRef.current ||
       !canSaveRef.current ||
       draftKeyRef.current === lastSavedRef.current
     ) {
-      return;
+      return true;
     }
 
     timerRef.current = setTimeout(flush, DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+
+    return true;
   }, [flush]);
 
   return {
