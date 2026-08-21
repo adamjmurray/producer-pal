@@ -392,6 +392,19 @@ describe("readDevice with drum pad path", () => {
     );
   });
 
+  // Same rack, but a chain does route to the catch-all: there is a pad to
+  // describe, just no DrumPad object to give it an id or a mute/solo state.
+  it("reads the catch-all pad when a chain routes to it", () => {
+    setupCatchAllChainMocks();
+
+    expect(readDevice({ path: "t1/d0/p*", include: [] })).toStrictEqual({
+      path: "t1/d0/p*",
+      name: "All Notes",
+      note: -1,
+      pitch: "*",
+    });
+  });
+
   // read-device prints `p*/cN` for a catch-all chain, so it has to read one
   // back. There is no pad to resolve through — the chains come off the rack.
   it("reads back the catch-all chain path it prints", () => {

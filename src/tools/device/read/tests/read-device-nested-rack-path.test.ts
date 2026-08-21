@@ -176,6 +176,68 @@ describe("readDevice - paths through a nested drum rack", () => {
     expect(result.drumMap).toStrictEqual({ C1: "Sub Kit" });
   });
 
+  // Live gives a Drum Rack nested in a drum pad an empty `drum_pads` collection
+  // (dev/Coding-Standards.md — "A Drum Rack Inside a Drum Pad Has No Pads"),
+  // which is what setupNestedDrumRack's `drum_pads` misses.
+  function dropNestedRackPads(): void {
+    registerMockObject("sub-rack", {
+      path: SUB_RACK,
+      type: "Device",
+      properties: {
+        name: "Sub Kit",
+        class_display_name: "Drum Rack",
+        type: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        is_active: 1,
+        drum_pads: children(),
+        chains: children("sub-chain"),
+      },
+    });
+  }
+
+  // An id read has no parent path to thread, so it spells the nested rack with
+  // raw chain indexes — "t1/d0/c0/d0" — and prints its pads under that. Looking
+  // the pad up in `drum_pads` found nothing, so every path the id read handed
+  // back came straight back as "Drum pad C3 not found".
+  it("reads back a pad path on a rack that has no pad objects", () => {
+    setupNestedDrumRack();
+    dropNestedRackPads();
+
+    expect(readDevice({ path: "t1/d0/c0/d0/pC3/c0/d0" })).toStrictEqual({
+      id: "sub-device",
+      path: "t1/d0/c0/d0/pC3/c0/d0",
+      type: "instrument: Simpler",
+      name: "synth-hat",
+    });
+    expect(readDevice({ path: "t1/d0/c0/d0/pC3/c0" }).id).toBe("sub-chain");
+  });
+
+  // No pad object means no id, no mute and no solo to read — the chains carry
+  // the name, the same way the drum-pads tree walk builds these pads.
+  it("reads the pad itself, with no id to name it by", () => {
+    setupNestedDrumRack();
+    dropNestedRackPads();
+
+    const result = readDevice({ path: "t1/d0/c0/d0/pC3" });
+
+    expect(result).toStrictEqual({
+      path: "t1/d0/c0/d0/pC3",
+      name: "Hat",
+      note: 60,
+      pitch: "C3",
+    });
+  });
+
+  it("still reports a note the rack routes nothing to as not found", () => {
+    setupNestedDrumRack();
+    dropNestedRackPads();
+
+    expect(() => readDevice({ path: "t1/d0/c0/d0/pD3" })).toThrow(
+      "Drum pad D3 not found",
+    );
+  });
+
   it("reports the nested pad path in pad notation, not raw chain indexes", () => {
     setupNestedDrumRack();
 

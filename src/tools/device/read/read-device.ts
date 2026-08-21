@@ -3,27 +3,24 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
-import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
-import { STATE } from "#src/tools/constants.ts";
 import {
   cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "#src/tools/shared/device/device-reader.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
-import {
-  chainsForInNote,
-  chainsOnDrumPad,
-  drumPadPath,
-  navigateRemainingSegments,
-} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { drumPadPath } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   drumMapReadDepth,
   postProcessDrumMap,
-} from "./read-device-drum-map-helpers.ts";
+} from "./helpers/read-device-drum-map-helpers.ts";
+import {
+  buildDrumPadInfo,
+  readDrumPadByPath,
+} from "./helpers/read-device-drum-pad-helpers.ts";
+import { type ReadOptions } from "./helpers/read-device-options.ts";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)
@@ -36,21 +33,6 @@ interface ReadDeviceArgs {
   path?: string;
   include?: string[];
   maxDepth?: number;
-  paramSearch?: string;
-}
-
-interface ReadOptions {
-  includeChains: boolean;
-  includeReturnChains: boolean;
-  includeDrumPads: boolean;
-  includeDrumMap: boolean;
-  includeParams: boolean;
-  includeParamValues: boolean;
-  includeSample: boolean;
-  includeOptions: boolean;
-  includeActions: boolean;
-  chainsHidden: boolean;
-  maxDepth: number;
   paramSearch?: string;
 }
 
@@ -243,266 +225,4 @@ function readChain(
     .map((device) => readDeviceShared(device, options));
 
   return buildChainInfo(chain, { path, devices });
-}
-
-/**
- * Read drum pad by path
- * @param liveApiPath - Live API path to parent device
- * @param drumPadNote - Note name of the drum pad (e.g., "C1")
- * @param remainingSegments - Segments after drum pad in path
- * @param fullPath - Full simplified path for response
- * @param options - Read options
- * @returns Drum pad, chain, or device information
- */
-function readDrumPadByPath(
-  liveApiPath: string,
-  drumPadNote: string,
-  remainingSegments: string[],
-  fullPath: string,
-  options: ReadOptions,
-): Record<string, unknown> {
-  const device = LiveAPI.from(liveApiPath);
-
-  if (!device.exists()) {
-    throw new Error(`Device not found at path: ${liveApiPath}`);
-  }
-
-  // The catch-all "p*" is a chain group, not a drum_pads entry, so it has no
-  // DrumPad to describe — but read-device prints `p*/cN` paths for its chains,
-  // and those resolve through the rack.
-  if (drumPadNote === "*") {
-    const chains = chainsForInNote(device, -1);
-
-    if (chains.length === 0 || remainingSegments.length === 0) {
-      throw new Error(`Drum pad ${drumPadNote} not found`);
-    }
-
-    return readDrumPadNestedTarget(
-      chains,
-      remainingSegments,
-      fullPath,
-      options,
-    );
-  }
-
-  // Get drum pads and find the one matching the note. The grammar already
-  // validated the note, so this always converts.
-  const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = noteNameToMidi(drumPadNote);
-  const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
-
-  if (!pad) {
-    throw new Error(`Drum pad ${drumPadNote} not found`);
-  }
-
-  // If there are remaining segments, navigate into chains
-  if (remainingSegments.length > 0) {
-    return readDrumPadNestedTarget(
-      chainsOnDrumPad(pad),
-      remainingSegments,
-      fullPath,
-      options,
-    );
-  }
-
-  // Return drum pad info
-  return buildDrumPadInfo(pad, fullPath, options);
-}
-
-/**
- * Navigate into drum pad chains based on remaining path segments. The chain
- * segment is optional: a leading `c<N>` selects a chain, while a leading `d<N>`
- * implies chain 0 (so `pC1/d0` == `pC1/c0/d0`). This mirrors the write-side
- * pad-property shortcut (see resolveNestedParamTarget) so reads and writes
- * accept the same drum-pad paths.
- * @param chains - The pad's chains, in the order its `cN` segments name them
- * @param remainingSegments - Segments after drum pad in path
- * @param fullPath - Full simplified path for response
- * @param options - Read options
- * @returns Chain or device information
- */
-function readDrumPadNestedTarget(
-  chains: LiveAPI[],
-  remainingSegments: string[],
-  fullPath: string,
-  options: ReadOptions,
-): Record<string, unknown> {
-  const firstSegment = assertDefined(
-    remainingSegments[0],
-    "chain or device segment",
-  );
-  // A leading "c<N>" is an explicit chain index; otherwise chain 0 is implied
-  // and the first segment is the device.
-  const hasChainSegment = firstSegment.startsWith("c");
-  const chainIndex = hasChainSegment
-    ? Number.parseInt(firstSegment.slice(1))
-    : 0;
-
-  if (
-    Number.isNaN(chainIndex) ||
-    chainIndex < 0 ||
-    chainIndex >= chains.length
-  ) {
-    throw new Error(`Invalid chain index in path: ${fullPath}`);
-  }
-
-  const chain = assertDefined(
-    chains[chainIndex],
-    `chain at index ${chainIndex}`,
-  );
-
-  // The device segment follows the optional chain segment. With no device
-  // segment (explicit chain only, e.g. "pC1/c0"), return the chain.
-  const deviceSegment = hasChainSegment
-    ? remainingSegments[1]
-    : remainingSegments[0];
-
-  if (deviceSegment == null) {
-    return readDrumPadChain(chain, fullPath, options);
-  }
-
-  // Parse device index from prefixed segment (e.g., "d0" -> 0)
-  const deviceIndex = Number.parseInt(deviceSegment.slice(1));
-  const devices = chain.getChildren("devices");
-
-  if (
-    Number.isNaN(deviceIndex) ||
-    deviceIndex < 0 ||
-    deviceIndex >= devices.length
-  ) {
-    throw new Error(`Invalid device index in path: ${fullPath}`);
-  }
-
-  const device = assertDefined(
-    devices[deviceIndex],
-    `device at index ${deviceIndex}`,
-  );
-
-  // Anything after the device segment points inside it — a nested rack's own
-  // pads, chains, or devices. Without this the extra segments were dropped and
-  // the outer device came back under the requested path, so a read of a nested
-  // pad silently answered with the rack holding it.
-  const nested = remainingSegments.slice(hasChainSegment ? 2 : 1);
-
-  if (nested.length > 0) {
-    return readNestedTarget(device, nested, fullPath, options);
-  }
-
-  return readDeviceShared(device, {
-    ...options,
-    parentPath: fullPath,
-  });
-}
-
-/**
- * Read a target further inside a device reached through a drum pad path.
- * Navigation is shared with the write side so both accept the same paths.
- * @param device - Device the remaining segments are relative to
- * @param segments - Segments after the device (c/rc/d/p prefixed)
- * @param fullPath - Full simplified path for the response
- * @param options - Read options
- * @returns Chain or device information
- */
-function readNestedTarget(
-  device: LiveAPI,
-  segments: string[],
-  fullPath: string,
-  options: ReadOptions,
-): Record<string, unknown> {
-  const { target, targetType } = navigateRemainingSegments(device, segments);
-
-  if (target == null) {
-    throw new Error(`Invalid path: ${fullPath}`);
-  }
-
-  if (targetType === "chain") {
-    return readDrumPadChain(target, fullPath, options);
-  }
-
-  return readDeviceShared(target, { ...options, parentPath: fullPath });
-}
-
-/**
- * Read chain within a drum pad
- * @param chain - Chain Live API object
- * @param path - Simplified path for response
- * @param options - Read options
- * @returns Chain information
- */
-function readDrumPadChain(
-  chain: LiveAPI,
-  path: string,
-  options: ReadOptions,
-): Record<string, unknown> {
-  const devices = chain
-    .getChildren("devices")
-    .map((device: LiveAPI, index: number) => {
-      const devicePath = `${path}/d${index}`;
-
-      return readDeviceShared(device, {
-        ...options,
-        parentPath: devicePath,
-      });
-    });
-
-  return buildChainInfo(chain, { path, devices });
-}
-
-/**
- * Build drum pad info object
- * @param pad - Drum pad Live API object
- * @param path - Simplified path for response
- * @param options - Read options
- * @returns Drum pad information
- */
-function buildDrumPadInfo(
-  pad: LiveAPI,
-  path: string,
-  options: ReadOptions,
-): Record<string, unknown> {
-  const midiNote = pad.getProperty("note") as number;
-  // A pad's note is always 0-127, so it always names.
-  const noteName = midiToNoteName(midiNote) as string;
-  const isMuted = (pad.getProperty("mute") as number) > 0;
-  const isSoloed = (pad.getProperty("solo") as number) > 0;
-
-  const drumPadInfo: Record<string, unknown> = {
-    id: pad.id,
-    path,
-    name: pad.getProperty("name"),
-    note: midiNote,
-    pitch: noteName,
-  };
-
-  if (isSoloed) {
-    drumPadInfo.state = STATE.SOLOED;
-  } else if (isMuted) {
-    drumPadInfo.state = STATE.MUTED;
-  }
-
-  // Include chains if requested
-  if (options.includeChains || options.includeDrumPads) {
-    const chains = chainsOnDrumPad(pad);
-
-    drumPadInfo.chains = chains.map((chain: LiveAPI, chainIndex: number) => {
-      const chainPath = `${path}/c${chainIndex}`;
-      const devices = chain
-        .getChildren("devices")
-        .map((device: LiveAPI, deviceIndex: number) => {
-          const devicePath = `${chainPath}/d${deviceIndex}`;
-
-          return readDeviceShared(device, {
-            ...options,
-            parentPath: devicePath,
-          });
-        });
-
-      return buildChainInfo(chain, {
-        path: chainPath,
-        devices,
-      });
-    });
-  }
-
-  return drumPadInfo;
 }

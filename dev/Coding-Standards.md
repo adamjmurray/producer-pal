@@ -181,6 +181,10 @@ through: they are grouped from the rack's `chains` by `in_note`, which is why
 `processDrumPads` works off chains rather than the pad collection. Only the pad
 id is missing, because there is no pad object to take one from.
 
+Reading a `p<note>` path does the same. A pad path resolves through the rack's
+chains, so it reads back on a nested rack — and on the catch-all `p*`, which is
+a chain group with no pad object either.
+
 Don't "fix" this by falling back to another lookup, and don't assert a pad id in
 a test for a rack nested on a pad.
 
