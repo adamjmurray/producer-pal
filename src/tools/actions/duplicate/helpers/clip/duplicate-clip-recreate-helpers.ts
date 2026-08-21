@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type NoteEvent } from "#src/notation/types.ts";
 import {
   rawNotesToNoteEvents,
   readAllClipNotes,
@@ -20,6 +21,15 @@ import {
  */
 export const NO_ENVELOPES_NOTE = "automation envelopes aren't copied";
 
+/** Everything read off the source before the new clip exists. */
+interface ClipSnapshot {
+  length: number;
+  notes: NoteEvent[];
+  /** The source's own color, read only when there is no override to use. */
+  color: unknown;
+  properties: Record<string, unknown>;
+}
+
 /**
  * Re-create a MIDI clip somewhere Live's own arrangement duplicate can't reach,
  * copying the source's notes and loop/marker/signature properties.
@@ -31,8 +41,10 @@ export const NO_ENVELOPES_NOTE = "automation envelopes aren't copied";
  * covers both.
  *
  * Re-creating over an existing clip truncates the one already there and lands
- * intact itself — the same replace behavior as writing to the main lane, so
- * neither destination needs an overlap guard.
+ * intact itself — the same replace behavior as writing to the main lane. That
+ * existing clip can be the source (copying a take onto its own lane), which is
+ * why everything is read off the source first; reading after would copy the
+ * truncation, or nothing at all.
  * @param sourceClip - The clip being copied
  * @param destination - Where to create it: a TakeLane, or a Track for the main lane
  * @param startBeats - Arrangement start position in Ableton beats
@@ -47,11 +59,11 @@ export function recreateMidiClip(
   name: string | undefined,
   color: string | undefined,
 ): MinimalClipInfo {
-  const length = sourceClip.getProperty("length") as number;
+  const snapshot = snapshotClip(sourceClip, name, color);
   const newClipResult = destination.call(
     "create_midi_clip",
     startBeats,
-    length,
+    snapshot.length,
   ) as string;
   const newClip = LiveAPI.from(newClipResult);
 
@@ -59,38 +71,57 @@ export function recreateMidiClip(
     throw new Error("failed to create Arrangement clip");
   }
 
-  // Read the full [-length, 2*length] scan window (not just [0, length]) so a
-  // pickup (negative start_time) before the clip start and any overhang past
-  // the end are copied — same window every other clip-copy path uses. Reading
-  // only from time 0 (the prior behavior) silently dropped pickups.
-  const rawNotes = readAllClipNotes(sourceClip);
-
-  if (rawNotes.length > 0) {
-    // Strip Live's extra note properties (note_id, mute, release_velocity) so
-    // stale ids aren't re-fed when copying one source to multiple positions.
-    newClip.call("add_new_notes", { notes: rawNotesToNoteEvents(rawNotes) });
+  if (snapshot.notes.length > 0) {
+    newClip.call("add_new_notes", { notes: snapshot.notes });
   }
 
-  // Order mirrors create-clip's buildClipProperties to satisfy Live's
-  // loop_end > loop_start constraint while applying values. Name/color fall back
-  // to the source so an un-overridden duplicate matches it (as native duplicate
-  // does); color is a Live int, so it bypasses setColor's #RRGGBB path.
-  newClip.setAll({
-    start_marker: sourceClip.getProperty("start_marker"),
-    loop_start: sourceClip.getProperty("loop_start"),
-    loop_end: sourceClip.getProperty("loop_end"),
-    end_marker: sourceClip.getProperty("end_marker"),
-    looping: sourceClip.getProperty("looping"),
-    signature_numerator: sourceClip.getProperty("signature_numerator"),
-    signature_denominator: sourceClip.getProperty("signature_denominator"),
-    name: name ?? sourceClip.getProperty("name"),
-  });
+  newClip.setAll(snapshot.properties);
 
   if (color != null) {
     newClip.setColor(color);
   } else {
-    newClip.set("color", sourceClip.getProperty("color"));
+    newClip.set("color", snapshot.color);
   }
 
   return getMinimalClipInfo(newClip);
+}
+
+/**
+ * Read everything the copy needs off the source, before anything can change it.
+ * @param sourceClip - The clip being copied
+ * @param name - Name override, or undefined to keep the source's
+ * @param color - Color override, or undefined to keep the source's
+ * @returns The source's length, notes, color, and clip properties
+ */
+function snapshotClip(
+  sourceClip: LiveAPI,
+  name: string | undefined,
+  color: string | undefined,
+): ClipSnapshot {
+  // readAllClipNotes reads the full [-length, 2*length] window, so a pickup
+  // (negative start_time) before the clip start and any overhang past the end
+  // come along. Strip Live's extra note properties (note_id, mute,
+  // release_velocity) so stale ids aren't re-fed when copying one source to
+  // multiple positions.
+  const notes = rawNotesToNoteEvents(readAllClipNotes(sourceClip));
+
+  return {
+    length: sourceClip.getProperty("length") as number,
+    notes,
+    color: color == null ? sourceClip.getProperty("color") : null,
+    // Order mirrors create-clip's buildClipProperties to satisfy Live's
+    // loop_end > loop_start constraint while applying values. Name falls back to
+    // the source so an un-overridden duplicate matches it (as native duplicate
+    // does).
+    properties: {
+      start_marker: sourceClip.getProperty("start_marker"),
+      loop_start: sourceClip.getProperty("loop_start"),
+      loop_end: sourceClip.getProperty("loop_end"),
+      end_marker: sourceClip.getProperty("end_marker"),
+      looping: sourceClip.getProperty("looping"),
+      signature_numerator: sourceClip.getProperty("signature_numerator"),
+      signature_denominator: sourceClip.getProperty("signature_denominator"),
+      name: name ?? sourceClip.getProperty("name"),
+    },
+  };
 }
