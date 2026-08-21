@@ -26,8 +26,10 @@ mostly succeeds.
 ## Consequences
 
 - Warnings aren't silent. `console.warn()` output is relayed to the model as
-  `WARNING:` blocks appended to the tool response, via `v8-max-console.ts`
-  outlet 1 → `max-api-adapter.ts`. `console.log` and `console.error` are not
-  relayed.
+  `WARNING:` blocks appended to the tool response: V8 buffers each warning
+  against the request in flight (`v8-warning-capture.ts`) and
+  `max-api-adapter.ts` appends them. `console.log` and `console.error` are not
+  relayed. A warning raised with no request in flight has no response to land on
+  and goes to the Max console instead.
 - This is a load-bearing contract for the whole update-tool family; new update
   tools follow it too.
