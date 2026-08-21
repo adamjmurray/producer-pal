@@ -43,15 +43,24 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
     return null;
   }
 
+  // Resolution stops at the first pad segment, so anything after it names a
+  // chain of that pad or a pad of a rack nested under it — never a pad of the
+  // rack this resolution reached. Which rack that deeper pad belongs to is
+  // unknown from here, so don't claim it's another one.
+  if (resolved.remainingSegments.length > 0) {
+    console.warn(
+      `toPath "${toPath}" names something inside a pad rather than a pad itself, ` +
+        `and a pad move re-maps one rack's own pads; for a pad of a nested rack, ` +
+        `name the destination by the outer rack's chain index instead (t0/d0/c0/d0/pE1)`,
+    );
+
+    return null;
+  }
+
   // The move is an in_note re-map within one rack, so a toPath naming a pad
   // elsewhere can't be honored. Without this it lands on that note in the
-  // SOURCE rack instead — the wrong pad, reported as a success. Resolution
-  // stops at the first pad, so segments after it name a pad of a nested rack,
-  // or one chain of this pad: neither is a pad of this rack either.
-  if (
-    resolved.liveApiPath !== drumRackPath ||
-    resolved.remainingSegments.length > 0
-  ) {
+  // SOURCE rack instead — the wrong pad, reported as a success.
+  if (resolved.liveApiPath !== drumRackPath) {
     console.warn(
       `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
         `move the pad's device instead (update-device on the device path)`,

@@ -199,6 +199,8 @@ describe("updateDevice - moving a drum chain", () => {
     // The path resolves to the OUTER rack, so only the trailing "/d0/pE1" says
     // the pad the caller meant is somewhere else. Honoring the first pad name
     // lands C1 on D1 of this rack and reports it as the move they asked for.
+    // Which rack that deeper pad is in is unknown here, so the refusal says
+    // what the path names rather than guessing it's another rack.
     const result = updateDevice({
       path: "t0/d0/pC1",
       toPath: "t0/d0/pD1/d0/pE1",
@@ -206,7 +208,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("does not name a pad in this rack"),
+      expect.stringContaining("names something inside a pad rather than a pad"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -222,7 +224,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("does not name a pad in this rack"),
+      expect.stringContaining("names something inside a pad rather than a pad"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
