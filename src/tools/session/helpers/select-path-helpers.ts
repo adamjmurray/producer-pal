@@ -98,7 +98,7 @@ export function resolvePath(
  * Read `path` and the two params it replaced as what they name.
  * @param args - The path params as the tool received them
  * @param args.path - The path param
- * @param args.slot - The deprecated session slot
+ * @param args.slot - The deprecated clip slot
  * @param args.devicePath - The deprecated device path
  * @returns The clip slot, device, track, or scene the caller named
  */

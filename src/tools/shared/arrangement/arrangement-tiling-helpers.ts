@@ -82,7 +82,7 @@ export function createAudioClipInSession(
   const trackIndex = track.trackIndex as number;
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
-  // Create clip in session slot with audio file
+  // Create the audio clip in a clip slot
   const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
 
   // create_audio_clip requires a file path

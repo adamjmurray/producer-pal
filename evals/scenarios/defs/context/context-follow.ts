@@ -99,7 +99,7 @@ export const contextFollowProject: EvalScenario = contextFollowScenario({
   config: { projectContext: PROJECT_CONTEXT },
   seed: seedContext({ clearSlots: [LEAD_SLOT] }),
 
-  ask: "Add a bassline to the Lead track in the first session slot.",
+  ask: "Add a bassline to the Lead track in the first clip slot.",
 
   clipCheck: (events) =>
     events.length > 0 &&
@@ -132,7 +132,7 @@ export const contextFollowGlobal: EvalScenario = contextFollowScenario({
     clearSlots: [LEAD_SLOT],
   }),
 
-  ask: "Create a 1-bar chord progression on the Lead track in the first session slot.",
+  ask: "Create a 1-bar chord progression on the Lead track in the first clip slot.",
 
   clipCheck: (events) =>
     events.length > 0 && events.every((n) => n.velocity <= 80),
@@ -195,7 +195,7 @@ export const contextMemoryRecall: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "Write me a 1-bar bassline on the Lead track in the first session slot.",
+    "Write me a 1-bar bassline on the Lead track in the first clip slot.",
   ],
 
   assertions: [

@@ -62,7 +62,7 @@ async function createAudioTrack(trackName: string): Promise<number> {
   return track.trackIndex!;
 }
 
-/** Creates a sample audio clip in a session slot and returns its id. */
+/** Creates a sample audio clip in a clip slot and returns its id. */
 async function createAudioSampleClip(
   trackIndex: number,
   sceneIndex: number,

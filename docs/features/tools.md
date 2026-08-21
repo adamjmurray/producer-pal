@@ -121,8 +121,8 @@ Live, or make sure your standalone Max is up to date. See
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
-  - Select by path: a session position (e.g., `t0/s3`), a track (`t0`), a return
-    track (`rt0`), the master track (`mt`), a scene (`s3`), or a device (e.g.,
+  - Select by path: a clip slot (e.g., `t0/s3`), a track (`t0`), a return track
+    (`rt0`), the master track (`mt`), a scene (`s3`), or a device (e.g.,
     `t0/d1`)
   - Switch between Session and Arrangement views
   - Auto-switches to session view for scene/clipSlot selection
@@ -280,7 +280,7 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
-- Place clips in Session slots or Arrangement timeline
+- Place clips in clip slots or the Arrangement timeline
 - Place arrangement clips on [take lanes](/features#take-lanes) with a `t0/l1`
   or `t0/l+` path
 - Support for probability, velocity ranges, and complex rhythms

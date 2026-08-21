@@ -88,7 +88,7 @@ export function resolveClip(
 }
 
 /**
- * Throw if a session slot's track or scene isn't there, naming which one.
+ * Throw if a clip slot's track or scene isn't there, naming which one.
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index
  */

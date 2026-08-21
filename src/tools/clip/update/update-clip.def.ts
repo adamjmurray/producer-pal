@@ -30,8 +30,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe("comma-separated clip ID(s) to update"),
     path: param(z.coerce.string().optional(), {
       default:
-        "session position(s) to update instead of ids, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
-      smallModel: "session position to update instead of ids (e.g., 't0/s1')",
+        "clip slot(s) to update instead of ids, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
+      smallModel: "clip slot to update instead of ids (e.g., 't0/s1')",
     }),
     name: param(z.string().optional(), {
       default:
@@ -94,7 +94,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "session slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
+        "clip slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
           "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
           "ids/path, in order - destinations don't cycle, so name one slot per clip",
       ),

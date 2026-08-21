@@ -47,7 +47,7 @@ interface ReadTrackArgs {
   include?: string[];
   /**
    * Session clips on this track, when the caller already knows. A Live Set read
-   * counts every session slot for its scenes anyway, and counting again here
+   * counts every clip slot for its scenes anyway, and counting again here
    * would build the whole grid a second time.
    */
   sessionClipCount?: number;

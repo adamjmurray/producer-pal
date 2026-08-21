@@ -138,7 +138,7 @@ function createdScene(sceneIndex: number): string[] {
   return ["id", ID.newScene];
 }
 
-// Put a new clip in a session slot, and make the slot report it.
+// Put a new clip in a slot, and make the slot report it.
 function fillSlot(slotPath: string, lengthBeats: number): null {
   registerNewClip(`${slotPath} clip`, newClipProperties(lengthBeats));
 

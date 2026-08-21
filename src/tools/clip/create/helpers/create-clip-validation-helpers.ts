@@ -12,7 +12,7 @@ import { type ClipDestinations } from "./create-clip-destination-helpers.ts";
 
 /**
  * Validates that the call named somewhere to put a clip
- * @param destinations - Resolved session slots and arrangement positions
+ * @param destinations - Resolved clip slots and arrangement positions
  */
 export function validatePositions(destinations: ClipDestinations): void {
   if (
@@ -20,14 +20,14 @@ export function validatePositions(destinations: ClipDestinations): void {
     destinations.arrangementPositions.length === 0
   ) {
     throw new Error(
-      'createClip failed: path is required — "t0/s1" for a session slot, or "t0" with arrangementStart for the arrangement',
+      'createClip failed: path is required — "t0/s1" for a clip slot, or "t0" with arrangementStart for the arrangement',
     );
   }
 }
 
 /**
  * Validates that every track the call targets exists
- * @param destinations - Resolved session slots and arrangement positions
+ * @param destinations - Resolved clip slots and arrangement positions
  */
 export function validateDestinationTracks(
   destinations: ClipDestinations,
@@ -138,7 +138,7 @@ export function calculateClipLength(
  * Handles automatic playback for session clips
  * @param auto - Auto playback mode (play-scene or play-clip)
  * @param view - View type
- * @param sessionSlots - Array of session slot positions
+ * @param sessionSlots - Array of clip slot positions
  */
 export function handleAutoPlayback(
   auto: string | null,

@@ -104,7 +104,7 @@ describe("cross-track arrangement clip duplicate", () => {
       name: "Cross Copy C",
     });
 
-    // toSlot only ever named session slots, so it wins over arrangementStart —
+    // toSlot only ever named clip slots, so it wins over arrangementStart —
     // and then has nowhere to put an arrangement clip.
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(

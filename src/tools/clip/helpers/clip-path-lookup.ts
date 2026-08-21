@@ -6,7 +6,7 @@
 // Addressing clips by where they are instead of by id, so a caller that knows
 // the location doesn't have to read the clip first just to learn its id.
 //
-// Session positions only: a slot holds one clip, while a track's arrangement
+// Clip slots only: a slot holds one clip, while a track's arrangement
 // holds many, so a bare track names no particular clip to act on.
 
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -19,11 +19,11 @@ import {
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
- * Resolves session position path(s) to the ids of the clips sitting there.
+ * Resolves clip slot path(s) to the ids of the clips sitting there.
  * A malformed entry or an empty slot warns and contributes nothing, matching
  * how these tools skip an id that doesn't resolve — one bad entry costs its own
  * clip, not the whole batch.
- * @param paths - Comma-separated session positions (e.g. "t0/s1,t2/s3")
+ * @param paths - Comma-separated clip slots (e.g. "t0/s1,t2/s3")
  * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns The clip ids, in path order
@@ -40,7 +40,7 @@ export function clipIdsAtPaths(
  * The same lookup, keeping one entry per path with null where a path named no
  * clip. Callers that line paths up against another list — move destinations —
  * need the positions to hold even when an entry resolves to nothing.
- * @param paths - Comma-separated session positions (e.g. "t0/s1,t2/s3")
+ * @param paths - Comma-separated clip slots (e.g. "t0/s1,t2/s3")
  * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
  * @returns One clip id per path entry, in path order

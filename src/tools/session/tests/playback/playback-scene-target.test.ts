@@ -154,12 +154,12 @@ describe("playback play-scene target agreement", () => {
 
 // A scene launch fires every track, so the track in "t0/s1" is surplus rather
 // than a contradiction. Drop it and fire the scene the caller already named.
-describe("playback play-scene from a session position", () => {
+describe("playback play-scene from a clip slot", () => {
   beforeEach(() => {
     setupPlaybackLiveSet();
   });
 
-  it("fires the scene a session position sits in", () => {
+  it("fires the scene a clip slot sits in", () => {
     const scene = mockScene(1);
 
     playback({ action: "play-scene", path: "t0/s1" });
@@ -320,8 +320,8 @@ describe("playback sceneIndex on an action that acts on clips", () => {
     playback({ action: "play-session-clips", path: "t0/s1", sceneIndex: 3 });
 
     expect(warn).toHaveBeenCalledWith(
-      'sceneIndex ignored: action "play-session-clips" acts on session ' +
-        'positions; use action "play-scene" for the whole scene',
+      'sceneIndex ignored: action "play-session-clips" acts on clip ' +
+        'slots; use action "play-scene" for the whole scene',
     );
   });
 
@@ -332,8 +332,8 @@ describe("playback sceneIndex on an action that acts on clips", () => {
     playback({ action: "stop-session-clips", path: "t0/s1", sceneIndex: 3 });
 
     expect(warn).toHaveBeenCalledWith(
-      'sceneIndex ignored: action "stop-session-clips" acts on session ' +
-        'positions; use action "play-scene" for the whole scene',
+      'sceneIndex ignored: action "stop-session-clips" acts on clip ' +
+        'slots; use action "play-scene" for the whole scene',
     );
   });
 

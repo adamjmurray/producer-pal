@@ -32,7 +32,7 @@ A Drum Rack nested inside a drum pad has no pads of its own — read-device list
 
 ppal-select takes these paths too: \`path: "t0/d0/pC1"\` shows a pad in Live, \`t0/d0/c1\` a rack chain.
 
-Clip destinations speak the same grammar: \`t0\` = that track's arrangement, \`t0/s1\` = a session slot.
+Clip destinations speak the same grammar: \`t0\` = that track's arrangement, \`t0/s1\` = a clip slot.
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 

@@ -35,7 +35,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   inputSchema: {
     path: param(z.coerce.string().optional(), {
       default:
-        "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a session position; " +
+        "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot; " +
         "'t<track>' is that track's arrangement, which also needs arrangementStart; 't<track>/l<lane>' is a " +
         "take lane on it and 't<track>/l+' appends a fresh one. All indices 0-based, " +
         "so 't0/s0' is the first track's first scene (e.g., 't0/s0' or 't0/s0,t0/s2' or 't1' with arrangementStart)",
@@ -69,7 +69,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated for each (indexed: session positions first, then arrangement)",
+        "name for all, or comma-separated for each (indexed: clip slots first, then arrangement)",
       smallModel: "clip name",
     }),
 

@@ -222,7 +222,7 @@ describe("playback path shaped wrong for the action", () => {
   it("refuses a track for play-scene, naming the shapes that work", () => {
     expect(() => playback({ action: "play-scene", path: "t0" })).toThrow(
       'invalid path "t0" - names no scene; action "play-scene" takes a scene ' +
-        '"s<scene>" or a session position "t<track>/s<scene>"',
+        '"s<scene>" or a clip slot "t<track>/s<scene>"',
     );
   });
 
@@ -231,7 +231,7 @@ describe("playback path shaped wrong for the action", () => {
       playback({ action: "play-session-clips", path: "s3" }),
     ).toThrow(
       'invalid path "s3" - names a scene; action "play-session-clips" takes ' +
-        'session positions "t<track>/s<scene>" (e.g., "t0/s3"), or use ' +
+        'clip slots "t<track>/s<scene>" (e.g., "t0/s3"), or use ' +
         'action "play-scene" for the whole scene',
     );
   });
@@ -242,7 +242,7 @@ describe("playback path shaped wrong for the action", () => {
       playback({ action: "stop-session-clips", path: "s3" }),
     ).toThrow(
       'invalid path "s3" - names a scene; action "stop-session-clips" takes ' +
-        'session positions "t<track>/s<scene>" (e.g., "t0/s3")',
+        'clip slots "t<track>/s<scene>" (e.g., "t0/s3")',
     );
     expect(() =>
       playback({ action: "stop-session-clips", path: "s3" }),

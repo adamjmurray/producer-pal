@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Where a clip duplicate goes. `toPath` names it — `t7` for that track's
-// arrangement, `t7/s2` for a session slot — and the deprecated `toSlot` still
+// arrangement, `t7/s2` for a clip slot — and the deprecated `toSlot` still
 // works. Resolved before anything is created, so a bad destination fails
 // instead of quietly landing the copy somewhere else.
 
@@ -30,7 +30,7 @@ type ClipPath = ReturnType<typeof requireClipPath>;
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
-  /** Session slots, in order. Empty for arrangement destinations. */
+  /** Clip slots, in order. Empty for arrangement destinations. */
   slots: SlotPosition[];
   /** Arrangement destinations, in order. Empty means the source's own track. */
   arrangementTargets: ArrangementTrack[];
@@ -39,7 +39,7 @@ export interface ClipDestinations {
 /**
  * Resolves a clip duplicate's destination from its path params.
  * @param rawToPath - Destination path(s), comma-separated for multiple
- * @param rawToSlot - Deprecated session slot(s), trackIndex/sceneIndex format
+ * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart or locator was given
  * @returns Where the copies go
  */
@@ -75,7 +75,7 @@ export function resolveClipDestinations(
 
   if (paths.length === 0) {
     throw new Error(
-      'duplicate failed: clip requires toPath ("t0/s1" for a session slot) or arrangementStart/locator (for the arrangement)',
+      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
     );
   }
 
@@ -141,7 +141,7 @@ export function warnUnusedArrangementParams(
  * Warns when a destination param was sent for a type that has no destination.
  * @param type - Type of object being duplicated
  * @param rawToPath - Destination path(s)
- * @param rawToSlot - Deprecated session slot(s)
+ * @param rawToSlot - Deprecated clip slot(s)
  */
 export function warnUnusedDestination(
   type: string,
@@ -167,8 +167,8 @@ export function warnUnusedDestination(
 // --- Helpers below main exports ---
 
 /**
- * Resolves the deprecated toSlot param, which only ever named session slots.
- * @param toSlot - Session slot(s), trackIndex/sceneIndex format
+ * Resolves the deprecated toSlot param, which only ever named clip slots.
+ * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart or locator was given
  * @returns Session destinations
  */
@@ -180,12 +180,12 @@ function legacySlotDestinations(
   // gets at least one entry.
   const slots = parseSlotList(toSlot, "toSlot");
 
-  // toSlot only ever named session slots, so it can't be the arrangement
+  // toSlot only ever named clip slots, so it can't be the arrangement
   // destination arrangementStart wants. Drop the weaker of the two rather than
   // failing the call, the way toPath does for the same conflict.
   if (hasArrangementParams) {
     console.warn(
-      "duplicate: arrangementStart/locator ignored — toSlot names a session position; " +
+      "duplicate: arrangementStart/locator ignored — toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
@@ -194,9 +194,9 @@ function legacySlotDestinations(
 }
 
 /**
- * Reads arrangement destination tracks off the parsed paths. A session position
- * here contradicts arrangementStart/locator; warn and drop the weaker of the
- * two rather than failing the call, the way every other tool handles a position
+ * Reads arrangement destination tracks off the parsed paths. A clip slot here
+ * contradicts arrangementStart/locator; warn and drop the weaker of the two
+ * rather than failing the call, the way every other tool handles a position
  * that doesn't apply.
  * @param paths - Parsed clip destination paths
  * @returns Arrangement destinations, or session ones when only slots were named
@@ -218,7 +218,7 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
 
   // Number the lanes here, off the list the caller wrote: the copy loop cycles
   // this list, and a cycled repeat must reuse its lane, not append one. Both
-  // arrangement returns below need it — dropped session slots don't change the
+  // arrangement returns below need it — dropped clip slots don't change the
   // numbering, but leaving it off one path collapses two "l+" into one lane.
   const arrangementTargets = withNewLaneOrdinals(targets);
 
@@ -231,11 +231,11 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
     .join(", ");
 
   // toPath names where the copy goes; arrangementStart only says where on a
-  // track. With nothing but session positions, the position has no track to
-  // apply to, so toPath is the one that survives.
+  // track. With nothing but clip slots, the position has no track to apply
+  // to, so toPath is the one that survives.
   if (arrangementTargets.length === 0) {
     console.warn(
-      `duplicate: arrangementStart/locator ignored — toPath "${named}" names a session position; ` +
+      `duplicate: arrangementStart/locator ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
@@ -250,7 +250,7 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
 }
 
 /**
- * Reads session slots off the parsed paths.
+ * Reads clip slots off the parsed paths.
  * @param paths - Parsed clip destination paths
  * @returns Session destinations
  */
@@ -265,7 +265,7 @@ function sessionDestinations(paths: ClipPath[]): ClipDestinations {
       throw new Error(
         `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
           `arrangementStart or locator for track ${path.trackIndex}'s arrangement, or use ` +
-          `"t${path.trackIndex}/s<scene>" for a session slot`,
+          `"t${path.trackIndex}/s<scene>" for a clip slot`,
       );
     }
 

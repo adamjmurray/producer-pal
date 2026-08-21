@@ -53,7 +53,7 @@ import {
 
 /**
  * Duplicates a clip to its resolved destinations
- * @param destinations - Where the copies go (session slots or arrangement tracks)
+ * @param destinations - Where the copies go (clip slots or arrangement tracks)
  * @param object - Live API object to duplicate
  * @param id - ID of the object
  * @param name - Base name for duplicated clips
@@ -80,7 +80,7 @@ export async function duplicateClipWithPositions(
   context: Partial<ToolContext>,
 ): Promise<object[]> {
   if (destinations.destination === "session") {
-    // A session slot can't name a lane, so nothing here has one to honor.
+    // A clip slot can't name a lane, so nothing here has one to honor.
     return duplicateClipToSlots(destinations.slots, object, id, name, color);
   }
 

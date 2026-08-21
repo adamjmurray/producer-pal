@@ -60,7 +60,7 @@ export async function createMidiClip(
  * suites that vary looping/length/notes per case rather than taking
  * {@link createMidiClip}'s fixed 2-bar shape.
  * @param ctx - MCP test context with client
- * @param path - Session slot path (e.g. "t8/s0")
+ * @param path - Clip slot path (e.g. "t8/s0")
  * @param args - Create-clip arguments beyond the path (notes, length, looping)
  * @returns Clip ID
  */
@@ -269,7 +269,7 @@ export function setupClipTransformTest(): ReturnType<
  * inside the test body is what actually takes effect for the read-back). Shared
  * by the triplet round-trip suites (MIDI JSON ratios and Stark triplets).
  * @param ctx - MCP test context with client
- * @param path - Session slot path (e.g. "t8/s0")
+ * @param path - Clip slot path (e.g. "t8/s0")
  * @param notes - Notation string for the clip's notes
  * @param notation - Read-back notation mode to configure the server with
  * @param interpret - Re-interprets the read-back notation string into events

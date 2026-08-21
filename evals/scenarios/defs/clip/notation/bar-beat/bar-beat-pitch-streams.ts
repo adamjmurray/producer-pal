@@ -73,7 +73,7 @@ function assertMelody(
  * @param opts.id - Scenario id
  * @param opts.description - One-line description
  * @param opts.prompts - User turns after the connect turn
- * @param opts.slots - Session slots to clear in setup
+ * @param opts.slots - Clip slots to clear in setup
  * @param opts.melodies - Per-clip read-back checks
  * @param opts.judgePrompt - Advisory LLM-judge prompt
  * @returns The scenario

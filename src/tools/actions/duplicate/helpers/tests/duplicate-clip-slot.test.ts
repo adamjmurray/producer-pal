@@ -195,7 +195,7 @@ describe("duplicateClipSlot", () => {
   });
 });
 
-describe("duplicateClipWithPositions to session slots", () => {
+describe("duplicateClipWithPositions to clip slots", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

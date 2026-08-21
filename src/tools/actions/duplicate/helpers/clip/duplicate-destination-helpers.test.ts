@@ -110,7 +110,7 @@ describe("resolveClipDestinations", () => {
 
     // toPath is where the copy goes; arrangementStart only says where on a
     // track. With no track named, the position has nothing to apply to.
-    it("drops an arrangement position when toPath names only session slots", () => {
+    it("drops an arrangement position when toPath names only clip slots", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
       expect(resolveClipDestinations("t2/s1", undefined, true)).toStrictEqual({
@@ -123,7 +123,7 @@ describe("resolveClipDestinations", () => {
       );
     });
 
-    it("drops the session slots when toPath also names a track", () => {
+    it("drops the clip slots when toPath also names a track", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
       expect(
@@ -167,12 +167,12 @@ describe("resolveClipDestinations", () => {
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "arrangementStart/locator ignored — toSlot names a session position",
+          "arrangementStart/locator ignored — toSlot names a clip slot",
         ),
       );
     });
 
-    // The mirror case. Nothing names a session slot, so arrangementStart is the
+    // The mirror case. Nothing names a clip slot, so arrangementStart is the
     // only destination left and it carries the call — where this used to refuse
     // the copy and ask for the deprecated param.
     it("honors the arrangement position when toSlot names nothing", () => {
@@ -197,13 +197,13 @@ describe("resolveClipDestinations", () => {
 
   it("names both possibilities for a bare track with no position", () => {
     expect(() => resolveClipDestinations("t2", undefined, false)).toThrow(
-      /"t2" names a track but not a spot on it.*arrangementStart or locator for track 2's arrangement.*"t2\/s<scene>" for a session slot/s,
+      /"t2" names a track but not a spot on it.*arrangementStart or locator for track 2's arrangement.*"t2\/s<scene>" for a clip slot/s,
     );
   });
 
   it("throws when nothing names a destination", () => {
     expect(() => resolveClipDestinations(undefined, undefined, false)).toThrow(
-      'duplicate failed: clip requires toPath ("t0/s1" for a session slot) or arrangementStart/locator (for the arrangement)',
+      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
     );
   });
 

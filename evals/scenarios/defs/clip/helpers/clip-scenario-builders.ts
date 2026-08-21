@@ -27,7 +27,7 @@ import {
 export const LEAD_LIVE_SET = "basic-midi-4-track";
 /** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
 export const LEAD_TRACK = 3;
-/** Scene-1 session slot on the Lead track. */
+/** Scene-1 clip slot on the Lead track. */
 export const LEAD_SLOT_1 = `${LEAD_TRACK}/0`;
 
 /**
@@ -40,7 +40,7 @@ export const LEAD_SLOT_1 = `${LEAD_TRACK}/0`;
  * @param config.id - Scenario id
  * @param config.description - One-line description
  * @param config.messages - User turns after the connect turn
- * @param config.clearSlots - Session slots to clear in setup
+ * @param config.clearSlots - Clip slots to clear in setup
  * @param config.assertions - Assertions after the connect + create-clip checks
  * @param config.liveSet - Live Set to open (defaults to basic-midi-4-track)
  * @param config.requires - Capability requirements (e.g. `{ brackets: true }`)

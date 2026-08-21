@@ -27,7 +27,7 @@ import {
 } from "#src/tools/shared/validation/object-path.ts";
 
 /**
- * Where a clip can go: a session slot, or a track's arrangement — its main lane
+ * Where a clip can go: a clip slot, or a track's arrangement — its main lane
  * (`t0`), one of its take lanes (`t0/l0`), or a fresh one (`t0/l+`).
  */
 export type ClipPath = Extract<
@@ -182,12 +182,12 @@ export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
   throw pathError(
     label,
     formatObjectPath(path),
-    `${describeNonClipPath(path)}; clips go to a track ("t0"), a take lane on it ("t0/l0"), or a session slot ("t0/s1")`,
+    `${describeNonClipPath(path)}; clips go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")`,
   );
 }
 
 /**
- * Narrows a path to a session position, for callers that can only act on one —
+ * Narrows a path to a clip slot, for callers that can only act on one —
  * reading, selecting, or launching a clip in the grid.
  * @param path - Parsed path
  * @param label - Param name for error messages
@@ -208,7 +208,7 @@ export function requireSessionSlot(
     throw pathError(
       label,
       formatObjectPath(clip),
-      `${problem}; name a session position as "t<track>/s<scene>" ` +
+      `${problem}; name a clip slot as "t<track>/s<scene>" ` +
         `(e.g., "t${clip.trackIndex}/s0")`,
     );
   }
@@ -217,7 +217,7 @@ export function requireSessionSlot(
 }
 
 /**
- * Parses a comma-separated list of session positions.
+ * Parses a comma-separated list of clip slots.
  * @param input - Comma-separated paths (e.g., "t0/s1" or "t0/s1,t2/s3")
  * @param label - Param name for error messages
  * @returns One track/scene pair per path, in order
@@ -328,7 +328,7 @@ function describeNonDevicePath(path: ObjectPath): string {
     case "scene":
       return "a scene holds no devices";
     case "slot":
-      return "a session slot holds no devices";
+      return "a clip slot holds no devices";
     default:
       return "a take lane holds no devices";
   }

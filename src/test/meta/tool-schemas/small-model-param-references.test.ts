@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z, type ZodType } from "zod";
 import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
   param,
   resolveModalDescription,
@@ -21,10 +22,15 @@ import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool
 // Deprecation is the other way a param leaves the published schema, and it
 // applies in every mode — so both axes run here.
 //
-// There is no allowlist. Every surviving description is currently clean under a
-// plain word-boundary match, including the removed params whose names are also
-// ordinary English (`count`, `name`, `format`, `sort`). If a legitimate prose
-// use ever collides, add the allowlist then — don't loosen the match.
+// The one carve-out is "clip slot" — Live's own name for a `t0/s1` location,
+// which the descriptions say constantly and which has nothing to do with the
+// deprecated `slot`/`slots` params. It's blanked out of the text before
+// matching, so a bare "set slot to ..." still gets caught.
+//
+// Every other surviving description is clean under a plain word-boundary match,
+// including the removed params whose names are also ordinary English (`count`,
+// `name`, `format`, `sort`). If another legitimate prose use collides, blank
+// that term out the same way — don't loosen the match.
 
 // The `code` params only exist when this flag is on, and it is read when the
 // tool defs load — so stub it before importing them.
@@ -79,7 +85,43 @@ describe("published param references", () => {
       "fake (barbeat): tool description names removed param `takeLane`",
     ]);
   });
+
+  it("still catches a bare `slot` next to the allowed 'clip slot'", () => {
+    const def = slotDef("a clip slot 't0/s1'; set slot to the same thing");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([
+      "fake (barbeat): tool description names removed param `slot`",
+    ]);
+  });
+
+  it("allows 'clip slot' on a tool that deprecated `slot`", () => {
+    const def = slotDef("a clip slot 't0/s1', or clip slots 't0/s1,t2/s3'");
+
+    expect(
+      danglingReferences(def, { notation: "barbeat", smallModelMode: false }),
+    ).toStrictEqual([]);
+  });
 });
+
+/**
+ * A tool that deprecated its `slot` param, for exercising the "clip slot"
+ * carve-out.
+ * @param description - The tool description to publish
+ * @returns A definition shaped enough for danglingReferences()
+ */
+function slotDef(description: string): ToolDefFunction {
+  return {
+    toolName: "fake",
+    toolOptions: {
+      description: { default: description },
+      inputSchema: {
+        slot: deprecatedParam(z.string().optional(), { replacedBy: "path" }),
+      },
+    },
+  } as unknown as ToolDefFunction;
+}
 
 /**
  * Finds text a tool still publishes that names a param it does not publish —
@@ -102,13 +144,16 @@ function danglingReferences(
   if (removed.length === 0) return [];
 
   const texts: [string, string][] = [
-    ["tool description", resolveModalDescription(description, context)],
+    [
+      "tool description",
+      searchable(resolveModalDescription(description, context)),
+    ],
   ];
 
   for (const [name, schema] of Object.entries(published)) {
     const text = (schema as ZodType).description;
 
-    if (text != null) texts.push([`\`${name}\` description`, text]);
+    if (text != null) texts.push([`\`${name}\` description`, searchable(text)]);
   }
 
   return removed.flatMap((name) =>
@@ -119,4 +164,14 @@ function danglingReferences(
           `${def.toolName} (${context.notation}): ${where} names removed param \`${name}\``,
       ),
   );
+}
+
+/**
+ * Blanks out "clip slot", so Live's term for a `t0/s1` location doesn't read as
+ * a reference to the deprecated `slot`/`slots` params.
+ * @param text - Published description text
+ * @returns The same text with the term removed
+ */
+function searchable(text: string): string {
+  return text.replaceAll(/\bclip slots?\b/gi, "");
 }

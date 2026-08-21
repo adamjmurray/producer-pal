@@ -141,7 +141,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 /**
  * Create a MIDI clip with `notes` at `path`, read it back, and re-interpret the
  * serialized notation into note events (in the clip's own meter).
- * @param path - Session slot path (e.g. "t8/s0")
+ * @param path - Clip slot path (e.g. "t8/s0")
  * @param notes - bar|beat notation (may contain pattern brackets)
  * @returns The read-back notation string and its re-interpreted note events
  */

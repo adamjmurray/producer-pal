@@ -77,7 +77,7 @@ interface BuildPlaybackResultParams {
  * @param args.loopEndLocator - Locator ID or name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
  * @param args.ids - Comma-separated clip IDs for Session view operations
- * @param args.path - A scene "s<scene>", or comma-separated session positions "t<track>/s<scene>"
+ * @param args.path - A scene "s<scene>", or comma-separated clip slots "t<track>/s<scene>"
  * @param args.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param args.focus - Switch to arrangement or session view based on action
  * @param _context - Internal context object (unused, for consistent tool interface)
@@ -279,7 +279,7 @@ function buildPlaybackResult({
  * @param action - Action name for error messages
  * @param liveSet - LiveAPI instance for live_set
  * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved session positions, or null when none given
+ * @param slotPositions - Resolved clip slots, or null when none given
  * @param state - Current playback state
  * @returns Updated playback state
  */
@@ -324,7 +324,7 @@ function handlePlaySessionClips(
  *
  * @param action - Action name for error messages
  * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved session positions, or null when none given
+ * @param slotPositions - Resolved clip slots, or null when none given
  * @param state - Current playback state
  * @returns Updated playback state
  */

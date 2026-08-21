@@ -247,7 +247,7 @@ interface HandlePositionOperationsArgs {
 }
 
 /**
- * Handle clip position operations: session slot move or arrangement operations
+ * Handle clip position operations: clip slot move or arrangement operations
  * @param args - Operation arguments
  */
 export function handlePositionOperations(
@@ -293,7 +293,7 @@ export function handlePositionOperations(
 }
 
 /**
- * Reads the session slots off a toPath, warning about each entry that names
+ * Reads the clip slots off a toPath, warning about each entry that names
  * something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
  * @returns One destination per entry, null where the entry names no slot
@@ -314,7 +314,7 @@ function pathDestinations(toPath: string): Array<SlotPosition | null> {
       }
 
       console.warn(
-        `toPath "${formatObjectPath(parsed)}" is not a session slot, so that clip was not moved; ` +
+        `toPath "${formatObjectPath(parsed)}" is not a clip slot, so that clip was not moved; ` +
           'update-clip moves a session clip to another slot ("t2/s3") — use ppal-duplicate to copy a clip to another track',
       );
     } catch (error) {

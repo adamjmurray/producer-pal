@@ -32,7 +32,7 @@ describe("select path param", () => {
     resetSelectTestState();
   });
 
-  it("selects a session position", () => {
+  it("selects a clip slot", () => {
     const clipSlot = registerMockObject("clipslot_0_1", {
       path: livePath.track(0).clipSlot(1),
       type: "ClipSlot",
@@ -178,8 +178,8 @@ describe("select path param", () => {
     );
   });
 
-  // A session position names two things, so say which one is missing.
-  it("refuses a session position, naming the missing half", () => {
+  // A clip slot names two things, so say which one is missing.
+  it("refuses a clip slot, naming the missing half", () => {
     mockNonExistentObjects();
     registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
     registerMockObject("scene_0", { path: livePath.scene(0), type: "Scene" });

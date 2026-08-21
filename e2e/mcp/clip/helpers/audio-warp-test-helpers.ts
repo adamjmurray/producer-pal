@@ -114,9 +114,9 @@ export async function readClipFully(
 export const DRUM_LOOP_BEATS = 4;
 
 /**
- * Create an unwarped drum-loop clip in a session slot.
+ * Create an unwarped drum-loop clip in a clip slot.
  * @param client - The MCP client
- * @param path - The session position, "t<track>/s<scene>"
+ * @param path - The clip slot, "t<track>/s<scene>"
  * @returns The new clip's id
  */
 export async function createUnwarpedDrumLoop(

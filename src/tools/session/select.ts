@@ -44,9 +44,9 @@ interface SelectArgs {
   trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
-  /** Session position "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
+  /** Clip slot "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
   path?: string;
-  /** Deprecated session slot, trackIndex/sceneIndex */
+  /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string;
   /** Deprecated device path */
   devicePath?: string;

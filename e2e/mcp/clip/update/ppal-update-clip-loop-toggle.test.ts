@@ -101,7 +101,7 @@ async function updateAndRead(
  * looping — the state a bare `looping: true` used to reset to the whole bar.
  * @param client - The MCP client
  * @param kind - Whether to build a MIDI clip or an audio one
- * @param sceneIndex - The session slot to build it in
+ * @param sceneIndex - The clip slot to build it in
  * @returns The new clip's id
  */
 async function halvedClip(

@@ -69,7 +69,7 @@ occupy the location.
 | `t0`              | ✅ arrangement   | ✅ append | ✅     | —      |
 | `rt0`, `mt`       | ❌ no clip slots | ✅        | ✅     | —      |
 | `s3`              | ❌               | ❌        | —      | ✅     |
-| `t0/s3`           | ✅ session slot  | ❌        | —      | —      |
+| `t0/s3`           | ✅ clip slot     | ❌        | —      | —      |
 | `t0/l1`, `t0/l+`  | ✅ arrangement   | ❌        | —      | —      |
 | `t0/d1` and below | ❌               | ✅        | —      | —      |
 
@@ -152,11 +152,11 @@ Clip results report `path`, and nothing else positional — no `slot`, no
 | arrangement            | `path: "t0"`, `arrangementStart: "5\|1"`    |
 | arrangement, take lane | `path: "t0/l1"`, `arrangementStart: "5\|1"` |
 
-A session slot pastes straight back into any `path`/`toPath` param. An
-arrangement one doesn't address that clip — it names the track the clip is on,
-which is what a destination needs and not what a source needs. So it works as a
-destination (`create-clip`, `duplicate`), and a tool that wants one specific
-clip wants its id. `select` takes it and selects the track.
+A clip slot pastes straight back into any `path`/`toPath` param. An arrangement
+one doesn't address that clip — it names the track the clip is on, which is what
+a destination needs and not what a source needs. So it works as a destination
+(`create-clip`, `duplicate`), and a tool that wants one specific clip wants its
+id. `select` takes it and selects the track.
 
 Error messages follow: name the path and show the fix, never restate a
 requirement in index terms.

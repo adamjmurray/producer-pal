@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Where new clips go. `path` names it in the grammar duplicate and update-clip
-// already speak — `t0/s1` for a session slot, `t0` for that track's arrangement
+// already speak — `t0/s1` for a clip slot, `t0` for that track's arrangement
 // — and the retired `slot` plus the trackIndex/sceneIndex models reach for on
 // their own still resolve to the same two buckets.
 //
@@ -37,7 +37,7 @@ export interface ArrangementPosition extends ArrangementTrack {
 }
 
 export interface ClipDestinations {
-  /** Session slots, in order. */
+  /** Clip slots, in order. */
   sessionSlots: SlotPosition[];
   /** Arrangement clips, one per track/position pair. */
   arrangementPositions: ArrangementPosition[];
@@ -65,7 +65,7 @@ interface SplitDestinations {
  * Resolves where a create-clip call's clips go.
  * @param params - The destination params as the tool received them
  * @param arrangementStarts - Parsed arrangement bar|beat positions
- * @returns Session slots and arrangement positions, both possibly empty
+ * @returns Clip slots and arrangement positions, both possibly empty
  */
 export function resolveCreateClipDestinations(
   params: ClipDestinationParams,
@@ -101,12 +101,12 @@ export function resolveCreateClipDestinations(
 // --- Helpers below main exports ---
 
 /**
- * Splits a parsed `path` into its session slots and arrangement tracks. A call
- * may name both, which is how one call fills a session slot and drops an
+ * Splits a parsed `path` into its clip slots and arrangement tracks. A call
+ * may name both, which is how one call fills a clip slot and drops an
  * arrangement clip at the same time.
  * @param path - The raw path param, already known to name something
  * @param params - The destination params as the tool received them
- * @returns Session slots and arrangement tracks, in order
+ * @returns Clip slots and arrangement tracks, in order
  */
 function splitPathDestinations(
   path: string,
@@ -151,7 +151,7 @@ function splitPathDestinations(
  * fallback for a caller that didn't use the segment.
  * @param tracks - Arrangement destinations, in order
  * @param takeLane - The raw takeLane param
- * @param sessionSlotCount - Number of session slots in this request
+ * @param sessionSlotCount - Number of clip slots in this request
  * @returns The destinations, with the alias applied where a lane was unnamed
  */
 function applyTakeLaneAlias(
@@ -198,7 +198,7 @@ function applyTakeLaneAlias(
  * @param slot - The deprecated slot list, or undefined
  * @param params - The destination params as the tool received them
  * @param hasArrangementStarts - Whether arrangementStart named any position
- * @returns Session slots and arrangement tracks, in order
+ * @returns Clip slots and arrangement tracks, in order
  */
 function legacyDestinations(
   slot: string | undefined,
@@ -233,7 +233,7 @@ function legacyDestinations(
   }
 
   // trackIndex alone means the arrangement, but only arrangementStart says
-  // where on it. Without one it named nothing the session slots didn't already.
+  // where on it. Without one it named nothing the clip slots didn't already.
   if (!hasArrangementStarts && sessionSlots.length > 0) {
     console.warn(
       "createClip: trackIndex ignored — an arrangement clip also needs arrangementStart",
@@ -273,7 +273,7 @@ function pairTracksWithStarts(
     const { trackIndex, takeLane } = tracks[0] as ArrangementTrack;
     const fix =
       takeLane == null
-        ? `add arrangementStart for its arrangement, or use "t${trackIndex}/s<scene>" for a session slot`
+        ? `add arrangementStart for its arrangement, or use "t${trackIndex}/s<scene>" for a clip slot`
         : "add arrangementStart; take lanes hold arrangement clips";
 
     throw new Error(

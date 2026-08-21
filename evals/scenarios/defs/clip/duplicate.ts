@@ -239,7 +239,7 @@ export const duplicateLoop: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "On the Lead track (track index 3), create a 2-bar clip in the first session slot with these notes: C3 at bar 1 beat 1, E3 at bar 1 beat 3, G3 at bar 2 beat 1, B3 at bar 2 beat 3.",
+    "On the Lead track (track index 3), create a 2-bar clip in the first clip slot with these notes: C3 at bar 1 beat 1, E3 at bar 1 beat 3, G3 at bar 2 beat 1, B3 at bar 2 beat 3.",
     "Now double that clip's length to 4 bars, copying the existing notes into the new second half — this is Ableton's Duplicate Loop action.",
   ],
 

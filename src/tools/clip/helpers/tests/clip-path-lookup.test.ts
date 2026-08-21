@@ -14,7 +14,7 @@ import {
 import { clipIdsAtPaths } from "../clip-path-lookup.ts";
 
 /**
- * Put a clip in a session slot.
+ * Fills a clip slot.
  * @param trackIndex - 0-based track index
  * @param sceneIndex - 0-based scene index
  * @param id - The clip's id
@@ -36,7 +36,7 @@ describe("clipIdsAtPaths", () => {
     mockNonExistentObjects();
   });
 
-  it("resolves session positions to the clips sitting there", () => {
+  it("resolves clip slots to the clips sitting there", () => {
     registerClipAt(0, 1, "clip_a");
     registerClipAt(2, 3, "clip_b");
 
@@ -63,7 +63,7 @@ describe("clipIdsAtPaths", () => {
     expect(warn).toHaveBeenCalledWith('updateClip: no clip at path "t0/s1"');
   });
 
-  it("warns and skips an entry that names no session position", () => {
+  it("warns and skips an entry that names no clip slot", () => {
     const warn = vi.spyOn(console, "warn");
 
     registerClipAt(2, 3, "clip_b");

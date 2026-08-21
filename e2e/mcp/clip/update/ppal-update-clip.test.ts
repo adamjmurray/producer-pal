@@ -443,7 +443,7 @@ describe("ppal-update-clip", () => {
     expect(oldSlot.id).toBeNull();
   });
 
-  it("warns instead of throwing when toPath isn't a session slot", async () => {
+  it("warns instead of throwing when toPath isn't a clip slot", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -468,7 +468,7 @@ describe("ppal-update-clip", () => {
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings.join(" ")).toContain("is not a session slot");
+    expect(warnings.join(" ")).toContain("is not a clip slot");
 
     await sleep(100);
 
