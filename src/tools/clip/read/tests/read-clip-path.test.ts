@@ -10,7 +10,7 @@ import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
 describe("readClip path param", () => {
-  it("reads the clip at a session position", () => {
+  it("reads the clip at a clip slot", () => {
     setupMidiClipMock({
       trackIndex: 1,
       sceneIndex: 1,
@@ -45,7 +45,7 @@ describe("readClip path param", () => {
   it("rejects a take lane path and names what to send instead", () => {
     expect(() => readClip({ path: "t1/l0" })).toThrow(
       'invalid path "t1/l0" - take lanes hold arrangement clips; ' +
-        'name a session position as "t<track>/s<scene>" (e.g., "t1/s0")',
+        'name a clip slot as "t<track>/s<scene>" (e.g., "t1/s0")',
     );
   });
 

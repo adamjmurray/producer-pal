@@ -321,7 +321,7 @@ export const noteOpsSplit: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "On the Lead track (track index 3), create a 2-bar clip in the first session slot containing a single note: C3 sustained for the entire 2 bars.",
+    "On the Lead track (track index 3), create a 2-bar clip in the first clip slot containing a single note: C3 sustained for the entire 2 bars.",
     "Break that one held note into separate notes by cutting it at bar 1 beat 3 and bar 2 beat 1.",
   ],
 
@@ -350,7 +350,7 @@ export const noteOpsRepeat: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "On the Lead track (track index 3), create a 2-bar clip in the first session slot with four quarter notes in bar 1: C3, E3, G3, B3 on beats 1, 2, 3, and 4.",
+    "On the Lead track (track index 3), create a 2-bar clip in the first clip slot with four quarter notes in bar 1: C3, E3, G3, B3 on beats 1, 2, 3, and 4.",
     "Now add a delayed echo: copy every note an eighth note later at the same pitch, layered on top of the originals. Keep the clip the same length — don't make it longer.",
   ],
 

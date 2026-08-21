@@ -286,7 +286,7 @@ describe("createClip - session view", () => {
     });
   });
 
-  it("should throw error when session slot track does not exist", async () => {
+  it("should throw error when clip slot track does not exist", async () => {
     mockNonExistentObjects();
     setupLiveSet();
 

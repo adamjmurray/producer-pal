@@ -81,7 +81,7 @@ interface ClipResult {
  *
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
- * @param args.path - Session position(s) of clips to update, instead of ids
+ * @param args.path - Clip slot(s) of clips to update, instead of ids
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
@@ -96,7 +96,7 @@ interface ClipResult {
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
- * @param args.toPath - Session slot to move the clip to (e.g., "t2/s3")
+ * @param args.toPath - Clip slot to move the clip to (e.g., "t2/s3")
  * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at
  * @param args.split - Deprecated split positions, measured from each clip's start; use arrangementSplit
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)

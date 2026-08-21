@@ -388,7 +388,7 @@ describe("handleAutoPlayback (unit)", () => {
     ).not.toThrow();
   });
 
-  it("no-ops (does not reach the switch) when there are no session slots", () => {
+  it("no-ops (does not reach the switch) when there are no clip slots", () => {
     // Empty slots → guard returns early. The `sessionSlots.length === 0` → false
     // mutant would fall through to the switch and throw on the unknown auto value.
     expect(() =>

@@ -29,7 +29,7 @@ describe("parseObjectPath", () => {
     });
   });
 
-  it("reads a session slot", () => {
+  it("reads a clip slot", () => {
     expect(parseObjectPath("t7/s2")).toStrictEqual({
       kind: "slot",
       trackIndex: 7,
@@ -160,7 +160,7 @@ describe("parseObjectPath", () => {
   it("rejects a scene segment anywhere a slot can't be", () => {
     for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1", "t0/s1/d0"]) {
       expect(() => parseObjectPath(path)).toThrow(
-        /a session slot is "t<track>\/s<scene>"/,
+        /a clip slot is "t<track>\/s<scene>"/,
       );
     }
   });
@@ -270,7 +270,7 @@ describe("parseObjectPath", () => {
   describe("the spellings results used before 2.2.0", () => {
     // A model pasting back what a result told it made a well-founded guess, so
     // honor it and warn — the same trade already taken on hidden params.
-    it("reads trackIndex/sceneIndex as a session slot", () => {
+    it("reads trackIndex/sceneIndex as a clip slot", () => {
       const warn = vi.spyOn(console, "warn");
 
       expect(parseObjectPath("0/3")).toStrictEqual({

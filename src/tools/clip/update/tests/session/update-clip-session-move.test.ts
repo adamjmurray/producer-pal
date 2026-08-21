@@ -642,12 +642,12 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("warns and skips a destination that is not a session slot", () => {
+  it("warns and skips a destination that is not a clip slot", () => {
     // update-clip has no cross-track move; duplicate is the tool for that.
     expect(resolveMoveDestinations("t2", undefined, 1)).toStrictEqual([null]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('toPath "t2" is not a session slot'),
+      expect.stringContaining('toPath "t2" is not a clip slot'),
     );
   });
 

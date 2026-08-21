@@ -45,7 +45,7 @@ describe("createClip path param", () => {
   });
 
   // Preserves what slot + trackIndex + arrangementStart could already do: one
-  // call filling a session slot and dropping an arrangement clip.
+  // call filling a clip slot and dropping an arrangement clip.
   it("creates session and arrangement clips from one mixed path", async () => {
     setupArrangementClipMocks();
     const { clipSlot } = setupSessionMocks({
@@ -97,7 +97,7 @@ describe("createClip path param", () => {
   it("rejects a destination no clip can occupy", async () => {
     await expect(createClip({ path: "rt0" })).rejects.toThrow(
       'invalid path "rt0" - return and master tracks have no clips; ' +
-        'clips go to a track ("t0"), a take lane on it ("t0/l0"), or a session slot ("t0/s1")',
+        'clips go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
     );
   });
 
@@ -157,7 +157,7 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
 
   // The whole point of the alias: a model that guesses these two gets the clip
   // it asked for instead of an error and a second round trip.
-  it("reads trackIndex + sceneIndex as a session slot", async () => {
+  it("reads trackIndex + sceneIndex as a clip slot", async () => {
     const { clipSlot } = setupSessionMocks({
       liveSet: { signature_numerator: 4, signature_denominator: 4 },
       clip: { length: 4 },

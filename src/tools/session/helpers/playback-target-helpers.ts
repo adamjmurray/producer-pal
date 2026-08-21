@@ -26,7 +26,7 @@ export interface SlotPosition {
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
-  /** Session positions named by `path` or the deprecated `slots` */
+  /** Clip slots named by `path` or the deprecated `slots` */
   slotPositions: SlotPosition[] | null;
   /** `ids` as the caller named it, or undefined when it names no clip */
   ids: string | undefined;
@@ -78,7 +78,7 @@ const TARGETING_ACTIONS = new Set([
  * @param action - The playback action, which decides whether a target applies
  * @param params - The raw target params
  * @param params.ids - Comma-separated clip IDs, or scene IDs for play-scene
- * @param params.path - A scene, or comma-separated session positions
+ * @param params.path - A scene, or comma-separated clip slots
  * @param params.slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @param params.sceneIndex - Scene index, an alternative to a "s<scene>" path
  * @returns What the params named, null where they named nothing
@@ -124,7 +124,7 @@ export function resolvePlaybackTarget(
 
   if (sceneIndex != null) {
     console.warn(
-      `sceneIndex ignored: action "${action}" acts on session positions; ` +
+      `sceneIndex ignored: action "${action}" acts on clip slots; ` +
         `use action "${PLAY_SCENE}" for the whole scene`,
     );
   }
@@ -135,7 +135,7 @@ export function resolvePlaybackTarget(
 /**
  * Resolve clip slot positions from either ids or the resolved path positions
  * @param ids - Comma-separated clip IDs
- * @param slotPositions - Resolved session positions, or null when none given
+ * @param slotPositions - Resolved clip slots, or null when none given
  * @param action - Action name for error messages
  * @returns Array of slot positions
  */
@@ -186,7 +186,7 @@ export function resolveClipSlotPositions(
 
 /**
  * Read `path` or the deprecated `slots` as parsed entries.
- * @param path - A scene, or comma-separated session positions
+ * @param path - A scene, or comma-separated clip slots
  * @param slots - Deprecated comma-separated trackIndex/sceneIndex positions
  * @returns The entries named and which param named them, or nothing when
  *   neither did
@@ -226,7 +226,7 @@ function readPathParam(
 }
 
 /**
- * The scene each path entry names. A session position names the scene it sits
+ * The scene each path entry names. A clip slot names the scene it sits
  * in: play-scene fires the whole scene whatever track the path sits on, so the
  * track is surplus, not a contradiction, and dropping it beats refusing a
  * caller who already told us the scene.
@@ -251,7 +251,7 @@ function pathSceneRefs(
       source.label,
       formatObjectPath(entry),
       `names no scene; action "${PLAY_SCENE}" takes a scene "s<scene>" ` +
-        `or a session position "t<track>/s<scene>"`,
+        `or a clip slot "t<track>/s<scene>"`,
     );
   });
 }
@@ -274,7 +274,7 @@ function quoteEntry(entry: ObjectPath, source: PathSource): string {
 }
 
 /**
- * The session positions each path entry names, for the actions that act on
+ * The clip slots each path entry names, for the actions that act on
  * clips rather than a whole scene.
  * @param action - The playback action
  * @param entries - What the path param named
@@ -400,7 +400,7 @@ function assertClipPath(
   throw pathError(
     source.label,
     formatObjectPath(entry),
-    `names a scene; action "${action}" takes session positions ` +
+    `names a scene; action "${action}" takes clip slots ` +
       `"t<track>/s<scene>" (e.g., "t0/s${entry.sceneIndex}")${wholeScene}`,
   );
 }

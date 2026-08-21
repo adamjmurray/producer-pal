@@ -34,7 +34,7 @@ interface SelectTargets {
  * @param targets.trackIndex - 0-based index within the category
  * @param targets.sceneId - Scene ID, when the scene came from an ID
  * @param targets.sceneIndex - 0-based scene index
- * @param targets.clipSlot - Session position coordinates
+ * @param targets.clipSlot - Clip slot coordinates
  * @param targets.devicePath - Device path, e.g. "t0/d1"
  */
 export function requireSelectTargets({
@@ -98,7 +98,7 @@ function requireTarget(api: LiveAPI, kind: string, path: string): void {
 }
 
 /**
- * Refuse a session position, saying whether the track or the scene is missing.
+ * Refuse a clip slot, saying whether the track or the scene is missing.
  * @param slot - The clip slot coordinates
  * @param slot.trackIndex - 0-based track index
  * @param slot.sceneIndex - 0-based scene index

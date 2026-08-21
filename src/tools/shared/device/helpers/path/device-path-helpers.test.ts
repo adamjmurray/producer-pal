@@ -431,7 +431,7 @@ describe("device-path-helpers", () => {
           /a scene holds no devices/,
         );
         expect(() => resolvePathToLiveApi("t0/s1")).toThrow(
-          /a session slot holds no devices/,
+          /a clip slot holds no devices/,
         );
       });
     });

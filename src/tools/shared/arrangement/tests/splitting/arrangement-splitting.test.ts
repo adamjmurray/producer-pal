@@ -551,7 +551,7 @@ describe("performSplitting", () => {
 
     // Should duplicate for audio content
     expectDuplicateCalled(callState.trackMock);
-    // Audio trims route through create_audio_clip in a session slot, never
+    // Audio trims route through create_audio_clip in a clip slot, never
     // create_midi_clip — so a MIDI-vs-audio misdetection would show up here.
     expectCreateMidiClipCount(callState.trackMock, 0);
   });

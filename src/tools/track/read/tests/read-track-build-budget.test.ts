@@ -88,7 +88,7 @@ function shapeResolves(shape: string): number {
   );
 }
 
-/** Session slots on the fixture track. */
+/** Clip slots on the fixture track. */
 const SLOT_COUNT = 8;
 
 /** A track of SLOT_COUNT slots with a clip in every other one. */
@@ -149,7 +149,7 @@ describe("readTrack build budget", () => {
     expect(chainResolves()).toBe(CHAIN_COUNT * 2);
   });
 
-  it("builds one object per session slot, not three", () => {
+  it("builds one object per clip slot, not three", () => {
     setupTrackWithSessionClips();
 
     readTrack({ trackIndex: 0, include: ["session-clips"] });

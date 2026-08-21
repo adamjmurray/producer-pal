@@ -99,7 +99,7 @@ const DEVICE_WRITE_TOOLS = [
  * there, and two report an `arrangementStart` back — read-clip directly,
  * read-track in the `arrangementClips` entries it returns. A reader needs the
  * dual-meter rule to make sense of the number either way. read-scene is absent
- * because it reads session slots only, so no arrangement position ever reaches
+ * because it reads clip slots only, so no arrangement position ever reaches
  * it.
  */
 const ARRANGEMENT_TOOLS = [

@@ -188,7 +188,7 @@ describe("buildCodeExecutionContext", () => {
   });
 
   it("omits the slot for a session clip without a scene index", () => {
-    // Kills the `&&`→`||` and forced-true mutants on the session-slot guard:
+    // Kills the `&&`→`||` and forced-true mutants on the clip-slot guard:
     // view is "session" but sceneIndex is undefined, so no slot is set.
     registerLiveSet();
     registerTrack(2);

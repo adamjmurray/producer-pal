@@ -231,9 +231,9 @@ describe("createClip take lanes", () => {
   });
 
   it("warns that takeLane is ignored for the session portion of a mixed request", async () => {
-    // A request targeting BOTH an arrangement position and a session slot: the
+    // A request targeting BOTH an arrangement position and a clip slot: the
     // takeLane applies to the arrangement clip but must be flagged as ignored
-    // for the accompanying session slot.
+    // for the accompanying clip slot.
     registerEmptySessionSlot();
     registerTakeLaneTrack({ initialLanes: 0 });
 

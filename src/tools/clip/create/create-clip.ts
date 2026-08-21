@@ -35,7 +35,7 @@ import {
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
-  /** Where the clip(s) go: "t0/s1" session slot, "t0" arrangement, comma-separated */
+  /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
   path?: string | null;
   /** Deprecated session clip slot(s), trackIndex/sceneIndex comma-separated */
   slot?: string | null;
@@ -277,7 +277,7 @@ function normalizeTransforms(transformString: string | null): string | null {
  * Handle auto-playback and focus for the created clips, then unwrap the result.
  * @param createdClips - All created clip result objects
  * @param auto - Automatic playback action
- * @param sessionSlots - Parsed session slot positions
+ * @param sessionSlots - Parsed clip slot positions
  * @param focus - Whether to select the last created clip
  * @returns Single clip object when one, array when multiple
  */

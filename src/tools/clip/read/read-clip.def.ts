@@ -25,7 +25,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .string()
       .optional()
       .describe(
-        "session position 't<track>/s<scene>', both 0-based (e.g., 't0/s3'). provide this or clipId",
+        "clip slot 't<track>/s<scene>', both 0-based (e.g., 't0/s3'). provide this or clipId",
       ),
 
     slot: deprecatedParam(z.coerce.string().optional(), {

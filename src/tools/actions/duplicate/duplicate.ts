@@ -88,7 +88,7 @@ interface DuplicateParams {
  * @param args.routeToSource - Route to source
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Deprecated destination clip slot(s); use toPath
- * @param args.toPath - Destination path(s): track, session slot, or device
+ * @param args.toPath - Destination path(s): track, clip slot, or device
  * @param args.transforms - Transform expressions broadcast across all copies
  * @param args.code - JavaScript function body broadcast across all copies
  * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")

@@ -233,7 +233,7 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
-    // Test 2: Session clip to multiple session slots with name
+    // Test 2: Session clip to multiple clip slots with name
     const dupClipMultiSlotsResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {

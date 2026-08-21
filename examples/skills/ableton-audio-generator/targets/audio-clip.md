@@ -30,7 +30,7 @@ node ../producer-pal/ppal.mjs ppal-create-track \
   '{"type":"audio","name":"Generated"}'
 ```
 
-Then drop the file into a Session slot (`trackIndex/sceneIndex`, both 0-based),
+Then drop the file into a clip slot (`trackIndex/sceneIndex`, both 0-based),
 passing **`warping: false`** so it plays exactly as rendered:
 
 ```bash

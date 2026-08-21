@@ -84,7 +84,7 @@ function setupGrid(): void {
 }
 
 /**
- * How many session slots the read built an object for.
+ * How many clip slots the read built an object for.
  * @returns Resolutions of the session clip shape
  */
 function slotResolves(): number {

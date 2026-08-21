@@ -125,7 +125,7 @@ describe("requireClipPath", () => {
     for (const [path, message] of cases) {
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(message);
       expect(() => requireClipPath(parseObjectPath(path))).toThrow(
-        /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a session slot \("t0\/s1"\)/,
+        /clips go to a track \("t0"\), a take lane on it \("t0\/l0"\), or a clip slot \("t0\/s1"\)/,
       );
     }
   });
@@ -159,7 +159,7 @@ describe("requireSessionSlot", () => {
 
   it("rejects a bare track, which names no one clip", () => {
     expect(() => requireSessionSlot(parseObjectPath("t7"))).toThrow(
-      /a track has no one clip; name a session position as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
+      /a track has no one clip; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
     );
   });
 
@@ -167,7 +167,7 @@ describe("requireSessionSlot", () => {
   it("rejects a take lane, which is an arrangement position", () => {
     for (const path of ["t7/l1", "t7/l+"]) {
       expect(() => requireSessionSlot(parseObjectPath(path))).toThrow(
-        /take lanes hold arrangement clips; name a session position as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
+        /take lanes hold arrangement clips; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
       );
     }
   });
@@ -217,7 +217,7 @@ describe("requireDeviceContainer", () => {
   it("rejects everything that can't hold a device", () => {
     const cases: [string, RegExp][] = [
       ["s3", /a scene holds no devices/],
-      ["t0/s1", /a session slot holds no devices/],
+      ["t0/s1", /a clip slot holds no devices/],
       ["t0/l1", /a take lane holds no devices/],
     ];
 

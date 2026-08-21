@@ -147,7 +147,7 @@ async function createClipAtIndex(
     params;
 
   // clip.index/clip.count (transforms and code-exec) span the whole create
-  // batch, not just this view: a single call mixing session slots and
+  // batch, not just this view: a single call mixing clip slots and
   // arrangement positions runs createClips once per view, so the global index
   // is nameStartIndex + i (session view starts at 0, arrangement at
   // sessionSlots.length) and the count is the combined total. This mirrors the

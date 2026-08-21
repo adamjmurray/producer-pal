@@ -283,7 +283,7 @@ function parseTail(
     throw pathError(
       label,
       input,
-      `a scene has no parts; a session slot is "t<track>/s<scene>"`,
+      `a scene has no parts; a clip slot is "t<track>/s<scene>"`,
     );
   }
 
@@ -376,7 +376,7 @@ function isTrackChild(segment: string): boolean {
 }
 
 /**
- * Builds the session slot or take lane a track child names.
+ * Builds the clip slot or take lane a track child names.
  * @param root - The parsed root segment
  * @param segment - The child segment
  * @param tailLength - How many segments follow the root
@@ -430,7 +430,7 @@ function trackChildError(label: string, input: string, segment: string): Error {
     ? pathError(
         label,
         input,
-        `a session slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes`,
+        `a clip slot is "t<track>/s<scene>" (e.g. "t0/s1"); only regular tracks have scenes`,
       )
     : pathError(
         label,

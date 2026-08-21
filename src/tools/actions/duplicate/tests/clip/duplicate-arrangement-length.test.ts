@@ -318,7 +318,7 @@ describe("duplicate - arrangementLength functionality", () => {
   });
 });
 
-// Register the source clip under test ("clip1") in the session slot every test
+// Register the source clip under test ("clip1") in the clip slot every test
 // in this file duplicates from: track 0, scene 0.
 // Returns the registered mock object handle.
 function registerSourceClip(

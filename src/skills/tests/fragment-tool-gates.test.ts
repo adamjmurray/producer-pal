@@ -359,7 +359,7 @@ describe("gatedOutFragments", () => {
 
   it("keeps arrangement for read-track but not read-scene", () => {
     // read-track returns arrangementClips carrying arrangementStart; read-scene
-    // reads session slots only, so no arrangement position ever reaches it.
+    // reads clip slots only, so no arrangement position ever reaches it.
     expect(gatedOutFragments(["ppal-read-track"])).not.toContain("arrangement");
     expect(gatedOutFragments(["ppal-read-scene"])).toContain("arrangement");
   });

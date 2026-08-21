@@ -35,9 +35,9 @@ export const arrangementWrite = `### Clip Destinations
 
 One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in the first scene, \`t2\` is track 2's arrangement (which also needs \`arrangementStart\` or \`locator\`), and \`t2/l0\` is its first take lane. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
 
-create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill session positions and drop arrangement clips at the same time.
+create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
 
-\`path\` also names clips to act *on*: update-clip and ppal-delete take a session position instead of \`ids\`, so knowing where a clip is saves reading it first just to learn its id.
+\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot instead of \`ids\`, so knowing where a clip is saves reading it first just to learn its id.
 
 ### Moving Clips
 

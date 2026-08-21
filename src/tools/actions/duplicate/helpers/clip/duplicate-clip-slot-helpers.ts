@@ -109,7 +109,7 @@ export function duplicateClipSlot(
 }
 
 /**
- * Copies a session clip into session slots.
+ * Copies a session clip into clip slots.
  * @param slots - Destination slots, in order
  * @param object - Live API object to duplicate
  * @param id - ID of the object
