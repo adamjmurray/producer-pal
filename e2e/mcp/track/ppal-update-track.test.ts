@@ -38,7 +38,7 @@ describe("ppal-update-track", () => {
     // Test 1: Update track name
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, name: "Renamed Track" },
+      arguments: { id: trackId, name: "Renamed Track" },
     });
 
     await sleep(100);
@@ -53,7 +53,7 @@ describe("ppal-update-track", () => {
     // Test 2: Update track color
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, color: "#0000FF" },
+      arguments: { id: trackId, color: "#0000FF" },
     });
 
     await sleep(100);
@@ -69,7 +69,7 @@ describe("ppal-update-track", () => {
     // Test 3: Update gainDb
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, gainDb: -6 },
+      arguments: { id: trackId, gainDb: -6 },
     });
 
     await sleep(100);
@@ -89,7 +89,7 @@ describe("ppal-update-track", () => {
     // Unsolo t5 which is soloed by default in e2e-test-set
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
+      arguments: { id: liveSet.tracks![5]!.id, solo: false },
     });
 
     await sleep(100);
@@ -97,7 +97,7 @@ describe("ppal-update-track", () => {
     // Test 1: Update mute state
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, mute: true },
+      arguments: { id: trackId, mute: true },
     });
 
     await sleep(100);
@@ -112,13 +112,13 @@ describe("ppal-update-track", () => {
     // Unmute for further tests
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, mute: false },
+      arguments: { id: trackId, mute: false },
     });
 
     // Test 2: Update solo state
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, solo: true },
+      arguments: { id: trackId, solo: true },
     });
 
     await sleep(100);
@@ -133,13 +133,13 @@ describe("ppal-update-track", () => {
     // Unsolo
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, solo: false },
+      arguments: { id: trackId, solo: false },
     });
 
     // Test 3: Update arm state
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, arm: true },
+      arguments: { id: trackId, arm: true },
     });
 
     await sleep(100);
@@ -154,7 +154,7 @@ describe("ppal-update-track", () => {
     // Disarm
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, arm: false },
+      arguments: { id: trackId, arm: false },
     });
   });
 
@@ -165,7 +165,7 @@ describe("ppal-update-track", () => {
     // Test 1: Update pan (stereo mode)
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, pan: 0.5 },
+      arguments: { id: trackId, pan: 0.5 },
     });
 
     await sleep(100);
@@ -181,7 +181,7 @@ describe("ppal-update-track", () => {
     await ctx.client!.callTool({
       name: "ppal-update-track",
       arguments: {
-        ids: trackId,
+        id: trackId,
         panningMode: "split",
         leftPan: -0.5,
         rightPan: 0.5,
@@ -202,7 +202,7 @@ describe("ppal-update-track", () => {
     // Return to stereo mode
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, panningMode: "stereo", pan: 0 },
+      arguments: { id: trackId, panningMode: "stereo", pan: 0 },
     });
   });
 
@@ -214,7 +214,7 @@ describe("ppal-update-track", () => {
     // Unsolo t5 which is soloed by default
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: liveSet.tracks![5]!.id, solo: false },
+      arguments: { id: liveSet.tracks![5]!.id, solo: false },
     });
 
     await sleep(100);
@@ -222,7 +222,7 @@ describe("ppal-update-track", () => {
     // Test: Batch update multiple tracks
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: `${trackId}, ${secondTrackId}`, mute: true },
+      arguments: { id: `${trackId}, ${secondTrackId}`, mute: true },
     });
 
     parseBatchResult<UpdateTrackResult>(batchResult, 2);
@@ -245,7 +245,7 @@ describe("ppal-update-track", () => {
     // Unmute both
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: `${trackId}, ${secondTrackId}`, mute: false },
+      arguments: { id: `${trackId}, ${secondTrackId}`, mute: false },
     });
   });
 
@@ -256,7 +256,7 @@ describe("ppal-update-track", () => {
     // Test 1: Update monitoring state
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, monitoringState: "in" },
+      arguments: { id: trackId, monitoringState: "in" },
     });
 
     await sleep(100);
@@ -271,7 +271,7 @@ describe("ppal-update-track", () => {
     // Return to auto
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, monitoringState: "auto" },
+      arguments: { id: trackId, monitoringState: "auto" },
     });
 
     // Test 2: Send operations - first create a return track
@@ -288,7 +288,7 @@ describe("ppal-update-track", () => {
     // Now update send level to the return track
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, sendGainDb: -12, sendReturn: "A" },
+      arguments: { id: trackId, sendGainDb: -12, sendReturn: "A" },
     });
 
     await sleep(100);
@@ -313,7 +313,7 @@ describe("ppal-update-track", () => {
     // the read tools report is the one the send lookup matches on.
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
+      arguments: { id: trackId, sendGainDb: -24, sendReturn: returnTrack.id },
     });
 
     await sleep(100);
@@ -356,7 +356,7 @@ describe("ppal-update-track", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, outputRoutingTypeId: targetOut!.outputId },
+      arguments: { id: trackId, outputRoutingTypeId: targetOut!.outputId },
     });
 
     await sleep(100);
@@ -373,7 +373,7 @@ describe("ppal-update-track", () => {
     // Restore original output routing
     await ctx.client!.callTool({
       name: "ppal-update-track",
-      arguments: { ids: trackId, outputRoutingTypeId: currentOutId },
+      arguments: { id: trackId, outputRoutingTypeId: currentOutId },
     });
   });
 });

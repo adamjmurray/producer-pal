@@ -7,6 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { select } from "#src/tools/session/select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
+  namedIdParam,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -30,6 +31,8 @@ interface UpdateSceneResult {
 }
 
 interface UpdateSceneArgs {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   name?: string;
   color?: string;
@@ -41,7 +44,8 @@ interface UpdateSceneArgs {
 /**
  * Updates properties of existing scenes
  * @param args - The scene parameters
- * @param args.ids - Comma-separated scene IDs to update
+ * @param args.id - Comma-separated scene IDs to update
+ * @param args.ids - Hidden alias for id
  * @param args.name - Name for the scenes
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM. Pass -1 to disable.
@@ -51,17 +55,19 @@ interface UpdateSceneArgs {
  * @returns Single scene object or array of scene objects
  */
 export function updateScene(
-  { ids, name, color, tempo, timeSignature, focus }: UpdateSceneArgs = {},
+  { id, ids, name, color, tempo, timeSignature, focus }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
-  if (!ids) {
-    console.warn("updateScene: ids is required");
+  const targets = namedIdParam(id, ids, "ids");
+
+  if (!targets) {
+    console.warn("updateScene: id is required");
 
     return [];
   }
 
   // Parse comma-separated string into array
-  const sceneIds = parseCommaSeparatedIds(ids);
+  const sceneIds = parseCommaSeparatedIds(targets);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped

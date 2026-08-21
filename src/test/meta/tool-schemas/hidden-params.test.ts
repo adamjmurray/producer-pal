@@ -85,12 +85,14 @@ describe("hidden params", () => {
   // Every tool names its target with "id". The prefixed spellings a model
   // reaches for on its own stay accepted for good, so a well-founded guess
   // costs a warning rather than a round trip.
-  it("publishes id and hides the prefixed spelling on the read tools", () => {
+  it("publishes id and hides the spelling it replaced", () => {
     const aliases = {
       "ppal-read-clip": "clipId",
       "ppal-read-track": "trackId",
       "ppal-read-scene": "sceneId",
       "ppal-read-device": "deviceId",
+      "ppal-update-track": "ids",
+      "ppal-update-scene": "ids",
     };
 
     const shape = Object.fromEntries(
@@ -128,6 +130,8 @@ describe("hidden params", () => {
       "ppal-read-track": folded,
       "ppal-read-scene": folded,
       "ppal-read-device": folded,
+      "ppal-update-track": folded,
+      "ppal-update-scene": folded,
     });
   });
 

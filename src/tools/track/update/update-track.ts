@@ -16,6 +16,7 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
   findReturnIndex,
+  namedIdParam,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -45,7 +46,9 @@ interface MixerParams {
 }
 
 interface UpdateTrackArgs {
-  ids: string;
+  id?: string;
+  /** Hidden alias for id */
+  ids?: string;
   name?: string;
   color?: string;
   gainDb?: number;
@@ -347,7 +350,8 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
 /**
  * Updates properties of existing tracks
  * @param args - The track parameters
- * @param args.ids - Track ID or comma-separated list of track IDs to update
+ * @param args.id - Track ID or comma-separated list of track IDs to update
+ * @param args.ids - Hidden alias for id
  * @param args.name - Optional track name
  * @param args.color - Optional track color (CSS format: hex)
  * @param args.gainDb - Optional track gain in dB (-70 to 6)
@@ -370,6 +374,7 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
  */
 export function updateTrack(
   {
+    id,
     ids,
     name,
     color,
@@ -391,14 +396,16 @@ export function updateTrack(
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
-  if (!ids) {
-    console.warn("updateTrack: ids is required");
+  const targets = namedIdParam(id, ids, "ids");
+
+  if (!targets) {
+    console.warn("updateTrack: id is required");
 
     return [];
   }
 
   // Parse comma-separated string into array
-  const trackIds = parseCommaSeparatedIds(ids);
+  const trackIds = parseCommaSeparatedIds(targets);
 
   // Validate all IDs are tracks, skip invalid ones
   const tracks = validateIdTypes(trackIds, "track", "updateTrack", {

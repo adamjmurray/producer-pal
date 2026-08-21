@@ -34,7 +34,7 @@ describe("ppal-update-scene", () => {
     // Test 1: Update scene name
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, name: "Renamed Scene" },
+      arguments: { id: sceneId, name: "Renamed Scene" },
     });
 
     await sleep(100);
@@ -49,7 +49,7 @@ describe("ppal-update-scene", () => {
     // Test 2: Update scene color
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, color: "#00FF00" },
+      arguments: { id: sceneId, color: "#00FF00" },
     });
 
     await sleep(100);
@@ -65,7 +65,7 @@ describe("ppal-update-scene", () => {
     // Test 3: Update scene tempo
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, tempo: 140 },
+      arguments: { id: sceneId, tempo: 140 },
     });
 
     await sleep(100);
@@ -80,7 +80,7 @@ describe("ppal-update-scene", () => {
     // Test 4: Update scene time signature
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, timeSignature: "6/8" },
+      arguments: { id: sceneId, timeSignature: "6/8" },
     });
 
     await sleep(100);
@@ -95,7 +95,7 @@ describe("ppal-update-scene", () => {
     // Test 5: Disable tempo with -1
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, tempo: -1 },
+      arguments: { id: sceneId, tempo: -1 },
     });
 
     await sleep(100);
@@ -112,7 +112,7 @@ describe("ppal-update-scene", () => {
     // Test 6: Disable time signature with "disabled"
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, timeSignature: "disabled" },
+      arguments: { id: sceneId, timeSignature: "disabled" },
     });
 
     await sleep(100);
@@ -129,7 +129,7 @@ describe("ppal-update-scene", () => {
     // Test 7: Batch update multiple scenes
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
+      arguments: { id: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
     });
 
     parseBatchResult<UpdateSceneResult>(batchResult, 2);

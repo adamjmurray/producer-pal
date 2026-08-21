@@ -163,7 +163,7 @@ describe("MCP Express App", () => {
         "ppal-update-track": {
           description: expect.stringContaining("Update track(s)"),
           inputSchema: {
-            properties: { ids: expect.anything() },
+            properties: { id: expect.anything() },
           },
         },
       });
