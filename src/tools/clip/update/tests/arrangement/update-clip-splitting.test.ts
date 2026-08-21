@@ -62,6 +62,43 @@ describe("updateClip - splitting smoke tests", () => {
     );
   });
 
+  it("splits for arrangementSplit when split is sent blank", async () => {
+    const clipId = "clip_1";
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    // A client that fills every optional string with "" is not sending two
+    // split requests, so the ambiguity warning would cost it the one it asked
+    // for.
+    await updateClip({ id: clipId, arrangementSplit: "2|1", split: "" }, {});
+
+    expectDuplicateCalled(callState.trackMock);
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("arrangementSplit and split both name split"),
+    );
+  });
+
+  it("splits nothing, and says nothing, for a blank arrangementSplit", async () => {
+    const clipId = "clip_1";
+    const consoleSpy = vi.spyOn(console, "warn");
+
+    const { callState } = setupClipSplittingMocks(clipId);
+
+    await updateClip({ id: clipId, arrangementSplit: "" }, {});
+
+    expect(callState.trackMock.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.any(String),
+      expect.any(Number),
+    );
+    // Complaining about the format of a param that named nothing sends the
+    // model looking for a problem with a value it never meant to send.
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("arrangementSplit"),
+    );
+  });
+
   it("should call splitting helpers when split parameter is provided", async () => {
     const clipId = "clip_1";
 

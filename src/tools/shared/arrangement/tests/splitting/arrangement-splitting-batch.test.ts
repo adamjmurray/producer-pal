@@ -131,6 +131,14 @@ describe("performSplitting across a batch of clips", () => {
         "Not split: clip_2. Re-run for those ids.",
     );
     expect(holdingStartFor(callState, "clip_2")).toBeUndefined();
+
+    // Beat 40 is inside clip_2, which the stop never reached. Calling it a
+    // position that cut nothing would contradict the warning above it, and
+    // send the caller to re-run without it.
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("cut nothing at"),
+    );
   });
 
   it("replaces both clips with the pieces the rescan finds", () => {

@@ -76,7 +76,9 @@ interface SplitSingleClipArgs {
  * This uses 2(N-1) duplications instead of 2N by keeping segment 0 in place
  * and reusing the source copy for the last segment.
  * @param args - Arguments for splitting
- * @returns true if splitting succeeded, false if skipped
+ * @returns Whether the clip was measured against the split points. False means
+ *   it was skipped before that, so `usedPoints` says nothing about it — see
+ *   performSplitting.
  */
 function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const { clip, splitPoints, mode, context } = args;
@@ -125,7 +127,8 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   if (validPoints.length === 0) {
     args.misses.push({ clipId: clip.id, clipArrangementStart, clipLength });
 
-    return false;
+    // Measured, and nothing fell inside — a real answer, not a skip.
+    return true;
   }
 
   const track = LiveAPI.from(livePath.track(trackIndex));
@@ -161,7 +164,9 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
       `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
     );
 
-    return false;
+    // The split failed, but the points were measured above, so what the caller
+    // can say about unused points is unaffected.
+    return true;
   }
 
   const sourceClipId = sourceClip.id;
@@ -456,6 +461,11 @@ export function performSplitting(
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
   const usedPoints = new Set<number>();
+  // "This position cut nothing" only holds if every clip was measured against
+  // it. A deadline stop, a throw, or a skipped clip leaves the count short and
+  // usedPoints partial, and the warning would then blame a position that a clip
+  // nobody looked at spans.
+  let measuredClips = 0;
 
   for (let i = 0; i < arrangementClips.length; i++) {
     // Between clips, so no clip is left half-cut. One clip's own splitting is
@@ -477,7 +487,7 @@ export function performSplitting(
     const clipId = clip.id;
 
     try {
-      splitSingleClip({
+      const measured = splitSingleClip({
         clip,
         splitPoints,
         mode,
@@ -486,6 +496,8 @@ export function performSplitting(
         misses,
         usedPoints,
       });
+
+      if (measured) measuredClips++;
     } catch (error) {
       // Whatever Live refused, the rest of the batch is still worth cutting.
       // This clip is left as it fell; the rescan below reports what survived.
@@ -498,7 +510,7 @@ export function performSplitting(
 
   if (splitClipRanges.size === 0) {
     if (misses.length > 0) warnNothingSplit(misses, mode);
-  } else {
+  } else if (measuredClips === arrangementClips.length) {
     // Something was cut, so the caller gets a result that looks like it worked.
     // A position that landed in no clip at all has to say so itself.
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);

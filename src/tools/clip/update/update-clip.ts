@@ -22,7 +22,9 @@ import {
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   namedIdParam,
+  namedParam,
   namedPathParam,
+  paramNamesSomething,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -418,14 +420,20 @@ function applySplittingIfNeeded(
  * Pick which split param to act on. The two read positions on different
  * timelines, so sending both is ambiguous: warn and split nothing rather than
  * guess, matching how toPath/toSlot handle a doubled destination.
- * @param arrangementSplit - Song-timeline positions
- * @param split - Deprecated clip-relative positions
+ * @param rawArrangementSplit - Song-timeline positions
+ * @param rawSplit - Deprecated clip-relative positions
  * @returns The positions and how to read them, or null to skip splitting
  */
 function resolveSplitRequest(
-  arrangementSplit: string | undefined,
-  split: string | undefined,
+  rawArrangementSplit: string | undefined,
+  rawSplit: string | undefined,
 ): { value: string; mode: SplitMode } | null {
+  // A blank names no position, so reading one as a request made a caller that
+  // fills unused strings with "" lose the split it did ask for. `split` is
+  // hidden, so a model never saw the name — read it without the warning.
+  const arrangementSplit = namedParam(rawArrangementSplit, "arrangementSplit");
+  const split = paramNamesSomething(rawSplit) ? rawSplit?.trim() : undefined;
+
   if (arrangementSplit != null && split != null) {
     console.warn(
       "arrangementSplit and split both name split positions, so no clip was " +
