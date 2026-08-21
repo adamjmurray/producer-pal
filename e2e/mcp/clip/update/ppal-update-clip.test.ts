@@ -107,7 +107,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Update clip name
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, name: "Renamed Clip" },
+      arguments: { id: clip.id, name: "Renamed Clip" },
     });
 
     await sleep(100);
@@ -122,7 +122,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update clip color
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, color: "#00FF00" },
+      arguments: { id: clip.id, color: "#00FF00" },
     });
 
     await sleep(100);
@@ -137,7 +137,7 @@ describe("ppal-update-clip", () => {
     // Test 3: Update looping state
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, looping: false },
+      arguments: { id: clip.id, looping: false },
     });
 
     await sleep(100);
@@ -152,7 +152,7 @@ describe("ppal-update-clip", () => {
     // Test 4: Update start and length
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, start: "1|2", length: "1bar" },
+      arguments: { id: clip.id, start: "1|2", length: "1bar" },
     });
 
     await sleep(100);
@@ -191,7 +191,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "G3 A3 1|3" },
+      arguments: { id: clip.id, notes: "G3 A3 1|3" },
     });
 
     await sleep(100);
@@ -202,7 +202,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, preTransforms: "v0", notes: "C4 1|1" },
+      arguments: { id: clip.id, preTransforms: "v0", notes: "C4 1|1" },
     });
 
     await sleep(100);
@@ -307,7 +307,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Move the clip to a new position
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: arrClip.id, arrangementStart: "45|1" },
+      arguments: { id: arrClip.id, arrangementStart: "45|1" },
     });
     const movedClip = parseToolResult<{ id: string }>(moveResult);
 
@@ -326,7 +326,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movedClip.id, arrangementLength: "4bar" },
+      arguments: { id: movedClip.id, arrangementLength: "4bar" },
     });
 
     // arrangementLength can return multiple clips if it tiles
@@ -409,7 +409,7 @@ describe("ppal-update-clip", () => {
     // Move clip from scene 4 to scene 5 on the same track
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, toPath: `t${emptyMidiTrack}/s5` },
+      arguments: { id: clip.id, toPath: `t${emptyMidiTrack}/s5` },
     });
     const movedClip = parseToolResult<{
       id: string;
@@ -460,7 +460,7 @@ describe("ppal-update-clip", () => {
     // tracks, so it skips the move and finishes the rest of the update.
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, toPath: "t7", name: "Renamed Anyway" },
+      arguments: { id: clip.id, toPath: "t7", name: "Renamed Anyway" },
     });
     const { data, warnings } = parseToolResultWithWarnings<{
       id: string;
@@ -493,7 +493,7 @@ describe("ppal-update-clip", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/7` },
+      arguments: { id: clip.id, toSlot: `${emptyMidiTrack}/7` },
     });
 
     expect(
@@ -528,7 +528,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Update audio clip gain
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, gainDb: -6 },
+      arguments: { id: audioClip.id, gainDb: -6 },
     });
 
     await sleep(100);
@@ -544,7 +544,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update audio clip pitch shift (including decimal)
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, pitchShift: 5.5 },
+      arguments: { id: audioClip.id, pitchShift: 5.5 },
     });
 
     await sleep(100);
@@ -559,7 +559,7 @@ describe("ppal-update-clip", () => {
     // Test 3: Update warp mode
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warpMode: "complex" },
+      arguments: { id: audioClip.id, warpMode: "complex" },
     });
 
     await sleep(100);
@@ -574,7 +574,7 @@ describe("ppal-update-clip", () => {
     // Test 4: Toggle warping off and on
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warping: false },
+      arguments: { id: audioClip.id, warping: false },
     });
 
     await sleep(100);
@@ -589,7 +589,7 @@ describe("ppal-update-clip", () => {
     // Turn warping back on
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warping: true },
+      arguments: { id: audioClip.id, warping: true },
     });
 
     await sleep(100);

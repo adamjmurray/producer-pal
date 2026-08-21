@@ -89,7 +89,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const filterResult = await ctx.client!.callTool({
         name: "ppal-update-clip",
         arguments: {
-          ids: clip.id,
+          id: clip.id,
           code: "return notes.filter(n => n.pitch >= 62)",
         },
       });
@@ -108,7 +108,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       await ctx.client!.callTool({
         name: "ppal-update-clip",
         arguments: {
-          ids: clip.id,
+          id: clip.id,
           code: "return notes.map(n => ({...n, velocity: 127}))",
         },
       });
@@ -123,7 +123,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       await ctx.client!.callTool({
         name: "ppal-update-clip",
         arguments: {
-          ids: clip.id,
+          id: clip.id,
           code: "return []",
         },
       });

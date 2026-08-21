@@ -115,7 +115,7 @@ describe("clip duration round-trips (absolute note values)", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, arrangementLength: "4bar" },
+      arguments: { id: clip.id, arrangementLength: "4bar" },
     });
 
     await sleep(200);

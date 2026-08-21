@@ -6,6 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
+import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { TOOL_EXAMPLES } from "./example-live-set/calls.ts";
 import { type ExampleRun } from "./example-live-set/runner.ts";
 import { generateOutputPartial } from "./tool-output-doc-partials.ts";
@@ -22,6 +24,29 @@ describe("TOOL_EXAMPLES", () => {
     const examples = TOOL_EXAMPLES.map((example) => example.toolName);
 
     expect(examples.toSorted()).toStrictEqual(documented.toSorted());
+  });
+
+  // The generated page prints the call verbatim, so an example is documentation
+  // whether or not it reads like it. An alias or a deprecated param teaches a
+  // name that exists only to catch a guess; a param the tool dropped teaches one
+  // that no longer works, and the tool answers it with an ignored-argument
+  // warning that then ships in the docs.
+  it("calls every tool by its published params", () => {
+    const offenders = TOOL_EXAMPLES.flatMap((example) => {
+      const def = [...STANDARD_TOOL_DEFS, toolDefLiveApi].find(
+        (td) => td.toolName === example.toolName,
+      );
+      const { published } = resolveToolSchema(
+        (def as ToolDefFunction).toolOptions.inputSchema,
+        {},
+      );
+
+      return Object.keys(example.args)
+        .filter((key) => !(key in published))
+        .map((key) => `${example.toolName}: ${key}`);
+    });
+
+    expect(offenders).toStrictEqual([]);
   });
 });
 

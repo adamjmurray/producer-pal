@@ -76,7 +76,7 @@ describe("ppal-delete batch ordering", () => {
     const deleted = parseBatchResult<DeleteResult>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { ids: ids.slice(0, 3).join(","), type: "clip" },
+        arguments: { id: ids.slice(0, 3).join(","), type: "clip" },
       }),
       3,
     );

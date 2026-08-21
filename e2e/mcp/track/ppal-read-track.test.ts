@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  parseAliasedToolResult,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
@@ -30,12 +31,18 @@ describe("ppal-read-track", () => {
     const firstTrack = liveSet.tracks![0]!;
     const trackId = firstTrack.id;
 
-    // Test 1: Read track by trackId
+    // Test 1: Read track by id, spelled the way a model guesses it. "trackId"
+    // is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { id: trackId },
+      arguments: { trackId },
     });
-    const byId = parseToolResult<ReadTrackResult>(byIdResult);
+    const byId = parseAliasedToolResult<ReadTrackResult>(
+      byIdResult,
+      "ppal-read-track",
+      "trackId",
+      "id",
+    );
 
     expect(byId.id).toBe(trackId);
     expect(byId.name).toBe(firstTrack.name);

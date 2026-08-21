@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   getToolErrorMessage,
+  parseAliasedToolResult,
   getToolWarnings,
   isToolError,
   parseToolResult,
@@ -95,13 +96,20 @@ describe("ppal-select", () => {
     // Scene selection auto-switches to session view
     expect(scene.view).toBe("session");
 
-    // Test 8: Select track by ID (auto-detection)
+    // Test 8: Select track by ID (auto-detection), spelled the way a model
+    // guesses it. "trackId" is a permanent alias that folds onto id, so the
+    // type still comes from the object — this checks the select and the steer.
     const trackId = regularTrack.selectedTrack!.id;
     const selectByIdResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: `id ${trackId}` },
+      arguments: { trackId: `id ${trackId}` },
     });
-    const byId = parseToolResult<SelectResult>(selectByIdResult);
+    const byId = parseAliasedToolResult<SelectResult>(
+      selectByIdResult,
+      "ppal-select",
+      "trackId",
+      "id",
+    );
 
     expect(byId.selectedTrack).toBeDefined();
     expect(byId.selectedTrack!.id).toBe(trackId);

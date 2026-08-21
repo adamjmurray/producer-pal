@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  parseAliasedToolResult,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
@@ -30,12 +31,18 @@ describe("ppal-read-scene", () => {
     const firstScene = liveSet.scenes![0]!;
     const sceneId = firstScene.id;
 
-    // Test 1: Read scene by sceneId
+    // Test 1: Read scene by id, spelled the way a model guesses it. "sceneId"
+    // is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { id: sceneId },
+      arguments: { sceneId },
     });
-    const byId = parseToolResult<ReadSceneResult>(byIdResult);
+    const byId = parseAliasedToolResult<ReadSceneResult>(
+      byIdResult,
+      "ppal-read-scene",
+      "sceneId",
+      "id",
+    );
 
     expect(byId.id).toBe(sceneId);
     expect(byId.name).toBeDefined();

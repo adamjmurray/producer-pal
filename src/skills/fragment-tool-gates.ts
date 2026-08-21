@@ -72,7 +72,7 @@ const DEVICE_TOOLS = [
 /**
  * Everything that addresses a device by path — the gate on `devices`, which is
  * the only place the path grammar (`t`/`rt`/`mt`/`d`/`c`/`rc`/`p`) is written
- * down. Three non-device tools take one: `devicePath` on select (plus
+ * down. Three non-device tools take one: `path` on select (plus
  * `openPluginWindow`, which the same fragment's VST/AU half qualifies), `path`
  * on delete, `toPath` on duplicate. Gating this on {@link DEVICE_TOOLS} alone
  * left them addressing returns and the master track with no vocabulary for

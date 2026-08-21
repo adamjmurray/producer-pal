@@ -320,8 +320,8 @@ describe("gatedOutFragments", () => {
   });
 
   it("keeps the path grammar for a tool that only addresses a device", () => {
-    // select/delete/duplicate take a device path (`devicePath`, `path`,
-    // `toPath`) without reading or building one, and `devices` is the only
+    // select/delete/duplicate take a device path (`path`, `path`, `toPath`)
+    // without reading or building one, and `devices` is the only
     // place `rt`/`mt`/`c`/`rc` are written down. The per-device param catalog
     // is not their business and stays behind.
     for (const tool of ["ppal-select", "ppal-delete", "ppal-duplicate"]) {

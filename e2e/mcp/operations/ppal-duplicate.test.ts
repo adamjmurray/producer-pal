@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   getToolWarnings,
+  parseAliasedToolResult,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -34,14 +35,22 @@ describe("ppal-duplicate", () => {
     const initialTrackCount = liveSet.tracks.length;
     const firstTrackId = liveSet.tracks[0]!.id;
 
+    // Source named by id, spelled the way a model carries the plural over from
+    // the other write tools. "ids" is a permanent alias, so this checks the
+    // copy and the steer.
     const dupTrackResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "track",
-        id: firstTrackId,
+        ids: firstTrackId,
       },
     });
-    const dupTrack = parseToolResult<DuplicateTrackResult>(dupTrackResult);
+    const dupTrack = parseAliasedToolResult<DuplicateTrackResult>(
+      dupTrackResult,
+      "ppal-duplicate",
+      "ids",
+      "id",
+    );
 
     expect(dupTrack.id).toBeDefined();
     expect(dupTrack.trackIndex).toBe(1); // Inserted after track 0

@@ -165,7 +165,7 @@ describe("note write ordering (create + update transforms)", () => {
     const updateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: created.id,
+        id: created.id,
         transforms: "1|1-1|2.5: timing += 2.5",
       },
     });
@@ -192,7 +192,7 @@ describe("note write ordering (create + update transforms)", () => {
     const mergeResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: created.id,
+        id: created.id,
         notes: "n/2 C1 1|2",
       },
     });
@@ -224,7 +224,7 @@ describe("note write ordering (create + update transforms)", () => {
     const overwrite = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: dupCreated.id,
+        id: dupCreated.id,
         notes: "n/4 C1 1|1",
       },
     });

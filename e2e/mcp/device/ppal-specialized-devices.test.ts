@@ -100,7 +100,7 @@ async function readDevice(
   include?: string[],
   paramSearch?: string,
 ): Promise<ReadDeviceResult> {
-  const args: Record<string, unknown> = { deviceId };
+  const args: Record<string, unknown> = { id: deviceId };
 
   if (include) args.include = include;
   if (paramSearch) args.paramSearch = paramSearch;

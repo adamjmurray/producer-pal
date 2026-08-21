@@ -22,7 +22,7 @@ const ALL = ["*"];
 
 export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-connect", args: {} },
-  { toolName: "ppal-context", args: { projectContextAction: "read" } },
+  { toolName: "ppal-context", args: { action: "read" } },
 
   { toolName: "ppal-playback", args: { action: "play-scene", sceneIndex: 0 } },
   { toolName: "ppal-select", args: { path: "t0/s0" } },
@@ -54,23 +54,21 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   {
     toolName: "ppal-create-clip",
     args: {
-      view: "session",
-      trackIndex: 1,
-      sceneIndex: 0,
+      path: "t1/s0",
       name: "Bass Fill",
       notes: "v100 n/8 F1 1|1 C2 1|2",
     },
   },
   {
     toolName: "ppal-read-clip",
-    args: { clipId: ID.bassSessionClip, include: ALL },
+    args: { id: ID.bassSessionClip, include: ALL },
   },
   {
     toolName: "ppal-update-clip",
     args: {
       id: ID.bassSessionClip,
       name: "Bass Line A",
-      transform: "pitch + 12",
+      transforms: "pitch += 12",
     },
   },
 
@@ -80,7 +78,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   },
   {
     toolName: "ppal-read-device",
-    args: { deviceId: ID.drumRack, include: ALL },
+    args: { id: ID.drumRack, include: ALL },
   },
   {
     toolName: "ppal-update-device",

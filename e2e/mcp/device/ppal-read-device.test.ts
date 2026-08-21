@@ -10,7 +10,11 @@
  * Run with: npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
-import { parseToolResult, setupMcpTestContext } from "../mcp-test-helpers";
+import {
+  parseAliasedToolResult,
+  parseToolResult,
+  setupMcpTestContext,
+} from "../mcp-test-helpers";
 
 // Use once: true since we're only reading pre-populated devices
 const ctx = setupMcpTestContext({ once: true });
@@ -27,12 +31,18 @@ describe("ppal-read-device", () => {
     expect(byPath.id).toBeDefined();
     expect(byPath.type).toContain("Compressor");
 
-    // Test 2: Read device by id
+    // Test 2: Read device by id, spelled the way a model guesses it. "deviceId"
+    // is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { id: String(byPath.id) },
+      arguments: { deviceId: String(byPath.id) },
     });
-    const byId = parseToolResult<ReadDeviceResult>(byIdResult);
+    const byId = parseAliasedToolResult<ReadDeviceResult>(
+      byIdResult,
+      "ppal-read-device",
+      "deviceId",
+      "id",
+    );
 
     expect(String(byId.id)).toBe(String(byPath.id));
 

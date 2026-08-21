@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  parseAliasedToolResult,
   isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -43,12 +44,18 @@ describe("ppal-read-clip", () => {
     expect(midiClip.path).toBe("t0/s0");
     expect(midiClip.notes).toBeDefined();
 
-    // Test 2: Read clip by clipId
+    // Test 2: Read the same clip by id, spelled the way a model guesses it.
+    // "clipId" is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { id: midiClip.id! },
+      arguments: { clipId: midiClip.id! },
     });
-    const byIdClip = parseToolResult<ReadClipResult>(byIdResult);
+    const byIdClip = parseAliasedToolResult<ReadClipResult>(
+      byIdResult,
+      "ppal-read-clip",
+      "clipId",
+      "id",
+    );
 
     expect(byIdClip.id).toBe(midiClip.id);
     expect(byIdClip.name).toBe("Beat");

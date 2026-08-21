@@ -116,7 +116,7 @@ async function deleteTrack(trackIndex: number): Promise<void> {
 
   await ctx.client!.callTool({
     name: "ppal-delete",
-    arguments: { type: "track", ids: track.id },
+    arguments: { type: "track", id: track.id },
   });
 
   await sleep(100);
