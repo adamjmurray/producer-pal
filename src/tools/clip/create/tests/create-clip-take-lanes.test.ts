@@ -175,8 +175,8 @@ describe("createClip take lanes", () => {
     expect(result.path).toBe("t0/l0");
   });
 
-  // A caller on the old schema still sends takeLane, and z.coerce.string()
-  // turns its null into "null" — which used to throw before any clip was made.
+  // A caller on the old schema still sends takeLane, sometimes with the word
+  // written out — which used to throw before any clip was made.
   it.each([
     ["omitted", undefined],
     ["a coerced null", "null"],

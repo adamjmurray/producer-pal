@@ -17,6 +17,7 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import {
   registerArrangementTrack,
   setupArrangementClipMocks,
@@ -28,9 +29,10 @@ import {
 // null and a blank into 0, so this goes through the schema the tool registers,
 // not straight to the handler.
 describe("createClip location params through the tool schema", () => {
-  const schema = z.object(
-    resolveToolSchema(toolDefCreateClip.toolOptions.inputSchema, {}).validating,
-  );
+  const params = resolveToolSchema(
+    toolDefCreateClip.toolOptions.inputSchema,
+    {},
+  ).validating;
 
   it.each([
     ["null", null],
@@ -38,7 +40,8 @@ describe("createClip location params through the tool schema", () => {
   ])(
     "refuses a %s trackIndex/sceneIndex instead of filling t0/s0",
     async (_l, v) => {
-      const args = schema.parse({ trackIndex: v, sceneIndex: v });
+      const raw = { trackIndex: v, sceneIndex: v };
+      const args = z.object(params).parse(unsetEmptyParams(raw, params));
 
       expect(args.trackIndex).toBeUndefined();
       expect(args.sceneIndex).toBeUndefined();
@@ -156,7 +159,7 @@ describe("createClip path param", () => {
     ).rejects.toThrow('createClip failed: path "t0/l1" names no position;');
   });
 
-  // z.coerce.string() renders a JSON null as "null". Counting it as a
+  // A model writes the word instead of leaving the param out. Counting it as a
   // destination refused a call that named exactly one.
   it("creates at the slot when path is a coerced null", async () => {
     const { clipSlot } = setupSessionMocks({

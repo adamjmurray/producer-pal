@@ -8,7 +8,6 @@ import { paramsInputSchema } from "#src/tools/device/update/device-params-schema
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
@@ -88,12 +87,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         smallModel: null,
       },
     ),
-    macroVariationIndex: param(optionalNumber(z.coerce.number().int().min(0)), {
+    macroVariationIndex: param(z.coerce.number().int().min(0).optional(), {
       default:
         "Rack only: variation index for load/delete operations (0-based)",
       smallModel: null,
     }),
-    macroCount: param(optionalNumber(z.coerce.number().int().min(0).max(16)), {
+    macroCount: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "Rack only: set visible macro count (0-16)",
       smallModel: null,
     }),
@@ -110,19 +109,19 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         "#RRGGBB for all, or comma-separated for each (cycles if fewer than the chains; chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
-    gainDb: param(optionalNumber(z.coerce.number().min(-70).max(6)), {
+    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
       default:
         "chain's own gain in dB (chains only; a pad path works unless the " +
         "pad has layers, which take a layer path like 't0/d0/pC1/c1')",
       smallModel: null,
     }),
-    pan: param(optionalNumber(z.coerce.number().min(-1).max(1)), {
+    pan: param(z.coerce.number().min(-1).max(1).optional(), {
       default:
         "chain's own pan, -1 (left) to 1 (right) (chains only; a pad path " +
         "works unless the pad has layers, which take a layer path)",
       smallModel: null,
     }),
-    sendGainDb: param(optionalNumber(z.coerce.number().min(-70).max(0)), {
+    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
       default: "chain's send level in dB, requires sendReturn (chains only)",
       smallModel: null,
     }),
@@ -131,7 +130,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
         'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
       smallModel: null,
     }),
-    chokeGroup: param(optionalNumber(z.coerce.number().int().min(0).max(16)), {
+    chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",
       smallModel: null,
     }),

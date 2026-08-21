@@ -10,7 +10,6 @@ import {
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -81,8 +80,11 @@ stop: session and arrangement`,
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),
-    sceneIndex: optionalNumber(z.coerce.number().int().min(0)).describe(
-      "0-based scene index for play-scene (or use path 's<scene>')",
-    ),
+    sceneIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based scene index for play-scene (or use path 's<scene>')"),
   },
 });

@@ -14,6 +14,7 @@ import {
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { select } from "#src/tools/session/select.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import {
   resetSelectTestState,
   setupAppViewMock,
@@ -260,11 +261,13 @@ describe("select path param", () => {
     registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
 
     const songView = setupSongViewMock();
-    const schema = z.object(
-      resolveToolSchema(toolDefSelect.toolOptions.inputSchema, {}).validating,
-    );
+    const params = resolveToolSchema(
+      toolDefSelect.toolOptions.inputSchema,
+      {},
+    ).validating;
+    const raw = { path: "t5", trackIndex: empty, sceneIndex: empty };
 
-    select(schema.parse({ path: "t5", trackIndex: empty, sceneIndex: empty }));
+    select(z.object(params).parse(unsetEmptyParams(raw, params)));
 
     expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_5");
   });

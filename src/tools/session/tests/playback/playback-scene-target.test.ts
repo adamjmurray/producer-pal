@@ -15,6 +15,7 @@ import {
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { playback } from "#src/tools/session/playback.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
 
 /**
@@ -90,13 +91,13 @@ describe("playback play-scene target agreement", () => {
     ["blank", ""],
   ])("ignores a %s sceneIndex beside a path", (_label, empty) => {
     const scene = mockScene(3);
-    const schema = z.object(
-      resolveToolSchema(toolDefPlayback.toolOptions.inputSchema, {}).validating,
-    );
+    const params = resolveToolSchema(
+      toolDefPlayback.toolOptions.inputSchema,
+      {},
+    ).validating;
+    const raw = { action: "play-scene", path: "s3", sceneIndex: empty };
 
-    playback(
-      schema.parse({ action: "play-scene", path: "s3", sceneIndex: empty }),
-    );
+    playback(z.object(params).parse(unsetEmptyParams(raw, params)));
 
     expect(scene.call).toHaveBeenCalledWith("fire");
   });

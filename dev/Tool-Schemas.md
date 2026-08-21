@@ -71,6 +71,19 @@ comma-separated `sceneIndex`) and `z.coerce.number()` for numeric ones
 strings or numbers interchangeably, and the MCP SDK validates before our handler
 runs, so the coercion has to be at the schema level.
 
+## Params sent as null
+
+Write an optional param the plain way — nothing to remember. Clients fill the
+params they have no value for with `null`, and `unsetEmptyParams()` drops those
+args before validation on every call path, so a null reads as a param never
+sent. Without it `Number(null)` is 0, `z.coerce.string()` gives `"null"`, and a
+boolean or enum rejects the whole call. A blank string survives on a text param,
+where clearing a name or a clip's notes is a real request. See ADR-0029; the
+line is held by `src/test/meta/tool-schemas/empty-params.test.ts`.
+
+A param nested below the args isn't reached — wrap that shape in
+`optionalParams()`, as `library-query-schema.ts` does.
+
 ## Modal config: per-mode descriptions
 
 Per-mode overrides are co-located with the param via the `param()` helper in

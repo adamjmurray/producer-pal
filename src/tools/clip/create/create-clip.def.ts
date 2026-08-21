@@ -11,7 +11,6 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
@@ -51,12 +50,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     // Models reach for these on their own, well-foundedly: they name a track
     // and a scene everywhere else in the toolset. Catching the guess costs a
     // warning; refusing it costs a round trip.
-    trackIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
+    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
       canonical: "path",
       example: "t0/s0",
     }),
 
-    sceneIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
+    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
       canonical: "path",
       example: "t0/s0",
     }),
@@ -144,13 +143,21 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "audio clips only: false plays the file as rendered; omit and Live may time-stretch it to the tempo",
     }),
 
-    gainDb: optionalNumber(z.coerce.number().min(-70).max(24)).describe(
-      "audio clip gain in decibels, 0 = unity (ignored for MIDI)",
-    ),
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(24)
+      .optional()
+      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
 
-    pitchShift: optionalNumber(z.coerce.number().min(-48).max(48)).describe(
-      "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
-    ),
+    pitchShift: z.coerce
+      .number()
+      .min(-48)
+      .max(48)
+      .optional()
+      .describe(
+        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
+      ),
 
     warpMode: z
       .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])

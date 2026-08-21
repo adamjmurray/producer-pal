@@ -43,13 +43,14 @@ export function withoutNulls(
   return result;
 }
 
-// z.coerce.string() hands the handler the literal string "null" for a JSON null
-// (and "undefined" for undefined) — a value the caller never typed.
+// A model writing the word instead of leaving the param out: "null" or
+// "undefined" as a param's whole value. (A JSON null never gets this far —
+// unsetEmptyParams drops it before the schema coerces.)
 const COERCED_NULLISH = new Set(["null", "undefined"]);
 
 /**
- * Whether a param's value names something. Nullish, blank, and the strings a
- * JSON null coerces into all mean "unset", so a caller that meant to send
+ * Whether a param's value names something. Nullish, blank, and the words a
+ * caller writes for nothing all mean "unset", so a caller that meant to send
  * nothing is never counted as having sent a value. Silent — use
  * {@link namedParam} to read a published param, which also says so.
  * @param value - Raw param value

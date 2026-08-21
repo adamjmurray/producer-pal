@@ -12,7 +12,6 @@ import {
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
@@ -115,12 +114,20 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
 
     // Audio clip parameters
-    gainDb: optionalNumber(z.coerce.number().min(-70).max(24)).describe(
-      "audio clip gain in decibels, 0 = unity (ignored for MIDI)",
-    ),
-    pitchShift: optionalNumber(z.coerce.number().min(-48).max(48)).describe(
-      "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
-    ),
+    gainDb: z.coerce
+      .number()
+      .min(-70)
+      .max(24)
+      .optional()
+      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
+    pitchShift: z.coerce
+      .number()
+      .min(-48)
+      .max(48)
+      .optional()
+      .describe(
+        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
+      ),
     warpMode: z
       .enum(["beats", "tones", "texture", "repitch", "complex", "pro"])
       .optional()
@@ -169,9 +176,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       : {}),
 
     // Quantization parameters
-    quantize: optionalNumber(z.coerce.number().min(0).max(1)).describe(
-      "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
-    ),
+    quantize: z.coerce
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe(
+        "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
+      ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
     // mapping directly to Live's quantize API constants — do not migrate to n/N.
@@ -214,16 +226,16 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
               'warp marker operation (audio clips only): "add" (create at warpBeatTime), "move" (shift by warpDistance), "remove" (delete at warpBeatTime)',
             smallModel: null,
           }),
-          warpBeatTime: param(optionalNumber(z.coerce.number()), {
+          warpBeatTime: param(z.coerce.number().optional(), {
             default:
               "warp marker position in beats from clip start (a number, not bar|beat); for move/remove use the exact beatTime from ppal-read-clip warpMarkers",
             smallModel: null,
           }),
-          warpSampleTime: param(optionalNumber(z.coerce.number()), {
+          warpSampleTime: param(z.coerce.number().optional(), {
             default: "sample time in seconds for add (omit to preserve timing)",
             smallModel: null,
           }),
-          warpDistance: param(optionalNumber(z.coerce.number()), {
+          warpDistance: param(z.coerce.number().optional(), {
             default: "beats to shift (+forward, -backward) for move",
             smallModel: null,
           }),

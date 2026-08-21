@@ -114,9 +114,8 @@ describe("isTakeLaneRequested", () => {
     expect(isTakeLaneRequested("0")).toBe(false);
   });
 
-  // z.coerce.string() renders a JSON null as "null" and undefined as
-  // "undefined". takeLane is deprecated, so a caller dropping it can still send
-  // one of those, and it has to read as unset.
+  // takeLane is deprecated, so a caller dropping it can still send the word
+  // written out, and it has to read as unset.
   it("is false for a coerced null", () => {
     expect(isTakeLaneRequested("null")).toBe(false);
     expect(isTakeLaneRequested("undefined")).toBe(false);

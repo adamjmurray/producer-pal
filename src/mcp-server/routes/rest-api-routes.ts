@@ -15,6 +15,7 @@ import {
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -156,8 +157,12 @@ export function registerRestApiRoutes(
       // is on: `ppal-read-clip` with `include: ["warp"]`, `ppal-context` with
       // `action: "delete"`, and so on. Every filtered value is one the tool
       // still handles; only the advertising shrinks.
-      const schema = z.object(toolDef.toolOptions.inputSchema);
-      const parsed = schema.safeParse(req.body);
+      const { inputSchema } = toolDef.toolOptions;
+      const parsed = z
+        .object(inputSchema)
+        .safeParse(
+          unsetEmptyParams(req.body as Record<string, unknown>, inputSchema),
+        );
 
       if (!parsed.success) {
         res.status(400).json({

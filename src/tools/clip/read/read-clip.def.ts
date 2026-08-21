@@ -9,7 +9,6 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
@@ -37,12 +36,12 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       replacedBy: "path",
     }),
 
-    trackIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
+    trackIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
       canonical: "path",
       example: "t0/s3",
     }),
 
-    sceneIndex: aliasParam(optionalNumber(z.coerce.number().int().min(0)), {
+    sceneIndex: aliasParam(z.coerce.number().int().min(0).optional(), {
       canonical: "path",
       example: "t0/s3",
     }),

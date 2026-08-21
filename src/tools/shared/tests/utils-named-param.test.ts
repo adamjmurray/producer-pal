@@ -22,9 +22,9 @@ describe("namedParam", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  // z.coerce.string() turns a JSON null into "null" before the handler sees it.
-  // Counting that as sent refuses calls and pairs values with the wrong object,
-  // so read it as unset — but say so, since the caller never typed it.
+  // A model writes the word instead of leaving the param out. Counting that as
+  // sent refuses calls and pairs values with the wrong object, so read it as
+  // unset — but say so, since it names nothing.
   it("reads a coerced null as naming nothing, and says so", () => {
     const warn = vi.spyOn(console, "warn");
 

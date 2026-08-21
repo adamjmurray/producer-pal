@@ -404,14 +404,8 @@ describe("updateClip - Basic operations", () => {
     setupMidiClipMock(mocks.clip123);
     setupToSlotMocks();
 
-    // z.coerce.string() runs before the handler, so a JSON null arrives as "null"
-    const toPath = toolDefUpdateClip.toolOptions.inputSchema.toPath?.parse(
-      null,
-    ) as string;
-
-    expect(toPath).toBe("null");
-
-    const result = await updateClip({ id: "123", toPath });
+    // The word, written out by a model that had no destination to name.
+    const result = await updateClip({ id: "123", toPath: "null" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,

@@ -10,6 +10,7 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 
 // A caller that sends every param, filling the ones it has no value for with
@@ -17,15 +18,17 @@ import { setupMidiClipMock } from "./read-clip-test-helpers.ts";
 // null and a blank into 0, so this goes through the schema the tool registers,
 // not straight to the handler.
 describe("readClip location params through the tool schema", () => {
-  const schema = z.object(
-    resolveToolSchema(toolDefReadClip.toolOptions.inputSchema, {}).validating,
-  );
+  const params = resolveToolSchema(
+    toolDefReadClip.toolOptions.inputSchema,
+    {},
+  ).validating;
 
   it.each([
     ["null", null],
     ["blank", ""],
   ])("refuses a %s trackIndex/sceneIndex instead of reading t0/s0", (_l, v) => {
-    const args = schema.parse({ id: null, trackIndex: v, sceneIndex: v });
+    const raw = { id: null, trackIndex: v, sceneIndex: v };
+    const args = z.object(params).parse(unsetEmptyParams(raw, params));
 
     expect(args.trackIndex).toBeUndefined();
     expect(args.sceneIndex).toBeUndefined();
@@ -182,9 +185,9 @@ describe("readClip path param", () => {
   });
 
   // Both addressing params are published side by side ("provide this or path"),
-  // so a model filling in the unused one with null is the expected shape.
-  // z.coerce.string() renders that as "null", and counting it as sent refused
-  // the call over a param the caller deliberately left empty.
+  // so a model filling in the unused one is the expected shape — sometimes with
+  // the word written out. Counting that as sent refused the call over a param
+  // the caller deliberately left empty.
   it.each(["id", "path"] as const)(
     "reads the clip the other param names when %s is a coerced null",
     (param) => {

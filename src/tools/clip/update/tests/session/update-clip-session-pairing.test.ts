@@ -251,8 +251,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     );
   });
 
-  // z.coerce.string() hands the handler "null" for a JSON null. Counting it as
-  // a clip the caller named shifted every destination onto the wrong clip.
+  // A model writes the word instead of leaving the param out. Counting it as a
+  // clip the caller named shifted every destination onto the wrong clip.
   it.each(["ids", "path"] as const)(
     "ignores a %s sent as null instead of shifting the destinations",
     async (param) => {

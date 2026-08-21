@@ -7,7 +7,6 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
@@ -31,17 +30,23 @@ export const toolDefSelect = defineTool("ppal-select", {
         "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
       ),
 
-    trackIndex: optionalNumber(z.coerce.number().int().min(0)).describe(
-      "0-based track index",
-    ),
+    trackIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based track index"),
     trackType: z
       .enum(["return", "master"])
       .optional()
       .describe("omit for audio/midi tracks, or: return, master"),
 
-    sceneIndex: optionalNumber(z.coerce.number().int().min(0)).describe(
-      "0-based scene index",
-    ),
+    sceneIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based scene index"),
 
     path: z.coerce
       .string()

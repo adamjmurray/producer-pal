@@ -9,7 +9,6 @@ import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.t
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
-import { optionalNumber } from "#src/tools/shared/tool-framework/optional-number.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
@@ -49,7 +48,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: "#RRGGBB",
     }),
 
-    count: param(optionalNumber(z.coerce.number().int().min(1).default(1)), {
+    count: param(z.coerce.number().int().min(1).default(1), {
       default:
         "number of copies (tracks/scenes only, ignored for clips/devices)",
       smallModel: null,

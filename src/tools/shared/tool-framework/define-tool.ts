@@ -14,6 +14,7 @@ import {
   resolveModalDescription,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 
 // Re-export CallToolResult for use by callers
@@ -112,8 +113,12 @@ export function defineTool(
           paramNamesSomething(args[key]),
         );
 
-        // Parse with strict schema (strips extra keys for callLiveApi)
-        const validated = z.object(finalInputSchema).parse(args);
+        // Parse with strict schema (strips extra keys for callLiveApi). Args
+        // sent as empty are dropped first, so a param the caller filled with
+        // null reads as one they never sent.
+        const validated = z
+          .object(finalInputSchema)
+          .parse(unsetEmptyParams(args, finalInputSchema));
 
         // Filter out excluded enum values as defense-in-depth (schema validation
         // is the primary gate; this catches hallucinated values). Populated only
