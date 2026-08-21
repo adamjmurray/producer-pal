@@ -110,7 +110,7 @@ export function MemoryEntryEditor(
 
   // The name field's error + change/rename handlers (rename commit, and
   // surfacing a failed rename's reason under the field). See useMemoryRename.
-  const { nameError, onNameChange, onRename } = useMemoryRename({
+  const { nameError, renaming, onNameChange, onRename } = useMemoryRename({
     collection,
     entry,
     setName,
@@ -177,6 +177,7 @@ export function MemoryEntryEditor(
         onBlur={() => validation.markTouched("name")}
         error={nameError}
         onRename={onRename}
+        renameDisabled={renaming}
       />
       <DescriptionField
         hint="One-line recall hook shown in the index."
@@ -265,6 +266,7 @@ interface MemoryRenameParams {
  */
 function useMemoryRename(params: MemoryRenameParams): {
   nameError?: string;
+  renaming: boolean;
   onNameChange: (value: string) => void;
   onRename: (raw: string) => void;
 } {
@@ -272,6 +274,13 @@ function useMemoryRename(params: MemoryRenameParams): {
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
   const { resumePendingSave, canSave } = params;
   const [renameError, setRenameError] = useState<string | null>(null);
+  // One rename at a time. The list commits a rename only on success, so `entry`
+  // still reads the OLD slug during the round trip: a second commit would name
+  // the slug the first is already moving, and its refusal would then revert the
+  // name field — silently undoing the rename that did land. The ref refuses it;
+  // the state disables the field so the refusal is visible rather than mute.
+  const [renaming, setRenaming] = useState(false);
+  const renamingRef = useRef(false);
   // The live draft, for the close-during-rename catch-up below: commitRename's
   // own closure is blur-time stale, and what the user typed after the rename
   // went out is exactly what the rename didn't carry. Synced in an effect
@@ -292,45 +301,55 @@ function useMemoryRename(params: MemoryRenameParams): {
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
   const commitRename = async (oldName: string, to: string): Promise<void> => {
-    // Never leave an autosave of the OLD slug racing the rename — this holds the
-    // autosave off for the whole round trip, not just the debounce armed now.
-    await settlePendingSave();
+    renamingRef.current = true;
+    setRenaming(true);
 
-    const { entry: renamed, error } = await collection.renameEntry(
-      oldName,
-      to,
-      {
-        description,
-        content: body,
-      },
-    );
+    try {
+      // Never leave an autosave of the OLD slug racing the rename — this holds the
+      // autosave off for the whole round trip, not just the debounce armed now.
+      await settlePendingSave();
 
-    // The move is over either way, so put the draft back on the clock: nothing
-    // here moves draftKey (it follows entry.name, not the name field), so a body
-    // edit typed before or during the rename would otherwise sit off the clock
-    // until the next keystroke. False means the editor closed meanwhile, so
-    // there is no clock left and the draft is this continuation's to write.
-    const onTheClock = resumePendingSave();
+      const { entry: renamed, error } = await collection.renameEntry(
+        oldName,
+        to,
+        {
+          description,
+          content: body,
+        },
+      );
 
-    if (renamed == null) {
-      setRenameError(error);
-      setName(oldName);
+      // The move is over either way, so put the draft back on the clock: nothing
+      // here moves draftKey (it follows entry.name, not the name field), so a body
+      // edit typed before or during the rename would otherwise sit off the clock
+      // until the next keystroke. False means the editor closed meanwhile, so
+      // there is no clock left and the draft is this continuation's to write.
+      const onTheClock = resumePendingSave();
 
-      return;
-    }
+      if (renamed == null) {
+        setRenameError(error);
+        setName(oldName);
 
-    setRenameError(null);
-    setName(renamed.name);
-    noteSaved(memoryEntryKey(renamed));
-    onRenamed(oldName, renamed.name);
+        return;
+      }
 
-    if (!onTheClock) {
-      await saveDraftAfterClose(collection, renamed, draftRef.current);
+      setRenameError(null);
+      setName(renamed.name);
+      noteSaved(memoryEntryKey(renamed));
+      onRenamed(oldName, renamed.name);
+
+      if (!onTheClock) {
+        await saveDraftAfterClose(collection, renamed, draftRef.current);
+      }
+    } finally {
+      // Never latch: miss this and the field stays disabled for the rest of the
+      // mount, with every later rename refused.
+      renamingRef.current = false;
+      setRenaming(false);
     }
   };
 
   const onRename = (raw: string): void => {
-    if (entry == null) return;
+    if (entry == null || renamingRef.current) return;
     const trimmed = raw.trim();
 
     if (trimmed === "" || trimmed === entry.name) {
@@ -342,7 +361,7 @@ function useMemoryRename(params: MemoryRenameParams): {
     void commitRename(entry.name, trimmed);
   };
 
-  return { nameError, onNameChange, onRename };
+  return { nameError, renaming, onNameChange, onRename };
 }
 
 /**

@@ -78,12 +78,18 @@ interface NameFieldProps {
    * read-only (the collection doesn't support renaming).
    */
   onRename?: (name: string) => void;
+  /**
+   * Lock the rename field while a rename is on the wire. Editing it then would
+   * commit against the slug the in-flight rename is already moving.
+   */
+  renameDisabled?: boolean;
 }
 
 /**
  * The name row. Creating: an editable slug input for the new draft. Editing:
  * an editable slug that renames on blur / Enter when `onRename` is supplied
- * (Escape reverts), else the fixed slug shown read-only.
+ * (Escape reverts), else the fixed slug shown read-only. A rename on the wire
+ * locks the field — see `renameDisabled`.
  * @param props - Name field props
  * @returns Name field element
  */
@@ -120,13 +126,14 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
           type="text"
           value={name}
           aria-label="Rename"
+          disabled={props.renameDisabled}
           onInput={(e) => onChange((e.target as HTMLInputElement).value)}
           onBlur={() => onRename(name)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             if (e.key === "Escape") onChange(displayName ?? "");
           }}
-          className={`${inputClass(props.error)} font-mono`}
+          className={`${inputClass(props.error)} font-mono disabled:opacity-60`}
         />
       </Field>
     );

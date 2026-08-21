@@ -223,6 +223,34 @@ function entryPuts(): CapturedSave[] {
 }
 
 /**
+ * The rename PUTs the editor issued, in dispatch order.
+ * @returns The old slug each one named, and the new name it asked for
+ */
+function renamePuts(): { slugInUrl: string; newName: string }[] {
+  const calls = fetchMock.mock.calls as [string, RequestInit | undefined][];
+
+  return calls
+    .filter(([url, init]) => init?.method === "PUT" && url.endsWith("/rename"))
+    .map(([url, init]) => ({
+      slugInUrl:
+        url
+          .replace(/\/rename$/, "")
+          .split("/")
+          .pop() ?? "",
+      newName: (JSON.parse(init?.body as string) as { newName: string })
+        .newName,
+    }));
+}
+
+/**
+ * The rename input, which is disabled for the length of a rename round trip.
+ * @returns The name field element
+ */
+function renameInput(): HTMLInputElement {
+  return screen.getByRole("textbox", { name: "Rename" }) as HTMLInputElement;
+}
+
+/**
  * Open `ENTRY` in the right pane and commit a rename to "New Slug" (which the
  * server slugifies to `RENAMED`) whose PUT is left in flight.
  */
@@ -551,5 +579,35 @@ describe("MemoryScreen — renaming with an autosave of the old slug in flight",
 
     await screen.findByRole("button", { name: "Edit new-slug" });
     expect([...store.keys()]).toStrictEqual(["new-slug"]);
+  });
+});
+
+describe("MemoryScreen — a second rename while one is in flight", () => {
+  it("refuses the second commit instead of dispatching a stale slug", async () => {
+    // The list commits a rename only on success, so the `entry` prop still
+    // reads the OLD slug at the second blur — the second rename named the slug
+    // the first one was already moving, and its failure then reverted the name
+    // field, silently undoing the rename that did land.
+    const renamePut = routeFetch();
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    expect(renameInput().disabled).toBe(true);
+
+    fireEvent.input(renameInput(), { target: { value: "Another Slug" } });
+    fireEvent.blur(renameInput());
+    await settleAutosave();
+
+    expect(renamePuts()).toStrictEqual([
+      { slugInUrl: ENTRY.name, newName: "New Slug" },
+    ]);
+
+    renamePut.resolve(jsonResponse({ entry: RENAMED }));
+
+    await screen.findByRole("button", { name: "Edit new-slug" });
+    expect(renameInput().disabled).toBe(false);
+    expect(fieldValue("Rename")).toBe("new-slug");
   });
 });
