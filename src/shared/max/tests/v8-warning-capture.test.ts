@@ -84,6 +84,53 @@ describe("v8-warning-capture", () => {
       ]);
     });
 
+    // ppal-context's project-context backup is fire-and-forget: the request
+    // responds while its Node round trip is still out. Handing the capture back
+    // on resume pointed the continuation's warnings at a response already sent,
+    // so they reached nobody — not the response, not the Max console.
+    it("takes no warning for a request that already responded", async () => {
+      const capture = beginWarningCapture();
+      let answerNode = () => {};
+      const roundTrip = suspendWarningCapture(
+        new Promise<void>((resolve) => {
+          answerNode = resolve;
+        }),
+      );
+
+      endWarningCapture(capture);
+      answerNode();
+      await roundTrip;
+
+      expect(recordWarning("after the response went out")).toBe(false);
+    });
+
+    it("does not put a dead capture in a live request's place", async () => {
+      const responded = beginWarningCapture();
+      let answerNode = () => {};
+      const roundTrip = suspendWarningCapture(
+        new Promise<void>((resolve) => {
+          answerNode = resolve;
+        }),
+      );
+
+      endWarningCapture(responded);
+
+      // A second request is in flight by the time Node answers.
+      const inFlight = beginWarningCapture();
+
+      answerNode();
+      await roundTrip;
+
+      expect(recordWarning("late, and nobody's")).toBe(false);
+
+      // The running request re-asserts itself, as handleRequest does, and finds
+      // its own capture intact.
+      resumeWarningCapture(inFlight);
+      recordWarning("mine");
+
+      expect(endWarningCapture(inFlight)).toStrictEqual(["mine"]);
+    });
+
     it("restores the caller's capture even when the promise rejects", async () => {
       const capture = beginWarningCapture();
 

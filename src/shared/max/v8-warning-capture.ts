@@ -13,8 +13,8 @@
 // saw it. The buffer lives here instead, where the request is known.
 //
 // There is one active capture, and V8 has no async context to hang it off, so
-// keeping it pointed at the right request takes two rules. Both are load-bearing:
-// drop either and warnings silently swap requests.
+// keeping it pointed at the right request takes three rules. All are
+// load-bearing: drop one and warnings silently swap requests, or reach nobody.
 //
 //  1. A request re-asserts its own capture after every await it performs
 //     (resumeWarningCapture). It cannot assume the capture it began is still
@@ -23,6 +23,9 @@
 //  2. Every promise V8 can suspend on clears the capture for the wait and
 //     restores it on resume (suspendWarningCapture). Only two exist —
 //     requestNode and requestCodeExecution — and a third has to do the same.
+//  3. A capture that has responded is dead, and never becomes active again.
+//     Fire-and-forget work outlives its request, so the capture a resume hands
+//     back may be one nobody is going to read.
 //
 // Between stretches nothing is active, and that is the point: a warning with no
 // request in flight (a Max setter, or async work that outlived its response) has
@@ -33,6 +36,12 @@
 export interface WarningCapture {
   messages: string[];
   dropped: number;
+  /**
+   * True once the request has responded. A pointer alone can't say that, and
+   * async work outliving a response hands its capture back on resume — see
+   * suspendWarningCapture.
+   */
+  ended: boolean;
 }
 
 /**
@@ -50,7 +59,7 @@ let activeCapture: WarningCapture | null = null;
  * @returns The new capture, to pass to endWarningCapture
  */
 export function beginWarningCapture(): WarningCapture {
-  activeCapture = { messages: [], dropped: 0 };
+  activeCapture = { messages: [], dropped: 0, ended: false };
 
   return activeCapture;
 }
@@ -78,6 +87,8 @@ export function resumeWarningCapture(capture: WarningCapture): void {
  * @returns The warnings to append to this request's response
  */
 export function endWarningCapture(capture: WarningCapture): string[] {
+  capture.ended = true;
+
   if (activeCapture === capture) {
     activeCapture = null;
   }
@@ -100,7 +111,7 @@ export function endWarningCapture(capture: WarningCapture): string[] {
  *   some other way, because no response is coming
  */
 export function recordWarning(message: string): boolean {
-  if (activeCapture == null) return false;
+  if (activeCapture == null || activeCapture.ended) return false;
 
   if (activeCapture.messages.length < MAX_CAPTURED_WARNINGS) {
     activeCapture.messages.push(message);
@@ -132,7 +143,13 @@ export async function suspendWarningCapture<T>(
   try {
     return await promise;
   } finally {
-    activeCapture = suspended;
+    // Fire-and-forget work outlives the request that started it, so the capture
+    // saved above can have responded while this was parked. Handing it back
+    // would swallow the continuation's warnings and, worse, leave a dead
+    // capture installed for whatever warns next. Nothing to resume: the
+    // continuation has no response to ride, so its warnings go to the Max
+    // console, and a request actually running re-asserts its own capture.
+    activeCapture = suspended?.ended === false ? suspended : null;
   }
 }
 
