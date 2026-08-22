@@ -49,9 +49,9 @@ export interface UseInitializeChatDeps<
 export interface UseInitializeChatReturn<TMessage> {
   /**
    * Build a client, connect it, and lock what it connected with. `stillLive`
-   * (omitted by callers that aren't racing a turn, e.g. the compaction
-   * bootstrap) is checked at both await points; a turn that is no longer live
-   * bails without disposing or locking.
+   * is checked at both await points; a caller that is no longer live bails
+   * without disposing or locking. Every caller passes one — a turn's tracks the
+   * turn, the compaction bootstrap's tracks the conversation.
    */
   initializeChat: (
     chatHistory?: TMessage[],

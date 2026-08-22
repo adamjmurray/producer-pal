@@ -232,7 +232,22 @@ export function useChat<
 
     if (!pendingHistory || !apiKey) return;
 
-    await initializeChat(pendingHistory);
+    // The connect below takes real network round-trips, and nothing blocks the
+    // user from switching conversations during them. Every switch bumps the
+    // generation, so this is the same liveness check the send and fork paths
+    // make — it just tracks the conversation rather than a turn, since a
+    // bootstrap isn't one.
+    const conversationGen = conversationGenRef.current;
+    const stillLive = () => conversationGen === conversationGenRef.current;
+
+    await initializeChat(pendingHistory, undefined, stillLive);
+
+    // Switched while connecting. The refs below belong to the conversation the
+    // user moved TO, and this bootstrap has nothing to say about it: nulling
+    // its pending history would leave it with no client and nothing to send
+    // from, which the teardown autosave then persists over the real thing.
+    if (!stillLive()) return;
+
     // The client owns the restored history now (init baked it in), so drop the
     // fallback. Deferred until after init, same as the send and fork paths: a
     // thrown init (MCP down, unusable provider config) leaves it intact so the

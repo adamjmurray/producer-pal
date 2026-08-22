@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, act } from "@testing-library/preact";
+import { renderHook, act, waitFor } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
@@ -648,6 +648,63 @@ describe("useChat", () => {
         expect.anything(),
         expect.anything(),
         RESTORED_HISTORY,
+        expect.anything(),
+      );
+    });
+
+    it("leaves the switched-to conversation alone when a bootstrap outlives it", async () => {
+      // Compacting a restored-but-not-sent conversation bootstraps a client, and
+      // the connect is long enough for the user to switch conversations. The
+      // continuation then belongs to a conversation that is gone: without the
+      // liveness check it nulls the pending history of the one the user switched
+      // TO, leaving it with no client and nothing to continue from — which the
+      // next send starts empty and the autosave persists over the real thing.
+      const NEXT_HISTORY = [{ role: "user", content: "other conversation" }];
+      let releaseInit: () => void = () => {};
+      const connecting = new Promise<void>((resolve) => {
+        releaseInit = resolve;
+      });
+      const adapter = adapterWithClient((client) => {
+        client.initialize = vi.fn(async () => await connecting);
+      });
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter }),
+      );
+
+      await act(() => {
+        result.current.restoreChatHistory([...RESTORED_HISTORY]);
+      });
+
+      let compacting: Promise<void> | undefined;
+
+      await act(async () => {
+        compacting = result.current.compact(1);
+        // The switch below only races the bootstrap once it is parked in the
+        // connect, which is the client existing but initialize() not resolved.
+        await waitFor(() => expect(adapter.createClient).toHaveBeenCalled());
+      });
+
+      await act(() => {
+        result.current.clearConversation();
+        result.current.restoreChatHistory([...NEXT_HISTORY]);
+      });
+
+      await act(async () => {
+        releaseInit();
+        await compacting;
+      });
+
+      await act(async () => {
+        await result.current.handleSend("next");
+      });
+
+      // The send continued the conversation the user switched to.
+      expect(adapter.buildConfig).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        NEXT_HISTORY,
         expect.anything(),
       );
     });
