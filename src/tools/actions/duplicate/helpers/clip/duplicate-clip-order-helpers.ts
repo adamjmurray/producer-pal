@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type ArrangementTrack } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  isTakeLaneClip,
+  type ArrangementTrack,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseArrangementLength } from "../duplicate-helpers.ts";
 
 /**
@@ -15,11 +18,12 @@ import { parseArrangementLength } from "../duplicate-helpers.ts";
  * fan-out gets the whole clip, and the result no longer depends on the order
  * the destinations happened to be listed in.
  *
- * A copy is in the way only when the span it clears — `spanBeats` forward from
- * its start — reaches the source, the same overlap test
- * `clearClipAtDuplicateTarget` uses. A copy that starts before the source and
- * stops short of it is not, and deferring it behind the one that truncates the
- * source is how it ends up made from the leftover.
+ * A copy is in the way only when it lands on the source's own lane and the span
+ * it clears — `spanBeats` forward from its start — reaches the source, the same
+ * overlap test `clearClipAtDuplicateTarget` uses. Two copies that miss each
+ * other either way round must keep the order they were asked for: deferring one
+ * behind the copy that truncates the source is how it ends up made from the
+ * leftover.
  * @param source - The clip being copied
  * @param targets - Destination per copy
  * @param positions - Start position per copy, in Ableton beats
@@ -39,13 +43,21 @@ export function sourceLastOrder(
   if (source.getProperty("is_arrangement_clip") !== 1) return indexes;
 
   const sourceTrackIndex = source.trackIndex;
+  const sourceLane = source.takeLaneIndex;
   const sourceStart = source.getProperty("start_time") as number;
   const sourceEnd = source.getProperty("end_time") as number;
-  // An unknown source track counts as every track, matching
+  // Every lane is written on its own, so only a copy landing on the source's
+  // own lane can reach it — null is the main lane on both sides, so this
+  // compares like with like. An "l+" matches nothing, which is right: the lane
+  // it appends is empty.
+  const sameLane = (i: number): boolean =>
+    (targets[i] as ArrangementTrack).takeLane === sourceLane;
+  // An unknown source track counts as every track and every lane, matching
   // clearClipAtDuplicateTarget: guessing wrong the other way loses content.
   const overwritesSource = (i: number): boolean =>
     (sourceTrackIndex == null ||
-      (targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex) &&
+      ((targets[i] as ArrangementTrack).trackIndex === sourceTrackIndex &&
+        sameLane(i))) &&
     (positions[i] as number) < sourceEnd &&
     (positions[i] as number) + spanBeats > sourceStart;
 
@@ -62,6 +74,12 @@ export function sourceLastOrder(
  * is the source's own length. A length that won't parse is not decided here:
  * the copies that use it throw on their own, and the ones that ignore it
  * (re-created lane copies) are the source's length anyway.
+ *
+ * A take-lane source ignores it outright, because every copy of one is
+ * re-created — Live's arrangement duplicate handles neither direction — and a
+ * re-created copy is always the source's own length. The tool warns that it is.
+ * Ordering a lane copy against a span nothing writes is how it lands in the
+ * safe bucket while really truncating the source.
  * @param source - The clip being copied
  * @param arrangementLength - The raw arrangementLength param
  * @param songTimeSigNumerator - Song time signature numerator
@@ -78,7 +96,7 @@ export function copySpanBeats(
     (source.getProperty("end_time") as number) -
     (source.getProperty("start_time") as number);
 
-  if (arrangementLength == null) return sourceLength;
+  if (arrangementLength == null || isTakeLaneClip(source)) return sourceLength;
 
   try {
     return parseArrangementLength(
