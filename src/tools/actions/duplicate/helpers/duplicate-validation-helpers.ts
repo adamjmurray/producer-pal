@@ -228,16 +228,17 @@ export function inferDestination(
  * ones it can't be copied to. A destination is skipped rather than fatal, so one
  * bad entry in a comma-separated toPath doesn't cost the good ones.
  *
- * A skipped entry comes back as null rather than being removed. Name and color
- * are counted per requested destination, so a shorter list here would slide
- * every name after the gap onto the wrong copy.
+ * A skipped entry comes back as null rather than being removed, and one that
+ * arrived null stays null. Name and color are counted per requested
+ * destination, so a shorter list here would slide every name after the gap onto
+ * the wrong copy.
  * @param sourceClip - The clip being duplicated
  * @param targets - Requested destinations, or empty for the source's own track
  * @returns One entry per request: the destination, or null where it can't be used
  */
 export function resolveDestinationTargets(
   sourceClip: LiveAPI,
-  targets: ArrangementTrack[],
+  targets: (ArrangementTrack | null)[],
 ): (ArrangementTrack | null)[] {
   if (targets.length === 0) {
     const sourceTrackIndex = sourceClip.trackIndex;
@@ -254,7 +255,9 @@ export function resolveDestinationTargets(
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
   return targets.map((target) =>
-    canCopyClipToTrack(target.trackIndex, clipIsMidi) ? target : null,
+    target != null && canCopyClipToTrack(target.trackIndex, clipIsMidi)
+      ? target
+      : null,
   );
 }
 

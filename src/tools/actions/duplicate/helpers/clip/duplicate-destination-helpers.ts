@@ -32,8 +32,11 @@ export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Clip slots, in order. Empty for arrangement destinations. */
   slots: SlotPosition[];
-  /** Arrangement destinations, in order. Empty means the source's own track. */
-  arrangementTargets: ArrangementTrack[];
+  /**
+   * Arrangement destinations, in order, null where the path named something
+   * this call can't use. Empty means the source's own track.
+   */
+  arrangementTargets: (ArrangementTrack | null)[];
 }
 
 /**
@@ -198,28 +201,31 @@ function legacySlotDestinations(
  * contradicts arrangementStart/locator; warn and drop the weaker of the two
  * rather than failing the call, the way every other tool handles a position
  * that doesn't apply.
+ *
+ * A dropped clip slot keeps its turn as a null, because name and color are
+ * counted per requested destination: removing it slides every later name onto
+ * the wrong copy, and a two-destination call collapsing to one stops the
+ * comma-separated values from splitting at all — Live is then handed the whole
+ * string, which fails the call after a copy has already landed.
  * @param paths - Parsed clip destination paths
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
-  const targets: ArrangementTrack[] = [];
   const slots: SlotPosition[] = [];
-
-  for (const path of paths) {
-    if (path.kind === "slot") {
-      slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
-    } else {
-      targets.push({
-        trackIndex: path.trackIndex,
-        takeLane: takeLaneFromPath(path),
-      });
+  const targets = paths.map((path) => {
+    if (path.kind !== "slot") {
+      return { trackIndex: path.trackIndex, takeLane: takeLaneFromPath(path) };
     }
-  }
+
+    slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
+
+    return null;
+  });
 
   // Number the lanes here, off the list the caller wrote: the copy loop cycles
   // this list, and a cycled repeat must reuse its lane, not append one. Both
-  // arrangement returns below need it — dropped clip slots don't change the
-  // numbering, but leaving it off one path collapses two "l+" into one lane.
+  // arrangement returns below need it — leaving it off one path collapses two
+  // "l+" into one lane.
   const arrangementTargets = withNewLaneOrdinals(targets);
 
   if (slots.length === 0) {
@@ -233,7 +239,7 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but clip slots, the position has no track to apply
   // to, so toPath is the one that survives.
-  if (arrangementTargets.length === 0) {
+  if (arrangementTargets.every((target) => target == null)) {
     console.warn(
       `duplicate: arrangementStart/locator ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',

@@ -120,7 +120,7 @@ export async function duplicateClipWithPositions(
  * @returns Array of result objects
  */
 async function duplicateClipToArrangementPositions(
-  targets: ArrangementTrack[],
+  targets: (ArrangementTrack | null)[],
   object: LiveAPI,
   id: string,
   name: string | undefined,

@@ -179,4 +179,26 @@ describe("duplicate clip - a toPath entry the clip can't go to", () => {
     expect(clip1.set).toHaveBeenCalledWith("name", "Verse");
     expect(clip1.set).toHaveBeenCalledWith("color", 0xff0000);
   });
+
+  it("still splits the list when a clip slot shares an arrangement toPath", async () => {
+    registerMidiSource();
+
+    const clip2 = registerDestTrack(2, true);
+
+    // arrangementStart makes this an arrangement duplicate, so the clip slot
+    // names nowhere the copy can go. It was removed rather than skipped, which
+    // collapsed the count the same way — Live got "#ff0000,#00ff00" as one
+    // color and the call failed with the copy on t2 already made.
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "3|1",
+      toPath: "t1/s0,t2",
+      name: "Verse,Chorus",
+      color: "#ff0000,#00ff00",
+    });
+
+    expect(clip2.set).toHaveBeenCalledWith("name", "Chorus");
+    expect(clip2.set).toHaveBeenCalledWith("color", 0x00ff00);
+  });
 });

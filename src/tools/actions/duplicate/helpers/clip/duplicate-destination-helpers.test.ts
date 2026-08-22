@@ -123,6 +123,9 @@ describe("resolveClipDestinations", () => {
       );
     });
 
+    // The dropped slot stays in the list as a null. Name and color are counted
+    // per requested destination, so removing it would hand the track the first
+    // name — and a two-entry list collapsing to one stops splitting at all.
     it("drops the clip slots when toPath also names a track", () => {
       const warnSpy = vi.spyOn(console, "warn");
 
@@ -131,7 +134,7 @@ describe("resolveClipDestinations", () => {
       ).toStrictEqual({
         destination: "arrangement",
         slots: [],
-        arrangementTargets: [{ trackIndex: 3, takeLane: null }],
+        arrangementTargets: [null, { trackIndex: 3, takeLane: null }],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('toPath "t2/s1" ignored'),
@@ -149,6 +152,7 @@ describe("resolveClipDestinations", () => {
         destination: "arrangement",
         slots: [],
         arrangementTargets: [
+          null,
           { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
           { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
         ],
