@@ -210,11 +210,10 @@ async function renderSessionClip({ track, scene, outDir, withReturns }) {
       include: ["session-clips", "arrangement-clips"],
     });
     const inherited = (copy.arrangementClips ?? []).map((c) => c.id).join(",");
-    if (inherited) await ppal("ppal-delete", { ids: inherited, type: "clip" });
+    if (inherited) await ppal("ppal-delete", { id: inherited, type: "clip" });
 
-    const clip = (copy.sessionClips ?? []).find(
-      (c) => Number(c.slot.split("/")[1]) === scene,
-    );
+    const wanted = `t${temp.trackIndex}/s${scene}`;
+    const clip = (copy.sessionClips ?? []).find((c) => c.path === wanted);
     if (clip == null)
       throw new Error(`Track "${track}" has no Session clip in scene ${scene}`);
     await ppal("ppal-duplicate", {
@@ -251,7 +250,7 @@ async function removeTempTracks() {
   });
   const ids = tracks.filter((t) => TEMP_TRACK_RE.test(t.name)).map((t) => t.id);
   if (ids.length > 0)
-    await ppal("ppal-delete", { ids: ids.join(","), type: "track" });
+    await ppal("ppal-delete", { id: ids.join(","), type: "track" });
 }
 
 /**

@@ -120,8 +120,8 @@ arrangement clips, duplicates the wanted Session clip to `1|1`, renders the
 copy, and deletes it. **The user's own track is never modified**, and the temp
 track is removed even when the render fails.
 
-Take the scene index from `ppal-read-track` — a clip's `slot` is
-`trackIndex/sceneIndex`, so `"0/3"` is scene **3**.
+Take the scene index from `ppal-read-track` — a Session clip's `path` is
+`t<track>/s<scene>`, so `"t0/s3"` is scene **3**.
 
 **One clip per render.** Several clips laid end to end would leave the analysis
 no way to tell which audio came from which clip. To cover a few, call the script

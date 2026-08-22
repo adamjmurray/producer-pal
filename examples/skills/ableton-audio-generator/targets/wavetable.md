@@ -60,7 +60,7 @@ To stage a draggable clip, put the file on an audio track:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/wavetable-glass.wav","name":"WT glass","warping":false}'
+  '{"path":"t5/s0","sampleFile":"/abs/path/wavetable-glass.wav","name":"WT glass","warping":false}'
 ```
 
 Then drag from the Session grid onto the oscillator. The drag reads the file, so

@@ -30,15 +30,16 @@ node ../producer-pal/ppal.mjs ppal-create-track \
   '{"type":"audio","name":"Generated"}'
 ```
 
-Then drop the file into a clip slot (`trackIndex/sceneIndex`, both 0-based),
-passing **`warping: false`** so it plays exactly as rendered:
+Then drop the file into a clip slot (`t<track>/s<scene>`, both 0-based), passing
+**`warping: false`** so it plays exactly as rendered:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s","warping":false}'
+  '{"path":"t5/s0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s","warping":false}'
 ```
 
-Or place it on the timeline with `arrangementStart` instead of `slot`.
+Or place it on the timeline with a bare track path (`t5`) plus
+`arrangementStart`.
 
 Omit `warping` and Live decides for itself, following the user's Loop/Warp Short
 Samples setting — which no API can read, so the same call lands differently on
