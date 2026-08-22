@@ -57,7 +57,11 @@ dev/skills-snapshots
 # Playwright Test Results
 test-results
 test-reports
-report/
+
+# jscpd's HTML report. Anchored to the repo root on purpose: an unanchored
+# `report/` matches any directory of that name, which silently swallows new
+# source files added under one.
+/report/
 
 # Live project backups
 **/live-sets/**/Backup
