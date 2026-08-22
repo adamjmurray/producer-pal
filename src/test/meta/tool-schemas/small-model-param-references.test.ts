@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z, type ZodType } from "zod";
-import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { deprecatedParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import {
@@ -14,6 +14,7 @@ import {
   resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 
 // Hiding a param with `smallModel: null` leaves any sibling text that named it
 // pointing at nothing, so the small model is told to use an argument its schema
@@ -32,36 +33,13 @@ import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool
 // `name`, `format`, `sort`). If another legitimate prose use collides, blank
 // that term out the same way — don't loosen the match.
 
-// The `code` params only exist when this flag is on, and it is read when the
-// tool defs load — so stub it before importing them.
-vi.stubEnv("ENABLE_CODE_EXEC", "true");
-const { STANDARD_TOOL_DEFS } =
-  await import("#src/mcp-server/create-mcp-server.ts");
-const { toolDefLiveApi } = await import("#src/tools/advanced/live-api.def.ts");
-
-vi.unstubAllEnvs();
-
-const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
-
-// Small-model mode crosses with notation, and a param can be hidden in only one
-// cell (`smallModel:stark`), so every combination gets its own case.
-const CASES = NOTATIONS.flatMap((notation) =>
-  [true, false].flatMap((smallModelMode) =>
-    TOOL_DEFS.map(
-      (def) =>
-        [
-          `${def.toolName} (${notation}${smallModelMode ? ", small" : ""})`,
-          def,
-          { notation, smallModelMode },
-        ] as const,
-    ),
-  ),
-);
-
 describe("published param references", () => {
-  it.each(CASES)("%s names no param it removed", (_label, def, context) => {
-    expect(danglingReferences(def, context)).toStrictEqual([]);
-  });
+  it.each(TOOL_DEF_CASES)(
+    "%s names no param it removed",
+    (_label, def, context) => {
+      expect(danglingReferences(def, context)).toStrictEqual([]);
+    },
+  );
 
   it("catches a description that names a removed param", () => {
     // Without this, a broken matcher would leave every case above passing

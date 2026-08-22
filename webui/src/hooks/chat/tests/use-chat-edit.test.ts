@@ -54,6 +54,22 @@ describe("useChat handleEdit", () => {
   const mockAdapter = createMockAdapter();
   const defaultProps = createDefaultProps(mockAdapter);
 
+  /**
+   * Render the hook mid-fork: a pending fork signal is already armed, as it is
+   * between a retry/edit and the autosave that consumes it.
+   * @returns The hook handle and the fork ref
+   */
+  function renderForkedChat() {
+    const pendingForkRef = {
+      current: { anchorIndex: 2 } as PendingFork | null,
+    };
+    const { result } = renderHook(() =>
+      useChat({ ...defaultProps, pendingForkRef }),
+    );
+
+    return { result, pendingForkRef };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -198,12 +214,7 @@ describe("useChat handleEdit", () => {
     // teardown autosave that follows must still branch. Clearing the signal here
     // made that save reuse the source id and overwrite the conversation with the
     // truncation — every turn after the fork point, permanently gone.
-    const pendingForkRef = {
-      current: { anchorIndex: 2 } as PendingFork | null,
-    };
-    const { result } = renderHook(() =>
-      useChat({ ...defaultProps, pendingForkRef }),
-    );
+    const { result, pendingForkRef } = renderForkedChat();
 
     await act(async () => {
       result.current.stopResponse();
@@ -216,12 +227,7 @@ describe("useChat handleEdit", () => {
     // Every switch/new/delete/back-forward funnels through clearConversation; a
     // fork abandoned by navigating away must not leave a signal for a later,
     // unrelated conversation's save to consume.
-    const pendingForkRef = {
-      current: { anchorIndex: 2 } as PendingFork | null,
-    };
-    const { result } = renderHook(() =>
-      useChat({ ...defaultProps, pendingForkRef }),
-    );
+    const { result, pendingForkRef } = renderForkedChat();
 
     await act(async () => {
       result.current.clearConversation();

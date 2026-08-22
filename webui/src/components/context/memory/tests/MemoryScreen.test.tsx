@@ -10,10 +10,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { type VNode } from "preact";
 import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
-import {
-  type LeaveGuard,
-  LeaveGuardContext,
-} from "#webui/components/context/collection/leave-guard";
+import { LeaveGuardContext } from "#webui/components/context/collection/leave-guard";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type MemoryCollectionStatus,
@@ -22,6 +19,7 @@ import {
   type UseMemoryCollectionReturn,
 } from "#webui/hooks/context/use-memory-collection";
 import { MemoryScreen } from "#webui/components/context/memory/MemoryScreen";
+import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -158,29 +156,12 @@ function renderForDelete(confirmed: boolean): { deleteEntry: Mock } {
 }
 
 /**
- * A real ref-backed leave guard (matching {@link useLeaveGuard}), so the editor
- * that registers a discard-confirm and the list that calls confirmLeave share
- * one registry — the same wiring ContextTabs provides in the app.
- * @returns A leave guard for a test provider
- */
-function makeGuard(): LeaveGuard {
-  let registered: (() => boolean) | null = null;
-
-  return {
-    register: (guard) => {
-      registered = guard;
-    },
-    confirmLeave: () => registered == null || registered(),
-  };
-}
-
-/**
  * Render the ready screen wrapped in a leave-guard provider (as ContextTabs
  * does), so the new-draft discard confirm is wired end to end.
  */
 function renderGuardedReady(): void {
   render(
-    <LeaveGuardContext.Provider value={makeGuard()}>
+    <LeaveGuardContext.Provider value={makeManualGuard()}>
       {screenEl(fakeCollection({ kind: "ready", entries: ENTRIES }))}
     </LeaveGuardContext.Provider>,
   );
@@ -214,7 +195,7 @@ function renderRerender(
 function renderGuardedRerender(): {
   rerenderEntries: (entries: MemoryEntryView[]) => void;
 } {
-  const guard = makeGuard();
+  const guard = makeManualGuard();
 
   return renderRerender({}, (el) => (
     <LeaveGuardContext.Provider value={guard}>{el}</LeaveGuardContext.Provider>

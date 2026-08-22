@@ -6,21 +6,27 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, act } from "@testing-library/preact";
+import { act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import { validateMcpConnection } from "#webui/hooks/chat/helpers/streaming-helpers";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
-import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UIMessage, type UIToolPart } from "#webui/types/messages";
 import {
   type TestMessage,
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
+  echoUserTurn,
   tick,
   trackingAdapter,
 } from "./helpers/use-chat-test-helpers";
+import {
+  hasErrorPart,
+  renderChat,
+  sendThenStop,
+} from "./helpers/use-chat-render-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -40,7 +46,7 @@ const defaultProps = createDefaultProps(mockAdapter);
  * @returns Hook result ref holding exactly one queued message
  */
 async function renderWithQueuedMessage(text: string) {
-  const { result } = renderHook(() => useChat(defaultProps));
+  const { result } = renderChat(defaultProps);
 
   await act(() => result.current.enqueueMessage(text));
 
@@ -56,10 +62,7 @@ async function renderWithQueuedMessage(text: string) {
  * @returns The adapter and the release for the stream it holds open
  */
 function createRunningToolAdapter() {
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const [held, release] = openGate();
 
   return {
     release: () => release(),
@@ -68,8 +71,7 @@ function createRunningToolAdapter() {
         mockAdapter,
         (client) =>
           async function* (message: string) {
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
 
             client.chatHistory.push({ role: "assistant", content: "calling" });
             yield [...client.chatHistory];
@@ -116,7 +118,7 @@ describe("useChat stopResponse", () => {
   });
 
   it("aborts ongoing request and sets isAssistantResponding to false", async () => {
-    const { result } = renderHook(() => useChat(defaultProps));
+    const { result } = renderChat(defaultProps);
 
     // Start a message send (don't await)
     void act(() => {
@@ -136,7 +138,7 @@ describe("useChat stopResponse", () => {
     // lands after the abort and is dropped, so the card has to be marked here
     // or it reads as running for the rest of the session.
     const { adapter, release } = createRunningToolAdapter();
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+    const { result } = renderChat({ ...defaultProps, adapter });
     const send = result.current.handleSend("Hello");
 
     // Let the stream paint the tool call and suspend with it still running.
@@ -164,16 +166,12 @@ describe("useChat stopResponse", () => {
     // Stop lands between two yields, then the provider's stream rejects. The
     // late yield must not paint, and the rejection is the user's own cancel —
     // not something to render as a failure.
-    let release!: () => void;
-    const paused = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const [paused, release] = openGate();
     const adapter = createScriptedAdapter(
       mockAdapter,
       (client) =>
         async function* (message: string) {
-          client.chatHistory.push({ role: "user", content: message });
-          yield [...client.chatHistory];
+          yield echoUserTurn(client, message);
 
           await paused;
           client.chatHistory.push({ role: "assistant", content: "too late" });
@@ -182,13 +180,13 @@ describe("useChat stopResponse", () => {
           throw new Error("stream torn down");
         },
     );
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+    const { result } = renderChat({ ...defaultProps, adapter });
     const sendPromise = act(async () => {
       await result.current.handleSend("Hello");
     });
 
     // Let the first yield land before stopping.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
     await act(() => {
       result.current.stopResponse();
     });
@@ -197,11 +195,7 @@ describe("useChat stopResponse", () => {
     await sendPromise;
 
     expect(result.current.messages.some((m) => m.role === "model")).toBe(false);
-    expect(
-      result.current.messages.some((m) =>
-        m.parts.some((p) => p.type === "error"),
-      ),
-    ).toBe(false);
+    expect(hasErrorPart(result)).toBe(false);
   });
 
   it("leaves the next turn alone when a stopped turn unwinds late", async () => {
@@ -210,10 +204,7 @@ describe("useChat stopResponse", () => {
     // call, which takes no abort signal. A send inside that window owns the
     // per-turn state from then on; the late turn must not tear it down, or
     // its Stop silently no-ops.
-    let releaseStopped!: () => void;
-    const stoppedUnwind = new Promise<void>((resolve) => {
-      releaseStopped = resolve;
-    });
+    const [stoppedUnwind, releaseStopped] = openGate();
     const signals: AbortSignal[] = [];
     let turn = 0;
     const adapter = createScriptedAdapter(
@@ -221,32 +212,24 @@ describe("useChat stopResponse", () => {
       (client) =>
         async function* (message: string, signal: AbortSignal) {
           signals.push(signal);
-          client.chatHistory.push({ role: "user", content: message });
-          yield [...client.chatHistory];
+          yield echoUserTurn(client, message);
 
           // First turn: the post-Stop unwind. Second: still streaming.
           await (++turn === 1 ? stoppedUnwind : new Promise(() => {}));
         },
     );
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
-    const stoppedSend = act(async () => {
-      await result.current.handleSend("first");
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await act(() => {
-      result.current.stopResponse();
-    });
+    const { result } = renderChat({ ...defaultProps, adapter });
+    const { stoppedSend } = await sendThenStop(result);
 
     void act(() => {
       void result.current.handleSend("second");
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
 
     // The stopped turn finishes only now, after the new one is under way.
     releaseStopped();
     await stoppedSend;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
 
     expect(result.current.isAssistantResponding).toBe(true);
 
@@ -264,25 +247,15 @@ describe("useChat stopResponse", () => {
     // the user stopped and re-sent. Recovery renders the error, reassigns the
     // shared client's history, and autosaves, so a stale one corrupts the
     // turn now streaming.
-    let releaseCheck!: () => void;
-    const checkInFlight = new Promise<void>((resolve) => {
-      releaseCheck = resolve;
-    });
+    const [checkInFlight, releaseCheck] = openGate();
 
     vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
       await checkInFlight;
       throw new Error("MCP connection failed");
     });
 
-    const { result } = renderHook(() => useChat(defaultProps));
-    const stoppedSend = act(async () => {
-      await result.current.handleSend("first");
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await act(() => {
-      result.current.stopResponse();
-    });
+    const { result } = renderChat(defaultProps);
+    const { stoppedSend } = await sendThenStop(result);
 
     await act(async () => {
       await result.current.handleSend("second");
@@ -290,13 +263,9 @@ describe("useChat stopResponse", () => {
 
     releaseCheck();
     await stoppedSend;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
 
-    expect(
-      result.current.messages.some((m) =>
-        m.parts.some((p) => p.type === "error"),
-      ),
-    ).toBe(false);
+    expect(hasErrorPart(result)).toBe(false);
     expect(result.current.messages.some((m) => m.role === "model")).toBe(true);
   });
 
@@ -318,13 +287,10 @@ describe("useChat stopResponse", () => {
     // so a stopped turn reaches the same clean exit a finished one does. Report
     // it as done and handleSend drains the queue, sending a brand-new request
     // one click after the user asked for it to stop.
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const [gate, release] = openGate();
     const sent: string[] = [];
     const adapter = trackingAdapter({ clients: [], sent, gate });
-    const { result } = renderHook(() => useChat({ ...defaultProps, adapter }));
+    const { result } = renderChat({ ...defaultProps, adapter });
     const send = result.current.handleSend("first");
 
     // Let the stream start and park on the gate, so the Stop lands mid-turn.
@@ -361,24 +327,18 @@ describe("useChat stopResponse", () => {
     // took the normal path — reusing the source id and writing the fork's
     // truncated history over it. Every turn past the fork point was gone for
     // good. Keeping the signal makes that save mint a sibling instead.
-    let release!: () => void;
-    const paused = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const [paused, release] = openGate();
     const adapter = createScriptedAdapter(
       mockAdapter,
       (client) =>
         async function* (message: string) {
-          client.chatHistory.push({ role: "user", content: message });
-          yield [...client.chatHistory];
+          yield echoUserTurn(client, message);
 
           await paused;
         },
     );
     const pendingForkRef = { current: null as PendingFork | null };
-    const { result } = renderHook(() =>
-      useChat({ ...defaultProps, adapter, pendingForkRef }),
-    );
+    const { result } = renderChat({ ...defaultProps, adapter, pendingForkRef });
 
     await act(async () => {
       result.current.restoreChatHistory([

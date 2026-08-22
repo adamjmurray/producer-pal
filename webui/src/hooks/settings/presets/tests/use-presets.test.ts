@@ -36,6 +36,22 @@ function expectCreatedId(result: CreatePresetResult | undefined): string {
   return result.preset.id;
 }
 
+/**
+ * Render the hook with one preset ("P") already created.
+ * @param description - Optional description to create it with
+ * @returns The hook handle and the new preset's id
+ */
+async function renderWithPreset(description?: string) {
+  const { result } = renderHook(() => usePresets());
+  let id = "";
+
+  await act(() => {
+    id = expectCreatedId(result.current.createPreset("P", fields, description));
+  });
+
+  return { result, id };
+}
+
 describe("usePresets", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -81,12 +97,7 @@ describe("usePresets", () => {
   });
 
   it("updates a preset's fields while keeping its id", async () => {
-    const { result } = renderHook(() => usePresets());
-    let id = "";
-
-    await act(() => {
-      id = expectCreatedId(result.current.createPreset("P", fields));
-    });
+    const { result, id } = await renderWithPreset();
 
     await act(() => {
       result.current.updatePreset(id, { ...fields, model: "new-model" });
@@ -115,12 +126,7 @@ describe("usePresets", () => {
   });
 
   it("preserves the description on a bare update, clears it on blank", async () => {
-    const { result } = renderHook(() => usePresets());
-    let id = "";
-
-    await act(() => {
-      id = expectCreatedId(result.current.createPreset("P", fields, "keep me"));
-    });
+    const { result, id } = await renderWithPreset("keep me");
 
     // No description arg => existing description is preserved.
     await act(() => {
@@ -136,12 +142,7 @@ describe("usePresets", () => {
   });
 
   it("rewrites only the description, leaving captured fields alone", async () => {
-    const { result } = renderHook(() => usePresets());
-    let id = "";
-
-    await act(() => {
-      id = expectCreatedId(result.current.createPreset("P", fields, "old"));
-    });
+    const { result, id } = await renderWithPreset("old");
 
     await act(() => {
       result.current.updatePresetDescription(id, "  new note  ");
@@ -159,12 +160,7 @@ describe("usePresets", () => {
   });
 
   it("deletes a preset", async () => {
-    const { result } = renderHook(() => usePresets());
-    let id = "";
-
-    await act(() => {
-      id = expectCreatedId(result.current.createPreset("P", fields));
-    });
+    const { result, id } = await renderWithPreset();
 
     await act(() => {
       result.current.deletePreset(id);
@@ -191,12 +187,7 @@ describe("usePresets", () => {
   });
 
   it("keeps the list unchanged when an update or delete can't be written", async () => {
-    const { result } = renderHook(() => usePresets());
-    let id = "";
-
-    await act(() => {
-      id = expectCreatedId(result.current.createPreset("P", fields));
-    });
+    const { result, id } = await renderWithPreset();
 
     breakStorageWrites();
 

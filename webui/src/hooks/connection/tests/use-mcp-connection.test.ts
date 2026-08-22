@@ -46,6 +46,37 @@ vi.mock(import("#webui/utils/mcp-url"), async (importOriginal) => {
 
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 
+/**
+ * Render the hook and wait for it to settle on a status.
+ * @param status - The status to wait for
+ * @returns The hook result handle
+ */
+async function renderUntilStatus(status: "connected" | "error") {
+  const { result } = renderHook(() => useMcpConnection());
+
+  await waitFor(() => {
+    expect(result.current.mcpStatus).toBe(status);
+  });
+
+  return result;
+}
+
+/**
+ * Render the hook and assert it reports a connection error.
+ * @param message - The user-facing error text it must land on
+ * @returns The hook result handle
+ */
+async function expectConnectionError(message: string) {
+  const { result } = renderHook(() => useMcpConnection());
+
+  await waitFor(() => {
+    expect(result.current.mcpStatus).toBe("error");
+    expect(result.current.mcpError).toBe(message);
+  });
+
+  return result;
+}
+
 describe("useMcpConnection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,11 +101,7 @@ describe("useMcpConnection", () => {
   });
 
   it("sets status to connected on successful connection", async () => {
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("connected");
-    });
+    await renderUntilStatus("connected");
     expect(mockConnect).toHaveBeenCalledOnce();
     expect(mockListTools).toHaveBeenCalledOnce();
     expect(mockClose).toHaveBeenCalledOnce();
@@ -133,32 +160,19 @@ describe("useMcpConnection", () => {
     const errorMessage = "Connection failed";
 
     mockConnect.mockRejectedValue(new Error(errorMessage));
-    const { result } = renderHook(() => useMcpConnection());
+    const result = await expectConnectionError(errorMessage);
 
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-      expect(result.current.mcpError).toBe(errorMessage);
-      expect(result.current.mcpTools).toBe(null);
-    });
+    expect(result.current.mcpTools).toBe(null);
   });
 
   it("sets error to 'Unknown error' when rejection is not an Error instance", async () => {
     mockConnect.mockRejectedValue("string error");
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-      expect(result.current.mcpError).toBe("Unknown error");
-    });
+    await expectConnectionError("Unknown error");
   });
 
   it("allows manual reconnection via checkMcpConnection", async () => {
     mockConnect.mockRejectedValue(new Error("Initial fail"));
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-    });
+    const result = await renderUntilStatus("error");
 
     mockConnect.mockResolvedValue(undefined);
     await result.current.checkMcpConnection();
@@ -171,33 +185,22 @@ describe("useMcpConnection", () => {
 
   it("sets error when listTools fails", async () => {
     mockListTools.mockRejectedValue(new Error("listTools failed"));
-    const { result } = renderHook(() => useMcpConnection());
+    const result = await expectConnectionError("listTools failed");
 
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-      expect(result.current.mcpError).toBe("listTools failed");
-      expect(result.current.mcpTools).toBe(null);
-    });
+    expect(result.current.mcpTools).toBe(null);
   });
 
   it("closes the client even when listTools throws", async () => {
     mockListTools.mockRejectedValue(new Error("listTools failed"));
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-    });
+    await renderUntilStatus("error");
 
     expect(mockClose).toHaveBeenCalledOnce();
   });
 
   it("swallows close() failures so they don't leak as the user-facing error", async () => {
     mockClose.mockRejectedValue(new Error("close failed"));
-    const { result } = renderHook(() => useMcpConnection());
+    const result = await renderUntilStatus("connected");
 
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("connected");
-    });
     expect(result.current.mcpError).toBe(null);
   });
 
@@ -217,32 +220,19 @@ describe("useMcpConnection", () => {
     mockConnect.mockRejectedValue(new Error("Failed to fetch"));
     mockIsViteDevServer.mockReturnValue(true);
     mockDetectCorsBlock.mockResolvedValue(false);
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-      expect(result.current.mcpError).toBe("Failed to fetch");
-    });
+    await expectConnectionError("Failed to fetch");
   });
 
   it("does not check for CORS when not on Vite dev server", async () => {
     mockConnect.mockRejectedValue(new Error("Connection failed"));
     mockIsViteDevServer.mockReturnValue(false);
-    const { result } = renderHook(() => useMcpConnection());
+    await expectConnectionError("Connection failed");
 
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("error");
-      expect(result.current.mcpError).toBe("Connection failed");
-    });
     expect(mockDetectCorsBlock).not.toHaveBeenCalled();
   });
 
   it("refreshes mcpTools on window focus when connected", async () => {
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("connected");
-    });
+    const result = await renderUntilStatus("connected");
 
     expect(mockListTools).toHaveBeenCalledTimes(1);
 
@@ -298,11 +288,7 @@ describe("useMcpConnection", () => {
   });
 
   it("preserves connected status and prior tools when focus refresh fails", async () => {
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("connected");
-    });
+    const result = await renderUntilStatus("connected");
 
     const priorTools = result.current.mcpTools;
 
@@ -326,11 +312,7 @@ describe("useMcpConnection", () => {
   });
 
   it("discards a stale focus-refresh result when a later refresh resolves first", async () => {
-    const { result } = renderHook(() => useMcpConnection());
-
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe("connected");
-    });
+    const result = await renderUntilStatus("connected");
 
     const initialTools = result.current.mcpTools;
 

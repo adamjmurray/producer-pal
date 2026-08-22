@@ -35,6 +35,41 @@ describe("PreferencesTab", () => {
     onDeleteUnbookmarkedConversations: vi.fn(),
   };
 
+  /**
+   * Render the tab with a spy on the step-budget setter.
+   * @returns The setter spy and the number input
+   */
+  function renderStepBudget() {
+    const setMaxToolSteps = vi.fn();
+    const { container } = render(
+      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
+    );
+    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+
+    return { setMaxToolSteps, input };
+  }
+
+  /**
+   * Click one of the delete buttons with `confirm` stubbed to a fixed answer.
+   * @param buttonName - The button's accessible name
+   * @param propName - The handler prop it delegates to
+   * @param confirmed - What the confirm dialog answers
+   * @returns The handler spy passed in as that prop
+   */
+  function clickDeleteButton(
+    buttonName: string,
+    propName: string,
+    confirmed: boolean,
+  ) {
+    const handler = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(confirmed);
+    render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+
+    return handler;
+  }
+
   it("renders theme label", () => {
     const { container } = render(<PreferencesTab {...defaultProps} />);
     const label = container.querySelector('[for="theme-select"]');
@@ -159,11 +194,7 @@ describe("PreferencesTab", () => {
   });
 
   it("commits an in-range step budget", () => {
-    const setMaxToolSteps = vi.fn();
-    const { container } = render(
-      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
-    );
-    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+    const { setMaxToolSteps, input } = renderStepBudget();
 
     fireEvent.input(input, { target: { value: "40" } });
 
@@ -176,11 +207,7 @@ describe("PreferencesTab", () => {
     ["above the ceiling", String(MAX_TOOL_STEPS_LIMIT + 1)],
     ["fractional", "12.5"],
   ])("ignores a %s value rather than running a turn on it", (_label, value) => {
-    const setMaxToolSteps = vi.fn();
-    const { container } = render(
-      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
-    );
-    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+    const { setMaxToolSteps, input } = renderStepBudget();
 
     fireEvent.input(input, { target: { value } });
 
@@ -287,11 +314,7 @@ describe("PreferencesTab", () => {
     ["Delete all", "onDeleteAllConversations"],
     ["Delete unstarred", "onDeleteUnbookmarkedConversations"],
   ] as const)("calls %s handler when confirmed", (buttonName, propName) => {
-    const handler = vi.fn();
-
-    window.confirm = vi.fn().mockReturnValue(true);
-    render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
-    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+    const handler = clickDeleteButton(buttonName, propName, true);
 
     expect(window.confirm).toHaveBeenCalledOnce();
     expect(handler).toHaveBeenCalledOnce();
@@ -303,11 +326,7 @@ describe("PreferencesTab", () => {
   ] as const)(
     "does not call %s handler when cancelled",
     (buttonName, propName) => {
-      const handler = vi.fn();
-
-      window.confirm = vi.fn().mockReturnValue(false);
-      render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
-      fireEvent.click(screen.getByRole("button", { name: buttonName }));
+      const handler = clickDeleteButton(buttonName, propName, false);
 
       expect(window.confirm).toHaveBeenCalledOnce();
       expect(handler).not.toHaveBeenCalled();

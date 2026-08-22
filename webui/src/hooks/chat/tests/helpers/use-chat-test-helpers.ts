@@ -229,8 +229,7 @@ export function trackingAdapter(
     ) {
       sent?.push(message);
       signals?.push(signal);
-      client.chatHistory.push({ role: "user", content: message });
-      yield [...client.chatHistory];
+      yield echoUserTurn(client, message);
 
       await gate;
     };
@@ -244,6 +243,22 @@ export function trackingAdapter(
  */
 export async function tick(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Record the user's message on a client's history and hand back the snapshot to
+ * yield — the two lines every scripted stream opens with.
+ * @param client - The mock client whose history the turn lands on
+ * @param message - The user's message text
+ * @returns The history snapshot to yield
+ */
+export function echoUserTurn(
+  client: MockChatClient,
+  message: string,
+): TestMessage[] {
+  client.chatHistory.push({ role: "user", content: message });
+
+  return [...client.chatHistory];
 }
 
 /**
@@ -413,8 +428,7 @@ export function createEchoThenRateLimitAdapter(
       async function* (message: string) {
         attempts.push({ kind: "send", message });
 
-        client.chatHistory.push({ role: "user", content: message });
-        yield [...client.chatHistory];
+        yield echoUserTurn(client, message);
 
         if (options.partialContent != null) {
           client.chatHistory.push({

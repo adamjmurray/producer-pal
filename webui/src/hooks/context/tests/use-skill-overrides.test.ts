@@ -18,6 +18,10 @@ import {
   renderAndWait,
   useFakeTimersForPolling,
 } from "./doc-transport-test-helpers";
+import {
+  expectResetToIdle,
+  landSaveBeforeStaleRefresh,
+} from "./doc-collection-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
@@ -324,12 +328,7 @@ describe("useSkillOverrides", () => {
 
     expect(result.current.saveStatus).toBe("saved");
 
-    await act(async () => {
-      result.current.resetSaveStatus();
-    });
-
-    expect(result.current.saveStatus).toBe("idle");
-    expect(result.current.saveError).toBeNull();
+    await expectResetToIdle(result);
   });
 
   it("does not paint a save outcome onto a slot switched to mid-flight", async () => {
@@ -512,26 +511,18 @@ describe("useSkillOverrides", () => {
   it("drops a refresh that a concurrent save superseded", async () => {
     const result = await renderReady([rawSlot({ override: "loaded" })]);
 
-    const putEcho = deferred<Response>();
-    const staleGet = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(putEcho.promise); // save PUT
-    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
-
-    await act(async () => {
-      const savePromise = result.current.saveSlot("barbeat-standard", "MINE");
-      const refreshPromise = result.current.refresh();
-
-      // The save echo lands first and sets the override.
-      putEcho.resolve(jsonResponse({ slot: rawSlot({ override: "MINE\n" }) }));
-      await savePromise;
-
-      // The stale GET resolves last; the overlap guard must drop it.
-      staleGet.resolve(
-        jsonResponse({ slots: [rawSlot({ override: "stale" })] }),
-      );
-      await refreshPromise;
-    });
+    await landSaveBeforeStaleRefresh(
+      fetchMock,
+      {
+        save: async () =>
+          await result.current.saveSlot("barbeat-standard", "MINE"),
+        refresh: async () => await result.current.refresh(),
+      },
+      {
+        saved: { slot: rawSlot({ override: "MINE\n" }) },
+        stale: { slots: [rawSlot({ override: "stale" })] },
+      },
+    );
 
     const status = result.current.status;
 

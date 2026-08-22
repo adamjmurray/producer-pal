@@ -23,6 +23,19 @@ function rec(id: string, overrides: Partial<BranchRecord> = {}): BranchRecord {
   return { id, createdAt: 1000, updatedAt: 1000, ...overrides };
 }
 
+/**
+ * A trunk and one fork of it, the two-member family most of these cases use.
+ * @param forkUpdatedAt - When the fork was last touched (the trunk is at 10)
+ * @param bookmarked - Whether the trunk is bookmarked
+ * @returns The trunk and its fork
+ */
+function trunkAndFork(forkUpdatedAt: number, bookmarked = false) {
+  return [
+    rec("A", { updatedAt: 10, bookmarked }),
+    rec("B", { forkParentId: "A", forkedAtIndex: 1, updatedAt: forkUpdatedAt }),
+  ] as const;
+}
+
 describe("deriveForkParentId", () => {
   it("makes a non-fork source the trunk of a new set", () => {
     const source = rec("A");
@@ -133,12 +146,7 @@ describe("collapseBranchFamilies", () => {
   });
 
   it("promotes the active member to represent its family", () => {
-    const trunk = rec("A", { updatedAt: 10 });
-    const fork = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 1,
-      updatedAt: 30,
-    });
+    const [trunk, fork] = trunkAndFork(30);
 
     // Viewing the older trunk A: it represents the family, not the newer fork B.
     expect(
@@ -151,12 +159,7 @@ describe("collapseBranchFamilies", () => {
   });
 
   it("prefers a bookmarked member over a newer unbookmarked fork", () => {
-    const trunk = rec("A", { updatedAt: 10, bookmarked: true });
-    const fork = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 1,
-      updatedAt: 30,
-    });
+    const [trunk, fork] = trunkAndFork(30, true);
 
     // Regardless of input order, the bookmarked trunk represents the family.
     expect(
@@ -168,12 +171,7 @@ describe("collapseBranchFamilies", () => {
   });
 
   it("prefers the active member even over a bookmarked sibling", () => {
-    const trunk = rec("A", { updatedAt: 10, bookmarked: true });
-    const fork = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 1,
-      updatedAt: 30,
-    });
+    const [trunk, fork] = trunkAndFork(30, true);
 
     // Viewing fork B promotes it despite the bookmarked trunk A.
     expect(
@@ -182,12 +180,7 @@ describe("collapseBranchFamilies", () => {
   });
 
   it("orders families by their newest member, not the chosen representative", () => {
-    const trunk = rec("A", { updatedAt: 10 });
-    const fork = rec("B", {
-      forkParentId: "A",
-      forkedAtIndex: 1,
-      updatedAt: 90,
-    });
+    const [trunk, fork] = trunkAndFork(90);
     const x = rec("X", { updatedAt: 50 });
 
     // Viewing the old trunk A makes it the representative, but its family still

@@ -28,6 +28,7 @@ import {
   trackingAdapter,
   type TestMessage,
 } from "./helpers/use-chat-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
   const { streamingHelpersMockBody } =
@@ -64,10 +65,7 @@ function adapterParkedInConnect(
   nth: number,
   recorded: Parameters<typeof trackingAdapter>[0],
 ) {
-  let releaseInit!: () => void;
-  const connecting = new Promise<void>((resolve) => {
-    releaseInit = resolve;
-  });
+  const [connecting, releaseInit] = openGate();
   const adapter = trackingAdapter(recorded, (client) => {
     if (recorded.clients.length === nth) {
       client.initialize = vi.fn(async () => await connecting);
@@ -203,10 +201,7 @@ describe("turn invalidation during setup", () => {
       // stashes against whatever conversation is loaded now. B's transcript
       // grew a stray user bubble and an error from A, and the next autosave
       // wrote that stray message over B.
-      let releaseCheck!: () => void;
-      const checking = new Promise<void>((resolve) => {
-        releaseCheck = resolve;
-      });
+      const [checking, releaseCheck] = openGate();
 
       vi.mocked(validateMcpConnection).mockImplementationOnce(async () => {
         await checking;
@@ -265,10 +260,7 @@ describe("turn invalidation during setup", () => {
       // inits. Dropping the lock outright leaves the conversation with nothing
       // locked, so the next init falls back to current settings — the "restored
       // conversation silently switches model" bug the locking exists to prevent.
-      let releaseStreams!: () => void;
-      const gate = new Promise<void>((resolve) => {
-        releaseStreams = resolve;
-      });
+      const [gate, releaseStreams] = openGate();
       const { result, releaseInit, sent, send } = parkFirstSendInConnect(gate);
 
       await tick();

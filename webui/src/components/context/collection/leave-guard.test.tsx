@@ -15,25 +15,11 @@ import {
   useLeaveGuard,
   useLeaveGuardContext,
 } from "#webui/components/context/collection/leave-guard";
+import { makeManualGuard } from "./leave-guard-test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-/**
- * A ref-backed manual guard for a test provider (matches useLeaveGuard's shape).
- * @returns A leave guard whose registration a test can drive
- */
-function makeManualGuard(): LeaveGuard {
-  let registered: (() => boolean) | null = null;
-
-  return {
-    register: (guard) => {
-      registered = guard;
-    },
-    confirmLeave: () => registered == null || registered(),
-  };
-}
 
 // A probe that activates useDraftLeaveGuard, so its registration + beforeunload
 // wiring can be exercised through an ambient provider.

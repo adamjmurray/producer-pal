@@ -16,6 +16,7 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
+  echoUserTurn,
 } from "./helpers/use-chat-test-helpers";
 
 // Mock streaming helpers (mirrors use-chat.test.ts so handleSend can stream).
@@ -60,8 +61,7 @@ function createRecordingAdapter(
         shouldInterrupt?: () => boolean,
       ): AsyncIterable<TestMessage[]> {
         sent.push(message);
-        client.chatHistory.push({ role: "user", content: message });
-        yield [...client.chatHistory];
+        yield echoUserTurn(client, message);
 
         if (
           onMidSend?.({ message, overrides, shouldInterrupt }) === "interrupt"
@@ -334,8 +334,7 @@ describe("useChat message queuing", () => {
         ): AsyncIterable<TestMessage[]> {
           sent.push(message);
           sendCount += 1;
-          client.chatHistory.push({ role: "user", content: message });
-          yield [...client.chatHistory];
+          yield echoUserTurn(client, message);
 
           if (isForkClient && sendCount === 1) return; // content-less fork turn
 

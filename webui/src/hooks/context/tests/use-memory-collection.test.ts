@@ -21,6 +21,10 @@ import {
   raceTwoWrites,
   renderAndWait,
 } from "./doc-transport-test-helpers";
+import {
+  expectResetToIdle,
+  landSaveBeforeStaleRefresh,
+} from "./doc-collection-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/memory";
@@ -399,12 +403,7 @@ describe("useMemoryCollection", () => {
 
     expect(result.current.saveStatus).toBe("error");
 
-    await act(async () => {
-      result.current.resetSaveStatus();
-    });
-
-    expect(result.current.saveStatus).toBe("idle");
-    expect(result.current.saveError).toBeNull();
+    await expectResetToIdle(result);
   });
 
   it("does not paint 'saved' for a save that resolved after the edited entry changed", async () => {
@@ -588,29 +587,21 @@ describe("useMemoryCollection", () => {
   it("drops a refresh that a concurrent save superseded", async () => {
     const result = await mountReady([rawEntry({ body: "loaded" })]);
 
-    const putEcho = deferred<Response>();
-    const staleGet = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(putEcho.promise); // save PUT
-    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
-
-    await act(async () => {
-      const savePromise = result.current.saveEntry("prefers-c-minor", {
-        ...SAMPLE_INPUT,
-        content: "MINE",
-      });
-      const refreshPromise = result.current.refresh();
-
-      // The save echo lands first and sets the body.
-      putEcho.resolve(jsonResponse({ entry: rawEntry({ body: "MINE" }) }));
-      await savePromise;
-
-      // The stale GET resolves last; the overlap guard must drop it.
-      staleGet.resolve(
-        jsonResponse({ entries: [rawEntry({ body: "stale" })] }),
-      );
-      await refreshPromise;
-    });
+    await landSaveBeforeStaleRefresh(
+      fetchMock,
+      {
+        save: async () =>
+          await result.current.saveEntry("prefers-c-minor", {
+            ...SAMPLE_INPUT,
+            content: "MINE",
+          }),
+        refresh: async () => await result.current.refresh(),
+      },
+      {
+        saved: { entry: rawEntry({ body: "MINE" }) },
+        stale: { entries: [rawEntry({ body: "stale" })] },
+      },
+    );
 
     expect(readyEntries(result)[0]?.body).toBe("MINE");
   });

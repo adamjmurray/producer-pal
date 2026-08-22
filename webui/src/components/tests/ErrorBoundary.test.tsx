@@ -15,6 +15,22 @@ function ThrowingChild(): never {
   throw new Error("render crash");
 }
 
+/**
+ * Render a child that throws, with console.error silenced.
+ * @returns The console.error spy, for the caller to assert on and restore
+ */
+function renderThrowingChild(): ReturnType<typeof vi.spyOn> {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  render(
+    <ErrorBoundary fallback={<RenderErrorFallback />}>
+      <ThrowingChild />
+    </ErrorBoundary>,
+  );
+
+  return spy;
+}
+
 describe("ErrorBoundary", () => {
   it("renders children when no error occurs", () => {
     render(
@@ -28,26 +44,14 @@ describe("ErrorBoundary", () => {
   });
 
   it("renders fallback when child throws during render", () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    render(
-      <ErrorBoundary fallback={<RenderErrorFallback />}>
-        <ThrowingChild />
-      </ErrorBoundary>,
-    );
+    const spy = renderThrowingChild();
 
     expect(screen.getByText("Failed to render this message")).toBeDefined();
     spy.mockRestore();
   });
 
   it("logs the error to console.error", () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    render(
-      <ErrorBoundary fallback={<RenderErrorFallback />}>
-        <ThrowingChild />
-      </ErrorBoundary>,
-    );
+    const spy = renderThrowingChild();
 
     expect(spy).toHaveBeenCalledWith(
       "ErrorBoundary caught render error:",

@@ -3,9 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z, type ZodType } from "zod";
-import { NOTATIONS, type Notation } from "#src/shared/notation.ts";
+import { type Notation } from "#src/shared/notation.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
   param,
@@ -13,6 +13,7 @@ import {
   resolveParamModes,
 } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { TOOL_DEF_CASES } from "./tool-defs-test-helpers.ts";
 
 // The enum-value twin of small-model-param-references.test.ts. Trimming a value
 // with `excludeEnumValues` leaves any sibling text that still names it offering
@@ -78,38 +79,15 @@ const ORDINARY_WORDS: Record<string, readonly string[]> = {
   "ppal-library": ["folder"],
 };
 
-// The `code` params only exist when this flag is on, and it is read when the
-// tool defs load — so stub it before importing them.
-vi.stubEnv("ENABLE_CODE_EXEC", "true");
-const { STANDARD_TOOL_DEFS } =
-  await import("#src/mcp-server/create-mcp-server.ts");
-const { toolDefLiveApi } = await import("#src/tools/advanced/live-api.def.ts");
-
-vi.unstubAllEnvs();
-
-const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
-
-// Same axes as the param test: a value can be trimmed in one cell only, so every
-// (notation, size) combination gets its own case.
-const CASES = NOTATIONS.flatMap((notation) =>
-  [true, false].flatMap((smallModelMode) =>
-    TOOL_DEFS.map(
-      (def) =>
-        [
-          `${def.toolName} (${notation}${smallModelMode ? ", small" : ""})`,
-          def,
-          { notation, smallModelMode },
-        ] as const,
-    ),
-  ),
-);
-
 const SMALL_BARBEAT = { notation: "barbeat", smallModelMode: true } as const;
 
 describe("published enum references", () => {
-  it.each(CASES)("%s names no value it trimmed", (_label, def, context) => {
-    expect(danglingEnumReferences(def, context)).toStrictEqual([]);
-  });
+  it.each(TOOL_DEF_CASES)(
+    "%s names no value it trimmed",
+    (_label, def, context) => {
+      expect(danglingEnumReferences(def, context)).toStrictEqual([]);
+    },
+  );
 
   it("catches a description that names a trimmed value", () => {
     // Without this, a broken matcher would leave every case above passing

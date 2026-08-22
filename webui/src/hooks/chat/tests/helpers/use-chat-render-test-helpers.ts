@@ -238,16 +238,34 @@ export async function sendThenStopDuringRetryDelay(
 export async function supersedeInFlightTurn(
   result: ChatResult,
 ): Promise<{ stoppedSend: Promise<void> }> {
-  const stoppedSend = act(async () => {
-    await result.current.handleSend("first");
-  });
+  const { stoppedSend } = await sendThenStop(result);
 
-  await tick();
-  await stopResponse(result);
   void act(() => {
     void result.current.handleSend("second");
   });
   await tick();
+
+  return { stoppedSend };
+}
+
+/**
+ * Start a turn and stop it while it is still in flight.
+ * @param result - The rendered useChat result handle
+ * @param message - The message text the stopped turn sends
+ * @returns The stopped turn's send promise, still pending — await it to unwind
+ */
+export async function sendThenStop(
+  result: ChatResult,
+  message = "first",
+): Promise<{ stoppedSend: Promise<void> }> {
+  // Wrapped, not returned bare: `await` unwraps a returned promise, which would
+  // wait out the very turn the caller means to leave in flight.
+  const stoppedSend = act(async () => {
+    await result.current.handleSend(message);
+  });
+
+  await tick();
+  await stopResponse(result);
 
   return { stoppedSend };
 }

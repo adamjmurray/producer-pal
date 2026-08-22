@@ -35,6 +35,22 @@ function setup(initial: CollectionEntryAutosaveParams) {
 }
 
 /**
+ * Params for a savable draft: an existing entry by default, and any later
+ * keystroke or mode as an override.
+ * @param persist - The persist spy for the render
+ * @param draftKey - The draft's content key
+ * @param autosaveOnIdle - Whether the idle autosave is armed
+ * @returns The hook params
+ */
+function seeded(
+  persist: CollectionEntryAutosaveParams["persist"],
+  draftKey = "seed",
+  autosaveOnIdle = true,
+): CollectionEntryAutosaveParams {
+  return { canSave: true, draftKey, autosaveOnIdle, persist };
+}
+
+/**
  * Mount as an empty new entry, then rerender to a typed, savable draft with
  * idle-autosave off — the arrangement the flush tests share before dispatching.
  * @param persist - The persist spy threaded through both renders
@@ -48,12 +64,7 @@ function setupDraft(persist: CollectionEntryAutosaveParams["persist"]) {
     persist,
   });
 
-  rendered.rerender({
-    canSave: true,
-    draftKey: "typed",
-    autosaveOnIdle: false,
-    persist,
-  });
+  rendered.rerender(seeded(persist, "typed", false));
 
   return rendered;
 }
@@ -65,13 +76,27 @@ function setupDraft(persist: CollectionEntryAutosaveParams["persist"]) {
  * @returns The rendered hook (rerender/unmount/result)
  */
 function setupSeedExternal(persist: CollectionEntryAutosaveParams["persist"]) {
-  return setup({
-    canSave: true,
-    draftKey: "seed",
-    autosaveOnIdle: true,
-    persist,
-    externalKey: "seed",
+  return setup({ ...seeded(persist), externalKey: "seed" });
+}
+
+/**
+ * Type a draft, hold it behind an in-flight rename, then unmount the editor —
+ * the window where the unmount flush has no arming render to see the hold.
+ * @returns The rendered hook (now unmounted) and its persist spy
+ */
+async function unmountMidRename() {
+  const persist = vi.fn().mockResolvedValue(null);
+  const { result, rerender, unmount } = setup(seeded(persist));
+
+  rerender(seeded(persist, "v1"));
+
+  await act(async () => {
+    await result.current.settlePendingSave();
   });
+
+  unmount();
+
+  return { result, persist };
 }
 
 describe("useCollectionEntryAutosave", () => {
@@ -86,19 +111,9 @@ describe("useCollectionEntryAutosave", () => {
 
   it("idle-autosaves an existing entry after the debounce elapses", async () => {
     const persist = vi.fn().mockResolvedValue("edited");
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender } = setup(seeded(persist));
 
-    rerender({
-      canSave: true,
-      draftKey: "edited",
-      autosaveOnIdle: true,
-      persist,
-    });
+    rerender(seeded(persist, "edited"));
     expect(persist).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -133,19 +148,9 @@ describe("useCollectionEntryAutosave", () => {
 
   it("flushes on unmount even if the idle debounce hasn't fired yet", () => {
     const persist = vi.fn().mockResolvedValue("edited");
-    const { rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender, unmount } = setup(seeded(persist));
 
-    rerender({
-      canSave: true,
-      draftKey: "edited",
-      autosaveOnIdle: true,
-      persist,
-    });
+    rerender(seeded(persist, "edited"));
     // Debounce armed but not advanced; unmount must still persist exactly once.
     unmount();
 
@@ -154,12 +159,7 @@ describe("useCollectionEntryAutosave", () => {
 
   it("does not flush an unedited existing entry on unmount", () => {
     const persist = vi.fn().mockResolvedValue("seed");
-    const { unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { unmount } = setup(seeded(persist));
 
     unmount();
 
@@ -174,19 +174,8 @@ describe("useCollectionEntryAutosave", () => {
     // (entry prop goes null, so externalKey becomes undefined and the editor
     // flips to new-entry mode). Discard's selection change unmounts the
     // editor — the flush must not re-create the entry from the kept draft.
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-      externalKey: "seed",
-    });
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
+    rerender({ ...seeded(persist, "typed", false), externalKey: "seed" });
+    rerender(seeded(persist, "typed", false));
     unmount();
 
     expect(persist).not.toHaveBeenCalled();
@@ -196,12 +185,7 @@ describe("useCollectionEntryAutosave", () => {
     const persist = vi.fn().mockResolvedValue("typed");
     const { rerender } = setupSeedExternal(persist);
 
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
+    rerender(seeded(persist, "typed", false));
     await act(() => {
       window.dispatchEvent(new Event("beforeunload"));
     });
@@ -215,19 +199,8 @@ describe("useCollectionEntryAutosave", () => {
 
     // Deleted externally, then restored (e.g. re-created elsewhere and picked
     // up by a poll) — the normal unmount flush applies again.
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: false,
-      persist,
-    });
-    rerender({
-      canSave: true,
-      draftKey: "typed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    rerender(seeded(persist, "typed", false));
+    rerender({ ...seeded(persist, "typed"), externalKey: "seed" });
     unmount();
 
     expect(persist).toHaveBeenCalledTimes(1);
@@ -255,14 +228,9 @@ describe("useCollectionEntryAutosave", () => {
 
   it("retries on the next change after a failed persist (baseline rolled back)", async () => {
     const persist = vi.fn().mockResolvedValueOnce(null).mockResolvedValue("v2");
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender } = setup(seeded(persist));
 
-    rerender({ canSave: true, draftKey: "v1", autosaveOnIdle: true, persist });
+    rerender(seeded(persist, "v1"));
     await act(async () => {
       vi.advanceTimersByTime(800);
       await Promise.resolve();
@@ -270,7 +238,7 @@ describe("useCollectionEntryAutosave", () => {
     });
     expect(persist).toHaveBeenCalledTimes(1);
 
-    rerender({ canSave: true, draftKey: "v2", autosaveOnIdle: true, persist });
+    rerender(seeded(persist, "v2"));
     await act(async () => {
       vi.advanceTimersByTime(800);
       await Promise.resolve();
@@ -280,22 +248,12 @@ describe("useCollectionEntryAutosave", () => {
 
   it("noteSaved advances the baseline so a manual save isn't re-flushed on unmount", async () => {
     const persist = vi.fn().mockResolvedValue("manual");
-    const { result, rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: false,
-      persist,
-    });
+    const { result, rerender, unmount } = setup(seeded(persist, "seed", false));
 
     // The editor persisted the draft out-of-band (the Save button), then syncs
     // the baseline from the save's echo (not the sent draft — see the
     // externalUpdate describe block below for why that distinction matters).
-    rerender({
-      canSave: true,
-      draftKey: "manual",
-      autosaveOnIdle: false,
-      persist,
-    });
+    rerender(seeded(persist, "manual", false));
     await act(() => {
       result.current.noteSaved("manual");
     });
@@ -322,12 +280,7 @@ describe("useCollectionEntryAutosave", () => {
     // content, and use-doc's generation counter keeps the SCREEN right, so the
     // file silently disagrees with it until the next poll.
     const { persist, resolvers } = deferredPersist();
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender } = setup(seeded(persist));
 
     await typeAndDebounce(rerender, persist, "v1");
     expect(persist).toHaveBeenCalledTimes(1);
@@ -351,18 +304,13 @@ describe("useCollectionEntryAutosave", () => {
     // this flush bail out — so every edit typed during a save's round trip was
     // dropped when the overlay closed before that save landed.
     const { persist, resolvers } = deferredPersist();
-    const { rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender, unmount } = setup(seeded(persist));
 
     await typeAndDebounce(rerender, persist, "v1");
     expect(persist).toHaveBeenCalledTimes(1);
 
     // One more edit, then close the overlay before v1's PUT comes back.
-    rerender({ canSave: true, draftKey: "v2", autosaveOnIdle: true, persist });
+    rerender(seeded(persist, "v2"));
     unmount();
 
     await act(async () => {
@@ -379,12 +327,7 @@ describe("useCollectionEntryAutosave", () => {
     // the same window would both read a pre-registration inFlightRef, compute the
     // same predecessor, and put two writes on the wire when it settles.
     const { persist, resolvers } = deferredPersist();
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { rerender } = setup(seeded(persist));
 
     await typeAndDebounce(rerender, persist, "v1");
     await typeAndDebounce(rerender, persist, "v2");
@@ -414,12 +357,7 @@ describe("useCollectionEntryAutosave", () => {
       .fn()
       .mockRejectedValueOnce(new Error("network down"))
       .mockResolvedValue("v2");
-    const { result, rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
+    const { result, rerender } = setup(seeded(persist));
 
     await typeAndDebounce(rerender, persist, "v1");
     expect(persist).toHaveBeenCalledTimes(1);
@@ -440,25 +378,14 @@ describe("useCollectionEntryAutosave", () => {
     // at dispatch time — otherwise chaining reopens the resurrection hole the
     // synchronous guard closes.
     const { persist, resolvers } = deferredPersist();
-    const { rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    const { rerender } = setup({ ...seeded(persist), externalKey: "seed" });
 
     await typeAndDebounce(rerender, persist, "v1", "seed");
     await typeAndDebounce(rerender, persist, "v2", "seed");
     expect(persist).toHaveBeenCalledTimes(1);
 
     // The entry is deleted out from under the editor while #1 is in flight.
-    rerender({
-      canSave: true,
-      draftKey: "v2",
-      autosaveOnIdle: true,
-      persist,
-    });
+    rerender(seeded(persist, "v2"));
 
     await act(async () => {
       resolvers[0]?.("v1");
@@ -474,21 +401,7 @@ describe("useCollectionEntryAutosave", () => {
     // flush can name is the one the rename is leaving, so it re-created the
     // entry under the old name — a duplicate holding the same content. What the
     // rename didn't carry is covered by resumePendingSave, below.
-    const persist = vi.fn().mockResolvedValue(null);
-    const { result, rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
-
-    rerender({ canSave: true, draftKey: "v1", autosaveOnIdle: true, persist });
-
-    await act(async () => {
-      await result.current.settlePendingSave();
-    });
-
-    unmount();
+    const { persist } = await unmountMidRename();
 
     expect(persist).not.toHaveBeenCalled();
   });
@@ -499,21 +412,7 @@ describe("useCollectionEntryAutosave", () => {
     // cleanup would clear, writing the draft back to the slug the rename left.
     // It reports the bail instead: the hold also swallowed the unmount flush,
     // so this dirty draft reaches disk only if the caller writes it.
-    const persist = vi.fn().mockResolvedValue(null);
-    const { result, rerender, unmount } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-    });
-
-    rerender({ canSave: true, draftKey: "v1", autosaveOnIdle: true, persist });
-
-    await act(async () => {
-      await result.current.settlePendingSave();
-    });
-
-    unmount();
+    const { result, persist } = await unmountMidRename();
 
     let resumed: boolean | null = null;
 
@@ -543,13 +442,7 @@ describe("useCollectionEntryAutosave", () => {
       persist,
     });
 
-    rerender({
-      canSave: true,
-      draftKey: "v1",
-      autosaveOnIdle: true,
-      flushOnLeave: false,
-      persist,
-    });
+    rerender({ ...seeded(persist, "v1"), flushOnLeave: false });
 
     await act(async () => {
       vi.advanceTimersByTime(400);
@@ -609,13 +502,7 @@ async function typeAndDebounce(
   draftKey: string,
   externalKey?: string,
 ): Promise<void> {
-  rerender({
-    canSave: true,
-    draftKey,
-    autosaveOnIdle: true,
-    persist,
-    externalKey,
-  });
+  rerender({ ...seeded(persist, draftKey), externalKey });
   await act(async () => {
     vi.advanceTimersByTime(800);
     await Promise.resolve();
@@ -686,20 +573,11 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
     // sent, and the entry prop then updates to match that echo.
     const persist = vi.fn().mockResolvedValue("normalized-echo");
     const { result, rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
+      ...seeded(persist),
       externalKey: "seed",
     });
 
-    rerender({
-      canSave: true,
-      draftKey: "raw-typed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "seed",
-    });
+    rerender({ ...seeded(persist, "raw-typed"), externalKey: "seed" });
 
     await act(async () => {
       vi.advanceTimersByTime(800);
@@ -709,10 +587,7 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
 
     // The entry prop updates to the server's echo (mergeEntry in the parent).
     rerender({
-      canSave: true,
-      draftKey: "raw-typed",
-      autosaveOnIdle: true,
-      persist,
+      ...seeded(persist, "raw-typed"),
       externalKey: "normalized-echo",
     });
 
@@ -740,29 +615,17 @@ describe("useCollectionEntryAutosave — externalUpdate", () => {
   it("adoptExternal resets externalUpdate and does not re-arm the idle autosave", async () => {
     const persist = vi.fn().mockResolvedValue("seed");
     const { result, rerender } = setup({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
+      ...seeded(persist),
       externalKey: "seed",
     });
 
-    rerender({
-      canSave: true,
-      draftKey: "seed",
-      autosaveOnIdle: true,
-      persist,
-      externalKey: "changed-elsewhere",
-    });
+    rerender({ ...seeded(persist), externalKey: "changed-elsewhere" });
     expect(result.current.externalUpdate).toBe(true);
 
     // The Reload handler re-seeds the local draft to match the external
     // content, then calls adoptExternal — mirroring the editor's handleReload.
     rerender({
-      canSave: true,
-      draftKey: "changed-elsewhere",
-      autosaveOnIdle: true,
-      persist,
+      ...seeded(persist, "changed-elsewhere"),
       externalKey: "changed-elsewhere",
     });
     await act(() => {

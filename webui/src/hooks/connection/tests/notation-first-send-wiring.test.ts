@@ -14,6 +14,7 @@ import { useSyncServerSetting } from "#webui/hooks/connection/use-sync-server-se
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useFirstSendGate } from "#webui/hooks/use-first-send-gate";
 import { mockConfigResponse } from "./use-remote-config-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // The real chain that decides which notation a brand-new conversation locks:
 //
@@ -71,10 +72,7 @@ describe("notation first-send wiring", () => {
   it("locks the server's notation for a send fired before /config answers", async () => {
     // Hold /config in flight so the send lands inside the fetch window — the
     // exact case that used to lock "barbeat" on a device set to "stark".
-    let releaseConfig: () => void = () => {};
-    const configInFlight = new Promise<void>((resolve) => {
-      releaseConfig = resolve;
-    });
+    const [configInFlight, releaseConfig] = openGate();
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
       await configInFlight;

@@ -62,6 +62,29 @@ function lastEnabledTools(): unknown {
   return vi.mocked(mockAdapter.buildConfig).mock.lastCall?.[2];
 }
 
+/**
+ * Restore a one-turn conversation under the given locked settings, then send
+ * again so the client reconnects on whatever the record locked.
+ * @param locked - The settings snapshot the record carries
+ * @returns The rendered hook
+ */
+async function restoreAndContinue(locked: ReturnType<typeof lockedSettings>) {
+  const { result } = renderHook(() => useChat(withTools));
+
+  await act(async () => {
+    result.current.restoreChatHistory(
+      [{ role: "user", content: "hi" }],
+      locked,
+    );
+  });
+
+  await act(async () => {
+    await result.current.handleSend("continue");
+  });
+
+  return { result };
+}
+
 describe("useChat system instruction locking", () => {
   it("continues a restored conversation with its locked system instruction", async () => {
     // The conversation was saved with a specific system prompt. Continuing it
@@ -198,18 +221,9 @@ describe("useChat toolset locking", () => {
     // Locked like the model and notation: the transcript's successful calls are
     // themselves an instruction to keep calling those tools, so a tool switched
     // off in Settings must not disappear from under a running conversation.
-    const { result } = renderHook(() => useChat(withTools));
-
-    await act(async () => {
-      result.current.restoreChatHistory(
-        [{ role: "user", content: "hi" }],
-        lockedSettings({ enabledTools: { "ppal-library": false } }),
-      );
-    });
-
-    await act(async () => {
-      await result.current.handleSend("continue");
-    });
+    const { result } = await restoreAndContinue(
+      lockedSettings({ enabledTools: { "ppal-library": false } }),
+    );
 
     expect(lastEnabledTools()).toStrictEqual({ "ppal-library": false });
     expect(result.current.activeEnabledTools).toStrictEqual({
@@ -220,18 +234,7 @@ describe("useChat toolset locking", () => {
   it("falls back to the current toolset for a record saved before it was locked", async () => {
     // Legacy records carry no toolset. There is nothing to honor, so the current
     // selection is what the client connects with — and what gets locked.
-    const { result } = renderHook(() => useChat(withTools));
-
-    await act(async () => {
-      result.current.restoreChatHistory(
-        [{ role: "user", content: "hi" }],
-        lockedSettings(),
-      );
-    });
-
-    await act(async () => {
-      await result.current.handleSend("continue");
-    });
+    await restoreAndContinue(lockedSettings());
 
     expect(lastEnabledTools()).toStrictEqual({ "ppal-library": true });
   });

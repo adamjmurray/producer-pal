@@ -19,7 +19,9 @@ import {
   createDefaultProps,
   createMockAdapter,
   createScriptedAdapter,
+  echoUserTurn,
 } from "./helpers/use-chat-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -40,8 +42,7 @@ function createToolLimitAdapter() {
     client.toolLimitReached = true;
 
     return async function* send(message: string) {
-      client.chatHistory.push({ role: "user", content: message });
-      yield [...client.chatHistory];
+      yield echoUserTurn(client, message);
     };
   });
 }
@@ -192,18 +193,14 @@ describe("useChat", () => {
       // clobbered the freshly-restored conversation. clearConversation must
       // abort the active stream's controller.
       let capturedSignal: AbortSignal | undefined;
-      let resolveGate: () => void = () => {};
-      const gate = new Promise<void>((resolve) => {
-        resolveGate = resolve;
-      });
+      const [gate, resolveGate] = openGate();
 
       const adapter = createScriptedAdapter(
         mockAdapter,
         (client) =>
           async function* (message, signal) {
             capturedSignal = signal;
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
             await gate; // hold the stream in-flight
           },
       );
@@ -344,8 +341,7 @@ describe("useChat", () => {
         mockAdapter,
         (client) =>
           async function* (message: string) {
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
           },
       );
       const { result } = renderHook(() =>
@@ -660,10 +656,7 @@ describe("useChat", () => {
       // TO, leaving it with no client and nothing to continue from — which the
       // next send starts empty and the autosave persists over the real thing.
       const NEXT_HISTORY = [{ role: "user", content: "other conversation" }];
-      let releaseInit: () => void = () => {};
-      const connecting = new Promise<void>((resolve) => {
-        releaseInit = resolve;
-      });
+      const [connecting, releaseInit] = openGate();
       const adapter = adapterWithClient((client) => {
         client.initialize = vi.fn(async () => await connecting);
       });

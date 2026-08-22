@@ -23,6 +23,7 @@ import {
   setupConversationsHook as setupHook,
   waitForEffects,
 } from "./use-conversations-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 /**
  * Spy on saveConversation so its next call blocks until released, then calls
@@ -34,10 +35,7 @@ import {
  */
 function gateNextSave(): { release: () => void; restore: () => void } {
   const original = conversationDb.saveConversation;
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const [gate, release] = openGate();
   const spy = vi
     .spyOn(conversationDb, "saveConversation")
     .mockImplementationOnce(async (record, protectedIds) => {

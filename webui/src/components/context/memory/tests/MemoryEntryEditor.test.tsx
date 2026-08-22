@@ -116,6 +116,20 @@ function fillCreateForm(values: {
   });
 }
 
+/**
+ * Open the existing memory with a saveEntry spy, so a test can assert what the
+ * unmount flush wrote (or refused to).
+ * @returns The stub collection and the editor's unmount
+ */
+function renderExistingWithSave() {
+  const collection = fakeCollection({
+    saveEntry: vi.fn().mockResolvedValue(EXISTING),
+  });
+  const { unmount } = renderEditor({ collection, entry: EXISTING });
+
+  return { collection, unmount };
+}
+
 describe("MemoryEntryEditor — new entry", () => {
   it("reveals every field error and blocks Create until name, description, and body are filled", async () => {
     const saved: MemoryEntryView = {
@@ -230,11 +244,7 @@ describe("MemoryEntryEditor — new draft is not auto-saved on close", () => {
 
 describe("MemoryEntryEditor — existing entry", () => {
   it("seeds the editable name and autosaves body edits on close under the same slug", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
-    });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
+    const { collection, unmount } = renderExistingWithSave();
 
     // The name is an editable Rename field seeded with the current slug.
     expect(
@@ -270,11 +280,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   });
 
   it("flags a cleared required field and blocks its autosave (no silent loss)", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
-    });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
+    const { collection, unmount } = renderExistingWithSave();
 
     // Clearing the required description surfaces its error (existing entries are
     // pre-touched, so it shows at once) and blocks the autosave.
@@ -300,11 +306,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   });
 
   it("flags a cleared name but still autosaves the body under the existing slug", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
-    });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
+    const { collection, unmount } = renderExistingWithSave();
 
     // The name field renames; it isn't part of the write (which targets
     // entry.name). So emptying it surfaces its error and refuses the rename,

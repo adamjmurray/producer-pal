@@ -3,9 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { GBNF_REPETITION_LIMIT } from "#src/tools/shared/tool-framework/bounded-string.ts";
+import { TOOL_DEFS } from "./tool-defs-test-helpers.ts";
 
 // llama.cpp-based runtimes compile every tool's JSON Schema into one GBNF
 // grammar, turning a length constraint into a repetition (`char{0,n}`) and
@@ -13,17 +14,6 @@ import { GBNF_REPETITION_LIMIT } from "#src/tools/shared/tool-framework/bounded-
 // param therefore breaks tool calling for ALL tools. Use boundedString() for
 // caps at or above the limit and state them in the description. See ADR-0021.
 const REPETITION_KEYWORDS = new Set(["maxLength", "maxItems"]);
-
-// The `code` params only exist when this flag is on, and it is read when the
-// tool defs load — so stub it before importing them.
-vi.stubEnv("ENABLE_CODE_EXEC", "true");
-const { STANDARD_TOOL_DEFS } =
-  await import("#src/mcp-server/create-mcp-server.ts");
-const { toolDefLiveApi } = await import("#src/tools/advanced/live-api.def.ts");
-
-vi.unstubAllEnvs();
-
-const TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefLiveApi];
 
 describe("tool schema grammar safety", () => {
   it.each(TOOL_DEFS.map((def) => [def.toolName, def] as const))(

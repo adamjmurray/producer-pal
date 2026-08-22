@@ -6,18 +6,25 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
-import { describe, expect, it, type Mock, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
+import { jsonResponse } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import {
-  installFetchMock,
-  jsonResponse,
-} from "#webui/hooks/context/tests/doc-transport-test-helpers";
-import {
-  type MemoryEntryView,
-  useMemoryCollection,
-} from "#webui/hooks/context/use-memory-collection";
-import { MemoryScreen } from "#webui/components/context/memory/MemoryScreen";
+  commitRename,
+  EDITED_BODY,
+  ENTRY,
+  entryPuts,
+  echoOf,
+  openEntry,
+  renameInput,
+  renderMemoryScreen,
+  settleAutosave,
+  startRename,
+  typeBody,
+  typedFetchMock,
+  typeRenameField,
+} from "./memory-rename-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -39,36 +46,13 @@ vi.mock(import("#webui/lib/constants/transport"), () => ({
   COLLECTION_REQUEST_TIMEOUT_MS: 400,
 }));
 
-const TAB_SLOT = <div data-testid="tabs">tabs</div>;
-
-const ENTRY: MemoryEntryView = {
-  name: "prefers-c-minor",
-  description: "default key & genre",
-  body: "Composes in C minor.",
-};
-
-const fetchMock = installFetchMock();
-
-/**
- * The suite's fetch mock under fetch's own signature — `installFetchMock`
- * returns the untyped `vi.fn()`, whose implementations are void-returning.
- */
-type FetchMock = Mock<(url: string, init?: RequestInit) => Promise<Response>>;
-
-/** The Memory tab wired to the real collection hook over the stubbed fetch. */
-function MemoryScreenHarness(): preact.JSX.Element {
-  const collection = useMemoryCollection();
-
-  return <MemoryScreen collection={collection} tabSlot={TAB_SLOT} />;
-}
-
 /**
  * Stub a server that lists `ENTRY`, accepts the rename and never answers it, and
  * echoes every plain save. The rename settles only when the transport's deadline
  * aborts its signal — the way a real fetch behaves, and the whole point here.
  */
 function routeFetch(): void {
-  (fetchMock as unknown as FetchMock).mockImplementation((url, init) => {
+  typedFetchMock.mockImplementation((url, init) => {
     if ((init?.method ?? "GET") === "GET") {
       return Promise.resolve(jsonResponse({ entries: [ENTRY] }));
     }
@@ -81,89 +65,42 @@ function routeFetch(): void {
       });
     }
 
-    const { description, content } = JSON.parse(init?.body as string) as {
-      description: string;
-      content: string;
-    };
-
-    return Promise.resolve(
-      jsonResponse({
-        entry: { name: url.split("/").pop() ?? "", description, body: content },
-      }),
-    );
+    return Promise.resolve(jsonResponse({ entry: echoOf(url, init) }));
   });
 }
 
 /**
- * The entry PUTs the editor issued — the save channel, excluding the rename.
- * @returns One record per captured write, in dispatch order
+ * The body content of each entry PUT the editor issued.
+ * @returns One string per captured write, in dispatch order
  */
-function entryPuts(): string[] {
-  const calls = fetchMock.mock.calls as [string, RequestInit | undefined][];
-
-  return calls
-    .filter(([url, init]) => init?.method === "PUT" && !url.endsWith("/rename"))
-    .map(([, init]) => {
-      const { content } = JSON.parse(init?.body as string) as {
-        content: string;
-      };
-
-      return content;
-    });
-}
-
-/**
- * Wait out the editor's idle autosave: preact defers post-paint effects (the
- * arming) to a real timeout that happy-dom's rAF never beats, then the debounce
- * itself runs (mocked to ~0 above). Both directions need the same settle, so
- * whether a save fires is an honest assertion either way.
- */
-async function settleAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 150));
+function savedBodies(): string[] {
+  return entryPuts().map((put) => put.body.content);
 }
 
 describe("MemoryScreen — a rename the server never answers", () => {
   it("autosaves the body typed while the rename hung, once it gives up", async () => {
     routeFetch();
-    render(<MemoryScreenHarness />);
+    renderMemoryScreen();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-
-    const nameInput = screen.getByRole("textbox", { name: "Rename" });
-
-    fireEvent.input(nameInput, { target: { value: "New Slug" } });
-    fireEvent.blur(nameInput);
-
-    await waitFor(() => {
-      expect(
-        fetchMock.mock.calls.some(([url]) => String(url).endsWith("/rename")),
-      ).toBe(true);
-    });
+    await startRename();
 
     // Keep typing while the rename is out there. The hold is correct so far — a
     // save now would write the slug the rename is trying to move off of.
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "Composes in C minor and F minor." },
-    });
+    typeBody();
     await settleAutosave();
 
-    expect(entryPuts()).toStrictEqual([]);
+    expect(savedBodies()).toStrictEqual([]);
 
     // Once the rename gives up, the draft goes back on the clock. Without a
     // deadline the hold never lifts and this edit — plus every later one — is
     // autosaved nowhere, silently, for the rest of the editor's mount.
     await waitFor(() => {
-      expect(entryPuts()).toStrictEqual(["Composes in C minor and F minor."]);
+      expect(savedBodies()).toStrictEqual([EDITED_BODY]);
     });
 
     // The name field is back on the old slug, so the draft is saving where the
     // list still shows it.
-    expect(screen.getByRole("textbox", { name: "Rename" })).toHaveProperty(
-      "value",
-      ENTRY.name,
-    );
+    expect(renameInput().value).toBe(ENTRY.name);
 
     // And the reason survives that save. The message used to be read off the
     // collection's shared saveError, which every write clears on dispatch — so
@@ -173,21 +110,15 @@ describe("MemoryScreen — a rename the server never answers", () => {
 
   it("tells the user the rename timed out", async () => {
     routeFetch();
-    render(<MemoryScreenHarness />);
+    renderMemoryScreen();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Edit prefers-c-minor" }),
-    );
-
-    const nameInput = screen.getByRole("textbox", { name: "Rename" });
-
-    fireEvent.input(nameInput, { target: { value: "New Slug" } });
-    fireEvent.blur(nameInput);
+    await openEntry();
+    commitRename();
 
     expect(await screen.findByText(/timed out/i)).toBeTruthy();
 
     // Editing the name is the dismissal, same as for any other rename error.
-    fireEvent.input(nameInput, { target: { value: "Another Slug" } });
+    typeRenameField("Another Slug");
 
     await waitFor(() => {
       expect(screen.queryByText(/timed out/i)).toBeNull();

@@ -8,13 +8,17 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LeaveGuardContext } from "#webui/components/context/collection/leave-guard";
+import {
+  type LeaveGuard,
+  LeaveGuardContext,
+} from "#webui/components/context/collection/leave-guard";
 import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import {
   type CustomSkillView,
   type UseCustomSkillsCollectionReturn,
 } from "#webui/hooks/context/use-custom-skills-collection";
 import { CustomSkillEditor } from "#webui/components/context/skills/CustomSkillEditor";
+import { makeManualGuard } from "#webui/components/context/collection/leave-guard-test-helpers";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
 vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
@@ -117,6 +121,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/**
+ * Render an empty draft under a real leave guard, as ContextTabs does, so the
+ * discard confirm is wired end to end.
+ * @returns The guard the editor registered into
+ */
+function renderNewDraftUnderGuard(): LeaveGuard {
+  const guard = makeManualGuard();
+
+  render(
+    <LeaveGuardContext.Provider value={guard}>
+      {editorElement({ collection: stubCollection(vi.fn()), entry: null })}
+    </LeaveGuardContext.Provider>,
+  );
+
+  return guard;
+}
+
 describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
   /**
    * Fill the create form with a complete new-skill draft.
@@ -149,20 +170,7 @@ describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
   });
 
   it("registers a discard confirm while a dirty new draft is open", () => {
-    const collection = stubCollection(vi.fn());
-    let registered: (() => boolean) | null = null;
-    const guard = {
-      register: (next: (() => boolean) | null) => {
-        registered = next;
-      },
-      confirmLeave: () => registered == null || registered(),
-    };
-
-    render(
-      <LeaveGuardContext.Provider value={guard}>
-        {editorElement({ collection, entry: null })}
-      </LeaveGuardContext.Provider>,
-    );
+    const guard = renderNewDraftUnderGuard();
 
     // Blank form: nothing to lose, so navigating away is silent.
     expect(guard.confirmLeave()).toBe(true);
@@ -178,20 +186,7 @@ describe("CustomSkillEditor — new draft is not auto-saved on close", () => {
     // The draft can't be saved without a name, which is exactly why losing it is
     // unrecoverable: nothing on disk to go back to. New/select/tab-switch all
     // route through confirmLeave, so guarding here covers all of them.
-    const collection = stubCollection(vi.fn());
-    let registered: (() => boolean) | null = null;
-    const guard = {
-      register: (next: (() => boolean) | null) => {
-        registered = next;
-      },
-      confirmLeave: () => registered == null || registered(),
-    };
-
-    render(
-      <LeaveGuardContext.Provider value={guard}>
-        {editorElement({ collection, entry: null })}
-      </LeaveGuardContext.Provider>,
-    );
+    const guard = renderNewDraftUnderGuard();
 
     fireEvent.input(screen.getByRole("textbox", { name: /Instructions/ }), {
       target: { value: "Voice with 3rds." },

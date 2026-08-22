@@ -18,6 +18,7 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Wrap saveConversation in a spy that delegates to the real fake-indexeddb
 // implementation by default, so most tests exercise the real DB. Failure tests
@@ -37,6 +38,21 @@ function makeRecord(
   overrides: Partial<ConversationRecord> = {},
 ): ConversationRecord {
   return createTestRecord({ createdAt: 1000, updatedAt: 1000, ...overrides });
+}
+
+/** The rendered hook, as the drivers below take it. */
+type UndoResult = { current: ReturnType<typeof useUndoDelete> };
+
+/**
+ * Click the banner's action and wait for a failed restore to paint an error.
+ * @param result - The rendered hook
+ */
+async function undoIntoError(result: UndoResult): Promise<void> {
+  await act(() => result.current.undoNotification!.action!.onClick());
+
+  await waitFor(() =>
+    expect(result.current.undoNotification?.type).toBe("error"),
+  );
 }
 
 describe("useUndoDelete", () => {
@@ -126,11 +142,7 @@ describe("useUndoDelete", () => {
     const { result } = renderHook(() => useUndoDelete(vi.fn(), onRestore));
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "Nope" })));
-    await act(() => result.current.undoNotification!.action!.onClick());
-
-    await waitFor(() =>
-      expect(result.current.undoNotification?.type).toBe("error"),
-    );
+    await undoIntoError(result);
     expect(onRestore).not.toHaveBeenCalled();
   });
 
@@ -177,12 +189,8 @@ describe("useUndoDelete", () => {
     const record = makeRecord({ title: "Keep me" });
 
     await act(() => result.current.pushDeleted(record));
-    await act(() => result.current.undoNotification!.action!.onClick());
-
     // onClick fires `void undo()`, so wait for the rejected save to flush.
-    await waitFor(() =>
-      expect(result.current.undoNotification?.type).toBe("error"),
-    );
+    await undoIntoError(result);
     expect(result.current.undoNotification?.message).toMatch(
       /storage is full/i,
     );
@@ -204,10 +212,7 @@ describe("useUndoDelete", () => {
   it("ignores a second undo click while the first restore is still saving", async () => {
     // Double-clicking Undo must not fire two concurrent restores of the same
     // record: the in-flight guard drops the second click.
-    let releaseSave!: () => void;
-    const savePending = new Promise<void>((resolve) => {
-      releaseSave = resolve;
-    });
+    const [savePending, releaseSave] = openGate();
 
     vi.mocked(saveConversation).mockReturnValueOnce(savePending as never);
 
@@ -241,11 +246,7 @@ describe("useUndoDelete", () => {
     const { result } = renderHook(() => useUndoDelete(vi.fn()));
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "First" })));
-    await act(() => result.current.undoNotification!.action!.onClick());
-
-    await waitFor(() =>
-      expect(result.current.undoNotification?.type).toBe("error"),
-    );
+    await undoIntoError(result);
 
     await act(() =>
       result.current.pushDeleted(makeRecord({ title: "Second" })),

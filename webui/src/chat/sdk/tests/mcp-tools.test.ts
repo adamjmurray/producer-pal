@@ -43,6 +43,22 @@ describe("createMcpTools", () => {
 
   const mockCallTool = vi.fn().mockResolvedValue({ content: "result" });
 
+  /**
+   * Fail the catalog read on a connected client and assert the failure surfaces.
+   * @param close - The client's close spy, which the failure path must call
+   */
+  async function expectCatalogFailure(close: ReturnType<typeof vi.fn>) {
+    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
+      callTool: mockCallTool,
+      close,
+    });
+
+    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
+      "catalog unavailable",
+    );
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -172,30 +188,14 @@ describe("createMcpTools", () => {
     // throw here would strand an open transport nothing can reach.
     const close = vi.fn().mockResolvedValue(undefined);
 
-    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
-      callTool: mockCallTool,
-      close,
-    });
-
-    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
-      "catalog unavailable",
-    );
+    await expectCatalogFailure(close);
     expect(close).toHaveBeenCalledOnce();
   });
 
   it("reports the original failure even when the close fails too", async () => {
     const close = vi.fn().mockRejectedValue(new Error("socket already gone"));
 
-    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
-      callTool: mockCallTool,
-      close,
-    });
-
-    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
-      "catalog unavailable",
-    );
+    await expectCatalogFailure(close);
   });
 
   it("returns the MCP client", async () => {
