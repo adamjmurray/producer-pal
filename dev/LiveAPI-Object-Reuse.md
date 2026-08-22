@@ -1,6 +1,7 @@
 # Reusing LiveAPI Objects
 
-Building a LiveAPI object is expensive (ADR-0023), so it is tempting to resolve
+Building a LiveAPI object is expensive (ADR-0023, and
+`dev/LiveAPI-Performance.md` for what it costs), so it is tempting to resolve
 one once and pass it around. That is safe in some places and unsafe in others,
 and the line between them is not where most people would guess.
 

@@ -33,6 +33,13 @@ assigned to `api.id` as a bare number. See `retargetToId` and `buildOrReuse` in
 `src/live-api-adapter/live-api-extensions.ts`, and the header comment of
 `src/live-api-adapter/live-api-release.ts` for the full measurement history.
 
+The free list is capped, and the cap is sized above the largest single request
+rather than the ordinary one. It costs no peak memory either way — every object
+on the list was alive at once during the request that built it — so all it
+decides is whether that memory is handed back afterwards, at the price of
+rebuilding it on every later call. `dev/LiveAPI-Performance.md` has what the
+undersized cap cost.
+
 ## Alternatives rejected
 
 **Cache objects by id across requests.** An id keeps pointing at the same Live
