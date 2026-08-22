@@ -17,17 +17,17 @@
  * The deterministic idiom + count-direction check is the whole grade — no LLM
  * judge.
  *
- * The split scenarios steer firmly to the `split()` TRANSFORM (subdivide notes),
+ * The split scenario steers firmly to the `split()` TRANSFORM (subdivide notes),
  * not update-clip's `split` PARAMETER (slice a clip into two clips) — same word,
  * different op. The grade reads the `transforms` arg, so a clip-level `split`
  * param fails the assertion.
  *
  * Requires Ableton (real device + LLM): `npm run build:debug` then
- * `./scripts/eval -m google/gemini-3.6-flash -t note-ops-ratchet-roll -t note-ops-merge -t note-ops-split -t note-ops-split-sync -t note-ops-repeat`.
+ * `./scripts/eval -m google/gemini-3.6-flash -t note-ops-ratchet-roll -t note-ops-merge -t note-ops-split -t note-ops-repeat`.
  * Validated vs Live 2026-06-06: ratchet/merge PASS 4/4 — the model reached for
  * the exact idioms (`ratchet(4)` grew 12→48 notes; `merge()` collapsed to one
  * note per drum pitch).
- * Validated vs Live 2026-06-07: split/split-sync PASS 4/4 — the model emitted
+ * Validated vs Live 2026-06-07 (then two scenarios): split/split-sync PASS 4/4 — the model emitted
  * `split(1|3, 2|1)` clip-relative and `split(7|1, 8|1, sync)` for an arrangement
  * clip starting at bar 5 (one held note → 3 pieces, proving the sync coordinate
  * math end-to-end).
@@ -318,24 +318,6 @@ export const noteOpsMerge: EvalScenario = {
   ],
 };
 
-export const noteOpsSplit: EvalScenario = {
-  id: "note-ops-split",
-  description:
-    "Cut a held note at explicit clip bar|beat positions via split()",
-  kind: "capability",
-  requires: { transforms: true },
-  liveSet: SPLIT_LIVE_SET,
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
-
-  messages: [
-    MSG_CONNECT,
-    "On the Lead track (track index 3), create a 2-bar clip in the first clip slot containing a single note: C3 sustained for the entire 2 bars.",
-    "Break that one held note into separate notes by cutting it at bar 1 beat 3 and bar 2 beat 1.",
-  ],
-
-  assertions: [...CREATE_THEN_UPDATE, assertSplitGrew(2), tokenBudget(100_000)],
-};
-
 export const noteOpsRepeat: EvalScenario = {
   id: "note-ops-repeat",
   description:
@@ -361,23 +343,32 @@ export const noteOpsRepeat: EvalScenario = {
   ],
 };
 
-export const noteOpsSplitSync: EvalScenario = {
-  id: "note-ops-split-sync",
+export const noteOpsSplit: EvalScenario = {
+  id: "note-ops-split",
   description:
-    "Cut notes at arrangement-timeline positions via split(..., sync)",
+    "Cut held notes at arrangement-timeline positions, then at clip positions",
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
+  setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
 
   messages: [
     MSG_CONNECT,
     "On the Bass track, create a 4-bar clip in the arrangement starting at bar 5, containing a single note: C2 held for the entire 4 bars.",
     "Break that one held note into separate notes, cutting it at arrangement bar 7 and arrangement bar 8 — use the arrangement timeline positions, not positions relative to the clip's own start.",
+    "Now on the Lead track (track index 3), create a 2-bar clip in the first clip slot containing a single note: C3 sustained for the entire 2 bars.",
+    "Break that one held note into separate notes by cutting it at bar 1 beat 3 and bar 2 beat 1.",
   ],
 
+  // The sync case runs FIRST, unprimed: it is the harder one (song time, not
+  // clip time). The clip-relative case then checks the model doesn't
+  // over-generalize and keep reaching for sync where it doesn't belong.
   assertions: [
     ...CREATE_THEN_UPDATE,
     assertSplitGrew(2, { sync: true }),
-    tokenBudget(100_000),
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 3 },
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 4 },
+    assertSplitGrew(4),
+    tokenBudget(220_000),
   ],
 };

@@ -383,10 +383,16 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
 
 ### Design guidelines
 
-- **Target ~20 scenarios total.** Each eval run requires Ableton Live and takes
-  real time, so keep the suite focused. Don't add scenarios for the sake of
-  coverage — add them when you find a bug, add a tool, or want to validate a
-  specific model's behavior.
+- **Every scenario costs a full run.** Each one needs Ableton Live, opens a Live
+  Set, and adds minutes to the suite — and the suite is already long enough that
+  most runs are a filtered subset, not the whole thing. Add a scenario when you
+  find a bug, ship a tool, or need to compare models on something specific;
+  don't add one for coverage's sake.
+- **Fold a new case into an existing scenario when it fits.** An extra turn on a
+  scenario that already opened the right Live Set is far cheaper than a new
+  scenario, and often reads better. Keep it separate when the new case must be
+  measured UNPRIMED — a reach-for probe (which API/idiom does the model pick
+  unprompted?) is worthless once an earlier turn has shown it the answer.
 - **Default to no judge.** `tool_called`, `state`, and `response_contains` are
   fast, cheap, and reproducible; a judge costs an LLM call per scenario and
   miscounts anything musical. Add `llm_judge` only when the thing being graded

@@ -29,6 +29,8 @@ export const LEAD_LIVE_SET = "basic-midi-4-track";
 export const LEAD_TRACK = 3;
 /** Scene-1 clip slot on the Lead track. */
 export const LEAD_SLOT_1 = `${LEAD_TRACK}/0`;
+/** Scene-2 clip slot on the Lead track — for scenarios that write two clips. */
+export const LEAD_SLOT_2 = `${LEAD_TRACK}/1`;
 
 /**
  * Build a create-clip scenario shell: clear the slots, connect (turn 0), then

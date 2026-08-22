@@ -12,10 +12,7 @@
  */
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
-export {
-  arpeggioBracketIdiom,
-  arpeggioMixedDurations,
-} from "./clip/notation/arpeggio-bracket-idiom.ts";
+export { arpeggioBracketIdiom } from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
@@ -23,10 +20,7 @@ export {
   barBeatMeterFill,
   barBeatTriplets,
 } from "./clip/notation/bar-beat/bar-beat-absolute-durations.ts";
-export {
-  barBeatPerBarChord,
-  barBeatPerBarNote,
-} from "./clip/notation/bar-beat/bar-beat-multibar-spread.ts";
+export { barBeatPerBarSpread } from "./clip/notation/bar-beat/bar-beat-multibar-spread.ts";
 export {
   barBeatMelodicCompoundStepping,
   barBeatMelodicLegatoRun,
@@ -59,34 +53,23 @@ export {
   contextWriteLayerMemory,
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
-export {
-  contextWritePreservesGlobal,
-  contextWritePreservesProject,
-} from "./context/context-write-preserve.ts";
+export { contextWritePreserves } from "./context/context-write-preserve.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
 export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
-export {
-  durationArgBarLength,
-  durationArgMixedCombiner,
-  durationArgSubBar,
-} from "./clip/notation/duration-arg-grammar.ts";
+export { durationArgGrammar } from "./clip/notation/duration-arg-grammar.ts";
 export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quarter.ts";
 export {
   noteOpsMerge,
   noteOpsRatchetRoll,
   noteOpsRepeat,
   noteOpsSplit,
-  noteOpsSplitSync,
 } from "./clip/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
-export {
-  rangeClearFirstHalf,
-  rangeClearWholeBar,
-} from "./clip/notation/range-bound-clears.ts";
+export { rangeClearBoundaries } from "./clip/notation/range-bound-clears.ts";
 export {
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
