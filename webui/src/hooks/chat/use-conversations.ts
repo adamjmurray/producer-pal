@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
+import { useCanceledIds } from "#webui/hooks/chat/helpers/conversations/use-canceled-ids";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -16,7 +17,6 @@ import {
   buildConversationSaveRecord,
   buildLockedSettings,
   chainSave,
-  deleteConversationWithSnapshot,
   getHashConversationId,
   resolvePanelNotification,
   setLocationHash,
@@ -116,13 +116,10 @@ export function useConversations({
   // Serializes conversation saves so a later save's read-back can't race ahead
   // of an earlier save's write (see saveCurrentConversation).
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
-  // Ids whose pending/in-flight save must be abandoned because the row was
-  // deleted. The delete paths drain saveChainRef, but that only covers saves
-  // already queued — a save enqueued *after* the drain (chiefly the
-  // stream-teardown autosave effect that stopResponse() triggers) would still
-  // resurrect the just-deleted row. Every save checks this set right before its
-  // DB write and bails. Mirrors the voice layer's canceledIdsRef guard.
-  const canceledIdsRef = useRef<Set<string>>(new Set());
+  // Tombstones for rows a delete has removed, so a save that slipped past the
+  // drain can't resurrect one. See useCanceledIds; mirrors the voice layer's
+  // canceledIdsRef guard.
+  const canceled = useCanceledIds();
   // Id reserved by a bulk delete for a brand-new conversation streaming its
   // first turn but not yet saved (activeIdRef still null). Such a conversation's
   // id is minted — fresh and uncancelable — inside the teardown autosave the
@@ -147,16 +144,9 @@ export function useConversations({
     setConversations(list);
   }, []);
 
-  // Un-cancel a restored conversation's id. canceledIdsRef is otherwise
-  // add-only; undo restores under the same id via a raw saveConversation that
-  // bypasses the guard, but the stale canceled flag would then bail every later
-  // autosave for that id at the check below (line ~254), silently losing all
-  // post-undo messages. Clearing it on a successful restore re-enables saving.
-  const uncancelRestoredId = useCallback((id: string) => {
-    canceledIdsRef.current.delete(id);
-  }, []);
-
-  const undoDelete = useUndoDelete(refreshList, uncancelRestoredId);
+  // Undo restores under the original id via a raw saveConversation that bypasses
+  // the guard, so lift that id's tombstone or every later autosave for it bails.
+  const undoDelete = useUndoDelete(refreshList, canceled.uncancel);
 
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -294,7 +284,7 @@ export function useConversations({
           // A delete for this id can land while this save was queued or while
           // the awaits above resolved. Check as late as possible — right before
           // the write — so a just-deleted conversation isn't resurrected.
-          if (canceledIdsRef.current.has(id)) return;
+          if (canceled.isCanceled(id)) return;
 
           const result = await saveConversation(record, protectedIds);
 
@@ -308,7 +298,7 @@ export function useConversations({
         }
       });
     },
-    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef],
+    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef, canceled],
   );
 
   const switchConversation = useCallback(
@@ -337,6 +327,11 @@ export function useConversations({
       clearConversation();
       restoreRecord(record);
       setActiveId(id);
+      // The record loaded, so it is not deleted — lift any stale tombstone
+      // before the first autosave of this conversation checks it. Reachable
+      // when a delete was undone outside this hook (an import re-adding the id)
+      // or when the delete itself failed and left the row in place.
+      canceled.uncancel(id);
       syncMetaRef(activeMetaRef, record);
       // Re-collapse with the new active id so its family's row reflects — and
       // highlights — the sibling just switched to (e.g. via the branch arrows).
@@ -349,6 +344,7 @@ export function useConversations({
       setActiveId,
       onForeignRecord,
       refreshList,
+      canceled,
     ],
   );
 
@@ -373,9 +369,9 @@ export function useConversations({
       // stopResponse() first, which flips isAssistantResponding and — from a
       // passive effect — fires one more autosave for this id *after* the drain
       // below has already captured the save chain. That late save would
-      // otherwise resurrect the row; instead it checks canceledIdsRef right
+      // otherwise resurrect the row; instead it checks the tombstone right
       // before its write and bails.
-      canceledIdsRef.current.add(id);
+      canceled.cancel(id);
 
       if (activeIdRef.current === id) dropPendingFork();
 
@@ -384,7 +380,7 @@ export function useConversations({
       // never rejects (saveCurrentConversation's chained body swallows its own
       // errors), so awaiting it directly is safe.
       await saveChainRef.current;
-      await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
+      await canceled.deleteTombstoned(id, undoDelete.pushDeleted);
 
       if (activeIdRef.current === id) {
         clearConversation();
@@ -399,6 +395,7 @@ export function useConversations({
       refreshList,
       undoDelete,
       dropPendingFork,
+      canceled,
     ],
   );
 
@@ -407,12 +404,13 @@ export function useConversations({
       activeIdRef,
       activeMetaRef,
       pendingNewIdRef,
-      canceledIdsRef,
+      canceledIdsRef: canceled.ref,
       saveChainRef,
       clearConversation,
       clearActiveId,
       refreshList,
       dropPendingFork,
+      dropUndoable: undoDelete.dropUndoable,
     });
 
   const renameConversation = useCallback(

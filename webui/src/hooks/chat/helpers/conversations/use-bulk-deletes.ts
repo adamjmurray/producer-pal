@@ -6,6 +6,7 @@
 import { useCallback } from "preact/hooks";
 import { type ActiveMeta } from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import {
+  type ConversationRecord,
   deleteAllConversations as dbDeleteAllConversations,
   deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
 } from "#webui/lib/conversation-db";
@@ -25,6 +26,8 @@ export interface BulkDeleteParams {
   refreshList: () => Promise<void>;
   /** Drops a pending fork signal so a teardown save can't branch off a doomed record. */
   dropPendingFork: () => void;
+  /** Drops the pending undos this sweep has just invalidated. */
+  dropUndoable: (shouldDrop: (record: ConversationRecord) => boolean) => void;
 }
 
 export interface BulkDeletes {
@@ -44,6 +47,10 @@ export interface BulkDeletes {
  * (pendingNewIdRef) and cancel that; the save adopts the reserved id instead of
  * a fresh uncancelable one. Either way the just-cleared row can't be resurrected.
  *
+ * Each sweep also drops the pending undos it invalidates. The undo banner never
+ * auto-expires, so a "Deleted X / Undo" left over from a single delete would
+ * otherwise sit there after a wipe and put X back on one click.
+ *
  * @param params - The useConversations refs and callbacks these sweeps operate on
  * @returns The two bulk-delete handlers
  */
@@ -58,6 +65,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     clearActiveId,
     refreshList,
     dropPendingFork,
+    dropUndoable,
   } = params;
 
   const deleteAllConversations = useCallback(async () => {
@@ -66,6 +74,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
 
     canceledIdsRef.current.add(liveId);
     dropPendingFork();
+    dropUndoable(() => true);
 
     await saveChainRef.current;
     await dbDeleteAllConversations();
@@ -81,6 +90,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     clearActiveId,
     refreshList,
     dropPendingFork,
+    dropUndoable,
   ]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
@@ -96,6 +106,9 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
       canceledIdsRef.current.add(liveId);
       dropPendingFork();
     }
+
+    // Bookmarked records survive this sweep, so their undos stay offerable.
+    dropUndoable((record) => !record.bookmarked);
 
     await saveChainRef.current;
     await dbDeleteUnbookmarkedConversations();
@@ -116,6 +129,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     clearActiveId,
     refreshList,
     dropPendingFork,
+    dropUndoable,
   ]);
 
   return { deleteAllConversations, deleteUnbookmarkedConversations };

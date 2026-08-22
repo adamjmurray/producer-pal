@@ -16,6 +16,7 @@ import {
   listAllConversationSummaries,
   loadConversation,
 } from "#webui/lib/conversation-db";
+import { importConversations } from "#webui/lib/conversation-transfer";
 import {
   createConversationsProps,
   resetConversationsTestState,
@@ -359,5 +360,132 @@ describe("useConversations delete/save races", () => {
     const reloaded = await loadConversation(savedId);
 
     expect(reloaded?.messages).toHaveLength(2);
+  });
+  it("re-enables autosave after a deleted conversation is re-imported", async () => {
+    // The canceled-id tombstone is add-only, and export/import keeps ids: a
+    // deleted conversation that comes back through import was silently
+    // unsaveable for the rest of the session. Opening it lifts the tombstone.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "original");
+
+    const savedId = result.current.activeConversationId!;
+    const record = (await loadConversation(savedId))!;
+    const backup = JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      conversations: [{ ...record, updatedAt: record.updatedAt + 1 }],
+    });
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+    expect(await loadConversation(savedId)).toBeUndefined();
+
+    await act(async () => {
+      await importConversations(backup);
+    });
+    expect(await loadConversation(savedId)).toBeDefined();
+
+    await act(async () => {
+      await result.current.switchConversation(savedId);
+    });
+    state.chatHistory = [
+      { role: "user", content: "original" },
+      { role: "user", content: "after import" },
+    ];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const afterImport = await loadConversation(savedId);
+
+    expect(afterImport?.messages).toHaveLength(2);
+  });
+
+  it("re-enables autosave when the delete itself failed", async () => {
+    // The tombstone goes up before the DB work. If that work throws the row is
+    // still listed, so the tombstone has to come back down or the conversation
+    // is permanently unsaveable.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "original");
+
+    const savedId = result.current.activeConversationId!;
+    const spy = vi
+      .spyOn(conversationDb, "deleteConversation")
+      .mockRejectedValueOnce(new Error("IDB is having a day"));
+
+    await act(async () => {
+      await expect(result.current.deleteConversation(savedId)).rejects.toThrow(
+        "IDB is having a day",
+      );
+    });
+    spy.mockRestore();
+    expect(await loadConversation(savedId)).toBeDefined();
+
+    state.chatHistory = [
+      { role: "user", content: "original" },
+      { role: "user", content: "after the failed delete" },
+    ];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const afterFailedDelete = await loadConversation(savedId);
+
+    expect(afterFailedDelete?.messages).toHaveLength(2);
+  });
+
+  it("deleteAll drops the pending undo so the banner can't un-wipe a row", async () => {
+    // The undo banner never auto-expires, so a "Deleted X / Undo" left over
+    // from a single delete used to sit through a wipe-everything and put X back.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keeper");
+
+    const savedId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(async () => {
+      await result.current.deleteAllConversations();
+    });
+
+    expect(result.current.notification).toBeNull();
+    expect(await listAllConversationSummaries()).toHaveLength(0);
+  });
+
+  it("deleteUnbookmarked drops only the undos its sweep would have taken", async () => {
+    const { state, result } = await setupHook();
+
+    // A bookmarked conversation deleted by hand: the sweep would have spared
+    // it, so its undo survives and still restores.
+    await saveWithMessage(state, result, "bookmarked");
+
+    const keptId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.toggleBookmark(keptId);
+    });
+    await act(async () => {
+      await result.current.deleteConversation(keptId);
+    });
+
+    await act(async () => {
+      await result.current.deleteUnbookmarkedConversations();
+    });
+
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(async () => {
+      result.current.notification!.action!.onClick();
+    });
+    await waitFor(async () =>
+      expect(await loadConversation(keptId)).toBeDefined(),
+    );
   });
 });

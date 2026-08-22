@@ -27,6 +27,8 @@ export interface UndoDeleteReturn {
   pushDeleted: (record: ConversationRecord) => void;
   /** Drop all pending undos and hide the banner. */
   dismissUndoNotification: () => void;
+  /** Drop the pending undos a bulk delete has just made invalid. */
+  dropUndoable: (shouldDrop: (record: ConversationRecord) => boolean) => void;
 }
 
 /**
@@ -116,6 +118,18 @@ export function useUndoDelete(
     sync([]);
   }, [sync]);
 
+  // A bulk delete would have removed these records anyway, so offering to
+  // restore them turns the banner into a way to un-delete part of a wipe. Drop
+  // them instead. Predicate rather than a blanket clear: "delete unbookmarked"
+  // leaves bookmarked records alone, so an undo for one of those is still good.
+  const dropUndoable = useCallback(
+    (shouldDrop: (record: ConversationRecord) => boolean) => {
+      setRestoreError(null);
+      sync(stackRef.current.filter((record) => !shouldDrop(record)));
+    },
+    [sync],
+  );
+
   const top = stack.at(-1);
   const undoNotification: TransferNotificationData | null = top
     ? {
@@ -132,6 +146,7 @@ export function useUndoDelete(
     undoNotification,
     pushDeleted,
     dismissUndoNotification: dismiss,
+    dropUndoable,
   };
 }
 
