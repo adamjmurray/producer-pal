@@ -64,6 +64,10 @@ import {
   pathArrangementAddress,
   pathSessionSlot,
   pathTakeLaneFirst,
+  pathToPathClipDestinations,
+  pathToPathDeviceAndPad,
+  pathToPathPairing,
+  pathUncommonRoots,
   rangeClearFirstHalf,
   rangeClearWholeBar,
   pretransformsHatFillsBaseline,
@@ -131,8 +135,12 @@ const allScenarios: EvalScenario[] = [
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:
   // path-session-slot resets the slots it writes, so it can reuse the open one.
   pathSessionSlot,
+  pathToPathPairing,
+  pathUncommonRoots,
   pathTakeLaneFirst,
   pathArrangementAddress,
+  pathToPathClipDestinations,
+  pathToPathDeviceAndPad,
   barBeatTriplets,
   barBeatMeterFill,
   barBeatAbsoluteDurationUniformity,

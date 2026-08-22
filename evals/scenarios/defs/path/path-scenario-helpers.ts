@@ -18,7 +18,11 @@
  */
 
 import { argText } from "../arg-text.ts";
-import { lastSuccessfulToolCall } from "../../assertions/index.ts";
+import {
+  getToolCalls,
+  lastSuccessfulToolCall,
+  parsedToolResult,
+} from "../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalTurnResult,
@@ -91,14 +95,14 @@ export function assertPathArg(options: {
   turn: number;
   tool: string;
   param: "path" | "toPath";
-  expected: string | string[];
+  expected: string | string[] | RegExp;
 }): EvalAssertion {
   const { turn, tool, param, expected } = options;
-  const accepted = typeof expected === "string" ? [expected] : expected;
+  const wanted = describeExpected(expected);
 
   return {
     type: "custom",
-    description: `${tool} turn ${turn}: ${param} is '${accepted.join("' or '")}'`,
+    description: `${tool} turn ${turn}: ${param} is ${wanted}`,
     assert: (turns) => {
       const call = requireCall(turns, turn, tool);
       const raw = call.args[param];
@@ -111,15 +115,47 @@ export function assertPathArg(options: {
 
       const actual = argText(raw).replaceAll(" ", "");
 
-      if (!accepted.includes(actual)) {
-        throw new Error(
-          `expected ${param} '${accepted.join("' or '")}', got '${actual}'`,
-        );
+      if (!pathAccepted(actual, expected)) {
+        throw new Error(`expected ${param} ${wanted}, got '${actual}'`);
       }
 
       return true;
     },
   };
+}
+
+/**
+ * Human-readable form of an expected path, for descriptions and failures.
+ * @param expected - Accepted path(s) or a shape
+ * @returns Quoted list, or the pattern source
+ */
+function describeExpected(expected: string | string[] | RegExp): string {
+  if (expected instanceof RegExp) return `matching ${expected.source}`;
+
+  const accepted = typeof expected === "string" ? [expected] : expected;
+
+  return `'${accepted.join("' or '")}'`;
+}
+
+/**
+ * Whether a written path satisfies the expectation. A RegExp grades the SHAPE,
+ * for destinations whose index the model legitimately chooses (an insertion
+ * point among a track's devices), where pinning one would grade the choice
+ * rather than the grammar.
+ *
+ * @param actual - The path the model wrote, spaces stripped
+ * @param expected - Accepted path(s) or a shape
+ * @returns True when the path is accepted
+ */
+function pathAccepted(
+  actual: string,
+  expected: string | string[] | RegExp,
+): boolean {
+  if (expected instanceof RegExp) return expected.test(actual);
+
+  const accepted = typeof expected === "string" ? [expected] : expected;
+
+  return accepted.includes(actual);
 }
 
 /**
@@ -186,6 +222,130 @@ export function assertSlotOccupancy(
       return occupied
         ? `expected a clip at ${path}, found none`
         : `expected ${path} to stay empty, found clip id ${argText(id)}`;
+    },
+  };
+}
+
+/**
+ * Split a comma-separated arg into its entries.
+ * @param value - The raw arg
+ * @returns Trimmed, non-empty entries
+ */
+function listEntries(value: unknown): string[] {
+  return argText(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "");
+}
+
+/**
+ * Assert every `toPath` in the turn carries the right number of destinations
+ * relative to what it pairs against.
+ *
+ * The list semantics differ per tool on purpose, and getting them backwards is
+ * a silent data-loss bug: `update-clip` pairs 1:1, so two clips with one
+ * destination put both in the same slot and destroy the first (`rule: "equal"`).
+ * `duplicate` cycles a short `toPath` against `arrangementStart`, so fewer
+ * destinations than starts is correct there, but more is not (`rule: "atMost"`).
+ *
+ * Checks each call separately rather than summing the turn, because splitting
+ * one batched call into several 1:1 calls is a perfectly good way to do this —
+ * and is safe by construction. Grading the batch would mark that wrong.
+ *
+ * @param options - What to grade
+ * @param options.turn - Turn index containing the calls
+ * @param options.tool - Tool name
+ * @param options.against - Params the destinations pair with; the first present on a call wins
+ * @param options.rule - Whether the counts must match, or may cycle
+ * @returns A custom assertion
+ */
+export function assertDestinationCounts(options: {
+  turn: number;
+  tool: string;
+  against: string[];
+  rule: "equal" | "atMost";
+}): EvalAssertion {
+  const { turn, tool, against, rule } = options;
+  const phrasing = rule === "equal" ? "one per" : "no more than";
+
+  return {
+    type: "custom",
+    description: `${tool} turn ${turn}: toPath lists ${phrasing} ${against[0]}`,
+    assert: (turns) => {
+      const calls = getToolCalls(turns, turn).filter(
+        (call) => call.name === tool && call.args.toPath != null,
+      );
+
+      if (calls.length === 0) {
+        throw new Error(`no ${tool} call in turn ${turn} carries a toPath`);
+      }
+
+      for (const call of calls) {
+        const pairedWith = against.find((key) => call.args[key] != null);
+
+        if (pairedWith == null) {
+          throw new Error(
+            `a toPath call names none of ${against.join("/")} — args: ${JSON.stringify(call.args)}`,
+          );
+        }
+
+        const destinations = listEntries(call.args.toPath).length;
+        const targets = listEntries(call.args[pairedWith]).length;
+        const ok =
+          rule === "equal" ? destinations === targets : destinations <= targets;
+
+        if (!ok) {
+          throw new Error(
+            `${destinations} toPath entr${destinations === 1 ? "y" : "ies"} for ${targets} ${pairedWith} entr${targets === 1 ? "y" : "ies"} (${argText(call.args.toPath)} vs ${argText(call.args[pairedWith])})`,
+          );
+        }
+      }
+
+      return true;
+    },
+  };
+}
+
+/**
+ * Grade a call's OWN result inside a turn. A scenario that navigates several
+ * times in one conversation can't use a single end-of-run state read — that
+ * only sees the last one.
+ *
+ * @param options - What to grade
+ * @param options.turn - Turn index containing the call
+ * @param options.tool - Tool name
+ * @param options.what - What the result should show, for the description
+ * @param options.check - Verdict over the parsed result
+ * @returns A custom assertion
+ */
+export function assertCallResult(options: {
+  turn: number;
+  tool: string;
+  what: string;
+  check: (result: Record<string, unknown>) => boolean;
+}): EvalAssertion {
+  const { turn, tool, what, check } = options;
+
+  return {
+    type: "custom",
+    description: `${tool} turn ${turn}: ${what}`,
+    assert: (turns) => {
+      const call = requireCall(turns, turn, tool);
+      const result = parsedToolResult(call);
+
+      if (result == null) {
+        throw new Error(
+          `no readable result — got ${String(call.result).slice(0, 160)}`,
+        );
+      }
+
+      if (!check(result)) {
+        throw new Error(
+          `${what} — got ${JSON.stringify(result).slice(0, 240)}`,
+        );
+      }
+
+      return true;
     },
   };
 }

@@ -96,12 +96,22 @@ aliases (`trackIndex`, `sceneIndex` on clip tools) stay. `parseSlot` and
 `parseSlotList` retire with the deprecated params, not before.
 
 The scenarios that measure it are in `evals/scenarios/defs/path/`: session slot
-spelling, the take-lane index base, and whether a model pastes a reported
-arrangement path back as a clip address. They grade the path the model wrote AND
-where the object landed — a path that lands right through a hidden alias is a
-different finding from one that lands wrong. Nothing grades alias usage; the
-aliases exist to catch a wrong guess, so rewarding one would enshrine the
-spelling being retired. Count them from the `warnings` on saved runs instead.
+spelling, the take-lane index base, whether a model pastes a reported
+arrangement path back as a clip address, `toPath` across every destination kind
+(slot, arrangement, take lane, device, drum pad) with both list rules, and the
+roots outside `t`/`s` (`rt`, `mt`, and a pad). They grade the path the model
+wrote AND where the object landed — a path that lands right through a hidden
+alias is a different finding from one that lands wrong.
+
+Two rules about what these may assert, both learned the hard way:
+
+- **Never grade alias usage.** The aliases exist to catch a wrong guess, so
+  rewarding one would enshrine the spelling being retired. Count them from the
+  `warnings` on saved runs instead.
+- **Never grade batching.** Splitting one batched call into several 1:1 calls is
+  a fine way to move two clips, and is safe by construction. Assert the
+  invariant per call — `update-clip` names one destination per clip, `duplicate`
+  never names more destinations than starts — not the list length.
 
 ### Phase 5 — `path` everywhere
 
