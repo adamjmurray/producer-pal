@@ -42,8 +42,8 @@ const TEST_NOTES = "n/4 C3 1|1,2,3,4 2|1,2,3,4 3|1,2,3,4 4|1,2,3,4";
 const EPS = 1e-6;
 
 /**
- * Rebuild the deterministic test clip in slot 0/0. Clears the slot first so
- * repeat trials (`-r N`, which reuse the open Live Set) start clean.
+ * Rebuild the deterministic test clip in slot 0/0. Clears the slot first so a
+ * run that inherits an already-open Live Set still starts clean.
  *
  * @param mcpClient - MCP client for tool calls
  */

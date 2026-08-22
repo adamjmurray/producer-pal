@@ -9,7 +9,7 @@
 
 import { type InspectColor, styleText } from "node:util";
 import { efficiencyColor } from "#evals/chat/shared/formatting.ts";
-import { type JsonEvalResult } from "./json-results/types.ts";
+import { type JsonEvalResult } from "../json-results/types.ts";
 
 /**
  * Parse the repeat count from CLI option
@@ -129,4 +129,27 @@ export function formatParts(parts: SummaryPart[]): string {
   return parts
     .map((p) => `${p.label} ${styleText(p.color, p.value)}`)
     .join(" | ");
+}
+
+/**
+ * Which trials may skip the (slow) Live Set reopen.
+ *
+ * A completed trial leaves the Set mutated, so trial 2 onward can only inherit
+ * it when the scenario declares `reuseLiveSet` — its promise to reset whatever
+ * it writes. Without that, trial 2 is graded on trial 1's leftovers, which is
+ * the flakiness `--repeat` exists to detect, not to manufacture.
+ *
+ * @param repeatCount - Number of trials to run
+ * @param liveSetAlreadyOpened - A Set the runner knows is clean is already open
+ * @param reuseLiveSet - The scenario's `reuseLiveSet` flag
+ * @returns One skip-the-open flag per trial, in order
+ */
+export function planTrialLiveSetOpens(
+  repeatCount: number,
+  liveSetAlreadyOpened: boolean,
+  reuseLiveSet: boolean | undefined,
+): boolean[] {
+  return Array.from({ length: repeatCount }, (_unused, index) =>
+    index === 0 ? liveSetAlreadyOpened : reuseLiveSet === true,
+  );
 }

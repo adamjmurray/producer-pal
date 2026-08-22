@@ -285,9 +285,9 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     "On the Drums track, create three 1-bar clips, one per scene: scene 1 in 4/4, scene 2 in 6/8, scene 3 in 5/4. Each clip has a kick (C1) on every quarter note that fills the bar.",
   ],
 
-  // Clear the three target slots so repeat trials (`-r N`) don't inherit clips
-  // from a previous trial (which would otherwise trigger a delete/recreate
-  // dance and mask the real per-trial behavior).
+  // Clear the three target slots so a run against an already-open Live Set
+  // doesn't inherit clips from a previous one (which would otherwise trigger a
+  // delete/recreate dance and mask the real behavior).
   setup: (mcpClient) =>
     clearSessionSlots(mcpClient, [
       `${DRUMS_TRACK}/0`,

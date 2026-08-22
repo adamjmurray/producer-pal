@@ -259,6 +259,10 @@ The judge defaults to Gemini 3 Flash. Override with `-j`.
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 efficiency is averaged, and judge shows a pass rate.
 
+Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
+leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
+write — skip the reopen and run faster.
+
 ### Comparing models
 
 Pass `-m` multiple times to run the same scenarios across models in one run

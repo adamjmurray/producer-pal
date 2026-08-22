@@ -118,8 +118,8 @@ export async function runScenario(
       usage: options.usage,
     });
 
-    // 3b. Scenario-specific setup (e.g. clear stale clip slots so repeat
-    // trials, which reuse the open Live Set, each start clean)
+    // 3b. Scenario-specific setup (e.g. clear stale clip slots, so a run
+    // against an already-open Live Set still starts clean)
     await scenario.setup?.(session.mcpClient);
 
     // 4. Run each message turn

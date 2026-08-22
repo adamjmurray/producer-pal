@@ -19,7 +19,7 @@ import {
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "./json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { buildMultiTrialParts, formatParts } from "./trial-helpers.ts";
+import { buildMultiTrialParts, formatParts } from "./trials/trial-helpers.ts";
 
 /**
  * Print summary of all results

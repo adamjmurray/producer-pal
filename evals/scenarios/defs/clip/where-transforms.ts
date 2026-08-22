@@ -12,8 +12,8 @@
  * hand-listing positions.
  *
  * `setup` installs a deterministic clip mixing genuinely quiet (<50) and loud
- * (>90) notes, so every trial has real targets for both operations and repeat
- * runs (`-r N`, which reuse the open Live Set) start from the same state.
+ * (>90) notes, so every trial has real targets for both operations and starts
+ * from the same state even when it inherits an already-open Live Set.
  */
 
 import { argText } from "../arg-text.ts";

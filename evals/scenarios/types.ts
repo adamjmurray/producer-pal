@@ -82,8 +82,8 @@ export interface EvalScenario {
 
   /** Optional async setup run after the MCP session is created but before the
    *  first message turn. Use to reset Live Set state (e.g. clear stale clip
-   *  slots) so repeat trials (`-r N`, which reuse the already-open Live Set)
-   *  each start from a clean slate. */
+   *  slots) so a run against an already-open Set — a `reuseLiveSet` scenario,
+   *  or any scenario under `--skip-setup` — starts from a clean slate. */
   setup?: (mcpClient: Client) => Promise<void>;
 
   /** Optional async cleanup run after the turns and assertions complete —
@@ -104,9 +104,10 @@ export interface EvalScenario {
    *
    *  Opt in only when the scenario starts from a clean slate on its own: either
    *  it touches no Live Set state, or its `setup` resets everything it writes
-   *  (e.g. `clearSessionSlots` on the slots it fills) — the same self-reset that
-   *  repeat trials (`-r N`) already require. Leaving it unset keeps the default
-   *  fresh-Set isolation, which most clip/track/device scenarios depend on. */
+   *  (e.g. `clearSessionSlots` on the slots it fills). The flag also lets
+   *  repeat trials (`-r N`) and extra `-m` models reuse the open Set; without
+   *  it each of those reopens, which is the default fresh-Set isolation most
+   *  clip/track/device scenarios depend on. */
   reuseLiveSet?: boolean;
 }
 

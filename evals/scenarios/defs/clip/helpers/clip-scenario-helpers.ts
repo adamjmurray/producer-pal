@@ -536,8 +536,8 @@ export function slotToPath(slot: string): string {
 
 /**
  * Delete any existing session clips in the given slots. Use as a scenario
- * `setup` so repeat trials (`-r N`, which reuse the open Live Set) each start
- * with empty slots instead of inheriting clips from the previous trial.
+ * `setup` so a run against an already-open Live Set starts with empty slots
+ * instead of inheriting clips from the previous one.
  *
  * @param mcpClient - MCP client for tool calls
  * @param slots - Session clip slots to clear (e.g. ["0/0", "0/1", "0/2"])
