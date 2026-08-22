@@ -9,11 +9,10 @@
  * only callers.
  *
  * Tools resolve the same handful of paths over and over in one request —
- * live_set once per clip to read the Set's scale, this_device once per track to
- * find the host — and each repeat used to take another object off the pool. The
- * memo hands back the one already resolved, and is emptied along with the
- * tracked objects when the last scope closes, so nothing survives the request
- * (see live-api-release.ts).
+ * live_set once per clip to read the Set's scale, say — and each repeat used to
+ * take another object off the pool. The memo hands back the one already
+ * resolved, and is emptied along with the tracked objects when the last scope
+ * closes, so nothing survives the request (see live-api-release.ts).
  *
  * ONLY THE PATHS BELOW GO IN IT, AND THE REASON IS THE WHOLE DESIGN.
  *
@@ -39,11 +38,19 @@
  * a request is in flight has no hook at all. A rule that has to be remembered
  * at every future call site buys speed with silent wrong answers.
  *
- * What is left is targets that name one object for the life of the Live Set.
- * There is exactly one Song, one Application, one master track, and one
- * Producer Pal device, and no tool, user, or concurrent request can repoint any
- * of them. Repeats of anything else are fixed where they happen, by resolving
- * once and passing the object down.
+ * What is left is targets that name one object at a path that cannot move.
+ * There is exactly one Song, one Application and one master track, and no tool,
+ * user, or concurrent request can repoint any of them.
+ *
+ * "One object for the life of the Set" is not enough on its own, and
+ * this_device is the trap. There is exactly one Producer Pal device, but the
+ * target resolves to an indexed path — live_set tracks 3 devices 0 — and
+ * deleting an earlier track moves the device without moving the path. A
+ * remembered object then reports the old trackIndex, and the guard that stops
+ * delete from removing Producer Pal's own track is reading exactly that.
+ *
+ * Repeats of anything else are fixed where they happen, by resolving once and
+ * passing the object down.
  */
 
 import {
@@ -59,10 +66,10 @@ import {
 } from "./live-api-release.ts";
 
 /**
- * The only targets that may be memoized. Each names one LOM object that exists
- * for as long as the Live Set does. Do not add a path with an index in it, and
- * do not add a view pointer like `live_set view selected_track` — those name
- * whatever is selected right now.
+ * The only targets that may be memoized. Each names one LOM object at a path
+ * nothing can move. Do not add a path with an index in it or one that resolves
+ * to an index (this_device does), and do not add a view pointer like
+ * `live_set view selected_track` — those name whatever is selected right now.
  */
 const STABLE_TARGETS = new Set([
   "live_app",
@@ -70,7 +77,6 @@ const STABLE_TARGETS = new Set([
   "live_set",
   "live_set master_track",
   "live_set view",
-  "this_device",
 ]);
 
 /**

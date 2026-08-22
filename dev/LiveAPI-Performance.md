@@ -43,9 +43,9 @@ one. At the old 512, a deep 64-pad kit read (1,314 objects) rebuilt 803 of them
 on every repeat and climbed 2.2 s to 5.9 s over twelve calls. See
 `MAX_POOLED_OBJECTS` in `live-api-adapter/live-api-release.ts`.
 
-**Six stable targets resolve once per request** — `live_set`, `this_device` and
-four others that name one object for the life of the Set. ADR-0028 says why the
-list is that short.
+**Five stable targets resolve once per request** — `live_set`, the master track
+and three others that name one object at a path nothing can move. ADR-0028 says
+why the list is that short, and why `this_device` is not on it.
 
 **Tools stopped building objects they don't read.** Reading one property no
 longer builds the whole collection it belongs to; a session grid is counted once

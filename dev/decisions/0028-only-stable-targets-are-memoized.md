@@ -21,10 +21,10 @@ are released.
 A request may reuse an object it already resolved, but only for these targets:
 
     live_app, live_app view, live_set, live_set master_track,
-    live_set view, this_device
+    live_set view
 
-Each names one object that exists for as long as the Live Set does. Nothing a
-tool, a user, or a concurrent request can do repoints any of them.
+Each names one object at a path nothing can move. Nothing a tool, a user, or a
+concurrent request can do repoints any of them.
 
 Everything else resolves afresh every time, exactly as it did before. Repeats of
 anything else are removed where they happen, by resolving once and passing the
@@ -71,6 +71,16 @@ object with no error anywhere. Measured on the tools unit suite, this catches
 about four times as many repeats as the stable-target list — not worth buying
 with an invariant nobody can check.
 
+**Memoize `this_device`.** It was on the list at first, and it is the one that
+looks safest of all — there is exactly one Producer Pal device and nothing can
+create a second. But the target resolves to an indexed path,
+`live_set tracks 3 devices 0`, and deleting an earlier track moves the device
+without moving the path. A remembered object goes on reporting the track index
+it was resolved against, and `delete`'s guard against removing Producer Pal's
+own track compares against exactly that number: a request that deletes a track
+above Producer Pal and then another one can delete the host track. Naming one
+object forever is not the rule; naming it at a path that cannot move is.
+
 **A memo of read values rather than objects** (the Set's scale mask, say). The
 object memo already removes the expensive half, since resolving the target is
 what costs; the remaining property reads are cheap. Adding one would need its
@@ -84,7 +94,8 @@ answer.
 
 Adding to `STABLE_TARGETS` is the one way to get this wrong, which is why the
 list is short, alphabetical, and sitting under the reasoning. A path with an
-index in it is never eligible. Neither is a view pointer like
+index in it is never eligible, nor is one that _resolves_ to an index the way
+`this_device` does. Neither is a view pointer like
 `live_set view selected_track`, which names whatever is selected right now.
 
 Re-registering a mock object mid-test empties the memo, because that is a test

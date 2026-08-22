@@ -18,7 +18,19 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 describe("live-api memo", () => {
   it("hands back the same object for a stable target", () => {
     expect(LiveAPI.from(livePath.liveSet)).toBe(LiveAPI.from(livePath.liveSet));
-    expect(LiveAPI.from("this_device")).toBe(LiveAPI.from("this_device"));
+    expect(LiveAPI.from(livePath.masterTrack())).toBe(
+      LiveAPI.from(livePath.masterTrack()),
+    );
+  });
+
+  // this_device names one object forever but resolves to an indexed path
+  // (live_set tracks 3 devices 0), and deleting an earlier track moves the
+  // device without moving the path. A remembered object keeps reporting the
+  // host track it was resolved against — and delete's "don't remove Producer
+  // Pal's own track" guard compares against exactly that number.
+  it("resolves this_device afresh every time", () => {
+    expect(LiveAPI.from("this_device")).not.toBe(LiveAPI.from("this_device"));
+    expect(memoizedObject("this_device")).toBeUndefined();
   });
 
   // The one that matters. Tools read a path, mutate, then read the same path
