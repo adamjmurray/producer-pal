@@ -80,12 +80,22 @@ const trackedObjects: LiveAPI[] = [];
  * the session has seen. That is bounded, but not small: reading a big Live Set
  * touches an object per clip.
  *
- * Anything over the ceiling is released and dropped. A request that needs more
- * than this builds the difference, which is what it did before pooling existed.
- * Set high enough to cover an ordinary request and low enough to stay
- * negligible memory.
+ * The ceiling costs no peak memory, because every object on the list was alive
+ * at once during the request that built it. All it decides is whether that
+ * memory is given back afterwards — at the price of rebuilding it next time.
+ *
+ * So set it above the biggest request, not above an ordinary one. At 512, a
+ * deep read of a 64-pad kit (1,314 objects) rebuilt 803 of them on *every*
+ * repeat, and per-call latency climbed from 2.2 s to 5.9 s over twelve calls
+ * and kept going. Raised to 4,096, the same call constructed on its first run
+ * and nothing after, flat at 1.2 s. Measured on 12.4.3, where a 1,314-object
+ * pool also left a track add and delete unchanged.
+ *
+ * 8,192 rather than the 4,096 that was measured, because 4,096 is exactly a
+ * 64x64 session grid read — sitting on the boundary buys nothing when going
+ * over it is free.
  */
-export const MAX_POOLED_OBJECTS = 512;
+export const MAX_POOLED_OBJECTS = 8192;
 
 /**
  * Released objects with a cleared path, waiting to be retargeted.
