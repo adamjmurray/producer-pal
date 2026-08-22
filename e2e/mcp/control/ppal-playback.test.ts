@@ -114,6 +114,8 @@ describe("ppal-playback", () => {
     const playingClips = parseToolResult<PlaybackResult>(playClipsResult);
 
     expect(playingClips.playing).toBe(true);
+    // Only play-scene fires a scene, so a clip action names none
+    expect(playingClips.sceneName).toBeUndefined();
 
     await sleep(100);
 
@@ -138,7 +140,7 @@ describe("ppal-playback", () => {
 
     expect(stoppedAll).toBeDefined();
 
-    // Test 10: Play scene
+    // Test 10: Play scene, which names the scene it fired
     const playSceneResult = await ctx.client!.callTool({
       name: "ppal-playback",
       arguments: { action: "play-scene", sceneIndex: 0 },
@@ -146,8 +148,31 @@ describe("ppal-playback", () => {
     const playingScene = parseToolResult<PlaybackResult>(playSceneResult);
 
     expect(playingScene.playing).toBe(true);
+    expect(playingScene.sceneIndex).toBe(0);
+    expect(playingScene.sceneName).toBe("Intro");
 
-    // Test 11: Final stop to clean up
+    // Test 11: A clip id names the scene it sits in — clip1 is in s0, and the
+    // response is the only way the caller learns which scene that was
+    const byClipResult = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", id: clip1.id },
+    });
+    const byClip = parseToolResult<PlaybackResult>(byClipResult);
+
+    expect(byClip.sceneIndex).toBe(0);
+    expect(byClip.sceneName).toBe("Intro");
+
+    // Test 12: s7 has no name, so it is named by its number, as Live shows it
+    const unnamedResult = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-scene", sceneIndex: 7 },
+    });
+    const unnamed = parseToolResult<PlaybackResult>(unnamedResult);
+
+    expect(unnamed.sceneIndex).toBe(7);
+    expect(unnamed.sceneName).toBe("8");
+
+    // Test 13: Final stop to clean up
     const finalResult = await ctx.client!.callTool({
       name: "ppal-playback",
       arguments: { action: "stop" },
@@ -161,5 +186,7 @@ describe("ppal-playback", () => {
 interface PlaybackResult {
   playing: boolean;
   currentTime: string;
+  sceneIndex?: number;
+  sceneName?: string;
   arrangementLoop?: { start: string; end: string };
 }

@@ -10,6 +10,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
@@ -288,9 +289,20 @@ export function resolveLoopEnd(
   }
 }
 
+/** The scene play-scene fired, for the response */
+export interface FiredScene {
+  sceneIndex: number;
+  sceneName: string;
+}
+
 export interface PlaybackState {
   isPlaying: boolean;
   currentTimeBeats: number;
+  /**
+   * Set by play-scene only. The scene can be named by a scene id or by a clip
+   * in it, so the caller doesn't always know which one fired.
+   */
+  scene?: FiredScene;
 }
 
 /**
@@ -354,5 +366,6 @@ export function handlePlayScene(
   return {
     isPlaying: true,
     currentTimeBeats: state.currentTimeBeats,
+    scene: { sceneIndex, sceneName: sceneDisplayName(scene, sceneIndex) },
   };
 }

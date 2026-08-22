@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
@@ -92,11 +93,9 @@ export function readScene(
   const isTimeSignatureEnabled =
     (scene.getProperty("time_signature_enabled") as number) > 0;
 
-  const rawName = scene.getProperty("name") as string | null;
-  const sceneName = rawName === "" ? null : rawName;
   const result: ReadSceneResult = {
     id: scene.id,
-    name: sceneName ?? `${(resolvedSceneIndex as number) + 1}`,
+    name: sceneDisplayName(scene, resolvedSceneIndex as number),
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };

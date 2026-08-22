@@ -15,6 +15,7 @@ import {
   resolveLoopStart,
   resolveStartTime,
   validateTimelineParams,
+  type FiredScene,
   type PlaybackState,
 } from "./helpers/playback-helpers.ts";
 import {
@@ -56,12 +57,15 @@ interface PlaybackArgs {
 interface PlaybackResult {
   playing: boolean;
   currentTime: string;
+  sceneIndex?: number;
+  sceneName?: string;
   arrangementLoop?: { start: string; end: string };
 }
 
 interface BuildPlaybackResultParams {
   isPlaying: boolean;
   currentTime: string;
+  scene?: FiredScene;
   loop?: boolean;
   currentLoopStart: string;
   currentLoopEnd: string;
@@ -220,6 +224,7 @@ export function playback(
   return buildPlaybackResult({
     isPlaying,
     currentTime,
+    scene: playbackState.scene,
     loop: timeline.loop,
     currentLoopStart: currentLoop.start,
     currentLoopEnd: currentLoop.end,
@@ -247,6 +252,7 @@ function handleFocus(action: string, focus?: boolean): void {
  * @param params - Result parameters
  * @param params.isPlaying - Whether playback is active
  * @param params.currentTime - Current time in bar|beat format
+ * @param params.scene - The scene play-scene fired, when the action fired one
  * @param params.loop - Loop enabled state
  * @param params.currentLoopStart - Current loop start (post-set actual value)
  * @param params.currentLoopEnd - Current loop end (post-set actual value)
@@ -256,6 +262,7 @@ function handleFocus(action: string, focus?: boolean): void {
 function buildPlaybackResult({
   isPlaying,
   currentTime,
+  scene,
   loop,
   currentLoopStart,
   currentLoopEnd,
@@ -264,6 +271,8 @@ function buildPlaybackResult({
   const result: PlaybackResult = {
     playing: isPlaying,
     currentTime,
+    // Which scene fired, since a scene id or a clip in it can name it
+    ...(scene && { sceneIndex: scene.sceneIndex, sceneName: scene.sceneName }),
   };
 
   const loopEnabled = loop ?? (liveSet.getProperty("loop") as number) > 0;

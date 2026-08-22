@@ -298,6 +298,8 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
+      sceneIndex: 0,
+      sceneName: "Test Scene",
     });
   });
 

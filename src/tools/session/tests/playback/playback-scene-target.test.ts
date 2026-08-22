@@ -22,12 +22,18 @@ import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
  * Register a scene, reachable by the given id and by its own path.
  * @param sceneIndex - The scene's index
  * @param id - The id a caller would pass in `ids`
+ * @param name - The scene's name, defaulting to the Scene mock's
  * @returns The scene's mock, to assert it fired
  */
-function mockScene(sceneIndex: number, id?: string): RegisteredMockObject {
+function mockScene(
+  sceneIndex: number,
+  id?: string,
+  name?: string,
+): RegisteredMockObject {
   return registerMockObject(id ?? livePath.scene(sceneIndex), {
     path: livePath.scene(sceneIndex),
     type: "Scene",
+    ...(name != null && { properties: { name } }),
   });
 }
 
@@ -70,6 +76,54 @@ describe("playback play-scene target agreement", () => {
     playback({ action: "play-scene", id: "clip1" });
 
     expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A clip slot sits in a scene the same way a clip does, so its id names one
+  // too — no extra handling, since both paths carry the scene index.
+  it("fires the scene a clip slot id sits in", () => {
+    const scene = mockScene(3);
+
+    registerMockObject("slot1", {
+      path: livePath.track(0).clipSlot(3),
+      type: "ClipSlot",
+    });
+    playback({ action: "play-scene", id: "slot1" });
+
+    expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A clip id names its scene without naming which one, so the response says.
+  it("names the scene a clip id resolved to", () => {
+    mockScene(3, undefined, "Chorus");
+    mockSessionClip("clip1", 0, 3);
+
+    expect(playback({ action: "play-scene", id: "clip1" })).toMatchObject({
+      sceneIndex: 3,
+      sceneName: "Chorus",
+    });
+  });
+
+  // Live shows an unnamed scene as its number, and readScene says the same.
+  it("names an unnamed scene by its number", () => {
+    mockScene(3, undefined, "");
+
+    expect(playback({ action: "play-scene", sceneIndex: 3 })).toMatchObject({
+      sceneIndex: 3,
+      sceneName: "4",
+    });
+  });
+
+  // Only play-scene fires one, so nothing else may claim it did.
+  it("names no scene for a clip action", () => {
+    mockSessionClip("clip1", 0, 3);
+    registerMockObject(livePath.track(0).clipSlot(3), {
+      path: livePath.track(0).clipSlot(3),
+    });
+
+    const result = playback({ action: "play-session-clips", id: "clip1" });
+
+    expect(result).not.toHaveProperty("sceneIndex");
+    expect(result).not.toHaveProperty("sceneName");
   });
 
   // Scene 0 is falsy, so every hop that carries it has to read it as a value
