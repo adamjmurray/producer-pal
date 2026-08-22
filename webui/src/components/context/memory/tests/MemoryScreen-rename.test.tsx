@@ -189,9 +189,12 @@ function routeFetch(): Deferred<Response> {
 /**
  * Like {@link routeFetch}, but the mount GET lists a second memory to navigate
  * to while the rename is open.
+ * @param listAfter - What later GETs list; a refused rename leaves the old slug
  * @returns The rename PUT's deferred response
  */
-function routeFetchWithOther(): Deferred<Response> {
+function routeFetchWithOther(
+  listAfter: MemoryEntryView[] = [RENAMED, OTHER],
+): Deferred<Response> {
   const renamePut = deferred<Response>();
 
   fetchMock.mockResolvedValueOnce(jsonResponse({ entries: [ENTRY, OTHER] }));
@@ -199,7 +202,7 @@ function routeFetchWithOther(): Deferred<Response> {
   (fetchMock as unknown as FetchMock).mockImplementation((url, init) =>
     Promise.resolve(
       (init?.method ?? "GET") === "GET"
-        ? jsonResponse({ entries: [RENAMED, OTHER] })
+        ? jsonResponse({ entries: listAfter })
         : jsonResponse({ entry: echoOf(url, init) }),
     ),
   );
@@ -490,6 +493,42 @@ describe("MemoryScreen — navigating away during a rename", () => {
     expect(entryPuts()).toStrictEqual([
       {
         url: expect.stringContaining("new-slug") as string,
+        body: {
+          description: ENTRY.description,
+          content: "Composes in C minor and F minor.",
+        },
+      },
+    ]);
+  });
+
+  it("saves that edit under the old slug when the rename is refused", async () => {
+    // A refusal leaves the entry exactly where it was, so the draft still has a
+    // live slug to land on. Bailing here lost it: the refused write saved
+    // nothing, and the hold had already suppressed the unmount flush.
+    const renamePut = routeFetchWithOther([ENTRY, OTHER]);
+
+    render(<MemoryScreenHarness />);
+
+    await startRename();
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit likes-swing" }));
+
+    renamePut.resolve(
+      new Response(JSON.stringify({ error: "new-slug already exists" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await settleAutosave();
+
+    expect(entryPuts()).toStrictEqual([
+      {
+        url: expect.stringContaining("prefers-c-minor") as string,
         body: {
           description: ENTRY.description,
           content: "Composes in C minor and F minor.",

@@ -300,7 +300,12 @@ function useMemoryRename(params: MemoryRenameParams): {
   };
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
-  const commitRename = async (oldName: string, to: string): Promise<void> => {
+  // Takes the entry rather than its name: a refused rename leaves it the live
+  // one, and the catch-up below needs it whole.
+  const commitRename = async (
+    from: MemoryEntryView,
+    to: string,
+  ): Promise<void> => {
     renamingRef.current = true;
     setRenaming(true);
 
@@ -310,7 +315,7 @@ function useMemoryRename(params: MemoryRenameParams): {
       await settlePendingSave();
 
       const { entry: renamed, error } = await collection.renameEntry(
-        oldName,
+        from.name,
         to,
         {
           description,
@@ -327,7 +332,16 @@ function useMemoryRename(params: MemoryRenameParams): {
 
       if (renamed == null) {
         setRenameError(error);
-        setName(oldName);
+        setName(from.name);
+
+        // The move didn't happen, so `from` is still the live entry — and a
+        // closed editor has no clock left to write what was typed after the
+        // rename went out. Same catch-up as the success path, against the slug
+        // that stayed put. Skipping it lost the draft outright: the refused
+        // write saved nothing, and the hold suppressed the unmount flush.
+        if (!onTheClock) {
+          await saveDraftAfterClose(collection, from, draftRef.current);
+        }
 
         return;
       }
@@ -335,7 +349,7 @@ function useMemoryRename(params: MemoryRenameParams): {
       setRenameError(null);
       setName(renamed.name);
       noteSaved(memoryEntryKey(renamed));
-      onRenamed(oldName, renamed.name);
+      onRenamed(from.name, renamed.name);
 
       if (!onTheClock) {
         await saveDraftAfterClose(collection, renamed, draftRef.current);
@@ -358,7 +372,7 @@ function useMemoryRename(params: MemoryRenameParams): {
       return;
     }
 
-    void commitRename(entry.name, trimmed);
+    void commitRename(entry, trimmed);
   };
 
   return { nameError, renaming, onNameChange, onRename };
@@ -369,17 +383,18 @@ function useMemoryRename(params: MemoryRenameParams): {
  * was held off for has landed.
  *
  * Closing during the round trip is the one gap the hold leaves: it suppresses
- * the unmount flush too, and by then the entry has moved, so nothing typed after
- * the rename was dispatched has anywhere to go. This writes it under the NEW
- * slug — the old one is gone, and re-creating it would resurrect the entry the
- * rename moved away from. A refused rename gets nothing, for the same reason.
+ * the unmount flush too, so nothing typed after the rename was dispatched has
+ * anywhere to go. Which slug to write depends on how the rename ended. On
+ * success it is the NEW one: the old is gone, and re-creating it would
+ * resurrect the entry the rename moved away from. On a refusal it is the OLD
+ * one, still live precisely because the move never happened.
  * @param collection - The collection hook (still mounted above the editor)
- * @param renamed - The rename's echo: what the server actually stored
+ * @param target - The entry the draft belongs to now
  * @param draft - The editor's last live draft, and its own savable gate
  */
 async function saveDraftAfterClose(
   collection: UseMemoryCollectionReturn,
-  renamed: MemoryEntryView,
+  target: MemoryEntryView,
   draft: { description: string; body: string; canSave: boolean },
 ): Promise<void> {
   const { description, body } = draft;
@@ -387,13 +402,12 @@ async function saveDraftAfterClose(
   if (!draft.canSave) return;
 
   if (
-    memoryEntryKey({ ...renamed, description, body }) ===
-    memoryEntryKey(renamed)
+    memoryEntryKey({ ...target, description, body }) === memoryEntryKey(target)
   ) {
     return;
   }
 
-  await collection.saveEntry(renamed.name, { description, content: body });
+  await collection.saveEntry(target.name, { description, content: body });
 }
 
 /**
