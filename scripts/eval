@@ -10,7 +10,7 @@
 #
 # Local OpenAI-compatible servers (use the local/ provider + -b base URL):
 #   ./scripts/eval -b http://localhost:1234/v1 -m local/google/gemma-4-e4b -t create-drum-beat  # LM Studio
-#   ./scripts/eval -b http://localhost:11434/v1 -m local/qwen3.5 -t create-drum-beat            # Ollama
+#   ./scripts/eval -b http://localhost:11434/v1 -m local/qwen3.8 -t create-drum-beat            # Ollama
 #
 # See models.ts for other recommended models
 

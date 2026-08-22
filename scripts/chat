@@ -9,7 +9,7 @@
 #
 # Local OpenAI-compatible servers (use the local/ provider + -b base URL):
 #   ./scripts/chat -b http://localhost:1234/v1 -m local/google/gemma-4-e4b  # LM Studio
-#   ./scripts/chat -b http://localhost:11434/v1 -m local/qwen3.5            # Ollama
+#   ./scripts/chat -b http://localhost:11434/v1 -m local/qwen3.8            # Ollama
 #   ./scripts/chat -b http://192.168.4.37:1234/v1 --list-models local       # remote LM Studio
 
 exec node --env-file=.env evals/chat/index.ts "$@"

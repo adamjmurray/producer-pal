@@ -131,7 +131,7 @@ UI, instead of [Bionic's own interface](./bionic).
 4. In the Producer Pal Chat UI settings:
    - Provider: **Bionic / LM Studio (local)**
    - URL: The Base URL you copied
-   - Model: A model that supports tools, such as `qwen/qwen3.5-9b`,
+   - Model: A model that supports tools, such as `qwen/qwen3.8-27b`,
      `google/gemma-4-e4b`, `mistralai/devstral-small-2-2512`, or
      `zai-org/glm-4.7-flash`
 5. Save and click "Quick Connect"
