@@ -249,12 +249,16 @@ Each scenario has assertions that contribute to pass/fail:
 - **`state`** - Verifies Live Set state via MCP tool calls
 - **`custom`** - Arbitrary callback assertions on turn data
 
-Plus informational-only assertions (don't affect pass/fail):
+Plus:
 
-- **`llm_judge`** - LLM evaluates response quality with pass/fail + issues
+- **`llm_judge`** - LLM evaluates response quality with pass/fail + issues. It
+  gates the result unless the scenario sets `judgeAdvisory: true`, which keeps
+  the commentary but stops it flipping a run to fail.
 - **`token_usage`** - Tracks token efficiency against a target budget
+  (informational only)
 
-The judge defaults to Gemini 3 Flash. Override with `-j`.
+The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
+with `--skip-judge`.
 
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 efficiency is averaged, and judge shows a pass rate.
@@ -370,7 +374,6 @@ export const myScenario: EvalScenario = {
       args: { trackIndex: 0 },
       expect: { name: "Drums" },
     },
-    { type: "llm_judge", prompt: "Evaluate if..." },
   ],
 };
 ```
@@ -384,9 +387,12 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
   real time, so keep the suite focused. Don't add scenarios for the sake of
   coverage — add them when you find a bug, add a tool, or want to validate a
   specific model's behavior.
-- **Prefer deterministic assertions.** `tool_called`, `state`, and
-  `response_contains` are fast, cheap, and reproducible. Use `llm_judge` only
-  when you need to evaluate something subjective (tone, reasoning quality).
+- **Default to no judge.** `tool_called`, `state`, and `response_contains` are
+  fast, cheap, and reproducible; a judge costs an LLM call per scenario and
+  miscounts anything musical. Add `llm_judge` only when the thing being graded
+  is the assistant's PROSE and no state check can see it — did it offer, did it
+  re-ask, did it accept a no. If deterministic checks already pin the outcome
+  and you only want the commentary, mark it `judgeAdvisory: true`.
 - **Grade outcomes, not paths.** Assert on the final state (e.g., "clip has
   these notes") rather than the exact sequence of tool calls. This avoids
   penalizing models that find valid alternative approaches.

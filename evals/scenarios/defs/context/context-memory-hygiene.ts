@@ -12,9 +12,8 @@
  * UPDATE rather than duplicate, and DELETE what's wrong. Neither had any
  * LLM-level coverage.
  *
- * The judge is ADVISORY here: the entry name and the action are tool-call
- * arguments, so the custom assertions already pin the outcome exactly. See
- * context-write-layers.ts for why an un-advisory judge misfires on these.
+ * No LLM judge: the entry name and the action are tool-call arguments, so the
+ * custom assertions already pin the outcome exactly.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -39,8 +38,6 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   ...seedContext({
@@ -83,16 +80,6 @@ export const contextMemoryUpdateNotDuplicate: EvalScenario = {
     // An entry that already covers the fact overrides the layer rules: update
     // it where it lives. (Observed, verbatim, from a model's own reflection.)
     assertNoContextWrite({ scope: "global", turn: 1 }),
-
-    {
-      type: "llm_judge",
-      prompt: `A memory named "favorite-synth" already said the user's go-to lead
-synth is Serum, and the user just said they switched to Vital. Evaluate whether
-the assistant UPDATED that existing entry (reusing the name "favorite-synth").
-FAIL it for creating a second, contradictory memory under a new name, and FAIL
-it for writing the new fact to global/project context while leaving the
-favorite-synth memory still claiming Serum.`,
-    },
   ],
 };
 
@@ -102,8 +89,6 @@ export const contextMemoryDelete: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   ...seedContext({
@@ -127,12 +112,5 @@ export const contextMemoryDelete: EvalScenario = {
 
     // Not "write an empty body" or "append (done)" — the entry should be gone.
     assertMemoryDeleted(JAMIE_COLLAB, 1),
-
-    {
-      type: "llm_judge",
-      prompt: `A memory tracked a deadline for a collab that the user has now
-finished. Evaluate whether the assistant DELETED that memory outright, rather
-than rewriting it to say "done" or leaving it in place.`,
-    },
   ],
 };

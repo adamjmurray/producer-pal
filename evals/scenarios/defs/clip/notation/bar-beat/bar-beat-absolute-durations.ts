@@ -91,7 +91,7 @@ function assertClipNotes(
 /**
  * Common assertion head shared by every create-clip scenario below: connect
  * ran (turn 0) and the model issued a create-clip (turn 1). Each scenario
- * appends its own per-clip note assertions and llm_judge.
+ * appends its own per-clip note assertions.
  *
  * @returns The leading assertions every create-clip scenario shares
  */
@@ -113,12 +113,9 @@ export const barBeatTriplets: EvalScenario = {
     "Triplet durations (n/12, n/6) — most likely failure mode for absolute notation",
   kind: "capability",
   liveSet: LIVE_SET,
-  // Deterministic state assertions re-read the clip and pin exact note
-  // positions + durations — that is the authoritative grade here. The judge
-  // stays for qualitative commentary but is advisory: LLM judges miscount
-  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
-  // it must not flip a passing run to fail.
-  judgeAdvisory: true,
+  // The state assertions re-read the clip and pin exact note positions +
+  // durations — that is the whole grade. No LLM judge: they miscount bar|beat
+  // notation and mis-flag the correct meter-aware `Nbar` token.
 
   messages: [
     MSG_CONNECT,
@@ -140,15 +137,6 @@ export const barBeatTriplets: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", EIGHTH_TRIPLET_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "4/4", QUARTER_TRIPLET_STARTS),
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created a 1-bar clip with eighth-note triplets (12 kicks spanning the bar)
-2. Created a second 1-bar clip with quarter-note triplets (6 kicks spanning the bar)
-3. Used an appropriate triplet duration (e.g. n/12 and n/6 in the new absolute notation, or equivalent expressions)
-4. Did NOT produce a clip with the wrong number of notes`,
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
 };
@@ -165,12 +153,9 @@ export const barBeatMeterFill: EvalScenario = {
     "Bar-filling note duration in 5/4 and 6/8 (n5/4, n3/4) — quarter-counting test",
   kind: "capability",
   liveSet: LIVE_SET,
-  // Deterministic state assertions re-read the clip and pin exact note
-  // positions + durations — that is the authoritative grade here. The judge
-  // stays for qualitative commentary but is advisory: LLM judges miscount
-  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
-  // it must not flip a passing run to fail.
-  judgeAdvisory: true,
+  // The state assertions re-read the clip and pin exact note positions +
+  // durations — that is the whole grade. No LLM judge: they miscount bar|beat
+  // notation and mis-flag the correct meter-aware `Nbar` token.
 
   messages: [
     MSG_CONNECT,
@@ -191,14 +176,6 @@ export const barBeatMeterFill: EvalScenario = {
     // 6/8 — so the duration is asserted, which also subsumes the meter check.
     assertClipNotes(`${DRUMS_TRACK}/0`, "5/4", [0], 5),
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0], 3),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created a 5/4 clip with one kick whose duration spans the full bar (5 quarter notes; n5/4 and the meter-aware bar token 1bar both resolve to this)
-2. Created a 6/8 clip with one kick whose duration spans the full bar (3 quarter notes, since 6 eighths = 3 quarters; n3/4 and 1bar both resolve to this)
-3. Note: the bar duration token "1bar"/"Nbar" is CORRECT here — it is meter-aware and resolves to the right number of quarters per meter. Only flag a duration that is wrong in actual length (e.g. a bare/unitless "1" treated as one quarter, or a fixed quarter count copied across meters). Do NOT penalize 1bar/Nbar.`,
-    },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
@@ -221,12 +198,9 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     "Compound felt pulse (dotted-quarter beat) in 6/8 and 12/8 — 2 and 4 kicks at eighths 1,4,(7,10)",
   kind: "capability",
   liveSet: LIVE_SET,
-  // Deterministic state assertions re-read the clip and pin exact note
-  // positions + durations — that is the authoritative grade here. The judge
-  // stays for qualitative commentary but is advisory: LLM judges miscount
-  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
-  // it must not flip a passing run to fail.
-  judgeAdvisory: true,
+  // The state assertions re-read the clip and pin exact note positions +
+  // durations — that is the whole grade. No LLM judge: they miscount bar|beat
+  // notation and mis-flag the correct meter-aware `Nbar` token.
 
   messages: [
     MSG_CONNECT,
@@ -250,14 +224,6 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "6/8", COMPOUND_TWO_FEEL_STARTS),
     assertClipNotes(`${DRUMS_TRACK}/1`, "12/8", COMPOUND_FOUR_FEEL_STARTS),
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created a 6/8 clip with 2 kicks on the felt dotted-quarter pulse (eighth-beats 1 and 4 — Ableton beats 0 and 1.5), NOT a kick on every eighth and NOT 3 quarter-note kicks
-2. Created a 12/8 clip with 4 kicks on the felt dotted-quarter pulse (eighth-beats 1, 4, 7, 10 — Ableton beats 0, 1.5, 3, 4.5)
-3. Grouped the eighths into dotted-quarter beats rather than placing a hit on every eighth (over-subdivided) or miscounting`,
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
 };
@@ -273,12 +239,9 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     "Same `n` fraction across meters — quarter notes filling 4/4, 6/8, 5/4",
   kind: "capability",
   liveSet: LIVE_SET,
-  // Deterministic state assertions re-read the clip and pin exact note
-  // positions + durations — that is the authoritative grade here. The judge
-  // stays for qualitative commentary but is advisory: LLM judges miscount
-  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
-  // it must not flip a passing run to fail.
-  judgeAdvisory: true,
+  // The state assertions re-read the clip and pin exact note positions +
+  // durations — that is the whole grade. No LLM judge: they miscount bar|beat
+  // notation and mis-flag the correct meter-aware `Nbar` token.
 
   messages: [
     MSG_CONNECT,
@@ -305,17 +268,6 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", [0, 1, 2, 3], 1),
     assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2], 1),
     assertClipNotes(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4], 1),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created exactly three clips (one in 4/4, one in 6/8, one in 5/4)
-2. Each clip has kicks on every quarter note that span exactly one bar:
-   - 4/4: 4 kicks
-   - 6/8: 3 kicks (since 6 eighths = 3 quarters)
-   - 5/4: 5 kicks
-3. Used absolute-duration syntax (n/4) consistently across all three meters — NOT meter-relative durations that produce different numeric values per meter`,
-    },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],

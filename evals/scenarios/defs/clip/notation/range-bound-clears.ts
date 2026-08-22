@@ -198,7 +198,6 @@ interface RangeClearSpec {
   windowOf: (beatsPerBar: number) => [number, number];
   /** Description for the cleared-region assertion. */
   windowLabel: string;
-  judgePrompt: string;
 }
 
 /**
@@ -229,7 +228,6 @@ function rangeClearScenario(spec: RangeClearSpec): EvalScenario {
       { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
       recordClearSyntax(2),
       assertRegionCleared(1, 3, spec.windowOf, spec.windowLabel),
-      { type: "llm_judge", prompt: spec.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
     ],
   };
@@ -244,10 +242,6 @@ export const rangeClearWholeBar: EvalScenario = rangeClearScenario({
   // bar N starts at (N-1)*beatsPerBar; bar 3 = [2*bpb, 3*bpb).
   windowOf: (bpb) => [2 * bpb, 3 * bpb],
   windowLabel: "bar 3 cleared, bar-4 downbeat (and all else) intact",
-  judgePrompt: `Evaluate the edit (turns 2–3):
-1. Every note in bar 3 (the third measure) was deleted
-2. The note on the downbeat of bar 4 still exists — it must NOT have been deleted
-3. Bars 1, 2, and the rest of bar 4 are unchanged (no notes lost or added)`,
 });
 
 /** Clear the first half of a bar; the midpoint downbeat note must survive. */
@@ -262,8 +256,4 @@ export const rangeClearFirstHalf: EvalScenario = rangeClearScenario({
   windowOf: (bpb) => [2 * bpb, 2 * bpb + bpb / 2],
   windowLabel:
     "first half of bar 3 cleared, midpoint note (and all else) intact",
-  judgePrompt: `Evaluate the edit (turns 2–3):
-1. The notes in the first half of bar 3 (its first two beats, in 4/4) were deleted
-2. The note on the bar's midpoint — the downbeat of the second half (beat 3 in 4/4) — still exists and must NOT have been deleted
-3. The fourth beat of bar 3 and all of bars 1, 2, and 4 are unchanged`,
 });

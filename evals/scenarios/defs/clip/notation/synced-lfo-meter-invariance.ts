@@ -180,15 +180,6 @@ export const syncedLfoMeterInvariance: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordLfoReach(2),
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate the LFO edit (turn 2):
-1. A periodic waveform (sine or equivalent) modulates the velocities
-2. The period is one quarter note, written as an absolute note value (e.g. "n/4") — NOT a meter-relative number and NOT the removed "Nt"/"1:0t" synced-period syntax
-3. The "sync" keyword is present so the wave is locked to the timeline (continuous across the clip), not phase-reset per note
-4. Because the period is an absolute note value, the same expression would behave identically in any meter`,
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],
 };

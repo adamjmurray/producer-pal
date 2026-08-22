@@ -19,9 +19,8 @@
  * NON-EMPTY document — which the layer-routing scenarios deliberately do not —
  * and inspect the `content` the model actually sends.
  *
- * The judge is ADVISORY here: what survived the write is read straight off the
- * `content` argument, so the custom assertion pins it exactly. See
- * context-write-layers.ts for why an un-advisory judge misfires on these.
+ * No LLM judge: what survived the write is read straight off the `content`
+ * argument, so the custom assertion pins it exactly.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -56,8 +55,6 @@ export const contextWritePreservesProject: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   config: { projectContext: EXISTING_PROJECT },
 
@@ -79,15 +76,6 @@ export const contextWritePreservesProject: EvalScenario = {
       turn: "any",
       mustContain: ["deep house", "Burial", "16 bars"],
     }),
-
-    {
-      type: "llm_judge",
-      prompt: `The project context already recorded the genre (deep house, 124 BPM),
-a reference track (Burial - Archangel), and a 16-bar pad intro. The user asked to
-add a new fact (drop at bar 33, sidechained bass). Since action:write REPLACES the
-whole document, evaluate whether the assistant wrote back the existing facts ALONG
-WITH the new one, rather than replacing the document with only the new fact.`,
-    },
   ],
 };
 
@@ -97,8 +85,6 @@ export const contextWritePreservesGlobal: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   ...seedContext({ global: EXISTING_GLOBAL }),
 
@@ -116,13 +102,5 @@ export const contextWritePreservesGlobal: EvalScenario = {
       turn: "any",
       mustContain: ["Adam", "chord progressions"],
     }),
-
-    {
-      type: "llm_judge",
-      prompt: `The global context already said to call the user Adam and that they
-like strong chord progressions. The user asked to ADD a naming preference. Since
-action:write REPLACES the whole document, evaluate whether the assistant preserved
-the existing preferences alongside the new one, rather than wiping them.`,
-    },
   ],
 };

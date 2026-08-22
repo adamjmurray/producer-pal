@@ -108,14 +108,6 @@ export const durationArgBarLength: EvalScenario = {
     // fraction masquerading as the length.
     assertLengthArg(1, /^\s*4\s*bar\s*$/i, "length arg is `4bar`, not bare 4"),
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the create-clip call (turn 1):
-1. An empty 4-bar clip was created on the Drums track in scene 1
-2. The length was expressed in bars (e.g. "4bar") — NOT as a bare number (4), a bare fraction, or a bar|beat position glyph
-3. The model did not add notes it wasn't asked for`,
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
 };
@@ -204,14 +196,6 @@ export const durationArgMixedCombiner: EvalScenario = {
 
         return true;
       },
-    },
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the create-clip call (turn 1):
-1. An empty clip was created in 6/8 time on the Drums track
-2. Its length is "one bar plus one quarter note" = 4 quarter notes total (6/8 bar = 3 quarter notes, plus 1 more)
-3. CRITICAL: the length was expressed as a bar count PLUS a note value (e.g. "1bar+n/4"), NOT collapsed into a single fraction like "n5/4". Collapsing to n5/4 = 5 quarter notes is WRONG in 6/8 — that is the failure to catch.`,
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },

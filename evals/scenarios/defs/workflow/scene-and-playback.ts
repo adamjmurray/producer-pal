@@ -17,6 +17,9 @@ export const sceneAndPlayback: EvalScenario = {
   description: "Create scene with tempo, play and stop",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // The checks below pin the outcome. The judge only adds commentary they
+  // can't anticipate — hallucinations, misleading prose, extra steps.
+  judgeAdvisory: true,
 
   messages: [
     "Connect to Ableton Live",

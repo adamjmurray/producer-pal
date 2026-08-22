@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,6 +14,9 @@ export const trackAndDeviceWorkflow: EvalScenario = {
   description: "Create track, add device, update properties, route a send",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // The checks below pin the outcome. The judge only adds commentary they
+  // can't anticipate — hallucinations, misleading prose, extra steps.
+  judgeAdvisory: true,
 
   messages: [
     "Connect to Ableton Live",

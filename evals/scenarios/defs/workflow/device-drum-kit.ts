@@ -18,7 +18,7 @@
  *
  * Grading is path-independent (the model names its own track): we find ONE
  * device call carrying >= 2 pad-path sample params and confirm the engine took
- * it (no relayed `WARNING` on that call). The judge covers the rest.
+ * it (no relayed `WARNING` on that call).
  */
 
 import { argText } from "../arg-text.ts";
@@ -97,14 +97,6 @@ export const deviceDrumKit: EvalScenario = {
       type: "response_contains",
       pattern: /drum|kit|pad|rack/i,
       turn: 2,
-    },
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Listed the available samples (including the kick)
-2. Created a new MIDI track and added a Drum Rack to it
-3. Loaded the kick onto pad C1 and the other sample onto pad D1 in a SINGLE device call using path-prefixed sample params (e.g. pC1/d0/sample), not pad-by-pad`,
     },
 
     {

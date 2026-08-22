@@ -14,8 +14,8 @@
  *   - repeat:  echoing notes within the clip should ADD notes (no resize)
  *   - split:   cutting a note at explicit positions should ADD notes
  *   - merge:   gluing repeated same-pitch notes should REMOVE notes
- * The LLM judge is advisory; the deterministic idiom + count-direction check is
- * the authoritative grade.
+ * The deterministic idiom + count-direction check is the whole grade — no LLM
+ * judge.
  *
  * The split scenarios steer firmly to the `split()` TRANSFORM (subdivide notes),
  * not update-clip's `split` PARAMETER (slice a clip into two clips) — same word,
@@ -26,14 +26,14 @@
  * `./scripts/eval -m google/gemini-3.6-flash -t note-ops-ratchet-roll -t note-ops-merge -t note-ops-split -t note-ops-split-sync -t note-ops-repeat`.
  * Validated vs Live 2026-06-06: ratchet/merge PASS 4/4 — the model reached for
  * the exact idioms (`ratchet(4)` grew 12→48 notes; `merge()` collapsed to one
- * note per drum pitch), judges pass.
+ * note per drum pitch).
  * Validated vs Live 2026-06-07: split/split-sync PASS 4/4 — the model emitted
  * `split(1|3, 2|1)` clip-relative and `split(7|1, 8|1, sync)` for an arrangement
  * clip starting at bar 5 (one held note → 3 pieces, proving the sync coordinate
- * math end-to-end), judges pass.
+ * math end-to-end).
  * Validated vs Live 2026-06-11: repeat PASS 4/4 — the model reached for
  * `repeat(n/8)` (offset-first; copies defaults to 1), 4 notes → 8, clip length
- * unchanged, judge pass.
+ * unchanged.
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
@@ -283,7 +283,6 @@ export const noteOpsRatchetRoll: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: LIVE_SET,
-  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -294,10 +293,6 @@ export const noteOpsRatchetRoll: EvalScenario = {
   assertions: [
     ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /ratchet\(/, "grow"),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: each note of the lead melody was turned into a four-note roll (a ratchet) using the ratchet() note-count transform, NOT by hand-listing every individual note. The result should have roughly four times as many notes, each at the same pitch, evenly dividing the original note's duration.`,
-    },
     tokenBudget(100_000),
   ],
 };
@@ -309,7 +304,6 @@ export const noteOpsMerge: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: LIVE_SET,
-  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -320,10 +314,6 @@ export const noteOpsMerge: EvalScenario = {
   assertions: [
     ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /merge\(/, "shrink"),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: the repeated same-pitch hits in each drum lane were combined into one sustained note per lane using the merge() note-count transform, NOT by hand-rewriting the clip. The result should have far fewer notes (about one per distinct drum pitch).`,
-    },
     tokenBudget(100_000),
   ],
 };
@@ -335,7 +325,6 @@ export const noteOpsSplit: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
-  judgeAdvisory: true,
   setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
 
   messages: [
@@ -344,15 +333,7 @@ export const noteOpsSplit: EvalScenario = {
     "Break that one held note into separate notes by cutting it at bar 1 beat 3 and bar 2 beat 1.",
   ],
 
-  assertions: [
-    ...CREATE_THEN_UPDATE,
-    assertSplitGrew(2),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: the single sustained note was cut into separate notes at the two given bar|beat positions using the split() note-count transform (e.g. split(1|3, 2|1)) — NOT by hand-listing notes, and NOT by using update-clip's clip-level split parameter that slices a clip into two clips. The result should be the same pitch broken into pieces at those points.`,
-    },
-    tokenBudget(100_000),
-  ],
+  assertions: [...CREATE_THEN_UPDATE, assertSplitGrew(2), tokenBudget(100_000)],
 };
 
 export const noteOpsRepeat: EvalScenario = {
@@ -362,7 +343,6 @@ export const noteOpsRepeat: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
-  judgeAdvisory: true,
   setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
 
   messages: [
@@ -374,10 +354,6 @@ export const noteOpsRepeat: EvalScenario = {
   assertions: [
     ...CREATE_THEN_UPDATE,
     assertRepeatGrew(1, 2),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: every note was echoed an eighth note later at the same pitch using the repeat() note-count transform (e.g. repeat(n/8)) — NOT by hand-listing the echoed notes, and NOT by using update-clip's duplicateLoop flag (which would double the clip's length). The clip length should be unchanged and the note count should roughly double.`,
-    },
     // Three turns (connect + create + update), each carrying the full skills
     // blob; ~122k is the validated baseline (2026-06-11, gemini-3.5-flash).
     // Target leaves headroom so a real regression still trips it.
@@ -392,7 +368,6 @@ export const noteOpsSplitSync: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
-  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -403,10 +378,6 @@ export const noteOpsSplitSync: EvalScenario = {
   assertions: [
     ...CREATE_THEN_UPDATE,
     assertSplitGrew(2, { sync: true }),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: the single held note was cut into separate notes at arrangement bars 7 and 8 using the split() note-count transform with the trailing sync keyword (e.g. split(7|1, 8|1, sync)), which reads the bar|beat positions on the arrangement timeline — NOT by hand-listing notes, and NOT by using update-clip's clip-level split parameter.`,
-    },
     tokenBudget(100_000),
   ],
 };

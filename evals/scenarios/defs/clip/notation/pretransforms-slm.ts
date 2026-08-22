@@ -157,21 +157,19 @@ function recordSlmPath(turn: number): EvalAssertion {
 /**
  * Build an SLM preTransforms scenario. The two SLM cases (region clear, drum
  * remap) share an identical scaffold — connect, read drum notes, edit, classify
- * the path, judge the outcome — and differ only in the edit instruction and the
- * judge criteria, so they are assembled from one builder.
+ * the path — and differ only in the edit instruction, so they are assembled
+ * from one builder.
  *
  * @param spec - the per-scenario fields
  * @param spec.id - unique scenario id
  * @param spec.description - human-readable description
  * @param spec.editInstruction - the turn-2 user message that triggers the edit
- * @param spec.judgePrompt - llm_judge criteria for the outcome
  * @returns the assembled SLM EvalScenario
  */
 function buildSlmScenario(spec: {
   id: string;
   description: string;
   editInstruction: string;
-  judgePrompt: string;
 }): EvalScenario {
   return {
     id: spec.id,
@@ -186,7 +184,6 @@ function buildSlmScenario(spec: {
       assertNotesRead(1),
       { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
       recordSlmPath(2),
-      { type: "llm_judge", prompt: spec.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
     ],
   };
@@ -203,10 +200,6 @@ export const slmPretransformsRegionClear: EvalScenario = buildSlmScenario({
     "SLM: clear bar 2 of a drum clip — preTransforms shorthand vs notes contamination",
   editInstruction:
     "Clear out everything in the second bar of the drum clip. Leave the first bar exactly as it is.",
-  judgePrompt: `Evaluate ONLY the outcome (turn 2), under small-model mode:
-1. Bar 2 of the drum clip is now empty (all notes removed)
-2. Bar 1's drum content is completely unchanged
-3. The clear was done via a preTransforms region clear (e.g. "2|1-3|1: v0"), NOT by stuffing v0 deletions into the notes argument and NOT by rewriting bar 1`,
 });
 
 /**
@@ -221,8 +214,4 @@ export const slmPretransformsDrumRemap: EvalScenario = buildSlmScenario({
     "SLM: remap kicks→snares — preTransforms `C1: E1` shorthand vs rewrite",
   editInstruction:
     "Turn every kick hit in the drum clip into a snare hit instead — same timing, same velocities, just move them from the kick to the snare. Leave the hats alone.",
-  judgePrompt: `Evaluate ONLY the outcome (turn 2), under small-model mode. In this drum rack kick = C1, snare = E1, closed hat = Ab1:
-1. Every note that was on the kick (C1) is now on the snare (E1), preserving timing and velocity
-2. No kicks (C1) remain; the hats (Ab1) are untouched; the note count is unchanged
-3. The model used a preTransforms drum-lane remap (e.g. "C1: E1"), NOT a full read-and-rewrite of the whole clip`,
 });

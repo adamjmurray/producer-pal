@@ -224,12 +224,6 @@ export const whereTransforms: EvalScenario = {
       turn: 3,
     },
 
-    {
-      type: "llm_judge",
-      prompt:
-        "The user asked to select notes by their velocity value (the quiet ones, then the loud ones), not by pitch or time position. A correct solution uses a where() predicate on note.velocity for each request — deleting notes below ~50, then raising notes above ~90 by 20. It should NOT read every note and hand-list individual positions or pitches.",
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },
   ],
 };

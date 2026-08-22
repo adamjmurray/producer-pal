@@ -20,7 +20,7 @@
  *   - few anchor positions (repeats used)? → tier 2 (brackets but every position
  *     listed) vs tier 3 (`xN` repeats, ~one anchor per bar)
  * The outcome assertion guards musical validity so brackets-producing-garbage
- * can't pass. The LLM judge stays advisory (judges miscount bar|beat notation).
+ * can't pass. No LLM judge — judges miscount bar|beat notation.
  *
  * Two difficulty rungs:
  *   - arpeggio-bracket-idiom: straight eighths in every bar. Trivially
@@ -104,16 +104,6 @@ const MIXED_MESSAGE =
   "quarter notes — C major (C4, E4, G4); bar 4 straight eighth notes — " +
   "G major (G3, B3, D4).";
 
-const STRAIGHT_JUDGE = `Evaluate whether the assistant wrote the arpeggio with Producer Pal's compact pattern-bracket idiom rather than hand-listing every note:
-1. Created a 4-bar clip: an eighth-note arpeggio cycling each bar's chord tones — A minor, F major, C major, G major (32 notes, eight per bar).
-2. Used pitch-bracket cycling WITH repeat notation — e.g. \`[A3 C4 E4] 1|1x8\` — roughly one compact line per chord, NOT 32 hand-listed note positions and NOT brackets with every position spelled out.
-3. The arpeggio is musically correct: each bar cycles its own triad across straight eighths.`;
-
-const MIXED_JUDGE = `Evaluate whether the assistant wrote this mixed-rhythm arpeggio with Producer Pal's compact pattern-bracket idiom rather than hand-listing every note:
-1. Created a 4-bar clip filling each bar with its own note value — bar 1 eighths (8 notes), bar 2 sixteenths (16), bar 3 quarters (4), bar 4 eighths (8) — cycling A minor, F major, C major, G major.
-2. Used pitch-bracket cycling WITH repeat notation — roughly one compact line per bar, e.g. \`n/16 [F3 A3 C4] 2|1x16\` — changing the note value per bar with a duration token, NOT hand-listing the 36 notes and NOT spelling out every position. Mixed durations across bars do NOT require hand-listing.
-3. The arpeggio is musically correct: each bar cycles its own triad across its note value.`;
-
 /**
  * Build a read-back verdict for the given per-bar arpeggio spec: the right total
  * note count, and in every bar the right number of notes, each on that bar's
@@ -191,15 +181,14 @@ const usesRepeatNotation: EvalAssertion = {
 /**
  * Assemble an arpeggio-idiom scenario: connect (turn 0), one create-clip
  * (turn 1), then grade both the OUTCOME (`makeArpCheck`) and the PATH (bracket
- * cycling + repeats). The two rungs share everything but the prompt, the per-bar
- * spec, and the judge prompt.
+ * cycling + repeats). The two rungs share everything but the prompt and the
+ * per-bar spec.
  *
  * @param opts - Scenario specifics
  * @param opts.id - Scenario id
  * @param opts.description - One-line description
  * @param opts.message - User turn after the connect turn
  * @param opts.bars - Per-bar arpeggio spec for the read-back check
- * @param opts.judgePrompt - Advisory LLM-judge prompt
  * @returns The assembled scenario
  */
 function arpScenario(opts: {
@@ -207,7 +196,6 @@ function arpScenario(opts: {
   description: string;
   message: string;
   bars: ArpBar[];
-  judgePrompt: string;
 }): EvalScenario {
   return createClipScenario({
     id: opts.id,
@@ -219,7 +207,6 @@ function arpScenario(opts: {
       clipStateAssertion(LEAD_SLOT_1, "4/4", makeArpCheck(opts.bars)),
       usesBracketCycling,
       usesRepeatNotation,
-      { type: "llm_judge", prompt: opts.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
     ],
   });
@@ -236,7 +223,6 @@ export const arpeggioBracketIdiom: EvalScenario = arpScenario({
     "Arpeggio over a 4-chord progression — reach for pitch-bracket + repeat notation, not 32 hand-listed notes",
   message: STRAIGHT_MESSAGE,
   bars: STRAIGHT_BARS,
-  judgePrompt: STRAIGHT_JUDGE,
 });
 
 /**
@@ -250,5 +236,4 @@ export const arpeggioMixedDurations: EvalScenario = arpScenario({
     "Arpeggio with a different note value per bar — mixed durations must NOT trigger hand-listing",
   message: MIXED_MESSAGE,
   bars: MIXED_BARS,
-  judgePrompt: MIXED_JUDGE,
 });

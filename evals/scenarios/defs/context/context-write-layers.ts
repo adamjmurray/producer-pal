@@ -24,12 +24,11 @@
  * Seed nothing and these scenarios would assert the model asks permission in
  * exactly the case where the skills tell it not to.
  *
- * The judge is ADVISORY here. Everything these scenarios ask is a tool-call
- * argument — which scope, on which turn — so the custom assertions pin the
- * outcome exactly and the judge adds nothing a gate could use. Left un-advisory
- * it actively misfires: it has failed runs for unrelated behavior (writing clips
- * unprompted, giving no closing message) and once marked a quiet memory write as
- * a violation, which the skills explicitly permit.
+ * No LLM judge. Everything these scenarios ask is a tool-call argument — which
+ * scope, on which turn — so the custom assertions pin the outcome exactly, and
+ * a judge only misfires here: it failed runs for unrelated behavior (writing
+ * clips unprompted, giving no closing message) and once marked a quiet memory
+ * write as a violation, which the skills explicitly permit.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -56,8 +55,6 @@ export const contextWriteLayerProject: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   // Non-empty on purpose — see the file header. Also seeds global (via
   // seedContext) so this Set doesn't look like a brand-new user, which would
@@ -96,15 +93,6 @@ export const contextWriteLayerProject: EvalScenario = {
     // A write REPLACES the user's whole document — it must be offered, not
     // assumed.
     assertNoUnconfirmedWrite(1),
-
-    {
-      type: "llm_judge",
-      prompt: `The user described facts about THIS Live Set (tempo, key, arrangement).
-Evaluate whether the assistant:
-1. Offered to save them rather than writing the user's context document unasked
-2. On approval, saved them to the PROJECT layer (not global, not memory)
-3. Preserved the tempo, key, and arrangement details`,
-    },
   ],
 };
 
@@ -114,8 +102,6 @@ export const contextWriteLayerGlobal: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   // Non-empty on purpose — see the file header. (The model writes the real
   // global context here, so restore is mandatory either way.)
@@ -142,15 +128,6 @@ export const contextWriteLayerGlobal: EvalScenario = {
     assertNoContextWrite({ scope: "project", turn: "any" }),
 
     assertNoUnconfirmedWrite(1),
-
-    {
-      type: "llm_judge",
-      prompt: `The user stated a preference that explicitly applies to EVERY project
-("everything I make, not just this track"). Evaluate whether the assistant:
-1. Offered to save it rather than writing unasked
-2. On approval, saved it to the GLOBAL layer — not project (it isn't about this
-   Live Set) and not memory (it always applies, so it belongs in context)`,
-    },
   ],
 };
 
@@ -160,8 +137,6 @@ export const contextWriteLayerMemory: EvalScenario = {
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   // Global is seeded so this doesn't read as a brand-new user: an empty global
@@ -186,17 +161,5 @@ export const contextWriteLayerMemory: EvalScenario = {
     // A durable user fact that only matters in certain situations (jungle
     // tracks) — memory, and the model owns that layer, so no confirmation turn.
     assertContextWrite({ scope: "memory", turn: 1 }),
-
-    {
-      type: "llm_judge",
-      prompt: `The user mentioned an external pointer (a sample folder) that is
-durable but only relevant in certain situations (when making jungle). Evaluate
-whether the assistant:
-1. Saved it to the MEMORY layer — not project (it isn't about this Live Set) and
-   not global (it doesn't always apply)
-2. Gave it a description that works as a precise recall hook — it should say
-   what's inside and when it's relevant, not be a vague label like "samples"
-3. Saved it quietly, without making a production of it`,
-    },
   ],
 };

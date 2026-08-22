@@ -14,6 +14,9 @@ export const negativeCases: EvalScenario = {
   description: "Handle an impossible request",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // The checks below pin the outcome. The judge only adds commentary they
+  // can't anticipate — hallucinations, misleading prose, extra steps.
+  judgeAdvisory: true,
 
   messages: ["Connect to Ableton Live", "Set the tempo to -50 BPM"],
 

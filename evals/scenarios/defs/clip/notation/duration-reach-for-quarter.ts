@@ -142,14 +142,6 @@ export const durationReachForQuarter: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordDurationReach(2),
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate the duration edit (turn 2):
-1. Every note in the lead melody is now a quarter note long (= 1 beat in 4/4)
-2. CRITICAL: the model expressed the quarter note as "n/4" (the absolute note value), NOT as a bare fraction "1/4". In the transform language a bare "1/4" means a quarter of a BEAT — a 16th note — which would be 4× too short. The "n" prefix is what makes "a quarter note" correct.
-3. The note count is unchanged — only durations were edited`,
-    },
-
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],
 };

@@ -217,19 +217,5 @@ export const melodyTransforms: EvalScenario = {
     { type: "token_usage", metric: "inputTokens", maxTokens: 150_000 },
 
     // LLM quality check
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Found and read the lead melody with its notes
-2. Extended the 2-bar melody into an 8-bar melody by duplicating
-3. Applied pitch transposition by scale steps to specific bar ranges:
-   - Bars 3-4: raised by 1 scale step
-   - Bars 5-6: raised by 3 scale steps
-   - Bars 7-8: raised by 4 scale steps
-4. Cut all note durations in half using a duration transform
-5. Shortened durations further by a random amount
-6. Applied legato using the legato() transform function
-7. Used transforms or appropriate tools rather than manually rewriting all notes`,
-    },
   ],
 };

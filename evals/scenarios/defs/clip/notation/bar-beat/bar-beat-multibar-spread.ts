@@ -17,8 +17,8 @@
  * Like the other notation scenarios, these grade the OUTCOME (positions read back
  * from Live), not the path: the model may hand-enumerate positions or set a
  * length and step — either is fine as long as the notes land on the bar
- * downbeats. Deterministic read-back assertions are authoritative; the LLM judge
- * is advisory (judges miscount bar|beat notation).
+ * downbeats. The deterministic read-back assertions are the whole grade — no
+ * LLM judge, which would only miscount bar|beat notation.
  */
 
 import { type EvalScenario } from "../../../../types.ts";
@@ -56,9 +56,6 @@ export const barBeatPerBarNote: EvalScenario = leadClipNotationScenario({
         Math.abs(e.start_time - (BAR_DOWNBEATS[i] as number)) < EPS,
     );
   },
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 4-bar clip with four C3 notes, one on the downbeat (beat 1) of each bar — Ableton beats 0, 4, 8, 12
-2. Spread the notes ACROSS the four bars (stepping the bar number), NOT bunched into bar 1 on consecutive beats (Ableton beats 0, 1, 2, 3)`,
 });
 
 /**
@@ -89,7 +86,4 @@ export const barBeatPerBarChord: EvalScenario = leadClipNotationScenario({
       );
     });
   },
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 4-bar clip with a C major triad (C3, E3, G3) on the downbeat of each bar — chords at Ableton beats 0, 4, 8, 12 (twelve notes total)
-2. Spread the four chords ACROSS the four bars (stepping the bar number), NOT collapsed into bar 1 on consecutive beats (Ableton beats 0, 1, 2, 3)`,
 });

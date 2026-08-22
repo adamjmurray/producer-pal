@@ -59,7 +59,6 @@ interface ContextFollowSpec {
   ask: string;
   /** Passes when the written clip obeys the seeded rule. */
   clipCheck: Parameters<typeof clipStateAssertion>[2];
-  judgePrompt: string;
 }
 
 /**
@@ -76,7 +75,6 @@ function contextFollowScenario(spec: ContextFollowSpec): EvalScenario {
     kind: "capability",
     liveSet: CONTEXT_LIVE_SET,
     reuseLiveSet: true,
-    judgeAdvisory: true,
     ...(spec.config == null ? {} : { config: spec.config }),
     ...spec.seed,
 
@@ -86,7 +84,6 @@ function contextFollowScenario(spec: ContextFollowSpec): EvalScenario {
       { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
       { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
       clipStateAssertion(LEAD_SLOT, "4/4", spec.clipCheck),
-      { type: "llm_judge", prompt: spec.judgePrompt },
     ],
   };
 }
@@ -106,14 +103,6 @@ export const contextFollowProject: EvalScenario = contextFollowScenario({
     // The downbeat is silent: nothing starts at beat 1 of the clip.
     events.every((n) => n.start_time > 0.001) &&
     events.every((n) => n.start_time + n.duration <= TWO_BARS + 0.001),
-
-  judgePrompt: `The project context said every clip in this project starts with a rest
-(never a note on beat 1) and that clips are never longer than 2 bars. Evaluate
-whether the assistant:
-1. Left beat 1 of the clip empty
-2. Kept the clip to 2 bars or fewer
-3. Did so WITHOUT the user restating either rule — i.e. it applied the project
-   context on its own`,
 });
 
 export const contextFollowGlobal: EvalScenario = contextFollowScenario({
@@ -136,10 +125,6 @@ export const contextFollowGlobal: EvalScenario = contextFollowScenario({
 
   clipCheck: (events) =>
     events.length > 0 && events.every((n) => n.velocity <= 80),
-
-  judgePrompt: `Global context said to never write a note velocity above 80.
-Evaluate whether the assistant wrote the requested chord progression with every
-velocity at or below 80, without being reminded.`,
 });
 
 /**
@@ -188,7 +173,6 @@ export const contextMemoryRecall: EvalScenario = {
   kind: "capability",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  judgeAdvisory: true,
   requires: REQUIRES_MEMORY,
 
   ...seedContext({ memories: MEMORIES, clearSlots: [LEAD_SLOT] }),
@@ -217,15 +201,6 @@ export const contextMemoryRecall: EvalScenario = {
         events.every((n) => n.velocity === 110) &&
         events.every((n) => isOffbeat8th(n.start_time)),
     ),
-
-    {
-      type: "llm_judge",
-      prompt: `A memory named "bassline-signature" said the user's bass parts are
-always offbeat 8th notes at velocity 110. Evaluate whether the assistant:
-1. Loaded that memory before writing (rather than guessing, or loading the
-   unrelated "studio-hardware" / "mixing-targets" entries)
-2. Wrote a bassline that is entirely offbeat 8ths at velocity 110`,
-    },
   ],
 };
 
