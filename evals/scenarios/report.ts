@@ -16,7 +16,8 @@ import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
-import { printResult } from "./helpers/result-printer.ts";
+import { checkTally } from "./helpers/reporting/result-format.ts";
+import { printResult } from "./helpers/reporting/result-printer.ts";
 
 const program = new Command();
 
@@ -235,9 +236,7 @@ function formatRunCell(
 
   const icon = result.result === "pass" ? "✓" : "✗";
   const color = result.result === "pass" ? "green" : "red";
-  const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
+  const { passed, total } = checkTally(result.checks.results);
 
   return styleText(color, `${icon} ${passed}/${total}`);
 }

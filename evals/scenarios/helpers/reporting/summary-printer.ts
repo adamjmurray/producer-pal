@@ -17,9 +17,10 @@ import {
   efficiencyColor,
 } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type JsonEvalResult } from "./json-results/types.ts";
+import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { buildMultiTrialParts, formatParts } from "./trials/trial-helpers.ts";
+import { checkTally, judgeVerdict } from "./result-format.ts";
+import { buildMultiTrialParts, formatParts } from "../trials/trial-helpers.ts";
 
 /**
  * Print summary of all results
@@ -129,8 +130,7 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
   }
 
   const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
+  const { passed, total } = checkTally(checks.results);
   const checksColor = checks.pass ? "green" : "red";
   const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
 
@@ -143,23 +143,10 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
   }
 
   if (result.judge) {
-    const advisory = result.judge.advisory === true;
-    const judgeColor = advisory
-      ? "yellow"
-      : result.judge.pass
-        ? "green"
-        : "red";
-    const judgeText = advisory
-      ? "advisory"
-      : result.judge.pass
-        ? "pass"
-        : "fail";
-    const issueSuffix =
-      result.judge.issues.length > 0
-        ? ` (${result.judge.issues.length} issue(s))`
-        : "";
+    const { color, label, issueCount } = judgeVerdict(result.judge);
+    const issueSuffix = issueCount > 0 ? ` (${issueCount} issue(s))` : "";
 
-    parts.push("judge " + styleText(judgeColor, judgeText + issueSuffix));
+    parts.push("judge " + styleText(color, label + issueSuffix));
   }
 
   const overallColor = result.result === "pass" ? "green" : "red";

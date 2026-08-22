@@ -19,6 +19,10 @@
 
 import { argText } from "../arg-text.ts";
 import {
+  TOOL_CONNECT,
+  TOOL_CREATE_CLIP,
+} from "../clip/helpers/clip-scenario-helpers.ts";
+import {
   getToolCalls,
   lastSuccessfulToolCall,
   parsedToolResult,
@@ -188,6 +192,69 @@ export function assertAddressedById(options: {
       if (argText(call.args.id) === "") {
         throw new Error(
           `no id — hidden location params: ${hiddenSpellings(call)}`,
+        );
+      }
+
+      return true;
+    },
+  };
+}
+
+/**
+ * The opening of a "did the model spell the path right?" clip scenario:
+ * connect, create a clip in turn 1, and grade the `path` it wrote.
+ *
+ * @param expected - Accepted path(s); the first is the canonical one
+ * @returns The leading assertions, to spread into a scenario
+ */
+export function assertClipCreatedAtPath(
+  expected: string | string[],
+): EvalAssertion[] {
+  return [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    assertPathArg({ turn: 1, tool: TOOL_CREATE_CLIP, param: "path", expected }),
+  ];
+}
+
+/** The published ways to name a scene. All three are equally correct. */
+const SCENE_LOCATION_PARAMS = ["id", "path", "sceneIndex"];
+
+/**
+ * Assert a call names its scene with a published location param. `id`, `path`
+ * ("s1"), and `sceneIndex` all pass — only a hidden alias, or naming nothing,
+ * fails. Which of the three a model picks is a counting question over saved
+ * runs; grading one would mark the other two wrong.
+ *
+ * @param options - What to grade
+ * @param options.turn - Turn index containing the call
+ * @param options.tool - Tool name
+ * @param options.action - The `action` arg the call must carry, for tools that take one
+ * @returns A custom assertion
+ */
+export function assertNamesScene(options: {
+  turn: number;
+  tool: string;
+  action?: string;
+}): EvalAssertion {
+  const { turn, tool, action } = options;
+  const prefix = action == null ? "" : `${action} `;
+
+  return {
+    type: "custom",
+    description: `${tool} turn ${turn}: ${prefix}names the scene with a published param`,
+    assert: (turns) => {
+      const call = requireCall(turns, turn, tool);
+
+      if (action != null && call.args.action !== action) {
+        throw new Error(
+          `expected action '${action}', got '${String(call.args.action)}'`,
+        );
+      }
+
+      if (!SCENE_LOCATION_PARAMS.some((key) => call.args[key] != null)) {
+        throw new Error(
+          `no ${SCENE_LOCATION_PARAMS.join("/")} — args: ${JSON.stringify(call.args)}`,
         );
       }
 

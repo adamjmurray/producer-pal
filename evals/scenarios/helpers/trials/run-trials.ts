@@ -16,7 +16,7 @@ import { toJsonResult, type TrialInfo } from "../json-results/converter.ts";
 import { buildSkippedResult } from "../json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { writeJsonResult } from "../json-results/writer.ts";
-import { printResultBlock } from "../result-printer.ts";
+import { printResultBlock } from "../reporting/result-printer.ts";
 import { planTrialLiveSetOpens, printTrialSummary } from "./trial-helpers.ts";
 
 /** The CLI options a trial run reads. Satisfied by the eval CLI's options. */

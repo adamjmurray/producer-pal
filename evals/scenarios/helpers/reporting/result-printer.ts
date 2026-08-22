@@ -14,8 +14,9 @@ import {
   formatSubsectionHeader,
   formatUsageLine,
 } from "#evals/chat/shared/formatting.ts";
-import { formatTokenLabel } from "./json-results/assertion-label.ts";
-import { type JsonEvalResult } from "./json-results/types.ts";
+import { formatTokenLabel } from "../json-results/assertion-label.ts";
+import { type JsonEvalResult } from "../json-results/types.ts";
+import { checkTally, judgeVerdict } from "./result-format.ts";
 
 /**
  * Print result for a single scenario run
@@ -68,8 +69,7 @@ export function printResult(result: JsonEvalResult): void {
  */
 function printChecksSection(result: JsonEvalResult): void {
   const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
+  const { passed, total } = checkTally(checks.results);
   const label = checks.pass ? "pass" : "fail";
 
   console.log(formatSubsectionHeader(`Checks (${passed}/${total} ${label})`));
@@ -169,8 +169,7 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   // Checks line
   const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
+  const { passed, total } = checkTally(checks.results);
   const checksColor = checks.pass ? "green" : "red";
   const checksLabel = checks.pass ? "pass" : "fail";
 
@@ -191,25 +190,10 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   // Judge line
   if (result.judge) {
-    const advisory = result.judge.advisory === true;
-    const judgeColor = advisory
-      ? "yellow"
-      : result.judge.pass
-        ? "green"
-        : "red";
-    const judgeLabel = advisory
-      ? "advisory"
-      : result.judge.pass
-        ? "pass"
-        : "fail";
-    const issueSuffix =
-      result.judge.issues.length > 0
-        ? ` — ${result.judge.issues.length} issue(s)`
-        : "";
+    const { color, label, issueCount } = judgeVerdict(result.judge);
+    const issueSuffix = issueCount > 0 ? ` — ${issueCount} issue(s)` : "";
 
-    console.log(
-      `  Judge:      ${styleText(judgeColor, judgeLabel + issueSuffix)}`,
-    );
+    console.log(`  Judge:      ${styleText(color, label + issueSuffix)}`);
   }
 
   // Duration line

@@ -10,6 +10,7 @@
 import { type InspectColor, styleText } from "node:util";
 import { efficiencyColor } from "#evals/chat/shared/formatting.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
+import { checkTally } from "../reporting/result-format.ts";
 
 /**
  * Parse the repeat count from CLI option
@@ -70,14 +71,9 @@ export function buildMultiTrialParts(trials: JsonEvalResult[]): SummaryPart[] {
   });
 
   // Checks: total across all trials
-  const checksPassed = trials.reduce(
-    (sum, r) => sum + r.checks.results.filter((c) => c.pass).length,
-    0,
-  );
-  const checksTotal = trials.reduce(
-    (sum, r) => sum + r.checks.results.length,
-    0,
-  );
+  const tallies = trials.map((r) => checkTally(r.checks.results));
+  const checksPassed = tallies.reduce((sum, t) => sum + t.passed, 0);
+  const checksTotal = tallies.reduce((sum, t) => sum + t.total, 0);
 
   parts.push({
     label: "checks",

@@ -15,12 +15,9 @@
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import {
-  MSG_CONNECT,
-  TOOL_CONNECT,
-  TOOL_CREATE_CLIP,
-} from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertPathArg } from "./path-scenario-helpers.ts";
+import { takeLanes } from "../arrangement-helpers.ts";
+import { MSG_CONNECT } from "../clip/helpers/clip-scenario-helpers.ts";
+import { assertClipCreatedAtPath } from "./path-scenario-helpers.ts";
 
 /** Bass is track 1 in basic-midi-4-track. */
 const BASS_TRACK_INDEX = 1;
@@ -31,12 +28,6 @@ const BASS_TRACK_INDEX = 1;
  * is accepted here. `l1` is not, and neither is the main lane.
  */
 const ACCEPTED_PATHS = [`t${BASS_TRACK_INDEX}/l0`, `t${BASS_TRACK_INDEX}/l+`];
-
-/** One take lane on the track, holding exactly one clip. */
-interface TakeLane {
-  path?: string;
-  clips?: unknown[];
-}
 
 /**
  * Summarize the track's take lanes for a failure message.
@@ -51,17 +42,6 @@ function describeLanes(result: unknown): string {
   return lanes
     .map((lane) => `${lane.path ?? "?"}×${lane.clips?.length ?? 0}`)
     .join(", ");
-}
-
-/**
- * The track's take lanes, or an empty list when it has none.
- * @param result - Parsed ppal-read-track result
- * @returns Take lane entries
- */
-function takeLanes(result: unknown): TakeLane[] {
-  const track = result as { takeLanes?: TakeLane[] };
-
-  return track.takeLanes ?? [];
 }
 
 /**
@@ -101,15 +81,7 @@ export const pathTakeLaneFirst: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-
-    assertPathArg({
-      turn: 1,
-      tool: TOOL_CREATE_CLIP,
-      param: "path",
-      expected: ACCEPTED_PATHS,
-    }),
+    ...assertClipCreatedAtPath(ACCEPTED_PATHS),
     assertClipOnFirstLane(),
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 60_000 },

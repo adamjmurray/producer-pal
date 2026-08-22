@@ -16,10 +16,11 @@ import { type EvalScenario } from "../../types.ts";
 import {
   clearSessionSlots,
   MSG_CONNECT,
-  TOOL_CONNECT,
-  TOOL_CREATE_CLIP,
 } from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertPathArg, assertSlotOccupancy } from "./path-scenario-helpers.ts";
+import {
+  assertClipCreatedAtPath,
+  assertSlotOccupancy,
+} from "./path-scenario-helpers.ts";
 
 /**
  * Chords is track 2 and the second scene is scene 1 — different numbers on
@@ -45,15 +46,7 @@ export const pathSessionSlot: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-
-    assertPathArg({
-      turn: 1,
-      tool: TOOL_CREATE_CLIP,
-      param: "path",
-      expected: TARGET_PATH,
-    }),
+    ...assertClipCreatedAtPath(TARGET_PATH),
 
     // The outcome, both ways round. The path assertion above can fail on a
     // spelling that still lands right (a hidden alias, the tolerated "2/1");

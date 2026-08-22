@@ -10,7 +10,7 @@ import { getAgentCliTransport } from "#evals/chat/agent-cli/agent-cli-registry.t
 import { listModels } from "#evals/shared/list-models.ts";
 import {
   LIST_MODELS_HINT,
-  parseModelArg,
+  parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
 import { SYSTEM_INSTRUCTION } from "#src/shared/config.ts";
 import { runChat } from "./chat.ts";
@@ -98,20 +98,7 @@ program
 
     const initialText = textArray.join(" ");
 
-    // Parse model argument to get provider and model
-    let spec: ReturnType<typeof parseModelArg>;
-
-    try {
-      spec = parseModelArg(modelArg);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      program.error(`${message} ${LIST_MODELS_HINT}`);
-
-      return;
-    }
-
-    const { provider, model } = spec;
+    const { provider, model } = parseModelArgOrExit(program, modelArg);
 
     // The agent-CLI providers run through a spawned subprocess, not the AI SDK
     // this CLI streams from. Without this the provider factory throws past

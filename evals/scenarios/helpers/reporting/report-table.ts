@@ -10,7 +10,8 @@
 import { type InspectColor, styleText } from "node:util";
 import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type JsonEvalResult } from "./json-results/types.ts";
+import { type JsonEvalResult } from "../json-results/types.ts";
+import { checkTally } from "./result-format.ts";
 
 /** A column in the results table (one per model). `configId` is the run-env
  *  label used to look up the cell's results. */
@@ -133,47 +134,42 @@ function printSummaryRow(
   scenarioColWidth: number,
   colWidths: number[],
 ): void {
-  const avgPcts = columns.map((col) => {
-    const pcts: number[] = [];
-
-    for (const modelResults of resultsByScenario.values()) {
-      const results = modelResults.get(col.modelKey)?.get(col.configId);
-
-      if (results) {
-        const pct = getCellPercentage(results);
-
-        if (pct !== null) pcts.push(pct);
-      }
-    }
-
-    if (pcts.length === 0) return "—";
-    const avg = pcts.reduce((a, b) => a + b, 0) / pcts.length;
-
-    return `${avg.toFixed(0)}%`;
-  });
-
-  const avgColors = columns.map((col) => {
-    const pcts2: number[] = [];
-
-    for (const modelResults of resultsByScenario.values()) {
-      const results = modelResults.get(col.modelKey)?.get(col.configId);
-
-      if (results) {
-        const p = getCellPercentage(results);
-
-        if (p !== null) pcts2.push(p);
-      }
-    }
-
-    if (pcts2.length === 0) return undefined;
-    const avg = pcts2.reduce((a, b) => a + b, 0) / pcts2.length;
-
-    return pctColor(avg);
-  });
+  const avgs = columns.map((col) => columnAverage(resultsByScenario, col));
+  const avgPcts = avgs.map((avg) =>
+    avg === null ? "—" : `${avg.toFixed(0)}%`,
+  );
+  const avgColors = avgs.map((avg) =>
+    avg === null ? undefined : pctColor(avg),
+  );
 
   console.log(
     buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, "bold"),
   );
+}
+
+/**
+ * Average one column's cell percentages down the table.
+ *
+ * @param resultsByScenario - 3D results map
+ * @param col - The column to average
+ * @returns The average, or null when the column has no gradable cells
+ */
+function columnAverage(
+  resultsByScenario: ResultsByScenario,
+  col: ColumnKey,
+): number | null {
+  const pcts: number[] = [];
+
+  for (const modelResults of resultsByScenario.values()) {
+    const results = modelResults.get(col.modelKey)?.get(col.configId);
+    const pct = results ? getCellPercentage(results) : null;
+
+    if (pct !== null) pcts.push(pct);
+  }
+
+  if (pcts.length === 0) return null;
+
+  return pcts.reduce((a, b) => a + b, 0) / pcts.length;
 }
 
 /**
@@ -206,12 +202,13 @@ function getCellPercentage(results: JsonEvalResult[]): number | null {
   }
 
   // Single trial: show check pass percentage
-  const { results: checks } = (results[0] as JsonEvalResult).checks;
+  const { passed, total } = checkTally(
+    (results[0] as JsonEvalResult).checks.results,
+  );
 
-  if (checks.length === 0) return null;
-  const passed = checks.filter((c) => c.pass).length;
+  if (total === 0) return null;
 
-  return Math.round((passed / checks.length) * 100);
+  return Math.round((passed / total) * 100);
 }
 
 /**

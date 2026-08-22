@@ -9,6 +9,7 @@
 
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { asArrangementTrack, clipStarts } from "../arrangement-helpers.ts";
 
 /** Bass is the second track of the basic-midi-4-track Live Set. */
 const BASS_TRACK_INDEX = 1;
@@ -21,20 +22,12 @@ const BASS_TRACK_INDEX = 1;
 const EXPECTED_STARTS = ["5|1", "9|1", "13|1"];
 
 /**
- * Read the arrangement clip starts out of a read-track result, in bar order.
+ * The track's arrangement clip starts, as one comparable string.
  * @param result - Parsed ppal-read-track result
- * @returns Each clip's arrangementStart
+ * @returns Bar positions joined with ", "
  */
-function clipStarts(result: unknown): string[] {
-  const track = result as {
-    arrangementClips?: Array<{ arrangementStart?: string }>;
-  };
-
-  return (track.arrangementClips ?? [])
-    .map((clip) => clip.arrangementStart ?? "?")
-    .toSorted(
-      (a, b) => Number(a.split("|")[0] ?? 0) - Number(b.split("|")[0] ?? 0),
-    );
+function starts(result: unknown): string {
+  return clipStarts(asArrangementTrack(result).arrangementClips).join(", ");
 }
 
 /**
@@ -49,11 +42,10 @@ function assertClipLayout(): EvalAssertion {
       trackIndex: BASS_TRACK_INDEX,
       include: ["arrangement-clips"],
     },
-    expect: (result) =>
-      clipStarts(result).join(", ") === EXPECTED_STARTS.join(", "),
+    expect: (result) => starts(result) === EXPECTED_STARTS.join(", "),
     explain: (result) =>
       `expected clips at ${EXPECTED_STARTS.join(", ")}, got ${
-        clipStarts(result).join(", ") || "none"
+        starts(result) || "none"
       }`,
   };
 }

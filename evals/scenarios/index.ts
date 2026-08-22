@@ -15,21 +15,21 @@ import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newli
 import { listModels } from "#evals/shared/list-models.ts";
 import {
   LIST_MODELS_HINT,
-  parseModelArg,
   type ModelSpec,
+  parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
-import { type ResultsByScenario } from "./helpers/report-table.ts";
+import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
 import {
   emitSkipped,
   runTrials,
   type RunContext,
 } from "./helpers/trials/run-trials.ts";
-import { printSummary } from "./helpers/summary-printer.ts";
+import { printSummary } from "./helpers/reporting/summary-printer.ts";
 import { parseRepeatCount } from "./helpers/trials/trial-helpers.ts";
 import { loadScenarios, printList } from "./load-scenarios.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
@@ -193,19 +193,13 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     program.error("--all and --test cannot be used together");
   }
 
-  let modelSpecs: ModelSpec[];
-  let judgeOverride: ModelSpec;
-
-  try {
-    modelSpecs = options.model.map(parseModelArg);
-    judgeOverride = parseModelArg(options.judge ?? GEMINI_CONFIG.defaultModel);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    program.error(`${message} ${LIST_MODELS_HINT}`);
-
-    return;
-  }
+  const modelSpecs = options.model.map((model) =>
+    parseModelArgOrExit(program, model),
+  );
+  const judgeOverride = parseModelArgOrExit(
+    program,
+    options.judge ?? GEMINI_CONFIG.defaultModel,
+  );
 
   let runEnv: RunEnv;
 

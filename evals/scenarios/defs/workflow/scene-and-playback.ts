@@ -7,50 +7,10 @@
  * Scenario: Create scene with tempo, play and stop
  */
 
-import { lastSuccessfulToolCall } from "../../assertions/index.ts";
-import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { type EvalScenario } from "../../types.ts";
+import { assertNamesScene } from "../path/path-scenario-helpers.ts";
 
 const TOOL_PLAYBACK = "ppal-playback";
-
-/**
- * play-scene names a scene the 2.2.0 way. `path: "s3"`, `sceneIndex: 3`, and a
- * scene `id` are all published, so all three pass and only the deprecated
- * `slots` (or naming nothing) fails — which is the point: the spelling a model
- * actually picks is a counting question over saved runs, not something to grade,
- * and grading one published form would mark the other two wrong.
- *
- * @param turn - Turn index containing the play-scene call
- * @returns A custom assertion
- */
-function assertPlaysSceneByPublishedParam(turn: number): EvalAssertion {
-  return {
-    type: "custom",
-    description: `${TOOL_PLAYBACK} turn ${turn}: play-scene names the scene with a published param`,
-    assert: (turns) => {
-      const call = lastSuccessfulToolCall(turns, turn, TOOL_PLAYBACK);
-
-      if (!call) throw new Error(`${TOOL_PLAYBACK} not called in turn ${turn}`);
-
-      if (call.args.action !== "play-scene") {
-        throw new Error(
-          `expected action 'play-scene', got '${String(call.args.action)}'`,
-        );
-      }
-
-      const named = ["id", "path", "sceneIndex"].some(
-        (key) => call.args[key] != null,
-      );
-
-      if (!named) {
-        throw new Error(
-          `no id/path/sceneIndex — args: ${JSON.stringify(call.args)}`,
-        );
-      }
-
-      return true;
-    },
-  };
-}
 
 export const sceneAndPlayback: EvalScenario = {
   id: "scene-and-playback",
@@ -79,7 +39,7 @@ export const sceneAndPlayback: EvalScenario = {
     // Turn 3: Play a scene named by position, not by the id just created —
     // the case 2.2.0 added a bare 's3' path for.
     { type: "tool_called", tool: TOOL_PLAYBACK, turn: 3 },
-    assertPlaysSceneByPublishedParam(3),
+    assertNamesScene({ turn: 3, tool: TOOL_PLAYBACK, action: "play-scene" }),
 
     // Turn 4: Stop playback
     { type: "tool_called", tool: TOOL_PLAYBACK, turn: 4 },

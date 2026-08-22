@@ -15,12 +15,16 @@
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import {
+  asArrangementTrack,
+  clipStarts,
+  takeLanes,
+} from "../arrangement-helpers.ts";
+import {
   clearSessionSlots,
   MSG_CONNECT,
-  TOOL_CONNECT,
-  TOOL_CREATE_CLIP,
 } from "../clip/helpers/clip-scenario-helpers.ts";
 import {
+  assertClipCreatedAtPath,
   assertDestinationCounts,
   assertPathArg,
   assertSlotOccupancy,
@@ -37,27 +41,26 @@ const CHORDS_TRACK_INDEX = 2;
 const MAIN_LANE_STARTS = ["1|1", "5|1"];
 const TAKE_LANE_STARTS = ["9|1", "13|1"];
 
-/** One clip in a read-track result. */
-interface Clip {
-  arrangementStart?: string;
-}
-
-/** One take lane in a read-track result. */
-interface TakeLane {
-  clips?: Clip[];
-}
-
 /**
- * Bar positions of a clip list, in bar order.
- * @param clips - Clips from a read-track result
- * @returns Sorted arrangementStart values
+ * Bar positions on the main lane and on the take lanes, plus the lane count.
+ * Take-lane clips are listed under their lane, so the main lane's clips are
+ * what arrangementClips holds minus them.
+ *
+ * @param result - Parsed ppal-read-track result
+ * @returns Lane count and the two start lists
  */
-function starts(clips: Clip[] | undefined): string[] {
-  return (clips ?? [])
-    .map((clip) => clip.arrangementStart ?? "?")
-    .toSorted(
-      (a, b) => Number(a.split("|")[0] ?? 0) - Number(b.split("|")[0] ?? 0),
-    );
+function arrangementLayout(result: unknown): {
+  laneCount: number;
+  mainStarts: string[];
+  laneStarts: string[];
+} {
+  const lanes = takeLanes(result);
+
+  return {
+    laneCount: lanes.length,
+    mainStarts: clipStarts(asArrangementTrack(result).arrangementClips),
+    laneStarts: clipStarts(lanes.flatMap((lane) => lane.clips ?? [])),
+  };
 }
 
 /**
@@ -75,35 +78,22 @@ function assertArrangementLayout(): EvalAssertion {
       include: ["arrangement-clips"],
     },
     expect: (result) => {
-      const track = result as {
-        arrangementClips?: Clip[];
-        takeLanes?: TakeLane[];
-      };
-      const lanes = track.takeLanes ?? [];
-      // Take-lane clips are listed under their lane, so the main lane's clips
-      // are what arrangementClips holds minus them.
-      const laneStarts = starts(lanes.flatMap((lane) => lane.clips ?? []));
+      const { laneCount, mainStarts, laneStarts } = arrangementLayout(result);
 
       return (
-        lanes.length === 1 &&
+        laneCount === 1 &&
         laneStarts.join() === TAKE_LANE_STARTS.join() &&
-        MAIN_LANE_STARTS.every((bar) =>
-          starts(track.arrangementClips).includes(bar),
-        )
+        MAIN_LANE_STARTS.every((bar) => mainStarts.includes(bar))
       );
     },
     explain: (result) => {
-      const track = result as {
-        arrangementClips?: Clip[];
-        takeLanes?: TakeLane[];
-      };
-      const lanes = track.takeLanes ?? [];
+      const { laneCount, mainStarts, laneStarts } = arrangementLayout(result);
 
       return (
         `expected clips at ${MAIN_LANE_STARTS.join(", ")} plus ONE take lane ` +
         `holding ${TAKE_LANE_STARTS.join(", ")}; got clips at ` +
-        `${starts(track.arrangementClips).join(", ") || "none"} and ${lanes.length} lane(s) ` +
-        `holding ${starts(lanes.flatMap((lane) => lane.clips ?? [])).join(", ") || "none"}`
+        `${mainStarts.join(", ") || "none"} and ${laneCount} lane(s) ` +
+        `holding ${laneStarts.join(", ") || "none"}`
       );
     },
   };
@@ -127,14 +117,7 @@ export const pathToPathClipDestinations: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    assertPathArg({
-      turn: 1,
-      tool: TOOL_CREATE_CLIP,
-      param: "path",
-      expected: SOURCE_SLOT,
-    }),
+    ...assertClipCreatedAtPath(SOURCE_SLOT),
 
     // Destination 1: a session slot.
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 2 },

@@ -254,6 +254,29 @@ function assertRepeatGrew(createTurn: number, editTurn: number): EvalAssertion {
   };
 }
 
+/** Connect, read the clip's notes in turn 1, then transform it in turn 2. */
+const READ_THEN_UPDATE: EvalAssertion[] = [
+  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+  assertNotesRead(1),
+  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+];
+
+/** Connect, create the clip in turn 1, then transform it in turn 2. */
+const CREATE_THEN_UPDATE: EvalAssertion[] = [
+  { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+  { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+  { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+];
+
+/**
+ * Input-token ceiling for a note-op scenario.
+ * @param maxTokens - The ceiling
+ * @returns A token-usage assertion
+ */
+function tokenBudget(maxTokens: number): EvalAssertion {
+  return { type: "token_usage", metric: "inputTokens", maxTokens };
+}
+
 export const noteOpsRatchetRoll: EvalScenario = {
   id: "note-ops-ratchet-roll",
   description: "Turn each note of a melody into a roll via ratchet()",
@@ -269,15 +292,13 @@ export const noteOpsRatchetRoll: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    assertNotesRead(1),
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /ratchet\(/, "grow"),
     {
       type: "llm_judge",
       prompt: `Evaluate turn 2: each note of the lead melody was turned into a four-note roll (a ratchet) using the ratchet() note-count transform, NOT by hand-listing every individual note. The result should have roughly four times as many notes, each at the same pitch, evenly dividing the original note's duration.`,
     },
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    tokenBudget(100_000),
   ],
 };
 
@@ -297,15 +318,13 @@ export const noteOpsMerge: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    assertNotesRead(1),
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    ...READ_THEN_UPDATE,
     assertNoteOp(1, 2, /merge\(/, "shrink"),
     {
       type: "llm_judge",
       prompt: `Evaluate turn 2: the repeated same-pitch hits in each drum lane were combined into one sustained note per lane using the merge() note-count transform, NOT by hand-rewriting the clip. The result should have far fewer notes (about one per distinct drum pitch).`,
     },
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    tokenBudget(100_000),
   ],
 };
 
@@ -326,15 +345,13 @@ export const noteOpsSplit: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    ...CREATE_THEN_UPDATE,
     assertSplitGrew(2),
     {
       type: "llm_judge",
       prompt: `Evaluate turn 2: the single sustained note was cut into separate notes at the two given bar|beat positions using the split() note-count transform (e.g. split(1|3, 2|1)) — NOT by hand-listing notes, and NOT by using update-clip's clip-level split parameter that slices a clip into two clips. The result should be the same pitch broken into pieces at those points.`,
     },
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    tokenBudget(100_000),
   ],
 };
 
@@ -355,9 +372,7 @@ export const noteOpsRepeat: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    ...CREATE_THEN_UPDATE,
     assertRepeatGrew(1, 2),
     {
       type: "llm_judge",
@@ -366,7 +381,7 @@ export const noteOpsRepeat: EvalScenario = {
     // Three turns (connect + create + update), each carrying the full skills
     // blob; ~122k is the validated baseline (2026-06-11, gemini-3.5-flash).
     // Target leaves headroom so a real regression still trips it.
-    { type: "token_usage", metric: "inputTokens", maxTokens: 140_000 },
+    tokenBudget(140_000),
   ],
 };
 
@@ -386,14 +401,12 @@ export const noteOpsSplitSync: EvalScenario = {
   ],
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    ...CREATE_THEN_UPDATE,
     assertSplitGrew(2, { sync: true }),
     {
       type: "llm_judge",
       prompt: `Evaluate turn 2: the single held note was cut into separate notes at arrangement bars 7 and 8 using the split() note-count transform with the trailing sync keyword (e.g. split(7|1, 8|1, sync)), which reads the bar|beat positions on the arrangement timeline — NOT by hand-listing notes, and NOT by using update-clip's clip-level split parameter.`,
     },
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    tokenBudget(100_000),
   ],
 };

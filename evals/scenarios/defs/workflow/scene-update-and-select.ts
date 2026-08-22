@@ -12,9 +12,11 @@
  */
 
 import { argText } from "../arg-text.ts";
-import { lastSuccessfulToolCall } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
-import { assertAddressedById } from "../path/path-scenario-helpers.ts";
+import {
+  assertAddressedById,
+  assertNamesScene,
+} from "../path/path-scenario-helpers.ts";
 
 const TOOL_UPDATE_SCENE = "ppal-update-scene";
 const TOOL_SELECT = "ppal-select";
@@ -90,36 +92,6 @@ function assertSceneSelected(): EvalAssertion {
   };
 }
 
-/**
- * select named the scene with a published param. `id`, `path` ("s1"), and
- * `sceneIndex` are all published on this tool, so all three pass; only the
- * hidden `sceneId` alias fails, which is the adoption signal worth having.
- * @returns A custom assertion
- */
-function assertSelectNamesScene(): EvalAssertion {
-  return {
-    type: "custom",
-    description: `${TOOL_SELECT} names the scene with a published param`,
-    assert: (turns) => {
-      const call = lastSuccessfulToolCall(turns, 2, TOOL_SELECT);
-
-      if (!call) throw new Error(`${TOOL_SELECT} not called in turn 2`);
-
-      const named = ["id", "path", "sceneIndex"].some(
-        (key) => call.args[key] != null,
-      );
-
-      if (!named) {
-        throw new Error(
-          `no id/path/sceneIndex — args: ${JSON.stringify(call.args)}`,
-        );
-      }
-
-      return true;
-    },
-  };
-}
-
 export const sceneUpdateAndSelect: EvalScenario = {
   id: "scene-update-and-select",
   description: "Rename and recolor a scene, then navigate to it",
@@ -142,7 +114,7 @@ export const sceneUpdateAndSelect: EvalScenario = {
     assertSceneUpdated(),
 
     { type: "tool_called", tool: TOOL_SELECT, turn: 2 },
-    assertSelectNamesScene(),
+    assertNamesScene({ turn: 2, tool: TOOL_SELECT }),
     assertSceneSelected(),
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
