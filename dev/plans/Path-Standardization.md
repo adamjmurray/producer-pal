@@ -95,6 +95,14 @@ params (`slot`, `slots`, `toSlot`, `devicePath`, `takeLane`). The permanent
 aliases (`trackIndex`, `sceneIndex` on clip tools) stay. `parseSlot` and
 `parseSlotList` retire with the deprecated params, not before.
 
+The scenarios that measure it are in `evals/scenarios/defs/path/`: session slot
+spelling, the take-lane index base, and whether a model pastes a reported
+arrangement path back as a clip address. They grade the path the model wrote AND
+where the object landed — a path that lands right through a hidden alias is a
+different finding from one that lands wrong. Nothing grades alias usage; the
+aliases exist to catch a wrong guess, so rewarding one would enshrine the
+spelling being retired. Count them from the `warnings` on saved runs instead.
+
 ### Phase 5 — `path` everywhere
 
 Decided: `path` is the general way to address an object, not an alternative that

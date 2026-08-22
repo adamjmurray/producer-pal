@@ -8,6 +8,7 @@
  */
 
 import { type EvalScenario } from "../../types.ts";
+import { assertAddressedById } from "../path/path-scenario-helpers.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
@@ -32,6 +33,9 @@ export const updateLiveSet: EvalScenario = {
 
     // Turn 2: Delete track
     { type: "tool_called", tool: "ppal-delete", turn: 2 },
+
+    // The only place delete's target arg is graded. 2.2.0 renamed it to `id`.
+    assertAddressedById({ turn: 2, tool: "ppal-delete" }),
     { type: "response_contains", pattern: /delet/i, turn: 2 },
 
     {
