@@ -445,6 +445,37 @@ vitest, where frames name source files. A bundled V8 stack names bundle offsets.
 Match filenames with `[\w.-]+\.ts`; without the dot, a `foo.def.ts` frame
 reports as `def.ts`.
 
+## Timing Tool Calls
+
+`scripts/probes/tool-call-cost-probe.ts` runs one tool call repeatedly and
+prints, per call, how long it took and — on an instrumented build — what it
+resolved and constructed.
+
+```bash
+node scripts/probes/tool-call-cost-probe.ts ppal-read-device \
+  '{"path":"t17/d0/c0/d0","include":["*"],"maxDepth":3}' 12
+```
+
+Read the two together. Latency alone can't tell a slow tool from one that
+rebuilds its objects on every call, and the counts alone can't say whether the
+rebuilding costs anything.
+
+**A `constructed` count above zero after the first call means the pool isn't
+covering this call**, so every repeat pays construction again — and each
+construction registers a context in MxDCore that only a device reload takes
+back, so latency climbs and never comes down. The probe says so in its summary.
+That is how the free-list ceiling was found to be too low: a deep 64-pad kit
+read rebuilt 803 objects a call and went 2.2 s to 5.9 s over twelve calls, where
+a ceiling above the call's own size held it flat at 1.2 s.
+
+**Reload the device between runs you mean to compare.** Every call loads it
+further, so a second run starts slower for reasons that have nothing to do with
+what changed. Reopening the Live Set (`./scripts/open-live-set`) does it.
+
+`scripts/probes/live-api-context-probe.ts` answers the other question — how
+latency grows with objects built and paths visited, and which of the two a
+slowdown is coming from. Its header explains the arms.
+
 ## Debugging Tips
 
 ### Enable Verbose Logging
