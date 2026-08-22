@@ -6,7 +6,6 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   isTakeLaneClip,
   isTakeLaneRequested,
@@ -31,10 +30,7 @@ import {
   sourceLastOrder,
 } from "./duplicate-clip-order-helpers.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
-import {
-  unreachedPositionsWarning,
-  type UnreachedDestination,
-} from "../duplicate-position-helpers.ts";
+import { type UnreachedDestination } from "../duplicate-position-helpers.ts";
 import {
   NO_ENVELOPES_NOTE,
   recreateMidiClip,
@@ -42,6 +38,7 @@ import {
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,
+  stopMidFanOut,
 } from "./duplicate-clip-deadline-helpers.ts";
 import {
   resolveDuplicateTakeLanes,
@@ -214,6 +211,9 @@ async function duplicateClipToArrangementPositions(
     { length: targetTracks.length },
     () => null,
   );
+  // A destination that was attempted and skipped is in neither the slice ahead
+  // nor the landed tally, so without this it drops out of the report entirely.
+  const skipped: UnreachedDestination[] = [];
 
   for (let done = 0; done < order.length; done++) {
     const i = order[done] as number; // bounded by the loop
@@ -221,20 +221,17 @@ async function duplicateClipToArrangementPositions(
 
     // Each copy can tile a long span, so the budget can run out mid-list.
     if (
-      stopForDeadline(context.deadline, () =>
-        unreachedPositionsWarning(
-          order
-            .slice(done)
-            .map((index) => destinations[index] as UnreachedDestination),
-          // Copies that actually landed, not iterations: one can be
-          // skipped (a full take-lane track, an audio source Live refuses, a
-          // throw in recreateCopy) and the tally has to match what exists.
-          results.filter((result) => result != null).length,
-          targetTracks.length,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-        ),
-      )
+      stopMidFanOut({
+        skipped,
+        unreached: order
+          .slice(done)
+          .map((index) => destinations[index] as UnreachedDestination),
+        results,
+        total: targetTracks.length,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+        deadline: context.deadline,
+      })
     ) {
       break;
     }
@@ -254,7 +251,11 @@ async function duplicateClipToArrangementPositions(
       context,
     });
 
-    if (result != null) results[i] = result;
+    if (result != null) {
+      results[i] = result;
+    } else {
+      skipped.push(destinations[i] as UnreachedDestination);
+    }
   }
 
   return results.filter((result) => result != null);

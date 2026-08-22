@@ -91,3 +91,45 @@ function takeLaneSuffix(
 
   return takeLane === "new" ? "/l+" : `/l${takeLane}`;
 }
+
+interface StopMidFanOutArgs {
+  /** Destinations that were attempted and produced no copy */
+  skipped: UnreachedDestination[];
+  /** Destinations the loop never got to */
+  unreached: UnreachedDestination[];
+  /** One entry per destination, null where no copy landed */
+  results: (object | null)[];
+  /** How many destinations were asked for */
+  total: number;
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  deadline: number | null | undefined;
+}
+
+/**
+ * Whether the request is out of time part-way through, warning about every
+ * destination left without a copy.
+ *
+ * A destination that was attempted and skipped — a full take-lane track, an
+ * audio source Live refuses — is in neither the landed tally nor the list still
+ * ahead, so it has to be carried in or it drops out of the report entirely.
+ * @param options - The two lists of destinations, the copies so far, and the
+ *   song meter
+ * @returns true when the rest of the fan-out should be abandoned
+ */
+export function stopMidFanOut(options: StopMidFanOutArgs): boolean {
+  const { skipped, unreached, results, total } = options;
+  const { songTimeSigNumerator, songTimeSigDenominator, deadline } = options;
+
+  return stopForDeadline(deadline, () =>
+    unreachedPositionsWarning(
+      [...skipped, ...unreached],
+      // Copies that actually landed, not iterations: one can be skipped and the
+      // tally has to match what exists.
+      results.filter((result) => result != null).length,
+      total,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  );
+}

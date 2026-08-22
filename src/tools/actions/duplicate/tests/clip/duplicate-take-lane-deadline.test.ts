@@ -105,9 +105,11 @@ describe("duplicate to a take lane, cut short", () => {
     );
   });
 
-  it("counts the copies it placed, not the destinations it walked", async () => {
+  it("names a destination it skipped as well as one it never reached", async () => {
     // A destination can be skipped without a copy — here the lane limit. The
-    // tally has to match what exists, or the caller reads a copy it never got.
+    // tally has to match what exists, or the caller reads a copy it never got,
+    // and a skipped one has to be named too or it is in neither half of the
+    // report: not among the copies that landed, not among the ones still ahead.
     registerSource(2000);
     registerTakeLaneTrack({ trackIndex: 1, initialLanes: MAX_TAKE_LANES });
 
@@ -122,11 +124,11 @@ describe("duplicate to a take lane, cut short", () => {
     );
 
     // One copy for three destinations: the first was refused, the third never
-    // reached. A lone result comes back unwrapped.
+    // reached, and both are named. A lone result comes back unwrapped.
     expect(result).toMatchObject({ path: "t1/l0", arrangementStart: "5|1" });
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 3. " +
-        "Not duplicated: t1/l1 9|1. Re-run for those positions.",
+        "Not duplicated: t1/l+ 1|1, t1/l1 9|1. Re-run for those positions.",
     );
   });
 

@@ -184,6 +184,44 @@ describe("readClip path param", () => {
     expect(readClip({ path: "t1/s1", id: "fresh" }).name).toBe("Test Clip");
   });
 
+  // The guard used to run on the path branch alone, so the other two spellings
+  // of the same conflict read the id and dropped the location without a word.
+  it.each([
+    ["trackIndex/sceneIndex", { trackIndex: 1, sceneIndex: 1 }],
+    ["slot", { slot: "1/1" }],
+  ])("refuses an id naming a different clip than %s", (param, location) => {
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipId: "fresh",
+      clipProps: { name: "From location" },
+    });
+    setupMidiClipMock({
+      trackIndex: 2,
+      sceneIndex: 3,
+      clipId: "stale",
+      clipProps: { name: "From id" },
+    });
+
+    expect(() => readClip({ ...location, id: "stale" })).toThrow(
+      `readClip failed: ${param} and id name different clips; use one`,
+    );
+  });
+
+  it.each([
+    ["trackIndex/sceneIndex", { trackIndex: 1, sceneIndex: 1 }],
+    ["slot", { slot: "1/1" }],
+  ])("accepts an id naming the same clip as %s", (_param, location) => {
+    setupMidiClipMock({
+      trackIndex: 1,
+      sceneIndex: 1,
+      clipId: "fresh",
+      clipProps: { name: "Test Clip" },
+    });
+
+    expect(readClip({ ...location, id: "fresh" }).name).toBe("Test Clip");
+  });
+
   // Both addressing params are published side by side ("provide this or path"),
   // so a model filling in the unused one is the expected shape — sometimes with
   // the word written out. Counting that as sent refused the call over a param

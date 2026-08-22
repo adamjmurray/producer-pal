@@ -308,34 +308,47 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
 
     const position = requireSessionSlot(parseObjectPath(path, "path"));
 
-    assertClipIdAtSlot(clipId, position);
+    assertClipIdAtSlot(clipId, position, "path");
 
     return { clipId, ...position };
   }
 
   if (slot != null) {
-    return { clipId, ...parseSlot(slot) };
+    const position = parseSlot(slot);
+
+    assertClipIdAtSlot(clipId, position, "slot");
+
+    return { clipId, ...position };
   }
 
-  return {
-    clipId,
-    trackIndex: args.trackIndex ?? null,
-    sceneIndex: args.sceneIndex ?? null,
-  };
+  const trackIndex = args.trackIndex ?? null;
+  const sceneIndex = args.sceneIndex ?? null;
+
+  if (trackIndex != null && sceneIndex != null) {
+    assertClipIdAtSlot(
+      clipId,
+      { trackIndex, sceneIndex },
+      "trackIndex/sceneIndex",
+    );
+  }
+
+  return { clipId, trackIndex, sceneIndex };
 }
 
 /**
- * Refuse an id naming a clip other than the one the path names. The id used to
- * win in silence, so a stale one pasted beside a fresh path read the stale clip
- * and reported its own slot as if that's what was asked for.
+ * Refuse an id naming a clip other than the one the location names. The id used
+ * to win in silence, so a stale one pasted beside a fresh location read the
+ * stale clip and reported its own slot as if that's what was asked for.
  * @param clipId - The resolved id, if the caller sent one
- * @param position - The slot the path names
+ * @param position - The slot the location names
  * @param position.trackIndex - Track index
  * @param position.sceneIndex - Scene index
+ * @param param - Which location param named it, for the error
  */
 function assertClipIdAtSlot(
   clipId: string | null,
   { trackIndex, sceneIndex }: { trackIndex: number; sceneIndex: number },
+  param: string,
 ): void {
   if (clipId == null) return;
 
@@ -348,7 +361,7 @@ function assertClipIdAtSlot(
 
   if (named.path !== atPath) {
     throw new Error(
-      "readClip failed: path and id name different clips; use one",
+      `readClip failed: ${param} and id name different clips; use one`,
     );
   }
 }
