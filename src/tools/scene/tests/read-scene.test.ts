@@ -42,6 +42,9 @@ function setupLiveSetTracks(trackIds: string[]): void {
       type: "Track",
       properties: {
         has_midi_input: 1,
+        // Distinct per track, so a clip's trackName has to come from its own
+        // track rather than any track that happened to be read
+        name: `Track ${index}`,
       },
     });
   }
@@ -227,6 +230,7 @@ describe("readScene", () => {
             path: "t0/s0",
           }),
           color: undefined,
+          trackName: "Track 0",
         },
         {
           ...expectedClip({
@@ -234,6 +238,7 @@ describe("readScene", () => {
             path: "t1/s0",
           }),
           color: undefined,
+          trackName: "Track 1",
         },
       ].map(({ color: _color, view: _v, ...clip }) => clip),
     });
@@ -355,6 +360,7 @@ describe("readScene", () => {
               path: "t0/s2",
             }),
             color: undefined,
+            trackName: "Track 0",
           },
           {
             ...expectedClip({
@@ -362,6 +368,7 @@ describe("readScene", () => {
               path: "t1/s2",
             }),
             color: undefined,
+            trackName: "Track 1",
           },
         ].map(({ color: _color, view: _v, ...clip }) => clip),
       });

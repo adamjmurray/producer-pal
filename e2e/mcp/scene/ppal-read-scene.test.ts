@@ -70,6 +70,16 @@ describe("ppal-read-scene", () => {
 
     expect(Array.isArray(withClips.clips)).toBe(true);
 
+    // Each clip names the track it sits on. The path ("t0/s0") says which
+    // track by index but not which one it is, so without this a caller asking
+    // what a scene holds can't tell the drums from the bass.
+    expect(withClips.clips).toStrictEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "t0/s0", trackName: "Drums" }),
+        expect.objectContaining({ path: "t1/s0", trackName: "Bass" }),
+      ]),
+    );
+
     // Test 5: Read with include: ["color"]
     const colorResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
@@ -118,6 +128,6 @@ interface ReadSceneResult {
   color?: string;
   tempo?: number;
   timeSignature?: string;
-  clips?: object[];
+  clips?: Array<{ path?: string; trackName?: string }>;
   clipCount?: number;
 }

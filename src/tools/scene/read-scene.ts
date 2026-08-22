@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { type Notation } from "#src/shared/notation.ts";
+import {
+  readClip,
+  type ReadClipResult,
+} from "#src/tools/clip/read/read-clip.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import {
   parseIncludeArray,
@@ -39,9 +43,12 @@ interface ReadSceneResult {
   clipCount?: number;
 }
 
-interface ClipResult {
-  id?: string | null;
-}
+/**
+ * A clip as a scene read returns it. The track name is not in the clip's path
+ * ("t0/s3" says which track, not which one it is), so a caller asking what a
+ * scene holds would need a second read to learn what plays what.
+ */
+type SceneClip = ReadClipResult & { trackName?: string };
 
 /**
  * Read comprehensive information about a scene
@@ -117,21 +124,12 @@ export function readScene(
   }
 
   if (includeClips) {
-    const clips = liveSet
-      .getChildIds("tracks")
-      .map((_trackId, trackIndex) =>
-        readClip(
-          {
-            trackIndex,
-            sceneIndex: resolvedSceneIndex,
-            suppressEmptyWarning: true,
-            slotValidated: true,
-            include: args.include,
-          },
-          { notation: context.notation },
-        ),
-      )
-      .filter((clip: ClipResult) => clip.id != null);
+    const clips = readSceneClips(
+      liveSet,
+      resolvedSceneIndex,
+      args.include,
+      context.notation,
+    );
 
     // Strip fields redundant with parent scene context
     stripFields(clips, "view");
@@ -144,6 +142,48 @@ export function readScene(
   }
 
   return result;
+}
+
+/**
+ * Read every clip in a scene, one per track, naming the track each sits on.
+ * @param liveSet - LiveAPI reference to the live set
+ * @param sceneIndex - Scene index (0-based)
+ * @param include - Include array for the nested clip reads
+ * @param notation - Active notation for nested clip note formatting
+ * @returns The scene's clips, skipping empty slots
+ */
+function readSceneClips(
+  liveSet: LiveAPI,
+  sceneIndex: number | null | undefined,
+  include?: string[],
+  notation?: Notation,
+): SceneClip[] {
+  const clips: SceneClip[] = [];
+
+  for (const [trackIndex] of liveSet.getChildIds("tracks").entries()) {
+    const clip: SceneClip = readClip(
+      {
+        trackIndex,
+        sceneIndex,
+        suppressEmptyWarning: true,
+        slotValidated: true,
+        include,
+      },
+      { notation },
+    );
+
+    if (clip.id == null) continue;
+
+    // Only for slots that hold something — an empty grid would otherwise pay
+    // for a track build per column it has no clip in.
+    clip.trackName = LiveAPI.from(livePath.track(trackIndex)).getProperty(
+      "name",
+    ) as string;
+
+    clips.push(clip);
+  }
+
+  return clips;
 }
 
 /**
