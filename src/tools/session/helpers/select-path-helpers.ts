@@ -60,6 +60,7 @@ interface IdAgreementArgs {
   trackId?: string;
   sceneId?: string;
   clipId?: string;
+  deviceId?: string;
 }
 
 interface PathParams extends PathAgreementArgs {
@@ -150,40 +151,43 @@ function merge<T>(
 }
 
 /**
- * Refuse a param naming a different track or scene than the one a slot or
- * device path already sits on. These can't be merged like the others — the
- * path doesn't select them, Live moves there on its own — so honoring both
- * would quietly leave two different things selected.
+ * Refuse a param naming a different track or scene than the path does. A track
+ * a slot or device path only sits on can't be merged like the others — the path
+ * doesn't select it, Live moves there on its own — so honoring both would
+ * quietly leave two different things selected. A track a path names outright
+ * comes here too, for the category rule `merge` can't see.
  * @param target - What the path named
- * @param target.impliedTrack - The track the path sits on
- * @param target.impliedScene - The scene the path sits on
  * @param args - The params the caller passed alongside it
  * @param args.trackIndex - The explicit track index
  * @param args.trackType - The explicit track type
  * @param args.sceneIndex - The explicit scene index
  */
 function assertPathAgrees(
-  { impliedTrack, impliedScene }: PathTarget,
+  target: PathTarget,
   { trackIndex, trackType, sceneIndex }: PathAgreementArgs,
 ): void {
-  if (impliedTrack != null) {
-    if (trackIndex != null && trackIndex !== impliedTrack.trackIndex) {
+  const track = target.impliedTrack ?? trackNamedDirectly(target);
+
+  if (track != null) {
+    if (trackIndex != null && trackIndex !== track.trackIndex) {
       throw pathConflict("trackIndex");
     }
 
     // trackIndex on its own names a regular track, so it disagrees with a
     // return or master path even though neither param mentions a category.
+    // merge() can't catch this: it compares the two categories, and a bare
+    // trackIndex leaves trackType unset.
     const named = trackType ?? (trackIndex == null ? null : "regular");
 
-    if (named != null && named !== impliedTrack.category) {
+    if (named != null && named !== track.category) {
       throw pathConflict(trackType == null ? "trackIndex" : "trackType");
     }
   }
 
   if (
-    impliedScene != null &&
+    target.impliedScene != null &&
     sceneIndex != null &&
-    sceneIndex !== impliedScene
+    sceneIndex !== target.impliedScene
   ) {
     throw pathConflict("sceneIndex");
   }
@@ -198,15 +202,20 @@ function assertPathAgrees(
  * @param ids.trackId - The track `id` named
  * @param ids.sceneId - The scene `id` named
  * @param ids.clipId - The clip `id` named
+ * @param ids.deviceId - The device `id` named
  */
 function assertIdAgrees(
   target: PathTarget,
-  { trackId, sceneId, clipId }: IdAgreementArgs,
+  { trackId, sceneId, clipId, deviceId }: IdAgreementArgs,
 ): void {
   const track = target.impliedTrack ?? trackNamedDirectly(target);
 
   if (trackId != null && track != null) {
     assertSameObject(trackId, buildTrackPath(track.category, track.trackIndex));
+  }
+
+  if (deviceId != null && track != null) {
+    assertDeviceOnTrack(deviceId, track);
   }
 
   const sceneIndex = target.impliedScene ?? target.sceneIndex;
@@ -235,6 +244,27 @@ function trackNamedDirectly(target: PathTarget): ImpliedTrack | null {
   if (target.category == null) return null;
 
   return { trackIndex: target.trackIndex, category: target.category };
+}
+
+/**
+ * Refuse a device `id` that sits on a different track than the path names. The
+ * two are written to Live separately, so the pair selects the device and then
+ * moves the selection off its track, while the response reports both.
+ * @param deviceId - The device `id` named
+ * @param track - The track the path named
+ */
+function assertDeviceOnTrack(deviceId: string, track: ImpliedTrack): void {
+  const device = LiveAPI.from(deviceId);
+  const deviceTrackIndex =
+    track.category === "return" ? device.returnTrackIndex : device.trackIndex;
+
+  // The master track has no index, so both sides read null there.
+  if (
+    device.category !== track.category ||
+    deviceTrackIndex !== (track.trackIndex ?? null)
+  ) {
+    throw pathConflict("id");
+  }
 }
 
 /**

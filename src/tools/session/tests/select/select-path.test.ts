@@ -350,6 +350,19 @@ describe("select path param", () => {
     );
   });
 
+  // The same rule for a path that selects its track outright. That shape went
+  // through merge(), which compares the two categories and so can't see a
+  // category the caller never spelled — "rt0" plus trackIndex 0 merged cleanly
+  // and selected return track 0.
+  it("refuses a bare return or master path against a bare trackIndex", () => {
+    expect(() => select({ path: "rt0", trackIndex: 0 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+    expect(() => select({ path: "mt", trackIndex: 0 })).toThrow(
+      "select failed: path and trackIndex name different targets",
+    );
+  });
+
   // Regression: `id` was never checked against `path` at all. Both are written
   // to Live, the last one wins, and the response named the id — so the call
   // selected the path's target and reported the id's.
@@ -364,6 +377,38 @@ describe("select path param", () => {
     expect(() => select({ id, path })).toThrow(
       "select failed: path and id name different targets",
     );
+  });
+
+  // A device id was left out of the cross-check, and the two are written
+  // separately: select_device put the focus on the id's device, then the slot
+  // write moved the selection to the path's track. The response named both.
+  it.each([
+    ["another track", "device_t5", "t0/s3"],
+    ["another track", "device_t5", "t0"],
+    ["a return track", "device_rt0", "t0/s3"],
+    ["the master track", "device_mt", "t0/s3"],
+    ["a regular track", "device_t0", "mt"],
+    ["a regular track", "device_t0", "rt0"],
+    ["another return track", "device_rt0", "rt1"],
+  ])("refuses a device id on %s than the path's", (_what, id, path) => {
+    registerIdConflictObjects();
+
+    expect(() => select({ id, path })).toThrow(
+      "select failed: path and id name different targets",
+    );
+  });
+
+  it.each([
+    ["a slot path on its track", "device_t0", "t0/s3"],
+    ["its own track", "device_t0", "t0"],
+    ["its own return track", "device_rt0", "rt0"],
+    ["its own master track", "device_mt", "mt"],
+  ])("accepts a device id named alongside %s", (_what, id, path) => {
+    registerIdConflictObjects();
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() => select({ id, path })).not.toThrow();
   });
 
   it("accepts an id naming exactly what the path names", () => {
@@ -473,5 +518,21 @@ function registerIdConflictObjects(): void {
   registerMockObject("clip_elsewhere", {
     path: livePath.track(2).clipSlot(1).clip(),
     type: "Clip",
+  });
+  registerMockObject("device_t0", {
+    path: livePath.track(0).device(1),
+    type: "Device",
+  });
+  registerMockObject("device_t5", {
+    path: livePath.track(5).device(1),
+    type: "Device",
+  });
+  registerMockObject("device_rt0", {
+    path: livePath.returnTrack(0).device(1),
+    type: "Device",
+  });
+  registerMockObject("device_mt", {
+    path: livePath.masterTrack().device(1),
+    type: "Device",
   });
 }
