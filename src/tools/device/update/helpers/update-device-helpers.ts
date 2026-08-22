@@ -29,6 +29,10 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
  * The pad a toPath names, when it names one in this rack. Resolution is by path
  * rather than by object so a toPath pointing at nothing (a track that doesn't
  * exist) is refused rather than read as "same rack".
+ *
+ * A chain or device below the pad ("t0/d0/pD1/c0", the spelling read-device
+ * prints for a layered pad) still names that pad: the move is an in_note
+ * re-map, so the pad is the only destination there is.
  * @param toPath - Target drum pad path
  * @param drumRackPath - Live API path of the rack holding the source chain
  * @returns The pad's note name, "*" for the catch-all pad, or null once the
@@ -43,14 +47,13 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
     return null;
   }
 
-  // Resolution stops at the first pad segment, so anything after it names a
-  // chain of that pad or a pad of a rack nested under it — never a pad of the
-  // rack this resolution reached. Which rack that deeper pad belongs to is
-  // unknown from here, so don't claim it's another one.
-  if (resolved.remainingSegments.length > 0) {
+  // Resolution stops at the first pad segment, so a further pad segment belongs
+  // to a rack nested under this one. Which rack that is can't be told from
+  // here, so don't guess — refuse.
+  if (resolved.remainingSegments.some((segment) => segment.startsWith("p"))) {
     console.warn(
-      `toPath "${toPath}" names something inside a pad rather than a pad itself, ` +
-        `and a pad move re-maps one rack's own pads; for a pad of a nested rack, ` +
+      `toPath "${toPath}" names a pad of a nested Drum Rack, ` +
+        `and a pad move re-maps one rack's own pads; ` +
         `name the destination by the outer rack's chain index instead (t0/d0/c0/d0/pE1)`,
     );
 

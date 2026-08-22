@@ -195,6 +195,19 @@ describe("updateDevice - moving a drum chain", () => {
     });
   });
 
+  // A chain of a pad in this rack names that pad — the move is an in_note
+  // re-map, and "t0/d0/pD1/c0" is the spelling read-device prints for a layered
+  // pad's chains. 2.2.0 refused it with nested-rack advice that doesn't apply.
+  it("moves to a pad named by one of its chains", () => {
+    updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/pD1/c0" });
+
+    expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("nested Drum Rack"),
+    );
+  });
+
   it("should warn and skip when toPath names a pad in a nested rack", () => {
     // The path resolves to the OUTER rack, so only the trailing "/d0/pE1" says
     // the pad the caller meant is somewhere else. Honoring the first pad name
@@ -208,7 +221,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names something inside a pad rather than a pad"),
+      expect.stringContaining("names a pad of a nested Drum Rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -224,7 +237,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names something inside a pad rather than a pad"),
+      expect.stringContaining("names a pad of a nested Drum Rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
