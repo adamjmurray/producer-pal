@@ -81,6 +81,11 @@ describe("generateOutputPartial", () => {
 
     expect(markdown).toContain("Global context (all projects):");
     expect(markdown).toContain("Keep it short.");
+    expect(markdown).toContain(
+      "`ppal-read-track` does not return them as fields",
+    );
+    expect(markdown).toContain("[Context & Memory](/guide/context)");
+    expect(markdown).toContain('<div class="wrapped-code">');
   });
 
   it("stubs out a block too long to reprint", () => {

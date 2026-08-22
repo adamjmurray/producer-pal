@@ -50,7 +50,7 @@ export function generateOutputPartial(run: ExampleRun): string {
   }
 
   if (run.appended != null && run.appended.length > 0) {
-    lines.push(...appendedBlockLines(run.appended));
+    lines.push(...appendedBlockLines(run.appended, example.toolName));
   }
 
   if (example.caption != null) {
@@ -63,17 +63,19 @@ export function generateOutputPartial(run: ExampleRun): string {
 }
 
 /**
- * Render the text blocks the Node side appends after the JSON result. The
- * skills blob is a whole document, so a long block is stubbed to its first
- * lines rather than reprinted here.
+ * Render the text blocks appended after the JSON result. The skills blob is a
+ * whole document, so a long block is stubbed to its first lines rather than
+ * reprinted here.
  * @param blocks - Each appended block's text, in the order a client sees it
+ * @param toolName - The tool the example called
  * @returns Markdown lines
  */
-function appendedBlockLines(blocks: string[]): string[] {
+function appendedBlockLines(blocks: string[], toolName: string): string[] {
   const lines = [
     "The response carries these as separate text blocks after the JSON, in this",
-    "order. They are assembled outside the Live device, so none of them is a",
-    "field on the result:",
+    `order — \`${toolName}\` does not return them as fields on the result. What`,
+    "goes in them is up to you: see [Context & Memory](/guide/context) and",
+    "[Customizing Skills](/guide/customizing-skills).",
     "",
   ];
 
@@ -82,13 +84,15 @@ function appendedBlockLines(blocks: string[]): string[] {
     const isLong = blockLines.length > LONG_BLOCK_LINES;
     const shown = isLong ? blockLines.slice(0, LONG_BLOCK_PREVIEW) : blockLines;
 
-    lines.push("```", ...shown);
+    // These blocks are prose, so the docs site wraps them instead of making the
+    // reader scroll sideways. See docs/.vitepress/theme/tool-schemas.css.
+    lines.push('<div class="wrapped-code">', "", "```", ...shown);
 
     if (isLong) {
       lines.push(`… ${blockLines.length - shown.length} more lines`);
     }
 
-    lines.push("```", "");
+    lines.push("```", "", "</div>", "");
   }
 
   return lines;

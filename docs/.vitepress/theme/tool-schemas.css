@@ -26,3 +26,11 @@ details > table th:last-child,
 details > table td:last-child {
   min-width: 15em;
 }
+
+/* Prose blocks in the tool reference wrap instead of scrolling sideways.
+   The selector has to out-specify VitePress's own `[class*="language-"] code`. */
+.vp-doc .wrapped-code [class*="language-"] pre,
+.vp-doc .wrapped-code [class*="language-"] code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
