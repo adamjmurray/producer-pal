@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   namedIdParam,
@@ -124,7 +124,7 @@ export function updateScene(
   if (focus && updatedScenes.length > 0) {
     const lastScene = updatedScenes.at(-1) as UpdateSceneResult;
 
-    select({ view: "session", id: lastScene.id });
+    focusSelect({ view: "session", id: lastScene.id });
   }
 
   return unwrapSingleResult(updatedScenes);

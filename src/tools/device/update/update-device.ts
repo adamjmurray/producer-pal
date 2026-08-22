@@ -5,7 +5,7 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
   type DrumPadGroup,
   chainsOnDrumPad,
@@ -180,7 +180,7 @@ export function updateDevice(
     const lastId = lastResult?.id as string | undefined;
 
     if (lastId) {
-      select({ id: lastId, detailView: "device" });
+      focusSelect({ id: lastId, detailView: "device" });
     }
   }
 

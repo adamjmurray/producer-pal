@@ -42,7 +42,7 @@ import {
   readFullState,
 } from "./helpers/select-response-helpers.ts";
 
-interface SelectArgs {
+export interface SelectArgs {
   // External params (from schema)
   id?: string;
   view?: "session" | "arrangement";

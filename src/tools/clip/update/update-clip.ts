@@ -11,7 +11,7 @@ import {
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
@@ -302,7 +302,7 @@ function focusLastUpdatedClip(
   if (focus && updatedClips.length > 0) {
     const lastClip = updatedClips.at(-1) as ClipResult;
 
-    select({ id: lastClip.id, detailView: "clip" });
+    focusSelect({ id: lastClip.id, detailView: "clip" });
   }
 }
 

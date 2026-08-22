@@ -228,6 +228,29 @@ describe("createClip - advanced features", () => {
       });
     });
 
+    // The clip exists by the time the focus runs, and select throws on an id it
+    // can't resolve. Letting that out would report the whole create as an error
+    // with no record of the clip.
+    it("still reports the clip when the focus fails", async () => {
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      selectMockRef.get().mockImplementationOnce(() => {
+        throw new Error('select failed: id "gone" does not exist');
+      });
+
+      const result = await createClip({ slot: "0/0", focus: true });
+
+      expect(result).toMatchObject({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+      });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not move the focus"),
+      );
+    });
+
     it("should not call select when focus=false", async () => {
       setupSessionMocks({
         liveSet: { signature_numerator: 4, signature_denominator: 4 },
