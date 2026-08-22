@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { vi } from "vitest";
+import { vi, type Mock } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -379,18 +379,42 @@ export function withEachLiveCallCostingASecond(
   trackMock: RegisteredMockObject,
   body: () => void,
 ): void {
-  const splitCalls = trackMock.call.getMockImplementation() as (
-    method: string,
-    ...args: unknown[]
-  ) => unknown;
+  withEachMockCallCostingASecond(trackMock.call, body);
+}
+
+/**
+ * Run a split with every property read on a clip costing a second. A clip no
+ * split point falls inside makes no Live calls at all, so its own reads are the
+ * only clock a deadline has while that clip is measured.
+ * @param clipId - The clip whose reads should cost time
+ * @param body - The performSplitting call to run
+ */
+export function withEachClipReadCostingASecond(
+  clipId: string,
+  body: () => void,
+): void {
+  const clip = lookupMockObject(clipId);
+
+  if (!clip) throw new Error(`Clip mock ${clipId} not found`);
+
+  withEachMockCallCostingASecond(clip.get, body);
+}
+
+/**
+ * Charge a second of fake time to every call of one mock, for one body.
+ * @param mock - The mock to charge for
+ * @param body - What to run
+ */
+function withEachMockCallCostingASecond(mock: Mock, body: () => void): void {
+  const inner = mock.getMockImplementation() as (...args: unknown[]) => unknown;
 
   vi.useFakeTimers({ now: 0 });
 
   try {
-    trackMock.call.mockImplementation((method: string, ...args: unknown[]) => {
+    mock.mockImplementation((...args: unknown[]) => {
       vi.advanceTimersByTime(1000);
 
-      return splitCalls(method, ...args);
+      return inner(...args);
     });
 
     body();

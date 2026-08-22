@@ -461,10 +461,10 @@ export function performSplitting(
   const splitClipRanges = new Map<string, SplitClipRange>();
   const misses: SplitMiss[] = [];
   const usedPoints = new Set<number>();
-  // "This position cut nothing" only holds if every clip was measured against
-  // it. A deadline stop, a throw, or a skipped clip leaves the count short and
-  // usedPoints partial, and the warning would then blame a position that a clip
-  // nobody looked at spans.
+  // Both warnings below speak for the whole call, and neither holds unless
+  // every clip was measured against every position. A deadline stop, a throw,
+  // or a skipped clip leaves the count short and usedPoints partial, and the
+  // warning would then blame a position that a clip nobody looked at spans.
   let measuredClips = 0;
 
   for (let i = 0; i < arrangementClips.length; i++) {
@@ -508,9 +508,13 @@ export function performSplitting(
     }
   }
 
+  const everyClipMeasured = measuredClips === arrangementClips.length;
+
   if (splitClipRanges.size === 0) {
-    if (misses.length > 0) warnNothingSplit(misses, mode);
-  } else if (measuredClips === arrangementClips.length) {
+    // Nothing cut and nothing skipped, so every clip is a miss — unless there
+    // were no clips at all.
+    if (everyClipMeasured && misses.length > 0) warnNothingSplit(misses, mode);
+  } else if (everyClipMeasured) {
     // Something was cut, so the caller gets a result that looks like it worked.
     // A position that landed in no clip at all has to say so itself.
     warnUnusedSplitPoints(splitPoints, usedPoints, mode);

@@ -19,6 +19,7 @@ import {
   mockArrangementClipsRescan,
   setupClipSplittingMocks,
   setupSplittingClipGetMock,
+  withEachClipReadCostingASecond,
   withEachLiveCallCostingASecond,
   type SplittingCallState,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
@@ -138,6 +139,39 @@ describe("performSplitting across a batch of clips", () => {
     expect(outlet).not.toHaveBeenCalledWith(
       1,
       expect.stringContaining("cut nothing at"),
+    );
+  });
+
+  it("does not call the split points a miss when time runs out", () => {
+    const { callState, arrangementClips, clips } = setupBatchSplitTest();
+
+    // Beat 40 is inside clip_2 only, so clip_1 is measured and missed. The
+    // budget is gone by the time it is done, so clip_2 is never looked at and
+    // nothing is cut. Reading clip_1 is the only clock: a clip no point falls
+    // inside makes no Live calls.
+    withEachClipReadCostingASecond("clip_1", () => {
+      performSplitting(
+        arrangementClips,
+        [40],
+        clips,
+        { ...HOLDING_AREA, deadline: 1500 },
+        ARRANGEMENT_SPLIT_MODE,
+      );
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Ran out of time after splitting 1 of 2 clips. " +
+        "Not split: clip_2. Re-run for those ids.",
+    );
+    expect(holdingStartFor(callState, "clip_2")).toBeUndefined();
+
+    // Beat 40 is inside clip_2, so "no split point falls inside any of the
+    // clips" is false, and it would send the caller to move a position that
+    // the warning above it just told them to re-run as is.
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("cut nothing"),
     );
   });
 
