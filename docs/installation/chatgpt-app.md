@@ -25,13 +25,6 @@ similar, but it's no longer officially supported — the new app is recommended.
 
 :::
 
-::: warning macOS and Windows Only
-
-The ChatGPT desktop app runs on macOS (Apple Silicon) and Windows. On Linux, see
-[Codex CLI](./codex-cli) or the [ChatGPT web app](./chatgpt-web).
-
-:::
-
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->
