@@ -18,6 +18,8 @@ export interface DrumMapPostProcessOptions {
   drumMapExplicit: boolean;
   /** Whether chains were fetched only to build the map */
   chainsForDrumMap: boolean;
+  /** Whether the caller asked for the pads in their own right */
+  includeDrumPads: boolean;
   /** Active notation; controls whether drum-map keys are drum names */
   notation?: Notation;
 }
@@ -34,6 +36,7 @@ export function postProcessDrumMap(
 ): Record<string, unknown> {
   const { includeDrumMap, drumMapExplicit, chainsForDrumMap, notation } =
     options;
+  const { includeDrumPads } = options;
 
   if (includeDrumMap) {
     const devices = drumMapSource(result);
@@ -50,7 +53,7 @@ export function postProcessDrumMap(
   }
 
   if (chainsForDrumMap) {
-    stripInternalChains(result);
+    stripInternalChains(result, includeDrumPads);
   }
 
   return result;
@@ -132,15 +135,29 @@ function warnNoDrumMap(
  * devices, so their chains go too — otherwise a drum-map read of a chain path
  * answers with the whole rack tree below it.
  * @param result - Result to strip in place
+ * @param keepDrumPads - Whether the caller asked for the pads themselves, so
+ *   they survive the strip (without the chains hanging off them)
  */
-function stripInternalChains(result: Record<string, unknown>): void {
+function stripInternalChains(
+  result: Record<string, unknown>,
+  keepDrumPads: boolean,
+): void {
   delete result.chains;
-  delete result.drumPads;
   delete result.hasSoloedChain;
+
+  if (keepDrumPads && Array.isArray(result.drumPads)) {
+    // The pads stay, but not their chains: chains are forced on to build the
+    // map, and a pad read without the map never carries them.
+    for (const pad of result.drumPads) {
+      delete (pad as Record<string, unknown>).chains;
+    }
+  } else {
+    delete result.drumPads;
+  }
 
   if (Array.isArray(result.devices)) {
     for (const device of result.devices) {
-      stripInternalChains(device as Record<string, unknown>);
+      stripInternalChains(device as Record<string, unknown>, keepDrumPads);
     }
   }
 }

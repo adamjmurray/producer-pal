@@ -181,6 +181,34 @@ describe("readDevice drum-map by target kind", () => {
     });
   });
 
+  // Regression: chains are forced on to build the map, and the strip that hides
+  // them again deleted the pads outright — so asking for both returned neither
+  // the pads nor a word about losing them. Adding "chains" made them reappear.
+  it("keeps the pads when they were asked for alongside the map", () => {
+    setupInstrumentRackWithKit();
+
+    const result = readDevice({
+      path: "t1/d0/c0",
+      include: ["drum-map", "drum-pads"],
+    });
+
+    expect(result.drumMap).toStrictEqual({ C1: "Kick" });
+
+    const kit = (result.devices as Record<string, unknown>[])[0];
+    const pads = kit?.drumPads as Record<string, unknown>[];
+
+    expect(pads).toHaveLength(1);
+    // The pads read the same as they do without the map: their chains were
+    // walked for the map, not asked for.
+    expect(pads[0]).toStrictEqual({
+      id: "kit-pad",
+      note: 36,
+      pitch: "C1",
+      name: "Kick",
+    });
+    expect(kit?.chains).toBeUndefined();
+  });
+
   it("keeps the chain tree when chains were asked for too", () => {
     setupInstrumentRackWithKit();
 

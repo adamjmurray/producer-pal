@@ -100,6 +100,7 @@ export function readDevice(
     includeDrumMap,
     drumMapExplicit: include.includes("drum-map"),
     chainsForDrumMap,
+    includeDrumPads,
     notation: context.notation,
   });
 
