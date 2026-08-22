@@ -157,7 +157,7 @@
     "eslint-plugin-unicorn": "72.0.0",
     "fake-indexeddb": "6.2.5",
     "happy-dom": "20.11.2",
-    "jscpd": "5.0.14",
+    "jscpd": "5.0.15",
     "oxfmt": "0.62.0",
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "7.0.2001",
