@@ -41,6 +41,7 @@ import {
   createAndEditClip,
   deviceDrumKit,
   deviceSoundDesign,
+  drumPadForceGuard,
   drumBackbeatMatrix,
   drumTransforms,
   duplicate,
@@ -62,6 +63,7 @@ import {
   pathToPathDeviceAndPad,
   pathToPathPairing,
   pathUncommonRoots,
+  rackPadOps,
   rangeClearBoundaries,
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
@@ -96,6 +98,8 @@ const allScenarios: EvalScenario[] = [
   trackAndDeviceWorkflow,
   deviceSoundDesign,
   deviceDrumKit,
+  rackPadOps,
+  drumPadForceGuard,
   projectContextWorkflow,
   // ppal-context behavior. Kept CONTIGUOUS and on one Live Set: each sets
   // `reuseLiveSet`, which only skips the (slow) reopen when the PRECEDING
