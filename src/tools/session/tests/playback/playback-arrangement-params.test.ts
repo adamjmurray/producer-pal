@@ -65,8 +65,9 @@ describe("playback arrangement params on a session action", () => {
     playback({ ...targetFor(action), action, startTime: "5|1" });
 
     expect(warn).toHaveBeenCalledWith(
-      `startTime ignored: action "${action}" does not change the arrangement; ` +
-        `use action "update-arrangement" for the playhead and loop`,
+      `startTime ignored: action "${action}" doesn't take arrangement ` +
+        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
+        `the playhead and loop`,
     );
   });
 

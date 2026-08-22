@@ -436,7 +436,7 @@ export function updateClipSelection({
   // Warn if user explicitly requested a conflicting view
   if (requestedView != null && requestedView !== requiredView) {
     console.warn(
-      `Warning: ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
+      `ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
     );
   }
 

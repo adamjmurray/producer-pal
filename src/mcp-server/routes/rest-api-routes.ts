@@ -16,6 +16,7 @@ import {
 import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
+import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -228,7 +229,12 @@ function appendDeprecationNotices(
   args: Record<string, unknown>,
 ): void {
   const hidden = collectHiddenParams(inputSchema);
-  const usedKeys = Object.keys(hidden).filter((key) => args[key] != null);
+  // Same predicate define-tool.ts uses, so a value the handler never honored
+  // doesn't earn a "use X instead" notice. A blank survives the schema on a
+  // string-typed param, and != null would count it as sent.
+  const usedKeys = Object.keys(hidden).filter((key) =>
+    paramNamesSomething(args[key]),
+  );
 
   for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
     response.content.push({ type: "text", text });

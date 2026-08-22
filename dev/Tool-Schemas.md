@@ -40,11 +40,12 @@ never drop it quietly.** Applying it is the worse half: `ppal-playback` used to
 write the arrangement playhead on `play-scene`, so "play scene 3 from bar 5"
 changed the Live Set in a way nobody asked for.
 
-Say which action ignored it, and point at the one that would have used it:
+Say which action ignored it, and point at every action that would have used it —
+naming only one steers a caller who meant the other:
 
 ```
-startTime ignored: action "play-scene" does not change the arrangement;
-use action "update-arrangement" for the playhead and loop
+startTime ignored: action "play-scene" doesn't take arrangement timeline
+params; use "play-arrangement" or "update-arrangement" for the playhead and loop
 ```
 
 Group the params that share a reason into one warning rather than repeating the

@@ -309,6 +309,22 @@ describe("REST API Routes", () => {
       expect(body.appended).toBeUndefined();
     });
 
+    it("says nothing about a deprecated param sent blank", async () => {
+      // A blank survives the schema on a string-typed param, so != null counted
+      // it as sent and steered the caller onto a value nothing had honored. MCP
+      // is silent on the same call.
+      setMcpResponse({ content: [{ type: "text", text: "moved" }] });
+
+      const response = await callTool("ppal-duplicate", {
+        type: "clip",
+        id: "1",
+        toSlot: "",
+      });
+      const body = (await response.json()) as ToolCallBody;
+
+      expect(body.warnings).toBeUndefined();
+    });
+
     it("should return isError true when tool reports error", async () => {
       const { response, body } = await callConnectReportingToolError(
         "something went wrong",

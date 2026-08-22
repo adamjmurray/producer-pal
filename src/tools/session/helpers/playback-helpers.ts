@@ -71,8 +71,9 @@ export function resolveArrangementParams(
 
   if (sent.length > 0) {
     console.warn(
-      `${sent.join("/")} ignored: action "${action}" does not change the ` +
-        `arrangement; use action "update-arrangement" for the playhead and loop`,
+      `${sent.join("/")} ignored: action "${action}" doesn't take arrangement ` +
+        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
+        `the playhead and loop`,
     );
   }
 

@@ -31,7 +31,9 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
 function expectViewConflictWarning(fired: boolean): void {
   const outletMock = (globalThis as Record<string, unknown>)
     .outlet as ReturnType<typeof vi.fn>;
-  const warning = expect.stringContaining("ignoring view=");
+  // Anchored at the start: max-api-adapter prepends "WARNING: ", so any prefix
+  // of its own renders as "WARNING: Warning: ignoring view=...".
+  const warning = expect.stringMatching(/^ignoring view=/);
 
   if (fired) {
     expect(outletMock).toHaveBeenCalledWith(1, warning);
