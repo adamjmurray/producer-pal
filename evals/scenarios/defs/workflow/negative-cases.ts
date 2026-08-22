@@ -9,6 +9,9 @@
 
 import { type EvalScenario } from "../../types.ts";
 
+/** basic-midi-4-track opens at this tempo. */
+const SET_TEMPO = 120;
+
 export const negativeCases: EvalScenario = {
   id: "negative-cases",
   description: "Handle an impossible request",
@@ -24,12 +27,16 @@ export const negativeCases: EvalScenario = {
     // Turn 0: Connection
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
-    // Turn 1: Should NOT claim success for impossible request
+    // The tempo is untouched. Grade the outcome, not the prose: a refusal
+    // ("I can't set the tempo to -50") contains the same words as a claim of
+    // success, so no negated text pattern can separate the two.
     {
-      type: "response_contains",
-      pattern: /set.*tempo.*-50|changed.*tempo/i,
-      turn: 1,
-      negate: true,
+      type: "state",
+      tool: "ppal-read-live-set",
+      args: {},
+      expect: (result) => (result as { tempo?: number }).tempo === SET_TEMPO,
+      explain: (result) =>
+        `tempo should be unchanged at ${SET_TEMPO}, got ${(result as { tempo?: number }).tempo}`,
     },
 
     // Turn 1: Should explain why it can't be done
