@@ -5,42 +5,45 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { DEVICE_CLASS } from "#src/tools/constants.ts";
+import {
+  DEVICE_CLASS,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 
 const SAMPLE_PARAM = "sample";
 
 interface DrumPadSlot {
   padNote: string;
   chainIndex: number;
-  deviceIndex: number;
 }
 
 /**
- * Resolve a path-prefixed pseudo-param (e.g. `pC1/d0/sample`) to the device the
+ * Resolve a path-prefixed pseudo-param (e.g. `pC1/sample`) to the device the
  * param should be written to, relative to the rack being created/updated. The
  * caller splits the param name into a path `prefix` and the trailing
  * `paramName`; this resolves the prefix.
  *
- * For a `sample` write addressing a drum-pad device slot, the pad-property model
- * applies: the pad (always addressable) gets a Simpler to hold the sample,
- * created or replaced per the policy below. Every other case is plain read-only
- * navigation to an existing device.
+ * For a `sample` write addressing a drum pad, the pad-property model applies:
+ * the pad (always addressable) gets a Simpler to hold the sample, created or
+ * replaced per the policy below. Every other case — including a `sample` write
+ * to an explicit non-pad device path — is plain read-only navigation to an
+ * existing device.
  *
- * | Pad device slot state    | Behavior                                      |
+ * | Pad instrument           | Behavior                                      |
  * | ------------------------ | --------------------------------------------- |
- * | empty                    | create a Simpler                              |
+ * | none                     | create a Simpler                              |
  * | Simpler (single-sample)  | reuse it (caller's sample write replaces)     |
- * | Simpler (multi-sample)   | reuse it (caller's sample write warn-skips)   |
- * | DrumSampler              | skip and warn; `force` swaps in a Simpler     |
- * | any other device         | skip and warn (no overwrite)                  |
+ * | Simpler (multi-sample)   | skip and warn; `force` swaps in a Simpler     |
+ * | any other instrument     | skip and warn; `force` swaps in a Simpler     |
  *
  * @param rack - The device being created/updated (the path prefix is relative to it)
- * @param prefix - The path segments before the param name (e.g. "pC1/d0")
+ * @param prefix - The path segments before the param name (e.g. "pC1")
  * @param paramName - The trailing param name (e.g. "sample", "gainDb")
  * @param toolName - Calling tool name for warning prefix
- * @param force - Allow the DrumSampler-to-Simpler swap the sample write needs
+ * @param force - Allow the instrument-to-Simpler swap the sample write needs
  * @returns The target device, or null (after warning) when none can be targeted
  */
 export function resolveNestedParamTarget(
@@ -65,7 +68,7 @@ export function resolveNestedParamTarget(
       ? parseDrumPadSlot(segments)
       : null;
 
-  // Pad-property model: a `sample` write to a drum-pad device slot.
+  // Pad-property model: a `sample` write to a drum pad.
   if (slot) {
     return resolveDrumPadSampleTarget(rack, slot, toolName, force);
   }
@@ -93,11 +96,10 @@ export function resolveNestedParamTarget(
 }
 
 /**
- * Parse a relative path prefix as a drum-pad device slot
- * (`p<note>[/c<chain>][/d<device>]`). The chain and device indices default to 0,
- * so `pC1`, `pC1/d0`, and `pC1/c0/d0` all address the same slot. Returns null
- * for non-drum-pad prefixes, malformed indices, or deeper nesting (handled by
- * the general resolver instead).
+ * Parse a relative path prefix as a drum pad (`p<note>[/c<chain>][/d<device>]`).
+ * The chain index defaults to 0, so `pC1`, `pC1/d0`, and `pC1/c0/d0` all address
+ * the same pad. Returns null for non-drum-pad prefixes, malformed indices, or
+ * deeper nesting (handled by the general resolver instead).
  * @param segments - Non-empty path segments
  * @returns The parsed slot, or null
  */
@@ -129,7 +131,9 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     index++;
   }
 
-  let deviceIndex = 0;
+  // A `d<N>` segment is accepted so read and write paths stay interchangeable,
+  // but its value is ignored: the pad's instrument is found by device type, not
+  // by index.
   const deviceSegment = segments[index];
 
   if (deviceSegment?.startsWith("d")) {
@@ -139,7 +143,6 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
       return null;
     }
 
-    deviceIndex = parsed;
     index++;
   }
 
@@ -149,16 +152,16 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     return null;
   }
 
-  return { padNote, chainIndex, deviceIndex };
+  return { padNote, chainIndex };
 }
 
 /**
  * Resolve (and, per policy, create/replace) the Simpler that holds a drum pad's
  * sample. The pad's chain auto-creates when missing.
  * @param rack - Drum Rack device
- * @param slot - Parsed drum-pad device slot
+ * @param slot - Parsed drum pad slot
  * @param toolName - Calling tool name for warning prefix
- * @param force - Allow the DrumSampler-to-Simpler swap
+ * @param force - Allow the instrument-to-Simpler swap
  * @returns The Simpler to write the sample to, or null (after warning)
  */
 function resolveDrumPadSampleTarget(
@@ -167,7 +170,7 @@ function resolveDrumPadSampleTarget(
   toolName: string,
   force: boolean,
 ): LiveAPI | null {
-  const { padNote, chainIndex, deviceIndex } = slot;
+  const { padNote, chainIndex } = slot;
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
@@ -179,63 +182,89 @@ function resolveDrumPadSampleTarget(
     return null;
   }
 
-  const existing = chain.getChildAt("devices", deviceIndex);
+  const instrument = findChainInstrument(chain);
 
-  if (!existing?.exists()) {
+  if (!instrument) {
     return createSimplerInChain(chain, toolName);
   }
 
-  const className = existing.getProperty("class_display_name") as string;
+  const className = instrument.device.getProperty(
+    "class_display_name",
+  ) as string;
 
-  if (className === DEVICE_CLASS.SIMPLER) {
-    // The recursive sample write replaces a single-sample Simpler and
-    // warn-skips a multi-sample one.
-    return existing;
+  // A single-sample Simpler is already the pad's sample holder, loaded or not —
+  // the caller's write lands on it as-is.
+  if (isSingleSampleSimpler(instrument.device, className)) {
+    return instrument.device;
   }
 
-  if (isDrumSampler(className)) {
-    // DrumSampler's sample is not settable via the current Live API, so the only
-    // way to honor the write is to swap in a Simpler. That changes the pad's
-    // instrument and loses every DrumSampler setting, which is too destructive to
-    // do silently — warn-and-skip, and let `force` through once the user has
-    // agreed. Revisit if the API ever exposes DrumSampler's sample.
-    if (!force) {
-      console.warn(
-        `${toolName}: sample write SKIPPED on pad ${padNote} — it holds a ` +
-          `${className}, whose sample the Live API can't set. Honoring the ` +
-          `write REPLACES it with a Simpler, losing all ${className} settings. ` +
-          `Ask the user before passing force:true. To keep it: load the sample ` +
-          `on another pad, or copy the ${className} to a free pad first ` +
-          `(ppal-duplicate type:"device").`,
-      );
+  // Nothing else has a settable sample: the Live API exposes `replace_sample`
+  // only on a single-sample Simpler, and can't take a Simpler out of
+  // multi-sample mode. So the only way to honor the write is to swap in a fresh
+  // Simpler, which loses every setting on the instrument it replaces. Too
+  // destructive to do silently — warn and skip, and let `force` through once the
+  // user has agreed.
+  const description =
+    className === DEVICE_CLASS.SIMPLER
+      ? "a Simpler in multi-sample mode"
+      : `${article(className)} ${className}`;
 
-      return null;
-    }
-
-    // The replacement Simpler is appended at the chain end (createSimplerInChain
-    // uses insert_device, which has no position arg). That's correct here: a drum
-    // pad chain holds a single instrument, so deleting the DrumSampler and
-    // appending the Simpler lands it in the same (first) slot. If a pad ever held
-    // an instrument plus trailing effects, the Simpler would land after them —
-    // acceptable, since the sample write targets the returned device directly,
-    // not a fixed index.
-    chain.call("delete_device", deviceIndex);
+  if (!force) {
     console.warn(
-      `${toolName}: force:true — replaced the ${className} on pad ${padNote} with a Simpler to load the sample. Its ${className} settings are gone.`,
+      `${toolName}: sample write SKIPPED on pad ${padNote} — it holds ` +
+        `${description}, whose sample the Live API can't set. Honoring the ` +
+        `write REPLACES it with a Simpler, losing all its settings. Ask the ` +
+        `user before passing force:true. To keep it: load the sample on ` +
+        `another pad, or copy the instrument to a free pad first ` +
+        `(ppal-duplicate type:"device").`,
     );
 
-    return createSimplerInChain(chain, toolName);
+    return null;
   }
 
+  chain.call("delete_device", instrument.index);
   console.warn(
-    `${toolName}: pad ${padNote} already has a ${className}; not overwriting — delete the pad's device with ppal-delete before setting a sample`,
+    `${toolName}: force:true — replaced ${description} on pad ${padNote} with a Simpler to load the sample. Its settings are gone.`,
   );
 
-  return null;
+  return createSimplerInChain(chain, toolName);
 }
 
 /**
- * Insert a Simpler at the end of a (drum pad) chain.
+ * The indefinite article for a device class name, so the skip warning reads
+ * "an Operator" rather than "a Operator".
+ * @param name - The name the article precedes
+ * @returns "an" before a vowel, "a" otherwise
+ */
+function article(name: string): string {
+  return /^[aeiou]/i.test(name) ? "an" : "a";
+}
+
+/**
+ * Find the instrument in a drum pad chain. Live keeps a chain sorted by device
+ * type — MIDI effects, then the instrument, then audio effects — so the
+ * instrument is not reliably at index 0: any pad with an arpeggiator or velocity
+ * device in front of it would otherwise resolve to the wrong device.
+ * @param chain - Chain LiveAPI object
+ * @returns The instrument and its index in the chain, or null when it has none
+ */
+function findChainInstrument(
+  chain: LiveAPI,
+): { device: LiveAPI; index: number } | null {
+  const devices = chain.getChildren("devices");
+  const index = devices.findIndex(
+    (device) => device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  );
+
+  return index < 0
+    ? null
+    : { device: assertDefined(devices[index], "chain instrument"), index };
+}
+
+/**
+ * Insert a Simpler into a (drum pad) chain. `insert_device` appends, but Live
+ * re-sorts a chain by device type, so the Simpler lands after any MIDI effects
+ * and before any audio effects on its own.
  * @param chain - Chain LiveAPI object
  * @param toolName - Calling tool name for warning prefix
  * @returns The created Simpler, or null (after warning) on failure
@@ -259,26 +288,4 @@ function createSimplerInChain(
   const device = LiveAPI.from(`id ${id}`);
 
   return device.exists() ? device : null;
-}
-
-/**
- * Test whether a class_display_name is DrumSampler, matched case- and
- * space-insensitively (the exact display string is confirmed against Live).
- * @param className - The device's class_display_name
- * @returns True when the device is a DrumSampler
- */
-function isDrumSampler(className: string): boolean {
-  return (
-    normalizeClassName(className) ===
-    normalizeClassName(DEVICE_CLASS.DRUM_SAMPLER)
-  );
-}
-
-/**
- * Strip whitespace and case from a class_display_name for comparison.
- * @param value - The display name to normalize
- * @returns The name with all whitespace removed and lowercased
- */
-function normalizeClassName(value: string): string {
-  return value.replaceAll(/\s+/g, "").toLowerCase();
 }

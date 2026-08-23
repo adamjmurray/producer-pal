@@ -40,7 +40,7 @@ export function probeSimplerSample(
     return { kind: "not-simpler" };
   }
 
-  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+  if (!isSingleSampleSimpler(device, className)) {
     return { kind: "multisample" };
   }
 
@@ -138,6 +138,26 @@ export function setSimplerGain(
   }
 
   sample.set("gain", dbToLiveGain(dB));
+}
+
+/**
+ * Whether a device takes a single-sample write: a Simpler, not in multi-sample
+ * mode. Two property reads and no child objects — the cheap check for a caller
+ * that only needs yes/no, where probeSimplerSample would build a sample object
+ * per device just to say which flavor of yes.
+ * @param device - LiveAPI device object
+ * @param className - The device's class_display_name (passed in to avoid a
+ *   redundant property fetch when the caller already has it)
+ * @returns True when the device is a Simpler in single-sample mode
+ */
+export function isSingleSampleSimpler(
+  device: LiveAPI,
+  className: string,
+): boolean {
+  return (
+    className === DEVICE_CLASS.SIMPLER &&
+    !((device.getProperty("multi_sample_mode") as number) > 0)
+  );
 }
 
 /** Simpler's `replace_sample` function was added in Live 12.4. */

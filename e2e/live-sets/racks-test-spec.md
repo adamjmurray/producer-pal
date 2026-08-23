@@ -10,8 +10,10 @@ Small Live Set for two things the main `e2e-test-set` can't express:
 2. **Nested racks.** A Drum Rack inside an Instrument Rack chain, a Drum Rack
    inside a Drum Rack pad, and a melodic instrument two Instrument Racks deep.
 
-It also holds a Drum Sampler and a Sampler on drum pads, for the pad
-sample-write policy (warn-skip, and what `force: true` does and doesn't allow).
+It also holds a Drum Sampler, a Sampler, and a multi-sample Simpler on drum
+pads, for the pad sample-write policy (warn-skip, and what `force: true`
+unlocks). Multi-sample mode can't be switched on through the Live API, so that
+pad has to be baked in too.
 
 Rack **return chains** also can't be created through the Live API — another
 reason this Set exists rather than being built at test runtime.
@@ -52,6 +54,7 @@ d0: Instrument Rack "Outer"              (no macro mappings)
         │                           └── pC3 "Hat" -> Simpler "synth-hat-open"
         ├── pAb1 "Drum Sampler" -> Drum Sampler "synth-tom-low"
         ├── pA1  "Sampler"      -> Sampler "synth-tom-high"
+        ├── pBb1 "Multi-Simpler" -> Simpler in multi-sample mode (2+ samples)
         ├── rc0: "A Saturator"  -> Saturator
         └── rc1: "B Reverb"     -> Reverb
 ```
@@ -167,15 +170,21 @@ address it by that path — so don't insert a chain ahead of it.
 
 ## Drum Pad Sample-Write Policy
 
-Two pads for the write policy's non-Simpler branches:
+Three pads for the write policy's branches that can't take a sample:
 
-| Pad  | Device       | `class_display_name` | Behavior on a `sample` write                |
-| ---- | ------------ | -------------------- | ------------------------------------------- |
-| pAb1 | Drum Sampler | `Drum Sampler`       | warn + skip; `force: true` swaps in Simpler |
-| pA1  | Sampler      | `Sampler`            | warn + skip; **`force` is not an escape**   |
+| Pad  | Device                | Behavior on a `sample` write                |
+| ---- | --------------------- | ------------------------------------------- |
+| pAb1 | Drum Sampler          | warn + skip; `force: true` swaps in Simpler |
+| pA1  | Sampler               | warn + skip; `force: true` swaps in Simpler |
+| pBb1 | Simpler, multi-sample | warn + skip; `force: true` swaps in Simpler |
 
-The asymmetry is the point: `force` only unlocks the Drum Sampler swap, not the
-generic "pad already has a device" refusal.
+The rule is uniform: the write targets the pad's **instrument**, and `force`
+replaces it whenever the Live API can't set its sample. Only a single-sample
+Simpler is written in place.
+
+**Building pBb1:** drop a Simpler on the pad, then drag a second sample onto it
+(or use Simpler's multi-sample zone editor) so `multi_sample_mode` reads 1. The
+Live API has no way to set that mode, which is why it's baked in.
 
 **Sampler is Live Suite only.** The e2e runner already requires Suite.
 

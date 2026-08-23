@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import {
   type RegisteredMockObject,
   children,
@@ -58,7 +59,10 @@ function registerDrumRackWithDrumSamplerOnC1(): RegisteredMockObject {
 
   registerMockObject("ds-1", {
     type: "Device",
-    properties: { class_display_name: "DrumSampler" },
+    properties: {
+      class_display_name: "DrumSampler",
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    },
   });
   registerMockObject("new-simpler", {
     type: "SimplerDevice",
@@ -172,8 +176,8 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
   });
 });
 
-describe("updateDevice - DrumSampler pad guard", () => {
-  it("skips a sample write onto a DrumSampler pad and keeps the device", () => {
+describe("updateDevice - pad instrument guard", () => {
+  it("skips a sample write onto a pad instrument and keeps the device", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
     updateDevice({
@@ -189,7 +193,7 @@ describe("updateDevice - DrumSampler pad guard", () => {
     expect(chain.call).not.toHaveBeenCalledWith("insert_device", "Simpler");
   });
 
-  it("swaps the DrumSampler for a Simpler and loads the sample under force", () => {
+  it("swaps the instrument for a Simpler and loads the sample under force", () => {
     const chain = registerDrumRackWithDrumSamplerOnC1();
 
     updateDevice({

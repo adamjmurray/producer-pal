@@ -62,10 +62,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // The escape hatch for the drum-pad instrument-swap guard
     // (nested-param-target.ts), and deliberately NOT taught in the skills: the
     // model learns of it from the warning, at the moment it is relevant, so it
-    // never reaches for it casually. Declared in EVERY mode — including
-    // small-model, whose `params` description teaches the sample write — because
-    // a guard whose only way out is hidden from the tier that hits it would
-    // deadlock the write.
+    // never reaches for it casually. Scoped to drum pads — a `sample` write to
+    // an explicit device path never creates or replaces anything, so it has no
+    // guard to unlock. Declared in EVERY mode — including small-model, whose
+    // `params` description teaches the sample write — because a guard whose only
+    // way out is hidden from the tier that hits it would deadlock the write.
     force: z
       .boolean()
       .optional()
