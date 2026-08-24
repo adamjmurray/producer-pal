@@ -110,6 +110,7 @@ describe("read-device on nested racks", () => {
       "Sub Kit",
       "Drum Sampler",
       "Sampler",
+      "Multi-Simpler",
     ];
 
     it("reaches a Drum Rack nested in an Instrument Rack", async () => {

@@ -150,6 +150,7 @@ describe("nested rack drum detection", () => {
         "Sub Kit",
         "Drum Sampler",
         "Sampler",
+        "Multi-Simpler",
       ]);
     });
   });

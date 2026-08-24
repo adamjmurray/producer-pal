@@ -229,6 +229,7 @@ content beyond built-in devices — no Factory Packs required.
 | Unmapped rack (control)                  | "Outer", "Sub Kit"      |
 | Drum Sampler on a pad                    | pAb1                    |
 | Sampler on a pad                         | pA1                     |
+| Multi-sample Simpler on a pad            | pBb1                    |
 | Melodic instrument, two racks deep       | `t1/d0/c0/d0/c0/d0`     |
 | Drum-mode serialization                  | `t0/s0` clip            |
 | Pitched serialization (must not be drum) | `t1/s0` clip            |
