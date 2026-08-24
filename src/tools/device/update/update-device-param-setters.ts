@@ -15,6 +15,10 @@ import {
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import {
+  isParamEnabled,
+  warnParamDisabled,
+} from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -28,11 +32,13 @@ const BINARY_SEARCH_ITERATIONS = 40;
  * @param device - LiveAPI device object to update
  * @param params - Array of {name, value} param entries
  * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
+ * @param force - Allow a destructive pad-device swap a `sample` write needs
  */
 export function setParamValues(
   device: LiveAPI,
   params: ParamEntry[],
   toolName: string = "updateDevice",
+  force = false,
 ): void {
   for (const entry of params) {
     const key = entry.name.trim();
@@ -53,7 +59,7 @@ export function setParamValues(
     // multi-param update. Warn and move on, consistent with update tools'
     // warn-and-skip contract.
     try {
-      setOneParam(device, key, rawValue, toolName);
+      setOneParam(device, key, rawValue, toolName, force);
     } catch (e) {
       console.warn(
         `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
@@ -70,12 +76,14 @@ export function setParamValues(
  * @param key - Trimmed param name (may be a "/"-path or a slash-named param)
  * @param rawValue - Trimmed value
  * @param toolName - Calling tool name for warning prefix
+ * @param force - Allow a destructive pad-device swap a `sample` write needs
  */
 function setOneParam(
   device: LiveAPI,
   key: string,
   rawValue: string,
   toolName: string,
+  force: boolean,
 ): void {
   // A name containing "/" is normally a path-prefixed pseudo-param
   // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
@@ -90,7 +98,7 @@ function setOneParam(
     if (namedParam?.exists()) {
       setParamValue(namedParam, normalizeParamValue(rawValue), toolName);
     } else {
-      applyNestedParam(device, key, rawValue, toolName);
+      applyNestedParam(device, key, rawValue, toolName, force);
     }
 
     return;
@@ -126,12 +134,14 @@ function setOneParam(
  * @param key - Full path-prefixed param name (e.g. "pC1/d0/sample")
  * @param rawValue - Trimmed value to write
  * @param toolName - Calling tool name for warning prefix
+ * @param force - Allow a destructive pad-device swap a `sample` write needs
  */
 function applyNestedParam(
   device: LiveAPI,
   key: string,
   rawValue: string,
   toolName: string,
+  force: boolean,
 ): void {
   const slashIndex = key.lastIndexOf("/");
   const prefix = key.slice(0, slashIndex);
@@ -145,10 +155,21 @@ function applyNestedParam(
     return;
   }
 
-  const target = resolveNestedParamTarget(device, prefix, paramName, toolName);
+  const target = resolveNestedParamTarget(
+    device,
+    prefix,
+    paramName,
+    toolName,
+    force,
+  );
 
   if (target) {
-    setParamValues(target, [{ name: paramName, value: rawValue }], toolName);
+    setParamValues(
+      target,
+      [{ name: paramName, value: rawValue }],
+      toolName,
+      force,
+    );
   }
 }
 
@@ -195,6 +216,14 @@ function setParamValue(
   inputValue: string | number,
   toolName: string,
 ): void {
+  if (!isParamEnabled(param)) {
+    warnParamDisabled(
+      `${toolName}: param "${param.getProperty("name") as string}"`,
+    );
+
+    return;
+  }
+
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - quantized param. Resolve the input against value_items by string.
@@ -205,7 +234,7 @@ function setParamValue(
   // (e.g. 2.9999… instead of index 2). Quantized params are discrete enums with
   // no continuous range to search, so numeric input is always a label lookup.
   if (isQuantized) {
-    const valueItems = param.get("value_items") as string[];
+    const valueItems = param.getPropertyList("value_items") as string[];
     const index = valueItems.indexOf(String(inputValue));
 
     if (index === -1) {

@@ -38,7 +38,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should reject non-rack devices with error", () => {
     const result = updateDevice({
-      ids: "456",
+      id: "456",
       macroVariation: "create",
     });
 
@@ -52,7 +52,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should reject out-of-range variation index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "load",
       macroVariationIndex: 5,
     });
@@ -74,7 +74,7 @@ describe("updateDevice - macroVariation", () => {
     // variation_count is 3, so valid indices are 0-2; index 3 is out of range.
     // This pins the `>=` bound: a `>` mutant would accept index 3.
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "load",
       macroVariationIndex: 3,
     });
@@ -93,7 +93,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should call store_variation for 'create'", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "create",
     });
 
@@ -113,7 +113,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should call recall_selected_variation for 'load'", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "load",
       macroVariationIndex: 1,
     });
@@ -131,7 +131,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should call recall_last_used_variation for 'revert'", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "revert",
     });
 
@@ -141,7 +141,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should call delete_selected_variation for 'delete'", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "delete",
       macroVariationIndex: 1,
     });
@@ -154,7 +154,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should call randomize_macros for 'randomize'", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "randomize",
     });
 
@@ -173,7 +173,7 @@ describe("updateDevice - macroVariation", () => {
     });
 
     updateDevice({
-      ids: "123",
+      id: "123",
       macroVariationIndex: 0,
       macroVariation: "load",
     });
@@ -185,7 +185,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn and ignore when macroVariationIndex provided alone", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariationIndex: 2,
     });
 
@@ -202,7 +202,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn and skip when 'load' provided without index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "load",
     });
 
@@ -216,7 +216,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn and skip when 'delete' provided without index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "delete",
     });
 
@@ -230,7 +230,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn but still create when 'create' provided with index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "create",
       macroVariationIndex: 1,
     });
@@ -250,7 +250,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn but still revert when 'revert' provided with index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "revert",
       macroVariationIndex: 1,
     });
@@ -265,7 +265,7 @@ describe("updateDevice - macroVariation", () => {
 
   it("should warn but still randomize when 'randomize' provided with index", () => {
     const result = updateDevice({
-      ids: "123",
+      id: "123",
       macroVariation: "randomize",
       macroVariationIndex: 1,
     });

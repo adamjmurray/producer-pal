@@ -5,11 +5,11 @@
 
 /**
  * Disabled stub for code-exec-protocol.ts.
- * Substituted by rollup when ENABLE_CODE_EXEC is not set.
+ * Substituted by rolldown when ENABLE_CODE_EXEC is not set.
  * Exports the same interface but does nothing.
  *
- * IMPORTANT: If this file is renamed or moved, update the alias entry in
- * config/rollup.config.mjs (codeExecAliases) to match.
+ * IMPORTANT: If this file is renamed or moved, update its entry in
+ * config/rolldown-plugin-stub-modules.mjs (CODE_EXEC_STUBS) to match.
  */
 
 /**

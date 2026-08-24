@@ -51,7 +51,7 @@ vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
   return { ...actual, calculateRetryDelay: vi.fn(() => 10) };
 });
 
-import { ChatSdkClient } from "#webui/chat/sdk/client";
+import { ChatSdkClient, MAX_TOOL_STEPS } from "#webui/chat/sdk/client";
 import {
   MAX_SPAWNS,
   labelWorkerResult,
@@ -230,24 +230,25 @@ describe("ChatSdkClient step budget", () => {
     return parts;
   };
 
-  it("does not flag the tool-step limit at 10 steps for an orchestrator", async () => {
+  it("runs an orchestrator on the same budget as a plain chat", async () => {
     const client = new ChatSdkClient(
       "key",
       createConfig({ enabledTools: { [SPAWN_SUBAGENT_TOOL_NAME]: true } }),
     );
 
     await client.initialize();
-    mockStreamParts(steppedStream(10, "tool-calls"));
+    // Enabling subagents must not widen the budget: the number the user set is
+    // the number every level of the turn runs on.
+    mockStreamParts(steppedStream(MAX_TOOL_STEPS, "tool-calls"));
 
     for await (const _ of client.sendMessage("hi")) {
       /* consume */
     }
 
-    // Orchestrator budget is widened above 10, so 10 steps is not the limit.
-    expect(client.toolLimitReached).toBe(false);
+    expect(client.toolLimitReached).toBe(true);
   });
 
-  it("honors an explicit worker step budget from config", async () => {
+  it("honors an explicit step budget from config", async () => {
     const client = new ChatSdkClient("key", createConfig({ maxSteps: 20 }));
 
     await client.initialize();

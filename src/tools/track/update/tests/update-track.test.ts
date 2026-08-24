@@ -27,7 +27,7 @@ describe("updateTrack", () => {
 
   it("should update a single track by ID", () => {
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       name: "Updated Track",
       color: "#FF0000",
       mute: true,
@@ -45,7 +45,7 @@ describe("updateTrack", () => {
 
   it("should update multiple tracks by comma-separated IDs", () => {
     const result = updateTrack({
-      ids: "123, 456",
+      id: "123, 456",
       color: "#00FF00",
       mute: true,
     });
@@ -60,7 +60,7 @@ describe("updateTrack", () => {
 
   it("should handle 'id ' prefixed track IDs", () => {
     const result = updateTrack({
-      ids: "id 123",
+      id: "id 123",
       name: "Prefixed ID Track",
     });
 
@@ -70,7 +70,7 @@ describe("updateTrack", () => {
 
   it("should not update properties when not provided", () => {
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       name: "Only Name Update",
     });
 
@@ -81,7 +81,7 @@ describe("updateTrack", () => {
 
   it("should handle boolean false values correctly", () => {
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       mute: false,
       solo: false,
       arm: false,
@@ -93,25 +93,28 @@ describe("updateTrack", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should warn and return empty when ids is missing", () => {
-    expect(
-      updateTrack({} as unknown as Parameters<typeof updateTrack>[0]),
-    ).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: ids is required");
+  it("should warn and return empty when id is missing", () => {
+    expect(updateTrack({})).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
 
     vi.mocked(outlet).mockClear();
-    expect(
-      updateTrack({ name: "Test" } as unknown as Parameters<
-        typeof updateTrack
-      >[0]),
-    ).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: ids is required");
+    expect(updateTrack({ name: "Test" })).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", () => {
+    expect(updateTrack({ id: "123", name: "Renamed" })).toStrictEqual({
+      id: "123",
+    });
+    expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
   it("should log warning when track ID doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateTrack({ ids: "nonexistent" });
+    const result = updateTrack({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
@@ -123,7 +126,7 @@ describe("updateTrack", () => {
   it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
     mockNonExistentObjects();
 
-    const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
+    const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123" });
     expect(outlet).toHaveBeenCalledWith(
@@ -134,8 +137,8 @@ describe("updateTrack", () => {
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
-    const singleResult = updateTrack({ ids: "123", name: "Single" });
-    const arrayResult = updateTrack({ ids: "123, 456", name: "Multiple" });
+    const singleResult = updateTrack({ id: "123", name: "Single" });
+    const arrayResult = updateTrack({ id: "123, 456", name: "Multiple" });
 
     expect(singleResult).toStrictEqual({ id: "123" });
     expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
@@ -143,7 +146,7 @@ describe("updateTrack", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateTrack({
-      ids: " 123 , 456 , 789 ",
+      id: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
@@ -152,7 +155,7 @@ describe("updateTrack", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     const result = updateTrack({
-      ids: "123,,456,  ,789",
+      id: "123,,456,  ,789",
       name: "Filtered",
     });
 
@@ -165,7 +168,7 @@ describe("updateTrack", () => {
   describe("routing properties", () => {
     it("should update routing properties when provided", () => {
       const result = updateTrack({
-        ids: "123",
+        id: "123",
         inputRoutingTypeId: "17",
         inputRoutingChannelId: "1",
         outputRoutingTypeId: "25",
@@ -194,7 +197,7 @@ describe("updateTrack", () => {
 
     it("should update monitoring state when provided", () => {
       const result = updateTrack({
-        ids: "123",
+        id: "123",
         monitoringState: MONITORING_STATE.AUTO,
       });
 
@@ -206,14 +209,14 @@ describe("updateTrack", () => {
     it("should update monitoring state for all valid values", () => {
       // Test IN state
       updateTrack({
-        ids: "123",
+        id: "123",
         monitoringState: MONITORING_STATE.IN,
       });
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
 
       // Test OFF state
       updateTrack({
-        ids: "456",
+        id: "456",
         monitoringState: MONITORING_STATE.OFF,
       });
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 2);
@@ -223,7 +226,7 @@ describe("updateTrack", () => {
       // Should not throw, just warn and skip the monitoring state update — and
       // crucially NOT write an undefined monitoring value onto the track.
       const result = updateTrack({
-        ids: "123",
+        id: "123",
         monitoringState: "invalid",
       });
 
@@ -240,7 +243,7 @@ describe("updateTrack", () => {
 
     it("should handle mixed routing and basic properties", () => {
       const result = updateTrack({
-        ids: "123",
+        id: "123",
         name: "Test Track",
         color: "#FF0000",
         mute: true,
@@ -262,7 +265,7 @@ describe("updateTrack", () => {
 
     it("should handle routing properties in bulk operations", () => {
       const result = updateTrack({
-        ids: "123, 456",
+        id: "123, 456",
         outputRoutingTypeId: "25",
         monitoringState: MONITORING_STATE.AUTO,
       });
@@ -283,7 +286,7 @@ describe("updateTrack", () => {
 
     it("should not update routing properties when not provided", () => {
       const result = updateTrack({
-        ids: "123",
+        id: "123",
         name: "Only Name Update",
       });
 
@@ -302,7 +305,7 @@ describe("updateTrack", () => {
         });
 
         updateTrack({
-          ids: "ret1",
+          id: "ret1",
           inputRoutingTypeId: "17",
           outputRoutingTypeId: "25",
         });
@@ -329,7 +332,7 @@ describe("updateTrack", () => {
           properties: { is_foldable: 1 },
         });
 
-        updateTrack({ ids: "grp1", inputRoutingTypeId: "17" });
+        updateTrack({ id: "grp1", inputRoutingTypeId: "17" });
 
         expect(groupTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",
@@ -347,7 +350,7 @@ describe("updateTrack", () => {
           properties: { can_be_armed: 0 },
         });
 
-        updateTrack({ ids: "ret1", monitoringState: MONITORING_STATE.IN });
+        updateTrack({ id: "ret1", monitoringState: MONITORING_STATE.IN });
 
         expect(returnTrack.set).not.toHaveBeenCalledWith(
           "current_monitoring_state",
@@ -378,7 +381,7 @@ describe("updateTrack", () => {
       });
 
       updateTrack({
-        ids: "123",
+        id: "123",
         color: "#FF0000",
       });
 
@@ -403,7 +406,7 @@ describe("updateTrack", () => {
       });
 
       updateTrack({
-        ids: "123",
+        id: "123",
         color: "#FF0000",
       });
 
@@ -428,7 +431,7 @@ describe("updateTrack", () => {
       track456.get.mockImplementation(colorMock);
 
       updateTrack({
-        ids: "123,456",
+        id: "123,456",
         color: "#00FF00",
       });
 
@@ -450,7 +453,7 @@ describe("updateTrack", () => {
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
       updateTrack({
-        ids: "123",
+        id: "123",
         name: "No color update",
       });
 

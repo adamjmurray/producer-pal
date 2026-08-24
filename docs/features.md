@@ -120,22 +120,25 @@ Live's take lanes stack alternate versions of an arrangement clip at the same
 position — only the active take plays. They're the natural way to audition
 variations side by side without cluttering the timeline.
 
-- Target a lane with `takeLane` on
-  [Create Clip](/features/tools#ppal-create-clip) and
-  [Duplicate](/features/tools#ppal-duplicate): `0` (or omit) = main lane, `1+` =
-  that lane (auto-created up to it), `"new"` = append a fresh lane.
-- Generate variations with a few [Duplicate](/features/tools#ppal-duplicate)
-  calls using `takeLane: "new"` plus [transforms](#transforms) to vary each
-  copy.
+- A lane is part of the path: `t2/l0` is track 2's first take lane (0-based,
+  auto-created up to it) and `t2/l+` appends a fresh one. Plain `t2` is the main
+  lane. Use it as `path` on [Create Clip](/features/tools#ppal-create-clip) or
+  `toPath` on [Duplicate](/features/tools#ppal-duplicate).
+- Every `l+` in a list appends its own lane, so `toPath: "t2/l+,t2/l+,t2/l+"` on
+  one [Duplicate](/features/tools#ppal-duplicate) spreads three copies across
+  three fresh lanes — add [transforms](#transforms) to vary each one.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).
-- Limits: 8 take lanes per track. Duplicating to a take lane is MIDI-only and
-  recreates the clip from notes, so envelope automation isn't preserved. Once
-  placed, take-lane clips are append-only — they can't be split, moved, resized,
-  deleted, or promoted back to the main lane through tools, and Producer Pal
-  can't pick the active take. All of that stays in Live's UI. Expand the
-  take-lane arrow on a track header to see them.
+- [Duplicate](/features/tools#ppal-duplicate) also promotes a take-lane clip
+  back to the main lane — give it a `toPath` with no `l` segment. It's a copy:
+  the take stays on its lane, since Live's API can't remove it.
+- Limits: 8 take lanes per track. Duplicating to or from a take lane is
+  MIDI-only and recreates the clip from notes, so envelope automation isn't
+  preserved. Once placed, take-lane clips are append-only — they can't be split,
+  moved, resized, or deleted through tools, and Producer Pal can't pick the
+  active take. All of that stays in Live's UI. Expand the take-lane arrow on a
+  track header to see them.
 
 ## Network Control
 
@@ -182,8 +185,9 @@ Where you set it depends on the client:
 - **[Chat UI](/guide/chat-ui#tools)** — the Tools tab, per conversation and per
   [preset](/guide/chat-ui#presets).
 - **MCP clients via [`npx producer-pal`](/guide/npx-cli#toolset)** — the
-  `--tools` and `--disable-tools` flags. Run `npx producer-pal --list-tools` for
-  the group names and the tools your device currently offers.
+  `--tools` and `--disable-tools` flags. Run
+  `npx producer-pal@latest --list-tools` for the group names and the tools your
+  device currently offers.
 - **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
   and **Disable tools** settings.
 - **[REST API](/guide/rest-api#per-request-toolset)** — the

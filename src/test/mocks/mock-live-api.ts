@@ -15,6 +15,8 @@ import {
 } from "./mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
+  defaultMockCall,
+  isMockObjectDeleted,
   isNonExistentByDefault,
   lookupMockObject,
 } from "./mock-registry.ts";
@@ -50,15 +52,38 @@ export class LiveAPI {
   _path?: string;
   _id?: string;
   _registered?: RegisteredMockObject;
-  get: Mock;
-  set: Mock;
-  call: Mock;
+  /** Keys copied off the registration, so a retarget can take them back off. */
+  _copiedKeys: string[] = [];
+  get!: Mock;
+  set!: Mock;
+  call!: Mock;
 
   get mock(): RegisteredMockObject | undefined {
     return this._registered;
   }
 
   constructor(path?: string) {
+    this._retarget(path);
+  }
+
+  /**
+   * Point this object at a path and rebind everything derived from it.
+   *
+   * Construction and retargeting share this. The real LiveAPI rebinds on goto
+   * and on a path write, so an object that gets reused instead of rebuilt has
+   * to land where a fresh one would — otherwise it keeps answering get/set/call
+   * for whatever it used to point at.
+   *
+   * @param path - Path or "id N" string to point at
+   */
+  _retarget(path?: string): void {
+    // Properties copied for the previous target would shadow the new one's, and
+    // outlive a registration that doesn't define them at all.
+    for (const key of this._copiedKeys) {
+      delete (this as unknown as Record<string, unknown>)[key];
+    }
+
+    this._copiedKeys = [];
     this._path = path;
     this._id = deriveId(path);
 
@@ -84,6 +109,7 @@ export class LiveAPI {
           enumerable: true,
           configurable: true,
         });
+        this._copiedKeys.push(key);
       }
     } else {
       // Use getters (this.type/this.path) so defaults stay correct after goto
@@ -95,16 +121,11 @@ export class LiveAPI {
         return getPropertyByType(this.type, prop, this.path) ?? [];
       }) as Mock;
       this.set = vi.fn() as Mock;
-      this.call = vi.fn().mockImplementation((method: string) => {
-        switch (method) {
-          case "get_version_string":
-            return "12.3";
-          case "get_notes_extended":
-            return JSON.stringify({ notes: [] });
-          default:
-            return null;
-        }
-      }) as Mock;
+      this.call = vi
+        .fn()
+        .mockImplementation((method: string, ...args: unknown[]) =>
+          defaultMockCall(method, args, this.path),
+        ) as Mock;
     }
   }
 
@@ -131,10 +152,24 @@ export class LiveAPI {
   }
 
   get id(): string {
+    // Checked before the registration: an object built before a simulated
+    // delete still holds it, and in Live that object goes nonexistent too.
+    if (isMockObjectDeleted(this._id)) return "0";
     if (this._registered) return this._registered.id;
     if (isNonExistentByDefault()) return "0";
 
     return this._id ?? "";
+  }
+
+  /**
+   * Retarget the object, mirroring the real LiveAPI's writable id. Takes the
+   * bare id as a number or a string — the "id N" form points the real object at
+   * nothing, so it does the same here.
+   */
+  set id(value: string | number) {
+    const bare = String(value);
+
+    this._retarget(bare.startsWith("id ") ? "" : `id ${bare}`);
   }
 
   get path(): string {
@@ -147,9 +182,15 @@ export class LiveAPI {
 
   /** Retarget the object, mirroring the real LiveAPI's writable path */
   set path(value: string) {
-    this._path = value;
-    this._id = deriveId(value);
-    this._registered = lookupMockObject(this._id, this._path);
+    this._retarget(value);
+  }
+
+  /**
+   * Retarget the object, mirroring the real LiveAPI's goto
+   * @param path - Path to point at
+   */
+  goto(path: string): void {
+    this._retarget(path);
   }
 
   get unquotedpath(): string {
@@ -199,6 +240,17 @@ export class LiveAPI {
     return result[0];
   }
 
+  /**
+   * Get a list-valued property as a full array, without unwrapping
+   * @param property - Property name
+   * @returns The property value as an array (empty when unset)
+   */
+  getPropertyList(property: string): unknown[] {
+    const result = this.get(property);
+
+    return Array.isArray(result) ? result : [];
+  }
+
   get type(): LiveObjectType {
     if (this._registered) return this._registered.type;
 
@@ -206,7 +258,9 @@ export class LiveAPI {
   }
 
   // Built-in Max methods with no mock implementation — suites that exercise
-  // them stub the prototype themselves, the way they already do for goto.
+  // them stub the prototype themselves. goto used to be one of these; it now
+  // retargets for real, because reuse depends on it landing where a fresh
+  // object would.
   declare getcount: (name: string) => number;
   declare getstring: (property: string) => string;
 
@@ -222,7 +276,6 @@ export class LiveAPI {
   declare timeSignature: string | null;
   declare getColor: () => string | null;
   declare setColor: (cssColor: string) => void;
-  declare getPropertyList: (property: string) => unknown[];
   declare setProperty: (property: string, value: unknown) => void;
   declare setAll: (properties: Record<string, unknown>) => void;
 }
@@ -287,8 +340,7 @@ interface ClipOverrides {
   id?: string;
   type?: string;
   view?: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -309,7 +361,7 @@ export const expectedClip = (overrides: ClipOverrides = {}): ClipOverrides => ({
   id: "clip1",
   type: "midi",
   view: "session",
-  slot: "2/1",
+  path: "t2/s1",
   name: "Test Clip",
   color: "#3DC300",
   // playing, triggered, recording, overdubbing, muted omitted when false

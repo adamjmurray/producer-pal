@@ -1,4 +1,4 @@
-# Bionic (LM Studio)
+# LM Studio Bionic
 
 Use Producer Pal completely offline without an Internet connection.
 
@@ -10,8 +10,9 @@ classic LM Studio app installed alongside it.
 
 These are two separate apps from the same team, and LM Studio still ships both.
 Producer Pal's offline setup guide targets **Bionic**, which is where new work
-is going. The classic LM Studio app still works with Producer Pal, but it's no
-longer officially supported here.
+is going. The classic LM Studio app still works with Producer Pal — it just
+doesn't have exact install steps here anymore, so follow LM Studio's own MCP
+server documentation and use the same settings this guide describes.
 
 :::
 
@@ -42,12 +43,8 @@ which Producer Pal requires.
 ### 2. Install a Compatible Model
 
 Download a model in Bionic under Settings &rarr; Explore, such as a recent
-version of:
-
-- Qwen
-- Gemma
-- Mistral Magistral or Devstral
-- GLM Flash
+version of Qwen, Gemma, Mistral, or Nemotron. If your computer can handle it,
+use the larger variants of a model.
 
 It has to support tools. Your downloaded models are listed under Settings &rarr;
 Library, where a hammer icon marks the ones that do:
@@ -68,7 +65,7 @@ auto-reconnection:
 - **Connection:** **On this computer**
 - **Command:** `npx`
 - Turn on **Show advanced options**, then use **+ Add argument** to add `-y` and
-  `producer-pal` as two separate arguments
+  `producer-pal@latest` as two separate arguments
 
 <img src="/img/bionic-mcp-server-setup.png" alt="Adding Producer Pal as a custom MCP server in Bionic" width="650"/>
 

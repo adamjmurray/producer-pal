@@ -9,16 +9,17 @@ import {
   processDrumPads,
   updateDrumPadSoloStates,
 } from "../device-reader-drum-helpers.ts";
-import { hasInstrumentInDevices } from "../device-state-helpers.ts";
+import { deviceHasInstrument } from "../device-state-helpers.ts";
 
 // Mock device-path-helpers
 vi.mock(import("../path/device-path-helpers.ts"), () => ({
   extractDevicePath: vi.fn((path) => path),
 }));
 
-// Mock device-state-helpers. buildChainInfo surfaces a chain's `_state`
-// (a test-only marker on the mock chain) as `state`, mirroring how the real
-// helper derives mute/solo state — so buildDrumPadFromChains can aggregate it.
+// Mock device-state-helpers. Both builders surface a chain's `_state` (a
+// test-only marker on the mock chain), mirroring how the real helpers derive
+// mute/solo state — so buildDrumPadFromChains can aggregate it. "active" is
+// STATE.ACTIVE spelled out: a vi.mock factory is hoisted above the imports.
 vi.mock(import("../device-state-helpers.ts"), () => ({
   buildChainInfo: vi.fn((chain, options) => ({
     id: chain._id,
@@ -26,7 +27,8 @@ vi.mock(import("../device-state-helpers.ts"), () => ({
     ...(chain._state !== undefined ? { state: chain._state } : {}),
     ...options,
   })),
-  hasInstrumentInDevices: vi.fn(() => true),
+  computeState: vi.fn((chain) => chain._state ?? "active"),
+  deviceHasInstrument: vi.fn(() => true),
 }));
 
 // Test helper for creating drum pads with optional state
@@ -112,6 +114,7 @@ describe("device-reader-drum-helpers", () => {
     });
 
     interface DrumPadInfoResult {
+      id?: string;
       note: number;
       pitch: string | null;
       name?: string;
@@ -145,26 +148,58 @@ describe("device-reader-drum-helpers", () => {
 
           return null;
         }),
-        getChildren: vi.fn(() => []),
+        // One device, so instrument detection has something to inspect
+        getChildren: vi.fn((child: string) =>
+          child === "devices" ? [{ id: `device-${inNote}` }] : [],
+        ),
+        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
+        someChild: vi.fn(
+          (child: string, predicate: (device: unknown) => boolean) =>
+            child === "devices" && predicate({ id: `device-${inNote}` }),
+        ),
       }) as Record<string, unknown>;
 
-    // Helper to create mock device
-    const createMockDevice = (chainConfigs: ChainConfig[]) => ({
+    // Helper to create mock device. padsByNote is the rack's own drum_pads,
+    // keyed by the note each answers to; a rack nested in a drum pad has none.
+    const createMockDevice = (
+      chainConfigs: ChainConfig[],
+      padsByNote: Record<number, string> = {},
+    ) => ({
       path: "live_set tracks 0 devices 0",
-      getChildren: vi.fn(() =>
-        chainConfigs.map((config) =>
-          createMockChain(config.inNote, config.name, config.state),
-        ),
+      getChildren: vi.fn((child: string) =>
+        child === "drum_pads"
+          ? drumPadMocks(padsByNote)
+          : chainConfigs.map((config) =>
+              createMockChain(config.inNote, config.name, config.state),
+            ),
+      ),
+      // Live lists a pad for all 128 notes, in note order. These fixtures list
+      // only the pads they care about, so the reader's note-order check fails
+      // and it falls back to asking each pad its note — the path these cover.
+      getChildIds: vi.fn((child: string) =>
+        child === "drum_pads" ? Object.values(padsByNote) : [],
       ),
     });
+
+    /**
+     * The rack's pads as the reader sees them.
+     * @param padsByNote - Pad id keyed by the note it answers to
+     * @returns Mock pads, each answering with its own note
+     */
+    const drumPadMocks = (padsByNote: Record<number, string>) =>
+      Object.entries(padsByNote).map(([note, id]) => ({
+        id,
+        getProperty: vi.fn(() => Number(note)),
+      }));
 
     // Helper for common test setup
     const setupAndProcess = (
       chainConfigs: ChainConfig[],
       includeChains = false,
       includeDrumPads = true,
+      padsByNote: Record<number, string> = {},
     ): DeviceInfoResult => {
-      const device = createMockDevice(chainConfigs);
+      const device = createMockDevice(chainConfigs, padsByNote);
       const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
 
@@ -187,6 +222,40 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads).toHaveLength(1);
       expect(deviceInfo.drumPads![0]!.note).toBe(36);
       expect(deviceInfo.drumPads![0]!.pitch).toBe("C1");
+    });
+
+    it("names each pad by the id of the rack's pad for that note", () => {
+      const deviceInfo = setupAndProcess(
+        [{ inNote: 36, name: "Kick" }],
+        false,
+        true,
+        {
+          36: "pad-36",
+        },
+      );
+
+      expect(deviceInfo.drumPads![0]!.id).toBe("pad-36");
+    });
+
+    it("omits id for a rack with no pads of its own", () => {
+      // A Drum Rack nested in a drum pad has only chains, so its "pads" can't
+      // be named by id — and the absence is how a caller knows.
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Kick" }]);
+
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("id");
+    });
+
+    it("omits id for the catch-all pad, which no pad backs", () => {
+      const deviceInfo = setupAndProcess(
+        [{ inNote: -1, name: "Catch All" }],
+        false,
+        true,
+        {
+          36: "pad-36",
+        },
+      );
+
+      expect(deviceInfo.drumPads![0]).not.toHaveProperty("id");
     });
 
     it("should process chains with catch-all in_note (-1)", () => {
@@ -266,6 +335,7 @@ describe("device-reader-drum-helpers", () => {
       const device = {
         path: "live_set tracks 0 devices 0",
         getChildren: vi.fn(() => mockChains),
+        getChildIds: vi.fn(() => []),
       };
       const deviceInfo: DeviceInfoResult = {};
       const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
@@ -299,39 +369,54 @@ describe("device-reader-drum-helpers", () => {
         getChildren: vi.fn((child: string) =>
           child === "devices" ? [{ id: "nested" }] : [],
         ),
+        getChildCount: vi.fn((child: string) => (child === "devices" ? 1 : 0)),
+        someChild: vi.fn(
+          (child: string, predicate: (device: unknown) => boolean) =>
+            child === "devices" && predicate({ id: "nested" }),
+        ),
       }) as Record<string, unknown>;
 
-    it.each([
-      { includeChains: true, includeDrumPads: true, expected: true },
-      { includeChains: true, includeDrumPads: false, expected: false },
-    ])(
-      "passes includeDrumPads && includeChains ($expected) to nested chain devices",
-      ({ includeChains, includeDrumPads, expected }) => {
-        const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
-        const device = {
-          path: "live_set tracks 0 devices 0",
-          getChildren: vi.fn(() => [createChainWithDevice(36)]),
-        };
+    /**
+     * Run processDrumPads over one chain holding one device.
+     * @param includeDrumPads - Whether the pads themselves are returned
+     * @returns The readDeviceFn spy, to assert what the walk descended into
+     */
+    const processOneChain = (includeDrumPads: boolean) => {
+      const readDeviceFn = vi.fn(() => ({ type: "instrument: Simpler" }));
+      const device = {
+        path: "live_set tracks 0 devices 0",
+        getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        getChildIds: vi.fn(() => []),
+      };
 
-        processDrumPads(
-          device as unknown as LiveAPI,
-          {},
-          includeChains,
-          includeDrumPads,
-          0,
-          2,
-          readDeviceFn,
-        );
+      processDrumPads(
+        device as unknown as LiveAPI,
+        {},
+        true,
+        includeDrumPads,
+        0,
+        2,
+        readDeviceFn,
+      );
 
-        expect(readDeviceFn).toHaveBeenCalledWith(
-          { id: "nested" },
-          expect.objectContaining({
-            includeChains: expected,
-            includeDrumPads: expected,
-          }),
-        );
-      },
-    );
+      return readDeviceFn;
+    };
+
+    it("expands a shown chain's devices, and lets them expand too", () => {
+      expect(processOneChain(true)).toHaveBeenCalledWith(
+        { id: "nested" },
+        expect.objectContaining({
+          includeChains: true,
+          includeDrumPads: true,
+        }),
+      );
+    });
+
+    it("does not read the devices of a chain the pad won't show", () => {
+      // Nothing under an unshown chain reaches the output, so reading it is
+      // pure cost — a pad only needs whether an instrument is in there.
+      expect(processOneChain(false)).not.toHaveBeenCalled();
+    });
 
     it.each([
       { order: "already-ascending", notes: [36, 48] },
@@ -440,12 +525,13 @@ describe("device-reader-drum-helpers", () => {
       expect(deviceInfo.drumPads![0]!.chains).toBeUndefined();
     });
 
-    it("reports deviceCount and no-instrument for pad chains at the depth limit", () => {
+    it("reports deviceCount at the depth limit but still detects the instrument", () => {
       const device = createMockDevice([{ inNote: 36, name: "Kick" }]);
       const deviceInfo: DeviceInfoResult = {};
 
-      // depth === maxDepth → chains report deviceCount instead of expanding,
-      // and cannot know whether an instrument is present.
+      // depth === maxDepth → chains report deviceCount instead of expanding.
+      // Detection asks Live rather than the expanded tree, so it survives that:
+      // reporting no-instrument here dropped nested racks from the drum map.
       processDrumPads(
         device as unknown as LiveAPI,
         deviceInfo,
@@ -457,6 +543,14 @@ describe("device-reader-drum-helpers", () => {
       );
 
       expect(chainPathAt(deviceInfo, 0)).toBe(`${PARENT}/pC1/c0`);
+      expect(deviceInfo.drumPads![0]!.hasInstrument).toBeUndefined();
+    });
+
+    it("flags a pad whose chain holds no instrument", () => {
+      vi.mocked(deviceHasInstrument).mockReturnValueOnce(false);
+
+      const deviceInfo = setupAndProcess([{ inNote: 36, name: "Empty" }]);
+
       expect(deviceInfo.drumPads![0]!.hasInstrument).toBe(false);
     });
 
@@ -465,6 +559,7 @@ describe("device-reader-drum-helpers", () => {
       const device = {
         path: PARENT,
         getChildren: vi.fn(() => [createChainWithDevice(36)]),
+        getChildIds: vi.fn(() => []),
       };
 
       processDrumPads(
@@ -489,7 +584,7 @@ describe("device-reader-drum-helpers", () => {
     it("keeps hasInstrument unset when only some layered chains have an instrument", () => {
       // some() semantics: one instrument anywhere on the pad is enough, so the
       // pad must NOT be flagged hasInstrument: false.
-      vi.mocked(hasInstrumentInDevices)
+      vi.mocked(deviceHasInstrument)
         .mockReturnValueOnce(true)
         .mockReturnValueOnce(false);
 

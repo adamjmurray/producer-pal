@@ -59,7 +59,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       const { mockCreate, sessionSlot } = setupSessionTilingMock(20.0);
 
       const result = await updateClip(
-        { ids: clipId, arrangementLength: "3bar+n/2" },
+        { id: clipId, arrangementLength: "3bar+n/2" },
         mockContext,
       );
 
@@ -119,7 +119,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     );
 
     const result = await updateClip(
-      { ids: "800", arrangementLength: "3bar" },
+      { id: "800", arrangementLength: "3bar" },
       mockContext,
     );
 
@@ -144,7 +144,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     setupUnwarpedClip(clipId, name, endTimeSequence);
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3bar" },
+      { id: clipId, arrangementLength: "3bar" },
       mockContext,
     );
 
@@ -195,7 +195,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     const result = await updateClip(
       {
-        ids: clipId,
+        id: clipId,
         arrangementStart: "3|1", // Move to position 8
         arrangementLength: "2bar", // Extend to 8 beats total
       },

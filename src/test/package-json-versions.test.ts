@@ -8,6 +8,10 @@ import packageJson from "../../package.json" with { type: "json" };
 
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
 
+// npm aliases ("npm:<name>@<version>", e.g. the side-by-side TypeScript 6/7
+// install) are exact as long as the version after the final @ is.
+const EXACT_ALIAS = /^npm:@?[^@]+@\d+\.\d+\.\d+$/;
+
 const DEPENDENCY_FIELDS = [
   "dependencies",
   "devDependencies",
@@ -38,7 +42,11 @@ function collectViolations(
     for (const [name, value] of Object.entries(deps ?? {})) {
       const label = prefix ? `${prefix} > ${name}` : `${field} > ${name}`;
 
-      if (typeof value === "string" && !EXACT_VERSION.test(value)) {
+      if (
+        typeof value === "string" &&
+        !EXACT_VERSION.test(value) &&
+        !EXACT_ALIAS.test(value)
+      ) {
         violations.push(`${label}: "${value}"`);
       } else if (typeof value === "object" && value != null) {
         violations.push(

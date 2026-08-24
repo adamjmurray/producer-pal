@@ -11,11 +11,11 @@
 
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CharTokenCount } from "#webui/components/context/collection/CharTokenCount";
-import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { type SaveStatus } from "#webui/hooks/context/use-doc";
 
 /** Shared input styling for the collection editors' text controls. */
-export const INPUT_CLASS =
+const INPUT_CLASS =
   "w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60";
 
 interface FieldProps {
@@ -31,7 +31,7 @@ interface FieldProps {
  * @param error - The field's validation message, if any
  * @returns The input's className
  */
-export function inputClass(error?: string): string {
+function inputClass(error?: string): string {
   return error == null ? INPUT_CLASS : `${INPUT_CLASS} ring-2 ring-red-500/50`;
 }
 
@@ -78,12 +78,18 @@ interface NameFieldProps {
    * read-only (the collection doesn't support renaming).
    */
   onRename?: (name: string) => void;
+  /**
+   * Lock the rename field while a rename is on the wire. Editing it then would
+   * commit against the slug the in-flight rename is already moving.
+   */
+  renameDisabled?: boolean;
 }
 
 /**
  * The name row. Creating: an editable slug input for the new draft. Editing:
  * an editable slug that renames on blur / Enter when `onRename` is supplied
- * (Escape reverts), else the fixed slug shown read-only.
+ * (Escape reverts), else the fixed slug shown read-only. A rename on the wire
+ * locks the field — see `renameDisabled`.
  * @param props - Name field props
  * @returns Name field element
  */
@@ -120,13 +126,14 @@ export function NameField(props: NameFieldProps): preact.JSX.Element {
           type="text"
           value={name}
           aria-label="Rename"
+          disabled={props.renameDisabled}
           onInput={(e) => onChange((e.target as HTMLInputElement).value)}
           onBlur={() => onRename(name)}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             if (e.key === "Escape") onChange(displayName ?? "");
           }}
-          className={`${inputClass(props.error)} font-mono`}
+          className={`${inputClass(props.error)} font-mono disabled:opacity-60`}
         />
       </Field>
     );
@@ -263,7 +270,7 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
         type="button"
         onClick={onSave}
         disabled={!canSave}
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isNew ? createLabel : "Save"}
       </button>
@@ -273,7 +280,7 @@ export function EditorFooter(props: EditorFooterProps): preact.JSX.Element {
           onClick={onDelete}
           aria-label="Delete"
           title="Delete"
-          className="rounded p-1 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+          className="rounded p-1 text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
         >
           <TrashIcon />
         </button>

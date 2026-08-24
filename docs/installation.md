@@ -49,11 +49,11 @@ Dedicated AI apps — the easiest setup for most people:
 - **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
   (subscription required)
 - **[ChatGPT App](./installation/chatgpt-app)** — OpenAI's desktop app, with
-  Codex built in (macOS and Windows)
+  Codex built in
 - **[Antigravity](./installation/antigravity)** — Google's agent app for Gemini
   (free; a subscription raises rate limits)
-- **[Bionic (LM Studio)](./installation/bionic)** — runs models fully offline,
-  no account needed
+- **[LM Studio Bionic](./installation/bionic)** — runs models fully offline, no
+  account needed
 
 ### Built-in Chat UI
 

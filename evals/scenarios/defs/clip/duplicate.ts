@@ -15,6 +15,7 @@ import { parseToolResult } from "#evals/chat/mcp.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { assertAddressedById } from "../path/path-scenario-helpers.ts";
 import {
   clearSessionSlots,
   clipStateAssertion,
@@ -31,6 +32,9 @@ export const duplicate: EvalScenario = {
     "Create content, duplicate track, and duplicate clip to arrangement",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // The checks below pin the outcome. The judge only adds commentary they
+  // can't anticipate — hallucinations, misleading prose, extra steps.
+  judgeAdvisory: true,
 
   messages: [
     "Connect to Ableton Live",
@@ -48,6 +52,10 @@ export const duplicate: EvalScenario = {
 
     // Turn 2: Track duplication
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 2 },
+
+    // 2.2.0 renamed every tool's target arg to `id`. A duplicate with no target
+    // at all used to pass here.
+    assertAddressedById({ turn: 2, tool: TOOL_DUPLICATE }),
 
     // Verify track duplication uses type: "track"
     {
@@ -71,6 +79,7 @@ export const duplicate: EvalScenario = {
 
     // Turn 3: Clip duplication
     { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
+    assertAddressedById({ turn: 3, tool: TOOL_DUPLICATE }),
 
     // Verify clip duplication uses type: "clip" and arrangementStart
     {
@@ -234,12 +243,11 @@ export const duplicateLoop: EvalScenario = {
     "Double a MIDI clip with duplicateLoop (native Clip.duplicate_loop)",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  judgeAdvisory: true,
   setup: (mcpClient) => clearSessionSlots(mcpClient, [LOOP_SLOT]),
 
   messages: [
     MSG_CONNECT,
-    "On the Lead track (track index 3), create a 2-bar clip in the first session slot with these notes: C3 at bar 1 beat 1, E3 at bar 1 beat 3, G3 at bar 2 beat 1, B3 at bar 2 beat 3.",
+    "On the Lead track (track index 3), create a 2-bar clip in the first clip slot with these notes: C3 at bar 1 beat 1, E3 at bar 1 beat 3, G3 at bar 2 beat 1, B3 at bar 2 beat 3.",
     "Now double that clip's length to 4 bars, copying the existing notes into the new second half — this is Ableton's Duplicate Loop action.",
   ],
 
@@ -249,10 +257,6 @@ export const duplicateLoop: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertDoubledInPlace(),
     clipStateAssertion(LOOP_SLOT, "4/4", secondHalfMirrorsFirst),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate turn 2: the 2-bar clip was doubled to 4 bars using update-clip's duplicateLoop flag (Live's native Duplicate Loop), NOT by manually setting a new length and re-listing the notes. The existing notes should now repeat in the new second half (bars 3-4 mirror bars 1-2), and the clip should be the same clip (same id), just longer.`,
-    },
     // Heavier than the notation scenarios: 3 turns each carrying the full
     // connect skills blob, plus the state assertion's extra read-clip. ~144k is
     // the validated baseline (2026-06-11, gemini-3.5-flash); target leaves a

@@ -16,7 +16,8 @@ import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
-import { printResult } from "./helpers/result-printer.ts";
+import { checkTally } from "./helpers/reporting/result-format.ts";
+import { printResult } from "./helpers/reporting/result-printer.ts";
 
 const program = new Command();
 
@@ -81,7 +82,7 @@ async function findResultsInDir(dir: string): Promise<string[]> {
 
     return files
       .filter((f) => f.endsWith(".json"))
-      .sort()
+      .toSorted()
       .toReversed()
       .map((f) => join(dir, f));
   } catch {
@@ -141,7 +142,7 @@ async function showRun(runId: string): Promise<void> {
 async function showLatest(): Promise<void> {
   try {
     const runDirs = await readdir(RESULTS_DIR);
-    const sorted = runDirs.sort().toReversed();
+    const sorted = runDirs.toSorted().toReversed();
 
     for (const dir of sorted) {
       const files = await findResultsInDir(join(RESULTS_DIR, dir));
@@ -203,7 +204,7 @@ async function compareRuns(runIds: string[]): Promise<void> {
 
   console.log(styleText("bold", `Comparing: ${runIds.join(" → ")}\n`));
 
-  for (const scenarioId of [...scenarioIds].sort()) {
+  for (const scenarioId of [...scenarioIds].toSorted()) {
     const cells = runIds.map((runId) =>
       formatRunCell(runResults, runId, scenarioId),
     );
@@ -235,9 +236,7 @@ function formatRunCell(
 
   const icon = result.result === "pass" ? "✓" : "✗";
   const color = result.result === "pass" ? "green" : "red";
-  const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
+  const { passed, total } = checkTally(result.checks.results);
 
   return styleText(color, `${icon} ${passed}/${total}`);
 }

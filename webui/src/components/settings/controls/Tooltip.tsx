@@ -104,7 +104,7 @@ export function Tooltip({ text }: TooltipProps) {
       <button
         ref={buttonRef}
         type="button"
-        className="inline-flex items-center justify-center w-4 h-4 text-[10px] leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 "
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-zinc-400 text-[10px] leading-none text-zinc-500 hover:border-blue-500 hover:text-blue-500 dark:border-zinc-500 dark:text-zinc-400 dark:hover:border-blue-400 dark:hover:text-blue-400"
         aria-label="Tool description"
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
@@ -117,7 +117,7 @@ export function Tooltip({ text }: TooltipProps) {
           ref={tooltipRef}
           role="tooltip"
           style={{ top: position.top, left: position.left }}
-          className="fixed px-2.5 py-1.5 text-xs bg-zinc-800 dark:bg-zinc-700 text-white rounded border border-zinc-600 dark:border-zinc-500 shadow-md z-50 max-w-80 max-h-60 overflow-y-auto whitespace-normal wrap-break-word tooltip-fade-in"
+          className="tooltip-fade-in fixed z-50 max-h-60 max-w-80 overflow-y-auto rounded border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs wrap-break-word whitespace-normal text-white shadow-md dark:border-zinc-500 dark:bg-zinc-700"
         >
           {normalizedText}
         </div>

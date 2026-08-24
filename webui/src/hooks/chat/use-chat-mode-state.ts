@@ -13,9 +13,9 @@ import {
 import { type ModeContext } from "#webui/components/mode-context";
 import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-reporting";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
-import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
+import { useConversationLock } from "#webui/hooks/chat/helpers/conversations/use-conversation-lock";
+import { useConversationPanelState } from "#webui/hooks/chat/helpers/conversations/use-conversation-panel-state";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
@@ -201,6 +201,10 @@ export function useChatModeState(params: UseChatModeStateParams) {
       // send is gated below until this is a real answer rather than the
       // provisional mount-time default.
       notation: settings.notation,
+      // The budget a conversation pins when its client is built. Unlike the
+      // fields above there is no saved snapshot to prefer, so a restored
+      // conversation pins whatever is set now.
+      maxToolSteps: settings.maxToolSteps,
       [SUBAGENT_PRESET_PARAM]: subagentPreset,
     },
     autoSaveRef,

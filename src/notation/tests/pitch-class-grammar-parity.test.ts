@@ -99,7 +99,9 @@ describe("pitch-class grammar parity across both grammars", () => {
     for (const token of ["H3", "Cbb3", "C##3", "c#"]) {
       it(`"${token}" is rejected on every site`, () => {
         for (const site of PITCH_SITES) {
-          expect(() => site.fn(token)).toThrow();
+          // Peggy's own syntax error, not the helpers' "parsed, but not as a
+          // pitch" guard — that would pass this test for the wrong reason.
+          expect(() => site.fn(token)).toThrow(/^Expected /);
         }
       });
     }

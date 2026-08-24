@@ -5,6 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
@@ -25,7 +29,21 @@ export const toolDefSelect = defineTool("ppal-select", {
     id: z.coerce
       .string()
       .optional()
-      .describe("select by ID (auto-detects track/scene/clip/device)"),
+      .describe(
+        "select by ID (auto-detects track/scene/clip/device/chain/drum pad)",
+      ),
+
+    // select is the one tool that takes every object type by id, so all four
+    // prefixed spellings are names a model reaches for here. Each folds onto
+    // `id`, which detects the type anyway — a guess costs a warning, not a
+    // dropped argument and a selection that never happened.
+    trackId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    sceneId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    clipId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+
+    deviceId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
 
     trackIndex: z.coerce
       .number()
@@ -45,19 +63,26 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe("0-based scene index"),
 
-    slot: z.coerce
+    path: z.coerce
       .string()
       .optional()
-      .describe("session clip slot: trackIndex/sceneIndex (e.g., '0/3')"),
+      .describe(
+        "select by path, 0-based: 't0/s3' a clip slot, 't0' a track, 'rt0' a return track, " +
+          "'mt' the master track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
+          "'t0/d0/pC1' a drum pad",
+      ),
 
-    devicePath: z
-      .string()
-      .optional()
-      .describe("select device by path (e.g. t0/d1)"),
+    slot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
+
+    devicePath: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
 
     openPluginWindow: param(z.boolean().optional(), {
       default:
-        "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or devicePath",
+        "open (true) or close (false) a plug-in's (VST/AU) floating editor window; targets the device given by id or path",
       smallModel: null,
     }),
 

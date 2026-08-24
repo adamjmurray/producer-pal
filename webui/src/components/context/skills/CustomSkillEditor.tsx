@@ -123,7 +123,7 @@ export function CustomSkillEditor(
   };
 
   return (
-    <div className="flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {externalUpdate && (
         <ExternalUpdateBanner
           message="This skill was changed elsewhere (another tab or a hand edit)."
@@ -150,7 +150,7 @@ export function CustomSkillEditor(
           className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
         />
         Enabled
-        <span className="font-normal text-xs text-zinc-400 dark:text-zinc-500">
+        <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
           Only enabled skills are offered to the assistant.
         </span>
       </label>

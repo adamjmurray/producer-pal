@@ -51,7 +51,7 @@ describe("updateDevice - param conversion discriminators", () => {
     });
 
     it("resolves a division value when only the current label is a fraction", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "Rate", value: "1/16" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Rate", value: "1/16" }] });
 
       // "1/16" resolves to raw -4 via the division path; a numeric-branch
       // fallthrough would fail to interpret the fraction and warn instead.
@@ -92,7 +92,7 @@ describe("updateDevice - param conversion discriminators", () => {
     });
 
     it("falls back to the raw value when the min label is unparseable", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "Mirror", value: "0.7" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Mirror", value: "0.7" }] });
 
       // Unparseable min label => no linear range => write the raw input as-is.
       // Skipping the guard would binary-search a garbage value near the min.
@@ -134,7 +134,7 @@ describe("updateDevice - param conversion discriminators", () => {
     });
 
     it("scales a directional label by the param's own display max", () => {
-      updateDevice({ ids: "dev1", params: [{ name: "Pan", value: "50R" }] });
+      updateDevice({ id: "dev1", params: [{ name: "Pan", value: "50R" }] });
 
       // 50R on a 0..100 scale is +0.5; internal = ((0.5+1)/2)*(1-(-1)) + (-1)
       // = 0.5. The 50 fallback would read it as full-right (+1 -> internal 1).

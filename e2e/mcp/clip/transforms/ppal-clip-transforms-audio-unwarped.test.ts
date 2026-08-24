@@ -37,7 +37,7 @@ import {
 
 const ctx = setupMcpTestContext();
 
-const SLOT = `${AUDIO_WARP_TRACK}/1`;
+const SLOT = `t${AUDIO_WARP_TRACK}/s1`;
 
 /**
  * Apply a transform to a clip and read its gain back.
@@ -51,14 +51,14 @@ async function transformAndReadGain(
 ): Promise<number> {
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms },
+    arguments: { id: clipId, transforms },
   });
 
   await sleep(100);
 
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
+    arguments: { id: clipId, include: ["sample"] },
   });
 
   return parseToolResult<ReadClipResult>(result).gainDb!;

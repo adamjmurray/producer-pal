@@ -309,7 +309,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       expect.stringContaining("outside valid range 0-127; clamped to 127"),
     );
     // Malformed syntax (negative velocity) is still a fatal parse error.
-    expect(() => interpretNotation("v-1-100 C3")).toThrow();
+    expect(() => interpretNotation("v-1-100 C3")).toThrow('but "v" found');
   });
 
   it("clamps out-of-range probability and warns instead of throwing", () => {

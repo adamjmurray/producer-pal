@@ -5,6 +5,7 @@
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import {
   callLiveApi,
@@ -162,7 +163,9 @@ describe("Max API Adapter", () => {
         content: [
           {
             type: "text",
-            text: "Tool call 'test-tool' timed out after 2ms",
+            text:
+              "Tool call 'test-tool' timed out after 2ms. " +
+              "Live may still be applying it — wait, then re-read before acting.",
           },
         ],
         isError: true,
@@ -246,7 +249,12 @@ describe("Max API Adapter", () => {
 
       expect(result).toStrictEqual({
         content: [
-          { type: "text", text: "Tool call 'test-tool' timed out after 2ms" },
+          {
+            type: "text",
+            text:
+              "Tool call 'test-tool' timed out after 2ms. " +
+              "Live may still be applying it — wait, then re-read before acting.",
+          },
         ],
         isError: true,
         errorCode: "timeout",
@@ -283,15 +291,20 @@ describe("Max API Adapter", () => {
       expect(Max.post).not.toHaveBeenCalled();
     });
 
-    it("should reject timeout values above 60000ms", () => {
-      // Call with invalid timeout (too high)
+    it("should clamp timeout values above the cap instead of dropping them", () => {
+      vi.clearAllMocks();
+
       timeoutMsHandler!(70000);
 
-      // Should log an error
       expect(Max.post).toHaveBeenCalledWith(
-        expect.stringContaining("Invalid Live API timeoutMs: 70000"),
-        "error",
+        expect.stringContaining(
+          `Live API timeoutMs 70000 capped at ${MAX_TIMEOUT_MS}`,
+        ),
+        "warn",
       );
+      expect(captureContextJSON()).toMatchObject({
+        timeoutMs: MAX_TIMEOUT_MS,
+      });
     });
 
     it("should reject timeout values at or below 0", () => {
@@ -420,6 +433,29 @@ describe("Max API Adapter", () => {
         type: "text",
         text: "WARNING: Real error",
       });
+    });
+
+    it("should collapse repeats of the same warning into one, with a count", async () => {
+      const { promise, requestId } = setupPendingRequest();
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+        "v8: ignoring 1 invalid note",
+        "v8: ignoring 1 invalid note",
+        "v8: something else",
+        "v8: ignoring 1 invalid note",
+      );
+
+      const result = await promise;
+
+      expect(result.content).toStrictEqual([
+        { type: "text", text: "success" },
+        { type: "text", text: "WARNING: ignoring 1 invalid note (x3)" },
+        { type: "text", text: "WARNING: something else" },
+      ]);
     });
 
     it("should handle error messages without v8: prefix", async () => {

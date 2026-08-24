@@ -8,6 +8,11 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_MAX_TOOL_STEPS,
+  MAX_TOOL_STEPS_LIMIT,
+  MIN_TOOL_STEPS,
+} from "#webui/chat/sdk/step-budget";
 import { PreferencesTab } from "#webui/components/settings/PreferencesTab";
 
 describe("PreferencesTab", () => {
@@ -24,9 +29,46 @@ describe("PreferencesTab", () => {
     setShowTokenUsage: vi.fn(),
     autoUpdateCheck: true,
     setAutoUpdateCheck: vi.fn(),
+    maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
+    setMaxToolSteps: vi.fn(),
     onDeleteAllConversations: vi.fn(),
     onDeleteUnbookmarkedConversations: vi.fn(),
   };
+
+  /**
+   * Render the tab with a spy on the step-budget setter.
+   * @returns The setter spy and the number input
+   */
+  function renderStepBudget() {
+    const setMaxToolSteps = vi.fn();
+    const { container } = render(
+      <PreferencesTab {...defaultProps} setMaxToolSteps={setMaxToolSteps} />,
+    );
+    const input = container.querySelector('[data-testid="max-tool-steps"]')!;
+
+    return { setMaxToolSteps, input };
+  }
+
+  /**
+   * Click one of the delete buttons with `confirm` stubbed to a fixed answer.
+   * @param buttonName - The button's accessible name
+   * @param propName - The handler prop it delegates to
+   * @param confirmed - What the confirm dialog answers
+   * @returns The handler spy passed in as that prop
+   */
+  function clickDeleteButton(
+    buttonName: string,
+    propName: string,
+    confirmed: boolean,
+  ) {
+    const handler = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(confirmed);
+    render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
+    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+
+    return handler;
+  }
 
   it("renders theme label", () => {
     const { container } = render(<PreferencesTab {...defaultProps} />);
@@ -138,6 +180,128 @@ describe("PreferencesTab", () => {
     expect(setAutoUpdateCheck).toHaveBeenCalledWith(false);
   });
 
+  it("shows the step budget with the supported range on the input", () => {
+    const { container } = render(
+      <PreferencesTab {...defaultProps} maxToolSteps={40} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    );
+
+    expect(input?.value).toBe("40");
+    expect(input?.min).toBe(String(MIN_TOOL_STEPS));
+    expect(input?.max).toBe(String(MAX_TOOL_STEPS_LIMIT));
+  });
+
+  it("commits an in-range step budget", () => {
+    const { setMaxToolSteps, input } = renderStepBudget();
+
+    fireEvent.input(input, { target: { value: "40" } });
+
+    expect(setMaxToolSteps).toHaveBeenCalledWith(40);
+  });
+
+  it.each([
+    ["blank while retyping", ""],
+    ["below the floor", String(MIN_TOOL_STEPS - 1)],
+    ["above the ceiling", String(MAX_TOOL_STEPS_LIMIT + 1)],
+    ["fractional", "12.5"],
+  ])("ignores a %s value rather than running a turn on it", (_label, value) => {
+    const { setMaxToolSteps, input } = renderStepBudget();
+
+    fireEvent.input(input, { target: { value } });
+
+    expect(setMaxToolSteps).not.toHaveBeenCalled();
+  });
+
+  it("lets a rejected value stay visible while the field has focus", () => {
+    // Typing "1" on the way to "15" must not be yanked out from under the
+    // cursor; it just hasn't reached the settings buffer yet.
+    const { container } = render(<PreferencesTab {...defaultProps} />);
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.input(input, { target: { value: "1" } });
+
+    expect(input.value).toBe("1");
+  });
+
+  it.each([
+    ["below the floor", String(MIN_TOOL_STEPS - 1)],
+    ["blank", ""],
+    ["fractional", "12.5"],
+  ])("snaps a %s draft back to the committed budget on blur", (_l, value) => {
+    // Otherwise the field sits there reading like a budget the next turn will
+    // use, while Save writes the old one.
+    const { container } = render(
+      <PreferencesTab {...defaultProps} maxToolSteps={30} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.input(input, { target: { value } });
+    fireEvent.blur(input);
+
+    expect(input.value).toBe("30");
+  });
+
+  it("leaves the budget alone when an over-cap number is typed through an in-range prefix", () => {
+    // "150" passes through "15" on the way. Committing that prefix would
+    // silently LOWER the budget the user was trying to raise — and blur alone
+    // can't undo it, since Save may be clicked with the field still focused.
+    let committed = 25;
+    const setMaxToolSteps = vi.fn((steps: number) => {
+      committed = steps;
+      rerender();
+    });
+    const view = (): preact.JSX.Element => (
+      <PreferencesTab
+        {...defaultProps}
+        maxToolSteps={committed}
+        setMaxToolSteps={setMaxToolSteps}
+      />
+    );
+    const { container, rerender: rerenderWith } = render(view());
+    const rerender = (): void => rerenderWith(view());
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    fireEvent.focus(input);
+
+    for (const value of ["1", "15", "150"]) {
+      fireEvent.input(input, { target: { value } });
+    }
+
+    // The rejected draft stays visible while focused, but the budget is back
+    // where the edit started.
+    expect(input.value).toBe("150");
+    expect(committed).toBe(25);
+
+    fireEvent.blur(input);
+    expect(input.value).toBe("25");
+  });
+
+  it("follows the budget when it changes from outside the field", () => {
+    // A Cancel reverts the buffer, and the post-mount load can replace the
+    // mount-time default. Neither is an echo of this field's own commit, so the
+    // draft has to move with it rather than keep showing the stale number.
+    const stepBudget = (steps: number): preact.JSX.Element => (
+      <PreferencesTab {...defaultProps} maxToolSteps={steps} />
+    );
+    const { container, rerender } = render(stepBudget(25));
+    const input = container.querySelector<HTMLInputElement>(
+      '[data-testid="max-tool-steps"]',
+    )!;
+
+    expect(input.value).toBe("25");
+
+    rerender(stepBudget(60));
+    expect(input.value).toBe("60");
+  });
+
   it("renders cleanup buttons", () => {
     render(<PreferencesTab {...defaultProps} />);
     expect(
@@ -150,11 +314,7 @@ describe("PreferencesTab", () => {
     ["Delete all", "onDeleteAllConversations"],
     ["Delete unstarred", "onDeleteUnbookmarkedConversations"],
   ] as const)("calls %s handler when confirmed", (buttonName, propName) => {
-    const handler = vi.fn();
-
-    window.confirm = vi.fn().mockReturnValue(true);
-    render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
-    fireEvent.click(screen.getByRole("button", { name: buttonName }));
+    const handler = clickDeleteButton(buttonName, propName, true);
 
     expect(window.confirm).toHaveBeenCalledOnce();
     expect(handler).toHaveBeenCalledOnce();
@@ -166,11 +326,7 @@ describe("PreferencesTab", () => {
   ] as const)(
     "does not call %s handler when cancelled",
     (buttonName, propName) => {
-      const handler = vi.fn();
-
-      window.confirm = vi.fn().mockReturnValue(false);
-      render(<PreferencesTab {...defaultProps} {...{ [propName]: handler }} />);
-      fireEvent.click(screen.getByRole("button", { name: buttonName }));
+      const handler = clickDeleteButton(buttonName, propName, false);
 
       expect(window.confirm).toHaveBeenCalledOnce();
       expect(handler).not.toHaveBeenCalled();

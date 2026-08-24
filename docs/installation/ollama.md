@@ -16,10 +16,13 @@ Download and install [Ollama](https://ollama.com/) for your operating system.
 
 Download a model that supports tools. Some good options include:
 
-- `qwen3.5`
+- `qwen3.8`
 - `gemma4`
-- `devstral-small-2`
-- `glm-4.7-flash`
+- `muse-glimmer`
+- `mistral-small3.2`
+
+And the others listed in Producer Pal's built-in chat UI settings. If your
+computer can handle it, use the larger variants of a model.
 
 Browse [models with tool support](https://ollama.com/search?c=tools) on the
 Ollama website.
@@ -59,9 +62,9 @@ In the chat UI settings:
 - URL: `http://localhost:11434`
   - Use this default URL when everything runs on the same computer. Change
     `localhost` to run Ollama on a different computer. Consult
-    [the user guide](/guide/chat-ui#local-ai-settings-ollama-lm-studio) for more
+    [the user guide](/guide/chat-ui#local-ai-settings-ollama-bionic) for more
     info.
-- Model: Your model name (e.g., `gemma4` or `qwen3.5`)
+- Model: Your model name (e.g., `qwen3.8` or `gemma4`)
 
 Click "Save".
 
@@ -69,10 +72,11 @@ Click "Save".
 
 ::: tip Ollama Model Aliases
 
-If Producer Pal says a model like `qwen3.5` is not installed but you downloaded
-`qwen3.5:9b`, that's because Ollama aliases work one way: `qwen3.5` resolves to
-`qwen3.5:9b`, but not vice versa. Install `qwen3.5` in Ollama to create the
-alias. It won't re-download the model.
+If Producer Pal says a model like `muse-glimmer` is not installed but you
+downloaded `muse-glimmer:30b-mlx`, enter the full name with the tag. A bare
+`muse-glimmer` is short for `muse-glimmer:latest`, which is a different build —
+the shorthand doesn't find the tagged one you have. Run `ollama list` to see the
+exact names.
 
 :::
 

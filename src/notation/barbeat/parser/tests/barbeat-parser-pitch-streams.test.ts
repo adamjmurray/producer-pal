@@ -171,34 +171,34 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
 
   describe("rejected forms (one parameter kind, no nesting)", () => {
     it("rejects an empty bracket", () => {
-      expect(() => parser.parse("[]")).toThrow();
+      expect(() => parser.parse("[]")).toThrow('but "[" found');
     });
 
     it("rejects a bracket mixing parameter kinds", () => {
-      expect(() => parser.parse("[v80 C3]")).toThrow();
-      expect(() => parser.parse("[n/4 v80]")).toThrow();
-      expect(() => parser.parse("[C3 p1]")).toThrow();
+      expect(() => parser.parse("[v80 C3]")).toThrow("one parameter kind");
+      expect(() => parser.parse("[n/4 v80]")).toThrow("one parameter kind");
+      expect(() => parser.parse("[C3 p1]")).toThrow("one parameter kind");
     });
 
     it("rejects a nested bracket (a stream is not a value)", () => {
-      expect(() => parser.parse("[C3 [D3 E3]]")).toThrow();
+      expect(() => parser.parse("[C3 [D3 E3]]")).toThrow('but "[" found');
     });
 
     it("rejects a nested or bracket-containing chord", () => {
-      expect(() => parser.parse("((C3 E3) G3)")).toThrow();
-      expect(() => parser.parse("(C3 [D3 E3])")).toThrow();
+      expect(() => parser.parse("((C3 E3) G3)")).toThrow('but "(" found');
+      expect(() => parser.parse("(C3 [D3 E3])")).toThrow('but "(" found');
     });
 
     it("rejects a bare chord with no surrounding stream", () => {
       // `(...)` is only a stream value, not a standalone element.
-      expect(() => parser.parse("(C3 E3)")).toThrow();
+      expect(() => parser.parse("(C3 E3)")).toThrow('but "(" found');
     });
 
     it("still requires whitespace from a bracket to a non-bracket element", () => {
       // The no-space tolerance fires only before a `[`, so a bracket followed by
       // a time position (or any non-bracket) is NOT allowed to abut.
-      expect(() => parser.parse("[C3 E3]1|1")).toThrow();
-      expect(() => parser.parse("[v80 v100]C3 1|1")).toThrow();
+      expect(() => parser.parse("[C3 E3]1|1")).toThrow('but "1" found');
+      expect(() => parser.parse("[v80 v100]C3 1|1")).toThrow('but "C" found');
     });
   });
 });

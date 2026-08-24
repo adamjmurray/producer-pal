@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   getToolErrorMessage,
+  parseAliasedToolResult,
   getToolWarnings,
   isToolError,
   parseToolResult,
@@ -95,13 +96,20 @@ describe("ppal-select", () => {
     // Scene selection auto-switches to session view
     expect(scene.view).toBe("session");
 
-    // Test 8: Select track by ID (auto-detection)
+    // Test 8: Select track by ID (auto-detection), spelled the way a model
+    // guesses it. "trackId" is a permanent alias that folds onto id, so the
+    // type still comes from the object — this checks the select and the steer.
     const trackId = regularTrack.selectedTrack!.id;
     const selectByIdResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: `id ${trackId}` },
+      arguments: { trackId: `id ${trackId}` },
     });
-    const byId = parseToolResult<SelectResult>(selectByIdResult);
+    const byId = parseAliasedToolResult<SelectResult>(
+      selectByIdResult,
+      "ppal-select",
+      "trackId",
+      "id",
+    );
 
     expect(byId.selectedTrack).toBeDefined();
     expect(byId.selectedTrack!.id).toBe(trackId);
@@ -113,7 +121,7 @@ describe("ppal-select", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -128,7 +136,7 @@ describe("ppal-select", () => {
 
     expect(withClip.selectedClip).toBeDefined();
     expect(withClip.selectedClip!.id).toBe(createdClip.id);
-    expect(withClip.selectedClip!.slot).toBeDefined();
+    expect(withClip.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 9b: Select session clip with conflicting view arg - should warn
     const conflictingViewResult = await ctx.client!.callTool({
@@ -157,7 +165,7 @@ describe("ppal-select", () => {
     // Test 11: Select device by path
     const selectDevicePathResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { devicePath: "t0/d0" },
+      arguments: { path: "t0/d0" },
     });
     const withDevicePath = parseToolResult<SelectResult>(
       selectDevicePathResult,
@@ -169,12 +177,12 @@ describe("ppal-select", () => {
     // Test 12: Select clip slot (occupied)
     const clipSlotResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { slot: `${emptyMidiTrack}/0` },
+      arguments: { path: `t${emptyMidiTrack}/s0` },
     });
     const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
 
     expect(clipSlot.selectedClip).toBeDefined();
-    expect(clipSlot.selectedClip!.slot).toBe(`${emptyMidiTrack}/0`);
+    expect(clipSlot.selectedClip!.path).toBe(`t${emptyMidiTrack}/s0`);
 
     // Test 13: Select scene by ID (auto-detection)
     const sceneId = scene.selectedScene!.id;
@@ -206,6 +214,49 @@ describe("ppal-select", () => {
     expect(viewOnly.view).toBe("session");
     expect(viewOnly.selectedTrack).toBeUndefined();
     expect(viewOnly.selectedScene).toBeUndefined();
+
+    // Test 16: A target that isn't there is refused, not silently skipped, and
+    // in the same words whichever spelling named it.
+    const expectNoTarget = async (
+      args: Record<string, unknown>,
+      message: string,
+    ) => {
+      const result = await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: args,
+      });
+
+      expect(
+        isToolError(result),
+        `expected ${JSON.stringify(args)} to fail`,
+      ).toBe(true);
+      expect(getToolErrorMessage(result)).toContain(message);
+    };
+
+    await expectNoTarget({ path: "t99" }, 'no track at "t99"');
+    await expectNoTarget({ trackIndex: 99 }, 'no track at "t99"');
+    await expectNoTarget(
+      { trackIndex: 99, trackType: "return" },
+      'no track at "rt99"',
+    );
+    await expectNoTarget({ path: "s99" }, 'no scene at "s99"');
+    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
+    await expectNoTarget({ path: "t0/s99" }, 'no scene at "s99"');
+    await expectNoTarget({ path: "t0/d99" }, 'no device at "t0/d99"');
+
+    // Test 17: A refused select changes nothing — a scene selection would have
+    // switched to session view before it ever looked for the scene.
+    await ctx.client!.callTool({
+      name: "ppal-select",
+      arguments: { view: "arrangement" },
+    });
+    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
+
+    const afterFailure = parseToolResult<SelectResult>(
+      await ctx.client!.callTool({ name: "ppal-select", arguments: {} }),
+    );
+
+    expect(afterFailure.view).toBe("arrangement");
   });
 });
 
@@ -222,8 +273,7 @@ interface SelectResult {
   };
   selectedClip?: {
     id: string;
-    slot?: string;
-    trackIndex?: number;
+    path?: string;
     arrangementStart?: string;
   };
   selectedDevice?: {

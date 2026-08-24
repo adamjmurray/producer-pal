@@ -7,15 +7,24 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, waitFor } from "@testing-library/preact";
+import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
-import { loadConversation } from "#webui/lib/conversation-db";
 import {
+  listAllConversationSummaries,
+  loadConversation,
+} from "#webui/lib/conversation-db";
+import { importConversations } from "#webui/lib/conversation-transfer";
+import {
+  createConversationsProps,
   resetConversationsTestState,
   saveWithMessage,
   setupConversationsHook as setupHook,
+  waitForEffects,
 } from "./use-conversations-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 /**
  * Spy on saveConversation so its next call blocks until released, then calls
@@ -27,10 +36,7 @@ import {
  */
 function gateNextSave(): { release: () => void; restore: () => void } {
   const original = conversationDb.saveConversation;
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const [gate, release] = openGate();
   const spy = vi
     .spyOn(conversationDb, "saveConversation")
     .mockImplementationOnce(async (record, protectedIds) => {
@@ -132,6 +138,45 @@ async function expectBulkDeleteDropsNeverSavedLateAutosave(
   );
 }
 
+/**
+ * Drive a delete against an active conversation with a fork signal raised.
+ *
+ * Stop deliberately keeps that signal, so the teardown autosave the delete
+ * triggers still arrives wanting to branch. Branching mints a fresh id the
+ * canceled set can't cover, so the save wrote a sibling of the row being deleted
+ * — and moved the active id onto it, which skipped the delete's own clear. The
+ * conversation was gone but the view still showed it.
+ * @param deleteOp - the delete under test, given the hook result and the saved id
+ */
+async function expectForkDroppedOnDelete(
+  deleteOp: (result: HookHandle["result"], savedId: string) => Promise<void>,
+): Promise<void> {
+  const { props, state } = createConversationsProps();
+  const pendingForkRef = { current: null as PendingFork | null };
+  const { result } = renderHook(() =>
+    useConversations({ ...props, pendingForkRef }),
+  );
+
+  await waitForEffects();
+  await saveWithMessage(state, result, "original");
+
+  const savedId = result.current.activeConversationId!;
+
+  pendingForkRef.current = { anchorIndex: 0 };
+
+  await expectLateAutosaveDropped(
+    { props, state, result },
+    () => deleteOp(result, savedId),
+    async () => {
+      expect(await loadConversation(savedId)).toBeUndefined();
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.clearConversation).toHaveBeenCalled();
+    },
+    // No sibling branched off the row that just went away.
+    async () => expect(await listAllConversationSummaries()).toHaveLength(0),
+  );
+}
+
 describe("useConversations delete/save races", () => {
   beforeEach(resetConversationsTestState);
 
@@ -157,6 +202,18 @@ describe("useConversations delete/save races", () => {
         expect(result.current.conversations).toHaveLength(0);
       },
       async () => expect(await loadConversation(savedId)).toBeUndefined(),
+    );
+  });
+
+  it("drops a pending fork when the active conversation is deleted", async () => {
+    await expectForkDroppedOnDelete((result, savedId) =>
+      result.current.deleteConversation(savedId),
+    );
+  });
+
+  it("drops a pending fork when delete-all clears the conversation", async () => {
+    await expectForkDroppedOnDelete((result) =>
+      result.current.deleteAllConversations(),
     );
   });
 
@@ -303,5 +360,132 @@ describe("useConversations delete/save races", () => {
     const reloaded = await loadConversation(savedId);
 
     expect(reloaded?.messages).toHaveLength(2);
+  });
+  it("re-enables autosave after a deleted conversation is re-imported", async () => {
+    // The canceled-id tombstone is add-only, and export/import keeps ids: a
+    // deleted conversation that comes back through import was silently
+    // unsaveable for the rest of the session. Opening it lifts the tombstone.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "original");
+
+    const savedId = result.current.activeConversationId!;
+    const record = (await loadConversation(savedId))!;
+    const backup = JSON.stringify({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      conversations: [{ ...record, updatedAt: record.updatedAt + 1 }],
+    });
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+    expect(await loadConversation(savedId)).toBeUndefined();
+
+    await act(async () => {
+      await importConversations(backup);
+    });
+    expect(await loadConversation(savedId)).toBeDefined();
+
+    await act(async () => {
+      await result.current.switchConversation(savedId);
+    });
+    state.chatHistory = [
+      { role: "user", content: "original" },
+      { role: "user", content: "after import" },
+    ];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const afterImport = await loadConversation(savedId);
+
+    expect(afterImport?.messages).toHaveLength(2);
+  });
+
+  it("re-enables autosave when the delete itself failed", async () => {
+    // The tombstone goes up before the DB work. If that work throws the row is
+    // still listed, so the tombstone has to come back down or the conversation
+    // is permanently unsaveable.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "original");
+
+    const savedId = result.current.activeConversationId!;
+    const spy = vi
+      .spyOn(conversationDb, "deleteConversation")
+      .mockRejectedValueOnce(new Error("IDB is having a day"));
+
+    await act(async () => {
+      await expect(result.current.deleteConversation(savedId)).rejects.toThrow(
+        "IDB is having a day",
+      );
+    });
+    spy.mockRestore();
+    expect(await loadConversation(savedId)).toBeDefined();
+
+    state.chatHistory = [
+      { role: "user", content: "original" },
+      { role: "user", content: "after the failed delete" },
+    ];
+    await act(async () => {
+      await result.current.saveCurrentConversation(Date.now());
+    });
+
+    const afterFailedDelete = await loadConversation(savedId);
+
+    expect(afterFailedDelete?.messages).toHaveLength(2);
+  });
+
+  it("deleteAll drops the pending undo so the banner can't un-wipe a row", async () => {
+    // The undo banner never auto-expires, so a "Deleted X / Undo" left over
+    // from a single delete used to sit through a wipe-everything and put X back.
+    const { state, result } = await setupHook();
+
+    await saveWithMessage(state, result, "keeper");
+
+    const savedId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(async () => {
+      await result.current.deleteAllConversations();
+    });
+
+    expect(result.current.notification).toBeNull();
+    expect(await listAllConversationSummaries()).toHaveLength(0);
+  });
+
+  it("deleteUnbookmarked drops only the undos its sweep would have taken", async () => {
+    const { state, result } = await setupHook();
+
+    // A bookmarked conversation deleted by hand: the sweep would have spared
+    // it, so its undo survives and still restores.
+    await saveWithMessage(state, result, "bookmarked");
+
+    const keptId = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.toggleBookmark(keptId);
+    });
+    await act(async () => {
+      await result.current.deleteConversation(keptId);
+    });
+
+    await act(async () => {
+      await result.current.deleteUnbookmarkedConversations();
+    });
+
+    expect(result.current.notification?.action?.label).toBe("Undo");
+
+    await act(async () => {
+      result.current.notification!.action!.onClick();
+    });
+    await waitFor(async () =>
+      expect(await loadConversation(keptId)).toBeDefined(),
+    );
   });
 });

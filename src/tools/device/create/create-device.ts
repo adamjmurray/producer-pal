@@ -8,7 +8,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   parseCommaSeparatedIds,
@@ -97,7 +97,7 @@ export function createDevice(
   if (focus && results.length > 0) {
     const lastResult = results.at(-1) as CreateDeviceResult;
 
-    select({ deviceId: lastResult.id, detailView: "device" });
+    focusSelect({ id: lastResult.id, detailView: "device" });
   }
 
   return unwrapSingleResult(results);
@@ -175,7 +175,7 @@ function createDeviceAtPath(
 
   // Live rejects any position past the end of the chain, including position 0
   // on an empty one. Append instead of failing.
-  const deviceCount = container.getChildren("devices").length;
+  const deviceCount = container.getChildCount("devices");
   const pastEnd = position != null && position > deviceCount;
 
   if (pastEnd) {

@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -80,7 +81,7 @@ export function createScene(
     applyCaptureProperties(result, { color, tempo, timeSignature });
 
     if (focus) {
-      select({ view: "session", sceneId: result.id });
+      focusSelect({ view: "session", id: result.id });
     }
 
     return result;
@@ -124,7 +125,7 @@ export function createScene(
   if (focus && createdScenes.length > 0) {
     const lastScene = createdScenes.at(-1) as SceneResult;
 
-    select({ view: "session", sceneId: lastScene.id });
+    focusSelect({ view: "session", id: lastScene.id });
   }
 
   return count === 1 ? (createdScenes[0] as SceneResult) : createdScenes;

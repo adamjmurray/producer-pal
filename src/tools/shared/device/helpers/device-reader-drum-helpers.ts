@@ -1,14 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
+import { drumPadIdsByNote } from "./path/device-drumpad-navigation.ts";
 import {
   buildChainInfo,
-  hasInstrumentInDevices,
-  type DeviceInfo,
+  computeState,
+  deviceHasInstrument,
 } from "./device-state-helpers.ts";
 import { extractDevicePath } from "./path/device-path-helpers.ts";
 
@@ -32,6 +34,7 @@ export interface ProcessedChain {
 }
 
 export interface DrumPadInfo {
+  id?: string;
   note: number;
   pitch: string | null;
   name?: string;
@@ -83,59 +86,99 @@ function processDrumRackChain(
   indexWithinNote: number,
   options: DrumChainOptions,
 ): Record<string, unknown> {
-  const {
-    includeDrumPads,
-    includeChains,
-    depth,
-    maxDepth,
-    readDeviceFn,
-    parentPath,
-  } = options;
-
+  const { includeDrumPads, includeChains, parentPath } = options;
   const chainPath = parentPath
     ? buildDrumChainPath(parentPath, inNote, indexWithinNote)
     : null;
 
-  const chainDevices = chain.getChildren("devices");
+  // A pad carries its chains only when both were asked for. Otherwise the whole
+  // chain info is dropped and only the pad reads it, so build the short form.
+  const chainInfo =
+    includeDrumPads && includeChains
+      ? shownDrumChainInfo(chain, chainPath, options)
+      : padOnlyDrumChainInfo(chain);
 
-  // At depth limit, show deviceCount instead of expanding devices
+  // Internal tracking for drum map building
+  chainInfo._inNote = inNote;
+
+  return chainInfo;
+}
+
+/**
+ * A drum chain as the caller will see it, with its own id, path, mixer and
+ * either its devices or a count of them.
+ * @param chain - Chain object from drum rack
+ * @param chainPath - The chain's path in Producer Pal's grammar
+ * @param options - Processing options
+ * @returns Chain info, with _hasInstrument for the drum map
+ */
+function shownDrumChainInfo(
+  chain: LiveAPI,
+  chainPath: string | null,
+  options: DrumChainOptions,
+): Record<string, unknown> {
+  const { includeDrumPads, includeChains, depth, maxDepth, readDeviceFn } =
+    options;
+
+  // At the depth limit, count the devices rather than building them.
   if (depth >= maxDepth) {
     const chainInfo = buildChainInfo(chain, {
       path: chainPath,
-      deviceCount: chainDevices.length,
+      deviceCount: chain.getChildCount("devices"),
     });
 
-    // Add in_note for internal tracking
-    chainInfo._inNote = inNote;
-    chainInfo._hasInstrument = false; // Can't determine without expanding
+    chainInfo._hasInstrument = hasInstrumentLazily(chain);
 
     return chainInfo;
   }
 
-  const processedDevices = chainDevices.map((chainDevice, deviceIndex) => {
-    const devicePath = chainPath ? `${chainPath}/d${deviceIndex}` : null;
-
-    return readDeviceFn(chainDevice, {
-      includeChains: includeDrumPads && includeChains,
-      includeDrumPads: includeDrumPads && includeChains,
-      depth: depth + 1,
-      maxDepth,
-      parentPath: devicePath,
-    });
-  });
-
+  const chainDevices = chain.getChildren("devices");
   const chainInfo = buildChainInfo(chain, {
     path: chainPath,
-    devices: processedDevices,
+    devices: chainDevices.map((chainDevice, deviceIndex) =>
+      readDeviceFn(chainDevice, {
+        includeChains: includeDrumPads && includeChains,
+        includeDrumPads: includeDrumPads && includeChains,
+        depth: depth + 1,
+        maxDepth,
+        parentPath: chainPath ? `${chainPath}/d${deviceIndex}` : null,
+      }),
+    ),
   });
 
-  // Add in_note for internal tracking
-  chainInfo._inNote = inNote;
-  chainInfo._hasInstrument = hasInstrumentInDevices(
-    processedDevices as unknown as DeviceInfo[],
-  );
+  chainInfo._hasInstrument = chainDevices.some(deviceHasInstrument);
 
   return chainInfo;
+}
+
+/**
+ * The three things a drum pad takes from a chain it won't be showing. The rest
+ * of buildChainInfo is pure cost here — the chain mixer alone is a mixer, a
+ * volume, a pan and one send per return chain, per pad.
+ * @param chain - Chain object from drum rack
+ * @returns Chain info holding only what the pad reads
+ */
+function padOnlyDrumChainInfo(chain: LiveAPI): Record<string, unknown> {
+  const state = computeState(chain);
+
+  return {
+    name: chain.getProperty("name"),
+    ...(state === STATE.ACTIVE ? {} : { state }),
+    _hasInstrument: hasInstrumentLazily(chain),
+  };
+}
+
+/**
+ * Whether anything in a chain makes sound. Asked of Live, not of the processed
+ * tree, so a chain left unexpanded answers the same as an expanded one —
+ * reporting false at the depth limit used to drop every pad of a nested rack
+ * from the drum map.
+ * @param chain - Chain object from drum rack
+ * @returns True when the chain holds an instrument
+ */
+function hasInstrumentLazily(chain: LiveAPI): boolean {
+  // Stops at the first instrument instead of building every device in the pad.
+  return chain.someChild("devices", deviceHasInstrument);
 }
 
 /**
@@ -164,16 +207,22 @@ function groupChainsByNote(chains: LiveAPI[]): Map<number, LiveAPI[]> {
  * Build drum pad info from grouped chains
  * @param inNote - MIDI note or -1 for catch-all
  * @param processedChains - Processed chain info objects
+ * @param padId - The pad's ID, absent when the rack has no pad for this note
  * @returns Drum pad info object
  */
 function buildDrumPadFromChains(
   inNote: number,
   processedChains: ProcessedChain[],
+  padId: string | undefined,
 ): Record<string, unknown> {
   const firstChain = assertDefined(processedChains[0], "first chain");
   const isCatchAll = inNote === -1;
 
   const drumPadInfo: Record<string, unknown> = {
+    // No id for the catch-all, or for a Drum Rack nested in a drum pad — that
+    // rack has no pads, only chains grouped by in_note. Its absence is how a
+    // caller knows the pad can't be named by id.
+    ...(padId == null ? {} : { id: padId }),
     note: inNote,
     pitch: isCatchAll ? "*" : midiToNoteName(inNote),
     name: firstChain.name,
@@ -238,6 +287,7 @@ export function updateDrumPadSoloStates(
  * @param depth - Current depth
  * @param maxDepth - Max depth
  * @param readDeviceFn - readDevice function
+ * @param devicePath - The rack's own path in Producer Pal's grammar
  */
 export function processDrumPads(
   device: LiveAPI,
@@ -247,9 +297,20 @@ export function processDrumPads(
   depth: number,
   maxDepth: number,
   readDeviceFn: DrumChainOptions["readDeviceFn"],
+  devicePath?: string,
 ): void {
   const chains = device.getChildren("chains");
-  const parentPath = extractDevicePath(device.path);
+  // Prefer the path the caller walked in on: a Live path spells a nested rack's
+  // position with raw chain indexes, which loses the pad notation the rest of
+  // the tree uses (pF1/c0/d0, not c3/d0).
+  const parentPath = devicePath ?? extractDevicePath(device.path);
+  // Read the rack's pads once: pads are grouped from chains below, so there is
+  // no pad object in hand to take an id from. Only when the pads are being
+  // returned — a drum-map walk would build a LiveAPI per pad for an id it
+  // never shows.
+  const padIdsByNote = includeDrumPads
+    ? drumPadIdsByNote(device)
+    : new Map<number, string>();
 
   // Group chains by in_note
   const noteGroups = groupChainsByNote(chains);
@@ -271,7 +332,11 @@ export function processDrumPads(
     );
 
     // Build drum pad info from the chains
-    const drumPadInfo = buildDrumPadFromChains(inNote, processedChains);
+    const drumPadInfo = buildDrumPadFromChains(
+      inNote,
+      processedChains,
+      padIdsByNote.get(inNote),
+    );
 
     // Add chains if requested
     if (includeDrumPads && includeChains) {

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 
 // Mock MCP client helpers. connectAndListTools is deliberately NOT mocked — it
 // owns the close-on-catalog-failure path asserted below.
@@ -41,6 +42,22 @@ describe("createMcpTools", () => {
   ];
 
   const mockCallTool = vi.fn().mockResolvedValue({ content: "result" });
+
+  /**
+   * Fail the catalog read on a connected client and assert the failure surfaces.
+   * @param close - The client's close spy, which the failure path must call
+   */
+  async function expectCatalogFailure(close: ReturnType<typeof vi.fn>) {
+    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
+      callTool: mockCallTool,
+      close,
+    });
+
+    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
+      "catalog unavailable",
+    );
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -136,10 +153,11 @@ describe("createMcpTools", () => {
       },
     );
 
-    expect(mockCallTool).toHaveBeenCalledWith({
-      name: "ppal-connect",
-      arguments: { arg: "value" },
-    });
+    expect(mockCallTool).toHaveBeenCalledWith(
+      { name: "ppal-connect", arguments: { arg: "value" } },
+      undefined,
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
+    );
     expect(result).toBe("result");
   });
 
@@ -170,30 +188,14 @@ describe("createMcpTools", () => {
     // throw here would strand an open transport nothing can reach.
     const close = vi.fn().mockResolvedValue(undefined);
 
-    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
-      callTool: mockCallTool,
-      close,
-    });
-
-    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
-      "catalog unavailable",
-    );
+    await expectCatalogFailure(close);
     expect(close).toHaveBeenCalledOnce();
   });
 
   it("reports the original failure even when the close fails too", async () => {
     const close = vi.fn().mockRejectedValue(new Error("socket already gone"));
 
-    (createConnectedMcpClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-      listTools: vi.fn().mockRejectedValue(new Error("catalog unavailable")),
-      callTool: mockCallTool,
-      close,
-    });
-
-    await expect(createMcpTools("http://localhost:3000/mcp")).rejects.toThrow(
-      "catalog unavailable",
-    );
+    await expectCatalogFailure(close);
   });
 
   it("returns the MCP client", async () => {

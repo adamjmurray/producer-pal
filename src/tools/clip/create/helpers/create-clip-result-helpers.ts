@@ -6,7 +6,10 @@
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export interface ClipPropertiesToSet {
   [key: string]: unknown; // Required for setAll() compatibility with Record<string, unknown>
@@ -89,11 +92,12 @@ export function buildClipProperties(
 
 export interface ClipResultObject {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
+   * arrangement. A clip slot pastes back into any path/toPath param; an
+   * arrangement one names a whole track, so only tools that take a track
+   * destination accept it — reach a specific arrangement clip by id. */
+  path?: string;
   arrangementStart?: string | null;
-  /** 1-based take lane number, present only for clips on a take lane */
-  takeLane?: number;
   noteCount?: number;
   transformed?: number;
   length?: string;
@@ -135,17 +139,10 @@ export function buildClipResult(
 
   // Add view-specific properties
   if (view === "session") {
-    clipResult.slot = formatSlot(trackIndex, sceneIndex as number);
+    clipResult.path = slotPath(trackIndex, sceneIndex as number);
   } else {
-    clipResult.trackIndex = trackIndex;
+    clipResult.path = arrangementPath(trackIndex, clip.takeLaneIndex);
     clipResult.arrangementStart = arrangementStart;
-
-    // Surface the take lane (1-based) when the clip landed on one
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      clipResult.takeLane = takeLaneIndex + 1;
-    }
   }
 
   // For MIDI clips: report the count Live actually stored (read back), not the

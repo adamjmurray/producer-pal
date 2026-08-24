@@ -53,7 +53,7 @@ describe("updateTrack - send properties", () => {
 
   it("should set send gain with exact return name", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
       sendReturn: "A-Reverb",
     });
@@ -63,7 +63,7 @@ describe("updateTrack - send properties", () => {
 
   it("should set send gain with letter prefix", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -6,
       sendReturn: "A",
     });
@@ -73,7 +73,7 @@ describe("updateTrack - send properties", () => {
 
   it("should set second send with letter prefix", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -3,
       sendReturn: "B",
     });
@@ -81,9 +81,19 @@ describe("updateTrack - send properties", () => {
     expect(send2.set).toHaveBeenCalledWith("display_value", -3);
   });
 
+  it("should match a return track letter in lower case", () => {
+    updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "a",
+    });
+
+    expect(send1.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
   it("should set send gain to minimum value", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -70,
       sendReturn: "A",
     });
@@ -93,7 +103,7 @@ describe("updateTrack - send properties", () => {
 
   it("should set send gain to maximum value (0 dB)", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: 0,
       sendReturn: "A",
     });
@@ -101,10 +111,46 @@ describe("updateTrack - send properties", () => {
     expect(send1.set).toHaveBeenCalledWith("display_value", 0);
   });
 
+  it("should match a return track by id", () => {
+    // Two returns named the same thing: no name or letter tells them apart, so
+    // this is the case only an id can address.
+    registerMockObject("return_A", {
+      path: livePath.returnTrack(0),
+      properties: { name: "Verb" },
+    });
+    registerMockObject("return_B", {
+      path: livePath.returnTrack(1),
+      properties: { name: "Verb" },
+    });
+
+    updateTrack({
+      id: "123",
+      sendGainDb: -6,
+      sendReturn: "return_B",
+    });
+
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).toHaveBeenCalledWith("display_value", -6);
+  });
+
+  it("should warn and skip for an id that is not a return track", () => {
+    const result = updateTrack({
+      id: "123",
+      sendGainDb: -12,
+      sendReturn: "123",
+    });
+
+    expectSendUpdateSkipped(
+      result,
+      [send1, send2],
+      'no return track found matching "123"',
+    );
+  });
+
   it("should warn and skip when only sendGainDb is provided", () => {
     // Should not throw, just warn and skip the send update
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
     });
 
@@ -114,7 +160,7 @@ describe("updateTrack - send properties", () => {
   it("should warn and skip when only sendReturn is provided", () => {
     // Should not throw, just warn and skip the send update
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendReturn: "A",
     });
 
@@ -126,7 +172,7 @@ describe("updateTrack - send properties", () => {
     // is touched — a mis-initialized "not found" sentinel would silently write
     // the wrong send instead of skipping.
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
       sendReturn: "C",
     });
@@ -148,7 +194,7 @@ describe("updateTrack - send properties", () => {
     });
 
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -9,
       sendReturn: "A",
     });
@@ -169,7 +215,7 @@ describe("updateTrack - send properties", () => {
 
     // Should not throw, just warn and skip the send update
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
       sendReturn: "A",
     });
@@ -179,7 +225,7 @@ describe("updateTrack - send properties", () => {
 
   it("should set sends on multiple tracks", () => {
     updateTrack({
-      ids: "123,456",
+      id: "123,456",
       sendGainDb: -6,
       sendReturn: "A",
     });
@@ -190,7 +236,7 @@ describe("updateTrack - send properties", () => {
 
   it("should combine send update with other properties", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       name: "Test Track",
       sendGainDb: -12,
       sendReturn: "B",
@@ -202,7 +248,7 @@ describe("updateTrack - send properties", () => {
 
   it("should not set send when neither param is provided", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       name: "Test Track",
     });
 
@@ -219,7 +265,7 @@ describe("updateTrack - send properties", () => {
 
     // Should not throw, just warn and skip the send update
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
       sendReturn: "A",
     });
@@ -242,7 +288,7 @@ describe("updateTrack - send properties", () => {
 
     // Should not throw, just warn and skip the send update
     const result = updateTrack({
-      ids: "123",
+      id: "123",
       sendGainDb: -12,
       sendReturn: "C", // Matches return track at index 2
     });

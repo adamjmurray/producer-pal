@@ -3,6 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+/**
+ * Marks a content item as a warning rather than part of the result. The REST
+ * route splits on it, so a producer that spells it differently has its warning
+ * filed as an appended block instead. Case included.
+ */
+export const WARNING_PREFIX = "WARNING: ";
+
 // Message chunking constants
 export const MAX_ERROR_DELIMITER = "$$___MAX_ERRORS___$$";
 export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit

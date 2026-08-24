@@ -31,14 +31,14 @@ export function VoiceVolumeSlider({
 }: VoiceVolumeSliderProps) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <label htmlFor="voice-volume-slider" className="text-sm">
           Volume ({Math.round(volume * 100)}%)
         </label>
         <button
           type="button"
           onClick={() => setVolume(VOICE_VOLUME_DEFAULT)}
-          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
+          className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-300 dark:hover:text-zinc-200"
         >
           Reset
         </button>

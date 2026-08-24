@@ -9,11 +9,13 @@
  *
  * Run with: npm run e2e:mcp
  */
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildSkills } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
+  fetchSkillOverrides,
   parseToolResult,
+  serverHasCodeExec,
   setConfig,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
@@ -76,6 +78,20 @@ function expectConnected(result: unknown): ConnectResult {
 }
 
 describe("ppal-connect", () => {
+  // buildSkills() below reads ENABLE_CODE_EXEC from THIS process, but the device
+  // bakes the flag in at build time — and `build:debug` forces it on. Left alone
+  // the two disagree on every debug build, so take the answer from the server.
+  beforeAll(async () => {
+    vi.stubEnv(
+      "ENABLE_CODE_EXEC",
+      (await serverHasCodeExec(ctx.client!)) ? "true" : "false",
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("returns standard mode skills (smallModelMode=false)", async () => {
     // Ensure standard mode is active, with notation pinned so the assertion is
     // deterministic regardless of any notation left set by a prior test.
@@ -99,12 +115,15 @@ describe("ppal-connect", () => {
         /^\d+\/\d+$/.test(parsed.liveSet.timeSignature),
     ).toBe(true);
 
-    // Standard mode injects the assembled standard skills verbatim (no user
-    // overrides expected on the dev machine during e2e). Asserting equality with
-    // buildSkills() (rather than hand-picked content markers like section
-    // headings) means any future skills reorg flows through automatically — this
-    // test can never silently drift out of sync with the skills.
-    expect(extractSkills(result)).toBe(buildSkills({ notation: "barbeat" }));
+    // Standard mode injects the assembled standard skills verbatim. Asserting
+    // equality with buildSkills() (rather than hand-picked content markers like
+    // section headings) means any future skills reorg flows through
+    // automatically — this test can never silently drift out of sync with the
+    // skills. The dev machine's own ~/.producer-pal overrides go in too: e2e
+    // runs against a live config dir, so they're part of what the server serves.
+    expect(extractSkills(result)).toBe(
+      buildSkills({ notation: "barbeat" }, await fetchSkillOverrides()),
+    );
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {
@@ -120,11 +139,12 @@ describe("ppal-connect", () => {
     // crucially, something different from standard mode, proving the mode
     // switch actually changed what the live server serves.
     const skills = extractSkills(result);
+    const overrides = await fetchSkillOverrides();
 
     expect(skills).toBe(
-      buildSkills({ notation: "barbeat", smallModelMode: true }),
+      buildSkills({ notation: "barbeat", smallModelMode: true }, overrides),
     );
-    expect(skills).not.toBe(buildSkills({ notation: "barbeat" }));
+    expect(skills).not.toBe(buildSkills({ notation: "barbeat" }, overrides));
   });
 
   describe("project context", () => {

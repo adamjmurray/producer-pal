@@ -9,6 +9,7 @@ import { LiveAPI, MockSequence } from "./mock-live-api.ts";
 import {
   clearMockRegistry,
   lookupMockObject,
+  MOCK_LIVE_VERSION,
   registerMockObject,
 } from "./mock-registry.ts";
 
@@ -172,7 +173,7 @@ describe("mock-registry", () => {
     it("should fall back to defaults for unconfigured methods", () => {
       const mock = registerMockObject("123");
 
-      expect(mock.call("get_version_string")).toBe("12.3");
+      expect(mock.call("get_version_string")).toBe(MOCK_LIVE_VERSION);
       expect(mock.call("get_notes_extended")).toBe(
         JSON.stringify({ notes: [] }),
       );

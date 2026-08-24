@@ -41,7 +41,7 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips eighth-note triplets (/8t) as thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `${emptyMidiTrack}/0`,
+      `t${emptyMidiTrack}/s0`,
       "melody /8t: C E G C E G",
       "stark",
       interpretNotation,
@@ -55,7 +55,7 @@ describe("ppal-create-clip Stark triplet round-trip", () => {
   it("round-trips quarter-note triplets (/4t) as two-thirds-of-a-beat", async () => {
     const { notation, events } = await createAndReadback(
       ctx,
-      `${emptyMidiTrack}/1`,
+      `t${emptyMidiTrack}/s1`,
       "melody /4t: C E G",
       "stark",
       interpretNotation,

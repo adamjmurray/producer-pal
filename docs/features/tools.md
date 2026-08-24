@@ -24,6 +24,19 @@ them by hand. Read this when you want to know exactly what a tool accepts, or
 when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
 [Agent Skill](/guide/skills).
 
+::: info About the example output
+
+Every tool shows one example call and what it returns. They all run against the
+same made-up Live Set — three tracks (Drums, Bass, Vocals), one return, two
+scenes — so the names, IDs, colors, and file paths are invented. IDs are opaque
+in real Live Sets too: read one from a tool result, don't guess it.
+
+The examples are pretty-printed here. Producer Pal sends a more compact form
+over the wire by default; `?format=json` on the [REST API](/guide/rest-api)
+gives you this shape.
+
+:::
+
 ## Core Tools
 
 ### 🔧 Connect (`ppal-connect`) {#ppal-connect}
@@ -38,6 +51,8 @@ when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
 
 <!--@include: ../_generated/ppal-connect-schema.md-->
 
+<!--@include: ../_generated/ppal-connect-output.md-->
+
 ### 🔧 Context (`ppal-context`) {#ppal-context}
 
 - Read and write the three [context layers](/guide/context): project context
@@ -45,6 +60,8 @@ when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
   project), and memory (facts AI records about you as you work)
 
 <!--@include: ../_generated/ppal-context-schema.md-->
+
+<!--@include: ../_generated/ppal-context-output.md-->
 
 ## Session Tools
 
@@ -59,6 +76,8 @@ when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
 - Stop all clips or specific clips
 
 <!--@include: ../_generated/ppal-playback-schema.md-->
+
+<!--@include: ../_generated/ppal-playback-output.md-->
 
 ### 🔧 Library (`ppal-library`) {#ppal-library}
 
@@ -92,22 +111,27 @@ Live, or make sure your standalone Max is up to date. See
 
 <!--@include: ../_generated/ppal-library-schema.md-->
 
+<!--@include: ../_generated/ppal-library-output.md-->
+
 ### 🔧 Select (`ppal-select`) {#ppal-select}
 
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+  - Rich object shapes with IDs, types, and context (path, etc.)
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
+  - Select by path: a clip slot (e.g., `t0/s3`), a track (`t0`), a return track
+    (`rt0`), the master track (`mt`), a scene (`s3`), or a device (e.g.,
+    `t0/d1`)
   - Switch between Session and Arrangement views
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device
     detail on device selection
 
 <!--@include: ../_generated/ppal-select-schema.md-->
+
+<!--@include: ../_generated/ppal-select-output.md-->
 
 ## Action Tools
 
@@ -118,9 +142,11 @@ Live, or make sure your standalone Max is up to date. See
 
 <!--@include: ../_generated/ppal-delete-schema.md-->
 
+<!--@include: ../_generated/ppal-delete-output.md-->
+
 ### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
 
-- Copy tracks, scenes, clips, or devices
+- Copy tracks, scenes, clips, devices, or drum pads
 - Create multiple copies at once
 - Copy clips anywhere in the Session, Arrangement, or from Session to
   Arrangement
@@ -129,15 +155,20 @@ Live, or make sure your standalone Max is up to date. See
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
 - Stack MIDI variations on [take lanes](/features#take-lanes) with
-  `takeLane: "new"` + transforms — audition alternates at the same arrangement
-  position
+  `toPath: "t2/l+,t2/l+"` + transforms — one lane per `l+`, auditioned at the
+  same arrangement position
 - Copy devices to any track, return track, or rack chain
+- Copy a whole drum pad to another pad in the same rack, bringing its chain
+  trim, pan, sends, choke group, and devices — a device-only copy leaves the
+  chain (and its trim) behind
 - Route duplicated tracks to source instrument for MIDI layering
 
 Note: Return tracks and devices on return tracks cannot be duplicated (Live API
 limitation).
 
 <!--@include: ../_generated/ppal-duplicate-schema.md-->
+
+<!--@include: ../_generated/ppal-duplicate-output.md-->
 
 ## Live Set Tools
 
@@ -153,12 +184,16 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-live-set-schema.md-->
 
+<!--@include: ../_generated/ppal-read-live-set-output.md-->
+
 ### 🔧 Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
 
 <!--@include: ../_generated/ppal-update-live-set-schema.md-->
+
+<!--@include: ../_generated/ppal-update-live-set-output.md-->
 
 ## Track Tools
 
@@ -169,6 +204,8 @@ limitation).
 - Set initial mute/solo/arm states
 
 <!--@include: ../_generated/ppal-create-track-schema.md-->
+
+<!--@include: ../_generated/ppal-create-track-output.md-->
 
 ### 🔧 Read Track (`ppal-read-track`) {#ppal-read-track}
 
@@ -182,6 +219,8 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-track-schema.md-->
 
+<!--@include: ../_generated/ppal-read-track-output.md-->
+
 ### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
 
 - Change track gain (volume), panning, and send levels
@@ -190,6 +229,8 @@ limitation).
 - Update multiple tracks at once
 
 <!--@include: ../_generated/ppal-update-track-schema.md-->
+
+<!--@include: ../_generated/ppal-update-track-output.md-->
 
 ## Scene Tools
 
@@ -202,6 +243,8 @@ limitation).
 
 <!--@include: ../_generated/ppal-create-scene-schema.md-->
 
+<!--@include: ../_generated/ppal-create-scene-output.md-->
+
 ### 🔧 Read Scene (`ppal-read-scene`) {#ppal-read-scene}
 
 - View scene details and all its clips
@@ -210,12 +253,16 @@ limitation).
 
 <!--@include: ../_generated/ppal-read-scene-schema.md-->
 
+<!--@include: ../_generated/ppal-read-scene-output.md-->
+
 ### 🔧 Update Scene (`ppal-update-scene`) {#ppal-update-scene}
 
 - Change scene name, color, tempo, and time signature
 - Update multiple scenes at once
 
 <!--@include: ../_generated/ppal-update-scene-schema.md-->
+
+<!--@include: ../_generated/ppal-update-scene-output.md-->
 
 ## Clip Tools
 
@@ -233,8 +280,9 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](/features#custom-music-notation)
-- Place clips in Session slots or Arrangement timeline
-- Place arrangement clips on [take lanes](/features#take-lanes) with `takeLane`
+- Place clips in clip slots or the Arrangement timeline
+- Place arrangement clips on [take lanes](/features#take-lanes) with a `t0/l1`
+  or `t0/l+` path
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](/features#transforms) to shape notes with math expressions
 - Create audio clips from a sample file with `sampleFile`, and choose whether
@@ -242,6 +290,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Auto-create scenes as needed
 
 <!--@include: ../_generated/ppal-create-clip-schema.md-->
+
+<!--@include: ../_generated/ppal-create-clip-output.md-->
 
 ### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
 
@@ -251,6 +301,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Get audio clip gain, pitch, warp settings, and sample info
 
 <!--@include: ../_generated/ppal-read-clip-schema.md-->
+
+<!--@include: ../_generated/ppal-read-clip-output.md-->
 
 ### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
@@ -266,6 +318,8 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 - Update multiple clips at once
 
 <!--@include: ../_generated/ppal-update-clip-schema.md-->
+
+<!--@include: ../_generated/ppal-update-clip-output.md-->
 
 ### Audio Clips {#audio-clips}
 
@@ -313,13 +367,18 @@ sounding.
 
 <!--@include: ../_generated/ppal-create-device-schema.md-->
 
+<!--@include: ../_generated/ppal-create-device-output.md-->
+
 ### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
+- See a rack chain's own volume, pan, and sends when they're not at default
 
 <!--@include: ../_generated/ppal-read-device-schema.md-->
+
+<!--@include: ../_generated/ppal-read-device-output.md-->
 
 ### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
 
@@ -331,11 +390,16 @@ sounding.
 - Create, load, delete, revert, and randomize rack macro variations
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
+- Set a rack chain's own volume, pan, and send levels
 - Change the choke group and output MIDI note of drum chains
+- Move a drum pad to another pad, keeping its chain trim, choke group, and
+  devices together
 - Load a sample into a Simpler instrument (see
   [Create Device](#ppal-create-device) above)
 
 <!--@include: ../_generated/ppal-update-device-schema.md-->
+
+<!--@include: ../_generated/ppal-update-device-output.md-->
 
 ## Advanced Tools
 
@@ -356,3 +420,5 @@ MCP server also accepts a `--live-api` flag). See the REST API's
 and examples.
 
 <!--@include: ../_generated/ppal-live-api-schema.md-->
+
+<!--@include: ../_generated/ppal-live-api-output.md-->

@@ -151,7 +151,7 @@ describe("buildSkills - composition", () => {
     );
     expect(
       buildSkills({ notation: "barbeat", smallModelMode: true }),
-    ).toContain("scope:project stores facts about THIS Live Set"); // context-basic
+    ).toContain("Put a fact in exactly ONE `ppal-context` scope"); // context-basic
   });
 
   it("defaults to bar|beat at both depths", () => {

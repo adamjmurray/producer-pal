@@ -52,3 +52,16 @@ export function applyTimeSignatureProperty(
     scene.set("time_signature_enabled", true);
   }
 }
+
+/**
+ * What a scene is called, the way Live shows it: its name, or its 1-based
+ * number when it has none.
+ * @param scene - The LiveAPI scene object
+ * @param sceneIndex - The scene's 0-based index
+ * @returns The scene's name, or its number when unnamed
+ */
+export function sceneDisplayName(scene: LiveAPI, sceneIndex: number): string {
+  const name = scene.getProperty("name") as string | null;
+
+  return name == null || name === "" ? `${sceneIndex + 1}` : name;
+}

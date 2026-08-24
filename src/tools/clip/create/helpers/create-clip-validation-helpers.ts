@@ -8,38 +8,41 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipDestinations } from "./create-clip-destination-helpers.ts";
 
 /**
- * Validates that all tracks referenced in session slots exist
- * @param sessionSlots - Parsed session slot positions
+ * Validates that the call named somewhere to put a clip
+ * @param destinations - Resolved clip slots and arrangement positions
  */
-export function validateSessionTracks(sessionSlots: SlotPosition[]): void {
-  if (sessionSlots.length === 0) return;
+export function validatePositions(destinations: ClipDestinations): void {
+  if (
+    destinations.sessionSlots.length === 0 &&
+    destinations.arrangementPositions.length === 0
+  ) {
+    throw new Error(
+      'createClip failed: path is required — "t0/s1" for a clip slot, or "t0" with arrangementStart for the arrangement',
+    );
+  }
+}
 
-  const uniqueTrackIndices = [
-    ...new Set(sessionSlots.map((s) => s.trackIndex)),
+/**
+ * Validates that every track the call targets exists
+ * @param destinations - Resolved clip slots and arrangement positions
+ */
+export function validateDestinationTracks(
+  destinations: ClipDestinations,
+): void {
+  const trackIndices = [
+    ...destinations.sessionSlots.map((slot) => slot.trackIndex),
+    ...destinations.arrangementPositions.map((position) => position.trackIndex),
   ];
 
-  for (const trackIndex of uniqueTrackIndices) {
+  for (const trackIndex of new Set(trackIndices)) {
     const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
       throw new Error(`createClip failed: track ${trackIndex} does not exist`);
     }
-  }
-}
-
-/**
- * Validates that at least one position parameter is provided
- * @param sessionSlots - Parsed session slot positions
- * @param arrangementStarts - Parsed arrangement start positions
- */
-export function validatePositions(
-  sessionSlots: SlotPosition[],
-  arrangementStarts: string[],
-): void {
-  if (sessionSlots.length === 0 && arrangementStarts.length === 0) {
-    throw new Error("createClip failed: slot or arrangementStart is required");
   }
 }
 
@@ -135,7 +138,7 @@ export function calculateClipLength(
  * Handles automatic playback for session clips
  * @param auto - Auto playback mode (play-scene or play-clip)
  * @param view - View type
- * @param sessionSlots - Array of session slot positions
+ * @param sessionSlots - Array of clip slot positions
  */
 export function handleAutoPlayback(
   auto: string | null,
@@ -155,7 +158,7 @@ export function handleAutoPlayback(
 
       if (!scene.exists()) {
         throw new Error(
-          `createClip auto="play-scene" failed: scene at sceneIndex=${firstSlot.sceneIndex} does not exist`,
+          `createClip auto="play-scene" failed: no scene at "s${firstSlot.sceneIndex}"`,
         );
       }
 

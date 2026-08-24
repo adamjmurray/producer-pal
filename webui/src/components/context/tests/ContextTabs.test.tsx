@@ -13,7 +13,7 @@ import { type UseDocReturn } from "#webui/hooks/context/use-doc";
 
 // The MarkdownEditor wires CodeMirror; stub it to a plain node that echoes the
 // seeded initialValue so we can assert which document the active tab shows.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: { initialValue: string }) => (
     <div data-testid="editor">{props.initialValue}</div>
   ),

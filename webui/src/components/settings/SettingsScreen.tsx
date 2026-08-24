@@ -88,13 +88,13 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
-    <div className="flex justify-center min-h-screen p-4 pt-20">
+    <div className="flex min-h-screen justify-center p-4 pt-20">
       <div
-        className={`max-w-xl w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-zinc-300 dark:border-zinc-600${shakeClass}`}
+        className={`w-full max-w-xl self-start rounded-xl border border-zinc-300 bg-zinc-100 p-6 shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:bg-zinc-800 dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] dark:border-zinc-600${shakeClass}`}
         onClick={(e) => e.stopPropagation()}
         onAnimationEnd={onShakeEnd}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
           {display.showHelpLinks && (
             <a
@@ -117,6 +117,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           notation={settings.notation}
           enabledTools={settings.enabledTools}
           liveApiEnabled={settings.liveApiEnabled}
+          maxToolSteps={settings.maxToolSteps}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
@@ -224,6 +225,8 @@ function SettingsTabContent(
           setShowTokenUsage={display.setShowTokenUsage}
           autoUpdateCheck={globalSettings.autoUpdateCheck}
           setAutoUpdateCheck={globalSettings.setAutoUpdateCheck}
+          maxToolSteps={settings.maxToolSteps}
+          setMaxToolSteps={settings.setMaxToolSteps}
           onDeleteAllConversations={props.onDeleteAllConversations}
           onDeleteUnbookmarkedConversations={
             props.onDeleteUnbookmarkedConversations

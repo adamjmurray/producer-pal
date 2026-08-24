@@ -14,6 +14,8 @@
 import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
+  getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -45,7 +47,7 @@ const readNotes = (clipId: string): Promise<string> =>
  * @returns The new clip's id
  */
 function createOffGridClip(sceneIndex: number, notes: string): Promise<string> {
-  return createClipInSlot(ctx, `${emptyMidiTrack}/${sceneIndex}`, {
+  return createClipInSlot(ctx, `t${emptyMidiTrack}/s${sceneIndex}`, {
     notes,
     length: "1bar",
   });
@@ -73,14 +75,14 @@ async function resetOffGridAndQuantize(
 ): Promise<void> {
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, preTransforms: "v0", notes: OFF_GRID_NOTES },
+    arguments: { id: clipId, preTransforms: "v0", notes: OFF_GRID_NOTES },
   });
 
   await sleep(100);
 
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, quantize: 1.0, quantizeGrid },
+    arguments: { id: clipId, quantize: 1.0, quantizeGrid },
   });
 
   await sleep(100);
@@ -92,7 +94,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
         notes: "C3 D3 1|1",
         looping: true,
         length: "2bar",
@@ -105,13 +107,13 @@ describe("ppal-update-clip", () => {
     // Test 1: Update clip name
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, name: "Renamed Clip" },
+      arguments: { id: clip.id, name: "Renamed Clip" },
     });
 
     await sleep(100);
     const verifyName = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { id: clip.id },
     });
     const namedClip = parseToolResult<ReadClipResult>(verifyName);
 
@@ -120,13 +122,13 @@ describe("ppal-update-clip", () => {
     // Test 2: Update clip color
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, color: "#00FF00" },
+      arguments: { id: clip.id, color: "#00FF00" },
     });
 
     await sleep(100);
     const verifyColor = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["color"] },
+      arguments: { id: clip.id, include: ["color"] },
     });
     const coloredClip = parseToolResult<ReadClipResult>(verifyColor);
 
@@ -135,13 +137,13 @@ describe("ppal-update-clip", () => {
     // Test 3: Update looping state
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, looping: false },
+      arguments: { id: clip.id, looping: false },
     });
 
     await sleep(100);
     const verifyLooping = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["timing"] },
+      arguments: { id: clip.id, include: ["timing"] },
     });
     const nonLoopingClip = parseToolResult<ReadClipResult>(verifyLooping);
 
@@ -150,13 +152,13 @@ describe("ppal-update-clip", () => {
     // Test 4: Update start and length
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, start: "1|2", length: "1bar" },
+      arguments: { id: clip.id, start: "1|2", length: "1bar" },
     });
 
     await sleep(100);
     const verifyStartLength = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["timing"] },
+      arguments: { id: clip.id, include: ["timing"] },
     });
     const startLengthClip = parseToolResult<ReadClipResult>(verifyStartLength);
 
@@ -169,7 +171,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/1`,
+        path: `t${emptyMidiTrack}/s1`,
         notes: "C3 D3 1|1",
         length: "2bar",
       },
@@ -181,7 +183,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Add notes (merges with existing, verify notes increase)
     const beforeMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
+      arguments: { id: clip.id, include: ["notes"] },
     });
     const beforeMergeClip = parseToolResult<ReadClipResult>(beforeMerge);
 
@@ -189,7 +191,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "G3 A3 1|3" },
+      arguments: { id: clip.id, notes: "G3 A3 1|3" },
     });
 
     await sleep(100);
@@ -200,7 +202,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, preTransforms: "v0", notes: "C4 1|1" },
+      arguments: { id: clip.id, preTransforms: "v0", notes: "C4 1|1" },
     });
 
     await sleep(100);
@@ -228,7 +230,7 @@ describe("ppal-update-clip", () => {
     // handleQuantization). Full-strength snap: 1.25 -> beat 1, 2.75 -> beat 3.
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, quantize: 1.0, quantizeGrid: "n/4" },
+      arguments: { id: clipId, quantize: 1.0, quantizeGrid: "n/4" },
     });
 
     await sleep(100);
@@ -247,6 +249,19 @@ describe("ppal-update-clip", () => {
     expect(tripletNotes).toContain("1|2+n/6");
   });
 
+  it("quantizes at full strength when only quantizeGrid is given", async () => {
+    // quantizeGrid alone must move notes (strength defaults to 1).
+    const clipId = await createOffGridClip(6, OFF_GRID_NOTES);
+
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clipId, quantizeGrid: "1/4" },
+    });
+
+    await sleep(100);
+    expectSnappedToQuarters(await readNotes(clipId));
+  });
+
   it("limits quantization to a single pitch with quantizePitch", async () => {
     // Two off-grid notes at different pitches and positions.
     const clipId = await createOffGridClip(7, "C3 1|1.25\nE3 1|2.75");
@@ -256,7 +271,7 @@ describe("ppal-update-clip", () => {
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: clipId,
+        id: clipId,
         quantize: 1.0,
         quantizeGrid: "1/4",
         quantizePitch: "C3",
@@ -279,7 +294,7 @@ describe("ppal-update-clip", () => {
     const arrCreateResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        path: `t${emptyMidiTrack}`,
         arrangementStart: "41|1",
         notes: "C3 1|1",
         length: "2bar",
@@ -292,7 +307,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Move the clip to a new position
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: arrClip.id, arrangementStart: "45|1" },
+      arguments: { id: arrClip.id, arrangementStart: "45|1" },
     });
     const movedClip = parseToolResult<{ id: string }>(moveResult);
 
@@ -301,7 +316,7 @@ describe("ppal-update-clip", () => {
     // Verify the new clip is at the new position
     const verifyMove = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: movedClip.id },
+      arguments: { id: movedClip.id },
     });
     const movedClipResult = parseToolResult<ReadClipResult>(verifyMove);
 
@@ -311,7 +326,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movedClip.id, arrangementLength: "4bar" },
+      arguments: { id: movedClip.id, arrangementLength: "4bar" },
     });
 
     // arrangementLength can return multiple clips if it tiles
@@ -326,7 +341,7 @@ describe("ppal-update-clip", () => {
 
     const verifyLength = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: firstUpdatedClip!.id, include: ["timing"] },
+      arguments: { id: firstUpdatedClip!.id, include: ["timing"] },
     });
     const lengthClipResult = parseToolResult<ReadClipResult>(verifyLength);
 
@@ -338,7 +353,7 @@ describe("ppal-update-clip", () => {
     const createResult1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/2`,
+        path: `t${emptyMidiTrack}/s2`,
         notes: "C3 1|1",
       },
     });
@@ -347,7 +362,7 @@ describe("ppal-update-clip", () => {
     const createResult2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/3`,
+        path: `t${emptyMidiTrack}/s3`,
         notes: "E3 1|1",
       },
     });
@@ -358,17 +373,17 @@ describe("ppal-update-clip", () => {
     // Test: Update multiple clips with comma-separated IDs
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1.id},${clip2.id}`, name: "Batch Updated" },
+      arguments: { id: `${clip1.id},${clip2.id}`, name: "Batch Updated" },
     });
 
     await sleep(100);
     const verifyBatch1 = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip1.id },
+      arguments: { id: clip1.id },
     });
     const verifyBatch2 = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip2.id },
+      arguments: { id: clip2.id },
     });
     const batchClip1 = parseToolResult<ReadClipResult>(verifyBatch1);
     const batchClip2 = parseToolResult<ReadClipResult>(verifyBatch2);
@@ -377,12 +392,12 @@ describe("ppal-update-clip", () => {
     expect(batchClip2.name).toBe("Batch Updated");
   });
 
-  it("moves session clip with toSlot", async () => {
+  it("moves session clip with toPath", async () => {
     // Setup: Create a clip at scene 4 on the empty MIDI track
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/4`,
+        path: `t${emptyMidiTrack}/s4`,
         notes: "C3 D3 1|1",
         name: "Move Me",
       },
@@ -394,15 +409,15 @@ describe("ppal-update-clip", () => {
     // Move clip from scene 4 to scene 5 on the same track
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/5` },
+      arguments: { id: clip.id, toPath: `t${emptyMidiTrack}/s5` },
     });
     const movedClip = parseToolResult<{
       id: string;
-      slot: string;
+      path: string;
     }>(moveResult);
 
-    // Update result should include destination slot info
-    expect(movedClip.slot).toBe(`${emptyMidiTrack}/5`);
+    // Update result should include the destination path
+    expect(movedClip.path).toBe(`t${emptyMidiTrack}/s5`);
     expect(movedClip.id).not.toBe(clip.id); // new clip ID after move
 
     await sleep(100);
@@ -410,22 +425,83 @@ describe("ppal-update-clip", () => {
     // Verify the clip is at the new location with correct properties
     const verifyNew = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: movedClip.id },
+      arguments: { id: movedClip.id },
     });
     const newClip = parseToolResult<ReadClipResult>(verifyNew);
 
     expect(newClip.name).toBe("Move Me");
-    expect(newClip.slot).toBe(`${emptyMidiTrack}/5`);
+    expect(newClip.path).toBe(`t${emptyMidiTrack}/s5`);
 
     // Verify the original slot is now empty
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: `${emptyMidiTrack}/4` },
+      arguments: { path: `t${emptyMidiTrack}/s4` },
     });
     const { data: oldSlot } =
       parseToolResultWithWarnings<ReadClipResult>(verifyOld);
 
     expect(oldSlot.id).toBeNull();
+  });
+
+  it("warns instead of throwing when toPath isn't a clip slot", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${emptyMidiTrack}/s6`,
+        notes: "C3 1|1",
+        name: "Stay Put",
+      },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // "t7" names a track, not a slot — update-clip can't move a clip across
+    // tracks, so it skips the move and finishes the rest of the update.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clip.id, toPath: "t7", name: "Renamed Anyway" },
+    });
+    const { data, warnings } = parseToolResultWithWarnings<{
+      id: string;
+      slot?: string;
+    }>(result);
+
+    expect(isToolError(result)).toBe(false);
+    expect(warnings.join(" ")).toContain("is not a clip slot");
+
+    await sleep(100);
+
+    const verify = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: data.id },
+    });
+    const stayed = parseToolResult<ReadClipResult>(verify);
+
+    expect(stayed.path).toBe(`t${emptyMidiTrack}/s6`);
+    expect(stayed.name).toBe("Renamed Anyway");
+  });
+
+  it("still honors the deprecated toSlot, and says so", async () => {
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { path: `t${emptyMidiTrack}/s6`, notes: "C3 1|1" },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { id: clip.id, toSlot: `${emptyMidiTrack}/7` },
+    });
+
+    expect(
+      parseToolResultWithWarnings<{ path: string }>(result).data.path,
+    ).toBe(`t${emptyMidiTrack}/s7`);
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining('param "toSlot" is deprecated'),
+    );
   });
 
   it("updates audio clip properties", async () => {
@@ -441,7 +517,7 @@ describe("ppal-update-clip", () => {
     const audioClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${audioTrack.trackIndex}/0`,
+        path: `t${audioTrack.trackIndex}/s0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -452,13 +528,13 @@ describe("ppal-update-clip", () => {
     // Test 1: Update audio clip gain
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, gainDb: -6 },
+      arguments: { id: audioClip.id, gainDb: -6 },
     });
 
     await sleep(100);
     const verifyGain = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["sample"] },
+      arguments: { id: audioClip.id, include: ["sample"] },
     });
     const gainClip = parseToolResult<ReadClipResult>(verifyGain);
 
@@ -468,13 +544,13 @@ describe("ppal-update-clip", () => {
     // Test 2: Update audio clip pitch shift (including decimal)
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, pitchShift: 5.5 },
+      arguments: { id: audioClip.id, pitchShift: 5.5 },
     });
 
     await sleep(100);
     const verifyPitch = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["sample"] },
+      arguments: { id: audioClip.id, include: ["sample"] },
     });
     const pitchClip = parseToolResult<ReadClipResult>(verifyPitch);
 
@@ -483,13 +559,13 @@ describe("ppal-update-clip", () => {
     // Test 3: Update warp mode
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warpMode: "complex" },
+      arguments: { id: audioClip.id, warpMode: "complex" },
     });
 
     await sleep(100);
     const verifyWarpMode = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp"] },
+      arguments: { id: audioClip.id, include: ["warp"] },
     });
     const warpModeClip = parseToolResult<ReadClipResult>(verifyWarpMode);
 
@@ -498,13 +574,13 @@ describe("ppal-update-clip", () => {
     // Test 4: Toggle warping off and on
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warping: false },
+      arguments: { id: audioClip.id, warping: false },
     });
 
     await sleep(100);
     const verifyWarpOff = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp"] },
+      arguments: { id: audioClip.id, include: ["warp"] },
     });
     const warpOffClip = parseToolResult<ReadClipResult>(verifyWarpOff);
 
@@ -513,13 +589,13 @@ describe("ppal-update-clip", () => {
     // Turn warping back on
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: audioClip.id, warping: true },
+      arguments: { id: audioClip.id, warping: true },
     });
 
     await sleep(100);
     const verifyWarpOn = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: audioClip.id, include: ["warp"] },
+      arguments: { id: audioClip.id, include: ["warp"] },
     });
     const warpOnClip = parseToolResult<ReadClipResult>(verifyWarpOn);
 

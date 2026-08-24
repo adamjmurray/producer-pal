@@ -132,17 +132,25 @@ function handleError(error: unknown, state: StreamState): void {
 }
 
 /**
+ * End an open thought block on stdout, so what follows doesn't print inside it.
+ *
+ * @param state - Mutable stream state
+ */
+function closeThought(state: StreamState): void {
+  if (!state.inThought) return;
+
+  if (!isQuietMode()) process.stdout.write(endThought());
+  state.inThought = false;
+}
+
+/**
  * Handle text-delta stream event
  *
  * @param text - Text delta content
  * @param state - Mutable stream state
  */
 function handleTextDelta(text: string, state: StreamState): void {
-  // Close thought block before printing text content
-  if (state.inThought) {
-    if (!isQuietMode()) process.stdout.write(endThought());
-    state.inThought = false;
-  }
+  closeThought(state);
 
   state.text += text;
 
@@ -219,10 +227,7 @@ function handleToolResult(
  * @param state - Mutable stream state
  */
 function handleStartStep(state: StreamState): void {
-  if (state.inThought) {
-    if (!isQuietMode()) process.stdout.write(endThought());
-    state.inThought = false;
-  }
+  closeThought(state);
 
   state.stepCount++;
 
@@ -243,7 +248,7 @@ function finishStream(state: StreamState): void {
 
   if (isQuietMode()) return;
 
-  if (state.inThought) process.stdout.write(endThought());
+  closeThought(state);
 
   // Skip trailing newline when usage is shown — onStepEnd adds its own
   if (!state.showUsage) process.stdout.write("\n");

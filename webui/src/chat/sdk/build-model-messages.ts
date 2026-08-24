@@ -21,6 +21,18 @@ export const CANCELED_TOOL_RESULT_TEXT =
   "Canceled by the user before this tool finished.";
 
 /**
+ * Placeholder for the other way a tool-call is left without a result: the
+ * stream failed under it (a rate limit, a dropped connection). Same job as
+ * CANCELED_TOOL_RESULT_TEXT, different truth — nobody canceled anything, and
+ * the tool may or may not have run before the stream died.
+ */
+export const FAILED_TOOL_RESULT_TEXT =
+  "The request failed before this tool finished; it may or may not have run.";
+
+/** Why a tool-call was left without a result. */
+export type DanglingToolReason = "canceled" | "failed";
+
+/**
  * Convert chat history to AI SDK ModelMessage format.
  * Assistant messages with tool calls produce two ModelMessages:
  * 1. assistant message with text + tool-call parts
@@ -138,10 +150,10 @@ function appendAssistantMessages(
   });
 
   // Tool message pairing EVERY tool-call with a result (required by providers
-  // for multi-turn). buildToolResultContent backfills a canceled result for
-  // any call the user stopped before it returned, so a persisted "stopped
-  // mid-tool" history can still be sent without a provider 400. (This runs
-  // before the stream's reconcile, so it must not assume a complete history.)
+  // for multi-turn). buildToolResultContent backfills a placeholder for any call
+  // still missing one, so a history persisted mid-tool can be sent without a
+  // provider 400. (This runs before the stream's reconcile, so it must not
+  // assume a complete history.)
   messages.push({
     role: "tool",
     content: buildToolResultContent(msg),
@@ -183,18 +195,27 @@ export function endsOnAssistantTurn(
 }
 
 /**
- * Backfill a "canceled" tool-result for any tool-call in the streamed assistant
- * messages that never received one — i.e. the user pressed Stop while a tool was
- * still running. Without this, the dangling tool-call (a) makes the next request
- * fail with a provider 400 (unmatched tool_use) and (b) leaves the tool rendered
- * as perpetually running in the UI. A no-op when every call already has a result.
+ * Backfill a placeholder tool-result for any tool-call in the streamed assistant
+ * messages that never received one. Without this, the dangling tool-call (a)
+ * makes the next request fail with a provider 400 (unmatched tool_use) and (b)
+ * leaves the tool rendered as perpetually running in the UI. A no-op when every
+ * call already has a result.
+ *
+ * The caller says WHY, because the placeholder becomes history the model reads
+ * back: a resumed turn that was rate-limited must not be told the user canceled
+ * a tool they never touched.
  * @param history - The full chat history (mutated in place)
  * @param fromIndex - Index of the first message added by the current stream
+ * @param reason - Whether the user stopped the turn or the stream failed
  */
 export function reconcileDanglingToolCalls(
   history: ChatMessage[],
   fromIndex: number,
+  reason: DanglingToolReason,
 ): void {
+  const result =
+    reason === "canceled" ? CANCELED_TOOL_RESULT_TEXT : FAILED_TOOL_RESULT_TEXT;
+
   for (let i = fromIndex; i < history.length; i++) {
     const msg = history[i] as ChatMessage;
 
@@ -210,7 +231,7 @@ export function reconcileDanglingToolCalls(
         id: tc.id,
         name: tc.name,
         args: tc.args,
-        result: CANCELED_TOOL_RESULT_TEXT,
+        result,
         isError: false,
       });
     }
@@ -219,10 +240,14 @@ export function reconcileDanglingToolCalls(
 
 /**
  * Build tool result content for the tool role message, one part per tool-call
- * (not per recorded result). A call with a recorded result emits it; a call the
- * user stopped before it returned emits a synthetic "canceled" result. This
- * guarantees no assistant tool-call is left without a matching tool-result,
- * which Anthropic/OpenAI reject with a 400.
+ * (not per recorded result). A call with a recorded result emits it; one without
+ * gets a synthetic result, so no assistant tool-call is left unmatched (which
+ * Anthropic/OpenAI reject with a 400).
+ *
+ * The synthetic one says the request failed rather than that the user canceled,
+ * because reaching here means the turn's reconcile never ran — a history saved
+ * mid-tool and reloaded (autosave fires on the first tool-call part), which says
+ * nothing about who ended the turn.
  * @param msg - Assistant message with tool calls
  * @returns Array of ToolResultPart, one per tool-call, in tool-call order
  */
@@ -235,7 +260,7 @@ function buildToolResultContent(msg: ChatMessage): ToolResultPart[] {
     const tr = resultsById.get(tc.id);
     const value =
       tr == null
-        ? CANCELED_TOOL_RESULT_TEXT
+        ? FAILED_TOOL_RESULT_TEXT
         : typeof tr.result === "string"
           ? tr.result
           : JSON.stringify(tr.result);

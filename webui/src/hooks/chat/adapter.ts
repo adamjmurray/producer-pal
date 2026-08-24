@@ -15,6 +15,7 @@ import {
 import {
   resolveLockedNotation,
   resolveLockedSmallModelMode,
+  resolveMaxToolSteps,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
 import {
   isLegacyNonThinkingModel,
@@ -280,6 +281,7 @@ export const chatAdapter: ChatAdapter<
     // was written; a brand-new one takes the current setting. Null when neither
     // exists: no header, device global wins, external MCP clients unaffected.
     const notation = resolveLockedNotation(extraParams ?? {});
+    const maxToolSteps = resolveMaxToolSteps(extraParams ?? {});
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(provider, thinking, model);
@@ -306,6 +308,10 @@ export const chatAdapter: ChatAdapter<
         buildProviderOptions(provider, overrideThinking, model),
       chatHistory,
       subagentConfig,
+      // The user's per-turn step budget, pinned for the life of this client:
+      // client.initialize() reads it once. Changing the setting takes effect on
+      // the next conversation, which the settings notice says.
+      maxSteps: maxToolSteps,
       // Conditional: ChatClientConfig.notation is optional and a present-but-
       // undefined key would still be read as "the caller has an opinion".
       ...(notation ? { notation } : {}),

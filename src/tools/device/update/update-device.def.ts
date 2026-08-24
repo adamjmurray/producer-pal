@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -18,18 +19,27 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   },
 
   inputSchema: {
-    ids: z.coerce
+    id: z.coerce
       .string()
       .optional()
-      .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
-    path: param(z.string().optional(), {
+      .describe(
+        "ID(s) to update (device, chain, or drum pad), comma-separated for multiple",
+      ),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
+    path: param(z.coerce.string().optional(), {
       default:
         "comma-separated path(s) (e.g., 't1/d0', 't1/d0/c0', 't1/d0/pC1')",
       smallModel: "device path like 't0/d0' (track 0, device 0)",
     }),
 
-    toPath: param(z.string().optional(), {
-      default: "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1')",
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+
+    toPath: param(z.coerce.string().optional(), {
+      default:
+        "move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1'). To move a whole drum pad (chain trim, choke group and devices together), target the pad path (e.g. path 't0/d0/pC1', toPath 't0/d0/pD1') rather than its device; a pad move stays within one rack and layers onto an occupied destination rather than replacing it. Moving just a device carries its chain's trim only when the destination chain is empty and untouched, and warns otherwise",
       smallModel: "destination path to move device to",
     }),
     name: param(z.string().optional(), {
@@ -42,12 +52,28 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     params: param(paramsInputSchema, {
       default:
         "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
-      // The Drum Rack pad-path example is large-mode only, but the value format
-      // can't go: small mode ships no devices skills fragment, so this is the
-      // only place saying a value is a display value, not a normalized 0-1.
+      // Small mode ships no devices skills fragment, so this is the only place
+      // saying a value is a display value (not a normalized 0-1) AND the only
+      // place teaching the sample write. getting-help-basic promises samples on
+      // Simpler and Drum Rack pads, so the how has to ship with the promise.
       smallModel:
-        "array of {name, value}. name = param name or id; value in display units (enum string, note name, number)",
+        "array of {name, value}. name = param name or id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
     }),
+    // The escape hatch for the drum-pad instrument-swap guard
+    // (nested-param-target.ts), and deliberately NOT taught in the skills: the
+    // model learns of it from the warning, at the moment it is relevant, so it
+    // never reaches for it casually. Scoped to drum pads — a `sample` write to
+    // an explicit device path never creates or replaces anything, so it has no
+    // guard to unlock. Declared in EVERY mode — including small-model, whose
+    // `params` description teaches the sample write — because a guard whose only
+    // way out is hidden from the tier that hits it would deadlock the write.
+    force: z
+      .boolean()
+      .optional()
+      .describe(
+        "Only when a sample write was skipped for replacing a pad's " +
+          "instrument: true replaces it anyway.",
+      ),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
     // a delimited string would be ambiguous. One action string per element.
@@ -83,8 +109,29 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the chains; chains only)",
       smallModel: "#RRGGBB (chains only)",
+    }),
+    gainDb: param(z.coerce.number().min(-70).max(6).optional(), {
+      default:
+        "chain's own gain in dB (chains only; a pad path works unless the " +
+        "pad has layers, which take a layer path like 't0/d0/pC1/c1')",
+      smallModel: null,
+    }),
+    pan: param(z.coerce.number().min(-1).max(1).optional(), {
+      default:
+        "chain's own pan, -1 (left) to 1 (right) (chains only; a pad path " +
+        "works unless the pad has layers, which take a layer path)",
+      smallModel: null,
+    }),
+    sendGainDb: param(z.coerce.number().min(-70).max(0).optional(), {
+      default: "chain's send level in dB, requires sendReturn (chains only)",
+      smallModel: null,
+    }),
+    sendReturn: param(z.coerce.string().optional(), {
+      default:
+        'rack return chain for sendGainDb: id, exact name (e.g. "a Reverb"), or letter (e.g. "a"); requires sendGainDb',
+      smallModel: null,
     }),
     chokeGroup: param(z.coerce.number().int().min(0).max(16).optional(), {
       default: "choke group 0-16, 0=none (drum chains only)",

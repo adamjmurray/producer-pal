@@ -3,7 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from "vitest";
 import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -27,8 +35,18 @@ function mockPluginsRoute(plugins: unknown[] = []): void {
 }
 
 describe("library tool — listPlugins action", () => {
-  beforeEach(() => {
+  let warnSpy: MockInstance<(...args: unknown[]) => void>;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+
+    warnSpy = vi.spyOn(consoleModule, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   it("dispatches to the library.listPlugins route with filters", async () => {
@@ -68,11 +86,6 @@ describe("library tool — listPlugins action", () => {
   });
 
   it("drops deviceKind=midifx and warns instead of silently dropping it", async () => {
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
     mockPluginsRoute();
 
     await library({ action: "listPlugins", deviceKind: "midifx" });
@@ -84,18 +97,11 @@ describe("library tool — listPlugins action", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('deviceKind "midifx"'),
     );
-
-    warnSpy.mockRestore();
   });
 
   it("maps deviceKind=audiofx to the category filter without warning", async () => {
     // Pins the second PLUGIN_CATEGORIES member: audiofx is a valid plugin
     // category, so it passes through as category and must not warn.
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
     mockPluginsRoute();
 
     await library({ action: "listPlugins", deviceKind: "audiofx" });
@@ -105,26 +111,17 @@ describe("library tool — listPlugins action", () => {
       expect.objectContaining({ category: "audiofx" }),
     );
     expect(warnSpy).not.toHaveBeenCalled();
-
-    warnSpy.mockRestore();
   });
 
   it("does not warn for a valid deviceKind or when deviceKind is absent", async () => {
     // Negative control for the warn guard: only an invalid plugin category
     // (e.g. midifx) should warn — a valid one and an absent one must stay silent.
-    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
-    const warnSpy = vi
-      .spyOn(consoleModule, "warn")
-      .mockImplementation(() => {});
-
     mockPluginsRoute();
 
     await library({ action: "listPlugins", deviceKind: "instrument" });
     await library({ action: "listPlugins" });
 
     expect(warnSpy).not.toHaveBeenCalled();
-
-    warnSpy.mockRestore();
   });
 
   it("returns the plugins payload from the route", async () => {

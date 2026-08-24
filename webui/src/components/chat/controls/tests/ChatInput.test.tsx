@@ -6,9 +6,50 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen, fireEvent } from "@testing-library/preact";
+import { EditorView } from "@codemirror/view";
+import { act, render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/ChatInput";
+
+/**
+ * The chat input's live CodeMirror view.
+ * @returns The view
+ */
+function editorView(): EditorView {
+  return EditorView.findFromDOM(document.querySelector(".cm-editor")!)!;
+}
+
+/**
+ * Replace the chat input's text. happy-dom can't type into a contenteditable,
+ * so this dispatches the doc change a keystroke would.
+ * @param text - The new text
+ */
+function typeInput(text: string): void {
+  void act(() => {
+    const view = editorView();
+
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: text },
+      selection: { anchor: text.length },
+    });
+  });
+}
+
+/**
+ * Press Enter (or Shift+Enter) in the chat input.
+ * @param shiftKey - Hold Shift
+ */
+function pressEnter(shiftKey = false): void {
+  fireEvent.keyDown(editorView().contentDOM, { key: "Enter", shiftKey });
+}
+
+/**
+ * The chat input's placeholder text.
+ * @returns The placeholder, or null when hidden
+ */
+function placeholderText(): string | null {
+  return document.querySelector(".cm-placeholder")?.textContent ?? null;
+}
 
 const defaultProps = {
   handleSend: vi.fn(),
@@ -22,9 +63,9 @@ const defaultProps = {
 
 describe("ChatInput", () => {
   describe("rendering", () => {
-    it("renders textarea", () => {
+    it("renders a labelled markdown editor", () => {
       render(<ChatInput {...defaultProps} />);
-      expect(screen.getByRole("textbox")).toBeDefined();
+      expect(screen.getByRole("textbox", { name: "Message" })).toBeDefined();
     });
 
     it("renders Send button when not responding", () => {
@@ -39,20 +80,16 @@ describe("ChatInput", () => {
 
     it("shows placeholder text", () => {
       render(<ChatInput {...defaultProps} />);
-      const textarea = screen.getByRole("textbox");
 
-      expect(textarea.getAttribute("placeholder")).toBe(
+      expect(placeholderText()).toBe(
         "Type a message... (Shift+Enter for new line)",
       );
     });
 
     it("shows error placeholder when hasError", () => {
       render(<ChatInput {...defaultProps} hasError={true} />);
-      const textarea = screen.getByRole("textbox");
 
-      expect(textarea.getAttribute("placeholder")).toBe(
-        "Retry or edit a message to continue...",
-      );
+      expect(placeholderText()).toBe("Retry or edit a message to continue...");
     });
 
     it("shows thinking toggle when not responding", () => {
@@ -81,14 +118,23 @@ describe("ChatInput", () => {
   });
 
   describe("input handling", () => {
-    it("updates input value when typing", () => {
+    it("shows typed text in the editor", () => {
       render(<ChatInput {...defaultProps} />);
 
-      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+      typeInput("Hello");
 
-      fireEvent.input(textarea, { target: { value: "Hello" } });
+      expect(screen.getByRole("textbox").textContent).toContain("Hello");
+    });
 
-      expect(textarea.value).toBe("Hello");
+    it("Shift+Enter inserts a newline instead of sending", () => {
+      const handleSend = vi.fn();
+
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
+      typeInput("Hello");
+      pressEnter(true);
+
+      expect(handleSend).not.toHaveBeenCalled();
+      expect(editorView().state.doc.toString()).toBe("Hello\n");
     });
   });
 
@@ -133,11 +179,7 @@ describe("ChatInput", () => {
           />,
         );
 
-        const textarea = screen.getByRole("textbox");
-
-        if (inputValue !== undefined) {
-          fireEvent.input(textarea, { target: { value: inputValue } });
-        }
+        if (inputValue !== undefined) typeInput(inputValue);
 
         const button = screen.getByRole("button", {
           name: buttonName,
@@ -150,9 +192,7 @@ describe("ChatInput", () => {
     it("is enabled with content while responding (for queuing)", () => {
       render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
 
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
+      typeInput("Hello");
 
       const button = screen.getByRole("button", {
         name: "Queue",
@@ -164,9 +204,7 @@ describe("ChatInput", () => {
     it("is enabled when input has content", () => {
       render(<ChatInput {...defaultProps} />);
 
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
+      typeInput("Hello");
 
       const button = screen.getByRole("button", {
         name: "Send",
@@ -180,35 +218,36 @@ describe("ChatInput", () => {
         "button click",
         () => fireEvent.click(screen.getByRole("button", { name: "Send" })),
       ],
-      [
-        "Enter key",
-        (el: HTMLElement) =>
-          fireEvent.keyDown(el, { key: "Enter", shiftKey: false }),
-      ],
+      ["Enter key", () => pressEnter()],
     ] as const;
 
     it.each(sendTriggers)("sends message via %s", (_method, triggerSend) => {
       const handleSend = vi.fn();
 
       render(<ChatInput {...defaultProps} handleSend={handleSend} />);
-      const textarea = screen.getByRole("textbox");
 
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      triggerSend(textarea);
+      typeInput("Hello");
+      triggerSend();
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
       });
     });
 
     it.each(sendTriggers)(
-      "clears input after %s send",
+      "clears input after %s send without dropping focus",
       (_method, triggerSend) => {
         render(<ChatInput {...defaultProps} />);
-        const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+        const view = editorView();
 
-        fireEvent.input(textarea, { target: { value: "Hello" } });
-        triggerSend(textarea);
-        expect(textarea.value).toBe("");
+        typeInput("Hello");
+        view.focus();
+        triggerSend();
+        expect(view.state.doc.toString()).toBe("");
+        expect(view.hasFocus).toBe(true);
+        expect(
+          (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
+            .disabled,
+        ).toBe(true);
       },
     );
   });
@@ -246,13 +285,9 @@ describe("ChatInput", () => {
           />,
         );
 
-        const textarea = screen.getByRole("textbox");
+        if (inputValue !== undefined) typeInput(inputValue);
 
-        if (inputValue !== undefined) {
-          fireEvent.input(textarea, { target: { value: inputValue } });
-        }
-
-        fireEvent.keyDown(textarea, { key: "Enter", shiftKey });
+        pressEnter(shiftKey);
 
         expect(handleSend).not.toHaveBeenCalled();
       },
@@ -269,10 +304,8 @@ describe("ChatInput", () => {
         />,
       );
 
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Follow up" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+      typeInput("Follow up");
+      pressEnter();
 
       expect(onEnqueue).toHaveBeenCalledExactlyOnceWith("Follow up", {
         thinking: "Default",
@@ -284,24 +317,21 @@ describe("ChatInput", () => {
     it("shows the compacting placeholder while compacting", () => {
       render(<ChatInput {...defaultProps} isCompacting={true} />);
 
-      expect(screen.getByRole("textbox").getAttribute("placeholder")).toBe(
-        "Compacting…",
-      );
+      expect(placeholderText()).toBe("Compacting…");
     });
 
-    it("disables the textarea while compacting", () => {
+    it("disables the editor while compacting", () => {
       render(<ChatInput {...defaultProps} isCompacting={true} />);
 
-      expect(
-        (screen.getByRole("textbox") as HTMLTextAreaElement).disabled,
-      ).toBe(true);
+      expect(screen.getByRole("textbox").getAttribute("contenteditable")).toBe(
+        "false",
+      );
     });
 
     it("disables Send while compacting even with content", () => {
       render(<ChatInput {...defaultProps} isCompacting={true} />);
-      const textarea = screen.getByRole("textbox");
 
-      fireEvent.input(textarea, { target: { value: "Hello" } });
+      typeInput("Hello");
 
       expect(
         (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
@@ -337,10 +367,8 @@ describe("ChatInput", () => {
         />,
       );
 
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+      typeInput("Hello");
+      pressEnter();
 
       expect(handleSend).not.toHaveBeenCalled();
       expect(onEnqueue).not.toHaveBeenCalled();

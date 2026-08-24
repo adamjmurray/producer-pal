@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { prepareSessionClipSlot } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  prepareSessionClipSlot,
+  requireCreatedSessionClip,
+} from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_ARRANGEMENT_POSITION_BEATS } from "#src/tools/constants.ts";
 
 export interface AudioSessionClipResult {
@@ -38,7 +41,7 @@ export function createAudioSessionClip(
   clipSlot.call("create_audio_clip", sampleFile);
 
   return {
-    clip: LiveAPI.from(`${clipSlot.path} clip`),
+    clip: requireCreatedSessionClip(clipSlot, "audio"),
     sceneIndex,
   };
 }

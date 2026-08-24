@@ -40,7 +40,7 @@ describe("arrangement-operations-helpers", () => {
           currentArrangementLength: 8,
           currentStartTime: 0,
           currentEndTime: 8,
-          context: { holdingAreaStartBeats: 40000 },
+          context: {},
         }),
       ).toThrow("updateClip failed: could not determine trackIndex for clip");
     });
@@ -104,7 +104,7 @@ describe("arrangement-operations-helpers", () => {
         currentArrangementLength: 8, // > totalContentLength (4)
         currentStartTime: 0,
         currentEndTime: 8,
-        context: { holdingAreaStartBeats: 40000, silenceWavPath: "/test.wav" },
+        context: { silenceWavPath: "/test.wav" },
       });
 
       // Should call createAudioClipInSession for audio clips
@@ -446,8 +446,8 @@ interface RunLengtheningArgs {
  */
 /**
  * Assert tileClipToRange was called for `clip` at `position` with `remaining`
- * beats of space. The holding area and the temp-clip argument are fixed across
- * every lengthening case, so only the position, span, and options vary.
+ * beats of space. The track and context arguments are fixed across every
+ * lengthening case, so only the position, span, and options vary.
  * @param tile - The tileClipToRange spy from runLengthening
  * @param clip - The mock clip expected as the tiling source
  * @param position - Expected arrangement position of the first tile
@@ -466,7 +466,6 @@ function expectTiled(
     expect.anything(),
     position,
     remaining,
-    40000,
     expect.anything(),
     options,
   );
@@ -494,7 +493,7 @@ function runLengthening(
     currentArrangementLength: args.currentArrangementLength,
     currentStartTime: args.currentStartTime,
     currentEndTime: args.currentEndTime,
-    context: { holdingAreaStartBeats: 40000, silenceWavPath: "/test.wav" },
+    context: { silenceWavPath: "/test.wav" },
   });
 
   return { tile, clip, result };

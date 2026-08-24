@@ -73,8 +73,11 @@ editor — the same editor the **Open Editor** button opens. See
   and for the `npx producer-pal` bridge set the `MCP_SERVER_ORIGIN` environment
   variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`) — it defaults to
   `http://localhost:3350`.
-- **Timeout** - Maximum time for AI operations (default: 30 sec, increase on
-  slow computers if experiencing timeouts during complex operations)
+- **Timeout** - Maximum time for AI operations (default: 45 sec, max 55 sec;
+  increase on slow computers if experiencing timeouts during complex
+  operations). The cap stays under 60 sec because that is where most AI clients
+  give up — past it you would lose the partial results Producer Pal returns when
+  it times out
 
 ### Behavior
 

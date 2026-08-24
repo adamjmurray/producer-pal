@@ -19,7 +19,7 @@ import { type Notation } from "#src/shared/notation.ts";
 export interface RequestOverrides {
   /** Override the global compactOutput config for this call. */
   compactOutput?: boolean;
-  /** Override the configured timeout (1–60000 ms) for this call. */
+  /** Override the configured timeout for this call, up to MAX_TIMEOUT_MS. */
   timeoutMs?: number;
   /**
    * Override the V8 session's notation for this call, so the clip tools parse
@@ -33,6 +33,3 @@ export interface RequestOverrides {
    */
   notation?: Notation;
 }
-
-/** Maximum value accepted for a `timeoutMs` override (mirrors the global cap). */
-export const MAX_TIMEOUT_MS = 60_000;

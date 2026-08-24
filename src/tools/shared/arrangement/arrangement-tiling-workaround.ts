@@ -13,6 +13,7 @@
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   createAndDeleteTempClip,
+  EPSILON,
   type TilingContext,
 } from "./arrangement-tiling-helpers.ts";
 
@@ -93,20 +94,62 @@ export function clearClipAtDuplicateTarget(
   const sourceEnd = sourceClip.getProperty("end_time") as number;
   const targetEnd = targetPosition + (sourceEnd - sourceStart);
 
-  // The source clip overlapping its own target range is the one clip we must
-  // never clear: trimming/deleting it here would destroy the very content being
-  // duplicated, while leaving it in place would trigger Ableton's "existing clip
-  // overlaps target" crash on the duplicate itself. Neither is safe here, so
-  // report it (return false) and let the caller route through the holding area
-  // (duplicateSelfOverlappingClip) or skip the tile.
-  if (sourceStart < targetEnd && sourceEnd > targetPosition) {
+  // The source overlapping its own target is the one clip we must never clear:
+  // trimming it would destroy the content being duplicated, and leaving it in
+  // place would trigger Ableton's overlap crash. Report it (return false) so the
+  // caller routes through the holding area (duplicateSelfOverlappingClip) or
+  // skips the tile.
+  //
+  // Only a source on THIS track can be in the way — a cross-track source shares
+  // beats with the target but not the timeline being cleared. An unknown index
+  // on EITHER side counts as the same track: skipping the guard when we can't
+  // tell risks the crash it exists to prevent.
+  const sourceTrackIndex = sourceClip.trackIndex;
+  const targetTrackIndex = track.trackIndex;
+  const sourceIsOnThisTrack =
+    sourceTrackIndex == null ||
+    targetTrackIndex == null ||
+    sourceTrackIndex === targetTrackIndex;
+
+  if (
+    sourceIsOnThisTrack &&
+    sourceStart < targetEnd &&
+    sourceEnd > targetPosition
+  ) {
     return false;
   }
 
-  // Clear any *other* arrangement clips overlapping the target range. Arrangement
-  // clips on the same track never overlap each other, so a single pass handles
-  // all overlapping clips without needing to re-fetch IDs. The source can never
-  // match here: it doesn't overlap the target range (the check above returned).
+  clearArrangementRange(track, targetPosition, targetEnd, isMidiClip, context);
+
+  return true;
+}
+
+/**
+ * Clear every arrangement clip overlapping a range, preserving the portions
+ * outside it. One pass handles them all: arrangement clips on a track never
+ * overlap each other, so clearing one can't resurrect another.
+ *
+ * Scanning the track is the expensive part — it builds a `LiveAPI` per clip, and
+ * within a request the pool never refills, so a caller that scans once per
+ * placement pays O(placements x clips) object builds and gets superlinear. Call
+ * this for a whole span you are about to fill, not once per clip you put in it.
+ * Clearing [a, c) in one pass is equivalent to clearing [a, b) then [b, c):
+ * both leave the whole span empty and both preserve the same outside portions,
+ * so the wider call is strictly less work.
+ *
+ * @param track - LiveAPI track instance
+ * @param rangeStart - Start of the range to clear (beats)
+ * @param rangeEnd - End of the range to clear (beats)
+ * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
+ */
+export function clearArrangementRange(
+  track: LiveAPI,
+  rangeStart: number,
+  rangeEnd: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): void {
   const clipIds = track.getChildIds("arrangement_clips");
 
   for (const clipId of clipIds) {
@@ -114,20 +157,54 @@ export function clearClipAtDuplicateTarget(
     const clipStart = clip.getProperty("start_time") as number;
     const clipEnd = clip.getProperty("end_time") as number;
 
-    if (clipStart < targetEnd && clipEnd > targetPosition) {
+    if (clipStart < rangeEnd && clipEnd > rangeStart) {
       clearOverlappingClip(
         track,
         clip,
-        targetPosition,
-        targetEnd,
+        rangeStart,
+        rangeEnd,
         clipIds,
         isMidiClip,
         context,
       );
     }
   }
+}
 
-  return true;
+/**
+ * Whether the span about to be tiled can be cleared ahead of the tiles that
+ * fill it, instead of clearing once per tile as each one lands.
+ *
+ * Three cases keep the per-tile path, because clearing ahead would get them
+ * wrong: the workaround being off (per-tile clearing is a no-op then, so a wide
+ * clear would delete clips Live is happy to overwrite itself), a source longer
+ * than the tile spacing (a tile is a copy of the source, so it would land on
+ * the previous tile and only the per-tile clear trims that), and a source
+ * sitting inside the span (a wide clear would trim the very clip being copied).
+ * None happens today — every caller tiles forward from the source's end at
+ * exactly the source's length.
+ *
+ * @param sourceClip - LiveAPI clip instance being tiled
+ * @param startPosition - Start of the span to be tiled, in beats
+ * @param totalLength - Length of the span to be tiled, in beats
+ * @param tileSpacing - Beats between consecutive tiles
+ * @returns true if the caller may clear ahead and skip its per-tile clears
+ */
+export function canClearTiledSpan(
+  sourceClip: LiveAPI,
+  startPosition: number,
+  totalLength: number,
+  tileSpacing: number,
+): boolean {
+  if (!arrangementDuplicateCrashWorkaround) return false;
+
+  const sourceStart = sourceClip.getProperty("start_time") as number;
+  const sourceEnd = sourceClip.getProperty("end_time") as number;
+
+  return !(
+    sourceEnd - sourceStart > tileSpacing + EPSILON ||
+    sourceOverlapsTarget(sourceClip.id, startPosition, totalLength)
+  );
 }
 
 /**
@@ -137,8 +214,15 @@ export function clearClipAtDuplicateTarget(
  * `clearClipAtDuplicateTarget` is called with the holding clip — not the source
  * — and so would treat an overlapping source as an "other" clip and trim it.
  *
- * Mirrors the self-overlap geometry in `clearClipAtDuplicateTarget`, but scoped
- * to the caller's actual placement length rather than the source's full length.
+ * Same self-overlap geometry as `clearClipAtDuplicateTarget`, scoped to the
+ * caller's placement length rather than the source's full length — but with no
+ * track check, because tiling is same-track: `tileClipToRange` builds the tile
+ * track from the source clip's own `trackIndex`, so a target-track parameter
+ * would equal the source's track at every call site. A cross-track tiling
+ * caller would have to add that parameter and return false when the tracks
+ * differ; without it, a cross-track source reads as a self-overlap and its
+ * tiles are silently skipped.
+ *
  * Returns false (no special handling) when the workaround is disabled or the
  * source is a session clip, matching that function's no-op conditions.
  *
@@ -174,6 +258,9 @@ export function sourceOverlapsTarget(
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param targetIsEmpty - Caller guarantees nothing occupies the target; skips the
+ *   track scan. Only pass true when the span was just vacated or already cleared
+ *   — a wrong guarantee crashes Ableton, which is what the clear prevents.
  * @returns The moved clip (LiveAPI instance)
  */
 export function moveClipFromHolding(
@@ -182,19 +269,23 @@ export function moveClipFromHolding(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  targetIsEmpty = false,
 ): LiveAPI {
   // Clear any *other* clip at the target before placing the holding copy. The
   // holding clip itself can never overlap the target here: callers position the
-  // holding area past the target placement (see holdingAreaStartFromIds's
+  // holding area past the target placement (see holdingAreaStartOnTrack's
   // minStartBeats), so clearClipAtDuplicateTarget's self-overlap branch is
   // unreachable for the holding clip and its boolean return is safely ignored.
-  clearClipAtDuplicateTarget(
-    track,
-    holdingClipId,
-    targetPosition,
-    isMidiClip,
-    context,
-  );
+  if (!targetIsEmpty) {
+    clearClipAtDuplicateTarget(
+      track,
+      holdingClipId,
+      targetPosition,
+      isMidiClip,
+      context,
+    );
+  }
+
   const finalResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
@@ -381,17 +472,9 @@ function clearOverlappingClip(
 const HOLDING_AREA_GAP_BEATS = 100;
 
 /**
- * Compute a safe holding-area start position: past both the last arrangement
- * clip AND any planned target placement, guaranteeing an empty region to
- * duplicate into that also cannot overlap the eventual target.
- *
- * `minStartBeats` lets a caller that will place a full-length copy at a target
- * push the holding area past that placement's right edge (targetPosition +
- * length). Without it, a clip longer than HOLDING_AREA_GAP_BEATS duplicated far
- * enough forward would land its target copy on top of the holding clip — which
- * moveClipFromHolding's clearClipAtDuplicateTarget would then misread as a
- * self-overlap, skip clearing the original, and re-trigger the very Ableton
- * crash this module exists to prevent.
+ * A holding-area start past both the last of `clipIds` and any planned target
+ * placement, for a caller that already has the track's clip ids in hand. See
+ * {@link holdingAreaStartOnTrack} for why this is recomputed, never cached.
  * @param clipIds - Arrangement clip IDs to consider
  * @param minStartBeats - Earliest beat the holding area must clear (default 0)
  * @returns Holding-area start position in beats
@@ -406,4 +489,39 @@ function holdingAreaStartFromIds(clipIds: string[], minStartBeats = 0): number {
   }
 
   return Math.max(maxEnd, minStartBeats) + HOLDING_AREA_GAP_BEATS;
+}
+
+/**
+ * A holding-area start for `track`, read from the track as it is right now.
+ *
+ * Always recompute at the point of use. A holding area derived from anything
+ * captured earlier in the request — `song_length`, or a start another clip was
+ * given — is blind to what this same call already wrote, so a request that
+ * placed a clip past that point stages the next one on top of it: the Ableton
+ * crash, or an overwrite that eats what was just placed. Verified in Live — a
+ * 1-bar clip lengthened to 12 bars loses the tile at `song_length`.
+ *
+ * `minStartBeats` is for a caller that will place its copy at a target: pass
+ * that placement's right edge so the holding area clears it. Without it, a copy
+ * longer than HOLDING_AREA_GAP_BEATS placed far forward lands on the holding
+ * clip — which moveClipFromHolding's clearClipAtDuplicateTarget then misreads
+ * as a self-overlap, skips the clear, and re-triggers the same crash.
+ *
+ * Concurrent requests (parallel subagents) can derive the SAME start: nothing
+ * reserves the range. That is safe only because every consumer stages, uses,
+ * and clears its block synchronously — requests interleave at await points, so
+ * their staged content never coexists. Put an await between staging and
+ * clearing and two requests can overwrite each other there, silently.
+ * @param track - The track the holding area is on
+ * @param minStartBeats - Earliest beat the holding area must clear (default 0)
+ * @returns Holding-area start position in beats
+ */
+export function holdingAreaStartOnTrack(
+  track: LiveAPI,
+  minStartBeats = 0,
+): number {
+  return holdingAreaStartFromIds(
+    track.getChildIds("arrangement_clips"),
+    minStartBeats,
+  );
 }

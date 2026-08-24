@@ -30,6 +30,9 @@ import {
   readSpecializedParams,
 } from "./specialized/specialized-device-registry.ts";
 
+/** How deep readDevice walks a rack tree when the caller doesn't say. */
+export const DEFAULT_MAX_DEPTH = 4;
+
 export interface ReadDeviceOptions {
   includeChains?: boolean;
   includeReturnChains?: boolean;
@@ -43,10 +46,17 @@ export interface ReadDeviceOptions {
   depth?: number;
   maxDepth?: number;
   parentPath?: string;
+  /**
+   * The caller drops the chains afterwards and is walking only to find a drum
+   * rack. Chain identity and the chain mixer are then pure cost, so the walk
+   * reads devices and nothing else. See processDeviceChains.
+   */
+  chainsHidden?: boolean;
 }
 
 interface DeviceWithChains {
   chains?: Array<{ devices?: unknown[] }>;
+  drumPads?: unknown[];
   _processedDrumPads?: unknown;
 }
 
@@ -115,23 +125,67 @@ export function cleanupInternalDrumPads(obj: unknown): unknown {
   }
 
   const deviceObj = obj as DeviceWithChains & Record<string, unknown>;
-  const { _processedDrumPads, chains, ...rest } = deviceObj;
+  const { _processedDrumPads, chains, drumPads, ...rest } = deviceObj;
   const result: Record<string, unknown> = { ...rest };
 
   if (Array.isArray(chains)) {
-    result.chains = chains.map((chain) => {
-      if (typeof chain === "object" && "devices" in chain && chain.devices) {
-        return {
-          ...chain,
-          devices: cleanupInternalDrumPads(chain.devices),
-        };
+    result.chains = chains.map(cleanupChain);
+  }
+
+  // A chain read stands at the top of its own result, so its devices hang off
+  // `devices` rather than under `chains` — walk them too.
+  if (Array.isArray(rest.devices)) {
+    result.devices = cleanupInternalDrumPads(rest.devices);
+  }
+
+  // A nested drum rack carries its own drumPads, each holding chains that can
+  // hold further racks — so the walk has to descend both branches, not just
+  // chains, or the internal bookkeeping surfaces in the response.
+  if (Array.isArray(drumPads)) {
+    result.drumPads = drumPads.map((drumPad) => {
+      if (drumPad == null || typeof drumPad !== "object") {
+        return drumPad;
       }
 
-      return chain;
+      const {
+        _processedChains,
+        chains: padChains,
+        ...padRest
+      } = drumPad as {
+        _processedChains?: unknown;
+        chains?: unknown[];
+      } & Record<string, unknown>;
+
+      return Array.isArray(padChains)
+        ? { ...padRest, chains: padChains.map(cleanupChain) }
+        : padRest;
     });
   }
 
   return result;
+}
+
+/**
+ * Strip internal bookkeeping from one chain and recurse into its devices
+ * @param chain - Chain info object from the reader
+ * @returns Cleaned chain
+ */
+function cleanupChain(chain: unknown): unknown {
+  if (chain == null || typeof chain !== "object") {
+    return chain;
+  }
+
+  const { _inNote, _hasInstrument, ...rest } = chain as {
+    _inNote?: number;
+    _hasInstrument?: boolean;
+    devices?: unknown;
+  } & Record<string, unknown>;
+
+  if (rest.devices) {
+    rest.devices = cleanupInternalDrumPads(rest.devices);
+  }
+
+  return rest;
 }
 
 /**
@@ -166,6 +220,11 @@ export function getDrumMap(
         drumRacks.push(device);
       }
 
+      // Every chain is searched, not just the first, so a kit nested in any
+      // rack chain is found. Searching `chains` alone is also what stops the
+      // walk at a drum rack: a drum rack keeps its chains under drum pads, so
+      // racks nested inside the kit are deliberately not collected — the track
+      // plays the outer kit, and its pads are the drum map.
       if (device.chains) {
         for (const chain of device.chains) {
           if (chain.devices) {
@@ -246,8 +305,9 @@ export function readDevice(
     includeActions = false,
     paramSearch,
     depth = 0,
-    maxDepth = 4,
+    maxDepth = DEFAULT_MAX_DEPTH,
     parentPath,
+    chainsHidden = false,
   } = options;
 
   if (depth > maxDepth) {
@@ -293,6 +353,7 @@ export function readDevice(
     includeChains,
     includeReturnChains,
     includeDrumPads,
+    chainsHidden,
     depth,
     maxDepth,
     readDeviceFn: readDevice,

@@ -84,9 +84,9 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("still rejects a non-letter or double accidental", () => {
-      expect(() => parser.parse("H3")).toThrow();
-      expect(() => parser.parse("Cbb3")).toThrow();
-      expect(() => parser.parse("C##3")).toThrow();
+      expect(() => parser.parse("H3")).toThrow('but "H" found');
+      expect(() => parser.parse("Cbb3")).toThrow('but "C" found');
+      expect(() => parser.parse("C##3")).toThrow('but "C" found');
     });
   });
 
@@ -162,7 +162,7 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("rejects negative velocity (malformed syntax)", () => {
-      expect(() => parser.parse("v-1 C3")).toThrow();
+      expect(() => parser.parse("v-1 C3")).toThrow('but "v" found');
     });
   });
 });

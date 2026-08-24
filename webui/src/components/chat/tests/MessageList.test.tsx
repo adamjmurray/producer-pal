@@ -112,6 +112,31 @@ function renderMessageList(
   return { ...result, handleRetry, handleEdit };
 }
 
+/**
+ * Advance past the still-thinking delay and assert the indicator appeared.
+ * @param ms - Milliseconds to advance the fake clock by
+ */
+async function expectStillThinkingAfter(ms: number): Promise<void> {
+  await act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+
+  expect(screen.getByText("Still thinking...")).toBeDefined();
+}
+
+/**
+ * A one-message list carrying token usage.
+ * @returns The message list
+ */
+function messagesWithUsage() {
+  return [
+    {
+      ...createModelMessage("Hi"),
+      usage: { inputTokens: 9496, outputTokens: 178 },
+    },
+  ];
+}
+
 describe("MessageList", () => {
   describe("system prompt notice", () => {
     it("shows the collapsible system prompt notice when provided", () => {
@@ -453,10 +478,7 @@ describe("MessageList", () => {
       renderMessageList([], true);
       expect(screen.queryByText("Still thinking...")).toBeNull();
 
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
+      await expectStillThinkingAfter(4000);
     });
 
     it("does not show before delay elapses", async () => {
@@ -516,10 +538,7 @@ describe("MessageList", () => {
       const { rerender } = renderMessageList([], true);
 
       // First thinking phase
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
+      await expectStillThinkingAfter(4000);
 
       // Content arrives (e.g., text + tool call)
       const messagesWithContent = [createModelMessage("Calling tool...", 1)];
@@ -535,10 +554,7 @@ describe("MessageList", () => {
       expect(screen.queryByText("Still thinking...")).toBeNull();
 
       // Messages stop updating (model thinking again) — should reappear
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
+      await expectStillThinkingAfter(4000);
     });
   });
 
@@ -604,12 +620,7 @@ describe("MessageList", () => {
 
   describe("TokenUsageLabel", () => {
     it("shows usage when enabled and message has usage data", () => {
-      const messages = [
-        {
-          ...createModelMessage("Hi"),
-          usage: { inputTokens: 9496, outputTokens: 178 },
-        },
-      ];
+      const messages = messagesWithUsage();
 
       renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
 
@@ -618,12 +629,7 @@ describe("MessageList", () => {
     });
 
     it("hides usage when disabled even if message has usage data", () => {
-      const messages = [
-        {
-          ...createModelMessage("Hi"),
-          usage: { inputTokens: 9496, outputTokens: 178 },
-        },
-      ];
+      const messages = messagesWithUsage();
 
       renderMessageList(messages, false, vi.fn(), false, vi.fn(), false);
 

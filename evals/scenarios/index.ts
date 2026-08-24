@@ -10,36 +10,29 @@
 
 import { styleText } from "node:util";
 import { Command } from "commander";
+import "#evals/shared/install-fetch-dispatcher.ts";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {
   LIST_MODELS_HINT,
-  parseModelArg,
   type ModelSpec,
+  parseModelArgOrExit,
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
-import {
-  toJsonResult,
-  type TrialInfo,
-} from "./helpers/json-results/converter.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
-import {
-  buildSkippedResult,
-  shouldSkipScenario,
-} from "./helpers/json-results/skip-scenario.ts";
+import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
-import { writeJsonResult } from "./helpers/json-results/writer.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
-import { type ResultsByScenario } from "./helpers/report-table.ts";
-import { printResultBlock } from "./helpers/result-printer.ts";
-import { printSummary } from "./helpers/summary-printer.ts";
+import { type ResultsByScenario } from "./helpers/reporting/report-table.ts";
 import {
-  parseRepeatCount,
-  printTrialSummary,
-} from "./helpers/trial-helpers.ts";
+  emitSkipped,
+  runTrials,
+  type RunContext,
+} from "./helpers/trials/run-trials.ts";
+import { printSummary } from "./helpers/reporting/summary-printer.ts";
+import { parseRepeatCount } from "./helpers/trials/trial-helpers.ts";
 import { loadScenarios, printList } from "./load-scenarios.ts";
 import { buildRunEnv, envLabel, type RunEnv } from "./run-env/run-env.ts";
-import { runScenario } from "./run-scenario.ts";
 
 collapseStdoutNewlines();
 
@@ -200,19 +193,13 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     program.error("--all and --test cannot be used together");
   }
 
-  let modelSpecs: ModelSpec[];
-  let judgeOverride: ModelSpec;
-
-  try {
-    modelSpecs = options.model.map(parseModelArg);
-    judgeOverride = parseModelArg(options.judge ?? GEMINI_CONFIG.defaultModel);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    program.error(`${message} ${LIST_MODELS_HINT}`);
-
-    return;
-  }
+  const modelSpecs = options.model.map((model) =>
+    parseModelArgOrExit(program, model),
+  );
+  const judgeOverride = parseModelArgOrExit(
+    program,
+    options.judge ?? GEMINI_CONFIG.defaultModel,
+  );
 
   let runEnv: RunEnv;
 
@@ -278,14 +265,6 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   }
 }
 
-/** Shared context for a single eval run */
-interface RunContext {
-  runId: string;
-  judgeOverride: ModelSpec;
-  repeatCount: number;
-  options: CliOptions;
-}
-
 /**
  * Run all scenarios across models in the active run environment, collecting
  * results. The result map keeps its 3-level shape (scenario → model → label)
@@ -336,7 +315,9 @@ async function runAllScenarios(
           ctx,
           liveSetOpened,
         );
-        liveSetOpened = true;
+        // The run just mutated the Set, so the next model only inherits it
+        // when the scenario resets what it writes. Same rule as trials 2+.
+        liveSetOpened = scenario.reuseLiveSet === true;
         lastOpenedLiveSet = scenario.liveSet;
       }
 
@@ -347,98 +328,4 @@ async function runAllScenarios(
   }
 
   return resultsByScenario;
-}
-
-/**
- * Emit a skipped result for a (scenario, model) combination: persist it (unless
- * --no-save), print it, and return it as a single-element result list.
- *
- * @param scenario - The skipped scenario
- * @param modelKey - Model key (e.g. "google/gemini-3.6-flash")
- * @param label - Run-environment label (see `envLabel`)
- * @param reason - Why the scenario was skipped
- * @param ctx - Shared run context
- * @returns Single-element array with the skipped result
- */
-async function emitSkipped(
-  scenario: ReturnType<typeof loadScenarios>[number],
-  modelKey: string,
-  label: string,
-  reason: string,
-  ctx: RunContext,
-): Promise<JsonEvalResult[]> {
-  const skipped = buildSkippedResult(
-    scenario,
-    ctx.runId,
-    modelKey,
-    label,
-    reason,
-  );
-
-  if (ctx.options.save !== false) await writeJsonResult(skipped);
-  printResultBlock(skipped);
-
-  return [skipped];
-}
-
-/**
- * Run N trials for a single (scenario, model) combination in the run environment
- *
- * @param scenario - Scenario to run
- * @param spec - Model spec
- * @param runEnv - The active run environment
- * @param label - Run-environment label (see `envLabel`)
- * @param ctx - Shared run context
- * @param liveSetAlreadyOpened - Whether the Live Set is already open
- * @returns Array of JSON results (one per trial)
- */
-async function runTrials(
-  scenario: ReturnType<typeof loadScenarios>[number],
-  spec: ModelSpec,
-  runEnv: RunEnv,
-  label: string,
-  ctx: RunContext,
-  liveSetAlreadyOpened: boolean,
-): Promise<JsonEvalResult[]> {
-  const { runId, judgeOverride, repeatCount, options } = ctx;
-  const modelKey = `${spec.provider}/${spec.model}`;
-  const results: JsonEvalResult[] = [];
-
-  for (let trial = 1; trial <= repeatCount; trial++) {
-    const skipOpen = options.skipSetup ?? (liveSetAlreadyOpened || trial > 1);
-
-    const scenarioResult = await runScenario(scenario, {
-      provider: spec.provider,
-      model: spec.model,
-      skipLiveSetOpen: skipOpen,
-      judgeOverride,
-      runEnv,
-      envLabel: label,
-      usage: options.usage,
-      skipJudge: options.skipJudge,
-      skipReflection: options.skipReflection,
-      seedConnect: options.seedConnect,
-    });
-
-    const trialInfo: TrialInfo | undefined =
-      repeatCount > 1 ? { trial, totalTrials: repeatCount } : undefined;
-
-    const jsonResult = toJsonResult(
-      scenarioResult,
-      runId,
-      modelKey,
-      label,
-      trialInfo,
-    );
-
-    if (ctx.options.save !== false) await writeJsonResult(jsonResult);
-    printResultBlock(jsonResult);
-    results.push(jsonResult);
-  }
-
-  if (repeatCount > 1) {
-    printTrialSummary(results);
-  }
-
-  return results;
 }

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { request as httpRequest } from "node:http";
 import {
   afterAll,
   beforeAll,
@@ -87,6 +88,30 @@ function briefingFetch(
 }
 
 /**
+ * GET the briefing over raw http, which — unlike fetch — lets a test set Host.
+ * The same-origin check compares Origin against it, so the tunnel case can't be
+ * staged any other way.
+ * @param headers - The full header set to send
+ * @returns The response status
+ */
+function rawBriefingGet(headers: Record<string, string>): Promise<number> {
+  const { port } = new URL(server.baseUrl);
+
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      { hostname: "127.0.0.1", port, path: "/subagent-briefing", headers },
+      (res) => {
+        res.resume(); // drain, or the socket holds the server open
+        resolve(res.statusCode ?? 0);
+      },
+    );
+
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/**
  * GET a briefing with the given per-request headers.
  * @param headers - Headers to send (the caller's profile)
  * @returns The briefing text
@@ -128,8 +153,12 @@ describe("subagent-briefing route", () => {
   it("ends with the subagent framing, not the user-facing next step", async () => {
     const briefing = await getBriefing();
 
+    // No block follows it: the framing has to get the last word over the
+    // user-facing instruction it inherits.
     expect(briefing).toContain("## You are a subagent");
-    expect(briefing.trimEnd().endsWith("why.")).toBe(true);
+    expect(briefing.lastIndexOf("\n## ")).toBe(
+      briefing.indexOf("\n## You are a subagent"),
+    );
     expect(briefing).not.toContain("wait for their instructions");
   });
 
@@ -278,11 +307,22 @@ describe("subagent-briefing route", () => {
   });
 
   it("still serves a browser on the same server", async () => {
-    // The remote same-origin case (LAN/tunnel) can't be staged here — Node's
-    // fetch won't let a test forge a Host header — and is covered in
-    // request-origin.test.ts.
     const res = await briefingFetch({ Origin: server.baseUrl });
 
     expect(res.status).toBe(200);
+  });
+
+  it("still serves the chat over a tunnel, where same-origin isn't localhost", async () => {
+    // A public https Origin whose host matches the forwarded Host — the shape a
+    // TLS-terminating tunnel produces. Getting this wrong 403s the remote chat's
+    // own spawns, so the composition is worth a test and not just the unit one
+    // on isSameOriginRequest.
+    const status = await rawBriefingGet({
+      Host: "ppal.trycloudflare.com",
+      Origin: "https://ppal.trycloudflare.com",
+      [BRIEFING_REQUEST_HEADER]: "1",
+    });
+
+    expect(status).toBe(200);
   });
 });

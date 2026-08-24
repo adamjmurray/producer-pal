@@ -60,25 +60,33 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("rejects sync on swing", () => {
-      expect(() => parseAssignments("timing = swing(0.05, sync)")).toThrow();
+      expect(() => parseAssignments("timing = swing(0.05, sync)")).toThrow(
+        'but "t" found',
+      );
     });
 
     it("rejects sync on rand", () => {
-      expect(() => parseAssignments("velocity += rand(sync)")).toThrow();
+      expect(() => parseAssignments("velocity += rand(sync)")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects sync on ramp", () => {
-      expect(() => parseAssignments("velocity += ramp(0, 1, sync)")).toThrow();
+      expect(() => parseAssignments("velocity += ramp(0, 1, sync)")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects sync on round", () => {
-      expect(() => parseAssignments("velocity += round(sync)")).toThrow();
+      expect(() => parseAssignments("velocity += round(sync)")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects sync on choose", () => {
-      expect(() =>
-        parseAssignments("velocity += choose(1, 2, sync)"),
-      ).toThrow();
+      expect(() => parseAssignments("velocity += choose(1, 2, sync)")).toThrow(
+        'but "v" found',
+      );
     });
   });
 
@@ -124,8 +132,12 @@ describe("Transform Parser - Function Keywords", () => {
     });
 
     it("rejects raw on non-swing functions", () => {
-      expect(() => parseAssignments("velocity += rand(raw)")).toThrow();
-      expect(() => parseAssignments("velocity += cos(n/4, raw)")).toThrow();
+      expect(() => parseAssignments("velocity += rand(raw)")).toThrow(
+        'but "v" found',
+      );
+      expect(() => parseAssignments("velocity += cos(n/4, raw)")).toThrow(
+        'but "v" found',
+      );
     });
   });
 });

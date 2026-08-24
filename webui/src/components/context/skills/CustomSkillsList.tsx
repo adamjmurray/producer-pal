@@ -34,7 +34,7 @@ export function CustomSkillsList(
   props: CustomSkillsListProps,
 ): preact.JSX.Element {
   const { entries, selectedName, creating, onSelect, onNew } = props;
-  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = entries.toSorted((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="flex flex-col gap-2 overflow-y-auto p-3">
@@ -68,7 +68,7 @@ export function CustomSkillsList(
  */
 function OffTag(): preact.JSX.Element {
   return (
-    <span className="rounded bg-zinc-200 dark:bg-zinc-700 px-1 text-[9px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+    <span className="rounded bg-zinc-200 px-1 text-[9px] tracking-wide text-zinc-500 uppercase dark:bg-zinc-700 dark:text-zinc-400">
       off
     </span>
   );

@@ -40,7 +40,7 @@ track. To swap the sample on a Simpler that already exists, use
 Confirm it took:
 
 ```bash
-node ../producer-pal/ppal.mjs ppal-read-device '{"deviceId":"86","include":["sample"]}'
+node ../producer-pal/ppal.mjs ppal-read-device '{"id":"86","include":["sample"]}'
 ```
 
 Live renames the device after the file it loaded, so a device whose name changed

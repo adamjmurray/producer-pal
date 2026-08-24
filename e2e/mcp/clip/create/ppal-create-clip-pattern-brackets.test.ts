@@ -48,7 +48,7 @@ interface ExpectedNote {
 describe("ppal-create-clip pattern brackets (streams)", () => {
   it("expands a pitch stream into a melodic line", async () => {
     const { notation, events } = await createAndReadback(
-      `${emptyMidiTrack}/0`,
+      `t${emptyMidiTrack}/s0`,
       "n/4 [C3 E3 G3] 1|1x3@n/4",
     );
 
@@ -62,7 +62,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("zips a velocity stream against a pitch stream", async () => {
     const { notation, events } = await createAndReadback(
-      `${emptyMidiTrack}/1`,
+      `t${emptyMidiTrack}/s1`,
       "n/8 [v80 v100] [C3 E3 G3] 1|1x6@n/8",
     );
 
@@ -79,7 +79,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("folds a no-@step duration stream into the gallop spacing", async () => {
     const { notation, events } = await createAndReadback(
-      `${emptyMidiTrack}/2`,
+      `t${emptyMidiTrack}/s2`,
       "[n/4 n/8] C3 1|1x8",
     );
 
@@ -98,7 +98,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("layers a held pitch under a moving bracket line", async () => {
     const { notation, events } = await createAndReadback(
-      `${emptyMidiTrack}/3`,
+      `t${emptyMidiTrack}/s3`,
       "n/4 C4 [E4 G4 C5] 1|1,2,3,4",
     );
 
@@ -118,7 +118,7 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 
   it("layers two pitch voices that phase into chords", async () => {
     const { notation, events } = await createAndReadback(
-      `${emptyMidiTrack}/5`,
+      `t${emptyMidiTrack}/s5`,
       "n/4 [C3 C4] [E3 G3 E4] 1|1,2,3,4",
     );
 
@@ -139,21 +139,21 @@ describe("ppal-create-clip pattern brackets (streams)", () => {
 });
 
 /**
- * Create a MIDI clip with `notes` in `slot`, read it back, and re-interpret the
+ * Create a MIDI clip with `notes` at `path`, read it back, and re-interpret the
  * serialized notation into note events (in the clip's own meter).
- * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param path - Clip slot path (e.g. "t8/s0")
  * @param notes - bar|beat notation (may contain pattern brackets)
  * @returns The read-back notation string and its re-interpreted note events
  */
 async function createAndReadback(
-  slot: string,
+  path: string,
   notes: string,
 ): Promise<{ notation: string; events: NoteEvent[] }> {
-  const clipId = await createClipInSlot(ctx, slot, { notes });
+  const clipId = await createClipInSlot(ctx, path, { notes });
   const read = parseToolResult<ReadClipResult>(
     await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId, include: ["notes", "timing"] },
+      arguments: { id: clipId, include: ["notes", "timing"] },
     }),
   );
   const notation = read.notes ?? "";
@@ -176,7 +176,7 @@ async function createAndReadback(
  * @param expected - Expected notes in time order
  */
 function expectNotes(events: NoteEvent[], expected: ExpectedNote[]): void {
-  const sorted = [...events].sort(
+  const sorted = events.toSorted(
     (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
   );
 

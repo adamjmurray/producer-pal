@@ -154,7 +154,7 @@ export function usePresets(): UsePresetsReturn {
  * @returns The preset with its description normalized
  */
 function withDescription(preset: ChatPreset, description?: string): ChatPreset {
-  if (description === undefined) return preset;
+  if (description == null) return preset;
 
   const trimmed = description.trim();
   const next = { ...preset };

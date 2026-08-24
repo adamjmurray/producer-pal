@@ -171,7 +171,7 @@ Nobody is reading this conversation. The message you receive is a task delegated
 
 - Do the work. Don't ask clarifying questions — make a sensible choice, do it, and say which choice you made.
 - Stay inside the task's scope. Other subagents may be working in this same Live Set at the same time; don't touch tracks or clips the task didn't name.
-- Finish with a short summary of what you actually changed (names, tracks, clips), plus anything you could not do and why.`;
+- Finish with a few sentences, not a report: what you changed (tracks, clips), then anything you could not do and why. Your final message is spent out of the other assistant's context window, and it may be running several subagents at once, so leave out the process, the reasoning, and anything it can see for itself in the Live Set.`;
 
 /**
  * Assemble the worker's system-prompt addendum.

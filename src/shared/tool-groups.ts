@@ -19,6 +19,12 @@ export const LIVE_API_TOOL_ID = "ppal-live-api";
 /** The entry-point tool. Withholding it costs a client the whole Skills blob. */
 export const CONNECT_TOOL_ID = "ppal-connect";
 
+/**
+ * The context/memory tool. Withholding it makes every connect block that points
+ * at a stored layer a dead end, so those blocks gate on it.
+ */
+export const CONTEXT_TOOL_ID = "ppal-context";
+
 /** The `ppal-` prefix every server tool name carries. */
 export const TOOL_NAME_PREFIX = "ppal-";
 
@@ -38,7 +44,7 @@ export const TOOL_GROUPS: readonly ToolGroup[] = [
   {
     alias: "core",
     label: "Core",
-    toolIds: [CONNECT_TOOL_ID, "ppal-context"],
+    toolIds: [CONNECT_TOOL_ID, CONTEXT_TOOL_ID],
   },
   {
     alias: "session",

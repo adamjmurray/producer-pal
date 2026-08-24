@@ -89,7 +89,7 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
     vi.clearAllMocks();
   });
 
-  it("warns with the session slot position when a session clip fails to create", async () => {
+  it("warns with the clip slot position when a session clip fails to create", async () => {
     registerMockObject("live-set", {
       path: livePath.liveSet,
       properties: { ...FOUR_FOUR, scenes: children("scene_0") },
@@ -105,12 +105,10 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Failed to create clip at slot=0/0:"),
+      expect.stringContaining("Failed to create clip at t0/s0:"),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("trackIndex="),
-    );
+    // No bar|beat position: a clip slot doesn't have one.
+    expect(outlet).not.toHaveBeenCalledWith(1, expect.stringContaining("|"));
   });
 
   it("warns with the arrangement position when an arrangement clip fails to create", async () => {
@@ -135,14 +133,9 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining(
-        "Failed to create clip at trackIndex=0, arrangementStart=",
-      ),
+      expect.stringContaining("Failed to create clip at t0 at 1|1:"),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("slot="),
-    );
+    expect(outlet).not.toHaveBeenCalledWith(1, expect.stringContaining("/s"));
   });
 });
 

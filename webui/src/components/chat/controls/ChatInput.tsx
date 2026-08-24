@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
+import {
+  MarkdownEditor,
+  type MarkdownEditorHandle,
+} from "#webui/components/markdown-editor/MarkdownEditor";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { ThinkingToggle, type ThinkingToggleProps } from "./ThinkingToggle";
 
@@ -48,7 +52,9 @@ export function ChatInput({
   thinking,
   onThinkingChange,
 }: ChatInputProps) {
+  // The editor owns the text; `input` mirrors it for the Send button's state.
   const [input, setInput] = useState("");
+  const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const disabled = hasError || isCompacting === true;
   // Compaction is genuinely non-cancelable (no abort path), so don't offer Stop
   // while it runs — it would be a no-op against the in-flight summarize().
@@ -65,24 +71,20 @@ export function ChatInput({
       void handleSend(input, overrides);
     }
 
-    setInput("");
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submitMessage();
-    }
+    editorRef.current?.clear();
   };
 
   return (
-    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="relative z-10 border-t border-zinc-300 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:border-zinc-700 dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)]">
       <div className="p-4">
         <div className="flex gap-3">
-          <textarea
-            value={input}
-            onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
-            onKeyDown={handleKeyDown}
+          <MarkdownEditor
+            variant="chat"
+            ariaLabel="Message"
+            initialValue=""
+            onChange={setInput}
+            onSubmit={submitMessage}
+            editorRef={editorRef}
             placeholder={
               hasError
                 ? "Retry or edit a message to continue..."
@@ -91,14 +93,13 @@ export function ChatInput({
                   : "Type a message... (Shift+Enter for new line)"
             }
             disabled={disabled}
-            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500 disabled:opacity-50"
-            rows={2}
+            className="flex-1"
           />
           <div className="flex flex-col gap-2">
             {canStop ? (
               <button
                 onClick={onStop}
-                className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"
+                className="rounded-lg bg-orange-600 px-4 py-1 text-sm text-white hover:bg-orange-700"
               >
                 Stop
               </button>
@@ -111,7 +112,7 @@ export function ChatInput({
             <button
               onClick={submitMessage}
               disabled={disabled || !input.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {isAssistantResponding ? "Queue" : "Send"}
             </button>

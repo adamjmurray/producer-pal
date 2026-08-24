@@ -26,7 +26,7 @@ auto-reconnection:
 name = "producer-pal"
 transport = "stdio"
 command = "npx"
-args = ["-y", "producer-pal"]
+args = ["-y", "producer-pal@latest"]
 ```
 
 **Option B: Direct HTTP** — Requires Ableton running first, no

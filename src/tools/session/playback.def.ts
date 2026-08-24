@@ -5,6 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
@@ -29,10 +33,10 @@ export const toolDefPlayback = defineTool("ppal-playback", {
       ])
       .describe(
         `play-arrangement: from startTime
-update-arrangement: modify loop
+update-arrangement: set playhead/loop without playing
 play-scene: all clips in scene
-play-session-clips: by id(s) or slot(s)
-stop-session-clips: by id(s) or slot(s)
+play-session-clips: by id(s) or path(s)
+stop-session-clips: by id(s) or path(s)
 stop-all-session-clips: all
 stop: session and arrangement`,
       ),
@@ -56,21 +60,33 @@ stop: session and arrangement`,
       default: "locator ID or name for loop end",
       smallModel: null,
     }),
-    ids: z.coerce
-      .string()
-      .optional()
-      .describe("comma-separated ID(s) for clip operations"),
-    slots: z.coerce
+    id: z.coerce
       .string()
       .optional()
       .describe(
-        "session clip slot(s), trackIndex/sceneIndex format, comma-separated (e.g., '0/1' or '0/1,2/3')",
+        "clip ID(s), comma-separated for multiple; for play-scene, a scene ID (or a clip ID in that scene)",
       ),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
+    path: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "clip slot(s) 't<track>/s<scene>', both 0-based, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3'); " +
+          "for play-scene, a scene 's<scene>' (e.g., 's3') or any position in it",
+      ),
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
+
+    slots: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+    }),
     sceneIndex: z.coerce
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("0-based scene index for play-scene"),
+      .describe("0-based scene index for play-scene (or use path 's<scene>')"),
   },
 });

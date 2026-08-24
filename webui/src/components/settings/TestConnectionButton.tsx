@@ -65,7 +65,7 @@ export function TestConnectionButton({
         type="button"
         onClick={handleTest}
         disabled={status === "testing"}
-        className="px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50"
+        className="rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-1.5 text-sm hover:bg-zinc-300 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-600 dark:hover:bg-zinc-700"
         data-testid="test-connection-button"
       >
         {status === "testing" ? "Testing\u2026" : "Test Connection"}

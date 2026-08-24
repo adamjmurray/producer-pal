@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -18,7 +19,14 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   },
 
   inputSchema: {
-    ids: z.coerce.string().describe("comma-separated track ID(s) to update"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("track ID(s) to update, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated for each (extras keep existing name), ideally unique",
@@ -26,7 +34,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the tracks)",
       smallModel: "#RRGGBB",
     }),
     gainDb: z.coerce
@@ -86,9 +94,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       default: "send gain in dB, requires sendReturn",
       smallModel: null,
     }),
-    sendReturn: param(z.string().optional(), {
+    sendReturn: param(z.coerce.string().optional(), {
       default:
-        'return track: exact name (e.g., "A-Reverb") or letter (e.g., "A")',
+        'return track: id, exact name (e.g., "A-Reverb"), or letter (e.g., "A")',
       smallModel: null,
     }),
   },

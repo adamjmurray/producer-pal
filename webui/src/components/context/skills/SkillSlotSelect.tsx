@@ -40,7 +40,7 @@ export function SkillSlotSelect(
       aria-label="Skill fragment"
       value={selected}
       onChange={(event) => onSelect((event.target as HTMLSelectElement).value)}
-      className="text-sm rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-zinc-900 dark:text-zinc-100"
+      className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
     >
       {slots.map((slot) => (
         <option key={slot.name} value={slot.name} title={slot.title}>

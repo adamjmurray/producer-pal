@@ -5,13 +5,16 @@
 
 import { type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { CANCELED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import { SUBAGENT_LABEL_PATTERN } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import {
   type SubagentRateLimitStatus,
   getSubagentRateLimit,
   subscribeToSubagentRateLimits,
 } from "#webui/chat/sdk/subagent/subagent-rate-limit";
+import {
+  haltedToolStatus,
+  unwrapToolResultText,
+} from "#webui/components/chat/assistant/helpers/tool-call-halted-helpers";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { truncateString } from "#webui/lib/utils/truncate-string";
@@ -69,10 +72,10 @@ export function AssistantSubagentCall({
   // A wait forced by a sibling's backoff (attempt null) is not this worker's own
   // rate limit — the docs promise that shared pause, so name it distinctly.
   const waiting = running && rateLimit != null;
-  // Stop mid-worker leaves the synthetic canceled result here, which is not a
+  // A turn that ended mid-worker leaves a synthetic result here, which is not a
   // failure and certainly not "done" — and the worker is resumable from this
   // card's transcript, so say what actually happened.
-  const stopped = !running && returnValue === CANCELED_TOOL_RESULT_TEXT;
+  const halted = haltedToolStatus(result);
   const status = waiting
     ? rateLimit.attempt == null
       ? "waiting"
@@ -81,9 +84,7 @@ export function AssistantSubagentCall({
       ? "working…"
       : isError
         ? "failed"
-        : stopped
-          ? "stopped"
-          : "done";
+        : (halted ?? "done");
 
   return (
     <details
@@ -91,7 +92,7 @@ export function AssistantSubagentCall({
         isError ? "border-red-500" : ""
       }`}
     >
-      <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />🤖{" "}
         <span className="font-semibold">
           {index == null ? "subagent" : `subagent ${index}`}
@@ -101,7 +102,7 @@ export function AssistantSubagentCall({
             resumed
           </span>
         )}
-        <span className="truncate min-w-0 text-zinc-600 dark:text-zinc-400">
+        <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-400">
           {truncateString(task, 80)}
         </span>
         <span className={`ml-auto shrink-0 ${statusColor(isError, waiting)}`}>
@@ -115,7 +116,7 @@ export function AssistantSubagentCall({
         </div>
       ) : (
         <div
-          className="mt-2 prose dark:prose-invert prose-sm max-w-none wrap-break-word"
+          className="prose dark:prose-invert prose-sm mt-2 max-w-none wrap-break-word"
           dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(returnValue) }}
         />
       )}
@@ -124,10 +125,10 @@ export function AssistantSubagentCall({
 
       {transcript != null && (
         <details className="disclosure mt-2">
-          <summary className="text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <summary className="flex list-none items-center gap-1 text-zinc-600 dark:text-zinc-400 [&::-webkit-details-marker]:hidden">
             <DisclosureChevron />↳ subagent transcript
           </summary>
-          <div className="mt-2 flex flex-col gap-2 border-l-2 border-zinc-300 dark:border-zinc-600 pl-2">
+          <div className="mt-2 flex flex-col gap-2 border-l-2 border-zinc-300 pl-2 dark:border-zinc-600">
             {transcript}
           </div>
         </details>
@@ -228,26 +229,14 @@ function statusColor(isError?: boolean, isRateLimited?: boolean): string {
 }
 
 /**
- * Unwrap a tool-result string for display. Subagent results are JSON-stringified
- * plain strings (e.g. `"\"Done.\""`); parse those back to the bare text. Anything
- * that isn't a JSON string is shown verbatim.
- *
- * The `[subagent N]` label the model needs in order to resume this worker is
- * dropped here — the card's own header already says which subagent this is.
+ * Unwrap a subagent's tool result for display, dropping the `[subagent N]` label
+ * the model needs in order to resume this worker — the card's own header already
+ * says which subagent this is.
  * @param {string | null} result - The formatted tool result, or null while running
  * @returns {string} The display text
  */
 function unwrapResult(result: string | null): string {
   if (result == null) return "";
 
-  try {
-    const parsed: unknown = JSON.parse(result);
-
-    return (typeof parsed === "string" ? parsed : result).replace(
-      SUBAGENT_LABEL_PATTERN,
-      "",
-    );
-  } catch {
-    return result.replace(SUBAGENT_LABEL_PATTERN, "");
-  }
+  return unwrapToolResultText(result).replace(SUBAGENT_LABEL_PATTERN, "");
 }

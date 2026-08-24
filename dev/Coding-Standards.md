@@ -131,6 +131,63 @@ Use `src/live-api-adapter/live-api-extensions.ts` instead of raw
 
 Return optimistic results for playback operations.
 
+### What Live Returns When There Is No Object
+
+Verified against Live 12.4.3 (v8). A bad path, a bad index, a bad id and a path
+cleared to `""` all behave the same, and none of them throw:
+
+| Call             | Returns                |
+| ---------------- | ---------------------- |
+| `get(any)`       | `1` — **not an array** |
+| `set(any, v)`    | `1`                    |
+| `call(any)`      | `1`                    |
+| `getstring(any)` | `1` — **not a string** |
+| `getcount(any)`  | `0`                    |
+| `info`           | `"No object"`          |
+
+Read a bare `1` as "no object, no answer". It is not a success flag and not a
+status code — `set` returns `1` on a valid object too, whether or not the write
+lands. A read-only property, a wrong-typed value, an unknown property and an
+out-of-range value all return `1` and change nothing. Reading the property back
+is the only way to know a write worked.
+
+Keeping that sentinel out of tool code is most of what the wrapper is for:
+
+| Wrapper call      | On a nonexistent object |
+| ----------------- | ----------------------- |
+| `getProperty`     | `undefined`             |
+| `getPropertyList` | `[]`                    |
+| `getChildIds`     | `[]`                    |
+| `getColor`        | `null`                  |
+| `exists()`        | `false`                 |
+
+So the `Array.isArray` checks in those methods are load-bearing, not defensive
+habit — they are what turns `1` into an ordinary empty value. This is also why
+raw `.get("property")?.[0]` is banned: on a missing object it yields `undefined`
+by luck rather than by check, and `.get("property")[1]` throws outright.
+
+`exists()` can't use Live's `valid` field, obvious as that looks: `valid` reads
+`1` for a bad path, a bad index, a bad id and a cleared path alike — it
+describes the wrapper, not the target. It checks the object id instead.
+
+### A Drum Rack Inside a Drum Pad Has No Pads
+
+Verified against Live 12.4.3. A Drum Rack nested in another rack's drum pad has
+an **empty `drum_pads` collection**. Live's own UI shows no pad grid for it
+either — this is how Live works, not a bug and not a read that came out short.
+
+So such a rack serializes its pads with no `id`. The pads themselves still come
+through: they are grouped from the rack's `chains` by `in_note`, which is why
+`processDrumPads` works off chains rather than the pad collection. Only the pad
+id is missing, because there is no pad object to take one from.
+
+Reading a `p<note>` path does the same. A pad path resolves through the rack's
+chains, so it reads back on a nested rack — and on the catch-all `p*`, which is
+a chain group with no pad object either.
+
+Don't "fix" this by falling back to another lookup, and don't assert a pad id in
+a test for a rack nested on a pad.
+
 ### Live API Paths — Use `livePath` Builders
 
 **Never hardcode Live API path strings.** Use `livePath` from

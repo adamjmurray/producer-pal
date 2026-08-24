@@ -6,6 +6,7 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   setParamValues,
@@ -29,8 +30,18 @@ export interface UpdatePropertyOptions {
   mute?: boolean;
   solo?: boolean;
   color?: string;
+  gainDb?: number;
+  pan?: number;
+  sendGainDb?: number;
+  sendReturn?: string;
   chokeGroup?: number;
   mappedPitch?: string;
+  force?: boolean;
+}
+
+export interface UpdateTargetOptions extends UpdatePropertyOptions {
+  toPath?: string;
+  name?: string;
 }
 
 /**
@@ -54,12 +65,17 @@ export function updateDeviceProperties(
     mute,
     solo,
     color,
+    gainDb,
+    pan,
+    sendGainDb,
+    sendReturn,
     chokeGroup,
     mappedPitch,
+    force,
   } = options;
 
   if (params != null) {
-    setParamValues(target, params);
+    setParamValues(target, params, "updateDevice", force);
   }
 
   if (actions != null) {
@@ -87,6 +103,10 @@ export function updateDeviceProperties(
   warnIfSet("mute", mute, type);
   warnIfSet("solo", solo, type);
   warnIfSet("color", color, type);
+  warnIfSet("gainDb", gainDb, type);
+  warnIfSet("pan", pan, type);
+  warnIfSet("sendGainDb", sendGainDb, type);
+  warnIfSet("sendReturn", sendReturn, type);
   warnIfSet("chokeGroup", chokeGroup, type);
   warnIfSet("mappedPitch", mappedPitch, type);
 }
@@ -121,8 +141,16 @@ export function updateNonDeviceProperties(
     if (options.color != null) {
       target.setColor(options.color);
     }
+
+    if (hasChainMixerParams(options)) {
+      applyChainMixer(target, options);
+    }
   } else {
     warnIfSet("color", options.color, type);
+    warnIfSet("gainDb", options.gainDb, type);
+    warnIfSet("pan", options.pan, type);
+    warnIfSet("sendGainDb", options.sendGainDb, type);
+    warnIfSet("sendReturn", options.sendReturn, type);
   }
 
   if (type === "DrumChain") {
@@ -155,4 +183,18 @@ function updateDrumChainProperties(
       console.warn(`updateDevice: invalid note name "${options.mappedPitch}"`);
     }
   }
+}
+
+/**
+ * Whether any chain mixer param (gain, pan, send) was given
+ * @param options - Update options
+ * @returns True when applyChainMixer has something to do
+ */
+function hasChainMixerParams(options: UpdatePropertyOptions): boolean {
+  return (
+    options.gainDb != null ||
+    options.pan != null ||
+    options.sendGainDb != null ||
+    options.sendReturn != null
+  );
 }

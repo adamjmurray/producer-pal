@@ -31,7 +31,9 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
 function expectViewConflictWarning(fired: boolean): void {
   const outletMock = (globalThis as Record<string, unknown>)
     .outlet as ReturnType<typeof vi.fn>;
-  const warning = expect.stringContaining("ignoring view=");
+  // Anchored at the start: max-api-adapter prepends "WARNING: ", so any prefix
+  // of its own renders as "WARNING: Warning: ignoring view=...".
+  const warning = expect.stringMatching(/^ignoring view=/);
 
   if (fired) {
     expect(outletMock).toHaveBeenCalledWith(1, warning);
@@ -173,7 +175,7 @@ describe("view", () => {
       expect(result.selectedTrack).toBeDefined();
     });
 
-    it("skips track selection when track does not exist", () => {
+    it("refuses a track that does not exist", () => {
       // Register non-existent track (id "0" makes exists() return false)
       registerMockObject("0", {
         path: livePath.track(99),
@@ -181,13 +183,13 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      const result = select({ trackIndex: 99 });
-
+      expect(() => select({ trackIndex: 99 })).toThrow(
+        'select failed: no track at "t99"',
+      );
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_track",
         expect.anything(),
       );
-      expect(result.selectedTrack).toBeUndefined();
     });
   });
 
@@ -244,20 +246,20 @@ describe("view", () => {
       expect(result.view).toBe("session");
     });
 
-    it("skips scene selection when scene does not exist", () => {
+    it("refuses a scene that does not exist", () => {
       registerMockObject("0", {
         path: livePath.scene(99),
         type: "Scene",
       });
       const songView = setupSongViewMock();
 
-      const result = select({ sceneIndex: 99 });
-
+      expect(() => select({ sceneIndex: 99 })).toThrow(
+        'select failed: no scene at "s99"',
+      );
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_scene",
         expect.anything(),
       );
-      expect(result.selectedScene).toBeUndefined();
     });
   });
 

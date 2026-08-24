@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isSameSlot } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -101,20 +101,16 @@ export function repeatNotes(
 }
 
 /**
- * Whether a generated copy lands on the same pitch and onset (within
- * SAME_TIME_EPSILON) as a note already placed in the output — i.e. a collision
- * the write-path dedupe will collapse keep-last. Mirrors the comparison in
- * dedupeNotesKeepingLast so the warning count matches what gets dropped.
+ * Whether a generated copy lands on a slot ({@link isSameSlot}) already taken in
+ * the output — i.e. a collision the write-path dedupe will collapse keep-last.
+ * Shares the predicate with dedupeNotesKeepingLast, so the warning count always
+ * matches what gets dropped.
  * @param copy - The candidate copy about to be pushed
  * @param placed - Notes already in the output (originals plus earlier copies)
  * @returns True when `copy` collides with an already-placed note
  */
 function collidesWithPlacedNote(copy: NoteEvent, placed: NoteEvent[]): boolean {
-  return placed.some(
-    (existing) =>
-      existing.pitch === copy.pitch &&
-      Math.abs(existing.start_time - copy.start_time) < SAME_TIME_EPSILON,
-  );
+  return placed.some((existing) => isSameSlot(existing, copy));
 }
 
 /**

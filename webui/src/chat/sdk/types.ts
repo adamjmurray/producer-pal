@@ -180,9 +180,9 @@ export interface ChatClientConfig {
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: ChatMessage[];
   /**
-   * Tool-step budget for streamText's stopWhen. Defaults to the shared
-   * MAX_TOOL_STEPS in client.ts. A subagent worker sets MAX_WORKER_STEPS; an
-   * orchestrator with subagents enabled widens to MAX_ORCHESTRATOR_STEPS.
+   * The user's per-turn tool-step budget, for streamText's stopWhen. Absent =
+   * DEFAULT_MAX_TOOL_STEPS. A worker inherits it from the orchestrator config it
+   * was cloned from, so every level of a turn runs on the same number.
    */
   maxSteps?: number;
   /**

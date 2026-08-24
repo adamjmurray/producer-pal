@@ -17,15 +17,22 @@ import {
   midiLoopedTestCases,
   midiUnloopedTestCases,
 } from "../helpers/arrangement-clip-test-cases.ts";
-import { ARRANGEMENT_CLIP_TESTS_PATH } from "../helpers/arrangement-lengthening-test-helpers.ts";
+import {
+  ARRANGEMENT_CLIP_TESTS_PATH,
+  EPSILON,
+  parseBarBeat,
+  readClipsOnTrack,
+} from "../helpers/arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
   assertSpanPreserved,
   splitClip,
   testSplitClip,
+  toSongPositions,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
+  getToolWarnings,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
@@ -143,7 +150,8 @@ describe("Out-of-bounds split points", () => {
     // 10|1 should be filtered out, leaving only 1|2 → 2 segments
     expect(resultClips.length).toBe(2);
     expect(trackType).toBe("midi");
-    expect(warnings).toHaveLength(0);
+    // A cut happened, so the dropped position is the part that has to be said.
+    expect(warnings.join("\n")).toContain("cut nothing at");
 
     assertContiguousClips(resultClips);
     assertSpanPreserved(initialClips, resultClips);
@@ -164,11 +172,37 @@ describe("Behavioral splitting tests", () => {
     dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
   });
 
+  /**
+   * Read only the clips in one test's own span — the track is shared.
+   * @param startBar - First bar of the span
+   * @param bars - Span length in bars
+   * @returns Clips starting inside the span, in timeline order
+   */
+  async function clipsInSpan(
+    startBar: number,
+    bars: number,
+  ): Promise<ReadClipResult[]> {
+    const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
+    const spanStart = startBar - 1;
+    const startOf = (clip: ReadClipResult): number =>
+      clip.arrangementStart ? parseBarBeat(clip.arrangementStart) : -1;
+
+    return clips
+      .filter((c) => {
+        const start = startOf(c);
+
+        return (
+          start >= spanStart - EPSILON && start < spanStart + bars - EPSILON
+        );
+      })
+      .toSorted((a, b) => startOf(a) - startOf(b));
+  }
+
   it("preserves total note count across splits", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: dynamicTrackIndex,
+        path: `t${dynamicTrackIndex}`,
         arrangementStart: "200|1",
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4bar",
@@ -178,7 +212,12 @@ describe("Behavioral splitting tests", () => {
     const clipId = parseToolResult<{ id: string }>(createResult).id;
 
     await sleep(200);
-    const splitResult = await splitClip(ctx.client!, clipId, "2|1, 3|1, 4|1");
+    // The clip runs from song bar 200 to 204, so cut it on each bar line.
+    const splitResult = await splitClip(
+      ctx.client!,
+      clipId,
+      "201|1, 202|1, 203|1",
+    );
     const splitClips = parseSplitResult(splitResult);
 
     expect(splitClips.length).toBe(4);
@@ -200,7 +239,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: dynamicTrackIndex,
+        path: `t${dynamicTrackIndex}`,
         arrangementStart: "210|1",
         notes: "C3 1|1",
         length: "2bar",
@@ -212,7 +251,11 @@ describe("Behavioral splitting tests", () => {
     await sleep(200);
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, split: "2|1", name: "Split Section" },
+      arguments: {
+        id: clipId,
+        arrangementSplit: "211|1",
+        name: "Split Section",
+      },
     });
     const splitClips = parseSplitResult(result);
 
@@ -228,7 +271,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${dynamicTrackIndex}/0`,
+        path: `t${dynamicTrackIndex}/s0`,
         notes: "C3 1|1",
         length: "2bar",
       },
@@ -236,7 +279,7 @@ describe("Behavioral splitting tests", () => {
     const clipId = parseToolResult<{ id: string }>(createResult).id;
 
     await sleep(200);
-    const result = await splitClip(ctx.client!, clipId);
+    const result = await splitClip(ctx.client!, clipId, "2|1");
     const splitClips = parseSplitResult(result);
 
     expect(splitClips[0]?.id).toBe(clipId);
@@ -246,7 +289,7 @@ describe("Behavioral splitting tests", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: dynamicTrackIndex,
+        path: `t${dynamicTrackIndex}`,
         arrangementStart: "220|1",
         notes: "C3 1|1",
         length: "2bar",
@@ -258,7 +301,7 @@ describe("Behavioral splitting tests", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: dynamicTrackIndex,
+        path: `t${dynamicTrackIndex}`,
         arrangementStart: "230|1",
         notes: "E3 1|1",
         length: "2bar",
@@ -270,11 +313,201 @@ describe("Behavioral splitting tests", () => {
     await sleep(200);
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1Id},${clip2Id}`, split: "2|1" },
+      arguments: {
+        id: `${clip1Id},${clip2Id}`,
+        // One position per clip. Each falls outside the other clip, which
+        // ignores it — that filtering is what lets one call cut both.
+        arrangementSplit: "221|1, 231|1",
+      },
     });
     const splitClips = parseSplitResult(result);
 
     expect(splitClips.length).toBe(4);
+  });
+
+  // The two params read the same bar|beat text on different timelines. A clip
+  // that starts away from bar 1 is the only place that difference shows.
+  describe("split position coordinates", () => {
+    /**
+     * Create a 4-bar looped MIDI clip at `startBar`.
+     * @param startBar - Arrangement bar to place the clip at
+     * @returns The new clip's id
+     */
+    async function createFourBarClip(startBar: number): Promise<string> {
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${dynamicTrackIndex}`,
+          arrangementStart: `${startBar}|1`,
+          notes: "C3 1|1",
+          length: "4bar",
+          looping: true,
+        },
+      });
+
+      return parseToolResult<{ id: string }>(result).id;
+    }
+
+    it("cuts arrangementSplit at the song bar the user named", async () => {
+      // The reported failure, in miniature: a clip at bar 400 asked to split at
+      // bar 402 must cut there, not 2 bars past its own start.
+      const clipId = await createFourBarClip(400);
+
+      await sleep(200);
+      const result = await splitClip(ctx.client!, clipId, "402|1");
+
+      expect(getToolWarnings(result)).toHaveLength(0);
+
+      await sleep(200);
+      const clips = await clipsInSpan(400, 4);
+
+      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+        "400|1",
+        "402|1",
+      ]);
+    });
+
+    it("ignores an arrangementSplit position outside the clip", async () => {
+      const clipId = await createFourBarClip(410);
+
+      await sleep(200);
+      // Bar 2 of the song is nowhere near this clip. Under the old param this
+      // was a cut 1 bar in; now it warns instead of cutting the wrong place.
+      const result = await splitClip(ctx.client!, clipId, "2|1");
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "no split point falls inside any of the clips",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(410, 4);
+
+      expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
+    });
+
+    it("still measures the deprecated split from the clip's start", async () => {
+      const clipId = await createFourBarClip(420);
+
+      await sleep(200);
+      // 3|1 means "2 bars in" here, so the cut lands on song bar 422.
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, split: "3|1" },
+      });
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        'param "split" is deprecated',
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(420, 4);
+
+      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+        "420|1",
+        "422|1",
+      ]);
+    });
+
+    it("splits nothing when both split params are given", async () => {
+      const clipId = await createFourBarClip(430);
+
+      await sleep(200);
+      const result = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: { id: clipId, arrangementSplit: "432|1", split: "3|1" },
+      });
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "both name split positions",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(430, 4);
+
+      expect(clips).toHaveLength(1);
+    });
+  });
+
+  // A point within EPSILON of an edge asks for a zero-length segment. Splitting
+  // skips edge trims below that threshold, and the moves that follow assume
+  // every trim ran — they place segments without checking for an occupant. So
+  // accepting one leaves slivers and overlapping clips, and an overlap is what
+  // crashes Live on the next duplicate. Mocks pass either way; these don't.
+  describe("split points hugging a clip edge", () => {
+    /**
+     * Create a 2-bar looped MIDI clip at `startBar`.
+     * @param startBar - Arrangement bar to place the clip at
+     * @returns The new clip's id
+     */
+    async function createTwoBarClip(startBar: number): Promise<string> {
+      const result = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          path: `t${dynamicTrackIndex}`,
+          arrangementStart: `${startBar}|1`,
+          notes: "C3 1|1\nE3 2|1",
+          length: "2bar",
+          looping: true,
+        },
+      });
+
+      return parseToolResult<{ id: string }>(result).id;
+    }
+
+    // The clip is 8 beats, so 1|1.0005 sits 0.0005 beats past its start and
+    // 2|4.9995 sits 0.0005 beats before its end.
+    it.each([
+      { where: "start", startBar: 300, split: "1|1.0005, 2|1" },
+      { where: "end", startBar: 310, split: "2|1, 2|4.9995" },
+    ])(
+      "ignores a point at the $where and splits at the rest",
+      async ({ startBar, split }) => {
+        const clipId = await createTwoBarClip(startBar);
+
+        await sleep(200);
+        const initialClips = await clipsInSpan(startBar, 2);
+        const result = await splitClip(
+          ctx.client!,
+          clipId,
+          toSongPositions(`${startBar}|1`, split),
+        );
+
+        expect(getToolWarnings(result).join("\n")).toContain("cut nothing at");
+
+        await sleep(200);
+        const resultClips = await clipsInSpan(startBar, 2);
+
+        // Two equal halves: the dropped point moved no boundary.
+        expect(resultClips.map((c) => c.arrangementLength)).toStrictEqual([
+          "1bar",
+          "1bar",
+        ]);
+        assertContiguousClips(resultClips);
+        assertSpanPreserved(initialClips, resultClips);
+      },
+    );
+
+    it("leaves the clip alone when every point hugs an edge", async () => {
+      const clipId = await createTwoBarClip(320);
+
+      await sleep(200);
+      const result = await splitClip(
+        ctx.client!,
+        clipId,
+        toSongPositions("320|1", "1|1.0005"),
+      );
+
+      expect(getToolWarnings(result).join("\n")).toContain(
+        "no split point falls inside any of the clips",
+      );
+
+      await sleep(200);
+      const clips = await clipsInSpan(320, 2);
+
+      expect(clips).toHaveLength(1);
+      expect(clips[0]?.id).toBe(clipId);
+    });
   });
 });
 
@@ -304,7 +537,7 @@ async function readClip(
 ): Promise<ReadClipResult> {
   const result = await client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include },
+    arguments: { id: clipId, include },
   });
 
   return parseToolResult<ReadClipResult>(result);

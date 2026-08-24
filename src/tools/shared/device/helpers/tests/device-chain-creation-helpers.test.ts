@@ -12,6 +12,8 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { requireDeviceContainer } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   resolveContainerWithAutoCreate,
   resolveOrCreateDrumPadChain,
@@ -60,6 +62,22 @@ function registerGrowingRack(
   });
 }
 
+/**
+ * Resolves a path the way the device tools do, so these tests exercise the real
+ * parse rather than hand-built segments.
+ * @param path - Device path (e.g. "t0/d0/c4")
+ * @returns The resolved container
+ */
+function resolveContainer(path: string): LiveAPI {
+  const { root, segments } = requireDeviceContainer(parseObjectPath(path));
+
+  return resolveContainerWithAutoCreate(
+    root,
+    segments.filter((segment) => segment.kind !== "drum-pad"),
+    path,
+  );
+}
+
 describe("resolveContainerWithAutoCreate", () => {
   beforeEach(() => {
     clearMockRegistry();
@@ -70,7 +88,7 @@ describe("resolveContainerWithAutoCreate", () => {
     // The count is targetIndex + 1 - existing, read from the live chain list.
     const rack = registerGrowingRack(2);
 
-    resolveContainerWithAutoCreate(["t0", "d0", "c4"], "t0/d0/c4");
+    resolveContainer("t0/d0/c4");
 
     expect(rack.call).toHaveBeenCalledTimes(3);
   });
@@ -80,9 +98,7 @@ describe("resolveContainerWithAutoCreate", () => {
     // succeed (the guard is `> MAX`, not `>= MAX`).
     const rack = registerGrowingRack(0);
 
-    expect(() =>
-      resolveContainerWithAutoCreate(["t0", "d0", "c15"], "t0/d0/c15"),
-    ).not.toThrow();
+    expect(() => resolveContainer("t0/d0/c15")).not.toThrow();
     expect(rack.call).toHaveBeenCalledTimes(16);
   });
 
@@ -91,22 +107,15 @@ describe("resolveContainerWithAutoCreate", () => {
     // failure and must abort rather than be treated as a created chain.
     registerGrowingRack(0, () => ["error", "5"]);
 
-    expect(() =>
-      resolveContainerWithAutoCreate(["t0", "d0", "c0"], "t0/d0/c0"),
-    ).toThrow("Failed to create chain 1/1");
+    expect(() => resolveContainer("t0/d0/c0")).toThrow(
+      "Failed to create chain 1/1",
+    );
   });
 
-  it("ignores a segment that is neither a device nor a chain", () => {
-    // Only d / c / rc prefixes navigate; an unrecognized segment leaves the
-    // container where it was rather than being coerced into a chain lookup.
+  it("stops at the device when the path names no chain", () => {
     const rack = registerGrowingRack(0);
 
-    const container = resolveContainerWithAutoCreate(
-      ["t0", "d0", "zz"],
-      "t0/d0/zz",
-    );
-
-    expect(container.path).toBe(DEVICE_PATH);
+    expect(resolveContainer("t0/d0").path).toBe(DEVICE_PATH);
     expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });
@@ -191,5 +200,200 @@ describe("resolveOrCreateDrumPadChain", () => {
       resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["c15"]),
     ).not.toThrow();
     expect(rack.call).toHaveBeenCalledTimes(16);
+  });
+
+  /**
+   * A Drum Rack in the outer rack's C1 pad, whose insert_chain grows its own
+   * chain list with a D1 pad chain.
+   * @param outerInNote - The outer chain's in_note (-1 for the catch-all pad)
+   * @returns The inner rack mock, and the outer rack it sits in
+   */
+  function registerNestedDrumRack(outerInNote = 36): {
+    inner: RegisteredMockObject;
+    outer: RegisteredMockObject;
+  } {
+    const outer = registerDrumRack([["drum-chain-36", outerInNote]]);
+    const innerChainIds: string[] = [];
+
+    registerMockObject("drum-chain-36", {
+      path: `${DEVICE_PATH} chains 0`,
+      type: "DrumChain",
+      properties: { in_note: outerInNote, devices: ["id", "inner-rack"] },
+    });
+    registerMockObject("inner-chain", {
+      type: "DrumChain",
+      properties: { in_note: 38 },
+    });
+
+    const inner = registerMockObject("inner-rack", {
+      path: `${DEVICE_PATH} chains 0 devices 0`,
+      type: "RackDevice",
+      properties: { chains: innerChainIds, can_have_drum_pads: 1 },
+      methods: {
+        insert_chain: () => {
+          innerChainIds.push("id", "inner-chain");
+
+          return ["id", "inner-chain"];
+        },
+      },
+    });
+
+    return { inner, outer };
+  }
+
+  it("creates the inner rack's pad chain, not the outer rack's", () => {
+    // The count was read off the outer rack, whose C1 pad already had a chain,
+    // so nothing was created and the path resolved to nothing at all.
+    const { inner, outer } = registerNestedDrumRack();
+
+    const chain = resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+      "c0",
+      "d0",
+      "pD1",
+    ]);
+
+    expect(chain?.id).toBe("inner-chain");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("resolves an inner pad chain that already exists", () => {
+    const { inner } = registerNestedDrumRack();
+
+    inner.call("insert_chain");
+    inner.call.mockClear();
+
+    const chain = resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+      "d0",
+      "pD1",
+    ]);
+
+    expect(chain?.id).toBe("inner-chain");
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad that names no device to nest under", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad segment with no note", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d0",
+        "p",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a missing device: only a missing chain is auto-creatable", () => {
+    const rack = registerDrumRack([["drum-chain-36", 36]]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d9",
+      ]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a chain segment with an unparseable index", () => {
+    const rack = registerDrumRack([["drum-chain-36", 36]]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["cx"]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose outer chain segment is unparseable", () => {
+    const { inner, outer } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "cx",
+        "d0",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose walk misses the device it nests under", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d9",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad whose walk lands on a chain, not a device", () => {
+    const { inner } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "c0",
+        "pD1",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+  it("refuses to create a chain for the catch-all pad", () => {
+    // Live clamps in_note to 0-127, so insert_chain would strand an empty chain
+    // on note 36 and then fail to find a catch-all chain to return.
+    const rack = registerDrumRack([]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "*", []),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("resolves a catch-all chain that already exists", () => {
+    const rack = registerDrumRack([["catch-all-chain", -1]]);
+
+    const chain = resolveOrCreateDrumPadChain(
+      LiveAPI.from(DEVICE_PATH),
+      "*",
+      [],
+    );
+
+    expect(chain?.id).toBe("catch-all-chain");
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("creates a pad chain in a rack nested under an existing catch-all chain", () => {
+    // Only creating the catch-all chain is impossible. Once one exists, a path
+    // through it is an ordinary nested pad.
+    const { inner, outer } = registerNestedDrumRack(-1);
+
+    const chain = resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "*", [
+      "c0",
+      "d0",
+      "pD1",
+    ]);
+
+    expect(chain?.id).toBe("inner-chain");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
   });
 });

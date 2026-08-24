@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -555,55 +556,61 @@ describe("device-path-helpers", () => {
       expect(result.container!.id).toBe("chain-36");
     });
 
-    it("returns null for invalid note name during auto-creation", () => {
+    it("rejects an unparseable pad note before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // Invalid note name (not a valid MIDI note)
-      const result = resolveInsertionPath("t0/d0/pInvalidNote");
-
-      expect(result.container).toBeNull();
+      expect(() => resolveInsertionPath("t0/d0/pInvalidNote")).toThrow(
+        /"pInvalidNote" names no drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
-    it("returns null for negative chain index during auto-creation", () => {
+    it("rejects a negative chain index before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // Negative chain index is invalid
-      const result = resolveInsertionPath("t0/d0/pC1/c-1");
-
-      expect(result.container).toBeNull();
+      expect(() => resolveInsertionPath("t0/d0/pC1/c-1")).toThrow(
+        /"c-1" is not a device, chain, or drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
-    it("auto-creates the catch-all pad chain (p*) with in_note -1", () => {
-      const { deviceMock, createdChainMocks } = setupAutoCreationMocks();
+    it("refuses to create the catch-all pad chain (p*)", () => {
+      // Live clamps in_note to 0-127, so the chain would land on note 36 and
+      // the lookup that follows would find no catch-all chain — an empty chain
+      // stranded in the rack and an error anyway.
+      const { deviceMock } = setupAutoCreationMocks();
 
-      const result = resolveInsertionPath("t0/d0/p*");
-
-      expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
-      expect(createdChainMocks[0]!.set).toHaveBeenCalledWith("in_note", -1);
-      expect(result.container).not.toBeNull();
+      expect(resolveInsertionPath("t0/d0/p*").container).toBeNull();
+      expect(deviceMock.call).not.toHaveBeenCalledWith("insert_chain");
     });
 
-    it("returns null when the segment after the pad note is not a chain index", () => {
+    it("rejects a return chain after a pad note before touching the rack", () => {
       const { deviceMock } = setupAutoCreationMocks({
         includeCreationMocks: false,
       });
 
-      // "rc0" (not "c<n>") exercises the non-"c" branch of chain-index parsing.
-      const result = resolveInsertionPath("t0/d0/pC1/rc0");
-
-      expect(result.container).toBeNull();
+      // A pad holds chains and devices; "rc0" names neither.
+      expect(() => resolveInsertionPath("t0/d0/pC1/rc0")).toThrow(
+        /"rc0" can't follow a drum pad/,
+      );
       expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
     it("throws for an invalid track segment in a multi-segment container path", () => {
       expect(() => resolveInsertionPath("x0/c0")).toThrow(
-        "Invalid track segment: x0",
+        'invalid path "x0/c0" - "x0" is not a track or scene',
+      );
+    });
+
+    // The old lenient parser read "t0abc" as track 0; the shared grammar is
+    // strict, so device paths reject it the same way clip paths do.
+    it("throws for a malformed track index in a container path", () => {
+      expect(() => resolveInsertionPath("t0abc/c0")).toThrow(
+        'invalid path "t0abc/c0" - "t0abc" is not a track or scene',
       );
     });
   });

@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
+import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
 import {
   type CustomSkillInput,
@@ -19,7 +19,7 @@ import {
 import { CustomSkillsScreen } from "#webui/components/context/skills/CustomSkillsScreen";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 

@@ -192,7 +192,7 @@ function collectArrangementClips(
     const clip = LiveAPI.from(clipId);
 
     if (clip.exists()) {
-      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     }
   }
 }
@@ -340,7 +340,7 @@ function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
  * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
- * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param context - Context object with silenceWavPath
  * @returns Object with arrangementStart and clips array
  */
 export async function duplicateSceneToArrangement(

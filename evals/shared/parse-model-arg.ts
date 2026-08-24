@@ -11,6 +11,7 @@
  * - model: infer provider from prefix (e.g., "claude-sonnet-4-5" → anthropic)
  */
 
+import { type Command } from "commander";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { PROVIDERS } from "#evals/shared/provider-configs.ts";
 
@@ -49,6 +50,25 @@ export function parseModelArg(arg: string): ModelSpec {
 
   // Model-only: infer provider from prefix
   return inferProviderFromModel(arg);
+}
+
+/**
+ * Parse a model argument, reporting a bad one as a CLI usage error with the
+ * --list-models hint rather than letting it throw past commander as a stack
+ * trace. Does not return on failure — commander exits.
+ *
+ * @param program - The commander program the argument came from
+ * @param arg - Model argument to parse
+ * @returns Parsed provider and model
+ */
+export function parseModelArgOrExit(program: Command, arg: string): ModelSpec {
+  try {
+    return parseModelArg(arg);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    return program.error(`${message} ${LIST_MODELS_HINT}`);
+  }
 }
 
 /**

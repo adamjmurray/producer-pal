@@ -4,14 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenarios for the create-clip `length` duration-argument grammar.
+ * Scenario for the create-clip `length` duration-argument grammar.
  *
  * Requires Ableton (agentic — drives a live model against Live).
  *
  * The grammar itself (`Nbar`, `n<fraction>`, `Nbar+n<fraction>`; rejection of
  * bare numbers / bare fractions / the retired `2:0` glyph) is fully covered at
  * the parse level in `src/notation/barbeat/time/tests/barbeat-time-durations.test.ts`.
- * These scenarios measure the *reach-for* signal instead: does the model EMIT
+ * This scenario measures the *reach-for* signal instead: does the model EMIT
  * the new grammar in the `length` arg, and — critically — does it keep the
  * `Nbar+n<fraction>` combiner as bar-plus-note-value rather than collapsing it
  * into a single absolute fraction.
@@ -86,106 +86,45 @@ function assertLengthArg(
 }
 
 /**
- * Whole-bar length: "4 bars" should become a `Nbar` arg, never a fraction or a
- * bare number (bare `4` is a parse error).
+ * One scenario, three length probes — hardest first, because each turn primes
+ * the next: once the model has emitted `1bar+n/4` it is unlikely to fumble
+ * `4bar`. The combiner is the probe worth protecting, so it runs unprimed.
+ *
+ *  1. 6/8 combiner: "one bar plus one extra quarter note" = `1bar+n/4` = 4
+ *     quarter notes. Collapsing it to `n5/4` (5 quarters) is right in 4/4 and
+ *     WRONG in 6/8 — running it in 6/8 is what makes the misread observable.
+ *  2. Whole bars: "4 bars" → `4bar`, never a bare `4` (a parse error).
+ *  3. Sub-bar: "one quarter note long" → `n/4`, never a bare `1/4` (that means
+ *     beats, not a note value, and the length parser rejects it).
+ *
+ * Each clip goes in its own scene so a later create can't trip over an earlier
+ * one.
  */
-export const durationArgBarLength: EvalScenario = {
-  id: "duration-arg-bar-length",
-  description: "4-bar empty clip → length arg uses `Nbar` grammar",
-  kind: "capability",
-  liveSet: LIVE_SET,
-
-  messages: [
-    MSG_CONNECT,
-    "On the Drums track, create an empty 4-bar MIDI clip in the first scene (no notes yet — just set its length to 4 bars).",
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-
-    // `4bar` (with or without internal whitespace). Reject a bare `4` or a
-    // fraction masquerading as the length.
-    assertLengthArg(1, /^\s*4\s*bar\s*$/i, "length arg is `4bar`, not bare 4"),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the create-clip call (turn 1):
-1. An empty 4-bar clip was created on the Drums track in scene 1
-2. The length was expressed in bars (e.g. "4bar") — NOT as a bare number (4), a bare fraction, or a bar|beat position glyph
-3. The model did not add notes it wasn't asked for`,
-    },
-
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-  ],
-};
-
-/**
- * Sub-bar length: a clip "one quarter note long" should be `n/4` (an absolute
- * note value), never a bare fraction `1/4` (which means beats, not a note
- * value, and is rejected by the length parser).
- */
-export const durationArgSubBar: EvalScenario = {
-  id: "duration-arg-sub-bar",
-  description: "Quarter-note-long clip → length arg uses `n<fraction>` grammar",
-  kind: "capability",
-  liveSet: LIVE_SET,
-
-  messages: [
-    MSG_CONNECT,
-    "On the Drums track, create a very short empty MIDI clip in the first scene that is exactly one quarter note long.",
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-
-    // n/4 or n1/4 — the n-prefixed note value. A bare 1/4 would be rejected.
-    assertLengthArg(
-      1,
-      /^\s*n1?\/4\s*$/,
-      "length arg is `n/4` (note value), not bare 1/4",
-    ),
-
-    {
-      type: "token_usage",
-      metric: "inputTokens",
-      maxTokens: 80_000,
-    },
-  ],
-};
-
-/**
- * The combiner-misread probe. "One bar plus one extra quarter note" in 6/8 is
- * `1bar+n/4` = 3 + 1 = 4 quarter notes. The failure mode is collapsing it to a
- * single absolute fraction (`n5/4` = 5 quarters) — which only equals one bar +
- * a quarter in 4/4 and is WRONG in 6/8. Running this in 6/8 makes the misread
- * observable: the `Nbar+n<fraction>` form is the only correct encoding.
- */
-export const durationArgMixedCombiner: EvalScenario = {
-  id: "duration-arg-mixed-combiner",
+export const durationArgGrammar: EvalScenario = {
+  id: "duration-arg-grammar",
   description:
-    "1bar+n/4 in 6/8 → combiner kept as bar+note-value, not collapsed to n5/4",
+    "Clip lengths use the duration-arg grammar: 1bar+n/4 (6/8), 4bar, n/4",
   kind: "capability",
   liveSet: LIVE_SET,
 
   messages: [
     MSG_CONNECT,
     "On the Drums track, create an empty MIDI clip in the first scene, in 6/8 time, that is exactly one bar plus one extra quarter note long.",
+    "Now create an empty 4-bar MIDI clip on the Drums track in the second scene (no notes yet — just set its length to 4 bars).",
+    "Now create a very short empty MIDI clip on the Drums track in the third scene that is exactly one quarter note long.",
   ],
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
 
-    // Must be the mixed form: a bar count, then `+n<fraction>`. This rejects
-    // both `n5/4` (collapsed) and `1.25bar` (non-grammar).
+    // Turn 1 — the combiner. Must be a bar count then `+n<fraction>`: this
+    // rejects both `n5/4` (collapsed) and `1.25bar` (non-grammar).
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
     assertLengthArg(
       1,
       /^\s*1\s*bar\s*\+\s*n1?\/4\s*$/i,
       "length arg is `1bar+n/4`, not collapsed to n5/4",
     ),
-
     {
       type: "custom",
       description: "6/8 time signature was applied to the clip",
@@ -206,14 +145,18 @@ export const durationArgMixedCombiner: EvalScenario = {
       },
     },
 
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the create-clip call (turn 1):
-1. An empty clip was created in 6/8 time on the Drums track
-2. Its length is "one bar plus one quarter note" = 4 quarter notes total (6/8 bar = 3 quarter notes, plus 1 more)
-3. CRITICAL: the length was expressed as a bar count PLUS a note value (e.g. "1bar+n/4"), NOT collapsed into a single fraction like "n5/4". Collapsing to n5/4 = 5 quarter notes is WRONG in 6/8 — that is the failure to catch.`,
-    },
+    // Turn 2 — whole bars. `4bar`, with or without internal whitespace.
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 2 },
+    assertLengthArg(2, /^\s*4\s*bar\s*$/i, "length arg is `4bar`, not bare 4"),
 
-    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    // Turn 3 — sub-bar. `n/4` or `n1/4`, the n-prefixed note value.
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 3 },
+    assertLengthArg(
+      3,
+      /^\s*n1?\/4\s*$/,
+      "length arg is `n/4` (note value), not bare 1/4",
+    ),
+
+    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
   ],
 };

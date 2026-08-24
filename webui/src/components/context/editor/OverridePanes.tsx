@@ -6,7 +6,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { TrashIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
-import { MarkdownEditor } from "#webui/components/context/MarkdownEditor";
+import { MarkdownEditor } from "#webui/components/markdown-editor/MarkdownEditor";
 import { noop } from "#webui/components/mode-context";
 import { CHIP_BUTTON_CLASS } from "./context-buttons";
 
@@ -97,9 +97,9 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
   const seedKey = useBuiltInSeedKey(builtIn, hasOverride);
 
   return (
-    <div className="flex-1 min-h-0 flex gap-3">
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="flex items-center justify-between h-7 gap-3">
+    <div className="flex min-h-0 flex-1 gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex h-7 items-center justify-between gap-3">
           <span
             className={`min-w-0 truncate text-xs font-medium ${
               hasOverride
@@ -123,7 +123,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
                   }
                   aria-label="Reset to default"
                   title="Reset to default"
-                  className="shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+                  className="shrink-0 rounded p-0.5 text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
                 >
                   <TrashIcon />
                 </button>
@@ -150,13 +150,13 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
             onChange(next);
           }}
           onBlur={onBlur}
-          className="flex-1 min-h-0"
+          className="min-h-0 flex-1"
         />
       </div>
 
       {showBuiltIn && (
-        <div className="built-in-reveal flex-1 min-w-0 flex flex-col gap-1">
-          <div className="flex items-center justify-between h-7 gap-3">
+        <div className="built-in-reveal flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex h-7 items-center justify-between gap-3">
             <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
               Default
             </span>
@@ -179,7 +179,7 @@ export function OverridePanes(props: OverridePanesProps): preact.JSX.Element {
             initialValue={builtIn}
             readOnly={true}
             onChange={noop}
-            className="flex-1 min-h-0"
+            className="min-h-0 flex-1"
           />
         </div>
       )}

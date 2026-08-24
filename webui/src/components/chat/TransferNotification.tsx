@@ -28,21 +28,21 @@ export function TransferNotification({
 
   return (
     <div
-      className={`px-3 py-1.5 text-xs flex items-center gap-2 border-b ${colorClass}`}
+      className={`flex items-center gap-2 border-b px-3 py-1.5 text-xs ${colorClass}`}
       role="status"
     >
       <span className="flex-1">{notification.message}</span>
       {notification.action && (
         <button
           onClick={notification.action.onClick}
-          className="font-medium underline underline-offset-2 hover:opacity-80 transition-opacity"
+          className="font-medium underline underline-offset-2 transition-opacity hover:opacity-80"
         >
           {notification.action.label}
         </button>
       )}
       <button
         onClick={onDismiss}
-        className="text-current opacity-60 hover:opacity-100 transition-opacity"
+        className="text-current opacity-60 transition-opacity hover:opacity-100"
         aria-label="Dismiss notification"
       >
         <svg

@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
@@ -15,7 +16,14 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z.coerce.string().describe("comma-separated scene ID(s) to update"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("scene ID(s) to update, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated for each (extras keep existing name)",
@@ -23,7 +31,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the scenes)",
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),

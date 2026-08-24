@@ -8,6 +8,8 @@
 // There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code
 // in the respective source code folders.
 
+import { recordWarning } from "./v8-warning-capture.ts";
+
 // Declare Max for Live global functions
 declare function post(...args: unknown[]): void;
 declare function outlet(outletNumber: number, ...args: unknown[]): void;
@@ -87,6 +89,10 @@ export const error = (...args: unknown[]): void => {
   // src/types/max-globals.d.ts). Self-type the access here so this module also
   // typechecks when pulled into graphs that don't include src/types (e.g. the
   // e2e/mcp tsconfig). Falls back to Node's console.error outside Max.
+  //
+  // Max V8 does put its globals on globalThis (verified in Live). That is
+  // load-bearing: a warning raised with no request in flight reaches the user
+  // only through this call.
   const maxError = (globalThis as { error?: (...args: unknown[]) => void })
     .error;
 
@@ -99,20 +105,33 @@ export const error = (...args: unknown[]): void => {
 };
 
 /**
- * Log warning values to Max console and emit to outlet 1 for MCP capture.
- * Emits to outlet(1) to pass the warning string to the MCP response.
- * Falls back to console.warn when outlet is not available.
+ * Log a warning for the AI to read in the tool result.
+ *
+ * The in-flight request buffers it and appends it to its own response, so a
+ * warning can't land on an unrelated one. With no request in flight there is no
+ * response to append to, so it goes to the Max console — the user can act on it,
+ * and no other request's result gets polluted.
+ *
+ * Outlet 1 still carries every warning, as a debug stream nothing in the patch
+ * is wired to — hang a print on it when you need to watch warnings live.
+ *
  * @param args - Values to log as warnings
  */
 export const warn = (...args: unknown[]): void => {
   const parts = args.map(str);
+  const message = parts.join(" ");
+  const captured = recordWarning(message);
 
   if (typeof outlet === "function") {
-    outlet(1, parts.join(" "));
+    outlet(1, message);
   } else if (
     typeof console !== "undefined" &&
     typeof console.warn === "function"
   ) {
     console.warn(...parts);
+  }
+
+  if (!captured) {
+    error(message);
   }
 };

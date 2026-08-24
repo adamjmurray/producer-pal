@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 
 /**
  * Determines the target view based on destination and type
@@ -51,14 +51,14 @@ export function focusIfRequested(
   const lastId = lastObject?.id;
 
   if (type === "clip" && lastId) {
-    select({ clipId: lastId, detailView: "clip" });
+    focusSelect({ id: lastId, detailView: "clip" });
   } else if (type === "scene" && lastId) {
-    select({ view: "session", sceneId: lastId });
+    focusSelect({ view: "session", id: lastId });
   } else {
     const targetView = determineTargetView(destination, type);
 
     if (targetView) {
-      select({ view: targetView });
+      focusSelect({ view: targetView });
     }
   }
 }

@@ -90,11 +90,11 @@ export function HeaderActions({
     : "Connection settings";
 
   return (
-    <div className="ml-auto flex gap-2 sm:gap-3 items-center min-w-0">
+    <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
       <button
         type="button"
         onClick={onOpenConnectionSettings}
-        className={`text-xs ${modelColor} whitespace-nowrap truncate min-w-0 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer`}
+        className={`text-xs ${modelColor} min-w-0 cursor-pointer truncate whitespace-nowrap transition-colors hover:text-zinc-700 dark:hover:text-zinc-200`}
         title={modelTitle}
       >
         <span className="hidden sm:inline">
@@ -106,7 +106,7 @@ export function HeaderActions({
       <button
         type="button"
         onClick={onOpenToolsSettings}
-        className="hover:opacity-70 transition-opacity cursor-pointer shrink-0"
+        className="shrink-0 cursor-pointer transition-opacity hover:opacity-70"
         title="Tools settings"
       >
         <ToolsIndicator
@@ -124,7 +124,7 @@ export function HeaderActions({
       <button
         type="button"
         onClick={onOpenConnectionSettings}
-        className="mr-1 hover:opacity-70 transition-opacity cursor-pointer shrink-0"
+        className="mr-1 shrink-0 cursor-pointer transition-opacity hover:opacity-70"
         title="Connection settings"
       >
         <SmallModelIndicator

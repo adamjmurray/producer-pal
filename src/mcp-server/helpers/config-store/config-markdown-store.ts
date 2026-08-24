@@ -133,7 +133,7 @@ export function listConfigMarkdownFiles(subdir: string): string[] {
     readdirSync(join(configDir(), subdir), { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
       .map((entry) => entry.name)
-      .sort(),
+      .toSorted(),
   );
 }
 
@@ -157,7 +157,7 @@ export function listConfigMarkdownFilesRecursive(subdir: string): string[] {
       .map((entry) =>
         relative(base, join(entry.parentPath, entry.name)).split(sep).join("/"),
       )
-      .sort(),
+      .toSorted(),
   );
 }
 

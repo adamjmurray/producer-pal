@@ -50,6 +50,21 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
 
+## MCP server tests
+
+`test-setup.ts` installs the `max-api` mock from `src/test/mocks/mock-max.ts`,
+which answers every tool call with a bare success. Don't build your own
+`Max.outlet` — use:
+
+- `setMcpResponse(payload)` to answer with a specific MCP response body.
+- `neverRespondToMcp()` to accept the request and never reply, so the adapter's
+  timeout path fires.
+- `mcpRequests` / `lastMcpContext()` to read what reached V8 — the seam
+  per-request overrides (notation, `compactOutput`, `timeoutMs`) travel through.
+
+`beforeEach` resets all of it, including `Max.outlet` itself, so a test that
+does need to replace the outlet outright doesn't leak into the next one.
+
 ## Webui tests
 
 Colocated with the source, using vitest + @testing-library/preact
@@ -108,4 +123,13 @@ approval.
 
 `e2e/mcp/` drives a real Ableton Live; see `e2e/mcp/README.md`. Always ask
 before running these, and always run a single file — the full suite takes
-minutes.
+minutes. `ABLETON_APP` picks the Live bundle to open Sets with, for testing a
+version installed side-by-side.
+
+Under `once`, `setupMcpTestContext` resets the config in its `beforeAll` as well
+as the per-test `beforeEach`, so a `beforeAll` of your own can call tools and
+still get JSON. Don't add a `resetConfig()` of your own for that.
+
+`e2e/portal/` drives the built portal binary against a stub device, so it needs
+neither Live nor a network — just `npm run build` first. See
+`e2e/portal/README.md`.

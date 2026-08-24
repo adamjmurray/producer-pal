@@ -332,7 +332,7 @@ describe("view", () => {
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
       expect(result.selectedClip).toBeDefined();
-      expect(result.selectedClip?.slot).toBe("0/1");
+      expect(result.selectedClip?.path).toBe("t0/s1");
     });
 
     it("only highlights empty slot without opening detail", () => {
@@ -417,7 +417,18 @@ describe("view", () => {
 
       expect(() => {
         select({ id: "id device_123", devicePath: "t0/d1" });
-      }).toThrow("cannot specify both id (device) and devicePath");
+      }).toThrow("cannot specify both id and devicePath");
+    });
+
+    it("names path when id and path both name a device", () => {
+      registerMockObject("device_123", {
+        path: String(livePath.track(0).device(0)),
+        type: "Device",
+      });
+
+      expect(() => {
+        select({ id: "id device_123", path: "t0/d1" });
+      }).toThrow("cannot specify both id and path");
     });
 
     it("throws error when id (track) and trackIndex refer to different tracks", () => {

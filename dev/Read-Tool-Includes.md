@@ -39,6 +39,18 @@ comma-separated list, ending with `"*" for all`. Example:
 Expands to all available include options for that tool type. Useful for
 debugging, but should be avoided in production for large Live Sets.
 
+### Small-model trims
+
+Every read tool drops some include options in small-model mode, via
+`excludeEnumValues` on the `include` param (see `dev/Tool-Schemas.md`). The trim
+is enforced: the value is removed from the schema that validates, so sending it
+is an error rather than a no-op. `"*"` is dropped everywhere.
+
+Which options go, and why, is ADR-0026 — the short version is that an option
+goes when nothing the small model can do depends on it. Fields inside a
+surviving option are never suppressed. The per-tool lists live in each
+`.def.ts`; the tables below describe large-model mode.
+
 ### Include propagation
 
 `ppal-read-track` and `ppal-read-scene` pass their full `include` array through
@@ -50,12 +62,12 @@ to `readClip()`. Only clip-recognized includes affect clip output.
 
 Nested clip results have context-redundant fields removed to save tokens:
 
-- **In `ppal-read-track`**: `trackIndex`, `view`, and `type` are stripped from
-  clips in `sessionClips`/`arrangementClips` arrays (redundant with the parent
-  track's properties and the array name)
-- **In `ppal-read-scene`**: `sceneIndex` and `view` are stripped from clips in
-  the `clips` array (redundant with the parent scene's index; scenes are always
-  session view)
+- **In `ppal-read-track`**: `view` and `type` are stripped from clips in
+  `sessionClips`/`arrangementClips` (redundant with the parent track's
+  properties and the array name). Clips in `takeLanes` also lose `path`, which
+  the lane entry already carries.
+- **In `ppal-read-scene`**: `view` is stripped from clips in the `clips` array
+  (scenes are always session view)
 
 When reading clips directly via `ppal-read-clip`, all fields are present.
 
@@ -136,14 +148,18 @@ Returns track overview by default. Use `include` to add detail.
 | `state`                | `string` | Only present when not "ACTIVE" (e.g., muted, soloed)          |
 | `sessionClipCount`     | `number` | Number of session clips (replaced by array when included)     |
 | `arrangementClipCount` | `number` | Number of arrangement clips (replaced by array when included) |
+| `takeLaneCount`        | `number` | Number of take lanes (only when the track has any)            |
 | `deviceCount`          | `number` | Number of devices (replaced by array when included)           |
 | `hasProducerPalDevice` | `true`   | Only present on the Producer Pal host track                   |
 
 ### Include: `"session-clips"`, `"arrangement-clips"`
 
 Replaces `sessionClipCount` / `arrangementClipCount` with full clip arrays. Each
-clip is read via `readClip()`. Nested clips have `trackIndex`, `view`, and
-`type` stripped (see "Redundant field stripping").
+clip is read via `readClip()`. Nested clips have `view` and `type` stripped (see
+"Redundant field stripping").
+
+`arrangement-clips` also replaces `takeLaneCount` with `takeLanes`: one entry
+per lane, each with its `path` (e.g. `"t2/l0"`), `name`, and `clips`.
 
 ### Other includes
 
@@ -189,8 +205,8 @@ Returns scene overview by default. Use `include` to add detail.
 ### Include: `"clips"`
 
 Replaces `clipCount` with full clip details for all non-empty clips in the
-scene. Each clip is read via `readClip()`. Nested clips have `sceneIndex` and
-`view` stripped (see "Redundant field stripping").
+scene. Each clip is read via `readClip()`. Nested clips have `view` stripped
+(see "Redundant field stripping").
 
 | Field   | Type     | Description                               |
 | ------- | -------- | ----------------------------------------- |
@@ -207,20 +223,19 @@ section for details on these includes.
 
 Always returned for any clip:
 
-| Field              | Type                         | Description                       |
-| ------------------ | ---------------------------- | --------------------------------- |
-| `id`               | `string`                     | Clip ID                           |
-| `type`             | `"midi" \| "audio"`          | Clip type                         |
-| `name`             | `string`                     | Clip name (omitted if empty)      |
-| `view`             | `"session" \| "arrangement"` | Which view the clip is in         |
-| `trackIndex`       | `number`                     | 0-based track index               |
-| `sceneIndex`       | `number`                     | Session only: 0-based scene index |
-| `arrangementStart` | `string` (bar\|beat)         | Arrangement only: start position  |
-| `playing`          | `true`                       | Only present when true            |
-| `triggered`        | `true`                       | Only present when true            |
-| `recording`        | `true`                       | Only present when true            |
-| `overdubbing`      | `true`                       | Only present when true            |
-| `muted`            | `true`                       | Only present when true            |
+| Field              | Type                         | Description                                                                         |
+| ------------------ | ---------------------------- | ----------------------------------------------------------------------------------- |
+| `id`               | `string`                     | Clip ID                                                                             |
+| `type`             | `"midi" \| "audio"`          | Clip type                                                                           |
+| `name`             | `string`                     | Clip name (omitted if empty)                                                        |
+| `view`             | `"session" \| "arrangement"` | Which view the clip is in                                                           |
+| `path`             | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0"` or `"t0/l1"` in the arrangement |
+| `arrangementStart` | `string` (bar\|beat)         | Arrangement only: start position                                                    |
+| `playing`          | `true`                       | Only present when true                                                              |
+| `triggered`        | `true`                       | Only present when true                                                              |
+| `recording`        | `true`                       | Only present when true                                                              |
+| `overdubbing`      | `true`                       | Only present when true                                                              |
+| `muted`            | `true`                       | Only present when true                                                              |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
 `muted`) are omitted when `false` to reduce response size.
@@ -301,7 +316,7 @@ in release builds. The examples below show it as it appears in a debug build.
 **Minimal read (overview only):**
 
 ```json
-{ "trackIndex": 0, "sceneIndex": 0 }
+{ "path": "t0/s0" }
 ```
 
 Result:
@@ -312,8 +327,7 @@ Result:
   "type": "midi",
   "name": "Drums",
   "view": "session",
-  "trackIndex": 0,
-  "sceneIndex": 0,
+  "path": "t0/s0",
   "playing": true
 }
 ```
@@ -321,7 +335,7 @@ Result:
 **Read MIDI clip with notes and timing:**
 
 ```json
-{ "trackIndex": 0, "sceneIndex": 0, "include": ["timing", "notes"] }
+{ "path": "t0/s0", "include": ["timing", "notes"] }
 ```
 
 Result:
@@ -332,8 +346,7 @@ Result:
   "type": "midi",
   "name": "Drums",
   "view": "session",
-  "trackIndex": 0,
-  "sceneIndex": 0,
+  "path": "t0/s0",
   "timeSignature": "4/4",
   "looping": true,
   "start": "1|1",
@@ -346,7 +359,7 @@ Result:
 **Read audio clip with all audio details:**
 
 ```json
-{ "trackIndex": 1, "sceneIndex": 0, "include": ["sample", "warp"] }
+{ "path": "t1/s0", "include": ["sample", "warp"] }
 ```
 
 Result (gainDb/pitchShift omitted when 0):
@@ -357,8 +370,7 @@ Result (gainDb/pitchShift omitted when 0):
   "type": "audio",
   "name": "Guitar Loop",
   "view": "session",
-  "trackIndex": 1,
-  "sceneIndex": 0,
+  "path": "t1/s0",
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",
   "sampleLength": 441000,
   "sampleRate": 44100,
@@ -374,7 +386,7 @@ Result (gainDb/pitchShift omitted when 0):
 **Read everything:**
 
 ```json
-{ "trackIndex": 0, "sceneIndex": 0, "include": ["*"] }
+{ "path": "t0/s0", "include": ["*"] }
 ```
 
 MIDI clip result:
@@ -385,8 +397,7 @@ MIDI clip result:
   "type": "midi",
   "name": "Drums",
   "view": "session",
-  "trackIndex": 0,
-  "sceneIndex": 0,
+  "path": "t0/s0",
   "color": "#3DC300",
   "timeSignature": "4/4",
   "looping": true,
@@ -405,8 +416,7 @@ Audio clip result:
   "type": "audio",
   "name": "Guitar Loop",
   "view": "session",
-  "trackIndex": 1,
-  "sceneIndex": 0,
+  "path": "t1/s0",
   "color": "#FF6B00",
   "sampleFile": "/Users/user/Samples/guitar-loop.wav",
   "timeSignature": "4/4",

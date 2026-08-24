@@ -8,7 +8,7 @@ import { type Notation } from "#src/shared/notation";
 import {
   type ActiveMeta,
   DEFAULT_META,
-} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import { type Provider } from "#webui/types/settings";
 
 export interface SyncActiveMetaParams {

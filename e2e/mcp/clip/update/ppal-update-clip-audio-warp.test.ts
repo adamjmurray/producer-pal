@@ -39,7 +39,7 @@ import {
 
 const ctx = setupMcpTestContext();
 
-const SLOT = `${AUDIO_WARP_TRACK}/1`;
+const SLOT_PATH = `t${AUDIO_WARP_TRACK}/s1`;
 
 /**
  * Update a clip and read it back with every include.
@@ -55,7 +55,7 @@ async function updateAndRead(
 ): Promise<{ clip: ReadClipResult; warnings: string[] }> {
   const result = await client.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, ...args },
+    arguments: { id: clipId, ...args },
   });
   const { warnings } = parseToolResultWithWarnings<unknown>(result);
 
@@ -98,7 +98,7 @@ describe("ppal-update-clip audio warping", () => {
     // in beats, stretching the clip by tempo/60.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "warp round trip",
       warping: true,
     });
@@ -127,7 +127,7 @@ describe("ppal-update-clip audio warping", () => {
     // markers start out in seconds and the first switch is the one into beats.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      trackIndex: AUDIO_WARP_TRACK,
+      path: `t${AUDIO_WARP_TRACK}`,
       arrangementStart: "49|1",
       name: "warp round trip",
       warping: false,
@@ -145,7 +145,7 @@ describe("ppal-update-clip audio warping", () => {
     // Only the warning and the two flags. ppal-update-clip-loop-toggle covers
     // what the skipped unwarp would have done to the region.
     const { created } = await createAndRead(ctx.client!, {
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "looping veto",
       warping: true,
     });
@@ -165,7 +165,7 @@ describe("ppal-update-clip audio warping", () => {
     // front so the region math stays on one side of the unit switch.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "looping forces warp",
       warping: false,
     });
@@ -185,7 +185,7 @@ describe("ppal-update-clip audio warping", () => {
     // requested region is written and then thrown away.
     const song = await readSongTiming(ctx.client!);
     const { created, clip: whole } = await createAndRead(ctx.client!, {
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "unwarp with region",
       warping: true,
     });
@@ -212,7 +212,7 @@ describe("ppal-update-clip audio warping", () => {
     // off the bar line as a fraction rather than a round note value.
     const { created, clip: unwarped } = await createAndRead(ctx.client!, {
       sampleFile: DRUM_LOOP_FILE,
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "one bar loop",
       warping: false,
     });
@@ -236,7 +236,7 @@ describe("ppal-update-clip audio warping", () => {
     // file — leaving the clip looking untouched.
     const song = await readSongTiming(ctx.client!);
     const { created, clip: whole } = await createAndRead(ctx.client!, {
-      slot: SLOT,
+      path: SLOT_PATH,
       name: "unwarped region write",
       warping: false,
     });

@@ -39,7 +39,7 @@ export const CODEX_CLI_TRANSPORT: AgentCliTransport = {
   strippedEnvVars: ["CODEX_API_KEY", "OPENAI_API_KEY", "OPENAI_KEY"],
   // Fixed alias set (no models endpoint); read from the aliases so a listing
   // can't advertise a name the CLI can't resolve.
-  models: Object.keys(CODEX_MODEL_ALIASES).sort(),
+  models: Object.keys(CODEX_MODEL_ALIASES).toSorted(),
   judgeModel: "luna",
   buildTurnArgs: codexTurnArgs,
   buildJudgeArgs: codexJudgeArgs,
@@ -151,6 +151,11 @@ function buildRestrictedArgs(input: AgentCliArgsInput): string[] {
     "unified_exec",
     "--disable",
     "multi_agent",
+    // Off, or every installed Codex app comes back as MCP tools — including a
+    // second Producer Pal competing with the eval's own server.
+    // --ignore-user-config does not cover it.
+    "--disable",
+    "apps",
     "--model",
     resolveCodexModel(input.model),
     "-c",

@@ -23,7 +23,7 @@ interface OversizedFolder {
 /**
  * Recursively find folders exceeding an item limit
  * @param dirPath - Directory to scan
- * @param excludeDirs - Directory names to exclude
+ * @param excludeDirs - Folders not to descend into, each a bare name or a project-relative path
  * @param maxItems - Maximum items allowed per folder
  * @param ignoreItems - Items to ignore in count
  * @returns Folders over limit
@@ -47,9 +47,14 @@ export function findOversizedFolders(
   }
 
   for (const item of items) {
-    if (excludeDirs.includes(item)) continue;
-
     const fullPath = path.join(dirPath, item);
+
+    if (
+      excludeDirs.includes(item) ||
+      excludeDirs.includes(path.relative(projectRoot, fullPath))
+    ) {
+      continue;
+    }
 
     if (fs.statSync(fullPath).isDirectory()) {
       results.push(
@@ -86,6 +91,16 @@ function isGitIgnored(dirPath: string, item: string): boolean {
 }
 
 /**
+ * Folders the size limit doesn't apply to. The limit keeps code folders
+ * navigable; test-fixture media is content, where the file count is the point
+ * and the Live Sets reference the paths, so splitting it would break them.
+ */
+const SIZE_LIMIT_EXCLUDED_DIRS: string[] = [
+  "node_modules",
+  path.join("e2e", "live-sets", "samples"),
+];
+
+/**
  * Assert that no folders exceed the item limit, with a detailed failure message
  * @param dirPath - Directory to check
  * @param maxItems - Maximum items allowed
@@ -98,7 +113,11 @@ export function assertFolderSizeLimit(
 ): void {
   if (!fs.existsSync(dirPath)) return;
 
-  const oversized = findOversizedFolders(dirPath, ["node_modules"], maxItems);
+  const oversized = findOversizedFolders(
+    dirPath,
+    SIZE_LIMIT_EXCLUDED_DIRS,
+    maxItems,
+  );
 
   if (oversized.length > 0) {
     const details = oversized

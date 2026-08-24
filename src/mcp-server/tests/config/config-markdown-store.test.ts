@@ -49,7 +49,7 @@ describe("listConfigMarkdownFiles", () => {
   it("throws when the path is present but not a directory", () => {
     writeFileSync(join(getDir(), "memory"), "not a dir");
 
-    expect(() => listConfigMarkdownFiles("memory")).toThrow();
+    expect(() => listConfigMarkdownFiles("memory")).toThrow("ENOTDIR");
   });
 
   it("ignores a .md-named directory instead of listing it", () => {

@@ -22,13 +22,13 @@ export function ProviderSelector({
 }: ProviderSelectorProps) {
   return (
     <div>
-      <label className="block text-sm mb-2">Provider</label>
+      <label className="mb-2 block text-sm">Provider</label>
       <select
         value={provider}
         onChange={(e) =>
           setProvider((e.target as HTMLSelectElement).value as Provider)
         }
-        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="provider-select"
       >
         <option value="gemini">Google</option>
@@ -36,7 +36,7 @@ export function ProviderSelector({
         <option value="openai">OpenAI</option>
         <option value="anthropic">Anthropic</option>
         <option value="ollama">Ollama (local)</option>
-        <option value="lmstudio">LM Studio (local)</option>
+        <option value="lmstudio">Bionic / LM Studio (local)</option>
         <option value="openrouter">OpenRouter</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
       </select>

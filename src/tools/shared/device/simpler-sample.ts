@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
@@ -39,7 +40,7 @@ export function probeSimplerSample(
     return { kind: "not-simpler" };
   }
 
-  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+  if (!isSingleSampleSimpler(device, className)) {
     return { kind: "multisample" };
   }
 
@@ -93,6 +94,14 @@ export function setSimplerSample(
     return;
   }
 
+  if (!supportsReplaceSample()) {
+    console.warn(
+      `${toolName}: 'sample' requires Live ${REPLACE_SAMPLE_MIN_VERSION} or later`,
+    );
+
+    return;
+  }
+
   device.call("replace_sample", trimmed);
 }
 
@@ -120,7 +129,7 @@ export function setSimplerGain(
     return;
   }
 
-  const sample = device.getChildren("sample")[0];
+  const sample = device.getChildAt("sample", 0);
 
   if (sample?.getProperty("file_path") == null) {
     console.warn(`${toolName}: 'gainDb' requires a loaded sample`);
@@ -129,6 +138,41 @@ export function setSimplerGain(
   }
 
   sample.set("gain", dbToLiveGain(dB));
+}
+
+/**
+ * Whether a device takes a single-sample write: a Simpler, not in multi-sample
+ * mode. Two property reads and no child objects — the cheap check for a caller
+ * that only needs yes/no, where probeSimplerSample would build a sample object
+ * per device just to say which flavor of yes.
+ * @param device - LiveAPI device object
+ * @param className - The device's class_display_name (passed in to avoid a
+ *   redundant property fetch when the caller already has it)
+ * @returns True when the device is a Simpler in single-sample mode
+ */
+export function isSingleSampleSimpler(
+  device: LiveAPI,
+  className: string,
+): boolean {
+  return (
+    className === DEVICE_CLASS.SIMPLER &&
+    !((device.getProperty("multi_sample_mode") as number) > 0)
+  );
+}
+
+/** Simpler's `replace_sample` function was added in Live 12.4. */
+const REPLACE_SAMPLE_MIN_VERSION = "12.4";
+
+/**
+ * Test whether this Live can load a sample into Simpler. Older versions have no
+ * `replace_sample` function, and calling a function Live doesn't have returns
+ * normally and does nothing — so check the version instead of the return value.
+ * @returns True on Live 12.4 and later
+ */
+function supportsReplaceSample(): boolean {
+  const version = String(LiveAPI.from("live_app").call("get_version_string"));
+
+  return !isNewerVersion(version, REPLACE_SAMPLE_MIN_VERSION);
 }
 
 /**

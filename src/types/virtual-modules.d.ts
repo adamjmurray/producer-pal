@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Type declarations for Rollup/Vite virtual modules.
+ * Type declarations for Rolldown/Vite virtual modules.
  * These are generated at build time and don't exist as real files.
  */
 

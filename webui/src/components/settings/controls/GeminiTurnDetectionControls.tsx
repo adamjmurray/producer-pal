@@ -83,7 +83,7 @@ export function GeminiTurnDetectionControls({
         testId="gemini-prefix"
         onChange={(prefixPaddingMs) => update({ prefixPaddingMs })}
       />
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input
           type="checkbox"
           id="gemini-barge-in"
@@ -126,7 +126,7 @@ function SensitivitySelect({
 }: SensitivitySelectProps) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm mb-2">
+      <label htmlFor={id} className="mb-2 block text-sm">
         {label}
       </label>
       <select

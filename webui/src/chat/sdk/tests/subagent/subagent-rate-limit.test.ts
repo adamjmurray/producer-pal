@@ -81,11 +81,40 @@ function setup(
   return { options, history, calls };
 }
 
+/** A scripted attempt that hits the provider's rate limit. */
+const rateLimited = (): never => {
+  throw rateLimitError();
+};
+
+/**
+ * A scripted attempt that finishes the task.
+ * @param history - The worker's history, which the attempt appends to
+ */
+const finishTask = (history: ChatMessage[]): void => {
+  history.push({ role: "assistant", content: "Done." });
+};
+
+/**
+ * Penalize a fresh gate and park one waiter on it.
+ * @param ms - The cooldown to penalize with
+ * @returns The gate, the parked wait, and a reader for whether it released
+ */
+function parkWaiter(ms: number) {
+  const gate = new RateLimitGate();
+  let released = false;
+
+  gate.penalize(ms);
+
+  const waiting = gate.wait().then(() => {
+    released = true;
+  });
+
+  return { gate, waiting, isReleased: () => released };
+}
+
 describe("runSubagentWithRetry", () => {
   it("sends the task on the only attempt when nothing goes wrong", async () => {
-    const { options, calls } = setup([
-      (history) => history.push({ role: "assistant", content: "Done." }),
-    ]);
+    const { options, calls } = setup([finishTask]);
 
     await runSubagentWithRetry(options);
 
@@ -93,12 +122,7 @@ describe("runSubagentWithRetry", () => {
   });
 
   it("retries a rate-limited worker instead of failing the spawn", async () => {
-    const { options, calls } = setup([
-      () => {
-        throw rateLimitError();
-      },
-      (history) => history.push({ role: "assistant", content: "Done." }),
-    ]);
+    const { options, calls } = setup([rateLimited, finishTask]);
 
     await runSubagentWithRetry(options);
 
@@ -109,12 +133,7 @@ describe("runSubagentWithRetry", () => {
     // The task is already in the worker's history; replaying it stacked a
     // duplicate user turn, and the model saw the instruction twice because
     // consecutive user turns are concatenated for the wire.
-    const { options, history, calls } = setup([
-      () => {
-        throw rateLimitError();
-      },
-      (h) => h.push({ role: "assistant", content: "Done." }),
-    ]);
+    const { options, history, calls } = setup([rateLimited, finishTask]);
 
     await runSubagentWithRetry(options);
 
@@ -132,14 +151,9 @@ describe("runSubagentWithRetry", () => {
 
         throw rateLimitError();
       },
-      (h) => h.push({ role: "assistant", content: "Done." }),
+      finishTask,
     ]);
-    const producedNothing = setup([
-      () => {
-        throw rateLimitError();
-      },
-      (h) => h.push({ role: "assistant", content: "Done." }),
-    ]);
+    const producedNothing = setup([rateLimited, finishTask]);
 
     await runSubagentWithRetry(producedOutput.options);
     await runSubagentWithRetry(producedNothing.options);
@@ -151,15 +165,7 @@ describe("runSubagentWithRetry", () => {
   });
 
   it("resumes every subsequent attempt, not just the first retry", async () => {
-    const { options, calls } = setup([
-      () => {
-        throw rateLimitError();
-      },
-      () => {
-        throw rateLimitError();
-      },
-      (h) => h.push({ role: "assistant", content: "Done." }),
-    ]);
+    const { options, calls } = setup([rateLimited, rateLimited, finishTask]);
 
     await runSubagentWithRetry(options);
 
@@ -168,15 +174,7 @@ describe("runSubagentWithRetry", () => {
 
   it("penalizes the shared gate so sibling workers back off too", async () => {
     const gate = new RateLimitGate();
-    const { options } = setup(
-      [
-        () => {
-          throw rateLimitError();
-        },
-        (h) => h.push({ role: "assistant", content: "Done." }),
-      ],
-      { gate },
-    );
+    const { options } = setup([rateLimited, finishTask], { gate });
 
     const penalized = new Promise<number>((resolve) => {
       const original = gate.penalize.bind(gate);
@@ -257,15 +255,9 @@ describe("runSubagentWithRetry", () => {
 
   it("publishes the backoff for the card and clears it when done", async () => {
     const statuses: Array<SubagentRateLimitStatus | null> = [];
-    const { options } = setup(
-      [
-        () => {
-          throw rateLimitError();
-        },
-        (h) => h.push({ role: "assistant", content: "Done." }),
-      ],
-      { onStatus: (status) => statuses.push(status) },
-    );
+    const { options } = setup([rateLimited, finishTask], {
+      onStatus: (status) => statuses.push(status),
+    });
 
     await runSubagentWithRetry(options);
 
@@ -359,44 +351,30 @@ describe("RateLimitGate", () => {
   });
 
   it("parks waiters until the cooldown elapses", async () => {
-    const gate = new RateLimitGate();
-    let released = false;
-
-    gate.penalize(1000);
-
-    const waiting = gate.wait().then(() => {
-      released = true;
-    });
+    const { waiting, isReleased } = parkWaiter(1000);
 
     await vi.advanceTimersByTimeAsync(600);
-    expect(released).toBe(false);
+    expect(isReleased()).toBe(false);
 
     await vi.advanceTimersByTimeAsync(400);
     await waiting;
-    expect(released).toBe(true);
+    expect(isReleased()).toBe(true);
   });
 
   it("keeps a waiter parked when a sibling extends the window mid-wait", async () => {
     // The whole point of sharing the gate: worker B's longer Retry-After must
     // hold worker A too, instead of A waking on its own shorter deadline.
-    const gate = new RateLimitGate();
-    let released = false;
-
-    gate.penalize(1000);
-
-    const waiting = gate.wait().then(() => {
-      released = true;
-    });
+    const { gate, waiting, isReleased } = parkWaiter(1000);
 
     await vi.advanceTimersByTimeAsync(600);
     gate.penalize(1000);
 
     await vi.advanceTimersByTimeAsync(400);
-    expect(released).toBe(false);
+    expect(isReleased()).toBe(false);
 
     await vi.advanceTimersByTimeAsync(600);
     await waiting;
-    expect(released).toBe(true);
+    expect(isReleased()).toBe(true);
   });
 
   it("reports the current deadline to a waiter, and again when it moves", async () => {

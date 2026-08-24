@@ -30,6 +30,11 @@ declare global {
      * for a valid object, a nonexistent path, a nonexistent nested path, and a
      * nonexistent id. Callers may treat this as a string unconditionally;
      * guard on exists() to tell "0" from a real id.
+     *
+     * Declared readonly for the same reason as `path`: Max allows assigning a
+     * bare id string to retarget the instance, and the resolved path comes back
+     * with it. The sanctioned writes are the pool in live-api-extensions.ts and
+     * the ppal-live-api set_id operation.
      */
     readonly id: string;
 
@@ -38,8 +43,9 @@ declare global {
      * Always a string. Verified alongside `id` on Live 12.4.3 (v8).
      *
      * Declared readonly on purpose: Max allows assigning it, but retargeting a
-     * live instance is a footgun everywhere except the ppal-live-api tool,
-     * which casts this away deliberately.
+     * live instance is a footgun outside the release in live-api-release.ts and
+     * the ppal-live-api set_path operation, both of which cast it away
+     * deliberately.
      */
     readonly path: string;
 
@@ -52,11 +58,29 @@ declare global {
     /** The type of the Live object (e.g., "Track", "Clip", "Device") */
     readonly type: LiveObjectType;
 
-    /** Get a property value from the Live object (returns array) */
-    get(property: string): unknown[];
+    // ===== Live object methods =====
+    //
+    // None of these throw when the object doesn't exist — a bad path, a bad
+    // index, a bad id, or a path cleared to "". Instead, measured on Live
+    // 12.4.3 (v8): get, set, call and getstring all return the number 1,
+    // getcount returns 0, and info returns "No object". Read a bare 1 back as
+    // "no object, no answer".
+    //
+    // Prefer the wrapper methods further down, which normalize all of that into
+    // ordinary empty values (undefined, [], null, false).
 
-    /** Set a property value on the Live object */
-    set(property: string, value: unknown): void;
+    /** Get a property value from the Live object. An array, or 1 if there is no object. */
+    get(property: string): unknown[] | number;
+
+    /**
+     * Set a property value on the Live object.
+     *
+     * Always returns 1 — it is not a success flag. Measured on Live 12.4.3
+     * (v8), a read-only property, a wrong-typed value, an unknown property, an
+     * out-of-range value, and a nonexistent target all return 1, and none of
+     * them throw. Read the property back to find out whether the write landed.
+     */
+    set(property: string, value: unknown): number;
 
     /** Call a method on the Live object */
     call(method: string, ...args: unknown[]): unknown;
@@ -64,13 +88,13 @@ declare global {
     /** Navigate to a different Live Object Model path */
     goto(path: string): void;
 
-    /** Count the object's children in the named collection */
+    /** Count the object's children in the named collection. 0 if there is no object. */
     getcount(name: string): number;
 
-    /** Get a property value as a string */
-    getstring(property: string): string;
+    /** Get a property value as a string, or 1 if there is no object. */
+    getstring(property: string): string | number;
 
-    /** Get information about the current object (properties, children, etc.) */
+    /** Information about the object (properties, children, ...), or "No object". */
     readonly info: string;
 
     // ===== Custom extensions from live-api-extensions.js =====
@@ -115,6 +139,15 @@ declare global {
 
     /** Get child objects as LiveAPI instances */
     getChildren(name: string): LiveAPI[];
+
+    /** Count a collection without building any of its children */
+    getChildCount(name: string): number;
+
+    /** Get one child of a collection, building only that one */
+    getChildAt(name: string, index: number): LiveAPI | null;
+
+    /** Whether any child passes the test, building children until one does */
+    someChild(name: string, predicate: (child: LiveAPI) => boolean): boolean;
 
     /** Get the color as a CSS hex string (e.g., "#FF0000") */
     getColor(): string | null;

@@ -13,9 +13,28 @@ import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
+/**
+ * Beat tolerance for length comparisons across arrangement editing. Splitting
+ * also uses it as the margin keeping split points off a clip's edges — see the
+ * validPoints filter in arrangement-splitting.ts, which must not drift from the
+ * trim guards that share this value.
+ */
+export const EPSILON = 0.001;
+
 export interface TilingContext {
   /** Path to silence WAV file for audio clip operations */
   silenceWavPath: string;
+  /**
+   * Absolute timestamp the request must finish by, from computeLoopDeadline.
+   * Long tiling runs check it so they stop and report what they placed, instead
+   * of running past the Node-side timeout that replaces the whole response with
+   * an error. Undefined/null means no deadline.
+   */
+  deadline?: number | null;
+}
+
+export interface CreatedClip {
+  id: string;
 }
 
 interface SessionClipResult {
@@ -63,7 +82,7 @@ export function createAudioClipInSession(
   const trackIndex = track.trackIndex as number;
   const sceneIndex = sceneIds.indexOf(workingSceneId);
 
-  // Create clip in session slot with audio file
+  // Create the audio clip in a clip slot
   const slot = LiveAPI.from(livePath.track(trackIndex).clipSlot(sceneIndex));
 
   // create_audio_clip requires a file path

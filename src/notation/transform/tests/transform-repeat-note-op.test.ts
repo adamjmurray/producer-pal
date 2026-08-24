@@ -137,7 +137,7 @@ describe("note-count operation: repeat", () => {
       applyTransforms(notes, "1|1-<2|1: repeat(n/4)", 4, 4);
 
       expect(
-        notes.map((n) => n.start_time).sort((a, b) => a - b),
+        notes.map((n) => n.start_time).toSorted((a, b) => a - b),
       ).toStrictEqual([0, 1, 4]);
     });
   });

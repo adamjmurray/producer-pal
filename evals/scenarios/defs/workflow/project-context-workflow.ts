@@ -17,6 +17,9 @@ export const projectContextWorkflow: EvalScenario = {
   description: "Write and read project context",
   kind: "regression",
   liveSet: "basic-midi-4-track",
+  // The checks below pin the outcome. The judge only adds commentary they
+  // can't anticipate — hallucinations, misleading prose, extra steps.
+  judgeAdvisory: true,
 
   config: {
     projectContext: "",

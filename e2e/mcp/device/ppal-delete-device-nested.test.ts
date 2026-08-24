@@ -20,8 +20,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  KICK_FILE,
-  SAMPLE_FILE,
+  createTwoPadDrumRack,
   extractToolResultText,
   parseToolResult,
   setupMcpTestContext,
@@ -50,25 +49,13 @@ describe("ppal-delete nested rack device ordering", () => {
     await sleep(150);
 
     // Drum Rack with two pads => two chains, each with an auto-created Simpler.
-    await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: {
-        deviceName: "Drum Rack",
-        path: `t${t}`,
-        params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pD1/d0/sample", value: SAMPLE_FILE },
-        ],
-      },
-    });
-
-    await sleep(200);
+    const rack = (await createTwoPadDrumRack(ctx.client!, `t${t}`)).path;
 
     // Append a SECOND device into pad C1's chain -> same-chain siblings (d0, d1).
     const reverb = parseToolResult<{ id: string; deviceIndex: number }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "Reverb", path: `t${t}/d0/pC1/c0/d1` },
+        arguments: { deviceName: "Reverb", path: `${rack}/pC1/c0/d1` },
       }),
     );
 
@@ -77,16 +64,16 @@ describe("ppal-delete nested rack device ordering", () => {
     await sleep(150);
 
     // Resolve the three device ids by path.
-    const c1d0 = await readDeviceIdByPath(`t${t}/d0/pC1/d0`); // C1 chain, index 0
+    const c1d0 = await readDeviceIdByPath(`${rack}/pC1/d0`); // C1 chain, index 0
     const c1d1 = reverb.id; // C1 chain, index 1
-    const d1d0 = await readDeviceIdByPath(`t${t}/d0/pD1/d0`); // sibling chain
+    const d1d0 = await readDeviceIdByPath(`${rack}/pD1/d0`); // sibling chain
 
     // Delete in the order that trips a length-based comparator: same-chain d0,
     // then the sibling-chain device (the interposer), then same-chain d1.
     const deleted = parseToolResult<DeleteResult[]>(
       await ctx.client!.callTool({
         name: "ppal-delete",
-        arguments: { ids: `${c1d0}, ${d1d0}, ${c1d1}`, type: "device" },
+        arguments: { id: `${c1d0}, ${d1d0}, ${c1d1}`, type: "device" },
       }),
     );
 
@@ -98,7 +85,7 @@ describe("ppal-delete nested rack device ordering", () => {
     for (const id of [c1d0, c1d1, d1d0]) {
       const read = await ctx.client!.callTool({
         name: "ppal-read-device",
-        arguments: { deviceId: id },
+        arguments: { id: id },
       });
 
       expect(extractToolResultText(read).toLowerCase()).toMatch(

@@ -7,28 +7,11 @@
  * @vitest-environment happy-dom
  */
 import { render, screen } from "@testing-library/preact";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { PresetsTab } from "#webui/components/settings/PresetsTab";
 import { usePresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { type UseSettingsReturn } from "#webui/types/settings";
-
-/**
- * Minimal settings stub exposing the fields the embedded PresetControls reads.
- * @returns A UseSettingsReturn-shaped stub
- */
-function makeSettings(): UseSettingsReturn {
-  return {
-    provider: "anthropic",
-    model: "claude",
-    thinking: "Default",
-    smallModelMode: false,
-    enabledTools: {},
-    setEnabledTools: vi.fn(),
-    applyPreset: vi.fn(),
-    subagentPresetId: null,
-    setSubagentPresetId: vi.fn(),
-  } as unknown as UseSettingsReturn;
-}
+import { makePresetSettings } from "./helpers/preset-settings-test-helpers";
 
 /**
  * The tab with the selection state the settings dialog owns.
@@ -46,7 +29,7 @@ describe("PresetsTab", () => {
   });
 
   it("renders intro copy and the preset picker", () => {
-    render(<Tab settings={makeSettings()} />);
+    render(<Tab settings={makePresetSettings()} />);
 
     expect(screen.getByText(/A preset saves and recalls/)).toBeTruthy();
     expect(screen.getByTestId("preset-select")).toBeTruthy();

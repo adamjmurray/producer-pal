@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isNotation, type Notation } from "#src/shared/notation";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import {
   type ChatAdapter,
   type ChatClient,
@@ -63,6 +64,30 @@ export async function validateMcpConnection(
   }
 }
 
+/**
+ * Connect a freshly built client, publishing the in-flight connect so a turn
+ * that adopts the client can await it rather than stream on a client whose MCP
+ * connection hasn't landed. The connecting turn owns the ref: it clears the
+ * promise once it settles, unless a newer init already replaced it.
+ * @param client - The client to connect
+ * @param pendingInitRef - Where to publish the in-flight connect
+ * @param pendingInitRef.current - The published promise, or null when idle
+ */
+export async function connectClient<TMessage>(
+  client: ChatClient<TMessage>,
+  pendingInitRef: { current: Promise<void> | null },
+): Promise<void> {
+  const connecting = client.initialize();
+
+  pendingInitRef.current = connecting;
+
+  try {
+    await connecting;
+  } finally {
+    if (pendingInitRef.current === connecting) pendingInitRef.current = null;
+  }
+}
+
 interface ConversationDefaults {
   thinking: string | null;
 }
@@ -88,13 +113,17 @@ export function filterOverrides(
 }
 
 /**
- * Show error when API key is not configured. Stashes the user message to
- * pendingHistoryRef so retry/edit can recover after the user fixes settings.
+ * Show error when API key is not configured, against the conversation the
+ * message was sent from. With no client yet, the message is stashed onto that
+ * conversation so retry/edit — and the next send, which bootstraps a client from
+ * the stash — pick up where the user left off.
  * @param adapter - Chat adapter for formatting
  * @param userMessage - The user's message text
  * @param setMessages - State setter for messages
- * @param pendingHistoryRef - Ref to stash the user message entry for retry/edit
- * @param pendingHistoryRef.current - The stashed history (set by this function)
+ * @param clientRef - Ref to the live chat client, or null before one is built
+ * @param clientRef.current - The live client, whose history wins when it exists
+ * @param pendingHistoryRef - Ref holding the restored-but-not-yet-sent history
+ * @param pendingHistoryRef.current - That history, extended by this function
  */
 export function showMissingApiKeyError<
   TClient extends ChatClient<TMessage>,
@@ -104,15 +133,28 @@ export function showMissingApiKeyError<
   adapter: ChatAdapter<TClient, TMessage, TConfig>,
   userMessage: string,
   setMessages: (msgs: UIMessage[]) => void,
+  clientRef: { current: TClient | null },
   pendingHistoryRef: { current: TMessage[] | null },
 ): void {
   const entry = adapter.createUserMessage(userMessage);
+  // Keep the conversation this message was sent from. Showing (and stashing)
+  // the message alone truncated a restored conversation to it, and the next
+  // send bootstrapped a client from that truncation and saved it over the
+  // record. Copy the base: createErrorMessage pushes onto the array it is
+  // given, and nothing was sent, so the live client's history must not grow.
+  const base =
+    clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [];
+  const history = [...base, entry];
 
-  pendingHistoryRef.current = [entry];
+  // Only when no client exists: a client owns the history once it has one, so
+  // the stash would be a stale duplicate. The error rides along, as in
+  // recoverFromChatError — it is skipped when building model messages.
+  if (!clientRef.current) pendingHistoryRef.current = history;
+
   setMessages(
     adapter.createErrorMessage(
       new Error("No API key configured. Please add your API key in Settings."),
-      [entry],
+      history,
     ),
   );
 }
@@ -163,8 +205,8 @@ export function recoverFromChatError<
   // Fall back to the restored-but-not-yet-sent history when no client was built
   // (init threw early, e.g. MCP down) so a failed fork/send renders the existing
   // conversation instead of an empty view. Copy it — createErrorMessage mutates
-  // the array, and pendingHistoryRef must stay clean for a later send to
-  // bootstrap from.
+  // the array, and a failed fork (which stashes nothing) must leave
+  // pendingHistoryRef untouched for a later send to bootstrap from.
   const baseHistory =
     clientRef.current?.chatHistory ??
     (pendingHistoryRef.current ? [...pendingHistoryRef.current] : []);
@@ -175,7 +217,12 @@ export function recoverFromChatError<
   const errorHistory = includeStashed ? [...baseHistory, stashed] : baseHistory;
 
   if (!clientRef.current && includeStashed) {
-    pendingHistoryRef.current = [stashed];
+    // Keep the conversation the message was sent from. Stashing the message
+    // alone truncated a restored conversation to it, and the autosave that
+    // follows the failed turn wrote that truncation over the saved record.
+    // errorHistory picks up the error below, matching what the client branch
+    // persists.
+    pendingHistoryRef.current = errorHistory;
   }
 
   setMessages(adapter.createErrorMessage(error, errorHistory));
@@ -216,6 +263,8 @@ interface RunChatTurnDeps<
   pendingForkRef?: PendingForkRef;
   /** Ticket dispenser: bumped per turn, so a late turn knows it was superseded. */
   turnIdRef: { current: number };
+  /** Bumped when the loaded conversation is torn down (switch, new chat). */
+  conversationGenRef: { current: number };
   pendingUserMessageRef: { current: TMessage | null };
   setMessages: (msgs: UIMessage[]) => void;
   setIsAssistantResponding: (responding: boolean) => void;
@@ -257,9 +306,10 @@ export async function runChatTurn<
   userMessage: TMessage | undefined,
   deps: RunChatTurnDeps<TClient, TMessage, TConfig>,
 ): Promise<T | undefined> {
-  const { turnIdRef, pendingUserMessageRef } = deps;
+  const { turnIdRef, conversationGenRef, pendingUserMessageRef } = deps;
   const turnId = ++turnIdRef.current;
   const stillCurrent = () => turnId === turnIdRef.current;
+  const conversationGen = conversationGenRef.current;
 
   deps.setIsAssistantResponding(true);
   // A new request clears any prior tool-limit notice before streaming.
@@ -285,6 +335,14 @@ export async function runChatTurn<
     // would corrupt the turn now streaming.
     if (!stillCurrent()) return undefined;
 
+    // The user switched conversations while this turn's setup was in flight.
+    // Recovery reads the shared refs, which now hold the conversation they
+    // switched TO, so it would render this turn's stray message and error there
+    // — and the autosave that follows would persist them under it. A switch
+    // sends nothing, so it never bumps the ticket above; this check is what
+    // stops it.
+    if (conversationGen !== conversationGenRef.current) return undefined;
+
     recoverFromChatError({
       ...deps,
       error,
@@ -300,6 +358,41 @@ export async function runChatTurn<
       deps.setRateLimitState(null);
     }
   }
+}
+
+/**
+ * Take the turn's abort controller and its liveness check, BEFORE the turn's
+ * setup rather than after it.
+ *
+ * Installing the controller up front is what makes Stop reach a turn parked in
+ * its MCP connect. Install it after the connect instead and a stopped turn wakes
+ * with nothing aborted, builds a fresh controller and streams as if Stop never
+ * happened — tokens spent and tool calls run against the Live Set while the
+ * composer reads idle. The ticket can't cover that on its own: Stop with no
+ * follow-up send never bumps it, and neither does a conversation switch.
+ *
+ * `stillLive` is the check every resume point wants — not superseded by a newer
+ * turn AND not stopped — as opposed to the ticket-only `stillCurrent`, which
+ * still guards the paths where a stopped turn should finish what it was doing
+ * (rendering and persisting its own failure, say).
+ *
+ * @param abortControllerRef - Shared ref the newest turn's controller lives in
+ * @param abortControllerRef.current - The installed controller, or null when idle
+ * @param stillCurrent - This turn's ticket check from runChatTurn
+ * @returns The turn's controller and its liveness check
+ */
+export function beginTurn(
+  abortControllerRef: { current: AbortController | null },
+  stillCurrent: () => boolean,
+): { controller: AbortController; stillLive: () => boolean } {
+  const controller = new AbortController();
+
+  abortControllerRef.current = controller;
+
+  return {
+    controller,
+    stillLive: () => stillCurrent() && !controller.signal.aborted,
+  };
 }
 
 /** Effective connection used to (re)build a chat client at init time. */
@@ -320,6 +413,8 @@ export interface InitConnection {
   smallModelMode: boolean;
   /** The toolset to lock and connect with for this init. */
   enabledTools: Record<string, boolean>;
+  /** The per-turn tool-step budget to lock for this init. */
+  maxToolSteps: number;
 }
 
 /**
@@ -398,7 +493,26 @@ export function resolveInitConnection(
     notation: resolveLockedNotation(mergedExtraParams),
     smallModelMode: resolveLockedSmallModelMode(mergedExtraParams),
     enabledTools: locked.activeEnabledTools ?? fallback.enabledTools,
+    maxToolSteps: resolveMaxToolSteps(mergedExtraParams),
   };
+}
+
+/**
+ * The per-turn tool-step budget for an init. Unlike the other locked values
+ * there is no saved snapshot to prefer: the budget doesn't change what the model
+ * is told, only how long a turn runs, so a restored conversation takes whatever
+ * is set now. It is still pinned once the client exists — client.maxSteps is
+ * derived in initialize() — which is what the settings notice reports.
+ *
+ * @param extraParams - The init's extra params
+ * @returns The effective step budget
+ */
+export function resolveMaxToolSteps(
+  extraParams: Record<string, unknown>,
+): number {
+  return (
+    (extraParams.maxToolSteps as number | undefined) ?? DEFAULT_MAX_TOOL_STEPS
+  );
 }
 
 /**

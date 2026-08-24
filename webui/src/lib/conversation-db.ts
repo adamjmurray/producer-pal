@@ -266,7 +266,7 @@ export async function listAllConversationSummaries(): Promise<
         ...(forkedAtIndex != null && { forkedAtIndex }),
       }),
     )
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+    .toSorted((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /**
@@ -427,7 +427,7 @@ async function enforceConversationLimit(
     .filter(
       (r) => !r.bookmarked && r.id !== excludeId && !protectedIds?.has(r.id),
     )
-    .sort((a, b) => a.updatedAt - b.updatedAt);
+    .toSorted((a, b) => a.updatedAt - b.updatedAt);
 
   const toDelete = deletable.slice(0, excess);
 

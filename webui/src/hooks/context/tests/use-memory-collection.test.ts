@@ -21,6 +21,10 @@ import {
   raceTwoWrites,
   renderAndWait,
 } from "./doc-transport-test-helpers";
+import {
+  expectResetToIdle,
+  landSaveBeforeStaleRefresh,
+} from "./doc-collection-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/memory";
@@ -172,7 +176,10 @@ describe("useMemoryCollection", () => {
         body: "Composes in C minor.",
       },
     ]);
-    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      LIST_URL,
+      expect.objectContaining({ cache: "no-store" }),
+    );
   });
 
   it("falls back to an empty list when entries is missing", async () => {
@@ -316,7 +323,7 @@ describe("useMemoryCollection", () => {
       );
     });
 
-    expect(renamed).toMatchObject({ name: "renamed" });
+    expect(renamed).toMatchObject({ entry: { name: "renamed" }, error: null });
     expect(readyEntries(result).map((e) => e.name)).toStrictEqual(["renamed"]);
     expect(fetchMock).toHaveBeenLastCalledWith(
       `${ENTRY_URL}/rename`,
@@ -347,7 +354,7 @@ describe("useMemoryCollection", () => {
     expect(entries[0]?.body).toBe("kept");
   });
 
-  it("renameEntry returns null and surfaces the server error on a collision", async () => {
+  it("renameEntry reports the server error on a collision, on its own result and on saveError", async () => {
     const result = await mountReady([rawEntry()]);
 
     fetchMock.mockResolvedValueOnce(
@@ -371,7 +378,13 @@ describe("useMemoryCollection", () => {
       );
     });
 
-    expect(renamed).toBeNull();
+    // The message rides back on the result too, so the caller can pin it: the
+    // shared saveError is cleared by whatever writes next (after a rename that
+    // is often the editor's resumed autosave, moments later).
+    expect(renamed).toStrictEqual({
+      entry: null,
+      error: 'A memory named "taken" already exists',
+    });
     expect(result.current.saveStatus).toBe("error");
     expect(result.current.saveError).toMatch(/already exists/i);
     // The original entry is left untouched.
@@ -390,12 +403,7 @@ describe("useMemoryCollection", () => {
 
     expect(result.current.saveStatus).toBe("error");
 
-    await act(async () => {
-      result.current.resetSaveStatus();
-    });
-
-    expect(result.current.saveStatus).toBe("idle");
-    expect(result.current.saveError).toBeNull();
+    await expectResetToIdle(result);
   });
 
   it("does not paint 'saved' for a save that resolved after the edited entry changed", async () => {
@@ -506,6 +514,23 @@ describe("useMemoryCollection", () => {
     });
   });
 
+  it("keeps the loaded entries when a later refresh fails", async () => {
+    // Regression: refresh is also the 5s poll, and its error path replaced the
+    // whole screen — unmounting the entry editor under it and taking an
+    // unsaved draft with it. A failed tick now leaves the loaded list alone.
+    const result = await mountReady([rawEntry({ body: "loaded" })]);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response("boom", { status: 500, statusText: "Server Error" }),
+    );
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(readyEntries(result)[0]?.body).toBe("loaded");
+  });
+
   it("drops an older save's echo for the same entry when a newer save has landed", async () => {
     // Two overlapping saves of one entry (a debounced autosave, then the
     // unmount flush or an explicit Save). The FIRST echo is slow and lands
@@ -562,29 +587,21 @@ describe("useMemoryCollection", () => {
   it("drops a refresh that a concurrent save superseded", async () => {
     const result = await mountReady([rawEntry({ body: "loaded" })]);
 
-    const putEcho = deferred<Response>();
-    const staleGet = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(putEcho.promise); // save PUT
-    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
-
-    await act(async () => {
-      const savePromise = result.current.saveEntry("prefers-c-minor", {
-        ...SAMPLE_INPUT,
-        content: "MINE",
-      });
-      const refreshPromise = result.current.refresh();
-
-      // The save echo lands first and sets the body.
-      putEcho.resolve(jsonResponse({ entry: rawEntry({ body: "MINE" }) }));
-      await savePromise;
-
-      // The stale GET resolves last; the overlap guard must drop it.
-      staleGet.resolve(
-        jsonResponse({ entries: [rawEntry({ body: "stale" })] }),
-      );
-      await refreshPromise;
-    });
+    await landSaveBeforeStaleRefresh(
+      fetchMock,
+      {
+        save: async () =>
+          await result.current.saveEntry("prefers-c-minor", {
+            ...SAMPLE_INPUT,
+            content: "MINE",
+          }),
+        refresh: async () => await result.current.refresh(),
+      },
+      {
+        saved: { entry: rawEntry({ body: "MINE" }) },
+        stale: { entries: [rawEntry({ body: "stale" })] },
+      },
+    );
 
     expect(readyEntries(result)[0]?.body).toBe("MINE");
   });

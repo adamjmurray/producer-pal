@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,7 +14,11 @@
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
+  getToolWarnings,
+  parseAliasedToolResult,
   parseToolResult,
+  parseToolResultWithWarnings,
+  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
@@ -30,14 +35,22 @@ describe("ppal-duplicate", () => {
     const initialTrackCount = liveSet.tracks.length;
     const firstTrackId = liveSet.tracks[0]!.id;
 
+    // Source named by id, spelled the way a model carries the plural over from
+    // the other write tools. "ids" is a permanent alias, so this checks the
+    // copy and the steer.
     const dupTrackResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "track",
-        id: firstTrackId,
+        ids: firstTrackId,
       },
     });
-    const dupTrack = parseToolResult<DuplicateTrackResult>(dupTrackResult);
+    const dupTrack = parseAliasedToolResult<DuplicateTrackResult>(
+      dupTrackResult,
+      "ppal-duplicate",
+      "ids",
+      "id",
+    );
 
     expect(dupTrack.id).toBeDefined();
     expect(dupTrack.trackIndex).toBe(1); // Inserted after track 0
@@ -85,11 +98,11 @@ describe("ppal-duplicate", () => {
     // Verify both tracks have the same name
     const readTrack1 = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: dupMultiple[0]!.id },
+      arguments: { id: dupMultiple[0]!.id },
     });
     const readTrack2 = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: dupMultiple[1]!.id },
+      arguments: { id: dupMultiple[1]!.id },
     });
 
     expect(parseToolResult<{ name: string }>(readTrack1).name).toBe(
@@ -178,11 +191,11 @@ describe("ppal-duplicate", () => {
     // Verify both scenes have the same name
     const readScene1 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: dupMultipleScenes[0]!.id },
+      arguments: { id: dupMultipleScenes[0]!.id },
     });
     const readScene2 = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: dupMultipleScenes[1]!.id },
+      arguments: { id: dupMultipleScenes[1]!.id },
     });
 
     expect(parseToolResult<{ name: string }>(readScene1).name).toBe(
@@ -203,7 +216,7 @@ describe("ppal-duplicate", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
         notes: "C3 D3 E3 F3 1|1",
         length: "1bar",
       },
@@ -218,25 +231,25 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        toSlot: `${emptyMidiTrack2}/0`,
+        toPath: `t${emptyMidiTrack2}/s0`,
       },
     });
     const dupClipSession =
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.slot).toBe(`${emptyMidiTrack2}/0`);
+    expect(dupClipSession.path).toBe(`t${emptyMidiTrack2}/s0`);
 
     await sleep(100);
 
-    // Test 2: Session clip to multiple session slots with name
+    // Test 2: Session clip to multiple clip slots with name
     const dupClipMultiSlotsResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "clip",
         id: createdClip.id,
 
-        toSlot: "10/0, 10/1, 10/2",
+        toPath: "t10/s0, t10/s1, t10/s2",
         name: "Batch Clip",
       },
     });
@@ -245,9 +258,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupClipMultiSlots).toHaveLength(3);
-    expect(dupClipMultiSlots[0]!.slot).toBe("10/0");
-    expect(dupClipMultiSlots[1]!.slot).toBe("10/1");
-    expect(dupClipMultiSlots[2]!.slot).toBe("10/2");
+    expect(dupClipMultiSlots[0]!.path).toBe("t10/s0");
+    expect(dupClipMultiSlots[1]!.path).toBe("t10/s1");
+    expect(dupClipMultiSlots[2]!.path).toBe("t10/s2");
 
     await sleep(100);
 
@@ -255,7 +268,7 @@ describe("ppal-duplicate", () => {
     for (const dupClip of dupClipMultiSlots) {
       const readClip = await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { clipId: dupClip.id },
+        arguments: { id: dupClip.id },
       });
 
       expect(parseToolResult<{ name: string }>(readClip).name).toBe(
@@ -269,7 +282,7 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        path: `t${emptyMidiTrack}`,
         arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",
         length: "2bar",
@@ -337,6 +350,83 @@ describe("ppal-duplicate", () => {
     expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
   });
 
+  it("copies the whole clip whichever order the positions are listed", async () => {
+    // The bar-58 copy lands on the source and trims it to one bar. The bar-51
+    // copy stops well short of the source, so it must come out full length —
+    // it used to be made from that leftover just for being listed second.
+    const track = 8;
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${track}`,
+        arrangementStart: "57|1",
+        notes: "C3 D3 E3 F3 1|1",
+        length: "2bar",
+      },
+    });
+    const source = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const dupResult = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        arrangementStart: "58|1,51|1",
+      },
+    });
+    const copies = parseToolResult<DuplicateClipResult[]>(dupResult);
+    const early = copies.find((copy) => copy.arrangementStart === "51|1");
+
+    await sleep(100);
+
+    const readEarly = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { id: early!.id, include: ["timing"] },
+    });
+
+    expect(parseToolResult<ReadClipResult>(readEarly).arrangementLength).toBe(
+      "2bar",
+    );
+  });
+
+  it("still honors the deprecated toSlot, and says so", async () => {
+    const emptyMidiTrack = 8;
+
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        path: `t${emptyMidiTrack}/s6`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
+    });
+    const createdClip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: createdClip.id,
+        toSlot: `${emptyMidiTrack}/7`,
+      },
+    });
+
+    // The copy still lands where an old caller asked for it, and the result
+    // reports it in the spelling that replaced the param...
+    expect(
+      parseToolResultWithWarnings<DuplicateClipResult>(result).data.path,
+    ).toBe(`t${emptyMidiTrack}/s7`);
+
+    // ...and the model is told to stop using the param.
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining('param "toSlot" is deprecated'),
+    );
+  });
+
   it("duplicates devices", async () => {
     // Use t7 (Racks track) which has an Instrument Rack but proper routing
     const testTrack = 7;
@@ -365,7 +455,7 @@ describe("ppal-duplicate", () => {
     // Verify duplicated device exists by reading it
     const readDupDeviceResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: dupDevice.id },
+      arguments: { id: dupDevice.id },
     });
     const readDupDevice =
       parseToolResult<ReadDeviceResult>(readDupDeviceResult);
@@ -398,7 +488,7 @@ describe("ppal-duplicate", () => {
     // Verify duplicated device exists on target track
     const readDupDevice2Result = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId: dupDeviceToTrack.id },
+      arguments: { id: dupDeviceToTrack.id },
     });
     const readDupDevice2 =
       parseToolResult<ReadDeviceResult>(readDupDevice2Result);
@@ -430,8 +520,7 @@ interface DuplicateSceneResult {
 
 interface DuplicateClipResult {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   arrangementStart?: string;
   name?: string;
 }

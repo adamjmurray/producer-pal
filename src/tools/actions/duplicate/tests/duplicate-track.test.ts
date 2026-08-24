@@ -118,7 +118,7 @@ describe("duplicate - track duplication", () => {
     expect(result).toStrictEqual({
       id: "live_set/tracks/1",
       trackIndex: 1,
-      clips: [{ id: "live_set/tracks/1/clip_slots/0/clip", slot: "1/0" }],
+      clips: [{ id: "live_set/tracks/1/clip_slots/0/clip", path: "t1/s0" }],
     });
   });
 
@@ -430,5 +430,26 @@ describe("duplicate - track duplication", () => {
 
     expect(result).toStrictEqual(createTrackResult(1));
     expect(newTrack.set).toHaveBeenCalledWith("color", 0xff0000);
+  });
+
+  it("stops at the request deadline and says how far it got", async () => {
+    // The deadline arrives on the context, set once per request by the V8
+    // adapter; an expired one is what a duplicate sees when an earlier call in
+    // the same request has spent the budget.
+    registerMockObject("track1", { path: livePath.track(0) });
+
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    const result = await duplicate(
+      { type: "track", id: "track1", count: 3 },
+      { deadline: Date.now() - 1 },
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Ran out of time after duplicating 0 of 3 tracks. Re-run for the rest.",
+    );
   });
 });

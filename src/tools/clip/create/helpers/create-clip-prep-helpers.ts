@@ -3,14 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  barBeatToAbletonBeats,
+  validateBarBeatPosition,
+} from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  isTakeLaneRequested,
-  normalizeTakeLaneTarget,
   resolveTakeLane,
+  takeLaneKey,
+  takeLaneTargetsThatFit,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { convertTimingParameters } from "./create-clip-helpers.ts";
 
 export interface ClipTimingContext {
@@ -97,55 +102,85 @@ export function resolveClipTimingContext(
 }
 
 /**
- * Resolve the take lane for arrangement clip creation. Returns the TakeLane to
- * create clips on, or null to use the main lane. Warns (and ignores takeLane)
- * for session-only requests and auto-creates lanes as needed. Like the main
- * lane, creating over an existing clip replaces/truncates it (no overlap guard).
- * @param takeLane - Raw takeLane argument (0/null = main, 1+ = lane, "new")
- * @param takeLaneName - Name for a newly created lane
- * @param sessionSlotCount - Number of session slots in this request
- * @param arrangementStarts - Parsed arrangement bar|beat positions
- * @param trackIndex - Arrangement track index
- * @returns The take lane LiveAPI, or null for the main lane
+ * Refuses the whole call when any arrangement position won't parse.
+ *
+ * Positions are converted per clip in the create loop, but a bad one has to be
+ * caught before anything exists. Past the first clip — or the first take lane,
+ * which Live can't delete — the error is all the caller gets back, and it names
+ * none of what was left behind.
+ * @param arrangementPositions - Resolved arrangement destinations
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @throws When a position isn't a usable bar|beat
  */
-export function resolveCreateClipTakeLane(
-  takeLane: number | string | null,
-  takeLaneName: string | null,
-  sessionSlotCount: number,
-  arrangementStarts: string[],
-  trackIndex: number | null,
-): LiveAPI | null {
-  // No arrangement positions to target: warn-and-ignore without validating the
-  // value. Mirrors duplicate.ts's gate (takeLane is normalized only when it can
-  // apply) so an LLM passing garbage on a session-only create doesn't throw.
-  if (arrangementStarts.length === 0 || trackIndex == null) {
-    if (isTakeLaneRequested(takeLane)) {
-      console.warn(
-        "createClip: takeLane ignored for session clips (arrangement-only)",
-      );
-    }
-
-    return null;
+export function validateArrangementPositions(
+  arrangementPositions: ArrangementPosition[],
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
+): void {
+  for (const { arrangementStart } of arrangementPositions) {
+    // The 1-indexing steer first, then the format error the conversion raises.
+    validateBarBeatPosition(arrangementStart);
+    barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
   }
+}
 
-  const target = normalizeTakeLaneTarget(takeLane);
+/**
+ * Resolve the take lane each arrangement destination names, auto-creating lanes
+ * as needed. Like the main lane, creating over an existing clip
+ * replaces/truncates it (no overlap guard). A destination whose lane doesn't
+ * fit is warned and left out, so the clips around it still get made.
+ * @param takeLaneName - Name for a newly created lane
+ * @param arrangementPositions - Resolved arrangement destinations
+ * @returns Take lane LiveAPI keyed by {@link takeLaneKey}, empty for main lanes
+ */
+export function resolveCreateClipTakeLanes(
+  takeLaneName: string | null,
+  arrangementPositions: ArrangementPosition[],
+): Map<string, LiveAPI> {
+  const lanes = new Map<string, LiveAPI>();
 
-  if (target == null) return null;
+  // Lanes are permanent (Live has no delete), so pick the whole call's
+  // destinations before creating a lane on any of it — otherwise a cap failure
+  // on the last destination strands empty lanes on all the earlier ones.
+  const fitting = takeLaneTargetsThatFit(arrangementPositions, "createClip");
 
-  if (sessionSlotCount > 0) {
+  // Resolve once per destination rather than once per clip — otherwise a single
+  // "l+" cycled over three arrangementStarts gets three fresh lanes.
+  for (const position of fitting) {
+    const { trackIndex, takeLane: target } = position;
+    const key = takeLaneKey(position);
+
+    if (lanes.has(key)) continue;
+
+    const { lane, laneIndex } = resolveTakeLane(
+      trackFor(position),
+      target,
+      takeLaneName,
+    );
+
+    lanes.set(key, lane);
     console.warn(
-      "createClip: takeLane ignored for session clips (arrangement-only)",
+      `createClip: targeting take lane "t${trackIndex}/l${laneIndex}". Expand the take-lanes arrow on the track header in Live to see it.`,
     );
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
+  return lanes;
+}
 
-  console.warn(
-    `createClip: targeting take lane ${laneNumber}. Expand the take-lanes arrow on the track header in Live to see it.`,
-  );
+// --- Helpers below main exports ---
 
-  return lane;
+/**
+ * The Live API track an arrangement destination sits on.
+ * @param position - An arrangement destination
+ * @returns The track LiveAPI
+ */
+function trackFor(position: ArrangementPosition): LiveAPI {
+  return LiveAPI.from(livePath.track(position.trackIndex));
 }
 
 /**

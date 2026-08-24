@@ -191,7 +191,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+    <div className="flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200">
       <ContextHeader
         title={title}
         tabSlot={tabSlot}
@@ -204,14 +204,14 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
         // Flex (like the doc tabs' controls strip) so the explainer is a block
         // box with its own text-xs leading — as an inline span it would inherit
         // the page's looser line-height and read differently from the doc tabs.
-        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm flex items-center">
+        <div className="flex items-center border-b border-zinc-200 px-4 py-2 text-sm dark:border-zinc-700">
           <span className="min-w-0 flex-1 text-xs text-zinc-500 dark:text-zinc-400">
             {description}
           </span>
         </div>
       )}
-      <div className="flex flex-1 min-h-0">
-        <aside className="w-64 shrink-0 flex flex-col min-h-0 border-r border-zinc-200 dark:border-zinc-700">
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex min-h-0 w-64 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
           {props.renderList({
             entries,
             selectedName: activeEntry?.name ?? null,
@@ -234,7 +234,7 @@ export function CollectionScreen<TView extends DocCollectionEntry, TInput>(
             onDelete: (name) => void handleDeleteEntry(name),
           })}
         </aside>
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {deletedExternally && (
             <DeletedExternallyBanner
               message={deletedBanner}
@@ -264,12 +264,12 @@ function DeletedExternallyBanner(props: {
   onDiscard: () => void;
 }): preact.JSX.Element {
   return (
-    <div className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-md border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+    <div className="mx-4 mt-4 flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
       <span>{props.message}</span>
       <button
         type="button"
         onClick={props.onDiscard}
-        className="rounded bg-amber-200 dark:bg-amber-800/70 px-2 py-1 text-xs font-medium text-amber-900 dark:text-amber-100 hover:bg-amber-300 dark:hover:bg-amber-700 transition-colors"
+        className="rounded bg-amber-200 px-2 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-300 dark:bg-amber-800/70 dark:text-amber-100 dark:hover:bg-amber-700"
       >
         Discard
       </button>
@@ -303,7 +303,7 @@ export function CollectionStatusScreen(
   const { title, tabSlot, onClose, message, tone, belowHeader } = props;
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
+    <div className="flex h-screen flex-col bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-200">
       <ContextHeader
         title={title}
         tabSlot={tabSlot}
@@ -314,12 +314,12 @@ export function CollectionStatusScreen(
         onClose={onClose}
       />
       {belowHeader != null && (
-        <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700">
+        <div className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
           {belowHeader}
         </div>
       )}
       <div
-        className={`flex items-center justify-center flex-1 px-8 text-center ${
+        className={`flex flex-1 items-center justify-center px-8 text-center ${
           tone === "error" ? "text-red-600 dark:text-red-400" : "text-zinc-500"
         }`}
       >

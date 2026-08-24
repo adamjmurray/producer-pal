@@ -1,11 +1,24 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  carryChainMixer,
+  chainMixerToCarry,
+  sourceChain,
+  warnIfChainMixerLeftBehind,
+} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import {
+  type InsertionPathResolution,
+  resolveInsertionPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // ============================================================================
@@ -13,29 +26,119 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 // ============================================================================
 
 /**
- * Parse drum pad note from a path
- * @param path - Path that may contain a drum pad segment
- * @returns Note name (e.g., "C1", "F#2") or null if not a drum pad path
+ * The pad a toPath names, when it names one in this rack. Resolution is by path
+ * rather than by object so a toPath pointing at nothing (a track that doesn't
+ * exist) is refused rather than read as "same rack".
+ *
+ * A chain or device below the pad ("t0/d0/pD1/c0", the spelling read-device
+ * prints for a layered pad) still names that pad: the move is an in_note
+ * re-map, so the pad is the only destination there is.
+ * @param toPath - Target drum pad path
+ * @param drumRackPath - Live API path of the rack holding the source chain
+ * @returns The pad's note name, "*" for the catch-all pad, or null once the
+ *   reason it can't be the destination has been warned
  */
-function parseDrumPadNoteFromPath(path: string): string | null {
-  const match = path.match(/\/p([A-G][#b]?\d+|\*)(?:\/|$)/);
+function targetPadNote(toPath: string, drumRackPath: string): string | null {
+  const resolved = resolvePadPath(toPath);
 
-  return match ? (match[1] ?? null) : null;
+  if (resolved?.drumPadNote == null) {
+    console.warn(`toPath "${toPath}" is not a drum pad path`);
+
+    return null;
+  }
+
+  // Resolution stops at the first pad segment, so a further pad segment belongs
+  // to a rack nested under this one. Which rack that is can't be told from
+  // here, so don't guess — refuse.
+  if (resolved.remainingSegments.some((segment) => segment.startsWith("p"))) {
+    console.warn(
+      `toPath "${toPath}" names a pad of a nested Drum Rack, ` +
+        `and a pad move re-maps one rack's own pads; ` +
+        `name the destination by the outer rack's chain index instead (t0/d0/c0/d0/pE1)`,
+    );
+
+    return null;
+  }
+
+  // The move is an in_note re-map within one rack, so a toPath naming a pad
+  // elsewhere can't be honored. Without this it lands on that note in the
+  // SOURCE rack instead — the wrong pad, reported as a success.
+  if (resolved.liveApiPath !== drumRackPath) {
+    console.warn(
+      `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
+        `move the pad's device instead (update-device on the device path)`,
+    );
+
+    return null;
+  }
+
+  return resolved.drumPadNote;
 }
 
 /**
- * Move a device to a new location
+ * Resolve a pad toPath, treating a path that doesn't parse as naming no pad.
+ * @param toPath - Target drum pad path
+ * @returns The resolved path, or null when it doesn't resolve
+ */
+function resolvePadPath(toPath: string) {
+  try {
+    return resolvePathToLiveApi(toPath, "toPath");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What a device move did. The caller words "no-destination" and "refused",
+ * because only it knows the path the user asked for — a duplicate's is adjusted
+ * for its temp track. "unresolvable" is worded here, where the reason is.
+ */
+export type DeviceMoveOutcome =
+  | "moved"
+  | "no-destination"
+  | "refused"
+  | "unresolvable";
+
+/**
+ * Move a device to a new location. Never throws: a toPath naming no place a
+ * device can go warns and reports "unresolvable", so the other ids and
+ * destinations of the same call still get their work done.
  * @param device - LiveAPI device object
  * @param toPath - Target path
+ * @param source - The device the user is really moving or copying, when
+ *   `device` is a temp copy of it (device duplication); drives the
+ *   left-behind chain mixer warning
+ * @param reportPath - How to spell toPath in warnings, when the caller adjusted
+ *   it (device duplication shifts track indices past its temp track)
+ * @returns "moved" once the device is at the destination, "no-destination" when
+ *   toPath names nothing, "refused" when Live wouldn't take it, or
+ *   "unresolvable" when toPath doesn't resolve at all
  */
-export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
-  const { container, position } = resolveInsertionPath(toPath);
+export function moveDeviceToPath(
+  device: LiveAPI,
+  toPath: string,
+  source: LiveAPI = device,
+  reportPath: string = toPath,
+): DeviceMoveOutcome {
+  const destination = resolveMoveDestination(toPath, reportPath);
+
+  if (destination == null) {
+    return "unresolvable";
+  }
+
+  const { container, position } = destination;
 
   if (!container?.exists()) {
-    console.warn(`move target at path "${toPath}" does not exist`);
-
-    return;
+    return "no-destination";
   }
+
+  // Read the chain before the move: on a plain move the source is the device
+  // itself, and afterward it answers with the chain it landed in.
+  const chain = sourceChain(source);
+
+  // Decide before the move: afterward the destination holds this device, so it
+  // no longer reads as the untouched chain that makes carrying safe.
+  const carry = chainMixerToCarry(chain, container);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -45,6 +148,64 @@ export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
     toLiveApiId(container.id),
     position ?? 0,
   );
+
+  // Live drops some moves without a word. Check rather than assume: the device
+  // is still wherever it was, and reporting its id would name a device that
+  // never arrived — for a duplicate, one the cleanup is about to delete.
+  if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
+    console.warn(`Live refused the move${refusalReason(device, container)}`);
+
+    return "refused";
+  }
+
+  if (carry != null) {
+    carryChainMixer(carry, container);
+  } else {
+    // Device duplication passes the real source alongside a temp copy; a plain
+    // move leaves `source` defaulted to the device itself.
+    warnIfChainMixerLeftBehind(chain, container, source.id !== device.id);
+  }
+
+  return "moved";
+}
+
+/**
+ * Resolve where a move should land. Resolution throws for a path that names
+ * nothing a device can go in — a missing track or device, a chain in a Drum
+ * Rack, a device that isn't a rack — so catch it here and warn instead.
+ * @param toPath - Target path, as handed to the move
+ * @param reportPath - How to spell it in the warning
+ * @returns The destination, or null when the path didn't resolve
+ */
+function resolveMoveDestination(
+  toPath: string,
+  reportPath: string,
+): InsertionPathResolution | null {
+  try {
+    // Every caller here got the path from a `toPath` param, so name it that.
+    return resolveInsertionPath(toPath, "toPath");
+  } catch (error) {
+    const reason = errorMessage(error);
+
+    console.warn(
+      `device not moved: ${toPath === reportPath ? reason : reason.replaceAll(toPath, reportPath)}`,
+    );
+
+    return null;
+  }
+}
+
+/**
+ * Why Live turned a move down, when the destination says it plainly enough
+ * @param device - The device that stayed put
+ * @param container - Where it was headed
+ * @returns Explanatory clause, or "" when nothing obvious accounts for it
+ */
+function refusalReason(device: LiveAPI, container: LiveAPI): string {
+  return deviceHasInstrument(device) &&
+    container.someChild("devices", deviceHasInstrument)
+    ? ": the destination already has an instrument, and only one is allowed"
+    : "";
 }
 
 /**
@@ -58,36 +219,70 @@ export function moveDrumChainToPath(
   toPath: string,
   moveEntirePad: boolean,
 ): void {
-  const targetNote = parseDrumPadNoteFromPath(toPath);
+  const drumRackPath = chain.path.replace(/ chains \d+$/, "");
+  const targetNote = targetPadNote(toPath, drumRackPath);
 
   if (targetNote == null) {
-    console.warn(`toPath "${toPath}" is not a drum pad path`);
+    return;
+  }
+
+  // The path grammar refuses a note name with no MIDI value, so the only pad
+  // that isn't a note is the catch-all. Live 12.4.3 clamps a drum chain's
+  // in_note to 0-127, so the move can't happen and Live would refuse it
+  // silently — say so instead of reporting a no-op as a move.
+  if (targetNote === "*") {
+    console.warn(
+      `updateDevice: cannot move a drum chain to the catch-all pad "${toPath}" — ` +
+        `Live has no way to set a chain to "all notes"`,
+    );
 
     return;
   }
 
-  const targetInNote = targetNote === "*" ? -1 : noteNameToMidi(targetNote);
+  const targetInNote = noteNameToMidi(targetNote) as number;
 
-  if (targetInNote == null) {
-    console.warn(`invalid note "${targetNote}" in toPath`);
+  const sourceInNote = chain.getProperty("in_note") as number;
+  const rackChains = LiveAPI.from(drumRackPath).getChildren("chains");
+  const inNotes = rackChains.map((c) => c.getProperty("in_note") as number);
 
-    return;
-  }
+  warnIfDestinationOccupied(toPath, inNotes, sourceInNote, targetInNote);
 
   if (moveEntirePad) {
-    const sourceInNote = chain.getProperty("in_note");
-    const drumRackPath = chain.path.replace(/ chains \d+$/, "");
-    const drumRack = LiveAPI.from(drumRackPath);
-    const allChains = drumRack.getChildren("chains");
-
-    for (const c of allChains) {
-      if (c.getProperty("in_note") === sourceInNote) {
+    for (const [index, c] of rackChains.entries()) {
+      if (inNotes[index] === sourceInNote) {
         c.set("in_note", targetInNote);
       }
     }
   } else {
     chain.set("in_note", targetInNote);
   }
+}
+
+/**
+ * Live layers a moved chain onto whatever the destination pad already holds
+ * rather than replacing it, so the pad ends up playing both. Say so — the
+ * caller asked for a move and would otherwise read the result as a swap.
+ * @param toPath - Destination pad path as written, for the warning
+ * @param inNotes - Every rack chain's in_note, in rack order
+ * @param sourceInNote - The moving chain's in_note
+ * @param targetInNote - The destination pad's in_note
+ */
+function warnIfDestinationOccupied(
+  toPath: string,
+  inNotes: number[],
+  sourceInNote: number,
+  targetInNote: number,
+): void {
+  if (targetInNote === sourceInNote) return;
+
+  const occupants = inNotes.filter((note) => note === targetInNote).length;
+
+  if (occupants === 0) return;
+
+  console.warn(
+    `updateDevice: drum pad "${toPath}" already had ${occupants} chain(s), ` +
+      `so the move layers on top of them rather than replacing them`,
+  );
 }
 
 // ============================================================================
@@ -330,4 +525,33 @@ export function updateABCompare(device: LiveAPI, action: string): void {
       device.call("save_preset_to_compare_ab_slot");
       break;
   }
+}
+
+/**
+ * Live prepends a rack return chain's send letter to its name, so writing back
+ * the name read-device reported ("F Pedal") would double it ("F F Pedal").
+ * Strip a leading letter when it matches the chain's own slot.
+ * @param chain - The chain being renamed
+ * @param name - Requested name
+ * @returns Name to write
+ */
+export function stripReturnChainLetter(chain: LiveAPI, name: string): string {
+  const match = /return_chains (\d+)$/.exec(chain.path);
+
+  if (match == null) {
+    return name;
+  }
+
+  const index = Number(match[1]);
+
+  // Past Z we don't know what Live labels the chain, so leave the name alone.
+  if (index > 25) {
+    return name;
+  }
+
+  const prefix = `${String.fromCharCode(65 + index)} `;
+
+  return name.toUpperCase().startsWith(prefix)
+    ? name.slice(prefix.length)
+    : name;
 }

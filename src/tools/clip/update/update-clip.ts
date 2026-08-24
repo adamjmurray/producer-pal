@@ -10,18 +10,21 @@ import {
   validateAndParseArrangementParams,
   emitArrangementWarnings,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
-  computeLoopDeadline,
-  isDeadlineExceeded,
-} from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/session/select.ts";
-import {
-  prepareSplitParams,
+  ARRANGEMENT_SPLIT_MODE,
+  LEGACY_SPLIT_MODE,
   performSplitting,
-  type SplittingContext,
+  type SplitMode,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
+  namedIdParam,
+  namedParam,
+  namedPathParam,
+  paramNamesSomething,
   parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
@@ -30,21 +33,30 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
   type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
+import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import {
+  moveDestinationParam,
+  resolveMoveDestinations,
+  resolveRequestedClips,
+} from "./helpers/update-clip-session-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
+  path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   notes?: string;
   transforms?: string;
   preTransforms?: string;
@@ -59,6 +71,8 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   arrangementStart?: string;
   arrangementLength?: string;
   toSlot?: string;
+  toPath?: string;
+  arrangementSplit?: string;
   split?: string;
   code?: string;
   focus?: boolean;
@@ -73,9 +87,12 @@ interface ClipResult {
  * Updates properties of existing clips
  *
  * @param args - The clip parameters
- * @param args.ids - Clip ID or comma-separated list of clip IDs to update
+ * @param args.id - Clip ID or comma-separated list of clip IDs to update
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Clip slot(s) of clips to update, instead of id
+ * @param args.paths - Hidden alias for path
  * @param args.notes - Musical notation string
- * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
+ * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all the clips
  * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
@@ -87,8 +104,10 @@ interface ClipResult {
  * @param args.duplicateLoop - Double the clip length, copying notes and envelopes into the new half (native Clip.duplicate_loop; MIDI clips only). Composes with edits on a defined timeline: start/length/firstStart set the loop region first (select the portion to double; duplicate_loop inserts the copy, so content past the region is pushed later, not deleted), preTransforms edit the source, then the double; notes, transforms, and code then apply across the full doubled clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
- * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
- * @param args.split - Comma-separated bar|beat positions to split clip
+ * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
+ * @param args.toPath - Clip slot to move the clip to (e.g., "t2/s3")
+ * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at
+ * @param args.split - Deprecated split positions, measured from each clip's start; use arrangementSplit
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
  * @param args.warpMode - Audio clip warp mode
@@ -100,14 +119,17 @@ interface ClipResult {
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
- * @param args.code - JavaScript code to transform notes (broadcast across ids; use context.clip.{index,count} for per-clip variation)
+ * @param args.code - JavaScript code to transform notes (broadcast across the clips; use context.clip.{index,count} for per-clip variation)
  * @param args.focus - Select the clip and show clip detail view
- * @param context - Tool execution context with holding area settings
+ * @param context - Per-request context
  * @returns Single clip object or array of clip objects
  */
 export async function updateClip(
   {
+    id,
     ids,
+    path,
+    paths,
     notes: notationString,
     transforms,
     preTransforms,
@@ -122,6 +144,8 @@ export async function updateClip(
     arrangementStart,
     arrangementLength,
     toSlot,
+    toPath,
+    arrangementSplit,
     split,
     gainDb,
     pitchShift,
@@ -139,21 +163,17 @@ export async function updateClip(
   }: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
-  const deadline = computeLoopDeadline(context.timeoutMs);
+  // Set once per request by the V8 adapter, so a nested call (duplicate ->
+  // updateClip) spends the caller's remaining budget instead of restarting it.
+  const deadline = context.deadline ?? null;
 
-  if (!ids) {
-    console.warn("updateClip: ids is required");
+  const requestedIds = requestedClipIds({ id, ids, path, paths });
+
+  if (requestedIds.length === 0) {
+    console.warn("updateClip: id or path is required");
 
     return [];
   }
-
-  const mutableClips = applySplittingIfNeeded(
-    validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
-      skipInvalid: true,
-    }),
-    split,
-    context,
-  );
 
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
@@ -162,7 +182,17 @@ export async function updateClip(
   // instead of being swallowed by the per-clip warn-and-skip wrapper.
   if (timeSignature != null) parseTimeSignature(timeSignature);
 
-  const parsedToSlot = parseToSlotParam(toSlot);
+  const { clips, destinationById } = resolveRequestedClips(
+    requestedIds,
+    resolveMoveDestinations(toPath, toSlot, requestedIds.length),
+  );
+  const destinationParam = moveDestinationParam(toPath, toSlot);
+  const mutableClips = applySplittingIfNeeded(
+    clips,
+    arrangementSplit,
+    split,
+    context,
+  );
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -176,8 +206,13 @@ export async function updateClip(
     const clip = mutableClips[i] as LiveAPI;
 
     if (isDeadlineExceeded(deadline)) {
+      // Name the ones that didn't run: without them the caller knows the batch
+      // was cut short but not where the gap is.
+      const skipped = mutableClips.slice(i).map((c) => c.id);
+
       console.warn(
-        `Deadline exceeded after updating ${updatedClips.length} of ${mutableClips.length} clips`,
+        `Ran out of time after updating ${i} of ${mutableClips.length} clips. ` +
+          `Not updated: ${skipped.join(", ")}. Re-run for those ids.`,
       );
       break;
     }
@@ -210,7 +245,8 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
-      toSlot: parsedToSlot,
+      toSlot: destinationById.get(clip.id) ?? null,
+      destinationParam,
       nonSurvivorClipIds,
       context,
       updatedClips,
@@ -226,6 +262,35 @@ export async function updateClip(
 }
 
 /**
+ * The clips a call named, ids first then paths. id and path both name clips to
+ * update, so a call may use either or both — neither contradicts the other the
+ * way two destinations would. Entries stay in place, nulls included, so toPath
+ * lines up with what the caller named.
+ * @param args - The target params as the tool received them
+ * @param args.id - Clip id(s)
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Clip slot(s)
+ * @param args.paths - Hidden alias for path
+ * @returns One entry per named clip, null where a path named none
+ */
+function requestedClipIds({
+  id,
+  ids,
+  path,
+  paths,
+}: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">): Array<
+  string | null
+> {
+  const namedIds = namedIdParam(id, ids, "ids");
+  const namedPaths = namedPathParam(path, paths);
+
+  return [
+    ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),
+    ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
+  ];
+}
+
+/**
  * Select the last updated clip and show the clip detail view, when focus is set.
  * @param updatedClips - The clips updated this call
  * @param focus - Whether to focus the last updated clip
@@ -237,29 +302,8 @@ function focusLastUpdatedClip(
   if (focus && updatedClips.length > 0) {
     const lastClip = updatedClips.at(-1) as ClipResult;
 
-    select({ clipId: lastClip.id, detailView: "clip" });
+    focusSelect({ id: lastClip.id, detailView: "clip" });
   }
-}
-
-/**
- * Parse the toSlot parameter, validating single destination
- * @param toSlot - Raw toSlot string (trackIndex/sceneIndex format)
- * @returns Parsed slot position or null
- */
-function parseToSlotParam(
-  toSlot?: string,
-): { trackIndex: number; sceneIndex: number } | null {
-  if (toSlot == null) return null;
-
-  const slots = parseSlotList(toSlot);
-
-  if (slots.length === 0) return null;
-
-  if (slots.length > 1) {
-    console.warn("toSlot only supports a single destination - using first");
-  }
-
-  return slots[0] as { trackIndex: number; sceneIndex: number };
 }
 
 /**
@@ -321,17 +365,25 @@ async function applyCodeExecToNewClips(
 }
 
 /**
- * Apply splitting to arrangement clips if split parameter is provided
+ * Apply splitting to arrangement clips if a split param is provided
  * @param clips - Validated clip LiveAPI objects
- * @param split - Comma-separated split positions
+ * @param arrangementSplit - Comma-separated song-timeline split positions
+ * @param split - Deprecated clip-relative split positions
  * @param context - Tool execution context
  * @returns Filtered clips (non-existent removed after splitting)
  */
 function applySplittingIfNeeded(
   clips: LiveAPI[],
+  arrangementSplit: string | undefined,
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
+  const request = resolveSplitRequest(arrangementSplit, split);
+
+  if (request == null) return clips;
+
+  const { value, mode } = request;
+
   const arrangementClips = clips.filter((clip) => {
     if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
 
@@ -340,7 +392,7 @@ function applySplittingIfNeeded(
     // the split onto the main lane.
     if (isTakeLaneClip(clip)) {
       console.warn(
-        `split parameter ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+        `${mode.param} ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
       );
 
       return false;
@@ -348,18 +400,55 @@ function applySplittingIfNeeded(
 
     return true;
   });
-  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
+  const splitPoints = prepareSplitParams(
+    value,
+    arrangementClips,
+    new Set(),
+    mode,
+  );
 
-  if (split != null && splitPoints != null && arrangementClips.length > 0) {
-    performSplitting(
-      arrangementClips,
-      splitPoints,
-      clips,
-      context as SplittingContext,
-    );
+  if (splitPoints != null) {
+    performSplitting(arrangementClips, splitPoints, clips, context, mode);
 
     return clips.filter((clip) => clip.exists());
   }
 
   return clips;
+}
+
+/**
+ * Pick which split param to act on. The two read positions on different
+ * timelines, so sending both is ambiguous: warn and split nothing rather than
+ * guess, matching how toPath/toSlot handle a doubled destination.
+ * @param rawArrangementSplit - Song-timeline positions
+ * @param rawSplit - Deprecated clip-relative positions
+ * @returns The positions and how to read them, or null to skip splitting
+ */
+function resolveSplitRequest(
+  rawArrangementSplit: string | undefined,
+  rawSplit: string | undefined,
+): { value: string; mode: SplitMode } | null {
+  // A blank names no position, so reading one as a request made a caller that
+  // fills unused strings with "" lose the split it did ask for. `split` is
+  // hidden, so a model never saw the name — read it without the warning.
+  const arrangementSplit = namedParam(rawArrangementSplit, "arrangementSplit");
+  const split = paramNamesSomething(rawSplit) ? rawSplit?.trim() : undefined;
+
+  if (arrangementSplit != null && split != null) {
+    console.warn(
+      "arrangementSplit and split both name split positions, so no clip was " +
+        "split; use arrangementSplit alone (split is deprecated, and its " +
+        "positions are measured from each clip's start instead of the song timeline)",
+    );
+
+    return null;
+  }
+
+  if (arrangementSplit != null) {
+    return { value: arrangementSplit, mode: ARRANGEMENT_SPLIT_MODE };
+  }
+
+  if (split != null) return { value: split, mode: LEGACY_SPLIT_MODE };
+
+  return null;
 }

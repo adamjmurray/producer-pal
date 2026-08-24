@@ -36,9 +36,12 @@ in either direction so e2e tests can exercise both states.
 — so it can be exercised by hand; release builds omit it entirely. Chat UI
 development (`npm run ui:dev`) works against any build: the MCP server reflects
 CORS for localhost origins by default, so a browser page on another local port
-can reach it. Set `ENABLE_REMOTE_CORS=true` before a build only if you need to
-reach the server from a non-localhost browser origin (a remote inspector, or
-over the LAN).
+can reach it. For a non-localhost browser origin (a remote inspector, or over
+the LAN), build with
+`ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
+`npm run build` refuses to run with any of the debug flags set, so an ambient
+one can't be baked into something that ships — `build:debug` and that override
+are the ways past it.
 
 ## Core Development Scripts
 
@@ -110,10 +113,10 @@ Additional checks enforced within tests:
 
 And `npm run check:build` additionally validates:
 
-| Check                   | What it enforces                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| **Production build**    | Rollup bundles (MCP server, V8, portal) and Vite UI build compile without errors |
-| **Documentation build** | VitePress site compiles successfully                                             |
+| Check                   | What it enforces                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| **Production build**    | Rolldown bundles (MCP server, V8, portal) and Vite UI build compile without errors |
+| **Documentation build** | VitePress site compiles successfully                                               |
 
 ### Key oxlint limits
 
@@ -200,6 +203,8 @@ Quick commands:
 - `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live; the code-exec
   suite is skipped unless `ENABLE_CODE_EXEC=true` is set —
   `ENABLE_CODE_EXEC=true npm run e2e:mcp`)
+- `npm run e2e:portal` - Run the portal e2e tests (needs `npm run build`, but no
+  Ableton Live)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you

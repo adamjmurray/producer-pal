@@ -103,6 +103,7 @@ const {
   defaultParams,
   stubFetchOk,
   renderAndConnect,
+  connectAndDisconnect,
   connectAndGetSession,
   connectWithSeed,
   emitResponseFailure,
@@ -130,6 +131,22 @@ afterEach(() => {
 afterAll(() => {
   globalThis.fetch = REAL_FETCH;
 });
+
+/**
+ * Connect, then latch the thinking indicator with a `response.created`.
+ * @returns The hook handle and the live session
+ */
+async function connectAndThink() {
+  const { result, session } = await connectAndGetSession();
+
+  await act(() => {
+    session.emit("transport_event", { type: "response.created" });
+  });
+
+  expect(result.current.assistantThinking).toBe(true);
+
+  return { result, session };
+}
 
 describe("useVoiceSession initial state", () => {
   it("starts in 'idle' with empty history and no error", () => {
@@ -383,13 +400,8 @@ describe("useVoiceSession.connect", () => {
 
 describe("useVoiceSession connection drop", () => {
   it("surfaces a dropped connection, resets latched flags, and cleans up for reconnect", async () => {
-    const { result, session } = await connectAndGetSession();
-
-    // Latch the thinking indicator, as if a drop landed mid-response.
-    await act(() => {
-      session.emit("transport_event", { type: "response.created" });
-    });
-    expect(result.current.assistantThinking).toBe(true);
+    // Latched as if a drop landed mid-response.
+    const { result, session } = await connectAndThink();
 
     // Network drop: the transport fires "disconnected" unprompted.
     await act(async () => {
@@ -406,14 +418,7 @@ describe("useVoiceSession connection drop", () => {
   });
 
   it("ignores the transport 'disconnected' event during an intentional disconnect", async () => {
-    const { result, session } = await connectAndGetSession();
-
-    await act(async () => {
-      await result.current.disconnect();
-    });
-
-    expect(session.close).toHaveBeenCalled();
-    expect(result.current.status).toBe("idle");
+    const { result } = await connectAndDisconnect();
 
     // disconnect() set the intentional-close flag, so the transport's
     // "disconnected" (real or a late stray) must not surface a lost-connection
@@ -450,12 +455,7 @@ describe("useVoiceSession connection drop", () => {
 
 describe("useVoiceSession transport event handling", () => {
   it("response.created sets assistantThinking=true; response.done clears it", async () => {
-    const { result, session } = await connectAndGetSession();
-
-    await act(() => {
-      session.emit("transport_event", { type: "response.created" });
-    });
-    expect(result.current.assistantThinking).toBe(true);
+    const { result, session } = await connectAndThink();
 
     await act(() => {
       session.emit("transport_event", {
@@ -645,14 +645,8 @@ describe("useVoiceSession transport event handling", () => {
 
 describe("useVoiceSession.disconnect", () => {
   it("closes the session, transitions through 'disconnecting' to 'idle', resets mute", async () => {
-    const { result, session } = await connectAndGetSession();
+    const { result } = await connectAndDisconnect();
 
-    await act(async () => {
-      await result.current.disconnect();
-    });
-
-    expect(session.close).toHaveBeenCalled();
-    expect(result.current.status).toBe("idle");
     expect(result.current.isMuted).toBe(false);
   });
 

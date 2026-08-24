@@ -39,7 +39,7 @@ async function createClip(
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
-    arguments: { slot: `${emptyMidiTrack}/${sceneIndex}`, notes, length },
+    arguments: { path: `t${emptyMidiTrack}/s${sceneIndex}`, notes, length },
   });
   const clip = parseToolResult<{ id: string }>(result);
 
@@ -60,7 +60,7 @@ async function updateClip(
 ): Promise<unknown> {
   return await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, ...args },
+    arguments: { id: clipId, ...args },
   });
 }
 
@@ -100,7 +100,7 @@ describe("ppal-update-clip velocity merge", () => {
     // Verify notes were actually merged and transformed
     const readResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId, include: ["notes"] },
+      arguments: { id: clipId, include: ["notes"] },
     });
     const finalClip = parseToolResult<ReadClipResult>(readResult);
 

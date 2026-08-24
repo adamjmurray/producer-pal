@@ -51,7 +51,7 @@ To stage a draggable clip:
 
 ```bash
 node ../producer-pal/ppal.mjs ppal-create-clip \
-  '{"slot":"5/0","sampleFile":"/abs/path/ir-hall-2s.wav","name":"IR hall 2s","warping":false}'
+  '{"path":"t5/s0","sampleFile":"/abs/path/ir-hall-2s.wav","name":"IR hall 2s","warping":false}'
 ```
 
 The drag reads the file, so the IR that lands on the device is the same either

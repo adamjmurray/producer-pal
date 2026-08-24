@@ -62,14 +62,17 @@ async function createAudioTrack(trackName: string): Promise<number> {
   return track.trackIndex!;
 }
 
-/** Creates a sample audio clip in a session slot and returns its id. */
+/** Creates a sample audio clip in a clip slot and returns its id. */
 async function createAudioSampleClip(
   trackIndex: number,
   sceneIndex: number,
 ): Promise<string> {
   const clipResult = await ctx.client!.callTool({
     name: "ppal-create-clip",
-    arguments: { slot: `${trackIndex}/${sceneIndex}`, sampleFile: SAMPLE_FILE },
+    arguments: {
+      path: `t${trackIndex}/s${sceneIndex}`,
+      sampleFile: SAMPLE_FILE,
+    },
   });
   const clip = parseToolResult<CreateClipResult>(clipResult);
 
@@ -103,18 +106,18 @@ async function applyGainTransformToTwoAudioClips(
 
   await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: `${clip0.id},${clip1.id}`, transforms: transform },
+    arguments: { id: `${clip0.id},${clip1.id}`, transforms: transform },
   });
 
   await sleep(100);
 
   const read0 = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId: clip0.id, include: ["sample"] },
+    arguments: { id: clip0.id, include: ["sample"] },
   });
   const read1 = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId: clip1.id, include: ["sample"] },
+    arguments: { id: clip1.id, include: ["sample"] },
   });
 
   return {
@@ -142,7 +145,7 @@ async function readClipSampleProperty(
 ): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
+    arguments: { id: clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 
@@ -245,7 +248,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${track.trackIndex}/0`,
+        path: `t${track.trackIndex}/s0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -254,7 +257,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${track.trackIndex}/1`,
+        path: `t${track.trackIndex}/s1`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -265,7 +268,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     // Apply transform to both clips
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1.id},${clip2.id}`, transforms: "gain = -9" },
+      arguments: { id: `${clip1.id},${clip2.id}`, transforms: "gain = -9" },
     });
     await sleep(100);
 
@@ -650,7 +653,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/15`,
+        path: `t${emptyMidiTrack}/s15`,
         notes: "v100 C3 1|1",
         length: "2bar",
         transforms: "velocity = 64",
@@ -668,7 +671,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/16`,
+        path: `t${emptyMidiTrack}/s16`,
         notes: "C3 E3 G3 1|1", // C major triad
         length: "2bar",
         transforms: "pitch += 2", // Transpose to D major
@@ -689,7 +692,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result3 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/17`,
+        path: `t${emptyMidiTrack}/s17`,
         notes: "v100 C3 1|1",
         length: "2bar",
         transforms: "velocity = 80\npitch += 12",
@@ -709,7 +712,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/18`,
+        path: `t${emptyMidiTrack}/s18`,
         notes: "C3 1|1\nE3 1|2",
         length: "2bar",
         transforms: "C3: pitch += 12",
@@ -728,7 +731,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/19`,
+        path: `t${emptyMidiTrack}/s19`,
         notes: "C3 1|1\nC3 1|3",
         length: "2bar",
         transforms: "1|1-1|2: velocity = 64",

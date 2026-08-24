@@ -11,6 +11,23 @@ import {
 import { type ChatMessage } from "#webui/chat/sdk/types";
 import { formatChatMessages } from "#webui/chat/sdk/formatter";
 
+/**
+ * One assistant turn holding a completed ppal-connect call.
+ * @returns The history to format
+ */
+function completedToolCall(): ChatMessage[] {
+  return [
+    {
+      role: "assistant",
+      content: "",
+      toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
+      toolResults: [
+        { id: "tc1", name: "ppal-connect", args: {}, result: "Connected" },
+      ],
+    },
+  ];
+}
+
 describe("formatChatMessages", () => {
   it("returns empty array for empty history", () => {
     expect(formatChatMessages([])).toStrictEqual([]);
@@ -55,16 +72,7 @@ describe("formatChatMessages", () => {
   });
 
   it("formats tool calls with results", () => {
-    const history: ChatMessage[] = [
-      {
-        role: "assistant",
-        content: "",
-        toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-        toolResults: [
-          { id: "tc1", name: "ppal-connect", args: {}, result: "Connected" },
-        ],
-      },
-    ];
+    const history = completedToolCall();
     const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toStrictEqual([
@@ -143,16 +151,7 @@ describe("formatChatMessages", () => {
   });
 
   it("omits subagentMessages and subagentIndex for an ordinary tool call", () => {
-    const history: ChatMessage[] = [
-      {
-        role: "assistant",
-        content: "",
-        toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
-        toolResults: [
-          { id: "tc1", name: "ppal-connect", args: {}, result: "Connected" },
-        ],
-      },
-    ];
+    const history = completedToolCall();
     const toolPart = formatChatMessages(history)[0]!.parts[0]!;
 
     expect(toolPart.type === "tool" && "subagentMessages" in toolPart).toBe(

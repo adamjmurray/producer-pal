@@ -40,7 +40,7 @@ export function ThinkingToggle({
       onClick={cycle}
       title={`Thinking: ${thinking}`}
       aria-label={`Thinking level: ${thinking}`}
-      className="flex items-center justify-center p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+      className="flex items-center justify-center rounded p-1 transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700"
     >
       <ThinkingStateIcon level={thinking} />
     </button>
@@ -71,7 +71,7 @@ export function ThinkingStateIcon({ level }: { level: string }) {
   if (level === "Max") {
     return (
       <span
-        className="flex items-center leading-none gap-px"
+        className="flex items-center gap-px leading-none"
         aria-hidden="true"
       >
         <span className="text-xs">🧠</span>

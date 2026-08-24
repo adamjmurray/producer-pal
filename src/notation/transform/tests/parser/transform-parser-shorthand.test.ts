@@ -96,11 +96,11 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("rejects additive shorthand for duration (n/4+1)", () => {
-      expect(() => parseAssignments("n/4+1")).toThrow();
+      expect(() => parseAssignments("n/4+1")).toThrow('but "+" found');
     });
 
     it("rejects additive shorthand for pitch (C4+5)", () => {
-      expect(() => parseAssignments("C4+5")).toThrow();
+      expect(() => parseAssignments("C4+5")).toThrow('but "+" found');
     });
   });
 
@@ -350,7 +350,7 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("rejects a pitch range as body (C4-C5)", () => {
-      expect(() => parseAssignments("C4-C5")).toThrow();
+      expect(() => parseAssignments("C4-C5")).toThrow('but "-" found');
     });
   });
 
@@ -416,15 +416,15 @@ describe("Transform Parser - shorthand", () => {
 
   describe("disambiguation errors", () => {
     it("rejects selector without colon (C1 C4)", () => {
-      expect(() => parseAssignments("C1 C4")).toThrow();
+      expect(() => parseAssignments("C1 C4")).toThrow('but "C" found');
     });
 
     it("rejects stacking two changes on one line (C1: C4 v100)", () => {
-      expect(() => parseAssignments("C1: C4 v100")).toThrow();
+      expect(() => parseAssignments("C1: C4 v100")).toThrow('but "v" found');
     });
 
     it("rejects bare token prefix with no value (v)", () => {
-      expect(() => parseAssignments("v")).toThrow();
+      expect(() => parseAssignments("v")).toThrow('but "v" found');
     });
   });
 });

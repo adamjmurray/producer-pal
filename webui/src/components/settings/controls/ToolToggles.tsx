@@ -77,7 +77,7 @@ export function ToolToggles({
   if (!tools) {
     return (
       <div>
-        <label className="block text-sm font-medium mb-3">
+        <label className="mb-3 block text-sm font-medium">
           Available Tools
         </label>
         <p className="text-sm text-zinc-500 dark:text-zinc-300">
@@ -178,7 +178,7 @@ export function ToolToggles({
         onDisableAll={disableAllTools}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-6 my-6">
+      <div className="my-6 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3">
         {groups.map((group) => (
           <ToolGroupSection
             key={group.label}
@@ -223,24 +223,24 @@ function ToolsHeaderBar({
   onDisableAll: () => void;
 }): VNode {
   return (
-    <div className="flex items-center justify-between mb-3">
+    <div className="mb-3 flex items-center justify-between">
       <label className="block text-sm font-medium">Available Tools</label>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onEnableDefaults}
-          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+          className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
         >
           Enable default toolset
         </button>
         <button
           type="button"
           onClick={onDisableAll}
-          className="px-3 py-1 text-xs bg-zinc-600 text-white rounded hover:bg-zinc-700"
+          className="rounded bg-zinc-600 px-3 py-1 text-xs text-white hover:bg-zinc-700"
         >
           Disable all
         </button>
-        <Tooltip text="Remove tools to simplify the interface for less capable models, or to focus on specific tasks. Recommended to enable all tools, except with local models (Ollama and LM Studio)." />
+        <Tooltip text="Remove tools to simplify the interface for less capable models, or to focus on specific tasks. Recommended to enable all tools, except with local models (Ollama and Bionic)." />
       </div>
     </div>
   );
@@ -272,8 +272,8 @@ function ToolGroupSection({
   cta,
 }: ToolGroupSectionProps) {
   return (
-    <div className="flex flex-col h-full">
-      <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-300 uppercase tracking-wide mb-1.5">
+    <div className="flex h-full flex-col">
+      <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-300">
         {group.label}
       </h4>
       <div className="space-y-1">
@@ -344,7 +344,7 @@ function EditContextButton({
       onClick={onClick}
       disabled={disabled}
       title={disabled ? "Configure settings first" : undefined}
-      className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:no-underline disabled:hover:text-blue-600 dark:disabled:hover:text-blue-400"
+      className="inline-flex items-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-blue-600 disabled:hover:no-underline dark:text-blue-400 dark:hover:text-blue-300 dark:disabled:hover:text-blue-400"
     >
       <ContextIcon size={CHECKBOX_PX} />
       Edit Context

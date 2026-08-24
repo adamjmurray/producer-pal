@@ -74,7 +74,10 @@ describe("Transform Parser - nDuration", () => {
 
   it("rejects stacked/doubled note-value suffixes", () => {
     for (const bad of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
-      expect(() => parseAssignments(`duration = ${bad}`)).toThrow();
+      // The second suffix letter is the stray one the grammar can't consume.
+      expect(() => parseAssignments(`duration = ${bad}`)).toThrow(
+        `but "${bad.at(-1)}" found`,
+      );
     }
   });
 
@@ -147,11 +150,11 @@ describe("Transform Parser - nDuration", () => {
   // Malformed denominators must error, never silently produce garbage. The
   // grammar requires a denominator starting [1-9]; numerator is [0-9]*.
   it("throws on zero denominator (n/0)", () => {
-    expect(() => parseAssignments("duration = n/0")).toThrow();
+    expect(() => parseAssignments("duration = n/0")).toThrow('but "d" found');
   });
 
   it("throws on double slash (n//4)", () => {
-    expect(() => parseAssignments("duration = n//4")).toThrow();
+    expect(() => parseAssignments("duration = n//4")).toThrow('but "d" found');
   });
 
   it("throws on a numerator with zero denominator (n3/0)", () => {

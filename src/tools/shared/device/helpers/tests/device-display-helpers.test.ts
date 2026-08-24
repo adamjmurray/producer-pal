@@ -405,6 +405,11 @@ describe("device-display-helpers", () => {
         id,
         get: mockGet,
         getProperty: (prop: string) => mockGet(prop)?.[0],
+        getPropertyList: (prop: string) => {
+          const result: unknown = mockGet(prop);
+
+          return Array.isArray(result) ? result : [];
+        },
         call: mockCall,
       }) as unknown as LiveAPI;
 

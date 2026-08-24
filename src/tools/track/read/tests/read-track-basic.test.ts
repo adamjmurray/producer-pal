@@ -275,11 +275,11 @@ describe("readTrack", () => {
 
       sessionClips: [
         {
-          ...expectedClip({ id: "clip1", slot: "2/0" }),
+          ...expectedClip({ id: "clip1", path: "t2/s0" }),
           color: undefined,
         },
         {
-          ...expectedClip({ id: "clip2", slot: "2/2" }),
+          ...expectedClip({ id: "clip2", path: "t2/s2" }),
           color: undefined,
         },
       ].map(({ color: _c, view: _v, type: _t, ...clip }) => clip),

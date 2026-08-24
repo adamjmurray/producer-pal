@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -15,20 +16,30 @@ export interface CategorizedDevices {
   audioEffects: DeviceWithDrumPads[];
 }
 
+export interface CategorizeDevicesOptions {
+  includeDrumPads?: boolean;
+  includeRackChains?: boolean;
+  includeReturnChains?: boolean;
+  /** See ReadDeviceOptions.chainsHidden */
+  chainsHidden?: boolean;
+}
+
 /**
  * Categorize devices into MIDI effects, instruments, and audio effects
  * @param devices - Array of Live API device objects
- * @param includeDrumPads - Whether to include drum pad chains
- * @param includeRackChains - Whether to include chains in rack devices
- * @param includeReturnChains - Whether to include return chains in rack devices
+ * @param options - What to read from each device
  * @returns Object with midiEffects, instrument, and audioEffects arrays
  */
 export function categorizeDevices(
   devices: LiveAPI[],
-  includeDrumPads = false,
-  includeRackChains = true,
-  includeReturnChains = false,
+  options: CategorizeDevicesOptions = {},
 ): CategorizedDevices {
+  const {
+    includeDrumPads = false,
+    includeRackChains = true,
+    includeReturnChains = false,
+    chainsHidden = false,
+  } = options;
   const midiEffects: DeviceWithDrumPads[] = [];
   const instruments: DeviceWithDrumPads[] = [];
   const audioEffects: DeviceWithDrumPads[] = [];
@@ -38,6 +49,7 @@ export function categorizeDevices(
       includeChains: includeRackChains,
       includeReturnChains,
       includeDrumPads,
+      chainsHidden,
     }) as unknown as DeviceWithDrumPads;
 
     // Use processed device type for proper rack categorization

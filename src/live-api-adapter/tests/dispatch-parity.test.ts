@@ -15,8 +15,8 @@ describe("V8 dispatch parity", () => {
     // orphan dispatch key) would surface only at runtime as "Unknown tool".
     // ppal-live-api is opt-in (not in STANDARD_TOOL_DEFS) but is always
     // dispatchable, so it is expected in the map.
-    const expected = [...TOOL_NAMES, toolDefLiveApi.toolName].sort();
-    const actual = [...DISPATCH_TOOL_NAMES].sort();
+    const expected = [...TOOL_NAMES, toolDefLiveApi.toolName].toSorted();
+    const actual = DISPATCH_TOOL_NAMES.toSorted();
 
     expect(actual).toStrictEqual(expected);
   });

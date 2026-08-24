@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { formatMidiJson, interpretMidiJson } from "./midi-json-notation.ts";
@@ -198,6 +198,21 @@ describe("v:0 deletes", () => {
     ).toStrictEqual([]);
   });
 
+  it("deletes with an explicit d:0 marker (duration is meaningless on a marker)", () => {
+    // d:0 used to be dropped by the zero-duration check before the marker logic
+    // ran, so the delete silently did nothing.
+    expect(
+      interpretMidiJson("[{p:60,t:0,d:1,v:100},{p:60,t:0,d:0,v:0}]"),
+    ).toStrictEqual([]);
+    expect(
+      interpretMidiJson("[{p:60,t:0,d:1,v:100},{p:60,t:0,d:-1,v:0}]"),
+    ).toStrictEqual([]);
+  });
+
+  it("still drops a zero-duration NOTE", () => {
+    expect(interpretMidiJson("[{p:60,t:0,d:0,v:100}]")).toStrictEqual([]);
+  });
+
   it("keeps the markers when keepV0Deletes is set (update-clip's merge)", () => {
     const result = interpretMidiJson(
       "[{p:60,t:0,d:1,v:100},{p:60,t:0,d:1,v:0}]",
@@ -313,6 +328,80 @@ describe("ratio durations (tuplets)", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.pitch).toBe(62);
+  });
+});
+
+describe("dropped-note warnings", () => {
+  beforeEach(() => {
+    vi.mocked(console.warn).mockClear();
+  });
+
+  it("warns instead of dropping a malformed note in silence", () => {
+    // The whole point: a caller that wrote 2 notes and got 1 back used to have
+    // nothing to notice, since the tool still reported success.
+    interpretMidiJson("[{t:0,d:1,v:100},{p:62,t:1,d:1,v:90}]");
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 1 invalid MIDI JSON note: missing or non-numeric p/t",
+    );
+  });
+
+  it("says nothing when every note is valid", () => {
+    interpretMidiJson("[{p:60,t:0,d:1,v:100}]");
+
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("counts repeats of the same reason instead of repeating it", () => {
+    interpretMidiJson("[{t:0,d:1,v:100},{t:1,d:1,v:90},{p:64,t:2,d:0,v:90}]");
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 3 invalid MIDI JSON notes: missing or non-numeric p/t (2), d must be greater than 0",
+    );
+  });
+
+  it("names the offending pitch on an out-of-range delete marker", () => {
+    interpretMidiJson("[{p:127,t:0,d:1,v:100},{p:130,t:0,d:1,v:0}]");
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("delete marker pitch 130 is outside 0-127"),
+    );
+  });
+
+  it("reports a non-finite field rather than dropping it in silence", () => {
+    interpretMidiJson("[{p:60,t:0,d:5/0,v:100}]");
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 1 invalid MIDI JSON note: non-finite d, v, or c",
+    );
+  });
+
+  it("caps the distinct reasons it lists and counts the rest", () => {
+    // Four distinct reasons; only three are named so a pile of bad input can't
+    // flood the model's context.
+    interpretMidiJson(
+      "[{t:0,d:1,v:100},{p:60,t:0,d:0,v:100},{p:60,t:0,d:0/0,v:100},{p:130,t:0,d:1,v:0}]",
+    );
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 4 invalid MIDI JSON notes: missing or non-numeric p/t, " +
+        "d must be greater than 0, non-finite d, v, or c, and 1 more",
+    );
+  });
+
+  it("names the reason behind most of the drops, not the first one", () => {
+    // Regression: the cap took the reasons in input order, so the one that
+    // accounted for 4 of these 7 notes collapsed into "and 1 more" behind
+    // three one-offs, steering the model at whatever it got wrong first.
+    interpretMidiJson(
+      "[{t:0,d:1,v:100},{p:60,t:0,d:0,v:100},{p:60,t:0,d:0/0,v:100}," +
+        "{p:130,t:0,d:1,v:0},{p:130,t:1,d:1,v:0},{p:130,t:2,d:1,v:0},{p:130,t:3,d:1,v:0}]",
+    );
+
+    expect(console.warn).toHaveBeenCalledWith(
+      "ignoring 7 invalid MIDI JSON notes: delete marker pitch 130 is outside 0-127 (4), " +
+        "missing or non-numeric p/t, d must be greater than 0, and 1 more",
+    );
   });
 
   it("serializes a repeating-decimal tuplet as an exact ratio", () => {

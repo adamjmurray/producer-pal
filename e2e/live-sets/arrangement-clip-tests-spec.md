@@ -15,6 +15,11 @@ _No session clips in this set — all clips are arrangement clips_
 
 ## MIDI Tracks (t0-t14)
 
+**Every MIDI clip carries a pitch-bend clip envelope** (MIDI Ctrl slot 0, five
+breakpoints). The Live API can't create an envelope, so this is the only way to
+test that edits preserve them — keep it when re-authoring the Set.
+`ppal-update-clip-arrangement-envelopes` depends on t0's.
+
 ### Looped Clips (t0-t8)
 
 | Track | Name             | Clip Length | Arr Length | firstStart | Edge Case                                                   |
@@ -100,3 +105,4 @@ relationships × start/firstStart timing
 - Arrangement positioned into loop content
 - Tiled/repeated loop content
 - Unwarped audio with natural sample timing
+- Clip envelopes surviving an edit (MIDI clips only)

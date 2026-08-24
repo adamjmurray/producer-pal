@@ -163,5 +163,5 @@ function resolveSplitPoints(
       abletonScale,
   );
 
-  return [...new Set(beats)].sort((a, b) => a - b);
+  return [...new Set(beats)].toSorted((a, b) => a - b);
 }

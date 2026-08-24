@@ -45,18 +45,20 @@ jobs:
 
       - name: Guard against dev-only env vars in CI
         # These flags enable Live API access, arbitrary code execution,
-        # wildcard CORS, and the unfinished warp-marker params. They must never
-        # be baked into release artifacts.
+        # wildcard CORS, the unfinished warp-marker params, and the LiveAPI
+        # object counter. They must never be baked into release artifacts.
         run: |
           if [ "${ENABLE_LIVE_API:-}" = "true" ] || \
              [ "${ENABLE_CODE_EXEC:-}" = "true" ] || \
              [ "${ENABLE_REMOTE_CORS:-}" = "true" ] || \
-             [ "${ENABLE_WARP_MARKERS:-}" = "true" ]; then
+             [ "${ENABLE_WARP_MARKERS:-}" = "true" ] || \
+             [ "${ENABLE_BUILD_STATS:-}" = "true" ]; then
             echo "::error::Dev-only env vars must not be set in CI builds:"
             echo "  ENABLE_LIVE_API=${ENABLE_LIVE_API:-}"
             echo "  ENABLE_CODE_EXEC=${ENABLE_CODE_EXEC:-}"
             echo "  ENABLE_REMOTE_CORS=${ENABLE_REMOTE_CORS:-}"
             echo "  ENABLE_WARP_MARKERS=${ENABLE_WARP_MARKERS:-}"
+            echo "  ENABLE_BUILD_STATS=${ENABLE_BUILD_STATS:-}"
             exit 1
           fi
 
@@ -65,6 +67,12 @@ jobs:
 
       - name: Build documentation site
         run: npm run docs:build
+
+      # Lives here because it drives the portal bundle the build step just
+      # produced. It needs no Ableton and no browser, so it costs this job a
+      # second rather than an `npm ci` of its own.
+      - name: Test the portal binary end to end
+        run: npm run e2e:portal
 
       - name: Verify all build artifacts exist
         id: summary
@@ -142,24 +150,6 @@ jobs:
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
           echo "summary=$(cat /tmp/summary.md | base64 -w 0)" >> $GITHUB_OUTPUT
 
-  typecheck:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - run: npm ci
-
-      - name: Type check
-        run: npm run typecheck
-
   code-hygiene:
     runs-on: ubuntu-latest
 
@@ -188,6 +178,12 @@ jobs:
       # seconds, so a dedicated job spent longer on `npm ci` than on linting.
       - name: Lint
         run: npm run lint
+
+      # Folded in for the same reason, once TypeScript 7 made it cheap enough:
+      # the Go compiler took this from ~20s to ~7s, well under the `npm ci` a
+      # separate job would pay.
+      - name: Type check
+        run: npm run typecheck
 
       - name: Check code duplication
         id: summary
@@ -259,13 +255,14 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
 
+      # No `--with-deps`, and no `install-deps` step: ubuntu-latest already
+      # ships every library Chromium needs. install-deps would only add CJK and
+      # X11 font packages we never render, and its apt fetch stalls for minutes
+      # on a bad day. If a runner image ever drops a library, Playwright says so
+      # at launch.
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+        run: npx playwright install chromium
 
       - name: Test built-in chat UI with Playwright
         id: ui-tests
@@ -336,7 +333,6 @@ jobs:
     needs:
       [
         build-verification,
-        typecheck,
         unit-tests,
         playwright-tests,
         code-hygiene,
@@ -377,7 +373,6 @@ jobs:
 
             // Check job statuses
             const jobs = {
-              'Typecheck': '${{ needs.typecheck.result }}',
               'Code Hygiene': '${{ needs.code-hygiene.result }}',
               'Unit Tests': '${{ needs.unit-tests.result }}',
               'Build': '${{ needs.build-verification.result }}',
@@ -406,8 +401,7 @@ jobs:
               '|-----|--------|',
               `| Build | ${icon(jobs['Build'])} ${jobs['Build']} |`,
               `| Unit Tests | ${icon(jobs['Unit Tests'])} ${jobs['Unit Tests']} |`,
-              `| Typecheck | ${icon(jobs['Typecheck'])} ${jobs['Typecheck']} |`,
-              `| Lint & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
+              `| Lint, Typecheck & Code Hygiene | ${icon(jobs['Code Hygiene'])} ${jobs['Code Hygiene']} |`,
               `| End-to-End Tests | ${icon(jobs['Playwright'])} ${jobs['Playwright']} |`,
               `| Repo Stats | ${icon(jobs['Repo Stats'])} ${jobs['Repo Stats']} |`
             ].join('\n');

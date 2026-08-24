@@ -1,0 +1,291 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { playback } from "#src/tools/session/playback.ts";
+import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
+
+describe("playback target params on actions that have no target", () => {
+  let liveSet: RegisteredMockObject;
+
+  beforeEach(() => {
+    liveSet = setupPlaybackLiveSet();
+  });
+
+  // The transport command has to run. Parsing a leftover param the action never
+  // reads turned "stop" into a format error and left Live playing.
+  it("stops even when slots names nothing parseable", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    const result = playback({ action: "stop", slots: "bogus" });
+
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expect(result.playing).toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      'slots ignored: action "stop" takes no target',
+    );
+  });
+
+  it("plays the arrangement even when path names nothing parseable", () => {
+    const result = playback({ action: "play-arrangement", path: "nonsense" });
+
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expect(result.playing).toBe(true);
+  });
+
+  it("names every target param it ignored", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({
+      action: "stop-all-session-clips",
+      path: "t0/s0",
+      slots: "0/0",
+      id: "clip1",
+    });
+
+    expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(warn).toHaveBeenCalledWith(
+      'path/slots/id ignored: action "stop-all-session-clips" takes no target',
+    );
+  });
+
+  it("says nothing when no target param was sent", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "stop" });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+// `path` takes a comma-separated list, so a model reaches for the plural the
+// same way it reaches for `ids`.
+describe("playback paths alias", () => {
+  let clipSlot: RegisteredMockObject;
+
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+  });
+
+  it("fires the clip paths names when path is unset", () => {
+    playback({ action: "play-session-clips", paths: "t0/s1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+
+  it("keeps path and says paths went nowhere when they disagree", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "play-session-clips", path: "t0/s1", paths: "t9/s9" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith(
+      'paths "t9/s9" ignored — "path" names the target',
+    );
+  });
+
+  it("names the ignored target as path on an action that takes none", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "stop", paths: "t0/s1" });
+
+    expect(warn).toHaveBeenCalledWith(
+      'path ignored: action "stop" takes no target',
+    );
+  });
+});
+
+describe("playback ids that names no clip", () => {
+  let clipSlot: RegisteredMockObject;
+
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+    clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+  });
+
+  // z.coerce.string() renders a JSON null as "null", so a caller that sent no
+  // ids at all was refused for naming both ids and path.
+  it("fires the path's clip when ids is a coerced null, and says so", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "null" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).toHaveBeenCalledWith('id "null" names nothing');
+  });
+
+  it("fires the path's clip when ids is blank, without a word", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "  " });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // Nothing named a clip, so the call has nothing to fire — and the message
+  // says that rather than reporting a launch that didn't happen.
+  it("refuses the action when a coerced-null ids is all there is", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", id: "null" }),
+    ).toThrow("playback failed: id or path is required for action");
+  });
+
+  it("still refuses ids and path together when both name clips", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" }),
+    ).toThrow("playback failed: id and path are mutually exclusive");
+  });
+
+  // A scene path is still a path. Firing the ids and dropping it silently is
+  // the wrong-target bug these params exist to prevent.
+  it("refuses ids alongside a scene path too", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "s3", id: "clip1" }),
+    ).toThrow("playback failed: id and path are mutually exclusive");
+  });
+
+  // Bad ids are warned and skipped, which is right until every one is skipped:
+  // the empty list left over read as "act on these zero clips", so the tool
+  // fired nothing and reported playing: true.
+  it("refuses the action when every id is skipped", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+
+    expect(() =>
+      playback({ action: "play-session-clips", id: "scene3" }),
+    ).toThrow(
+      'playback failed: id "scene3" named no clip for action "play-session-clips"',
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'playback: id "scene3" is not a clip (found Scene)',
+    );
+  });
+
+  it("refuses stop-session-clips the same way", () => {
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+
+    expect(() =>
+      playback({ action: "stop-session-clips", id: "scene3" }),
+    ).toThrow(
+      'playback failed: id "scene3" named no clip for action "stop-session-clips"',
+    );
+  });
+
+  // Nothing warned on this one at all: the entries were dropped before any id
+  // was looked at, so the call reported a launch with no message of any kind.
+  it("refuses an ids that names no id", () => {
+    expect(() => playback({ action: "play-session-clips", id: "," })).toThrow(
+      'playback failed: id "," named no clip for action "play-session-clips"',
+    );
+  });
+
+  it("still fires the good ids when only some are skipped", () => {
+    registerMockObject("scene3", { path: livePath.scene(3), type: "Scene" });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+      type: "Clip",
+    });
+
+    playback({ action: "play-session-clips", id: "scene3,clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+});
+
+// slots reads as unset now, so the call falls through to "you named no target"
+// instead of carrying an empty list that acts on nothing while reporting
+// success.
+describe("playback slots that names no position", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+  });
+
+  it("refuses play-scene rather than crashing on the empty list", () => {
+    expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
+      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
+    );
+  });
+
+  it("refuses play-session-clips rather than reporting a launch", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", slots: "," }),
+    ).toThrow("playback failed: id or path is required");
+  });
+
+  it("refuses stop-session-clips the same way", () => {
+    expect(() =>
+      playback({ action: "stop-session-clips", slots: "," }),
+    ).toThrow("playback failed: id or path is required");
+  });
+
+  it("lets ids carry the call when slots names nothing", () => {
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+      type: "Clip",
+    });
+
+    playback({ action: "play-session-clips", slots: ",", id: "clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+});
+
+// Each handler reads only its own kind of target, so a wrong-shaped path used
+// to fall through to a "you gave me nothing" error naming the param that was
+// sent. Say what's wrong with it, and what the right shape looks like.
+describe("playback path shaped wrong for the action", () => {
+  beforeEach(() => {
+    setupPlaybackLiveSet();
+  });
+
+  // A path with no scene in it at all has nothing to recover, so play-scene
+  // says what it needs rather than borrowing the clip actions' wording.
+  it("refuses a track for play-scene, naming the shapes that work", () => {
+    expect(() => playback({ action: "play-scene", path: "t0" })).toThrow(
+      'invalid path "t0" - names no scene; action "play-scene" takes a scene ' +
+        '"s<scene>" or a clip slot "t<track>/s<scene>"',
+    );
+  });
+
+  it("refuses a scene for play-session-clips, pointing at play-scene", () => {
+    expect(() =>
+      playback({ action: "play-session-clips", path: "s3" }),
+    ).toThrow(
+      'invalid path "s3" - names a scene; action "play-session-clips" takes ' +
+        'clip slots "t<track>/s<scene>" (e.g., "t0/s3"), or use ' +
+        'action "play-scene" for the whole scene',
+    );
+  });
+
+  // There's no "stop a scene" action to point at, so don't invent one.
+  it("refuses a scene for stop-session-clips without suggesting play-scene", () => {
+    expect(() =>
+      playback({ action: "stop-session-clips", path: "s3" }),
+    ).toThrow(
+      'invalid path "s3" - names a scene; action "stop-session-clips" takes ' +
+        'clip slots "t<track>/s<scene>" (e.g., "t0/s3")',
+    );
+    expect(() =>
+      playback({ action: "stop-session-clips", path: "s3" }),
+    ).not.toThrow(/play-scene/);
+  });
+});

@@ -4,13 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { CLIENT_TOOL_TIMEOUT_MS } from "#src/shared/config";
 import { extractMcpText } from "#webui/lib/utils/mcp-content";
-
-// Cap how long a voice tool call can run. The MCP SDK's default is 60s; a stuck
-// Live operation would otherwise block the voice turn that long with no
-// feedback. On timeout the SDK rejects with an McpError, which is caught below
-// and returned to the model as a normal tool-error string so it can recover.
-export const VOICE_TOOL_TIMEOUT_MS = 30_000;
 
 /**
  * Call an MCP tool and return its result as a string, never throwing. Shared by
@@ -32,12 +27,15 @@ export async function callMcpToolToString(
   args: Record<string, unknown>,
 ): Promise<string> {
   try {
+    // Backstop for a wedged connection, not the normal way a long call ends:
+    // the device answers by its own deadline with whatever landed plus a
+    // warning, and CLIENT_TOOL_TIMEOUT_MS sits above that cap so it wins the
+    // race. On timeout the SDK rejects with an McpError, caught below and
+    // returned to the model as a tool-error string it can recover from.
     const result = await mcpClient.callTool(
       { name, arguments: args },
       undefined,
-      {
-        timeout: VOICE_TOOL_TIMEOUT_MS,
-      },
+      { timeout: CLIENT_TOOL_TIMEOUT_MS },
     );
 
     const content = result.content as Array<{ type: string; text?: string }>;

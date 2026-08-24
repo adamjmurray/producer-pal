@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
-import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
+import { useConversationLock } from "#webui/hooks/chat/helpers/conversations/use-conversation-lock";
 
 function createMockChat() {
   return {

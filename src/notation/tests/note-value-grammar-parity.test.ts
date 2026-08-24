@@ -178,6 +178,14 @@ const OFFSET_SITES = [
   { name: "transform beatValue rule", fn: offsetViaTransform },
 ] as const;
 
+// What a genuine rejection looks like at any site: Peggy's own syntax error, a
+// format error from a regex site, or one of the grammars' steer messages. The
+// site helpers above also throw when a token parses but not as a duration/time
+// point — asserting this pattern keeps a rejection test from passing on that
+// guard instead of on the grammar.
+const REJECTION =
+  /^(Expected |Invalid (duration|bar\|beat) format|durations need a denominator|beat (offsets|positions)|use note names|positions use a pipe)/;
+
 describe("note-value grammar parity across all parse sites", () => {
   describe("canonical note-value durations agree across all duration sites", () => {
     // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar±n<frac> form
@@ -279,8 +287,8 @@ describe("note-value grammar parity across all parse sites", () => {
     // Regression lock: durationToAbletonBeats once accepted bare numbers.
     for (const token of ["5", "1.5", "2", "1/4"]) {
       it(`"${token}" is rejected by the authoring duration sites`, () => {
-        expect(() => durationViaRegex(token, 4, 4)).toThrow();
-        expect(() => durationViaBarbeat(token, 4, 4)).toThrow();
+        expect(() => durationViaRegex(token, 4, 4)).toThrow(REJECTION);
+        expect(() => durationViaBarbeat(token, 4, 4)).toThrow(REJECTION);
         // The transform grammar parses it only as arithmetic, never as a note
         // value — the `n`/`bar` sigils are what mark a note value.
         expect(transformIsNoteValueDuration(token, 4, 4)).toBe(false);
@@ -325,7 +333,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const token of ["n/08", "n/016", "n1/08"]) {
       it(`duration "${token}" is rejected by every duration site`, () => {
         for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow();
+          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
         }
       });
     }
@@ -333,7 +341,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const beat of ["1+n/08", "1-n/016", "1+n1/08"]) {
       it(`offset "1|${beat}" is rejected by every offset site`, () => {
         for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow();
+          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
         }
       });
     }
@@ -347,7 +355,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const token of ["01bar", "007bar", "01bar+n/4"]) {
       it(`duration "${token}" is rejected by every duration site`, () => {
         for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow();
+          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
         }
       });
     }
@@ -359,8 +367,8 @@ describe("note-value grammar parity across all parse sites", () => {
       // while both grammars reject it (`oneOrMoreInt` starts at 1). This is the
       // documented exception the L2 fix deliberately preserves.
       expect(durationViaRegex("0bar", 4, 4)).toBe(0);
-      expect(() => durationViaBarbeat("0bar", 4, 4)).toThrow();
-      expect(() => durationViaTransform("0bar", 4, 4)).toThrow();
+      expect(() => durationViaBarbeat("0bar", 4, 4)).toThrow('but "b" found');
+      expect(() => durationViaTransform("0bar", 4, 4)).toThrow('but "b" found');
     });
   });
 
@@ -406,7 +414,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const beat of ["4/3", "1+1/3", "1+2/3"]) {
       it(`"1|${beat}" is rejected everywhere`, () => {
         for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow();
+          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
         }
       });
     }
@@ -420,7 +428,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const token of ["n/4dt", "n/4dd", "n/4td", "n/4tt"]) {
       it(`duration "${token}" is rejected by every duration site`, () => {
         for (const site of DURATION_SITES) {
-          expect(() => site.fn(token, 4, 4)).toThrow();
+          expect(() => site.fn(token, 4, 4)).toThrow(REJECTION);
         }
       });
     }
@@ -428,7 +436,7 @@ describe("note-value grammar parity across all parse sites", () => {
     for (const beat of ["1+n/4dt", "1+n/8tt", "1-n/8td"]) {
       it(`offset "1|${beat}" is rejected by every offset site`, () => {
         for (const site of OFFSET_SITES) {
-          expect(() => site.fn(beat, 4, 4)).toThrow();
+          expect(() => site.fn(beat, 4, 4)).toThrow(REJECTION);
         }
       });
     }

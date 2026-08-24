@@ -15,11 +15,21 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildFlagGuard } from "./helpers/build-flag-guard.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "../..");
 
 console.log("Preparing release...\n");
+
+// Checked before anything is deleted, though `npm run build` checks it again —
+// a release must not carry a dev flag the shell happened to be exporting.
+const flagRefusal = buildFlagGuard(process.env);
+
+if (flagRefusal != null) {
+  console.error(flagRefusal);
+  process.exit(1);
+}
 
 // Deliberately does NOT expect a tag yet. Building comes first, tagging comes
 // after the artifacts have been looked at (`npm run tag`) — see dev/Releasing.md.

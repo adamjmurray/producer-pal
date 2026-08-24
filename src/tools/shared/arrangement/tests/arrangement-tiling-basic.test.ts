@@ -13,7 +13,7 @@ import {
   setupLiveSet,
   setupTrackWithQueuedMethods,
   setupScene,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import { createAudioClipInSession } from "../arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,

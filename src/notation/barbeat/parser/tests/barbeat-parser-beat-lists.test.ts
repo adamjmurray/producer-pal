@@ -66,8 +66,8 @@ describe("BarBeatScript Parser - beat lists", () => {
     });
 
     it("rejects beat list without bar number", () => {
-      expect(() => parser.parse("|1,2,3,4")).toThrow();
-      expect(() => parser.parse("1|1,2 |3 |4")).toThrow();
+      expect(() => parser.parse("|1,2,3,4")).toThrow('but "|" found');
+      expect(() => parser.parse("1|1,2 |3 |4")).toThrow('but "|" found');
     });
 
     it("parses beat lists with notes", () => {
@@ -174,8 +174,8 @@ describe("BarBeatScript Parser - beat lists", () => {
     });
 
     it("still rejects a comma item that is not a beat or bar|beat", () => {
-      expect(() => parser.parse("1|1,foo")).toThrow();
-      expect(() => parser.parse("1|1,|2")).toThrow();
+      expect(() => parser.parse("1|1,foo")).toThrow('but "f" found');
+      expect(() => parser.parse("1|1,|2")).toThrow('but "|" found');
     });
   });
 

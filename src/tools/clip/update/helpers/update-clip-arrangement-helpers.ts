@@ -11,6 +11,7 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
@@ -70,13 +71,13 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // duplicate_clip_to_arrangement is a Track-scoped API that always targets
-  // the main lane; on a take-lane clip it would silently move content off the
-  // lane (and the follow-up delete_clip is a no-op for take-lane clips).
+  // A move is copy-then-delete, and Live's API cannot delete a take-lane clip
+  // (delete_clip silently no-ops on one, and TakeLane has no delete at all), so
+  // any move we made would leave the original behind — a copy, not a move.
   // Warn and preserve the clip unchanged.
   if (isTakeLaneClip(clip)) {
     console.warn(
-      `arrangementStart parameter ignored for take-lane clip (id ${clip.id}); move it in Live's UI`,
+      `arrangementStart ignored for take-lane clip (id ${clip.id}): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere`,
     );
 
     return clip.id;
@@ -215,6 +216,7 @@ export function handleArrangementOperations({
 
   // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
+  let finalNoteResult = noteResult;
 
   if (arrangementLengthBeats != null) {
     const results = handleArrangementLengthOperation({
@@ -224,13 +226,47 @@ export function handleArrangementOperations({
       context,
     });
 
+    finalNoteResult = recountNotesAfterLengthChange(finalClipId, noteResult);
+
     if (results.length > 0) {
-      updatedClips.push(...results);
+      // The length helpers return ids only, and their first entry is always the
+      // clip the notes were written to (any tiles follow it), so the note stats
+      // go there.
+      updatedClips.push(
+        ...results.map((result, index) =>
+          index === 0
+            ? buildClipResultObject(result.id, finalNoteResult)
+            : result,
+        ),
+      );
       hasArrangementLengthResults = true;
     }
   }
 
   if (!hasArrangementLengthResults) {
-    updatedClips.push(buildClipResultObject(finalClipId, noteResult));
+    updatedClips.push(buildClipResultObject(finalClipId, finalNoteResult));
   }
+}
+
+/**
+ * Recount a clip's notes after its length changed. The first count was taken
+ * against the old [-length, 2*length] scan window, which misses notes written
+ * past the old end — the whole point of writing notes and lengthening in one
+ * call.
+ * @param clipId - The clip the notes were written to
+ * @param noteResult - The count from the note write, or null when none ran
+ * @returns The note result with a refreshed count, or null
+ */
+function recountNotesAfterLengthChange(
+  clipId: string,
+  noteResult: NoteUpdateResult | null,
+): NoteUpdateResult | null {
+  if (noteResult == null) {
+    return null;
+  }
+
+  return {
+    ...noteResult,
+    noteCount: getClipNoteCount(LiveAPI.from(clipId)),
+  };
 }

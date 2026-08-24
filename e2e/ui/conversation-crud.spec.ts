@@ -8,6 +8,7 @@ import {
   expectNoConsoleOutput,
   makeConversation,
   readConversationsFromDb,
+  sendChatMessage,
   setupConsoleCapture,
   setupUiTest,
 } from "./ui-test-helpers";
@@ -61,6 +62,48 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
     );
 
     expectNoConsoleOutput(captured);
+  });
+
+  test("keeps the restored conversation when a send finds no API key", async ({
+    page,
+  }) => {
+    // Regression: the no-key error rendered (and stashed) the failing message on
+    // its own, so the conversation it was sent from vanished from the screen —
+    // and the next send bootstrapped from that truncation and saved it over the
+    // record. The stubs configure the provider with an empty key, so a plain
+    // send is the whole repro.
+    await setupUiTest(page, [
+      makeConversation({
+        id: "nokey",
+        title: "Has messages",
+        updatedAt: 100,
+        messages: [
+          { role: "user", content: "FIXTURE_USER_PROMPT" },
+          { role: "assistant", content: "FIXTURE_ASSISTANT_REPLY" },
+        ],
+      }),
+    ]);
+
+    await page
+      .getByTestId("conversation-item")
+      .filter({ hasText: "Has messages" })
+      .click();
+
+    await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
+
+    await sendChatMessage(page, "another question");
+
+    await expect(page.getByText("No API key configured")).toBeVisible();
+    // The conversation the message was sent from is still there, error and all.
+    await expect(page.getByText("FIXTURE_USER_PROMPT")).toBeVisible();
+    await expect(page.getByText("FIXTURE_ASSISTANT_REPLY")).toBeVisible();
+    await expect(page.getByText("another question")).toBeVisible();
+
+    // The app logs every error it renders, so this one is expected.
+    expect(captured.errors).toHaveLength(1);
+    expect(captured.errors[0]).toContain("No API key configured");
+    expect(captured.warnings).toEqual([]);
+    expect(captured.logs).toEqual([]);
   });
 
   test("renames a conversation and persists it", async ({ page }) => {
@@ -190,7 +233,7 @@ test.describe("Conversation history CRUD (stubbed backend)", () => {
 
     const records = await readConversationsFromDb(page);
 
-    expect(records.map((r) => r.id).sort()).toEqual(["u1", "u2"]);
+    expect(records.map((r) => r.id).toSorted()).toEqual(["u1", "u2"]);
 
     expectNoConsoleOutput(captured);
   });

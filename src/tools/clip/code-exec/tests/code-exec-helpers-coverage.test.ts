@@ -188,7 +188,7 @@ describe("buildCodeExecutionContext", () => {
   });
 
   it("omits the slot for a session clip without a scene index", () => {
-    // Kills the `&&`→`||` and forced-true mutants on the session-slot guard:
+    // Kills the `&&`→`||` and forced-true mutants on the clip-slot guard:
     // view is "session" but sceneIndex is undefined, so no slot is set.
     registerLiveSet();
     registerTrack(2);
@@ -219,7 +219,10 @@ describe("buildCodeExecutionContext", () => {
       undefined,
     );
 
-    expect(result.location).toStrictEqual({ view: "arrangement" });
+    expect(result.location).toStrictEqual({
+      view: "arrangement",
+      path: "t0",
+    });
   });
 
   it("scales arrangementStart by the song denominator/4", () => {
@@ -240,7 +243,7 @@ describe("buildCodeExecutionContext", () => {
       16,
     );
 
-    expect(result.location.arrangementStart).toBe(32);
+    expect(result.location.arrangementStartBeats).toBe(32);
   });
 });
 

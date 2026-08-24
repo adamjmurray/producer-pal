@@ -41,7 +41,10 @@ describe("useCustomSkillsCollection", () => {
       expect(result.current.status.kind).toBe("ready");
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      LIST_URL,
+      expect.objectContaining({ cache: "no-store" }),
+    );
     expect(
       result.current.status.kind === "ready" &&
         result.current.status.entries[0]?.enabled,

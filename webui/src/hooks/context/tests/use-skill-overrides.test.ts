@@ -11,12 +11,17 @@ import { describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
   deferred,
+  type Deferred,
   installFetchMock,
   jsonResponse,
   raceTwoWrites,
   renderAndWait,
   useFakeTimersForPolling,
 } from "./doc-transport-test-helpers";
+import {
+  expectResetToIdle,
+  landSaveBeforeStaleRefresh,
+} from "./doc-collection-test-helpers";
 
 // happy-dom origin is http://localhost:3000/, so the endpoints resolve there.
 const LIST_URL = "http://localhost:3000/skill-overrides";
@@ -323,12 +328,7 @@ describe("useSkillOverrides", () => {
 
     expect(result.current.saveStatus).toBe("saved");
 
-    await act(async () => {
-      result.current.resetSaveStatus();
-    });
-
-    expect(result.current.saveStatus).toBe("idle");
-    expect(result.current.saveError).toBeNull();
+    await expectResetToIdle(result);
   });
 
   it("does not paint a save outcome onto a slot switched to mid-flight", async () => {
@@ -412,10 +412,15 @@ describe("useSkillOverrides", () => {
     expect(overrideOf(result, 0)).toBe("NEW");
   });
 
-  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
-    // A superseded write's result is discarded, so its resolution says nothing
-    // about what is on disk. Painting "Saved" here tells the user the edit they
-    // just made is persisted while its PUT is still on the wire.
+  /**
+   * Start two saves of the same slot back to back, settle the older one the
+   * way the caller asks, and leave the newer one in flight.
+   * @param settleOlder - How the superseded write ends
+   * @returns The rendered hook and a finisher that resolves the newer write
+   */
+  async function startSupersededSave(
+    settleOlder: (older: Deferred<Response>) => void,
+  ): Promise<{ result: HookResult; finishNewer: () => Promise<void> }> {
     const result = await renderReady([rawSlot({ override: "loaded" })]);
 
     const older = deferred<Response>();
@@ -430,16 +435,32 @@ describe("useSkillOverrides", () => {
       const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
 
       newerPending = result.current.saveSlot("barbeat-standard", "NEW");
-      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) }));
+      settleOlder(older);
       await olderPending;
     });
 
+    return {
+      result,
+      finishNewer: async () => {
+        await act(async () => {
+          newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
+          await newerPending;
+        });
+      },
+    };
+  }
+
+  it("keeps the indicator on Saving when a superseded write resolves first", async () => {
+    // A superseded write's result is discarded, so its resolution says nothing
+    // about what is on disk. Painting "Saved" here tells the user the edit they
+    // just made is persisted while its PUT is still on the wire.
+    const { result, finishNewer } = await startSupersededSave((older) =>
+      older.resolve(jsonResponse({ slot: rawSlot({ override: "OLD" }) })),
+    );
+
     expect(result.current.saveStatus).toBe("saving");
 
-    await act(async () => {
-      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
-      await newerPending;
-    });
+    await finishNewer();
 
     expect(result.current.saveStatus).toBe("saved");
     expect(overrideOf(result, 0)).toBe("NEW");
@@ -450,31 +471,14 @@ describe("useSkillOverrides", () => {
     // nothing about what is on disk either: reporting it tells the user their
     // edit was lost while the PUT that owns the file is still on the wire (or has
     // already succeeded).
-    const result = await renderReady([rawSlot({ override: "loaded" })]);
-
-    const older = deferred<Response>();
-    const newer = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(older.promise);
-    fetchMock.mockReturnValueOnce(newer.promise);
-
-    let newerPending: Promise<boolean> | undefined;
-
-    await act(async () => {
-      const olderPending = result.current.saveSlot("barbeat-standard", "OLD");
-
-      newerPending = result.current.saveSlot("barbeat-standard", "NEW");
-      older.reject(new Error("network died"));
-      await olderPending;
-    });
+    const { result, finishNewer } = await startSupersededSave((older) =>
+      older.reject(new Error("network died")),
+    );
 
     expect(result.current.saveStatus).toBe("saving");
     expect(result.current.saveError).toBeNull();
 
-    await act(async () => {
-      newer.resolve(jsonResponse({ slot: rawSlot({ override: "NEW" }) }));
-      await newerPending;
-    });
+    await finishNewer();
 
     expect(result.current.saveStatus).toBe("saved");
     expect(overrideOf(result, 0)).toBe("NEW");
@@ -507,26 +511,18 @@ describe("useSkillOverrides", () => {
   it("drops a refresh that a concurrent save superseded", async () => {
     const result = await renderReady([rawSlot({ override: "loaded" })]);
 
-    const putEcho = deferred<Response>();
-    const staleGet = deferred<Response>();
-
-    fetchMock.mockReturnValueOnce(putEcho.promise); // save PUT
-    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
-
-    await act(async () => {
-      const savePromise = result.current.saveSlot("barbeat-standard", "MINE");
-      const refreshPromise = result.current.refresh();
-
-      // The save echo lands first and sets the override.
-      putEcho.resolve(jsonResponse({ slot: rawSlot({ override: "MINE\n" }) }));
-      await savePromise;
-
-      // The stale GET resolves last; the overlap guard must drop it.
-      staleGet.resolve(
-        jsonResponse({ slots: [rawSlot({ override: "stale" })] }),
-      );
-      await refreshPromise;
-    });
+    await landSaveBeforeStaleRefresh(
+      fetchMock,
+      {
+        save: async () =>
+          await result.current.saveSlot("barbeat-standard", "MINE"),
+        refresh: async () => await result.current.refresh(),
+      },
+      {
+        saved: { slot: rawSlot({ override: "MINE\n" }) },
+        stale: { slots: [rawSlot({ override: "stale" })] },
+      },
+    );
 
     const status = result.current.status;
 

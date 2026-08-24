@@ -40,7 +40,7 @@ export function kickSnareNotes(): NoteEvent[] {
  * @returns Sorted copy
  */
 export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) => {
+  return notes.toSorted((a, b) => {
     if (Math.abs(a.start_time - b.start_time) > SAME_TIME_EPSILON)
       return a.start_time - b.start_time;
 

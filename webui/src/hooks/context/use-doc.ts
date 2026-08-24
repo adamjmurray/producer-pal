@@ -84,7 +84,8 @@ export function useDoc(
           setStatus({ kind: "ready", content: result.content });
           setDrift(result.drift);
         },
-        (message) => setStatus({ kind: "error", message }),
+        (message) =>
+          setStatus((prev) => statusAfterFailedRefresh(prev, message)),
       ),
     [read, guardRefresh],
   );
@@ -402,6 +403,23 @@ export async function runGuardedRefresh<T>(
 
     onError(errorMessage(error));
   }
+}
+
+/**
+ * The status a failed refresh should commit: whatever is already on screen when
+ * something is loaded, an error otherwise. `refresh` is also the focus poll, so
+ * committing the error unconditionally lets one failed tick replace a working
+ * screen with a full-screen error — which unmounts the editor under it and
+ * takes an unsaved draft with it. A later tick recovers on its own.
+ * @param prev - The status the failed refresh would replace
+ * @param message - The failure message
+ * @returns The status to commit
+ */
+export function statusAfterFailedRefresh<T extends { kind: string }>(
+  prev: T,
+  message: string,
+): T | { kind: "error"; message: string } {
+  return prev.kind === "ready" ? prev : { kind: "error", message };
 }
 
 /**

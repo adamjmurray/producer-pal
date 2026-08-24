@@ -44,7 +44,7 @@ describe("updateScene", () => {
 
   it("should update a single scene by ID", () => {
     const result = updateScene({
-      ids: "123",
+      id: "123",
       name: "Updated Scene",
       color: "#FF0000",
       tempo: 140,
@@ -63,7 +63,7 @@ describe("updateScene", () => {
 
   it("should update multiple scenes by comma-separated IDs", () => {
     const result = updateScene({
-      ids: "123, 456",
+      id: "123, 456",
       color: "#00FF00",
       tempo: 120,
     });
@@ -82,7 +82,7 @@ describe("updateScene", () => {
 
   it("should handle 'id ' prefixed scene IDs", () => {
     const result = updateScene({
-      ids: "id 123",
+      id: "id 123",
       name: "Prefixed ID Scene",
     });
 
@@ -92,7 +92,7 @@ describe("updateScene", () => {
 
   it("should not update properties when not provided", () => {
     const result = updateScene({
-      ids: "123",
+      id: "123",
       name: "Only Name Update",
     });
 
@@ -103,7 +103,7 @@ describe("updateScene", () => {
 
   it("should disable tempo when -1 is passed", () => {
     const result = updateScene({
-      ids: "123",
+      id: "123",
       tempo: -1,
     });
 
@@ -114,7 +114,7 @@ describe("updateScene", () => {
 
   it("should warn and skip an out-of-range tempo (e.g. 0) instead of writing it", async () => {
     await withConsoleSpy((consoleSpy) => {
-      const result = updateScene({ ids: "123", tempo: 0 });
+      const result = updateScene({ id: "123", tempo: 0 });
 
       expect(consoleSpy).toHaveBeenCalledWith(
         "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
@@ -127,16 +127,16 @@ describe("updateScene", () => {
 
   it("accepts boundary tempos of exactly 20 and 999", () => {
     // Boundaries: 20 and 999 are valid (< 20 / > 999 are the reject bounds).
-    updateScene({ ids: "123", tempo: 20 });
+    updateScene({ id: "123", tempo: 20 });
     expect(scene1.set).toHaveBeenCalledWith("tempo", 20);
 
-    updateScene({ ids: "456", tempo: 999 });
+    updateScene({ id: "456", tempo: 999 });
     expect(scene2.set).toHaveBeenCalledWith("tempo", 999);
   });
 
   it("warns and skips a tempo above the maximum", async () => {
     await withConsoleSpy((consoleSpy) => {
-      updateScene({ ids: "123", tempo: 1000 });
+      updateScene({ id: "123", tempo: 1000 });
 
       expect(consoleSpy).toHaveBeenCalledWith(
         "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
@@ -146,7 +146,7 @@ describe("updateScene", () => {
   });
 
   it("warns with the tool label when more names than scenes are given", () => {
-    updateScene({ ids: "123,456", name: "A,B,C,D" });
+    updateScene({ id: "123,456", name: "A,B,C,D" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -156,7 +156,7 @@ describe("updateScene", () => {
 
   it("should disable time signature when 'disabled' is passed", () => {
     const result = updateScene({
-      ids: "123",
+      id: "123",
       timeSignature: "disabled",
     });
 
@@ -172,19 +172,28 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should warn and return empty when ids is missing", () => {
+  it("should warn and return empty when id is missing", () => {
     expect(updateScene({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateScene: ids is required");
+    expect(outlet).toHaveBeenCalledWith(1, "updateScene: id is required");
 
     vi.mocked(outlet).mockClear();
     expect(updateScene({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateScene: ids is required");
+    expect(outlet).toHaveBeenCalledWith(1, "updateScene: id is required");
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", () => {
+    expect(updateScene({ id: "123", name: "Renamed" })).toStrictEqual({
+      id: "123",
+    });
+    expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
   it("should log warning when scene ID doesn't exist", () => {
     mockNonExistentObjects();
 
-    const result = updateScene({ ids: "nonexistent" });
+    const result = updateScene({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
@@ -196,7 +205,7 @@ describe("updateScene", () => {
   it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
     mockNonExistentObjects();
 
-    const result = updateScene({ ids: "123, nonexistent", name: "Test" });
+    const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123" });
     expect(outlet).toHaveBeenCalledWith(
@@ -213,7 +222,7 @@ describe("updateScene", () => {
     // still line up with the ORIGINAL id positions: id "123" is position 1 → B,
     // id "456" is position 2 → C. Before the fix they shifted to A/B.
     const result = updateScene({
-      ids: "nonexistent,123,456",
+      id: "nonexistent,123,456",
       name: "A,B,C",
       color: "#FF0000,#00FF00,#0000FF",
     });
@@ -230,10 +239,10 @@ describe("updateScene", () => {
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow(
+    expect(() => updateScene({ id: "123", timeSignature: "invalid" })).toThrow(
       "Time signature must be in format",
     );
-    expect(() => updateScene({ ids: "123", timeSignature: "3-4" })).toThrow(
+    expect(() => updateScene({ id: "123", timeSignature: "3-4" })).toThrow(
       "Time signature must be in format",
     );
   });
@@ -242,7 +251,7 @@ describe("updateScene", () => {
     // A malformed timeSignature must throw before any scene is touched, so a
     // multi-scene update can't leave a partial mix of mutated/untouched scenes.
     expect(() =>
-      updateScene({ ids: "123, 456", name: "Nope", timeSignature: "5" }),
+      updateScene({ id: "123, 456", name: "Nope", timeSignature: "5" }),
     ).toThrow("Time signature must be in format");
 
     expect(scene1.set).not.toHaveBeenCalled();
@@ -250,8 +259,8 @@ describe("updateScene", () => {
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
-    const singleResult = updateScene({ ids: "123", name: "Single" });
-    const arrayResult = updateScene({ ids: "123, 456", name: "Multiple" });
+    const singleResult = updateScene({ id: "123", name: "Single" });
+    const arrayResult = updateScene({ id: "123, 456", name: "Multiple" });
 
     expect(singleResult).toStrictEqual({ id: "123" });
     expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
@@ -259,7 +268,7 @@ describe("updateScene", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateScene({
-      ids: " 123 , 456 , 789 ",
+      id: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
@@ -268,7 +277,7 @@ describe("updateScene", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     const result = updateScene({
-      ids: "123,,456,  ,789",
+      id: "123,,456,  ,789",
       name: "Filtered",
     });
 
@@ -290,7 +299,7 @@ describe("updateScene", () => {
           return [0];
         });
 
-        updateScene({ ids: "123", color: "#FF0000" });
+        updateScene({ id: "123", color: "#FF0000" });
 
         expect(consoleSpy).toHaveBeenCalledWith(
           "Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
@@ -309,7 +318,7 @@ describe("updateScene", () => {
           return [0];
         });
 
-        updateScene({ ids: "123", color: "#FF0000" });
+        updateScene({ id: "123", color: "#FF0000" });
 
         expect(consoleSpy).not.toHaveBeenCalled();
       });
@@ -317,7 +326,7 @@ describe("updateScene", () => {
 
     it("should not verify color if color parameter is not provided", async () => {
       await withConsoleSpy((consoleSpy) => {
-        updateScene({ ids: "123", name: "No color update" });
+        updateScene({ id: "123", name: "No color update" });
 
         expect(consoleSpy).not.toHaveBeenCalled();
       });
@@ -328,26 +337,26 @@ describe("updateScene", () => {
     const selectMockRef = setupSelectMock();
 
     it("should select scene in session view when focus=true", () => {
-      updateScene({ ids: "123", name: "Test", focus: true });
+      updateScene({ id: "123", name: "Test", focus: true });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "123",
+        id: "123",
       });
     });
 
     it("should select last scene when focus=true with multiple scenes", () => {
-      updateScene({ ids: "123,456", name: "Test", focus: true });
+      updateScene({ id: "123,456", name: "Test", focus: true });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "456",
+        id: "456",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
     });
 
     it("should not call select when focus=false", () => {
-      updateScene({ ids: "123", name: "Test", focus: false });
+      updateScene({ id: "123", name: "Test", focus: false });
 
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
@@ -357,7 +366,7 @@ describe("updateScene", () => {
 
       // updatedScenes is empty, so `length > 0` guards the focus block; a
       // mutated `>= 0`/`true` would enter it and crash on `.at(-1).id`.
-      const result = updateScene({ ids: "nonexistent", focus: true });
+      const result = updateScene({ id: "nonexistent", focus: true });
 
       expect(result).toStrictEqual([]);
       expect(selectMockRef.get()).not.toHaveBeenCalled();

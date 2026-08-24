@@ -9,14 +9,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   callToolMock,
-  closeMock,
-  createConnectedMcpClientMock,
   fakeMcpClient,
   listToolsMock,
   mcpClientHelpersMock,
   mockCallToolText,
   mockListBareTools,
+  expectForwardedCall,
   mockListTwoTools,
+  registerSharedBridgeTests,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
@@ -102,24 +102,6 @@ describe("createGeminiMcpTools", () => {
     ]);
   });
 
-  it("sends the toolset to the server, but no small-model mode or notation", async () => {
-    mockListBareTools("ppal-a");
-
-    const enabledTools = { "ppal-a": true, "ppal-b": false };
-
-    await createGeminiMcpTools(MCP_URL, enabledTools);
-
-    // The disabled-tools header is what stops the server from shipping skills
-    // fragments for tools voice can't call. The two undefineds keep voice on the
-    // device globals for small-model mode and notation.
-    expect(createConnectedMcpClientMock).toHaveBeenCalledWith(
-      MCP_URL,
-      undefined,
-      enabledTools,
-      undefined,
-    );
-  });
-
   it("executeTool forwards args and returns flattened text content", async () => {
     mockListBareTools("ppal-read-live-set");
     mockCallToolText("Track 1: Drums", "Track 2: Bass");
@@ -127,11 +109,7 @@ describe("createGeminiMcpTools", () => {
     const { executeTool } = await createGeminiMcpTools(MCP_URL);
     const out = await executeTool("ppal-read-live-set", { foo: "bar" });
 
-    expect(callToolMock).toHaveBeenCalledWith(
-      { name: "ppal-read-live-set", arguments: { foo: "bar" } },
-      undefined,
-      { timeout: 30_000 },
-    );
+    expectForwardedCall("ppal-read-live-set", { foo: "bar" });
     expect(out).toBe("Track 1: Drums\nTrack 2: Bass");
   });
 
@@ -164,24 +142,5 @@ describe("createGeminiMcpTools", () => {
     expect(out).toContain("ECONNREFUSED");
   });
 
-  // The caller (use-gemini-voice-session) only stores mcpClient once this
-  // resolves, so a throw past a successful connect leaves an open transport
-  // nothing can reach — one more on every Talk retry.
-  it("closes the connection when the catalog read fails", async () => {
-    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
-
-    await expect(createGeminiMcpTools(MCP_URL)).rejects.toThrow(
-      "catalog unavailable",
-    );
-    expect(closeMock).toHaveBeenCalledOnce();
-  });
-
-  it("reports the original failure even when the close fails too", async () => {
-    listToolsMock.mockRejectedValueOnce(new Error("catalog unavailable"));
-    closeMock.mockRejectedValueOnce(new Error("socket already gone"));
-
-    await expect(createGeminiMcpTools(MCP_URL)).rejects.toThrow(
-      "catalog unavailable",
-    );
-  });
+  registerSharedBridgeTests(MCP_URL, createGeminiMcpTools);
 });

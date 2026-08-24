@@ -53,14 +53,14 @@ export function VoiceSelector({
 
   return (
     <div>
-      <label htmlFor="voice-select" className="block text-sm mb-2">
+      <label htmlFor="voice-select" className="mb-2 block text-sm">
         Voice
       </label>
       <select
         id="voice-select"
         value={selected}
         onChange={(e) => setVoice((e.target as HTMLSelectElement).value)}
-        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="voice-select"
       >
         {voices.map(({ value, label }) => (
@@ -70,7 +70,7 @@ export function VoiceSelector({
         ))}
       </select>
       {pendingChange && (
-        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
           Active session is using "{activeVoice}". Voice change applies on the
           next session (Stop, then Talk).
         </p>

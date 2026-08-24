@@ -1,12 +1,6 @@
 {
   "threshold": 0.4,
   "reporters": ["console"],
-  "ignorePattern": [
-    "// Producer Pal",
-    "// Copyright \\(C\\).*",
-    "// AI assistance:.*",
-    "// SPDX-License-Identifier:.*"
-  ],
   "ignore": ["**/tsconfig.json"],
   "path": ["../e2e"]
 }

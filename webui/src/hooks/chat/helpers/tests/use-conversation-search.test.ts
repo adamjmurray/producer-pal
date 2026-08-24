@@ -8,7 +8,7 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useConversationSearch } from "#webui/hooks/chat/helpers/use-conversation-search";
+import { useConversationSearch } from "#webui/hooks/chat/helpers/conversations/use-conversation-search";
 import { searchConversations } from "#webui/lib/conversation-db";
 
 vi.mock(import("#webui/lib/conversation-db"), () => ({
@@ -16,6 +16,22 @@ vi.mock(import("#webui/lib/conversation-db"), () => ({
 }));
 
 const mockSearch = vi.mocked(searchConversations);
+
+/**
+ * Render the hook, type a query, and let the debounce fire.
+ * @param query - The search query to type
+ * @returns The rendered hook
+ */
+async function searchFor(query: string) {
+  const { result } = renderHook(() => useConversationSearch([]));
+
+  await act(() => result.current.setSearchQuery(query));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(150);
+  });
+
+  return result;
+}
 
 describe("useConversationSearch", () => {
   beforeEach(() => {
@@ -50,12 +66,7 @@ describe("useConversationSearch", () => {
   it("runs a debounced search and exposes the matched IDs", async () => {
     mockSearch.mockResolvedValue(new Set(["conv-1"]));
 
-    const { result } = renderHook(() => useConversationSearch([]));
-
-    await act(() => result.current.setSearchQuery("groove"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(150);
-    });
+    const result = await searchFor("groove");
 
     expect(mockSearch).toHaveBeenCalledWith("groove");
     expect(result.current.matchedIds).toStrictEqual(new Set(["conv-1"]));
@@ -64,12 +75,8 @@ describe("useConversationSearch", () => {
   it("clears matched IDs when the query is emptied", async () => {
     mockSearch.mockResolvedValue(new Set(["conv-1"]));
 
-    const { result } = renderHook(() => useConversationSearch([]));
+    const result = await searchFor("groove");
 
-    await act(() => result.current.setSearchQuery("groove"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(150);
-    });
     expect(result.current.matchedIds).toStrictEqual(new Set(["conv-1"]));
 
     await act(() => result.current.setSearchQuery(""));

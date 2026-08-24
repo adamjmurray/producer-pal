@@ -127,7 +127,9 @@ function assertSurgicalNotRewrite(
 
       // Match the original read to the clip the model actually edited — the
       // first read may be a scene read returning several clips with notes.
-      const editedId = argText(calls[0]?.args.ids) || undefined;
+      // `ids` stays accepted as an alias, so read whichever spelling it sent.
+      const editedId =
+        argText(calls[0]?.args.id ?? calls[0]?.args.ids) || undefined;
       const original =
         readClipNotesFromTurn(turns, readTurn, editedId)?.notes ?? null;
 
@@ -191,8 +193,8 @@ function assertShortenOutcome(
         );
       }
 
-      const targets = [...before]
-        .sort((a, b) => a.start_time - b.start_time)
+      const targets = before
+        .toSorted((a, b) => a.start_time - b.start_time)
         .slice(-2);
 
       checkDurations(before, after, targets);
@@ -210,9 +212,7 @@ export const surgicalNoteDurationEdit: EvalScenario = {
   liveSet: LIVE_SET,
   // The custom assertions verify the exact outcome (only the two target notes
   // halved, all others unchanged, no duplicates) and the surgical path — that
-  // is the authoritative grade. The judge re-checks the same thing by eye and
-  // is advisory so it can't flip a passing run to fail.
-  judgeAdvisory: true,
+  // is the whole grade, and an LLM judge only re-checks it by eye.
 
   messages: [
     MSG_CONNECT,
@@ -227,14 +227,6 @@ export const surgicalNoteDurationEdit: EvalScenario = {
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     assertSurgicalNotRewrite(1, 2),
     assertShortenOutcome(1, 3),
-    {
-      type: "llm_judge",
-      prompt: `Evaluate the edit (turns 2–3):
-1. ONLY the last two notes of the lead melody were shortened to roughly half their original length (e.g. quarter → eighth)
-2. Every other note is unchanged (same pitch, start, and duration)
-3. No duplicate or leftover notes were introduced — the total note count is unchanged
-4. The model did NOT rewrite the whole clip; it edited only the two target notes (via preTransforms/transforms, or by restating just those two notes)`,
-    },
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],
 };

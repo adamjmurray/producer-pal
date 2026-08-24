@@ -42,12 +42,12 @@ export function AssistantThought({
         className={`disclosure ${baseClasses}${isResponding ? " animate-pulse" : ""}`}
         open
       >
-        <summary className="font-semibold overflow-hidden flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+        <summary className="flex list-none items-center gap-1 overflow-hidden font-semibold [&::-webkit-details-marker]:hidden">
           <DisclosureChevron />
-          <span className="truncate min-w-0">💭 Thinking...</span>
+          <span className="min-w-0 truncate">💭 Thinking...</span>
         </summary>
         <div
-          className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
+          className="prose dark:prose-invert prose-sm max-w-none pt-2 text-xs"
           dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
         />
       </details>
@@ -57,10 +57,10 @@ export function AssistantThought({
   // Completed thought — summary swaps content via group-open
   return (
     <details className={`disclosure group ${baseClasses}`}>
-      <summary className="font-semibold overflow-hidden flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none items-center gap-1 overflow-hidden font-semibold [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />
         <span
-          className="truncate min-w-0 group-open:hidden"
+          className="min-w-0 truncate group-open:hidden"
           dangerouslySetInnerHTML={{
             __html: sanitizeMarkdownInline(`💭 ${firstLine}`),
           }}
@@ -68,7 +68,7 @@ export function AssistantThought({
         <span className="hidden group-open:inline">💭</span>
       </summary>
       <div
-        className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
+        className="prose dark:prose-invert prose-sm max-w-none pt-2 text-xs"
         dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
       />
     </details>

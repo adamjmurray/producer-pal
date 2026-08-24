@@ -4,12 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  hasArrangementPosition,
   inferDestination,
+  resolveDestinationTargets,
   validateAndConfigureRouteToSource,
   validateArrangementParameters,
-  validateClipParameters,
 } from "../duplicate-validation-helpers.ts";
 
 describe("validateAndConfigureRouteToSource", () => {
@@ -73,81 +79,160 @@ describe("validateAndConfigureRouteToSource", () => {
   });
 });
 
-describe("inferDestination", () => {
-  it("returns 'arrangement' when arrangementStart is a real position", () => {
-    expect(inferDestination("clip", "1|1", undefined, undefined)).toBe(
-      "arrangement",
-    );
+describe("hasArrangementPosition", () => {
+  it("reads a real position from either param", () => {
+    expect(hasArrangementPosition("1|1", undefined)).toBe(true);
+    expect(hasArrangementPosition(undefined, "Verse")).toBe(true);
   });
 
-  it("treats a whitespace-only arrangementStart as no arrangement params", () => {
+  it("treats a whitespace-only arrangementStart as absent", () => {
     // The `.trim() !== ""` guard: "   " must NOT be read as an arrangement start.
-    expect(inferDestination("clip", "   ", undefined, "0/0")).toBe("session");
-    expect(inferDestination("track", "   ", undefined, undefined)).toBe(
-      "session",
-    );
-  });
-
-  it("returns 'arrangement' when a locator is given", () => {
-    expect(inferDestination("clip", undefined, "Verse", undefined)).toBe(
-      "arrangement",
-    );
-  });
-
-  it("returns 'session' for a clip only when toSlot is present, else undefined", () => {
-    expect(inferDestination("clip", undefined, undefined, "0/0")).toBe(
-      "session",
-    );
-    expect(
-      inferDestination("clip", undefined, undefined, undefined),
-    ).toBeUndefined();
-  });
-
-  it("returns undefined for a device", () => {
-    expect(
-      inferDestination("device", undefined, undefined, undefined),
-    ).toBeUndefined();
-  });
-
-  it("defaults tracks and scenes to session", () => {
-    expect(inferDestination("track", undefined, undefined, undefined)).toBe(
-      "session",
-    );
-    expect(inferDestination("scene", undefined, undefined, undefined)).toBe(
-      "session",
-    );
+    expect(hasArrangementPosition("   ", undefined)).toBe(false);
+    expect(hasArrangementPosition(undefined, undefined)).toBe(false);
   });
 });
 
-describe("validateClipParameters", () => {
-  it("does nothing for non-clip types", () => {
-    expect(() =>
-      validateClipParameters("track", undefined, undefined),
-    ).not.toThrow();
+describe("inferDestination", () => {
+  it("returns 'arrangement' when a position is given", () => {
+    expect(inferDestination("scene", "1|1", undefined)).toBe("arrangement");
+    expect(inferDestination("scene", undefined, "Verse")).toBe("arrangement");
   });
 
-  it("throws when a clip has no resolved destination", () => {
-    expect(() => validateClipParameters("clip", undefined, undefined)).toThrow(
-      "clip requires toSlot",
+  it("returns undefined for a device", () => {
+    expect(inferDestination("device", undefined, undefined)).toBeUndefined();
+  });
+
+  it("defaults tracks and scenes to session", () => {
+    expect(inferDestination("track", undefined, undefined)).toBe("session");
+    expect(inferDestination("track", "   ", undefined)).toBe("session");
+    expect(inferDestination("scene", undefined, undefined)).toBe("session");
+  });
+});
+
+describe("resolveDestinationTargets", () => {
+  /**
+   * Register a source clip mock on a track.
+   * @param trackIndex - Track the clip lives on, or null for an orphan clip
+   * @param isMidi - Whether the clip is a MIDI clip
+   * @returns The clip's LiveAPI instance
+   */
+  function sourceClip(trackIndex: number | null, isMidi = true): LiveAPI {
+    registerMockObject("src_clip", {
+      path:
+        trackIndex == null
+          ? "live_set scenes 0"
+          : `${livePath.track(trackIndex)} arrangement_clips 0`,
+      type: "Clip",
+      properties: { is_midi_clip: isMidi ? 1 : 0 },
+    });
+
+    return LiveAPI.from("src_clip");
+  }
+
+  /**
+   * Register a destination track mock.
+   * @param trackIndex - Track index to register
+   * @param isMidi - Whether the track takes MIDI input
+   */
+  function destTrack(trackIndex: number, isMidi = true): void {
+    registerMockObject(`dest_track_${String(trackIndex)}`, {
+      path: livePath.track(trackIndex).toString(),
+      type: "Track",
+      properties: { has_midi_input: isMidi ? 1 : 0 },
+    });
+  }
+
+  /**
+   * A main-lane destination on a track.
+   * @param trackIndex - Track index
+   * @returns The destination
+   */
+  function mainLane(trackIndex: number) {
+    return { trackIndex, takeLane: null };
+  }
+
+  it("falls back to the source clip's own track when no track is named", () => {
+    expect(resolveDestinationTargets(sourceClip(3), [])).toStrictEqual([
+      mainLane(3),
+    ]);
+  });
+
+  it("throws when the source clip has no track index and none was named", () => {
+    expect(() => resolveDestinationTargets(sourceClip(null), [])).toThrow(
+      /no track index for clip id/,
     );
   });
 
-  it("throws when a session clip is missing toSlot (whitespace only)", () => {
-    expect(() => validateClipParameters("clip", "session", "  ")).toThrow(
-      "toSlot is required for session clips",
+  it("returns the named tracks when they exist and types match", () => {
+    const clip = sourceClip(3);
+
+    destTrack(7);
+    destTrack(8);
+
+    expect(
+      resolveDestinationTargets(clip, [mainLane(7), mainLane(8)]),
+    ).toStrictEqual([mainLane(7), mainLane(8)]);
+  });
+
+  it("marks a toPath entry naming a track that does not exist", () => {
+    const clip = sourceClip(3);
+
+    mockNonExistentObjects();
+
+    expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([
+      null,
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'duplicate: no track at toPath "t99"',
     );
   });
 
-  it("accepts a session clip with a real toSlot", () => {
-    expect(() =>
-      validateClipParameters("clip", "session", "0/0"),
-    ).not.toThrow();
+  it("marks a track a MIDI clip can't go to", () => {
+    // Live's duplicate_clip_to_arrangement silently no-ops on a mismatch, so a
+    // reported success here would be a lie.
+    const clip = sourceClip(3, true);
+
+    destTrack(5, false);
+
+    expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual([
+      null,
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+    );
   });
 
-  it("accepts an arrangement clip with no toSlot", () => {
-    expect(() =>
-      validateClipParameters("clip", "arrangement", undefined),
-    ).not.toThrow();
+  it("marks a track an audio clip can't go to", () => {
+    const clip = sourceClip(4, false);
+
+    destTrack(8, true);
+
+    expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual([
+      null,
+    ]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: audio clip cannot be duplicated to MIDI track 8",
+    );
+  });
+
+  it("keeps the tracks that work when one of them doesn't", () => {
+    // One bad entry in a comma-separated toPath must not cost the good ones.
+    const clip = sourceClip(3, true);
+
+    destTrack(7, true);
+    destTrack(5, false);
+
+    // The gap stays: name and color are counted per requested destination.
+    expect(
+      resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
+    ).toStrictEqual([mainLane(7), null]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+    );
   });
 });
 

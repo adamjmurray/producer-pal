@@ -20,7 +20,7 @@ vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
 
 // Dynamic import after mock is set up
 const { updateClip } = await import("#src/tools/clip/update/update-clip.ts");
-const { isDeadlineExceeded } =
+const { computeLoopDeadline, isDeadlineExceeded } =
   await import("#src/tools/clip/helpers/loop-deadline.ts");
 
 /**
@@ -47,6 +47,24 @@ describe("updateClip - deadline exceeded", () => {
   beforeEach(() => {
     mocks = setupUpdateClipMocks();
     vi.mocked(isDeadlineExceeded).mockReturnValue(false);
+    vi.mocked(computeLoopDeadline).mockClear();
+  });
+
+  it("checks the deadline it inherited instead of starting a fresh budget", async () => {
+    // The V8 adapter sets it once per request. Recomputing here from timeoutMs
+    // would give a nested call (duplicate -> updateClip) a full budget of its
+    // own, so N of them could overrun the request timeout together.
+    setupTwoMidiClips(mocks);
+
+    const deadline = Date.now() + 5_000;
+
+    await updateClip(
+      { id: "123", name: "Updated" },
+      { timeoutMs: 30_000, deadline },
+    );
+
+    expect(isDeadlineExceeded).toHaveBeenCalledWith(deadline);
+    expect(computeLoopDeadline).not.toHaveBeenCalled();
   });
 
   it("should stop updating clips when deadline is exceeded", async () => {
@@ -56,7 +74,7 @@ describe("updateClip - deadline exceeded", () => {
     vi.mocked(isDeadlineExceeded).mockReturnValue(true);
 
     const result = await updateClip(
-      { ids: "123, 456", name: "Updated" },
+      { id: "123, 456", name: "Updated" },
       { timeoutMs: 1 },
     );
 
@@ -64,7 +82,23 @@ describe("updateClip - deadline exceeded", () => {
     expect(result).toStrictEqual([]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Deadline exceeded"),
+      expect.stringContaining("Ran out of time after updating 0 of 2 clips"),
+    );
+  });
+
+  it("names the clips a cut-short batch did not reach", async () => {
+    setupTwoMidiClips(mocks);
+
+    vi.mocked(isDeadlineExceeded)
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    await updateClip({ id: "123, 456", name: "Updated" }, { timeoutMs: 100 });
+
+    // A bare count doesn't say which id to re-run.
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Not updated: 456. Re-run for those ids."),
     );
   });
 
@@ -77,7 +111,7 @@ describe("updateClip - deadline exceeded", () => {
       .mockReturnValueOnce(true);
 
     const result = await updateClip(
-      { ids: "123, 456", name: "Updated" },
+      { id: "123, 456", name: "Updated" },
       { timeoutMs: 100 },
     );
 
@@ -85,7 +119,7 @@ describe("updateClip - deadline exceeded", () => {
     expect(result).toStrictEqual({ id: "123" });
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Deadline exceeded after updating 1 of 2"),
+      expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
     );
   });
 });

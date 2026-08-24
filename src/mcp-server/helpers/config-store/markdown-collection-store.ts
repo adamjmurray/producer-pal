@@ -11,8 +11,8 @@
 // traversal guard, and the reserved-index-slug protection all live here ONCE so a
 // fix reaches every collection. Callers supply only what genuinely differs: the
 // subdir/index names, how a file parses into an entry (toEntry), how entries are
-// ordered (sort), how the index body renders (renderIndexSections), and any
-// type-specific create-time validation + frontmatter (buildStored).
+// ordered (sortEntries), how the index body renders (renderIndexSections), and
+// any type-specific create-time validation + frontmatter (buildStored).
 
 import {
   deleteConfigMarkdown,
@@ -80,7 +80,7 @@ export interface MarkdownCollectionConfig<
   /** Parse a raw file into an entry (the filename slug is authoritative). */
   toEntry: (slug: string, raw: string) => Entry;
   /** Order entries for listing and the index (returns a new sorted array). */
-  sort: (entries: Entry[]) => Entry[];
+  sortEntries: (entries: Entry[]) => Entry[];
   /** Render the derived index body (no title) from the sorted entries. */
   renderIndexSections: (entries: Entry[]) => string;
   /**
@@ -108,7 +108,7 @@ export interface MarkdownCollectionStore<
   read: (name: string) => Entry | null;
   /** Whether a non-empty entry file already exists for this name. */
   exists: (name: string) => boolean;
-  /** Every stored entry (index file excluded), ordered by the config's sort. */
+  /** Every stored entry (index file excluded), in the config's sortEntries order. */
   list: () => Entry[];
   /** Create or overwrite an entry (same slug ⇒ update), then rebuild the index. */
   remember: (input: Input) => Entry;
@@ -243,7 +243,7 @@ export function makeMarkdownCollectionStore<
       entries.push(config.toEntry(slug, readConfigMarkdown(resolveFile(slug))));
     }
 
-    return config.sort(entries);
+    return config.sortEntries(entries);
   };
 
   const regenerateIndex = (): string => {

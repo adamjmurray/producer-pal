@@ -19,63 +19,75 @@ updates:
       default-days: 7
       semver-major-days: 30
     groups:
-      ai-libraries:
+      ai:
         patterns:
           - "ai"
           - "@ai-sdk/*"
           - "@openrouter/ai-sdk-provider"
           - "@openai/agents"
           - "@google/genai"
-      anthropic:
+      build:
         patterns:
-          - "@anthropic-ai/*"
-          - "@modelcontextprotocol/*"
-      codemirror:
-        patterns:
-          - "@codemirror/*"
-          - "@lezer/*"
-      rollup:
-        patterns:
-          - "rollup"
-          - "@rollup/*"
-          - "rollup-plugin-*"
-      # oxlint replaced eslint, but four eslint plugins remain: oxlint runs them
-      # through its jsPlugins bridge, natively implementing none of their rules
-      # (unicorn is the partial case — see dev/Linting.md).
-      lint-plugins:
-        patterns:
-          - "eslint-plugin-*"
-          - "@eslint-community/*"
-          - "@stylistic/eslint-plugin"
-      # oxlint pins an exact tsgolint build, so the two must move together or
-      # `npm ci` resolves a mismatched pair.
-      oxlint:
-        patterns:
-          - "oxlint"
-          - "oxlint-*"
-      vite:
-        patterns:
+          - "rolldown"
           - "vite"
           - "vite-plugin-*"
           - "vitepress"
-      vitest:
+          - "peggy"
+          - "chokidar-cli"
+          - "@anthropic-ai/mcpb"
+      # oxlint pins an exact tsgolint build, so those two must move together or
+      # `npm ci` resolves a mismatched pair. The eslint plugins are here too:
+      # oxlint runs them through its jsPlugins bridge, natively implementing
+      # none of their rules (unicorn is the partial case — see dev/Linting.md).
+      static-analysis:
+        patterns:
+          - "oxlint"
+          - "oxlint-*"
+          - "oxfmt"
+          - "eslint-plugin-*"
+          - "@eslint-community/*"
+          - "@stylistic/eslint-plugin"
+          - "jscpd"
+      testing:
         patterns:
           - "vitest"
-          - "@vitest/coverage-v8"
-      preact:
+          - "@vitest/*"
+          - "@stryker-mutator/*"
+          - "@playwright/test"
+          - "@testing-library/*"
+          - "happy-dom"
+          - "fake-indexeddb"
+      webui:
         patterns:
           - "preact"
           - "@preact/*"
-          - "@testing-library/preact"
-      tailwind:
-        patterns:
           - "@tailwindcss/*"
-      stryker:
+          - "@codemirror/*"
+          - "@lezer/*"
+          - "marked"
+          - "dompurify"
+          - "idb"
+      # The two compilers are installed side-by-side under npm aliases and have
+      # to move together — see AGENTS.md.
+      typescript:
         patterns:
-          - "@stryker-mutator/*"
-      types:
-        patterns:
+          - "typescript"
+          - "@typescript/*"
           - "@types/*"
+      server:
+        patterns:
+          - "express"
+          - "zod"
+          - "@modelcontextprotocol/*"
+      evals:
+        patterns:
+          - "undici"
+          - "commander"
+      # Everything left, plus anything added later. Dependabot assigns a
+      # dependency to the first group it matches, so this stays last.
+      misc:
+        patterns:
+          - "*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

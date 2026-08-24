@@ -32,7 +32,7 @@ export function SystemPromptNotice(
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="w-full flex items-center gap-1.5 text-left text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400 transition-colors"
+        className="flex w-full items-center gap-1.5 text-left text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400"
       >
         <svg
           width="10"
@@ -47,7 +47,7 @@ export function SystemPromptNotice(
         >
           <path d="M3 1.5L6.5 5L3 8.5" />
         </svg>
-        <span className="shrink-0 font-medium uppercase tracking-wide">
+        <span className="shrink-0 font-medium tracking-wide uppercase">
           System prompt
         </span>
         {!expanded && (
@@ -57,7 +57,7 @@ export function SystemPromptNotice(
         )}
       </button>
       {expanded && (
-        <pre className="mt-1.5 ml-4 max-h-64 overflow-auto whitespace-pre-wrap border-l-2 border-zinc-200 dark:border-zinc-700 pl-3 text-xs text-zinc-500 dark:text-zinc-400">
+        <pre className="mt-1.5 ml-4 max-h-64 overflow-auto border-l-2 border-zinc-200 pl-3 text-xs whitespace-pre-wrap text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           {systemInstruction}
         </pre>
       )}

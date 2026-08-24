@@ -12,10 +12,7 @@
  */
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
-export {
-  arpeggioBracketIdiom,
-  arpeggioMixedDurations,
-} from "./clip/notation/arpeggio-bracket-idiom.ts";
+export { arpeggioBracketIdiom } from "./clip/notation/arpeggio-bracket-idiom.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
@@ -23,10 +20,7 @@ export {
   barBeatMeterFill,
   barBeatTriplets,
 } from "./clip/notation/bar-beat/bar-beat-absolute-durations.ts";
-export {
-  barBeatPerBarChord,
-  barBeatPerBarNote,
-} from "./clip/notation/bar-beat/bar-beat-multibar-spread.ts";
+export { barBeatPerBarSpread } from "./clip/notation/bar-beat/bar-beat-multibar-spread.ts";
 export {
   barBeatMelodicCompoundStepping,
   barBeatMelodicLegatoRun,
@@ -59,34 +53,24 @@ export {
   contextWriteLayerMemory,
   contextWriteLayerProject,
 } from "./context/context-write-layers.ts";
-export {
-  contextWritePreservesGlobal,
-  contextWritePreservesProject,
-} from "./context/context-write-preserve.ts";
+export { contextWritePreserves } from "./context/context-write-preserve.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { deviceDrumKit } from "./workflow/device-drum-kit.ts";
+export { drumPadForceGuard } from "./workflow/drum-pad-force-guard.ts";
 export { deviceSoundDesign } from "./workflow/device-sound-design.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate, duplicateLoop } from "./clip/duplicate.ts";
-export {
-  durationArgBarLength,
-  durationArgMixedCombiner,
-  durationArgSubBar,
-} from "./clip/notation/duration-arg-grammar.ts";
+export { durationArgGrammar } from "./clip/notation/duration-arg-grammar.ts";
 export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quarter.ts";
 export {
   noteOpsMerge,
   noteOpsRatchetRoll,
   noteOpsRepeat,
   noteOpsSplit,
-  noteOpsSplitSync,
 } from "./clip/note-ops-roll-and-merge.ts";
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
-export {
-  rangeClearFirstHalf,
-  rangeClearWholeBar,
-} from "./clip/notation/range-bound-clears.ts";
+export { rangeClearBoundaries } from "./clip/notation/range-bound-clears.ts";
 export {
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
@@ -108,6 +92,15 @@ export { whereTransforms } from "./clip/where-transforms.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
 export { projectContextWorkflow } from "./workflow/project-context-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
+export { pathArrangementAddress } from "./path/path-arrangement-address.ts";
+export { pathSessionSlot } from "./path/path-session-slot.ts";
+export { pathTakeLaneFirst } from "./path/path-take-lane.ts";
+export { pathToPathClipDestinations } from "./path/path-topath-clips.ts";
+export { pathToPathDeviceAndPad } from "./path/path-topath-devices.ts";
+export { pathToPathPairing } from "./path/path-topath-pairing.ts";
+export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
+export { rackPadOps } from "./workflow/rack-pad-ops.ts";
+export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";
 export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";
 export { updateLiveSet } from "./workflow/update-live-set.ts";

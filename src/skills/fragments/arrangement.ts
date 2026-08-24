@@ -31,16 +31,27 @@ export const arrangement = `## Arrangement
  * read-track's own `include` description already tells a reader that list
  * exists. (The tool-name bleed test can't see it: it scans for `ppal-` names.)
  */
-export const arrangementWrite = `### Moving Clips
+export const arrangementWrite = `### Clip Destinations
 
-\`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
-\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions measured from the clip's own start (1|1 = clip start, NOT song position).
+One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in the first scene, \`t2\` is track 2's arrangement (which also needs \`arrangementStart\` or \`locator\`), and \`t2/l0\` is its first take lane. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
+
+create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
+
+\`path\` also names clips to act *on*: update-clip and ppal-delete take a clip slot instead of \`id\`, so knowing where a clip is saves reading it first just to learn its id.
+
+### Moving Clips
+
+\`arrangementStart\` moves arrangement clips; \`toPath\` moves session clips, pairing one destination per id (they don't cycle — two clips in one slot means the second overwrites the first). Moving clips changes their IDs - re-read to get new IDs.
+\`arrangementLength\` sets arrangement playback region.
+\`arrangementSplit\` cuts clips at song positions — the same timeline as \`arrangementStart\`, not offsets into the clip. Positions outside a clip are ignored, so one call can cut several clips at the same bar.
+A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
 
 ### Take Lanes (Arrangement Variations)
 
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
-- \`takeLane\` on create-clip + duplicate (arrangement only; duplicate is MIDI-only): omit/\`0\` = main lane; \`1+\` = that lane (auto-created up to it); \`"new"\` = append a fresh lane. \`takeLaneName\` names a lane this call creates.
-- Variation workflow: a few duplicate calls with \`takeLane: "new"\` + \`transforms\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries \`takeLane\` (1-based, matching the write param) and its \`name\`, so you can round-trip a read back to a write directly.
+- A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one. Arrangement only, and duplicate is MIDI-only. Each \`l+\` in a list appends its own lane.
+- Promote a take back to the main lane with a duplicate whose \`toPath\` has no \`l\` segment (\`t2\`). It's a copy — the take stays on its lane, which Live's API can't clear.
+- Variation workflow: one duplicate with \`toPath: "t2/l+,t2/l+,t2/l+"\` + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
-- Take-lane clips are append-only: \`update-clip\` (\`split\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them. Main→take duplicate recreates the clip from notes and drops envelope automation; take→main promote isn't supported. For any of these, ask the user to do it in Live's UI.`;
+- Take-lane clips are append-only: \`update-clip\` (\`arrangementSplit\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them — Live's API can't move or remove a clip off a lane, so ask the user to do those in Live's UI. Any duplicate touching a lane recreates the clip from notes and drops envelope automation.`;

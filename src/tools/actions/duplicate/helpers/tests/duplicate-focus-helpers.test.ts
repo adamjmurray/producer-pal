@@ -32,7 +32,7 @@ describe("duplicate-focus-helpers", () => {
       focusIfRequested(true, "arrangement", "clip", [{ id: "clip1" }]);
 
       expect(selectMock.get()).toHaveBeenCalledWith({
-        clipId: "clip1",
+        id: "clip1",
         detailView: "clip",
       });
     });
@@ -44,7 +44,7 @@ describe("duplicate-focus-helpers", () => {
       ]);
 
       expect(selectMock.get()).toHaveBeenCalledWith({
-        clipId: "clip2",
+        id: "clip2",
         detailView: "clip",
       });
     });
@@ -54,7 +54,7 @@ describe("duplicate-focus-helpers", () => {
 
       expect(selectMock.get()).toHaveBeenCalledWith({
         view: "session",
-        sceneId: "scene1",
+        id: "scene1",
       });
     });
 

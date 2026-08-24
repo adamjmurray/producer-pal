@@ -37,6 +37,7 @@ import {
   diffNotes,
   type ExpectedNote,
   getCreatedClip,
+  slotToPath,
   MSG_CONNECT,
   notesMatch,
   TOOL_CONNECT,
@@ -98,30 +99,28 @@ export function notationNeutralScenarios(
     `${spec.track + 1}/1`,
   ];
 
-  return notations.map(
-    (notation): EvalScenario => ({
-      id: `${spec.baseId}-${notation}`,
-      description: `${spec.description} (${notation})`,
-      kind: "capability",
-      liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
-      config: { notation },
-      messages: [MSG_CONNECT, spec.prompt],
-      setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
-      assertions: [
-        { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-        { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-        midiJsonNotesAssertion(spec.meter, spec.expected),
-        correctSlotAssertion(correctSlot),
-        { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-      ],
-    }),
-  );
+  return notations.map((notation): EvalScenario => ({
+    id: `${spec.baseId}-${notation}`,
+    description: `${spec.description} (${notation})`,
+    kind: "capability",
+    liveSet: spec.liveSet ?? MATRIX_LIVE_SET,
+    config: { notation },
+    messages: [MSG_CONNECT, spec.prompt],
+    setup: (mcpClient) => clearSessionSlots(mcpClient, candidateSlots),
+    assertions: [
+      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+      { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+      midiJsonNotesAssertion(spec.meter, spec.expected),
+      correctPathAssertion(correctSlot),
+      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+    ],
+  }));
 }
 
 /**
  * Grade the created clip's NOTES deterministically, wherever the model placed
  * it: read it back BY ID (from the create-clip result — so a wrong scene doesn't
- * fail the notes check; `correctSlotAssertion` scores placement separately) as
+ * fail the notes check; `correctPathAssertion` scores placement separately) as
  * midi-json and compare the raw `{p,t,d}` objects to `expected`. The
  * `notation: "midi-json"` override flips the server to midi-json before the read
  * (via POST /config, which merges — the scenario's finally-block resetConfig
@@ -145,7 +144,7 @@ function midiJsonNotesAssertion(
     type: "state",
     tool: TOOL_READ_CLIP,
     args: (turns) => ({
-      clipId: getCreatedClip(turns).id ?? "",
+      id: getCreatedClip(turns).id ?? "",
       include: ["notes", "timing"],
     }),
     notation: "midi-json",
@@ -211,10 +210,12 @@ function parseMidiJsonClip(result: unknown, meter: string): NoteEvent[] | null {
  * @param correctSlot - The slot the clip should land in (e.g. "0/0")
  * @returns Custom assertion
  */
-function correctSlotAssertion(correctSlot: string): EvalAssertion {
+function correctPathAssertion(correctSlot: string): EvalAssertion {
+  const correctPath = slotToPath(correctSlot);
+
   return {
     type: "custom",
-    description: `clip created in the correct slot (${correctSlot})`,
-    assert: (turns) => getCreatedClip(turns).slot === correctSlot,
+    description: `clip created at the correct path (${correctPath})`,
+    assert: (turns) => getCreatedClip(turns).path === correctPath,
   };
 }

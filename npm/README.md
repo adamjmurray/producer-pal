@@ -8,7 +8,7 @@ AI music production assistant for Ableton Live via the Model Context Protocol
 Run the Producer Pal MCP bridge to connect any MCP client to Ableton Live:
 
 ```bash
-npx producer-pal
+npx producer-pal@latest
 ```
 
 This starts a stdio-to-HTTP bridge that enables MCP clients (Claude Desktop,
@@ -29,7 +29,9 @@ communicate with the Producer Pal Max for Live device running in Ableton Live.
 ## Configuration
 
 Add Producer Pal to your MCP client's server configuration. The command is
-`npx producer-pal` with optional arguments `-y` (for auto-install).
+`npx producer-pal@latest` with optional argument `-y` (for auto-install). Keep
+the `@latest` — without it, `npx` runs any older global or project-local
+`producer-pal` it finds instead of fetching the current one.
 
 **Configuration examples:**
 
@@ -44,7 +46,7 @@ or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal@latest"]
     }
   }
 }
@@ -56,7 +58,7 @@ or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 <summary>Claude Code</summary>
 
 ```bash
-claude mcp add producer-pal npx producer-pal
+claude mcp add producer-pal npx producer-pal@latest
 ```
 
 </details>
@@ -71,7 +73,7 @@ Edit `~/.gemini/settings.json`:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal@latest"]
     }
   }
 }
@@ -87,7 +89,7 @@ Edit `~/.codex/config.toml`:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal"]
+args = ["-y", "producer-pal@latest"]
 ```
 
 </details>
@@ -102,7 +104,7 @@ Edit Settings → Program → Integrations → `mcp.json`:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal", "--small-model-mode"]
+      "args": ["-y", "producer-pal@latest", "--small-model-mode"]
     }
   }
 }
@@ -123,7 +125,7 @@ Edit `cline_mcp_settings.json`:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"]
+      "args": ["-y", "producer-pal@latest"]
     }
   }
 }
@@ -134,8 +136,9 @@ Edit `cline_mcp_settings.json`:
 <details>
 <summary>Other MCP clients</summary>
 
-Use the command `npx producer-pal` with optional argument `-y` for auto-install.
-Consult your client's documentation for MCP server configuration syntax.
+Use the command `npx producer-pal@latest` with optional argument `-y` for
+auto-install. Consult your client's documentation for MCP server configuration
+syntax.
 
 </details>
 
@@ -206,7 +209,7 @@ Example with environment variables:
   "mcpServers": {
     "producer-pal": {
       "command": "npx",
-      "args": ["-y", "producer-pal"],
+      "args": ["-y", "producer-pal@latest"],
       "env": {
         "MCP_SERVER_ORIGIN": "http://localhost:3350",
         "ENABLE_LOGGING": "true"

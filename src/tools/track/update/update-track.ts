@@ -13,7 +13,10 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
+  findReturnIndex,
+  namedIdParam,
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -43,7 +46,9 @@ interface MixerParams {
 }
 
 interface UpdateTrackArgs {
-  ids: string;
+  id?: string;
+  /** Hidden alias for id */
+  ids?: string;
   name?: string;
   color?: string;
   gainDb?: number;
@@ -166,7 +171,7 @@ function applyMonitoringState(
  * Apply send properties to a track
  * @param track - Track object
  * @param sendGainDb - Send gain in dB (-70 to 0)
- * @param sendReturn - Return track name (exact or letter prefix)
+ * @param sendReturn - Return track id, name, or letter prefix
  */
 function applySendProperties(
   track: LiveAPI,
@@ -180,7 +185,7 @@ function applySendProperties(
     return;
   }
 
-  if (sendGainDb == null) {
+  if (sendGainDb == null || sendReturn == null) {
     return;
   }
 
@@ -201,23 +206,15 @@ function applySendProperties(
     return;
   }
 
-  // Find matching send by return track name
-  // Match exact name OR letter prefix (e.g., "A" matches "A-Reverb")
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const returnTrackIds = liveSet.getChildIds("return_tracks");
-
-  let sendIndex = -1;
-
-  for (let i = 0; i < returnTrackIds.length; i++) {
-    const rt = LiveAPI.from(livePath.returnTrack(i));
-    const name = rt.getProperty("name") as string;
-
-    // Match exact name or single-letter prefix
-    if (name === sendReturn || name.startsWith(sendReturn + "-")) {
-      sendIndex = i;
-      break;
-    }
-  }
+  const returnTracks = LiveAPI.from(livePath.liveSet).getChildren(
+    "return_tracks",
+  );
+  const names = returnTracks.map((rt) => rt.getProperty("name") as string);
+  const sendIndex = findReturnIndex(
+    names,
+    sendReturn,
+    returnTracks.map((rt) => rt.id),
+  );
 
   if (sendIndex === -1) {
     console.warn(`no return track found matching "${sendReturn}"`);
@@ -231,10 +228,11 @@ function applySendProperties(
     return;
   }
 
-  // Set the send gain
-  assertDefined(sends[sendIndex], `send at index ${sendIndex}`).set(
+  setParamIfEnabled(
+    assertDefined(sends[sendIndex], `send at index ${sendIndex}`),
     "display_value",
     sendGainDb,
+    `updateTrack: send "${names[sendIndex]}"`,
   );
 }
 
@@ -255,7 +253,7 @@ function applyStereoPan(
     const panning = mixer.child("panning");
 
     if (panning.exists()) {
-      panning.set("value", pan);
+      setParamIfEnabled(panning, "value", pan, "updateTrack: pan");
     }
   }
 
@@ -284,7 +282,7 @@ function applySplitPan(
     const leftSplit = mixer.child("left_split_stereo");
 
     if (leftSplit.exists()) {
-      leftSplit.set("value", leftPan);
+      setParamIfEnabled(leftSplit, "value", leftPan, "updateTrack: leftPan");
     }
   }
 
@@ -292,7 +290,7 @@ function applySplitPan(
     const rightSplit = mixer.child("right_split_stereo");
 
     if (rightSplit.exists()) {
-      rightSplit.set("value", rightPan);
+      setParamIfEnabled(rightSplit, "value", rightPan, "updateTrack: rightPan");
     }
   }
 
@@ -323,7 +321,7 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
     const volume = mixer.child("volume");
 
     if (volume.exists()) {
-      volume.set("display_value", gainDb);
+      setParamIfEnabled(volume, "display_value", gainDb, "updateTrack: gainDb");
     }
   }
 
@@ -352,7 +350,8 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
 /**
  * Updates properties of existing tracks
  * @param args - The track parameters
- * @param args.ids - Track ID or comma-separated list of track IDs to update
+ * @param args.id - Track ID or comma-separated list of track IDs to update
+ * @param args.ids - Hidden alias for id
  * @param args.name - Optional track name
  * @param args.color - Optional track color (CSS format: hex)
  * @param args.gainDb - Optional track gain in dB (-70 to 6)
@@ -369,12 +368,13 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
  * @param args.outputRoutingChannelId - Optional output routing channel identifier
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
- * @param args.sendReturn - Optional return track name (exact or letter prefix), requires sendGainDb
+ * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
  * @param _context - Internal context object (unused)
  * @returns Single track object or array of track objects
  */
 export function updateTrack(
   {
+    id,
     ids,
     name,
     color,
@@ -396,14 +396,16 @@ export function updateTrack(
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
-  if (!ids) {
-    console.warn("updateTrack: ids is required");
+  const targets = namedIdParam(id, ids, "ids");
+
+  if (!targets) {
+    console.warn("updateTrack: id is required");
 
     return [];
   }
 
   // Parse comma-separated string into array
-  const trackIds = parseCommaSeparatedIds(ids);
+  const trackIds = parseCommaSeparatedIds(targets);
 
   // Validate all IDs are tracks, skip invalid ones
   const tracks = validateIdTypes(trackIds, "track", "updateTrack", {

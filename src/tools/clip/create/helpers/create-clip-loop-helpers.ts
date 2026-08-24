@@ -16,9 +16,20 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import {
+  takeLaneKey,
+  takeLaneLabel,
+  type TakeLaneTarget,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+
+import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
 import {
   type ClipTransformInputs,
@@ -28,9 +39,8 @@ import { calculateClipLength } from "./create-clip-validation-helpers.ts";
 
 export interface CreateClipsParams {
   view: string;
-  trackIndex: number;
   sessionSlots: SlotPosition[];
-  arrangementStarts: string[];
+  arrangementPositions: ArrangementPosition[];
   baseName: string | null;
   parsedNames: string[] | null;
   parsedColors: string[] | null;
@@ -53,10 +63,10 @@ export interface CreateClipsParams {
   songTimeSigDenominator: number;
   length: string | null;
   sampleFile: string | null;
-  deadline: number | null;
+  deadline: number | null | undefined;
   code: string | null;
-  /** Take lane to create arrangement clips on, or null for the main lane */
-  takeLane: LiveAPI | null;
+  /** Take lane per arrangement destination; no entry means the main lane */
+  takeLanes: Map<string, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
@@ -75,10 +85,10 @@ export interface CreateClipsParams {
 export async function createClips(
   params: CreateClipsParams,
 ): Promise<object[]> {
-  const { view, sessionSlots, arrangementStarts, deadline } = params;
+  const { view, sessionSlots, arrangementPositions, deadline } = params;
   const createdClips: object[] = [];
   const count =
-    view === "session" ? sessionSlots.length : arrangementStarts.length;
+    view === "session" ? sessionSlots.length : arrangementPositions.length;
 
   // Constant transform inputs for this view; read the scale mask once (it is a
   // Live Set global). Per-clip context (index/count/position) is applied below.
@@ -95,7 +105,7 @@ export async function createClips(
   };
 
   for (let i = 0; i < count; i++) {
-    if (isDeadlineExceeded(deadline)) {
+    if (isDeadlineExceeded(deadline ?? null)) {
       console.warn(
         `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
       );
@@ -113,6 +123,8 @@ interface IterationPosition {
   sceneIndex: number | null;
   arrangementStartBeats: number | null;
   arrangementStart: string | null;
+  takeLane: TakeLaneTarget | null;
+  newLaneOrdinal?: number;
 }
 
 /**
@@ -135,14 +147,14 @@ async function createClipAtIndex(
     params;
 
   // clip.index/clip.count (transforms and code-exec) span the whole create
-  // batch, not just this view: a single call mixing session slots and
+  // batch, not just this view: a single call mixing clip slots and
   // arrangement positions runs createClips once per view, so the global index
   // is nameStartIndex + i (session view starts at 0, arrangement at
   // sessionSlots.length) and the count is the combined total. This mirrors the
   // continuous indexing already used for names/colors below.
   const globalIndex = nameStartIndex + i;
   const totalCount =
-    params.sessionSlots.length + params.arrangementStarts.length;
+    params.sessionSlots.length + params.arrangementPositions.length;
 
   const clipName = getNameForIndex(
     baseName ?? undefined,
@@ -192,7 +204,7 @@ async function createClipAtIndex(
       params.sampleFile,
       transformedCount,
       // Take lanes apply only to arrangement clips (ignored for session view)
-      params.takeLane,
+      takeLaneFor(params.takeLanes, pos),
       {
         warping: params.warping,
         gainDb: params.gainDb,
@@ -220,11 +232,10 @@ async function createClipAtIndex(
       }
     }
   } catch (error) {
-    // Emit warning with position info
     const position =
       view === "session"
-        ? `slot=${pos.trackIndex}/${pos.sceneIndex}`
-        : `trackIndex=${pos.trackIndex}, arrangementStart=${pos.arrangementStart}`;
+        ? slotPath(pos.trackIndex, pos.sceneIndex as number)
+        : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
 
     console.warn(
       `Failed to create clip at ${position}: ${errorMessage(error)}`,
@@ -250,10 +261,12 @@ function resolveIterationPosition(
       sceneIndex: slot.sceneIndex,
       arrangementStartBeats: null,
       arrangementStart: null,
+      takeLane: null,
     };
   }
 
-  const arrangementStart = params.arrangementStarts[i] as string;
+  const { trackIndex, arrangementStart, takeLane, newLaneOrdinal } = params
+    .arrangementPositions[i] as ArrangementPosition;
 
   // Validate the standalone position first so a 0-indexed/zero-bar arrangement
   // start gets the 1-indexing steer (matching the single-clip create path), not
@@ -261,7 +274,7 @@ function resolveIterationPosition(
   validateBarBeatPosition(arrangementStart);
 
   return {
-    trackIndex: params.trackIndex,
+    trackIndex,
     sceneIndex: null,
     arrangementStartBeats: barBeatToAbletonBeats(
       arrangementStart,
@@ -269,7 +282,34 @@ function resolveIterationPosition(
       params.songTimeSigDenominator,
     ),
     arrangementStart,
+    takeLane,
+    newLaneOrdinal,
   };
+}
+
+/**
+ * The take lane a position's clip goes on.
+ * @param lanes - Resolved take lanes, keyed by destination
+ * @param position - The position being created
+ * @returns The lane, or null for the main lane
+ */
+function takeLaneFor(
+  lanes: Map<string, LiveAPI>,
+  position: IterationPosition,
+): LiveAPI | null {
+  if (position.takeLane == null) return null;
+
+  const lane = lanes.get(takeLaneKey(position));
+
+  // A destination whose lane didn't fit warned during resolution and has no
+  // entry. Fail this clip — the loop catches it and carries on — rather than
+  // falling back to the main lane, which would put the clip somewhere the
+  // caller didn't ask for.
+  if (lane == null) {
+    throw new Error(`take lane "${takeLaneLabel(position)}" was skipped`);
+  }
+
+  return lane;
 }
 
 interface PreparedClipData {

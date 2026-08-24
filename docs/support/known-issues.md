@@ -94,8 +94,10 @@ published package. It exits right away with
 `could not determine executable to run`, so the AI reports that the MCP server
 closed the connection during startup.
 
-**Workaround:** run your AI tool from a folder outside the repository, or point
-the MCP server's working directory somewhere else. Every tool configures that
+**Workaround:** use `producer-pal@latest` in your MCP config. A version tag
+makes `npx` resolve against npm instead of matching the local `package.json`.
+Failing that, run your AI tool from a folder outside the repository, or point
+the MCP server's working directory somewhere else — every tool configures that
 differently, so consult your AI tool's MCP documentation.
 
 ---

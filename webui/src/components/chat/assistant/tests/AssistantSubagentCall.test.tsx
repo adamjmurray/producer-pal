@@ -25,6 +25,26 @@ const backoff = (attempt: number | null) => ({
   retryAtMs: Date.now() + 5000,
 });
 
+/**
+ * The card for a finished subagent call.
+ * @returns The element to render
+ */
+function finishedCall(): preact.JSX.Element {
+  return (
+    <AssistantSubagentCall
+      task="x"
+      result={JSON.stringify("Bassline added.")}
+      toolCallId="tc1"
+    />
+  );
+}
+
+/** Assert the card reads as done, with no countdown left over. */
+function expectDoneWithoutBackoff(): void {
+  expect(screen.getByText("done")).toBeDefined();
+  expect(screen.queryByText(/Rate limited/)).toBeNull();
+}
+
 describe("AssistantSubagentCall", () => {
   afterEach(() => {
     resetSubagentRateLimits();
@@ -121,6 +141,23 @@ describe("AssistantSubagentCall", () => {
     expect(screen.queryByText("done")).toBeNull();
   });
 
+  it("reads as interrupted when the turn's request failed under the worker", () => {
+    // Not a Stop and not the worker's own failure: the orchestrator's stream
+    // died (a rate limit, a dropped connection) while this worker was running.
+    render(
+      <AssistantSubagentCall
+        task="rename tracks"
+        result={JSON.stringify(
+          "The request failed before this tool finished; it may or may not have run.",
+        )}
+        index={1}
+      />,
+    );
+
+    expect(screen.getByText("interrupted")).toBeDefined();
+    expect(screen.queryByText("done")).toBeNull();
+  });
+
   it("shows a failed status and red border on error", () => {
     const { container } = render(
       <AssistantSubagentCall task="x" result={"boom"} isError />,
@@ -181,16 +218,9 @@ describe("AssistantSubagentCall", () => {
   it("ignores a stale backoff once the call has a result", () => {
     setSubagentRateLimit("tc1", backoff(0));
 
-    render(
-      <AssistantSubagentCall
-        task="x"
-        result={JSON.stringify("Bassline added.")}
-        toolCallId="tc1"
-      />,
-    );
+    render(finishedCall());
 
-    expect(screen.getByText("done")).toBeDefined();
-    expect(screen.queryByText(/Rate limited/)).toBeNull();
+    expectDoneWithoutBackoff();
   });
 
   it("distinguishes waiting on a sibling's backoff from its own rate limit", async () => {
@@ -266,16 +296,9 @@ describe("AssistantSubagentCall", () => {
     await act(() => setSubagentRateLimit("tc1", backoff(0)));
     expect(screen.getByText("rate limited")).toBeDefined();
 
-    rerender(
-      <AssistantSubagentCall
-        task="x"
-        result={JSON.stringify("Bassline added.")}
-        toolCallId="tc1"
-      />,
-    );
+    rerender(finishedCall());
 
-    expect(screen.getByText("done")).toBeDefined();
-    expect(screen.queryByText(/Rate limited/)).toBeNull();
+    expectDoneWithoutBackoff();
   });
 
   it("stops listening once unmounted", async () => {

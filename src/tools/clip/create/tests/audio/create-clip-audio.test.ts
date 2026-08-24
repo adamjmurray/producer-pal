@@ -1,0 +1,656 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as v8Console from "#src/shared/max/v8-max-console.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  MAX_ARRANGEMENT_POSITION_BEATS,
+  MAX_AUTO_CREATED_SCENES,
+} from "#src/tools/constants.ts";
+import { createClip } from "../../create-clip.ts";
+import { createAudioArrangementClip } from "../../helpers/create-clip-audio-helpers.ts";
+import {
+  expectNoTimingProperties,
+  setupAudioArrangementClipMocks,
+  setupMultiAudioArrangementClipMocks,
+  setupMultiSessionAudioClipMocks,
+  setupSessionAudioClipMocks,
+  setupSessionMocks,
+} from "../create-clip-test-helpers.ts";
+
+describe("createClip - audio clips", () => {
+  describe("validation", () => {
+    it("should throw error when both sampleFile and notes are provided", async () => {
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      registerMockObject("track-0", { path: livePath.track(0) });
+      registerMockObject("clip-slot-0-0", {
+        path: livePath.track(0).clipSlot(0),
+        properties: { has_clip: 0 },
+      });
+
+      await expect(
+        createClip({
+          slot: "0/0",
+          sampleFile: "/path/to/audio.wav",
+          notes: "C3 1|1",
+        }),
+      ).rejects.toThrow(
+        "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
+      );
+    });
+  });
+
+  describe("session view", () => {
+    it("should create audio clip in session view", async () => {
+      const { liveSet, clipSlot, clip } = setupSessionAudioClipMocks({
+        clipLength: 16,
+      });
+
+      const result = await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Verify create_audio_clip was called with the file path
+      expect(clipSlot.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+
+      // Verify no add_new_notes call for audio clips
+      expect(clip.call).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
+      expect(liveSet.call).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
+
+      expect(result).toStrictEqual({
+        id: "audio_clip_0_0",
+        path: "t0/s0",
+        length: "4bar", // 16 beats = 4 bars in 4/4
+        warping: true,
+      });
+    });
+
+    it("should create audio clip with name and color", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      const result = await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/kick.wav",
+        name: "Kick Sample",
+        color: "#FF0000",
+      });
+
+      // Verify name and color are set
+      expect(clip.set).toHaveBeenCalledWith("name", "Kick Sample");
+      expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000 converted to integer
+
+      expectNoTimingProperties(clip);
+
+      expect(result).toStrictEqual({
+        id: "audio_clip_0_0",
+        path: "t0/s0",
+        length: "2bar",
+        warping: true,
+      });
+    });
+
+    it("should create multiple audio clips in successive scenes", async () => {
+      const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
+      const clipSlot0 = clipSlots[0]!;
+      const clipSlot1 = clipSlots[1]!;
+
+      const result = await createClip({
+        slot: "0/0,0/1",
+        sampleFile: "/path/to/loop.wav",
+        name: "Loop",
+      });
+
+      // Verify clips were created at specified scenes
+      expect(clipSlot0.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/loop.wav",
+      );
+      expect(clipSlot1.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/loop.wav",
+      );
+
+      expect(result).toStrictEqual([
+        {
+          id: "audio_clip_0_0",
+          path: "t0/s0",
+          length: "1bar",
+          warping: true,
+        },
+        {
+          id: "audio_clip_0_1",
+          path: "t0/s1",
+          length: "1bar",
+          warping: true,
+        },
+      ]);
+    });
+
+    it("should auto-create scenes for audio clips when needed", async () => {
+      const liveSet = registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          scenes: children("scene_0"),
+        },
+      });
+
+      registerMockObject("track-0", { path: livePath.track(0) });
+
+      const clipSlot = registerMockObject("clip-slot-0-1", {
+        path: livePath.track(0).clipSlot(1),
+        properties: { has_clip: 0 },
+      });
+
+      registerMockObject("audio_clip_0_1", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        properties: { length: 4 },
+      });
+
+      await createClip({
+        slot: "0/1", // Scene doesn't exist yet
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Verify scene was auto-created
+      expect(liveSet.call).toHaveBeenCalledWith(
+        "create_scene",
+        -1, // -1 means append at end
+      );
+
+      // Verify clip was created in the new scene
+      expect(clipSlot.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+    });
+
+    it("should emit warning and return empty array when scene index exceeds maximum", async () => {
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      registerMockObject("track-0", { path: livePath.track(0) });
+
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = await createClip({
+        slot: `0/${MAX_AUTO_CREATED_SCENES}`,
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toStrictEqual([]);
+    });
+
+    it("should emit warning and return empty array when clip already exists", async () => {
+      setupSessionAudioClipMocks({ hasClip: 1 });
+
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe("arrangement view", () => {
+    it("should create audio clip in arrangement view", async () => {
+      const { track } = setupAudioArrangementClipMocks();
+
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Verify create_audio_clip was called with file path and position
+      expect(track.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+        0, // Position in beats (1|1 = 0 beats)
+      );
+
+      expect(result).toStrictEqual({
+        id: "arrangement_audio_clip",
+        path: "t0",
+        arrangementStart: "1|1",
+        length: "2bar",
+        warping: true,
+      });
+    });
+
+    it("should create audio clip with name and color in arrangement", async () => {
+      const { clip } = setupAudioArrangementClipMocks({ clipLength: 16 });
+
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart: "5|1",
+        sampleFile: "/path/to/vocals.wav",
+        name: "Vocals",
+        color: "#00FF00",
+      });
+
+      expect(clip.set).toHaveBeenCalledWith("name", "Vocals");
+      expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00 converted to integer
+
+      expect(result).toStrictEqual({
+        id: "arrangement_audio_clip",
+        path: "t0",
+        arrangementStart: "5|1",
+        length: "4bar",
+        warping: true,
+      });
+    });
+
+    it("should create multiple audio clips at specified positions in arrangement", async () => {
+      const { track } = setupMultiAudioArrangementClipMocks(3);
+
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1,2|1,3|1",
+        sampleFile: "/path/to/loop.wav",
+        name: "Loop",
+      });
+
+      // Verify clips created at specified positions
+      expect(track.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/loop.wav",
+        0, // First clip at position 0 (1|1)
+      );
+      expect(track.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/loop.wav",
+        4, // Second clip at position 4 (2|1)
+      );
+      expect(track.call).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/loop.wav",
+        8, // Third clip at position 8 (3|1)
+      );
+
+      expect(result).toStrictEqual([
+        {
+          id: "arrangement_audio_clip_0",
+          path: "t0",
+          arrangementStart: "1|1",
+          length: "1bar",
+          warping: true,
+        },
+        {
+          id: "arrangement_audio_clip_1",
+          path: "t0",
+          arrangementStart: "2|1",
+          length: "1bar",
+          warping: true,
+        },
+        {
+          id: "arrangement_audio_clip_2",
+          path: "t0",
+          arrangementStart: "3|1",
+          length: "1bar",
+          warping: true,
+        },
+      ]);
+    });
+
+    it("should emit warning and return empty array when arrangement position exceeds maximum", async () => {
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      registerMockObject("track-0", { path: livePath.track(0) });
+
+      // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart: "394202|1",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toStrictEqual([]);
+    });
+
+    it("should throw error when track does not exist", async () => {
+      mockNonExistentObjects();
+
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      await expect(
+        createClip({
+          trackIndex: 99,
+          arrangementStart: "1|1",
+          sampleFile: "/path/to/audio.wav",
+        }),
+      ).rejects.toThrow("createClip failed: track 99 does not exist");
+    });
+
+    it("should emit warning and return empty array when audio clip creation fails", async () => {
+      registerMockObject("live-set", {
+        path: livePath.liveSet,
+        properties: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: {
+          create_audio_clip: () => ["id", "0"], // Return invalid clip reference
+        },
+      });
+
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        sampleFile: "/path/to/invalid.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toStrictEqual([]);
+    });
+  });
+
+  describe("audio clip length handling", () => {
+    it("should use actual audio clip length from Live API", async () => {
+      setupSessionAudioClipMocks({ clipLength: 12.5 });
+
+      const result = await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Length should come from Live API, not calculated
+      expect(result).toStrictEqual({
+        id: "audio_clip_0_0",
+        path: "t0/s0",
+        length: "3bar+n/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
+        warping: true,
+      });
+    });
+
+    it("should report same length for multiple clips from same sample", async () => {
+      setupMultiSessionAudioClipMocks([0, 1], { clipLength: 8 });
+
+      const result = await createClip({
+        slot: "0/0,0/1",
+        sampleFile: "/path/to/loop.wav",
+      });
+
+      // Both clips should have same length
+      expect(result).toStrictEqual([
+        {
+          id: "audio_clip_0_0",
+          path: "t0/s0",
+          length: "2bar",
+          warping: true,
+        },
+        {
+          id: "audio_clip_0_1",
+          path: "t0/s1",
+          length: "2bar",
+          warping: true,
+        },
+      ]);
+    });
+  });
+
+  describe("parameters ignored for audio clips", () => {
+    it("should not set timing parameters on audio clips", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+        start: "1|1",
+        length: "2bar",
+        warping: true,
+        looping: true,
+        firstStart: "1|2",
+      });
+
+      // Verify timing parameters are NOT set for audio clips
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "start_marker",
+        expect.anything(),
+      );
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "loop_start",
+        expect.anything(),
+      );
+      expect(clip.set).not.toHaveBeenCalledWith("loop_end", expect.anything());
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "end_marker",
+        expect.anything(),
+      );
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "playing_position",
+        expect.anything(),
+      );
+      expect(clip.set).not.toHaveBeenCalledWith("looping", expect.anything());
+    });
+
+    it("sets an explicit time signature on audio clips, like update-clip", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      await createClip({
+        slot: "0/0",
+        sampleFile: "/path/to/audio.wav",
+        timeSignature: "3/4",
+      });
+
+      expect(clip.set).toHaveBeenCalledWith("signature_numerator", 3);
+      expect(clip.set).toHaveBeenCalledWith("signature_denominator", 4);
+    });
+
+    it("leaves the time signature alone on audio clips when not asked", async () => {
+      const { clip } = setupSessionAudioClipMocks();
+
+      await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "signature_numerator",
+        expect.anything(),
+      );
+      expect(clip.set).not.toHaveBeenCalledWith(
+        "signature_denominator",
+        expect.anything(),
+      );
+    });
+  });
+});
+
+describe("createAudioArrangementClip (unit)", () => {
+  it("throws when arrangementStartBeats exceeds the maximum position", () => {
+    // A valid track is registered, so if the max-position guard were removed the
+    // clip would be created without throwing. Kills the guard's
+    // ConditionalExpression / EqualityOperator / block / message mutants.
+    setupAudioArrangementClipMocks();
+
+    expect(() =>
+      createAudioArrangementClip(
+        0,
+        MAX_ARRANGEMENT_POSITION_BEATS + 1,
+        "/samples/loop.wav",
+      ),
+    ).toThrow(/exceeds maximum/);
+  });
+
+  it("does NOT throw at exactly the maximum position (boundary: > not >=)", () => {
+    setupAudioArrangementClipMocks();
+
+    const result = createAudioArrangementClip(
+      0,
+      MAX_ARRANGEMENT_POSITION_BEATS,
+      "/samples/loop.wav",
+    );
+
+    expect(result.arrangementStartBeats).toBe(MAX_ARRANGEMENT_POSITION_BEATS);
+  });
+
+  it("throws when the created audio arrangement clip does not exist", () => {
+    registerMockObject("track-0", {
+      path: livePath.track(0),
+      methods: {
+        create_audio_clip: () => ["id", "0"], // "no object" ref → exists() false
+      },
+    });
+
+    expect(() => createAudioArrangementClip(0, 0, "/samples/loop.wav")).toThrow(
+      "failed to create audio Arrangement clip",
+    );
+  });
+});
+
+describe("createClip - audio clip warping", () => {
+  /**
+   * Register a session audio clip whose sample is `sampleSeconds` long and
+   * whose warped region spans `regionBeats`, so a mismatch between the two is
+   * exactly the time-stretching Live applied.
+   * @param sampleSeconds - The sample's duration in seconds
+   * @param regionBeats - The warped region's length in beats
+   * @returns Handles for the registered mocks
+   */
+  function setupStretchedAudioClip(sampleSeconds: number, regionBeats: number) {
+    const handles = setupSessionAudioClipMocks({ clipLength: regionBeats });
+
+    handles.clip.properties.sample_length = sampleSeconds * 48000;
+    handles.clip.properties.sample_rate = 48000;
+
+    return handles;
+  }
+
+  it("keeps Live's own choice when warping is not specified", async () => {
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({ slot: "0/0", sampleFile: "/path/to/audio.wav" });
+
+    expect(clip.set).not.toHaveBeenCalledWith("warping", expect.anything());
+  });
+
+  it("turns warping off and restates the end marker in seconds", async () => {
+    // Live leaves end_marker at the warped beat value, which then reads as
+    // seconds. Restating it keeps the region honest and stops a later re-warp
+    // from converting the stale number and inflating the clip.
+    const { clip } = setupStretchedAudioClip(2.4, 4);
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(clip.set).toHaveBeenCalledWith("warping", 0);
+    expect(clip.set).toHaveBeenCalledWith("end_marker", 2.4);
+  });
+
+  it("leaves an already-unwarped clip's region alone", async () => {
+    // Restating only makes sense on the beats-to-seconds switch. On a clip Live
+    // imported unwarped, end_marker is already seconds, so writing the sample
+    // duration over it would blow a shorter region out to the whole file.
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 4 });
+
+    clip.properties.warping = 0;
+    clip.properties.end_marker = 0.5;
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: false,
+    });
+
+    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+  });
+
+  it("turns warping on when asked", async () => {
+    const { clip } = setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      warping: true,
+    });
+
+    expect(clip.set).toHaveBeenCalledWith("warping", 1);
+  });
+
+  it("reports the warp state Live settled on without warning about it", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    // A 2.7s render mapped onto 4 beats plays over 2s at 120bpm — a stretch,
+    // but warping to tempo is usually what the user wants, so it is reported
+    // on the result rather than warned about
+    setupStretchedAudioClip(2.7, 4);
+
+    const result = await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+    });
+
+    expect(result).toStrictEqual({
+      id: "audio_clip_0_0",
+      path: "t0/s0",
+      length: "1bar", // 4 beats in 4/4
+      warping: true,
+    });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("warns that MIDI-only timing params are ignored for audio", async () => {
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupSessionAudioClipMocks({ clipLength: 8 });
+
+    await createClip({
+      slot: "0/0",
+      sampleFile: "/path/to/audio.wav",
+      length: "4bar",
+      looping: true,
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("length, looping ignored for audio clips"),
+    );
+  });
+
+  it("warns that warping is ignored on a MIDI clip", async () => {
+    // The inverse of the audio warning: warping is documented audio-only, and
+    // the MIDI path has nowhere to put it.
+    const warnSpy = vi.spyOn(v8Console, "warn");
+
+    setupSessionMocks();
+
+    await createClip({ slot: "0/0", notes: "1|1 C3", warping: true });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("warping ignored for MIDI clips"),
+    );
+  });
+});

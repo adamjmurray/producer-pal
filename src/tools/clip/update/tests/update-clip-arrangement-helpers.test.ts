@@ -340,7 +340,7 @@ describe("update-clip-arrangement-helpers", () => {
       expect(result).toBe("777");
       expect(outlet).toHaveBeenCalledWith(
         1,
-        "arrangementStart parameter ignored for take-lane clip (id 777); move it in Live's UI",
+        "arrangementStart ignored for take-lane clip (id 777): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere",
       );
       // Neither duplicate_clip_to_arrangement nor delete_clip should fire —
       // both are Track-scoped APIs that silently misroute on take-lane clips.

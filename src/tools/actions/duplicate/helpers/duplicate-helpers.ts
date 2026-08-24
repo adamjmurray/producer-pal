@@ -16,9 +16,14 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arrangement-duplicate-target.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
-import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  holdingAreaStartOnTrack,
+  moveClipFromHolding,
+} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import {
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /**
  * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
@@ -59,11 +64,12 @@ export function parseArrangementLength(
 
 export interface MinimalClipInfo {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
+   * arrangement. A clip slot pastes back into any path/toPath param; an
+   * arrangement one names a whole track, so only tools that take a track
+   * destination accept it — reach a specific arrangement clip by id. */
+  path?: string;
   arrangementStart?: string;
-  /** 1-based take lane number, present only for clips on a take lane */
-  takeLane?: number;
   name?: string;
   noteCount?: number;
   transformed?: number;
@@ -106,19 +112,12 @@ export function getMinimalClipInfo(
       id: clip.id,
     };
 
-    if (!omitFields.includes("trackIndex")) {
-      result.trackIndex = trackIndex;
+    if (!omitFields.includes("path")) {
+      result.path = arrangementPath(trackIndex, clip.takeLaneIndex);
     }
 
     if (!omitFields.includes("arrangementStart")) {
       result.arrangementStart = arrangementStart;
-    }
-
-    // Surface the take lane (1-based) when the clip landed on one
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      result.takeLane = takeLaneIndex + 1;
     }
 
     return result;
@@ -137,8 +136,8 @@ export function getMinimalClipInfo(
     id: clip.id,
   };
 
-  if (!omitFields.includes("slot")) {
-    result.slot = formatSlot(trackIndex, sceneIndex);
+  if (!omitFields.includes("path")) {
+    result.path = slotPath(trackIndex, sceneIndex);
   }
 
   return result;
@@ -154,7 +153,7 @@ export function getMinimalClipInfo(
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
  * @param omitFields - Optional fields to omit from clip info
- * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param context - Context object with silenceWavPath
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
  */
@@ -182,11 +181,21 @@ export async function createClipsForLength(
       );
     }
 
+    // The holding copy is what gets moved onto the target, so it must not be
+    // sitting there already: moveClipFromHolding would read that as a
+    // self-overlap and skip the clear it needs to avoid the Ableton crash.
+    // Read the track each time — a multi-position duplicate places copies as it
+    // goes, and one of them may already be where an earlier start pointed.
+    const holdingStart = holdingAreaStartOnTrack(
+      track,
+      arrangementStartBeats + arrangementLengthBeats,
+    );
+
     const { holdingClipId } = createShortenedClipInHolding(
       sourceClip,
       track,
       arrangementLengthBeats,
-      context.holdingAreaStartBeats as number,
+      holdingStart,
       isMidiClip,
       context as TilingContext,
     );
@@ -300,80 +309,22 @@ async function lengthenClipAndCollectInfo(
 }
 
 /**
- * Duplicate a clip slot to another slot
- * @param sourceTrackIndex - Source track index
- * @param sourceSceneIndex - Source scene index
- * @param toTrackIndex - Destination track index
- * @param toSceneIndex - Destination scene index
- * @param name - Optional name for the duplicated clip
- * @param color - Optional color for the duplicated clip
- * @returns Minimal clip info object
- */
-export function duplicateClipSlot(
-  sourceTrackIndex: number,
-  sourceSceneIndex: number,
-  toTrackIndex: number,
-  toSceneIndex: number,
-  name?: string,
-  color?: string,
-): MinimalClipInfo {
-  // Get source clip slot
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
-  );
-
-  if (!sourceClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex} does not exist`,
-    );
-  }
-
-  if (!sourceClipSlot.getProperty("has_clip")) {
-    throw new Error(
-      `duplicate failed: no clip in source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex}`,
-    );
-  }
-
-  // Get destination clip slot
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toTrackIndex).clipSlot(toSceneIndex),
-  );
-
-  if (!destClipSlot.exists()) {
-    throw new Error(
-      `duplicate failed: destination clip slot at track ${toTrackIndex}, scene ${toSceneIndex} does not exist`,
-    );
-  }
-
-  // Use duplicate_clip_to to copy the clip to the destination
-  sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
-
-  // Get the newly created clip
-  const newClip = LiveAPI.from(
-    livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
-  );
-
-  newClip.setAll({ name, color });
-
-  // Return the new clip info directly
-  return getMinimalClipInfo(newClip);
-}
-
-/**
  * Duplicate a clip to the arrangement view
  * @param clipId - Clip ID to duplicate
  * @param arrangementStartBeats - Start position in beats
+ * @param destTrackIndex - Track to place the copy on (may differ from the source's)
  * @param name - Optional name for the duplicated clip(s)
  * @param color - Optional color for the duplicated clip(s)
  * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
- * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param context - Context object with silenceWavPath
  * @returns Clip info or object with trackIndex and clips array
  */
 export async function duplicateClipToArrangement(
   clipId: string,
   arrangementStartBeats: number,
+  destTrackIndex?: number,
   name?: string,
   color?: string,
   arrangementLength?: string,
@@ -388,7 +339,7 @@ export async function duplicateClipToArrangement(
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
   }
 
-  const trackIndex = clip.trackIndex;
+  const trackIndex = destTrackIndex ?? clip.trackIndex;
 
   if (trackIndex == null) {
     throw new Error(

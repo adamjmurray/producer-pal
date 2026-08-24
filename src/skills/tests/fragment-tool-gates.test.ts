@@ -39,7 +39,7 @@ function gateTools(name: string): readonly string[] | null {
  * @returns Each distinct `ppal-` name in it
  */
 function mentionedTools(body: string): string[] {
-  return [...new Set(body.match(/ppal-[a-z-]+/g) ?? [])].sort();
+  return [...new Set(body.match(/ppal-[a-z-]+/g) ?? [])].toSorted();
 }
 
 // Fragments that name a tool outside their own gate ON PURPOSE: the handoff is
@@ -59,8 +59,10 @@ const DELIBERATE_CROSS_REFERENCES: Record<string, readonly string[]> = {
 // can't act on it. Shrink toward empty as the splits land; an entry that stops
 // bleeding must be deleted, which the "still bleeds" test below enforces.
 const KNOWN_BLEED: Record<string, readonly string[]> = {
-  // Clearing a pad before replacing its sample.
-  "devices-write": ["ppal-delete"],
+  // Pad operations named beside the chain trim they preserve: clearing a pad
+  // before replacing its sample, and copying a whole pad rather than the device
+  // inside it.
+  "devices-write": ["ppal-delete", "ppal-duplicate"],
   // Take-lane clips refuse a delete the same way they refuse an update, so the
   // warning belongs beside the update-clip one it shares a sentence with.
   "arrangement-write": ["ppal-delete"],
@@ -318,8 +320,8 @@ describe("gatedOutFragments", () => {
   });
 
   it("keeps the path grammar for a tool that only addresses a device", () => {
-    // select/delete/duplicate take a device path (`devicePath`, `path`,
-    // `toPath`) without reading or building one, and `devices` is the only
+    // select/delete/duplicate take a device path (`path`, `path`, `toPath`)
+    // without reading or building one, and `devices` is the only
     // place `rt`/`mt`/`c`/`rc` are written down. The per-device param catalog
     // is not their business and stays behind.
     for (const tool of ["ppal-select", "ppal-delete", "ppal-duplicate"]) {
@@ -357,7 +359,7 @@ describe("gatedOutFragments", () => {
 
   it("keeps arrangement for read-track but not read-scene", () => {
     // read-track returns arrangementClips carrying arrangementStart; read-scene
-    // reads session slots only, so no arrangement position ever reaches it.
+    // reads clip slots only, so no arrangement position ever reaches it.
     expect(gatedOutFragments(["ppal-read-track"])).not.toContain("arrangement");
     expect(gatedOutFragments(["ppal-read-scene"])).toContain("arrangement");
   });
@@ -376,7 +378,7 @@ describe("audienceGatedFragments", () => {
     );
 
     expect(conversationOnly.length).toBeGreaterThan(0);
-    expect([...dropped].sort()).toStrictEqual(conversationOnly.sort());
+    expect([...dropped].toSorted()).toStrictEqual(conversationOnly.toSorted());
   });
 
   it("drops nothing a toolset could have decided", () => {

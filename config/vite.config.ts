@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import preact from "@preact/preset-vite";
@@ -16,9 +16,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
+const buildInputsPath = join(
+  rootDir,
+  "max-for-live-device/chat-ui.inputs.json",
+);
+
+let buildInputs: string[] = [];
+let buildStartedAt = 0;
 
 export default defineConfig({
-  // Bake the build identity in, same as the rollup bundles do. The browser has
+  // Bake the build identity in, same as the rolldown bundles do. The browser has
   // no `process`, so this must always substitute to a literal.
   define: {
     "process.env.BUILD_SHA": JSON.stringify(BUILD_SHA),
@@ -93,6 +100,49 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
 
           console.error("Error adding license header:", message);
         }
+      },
+    },
+    {
+      // Record what this build read, and when it started. The rolldown build
+      // compares the record to decide whether to re-run this one, and it can't
+      // know the UI pulls in src/shared any other way. See
+      // config/rolldown-plugin-inline-chat-ui.mjs.
+      name: "record-build-inputs",
+      buildStart() {
+        // Not the output's mtime, which is stamped when the build FINISHES: a
+        // source saved while the build was running would then look older than
+        // the output that missed it, and stay invisible forever.
+        buildStartedAt = Date.now();
+      },
+      buildEnd() {
+        buildInputs = [...this.getModuleIds()]
+          // Drop query suffixes (?used, ?direct) so paths compare as files.
+          .map((id) => id.replace(/[?#].*$/, ""))
+          .filter(
+            (id) =>
+              // Skips virtual modules (\0…) along with dependencies, which
+              // package-lock.json covers instead.
+              id.startsWith(rootDir) &&
+              !id.includes("/node_modules/") &&
+              existsSync(id),
+          );
+      },
+      closeBundle() {
+        writeFileSync(
+          buildInputsPath,
+          // The SHA is baked in by `define`, and a commit moves it without
+          // touching any file, so mtimes alone can't spot that change.
+          `${JSON.stringify(
+            {
+              buildSha: BUILD_SHA,
+              startedAt: buildStartedAt,
+              inputs: [...new Set(buildInputs)].toSorted(),
+            },
+            null,
+            2,
+          )}\n`,
+          "utf-8",
+        );
       },
     },
   ],

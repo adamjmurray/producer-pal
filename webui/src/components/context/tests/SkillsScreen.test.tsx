@@ -19,7 +19,7 @@ import { slot } from "./skill-slot-test-helpers";
 
 // Stub the CodeMirror editor to a textarea seeded with the override, so tests
 // can drive onChange/onBlur (the autosave path) without CodeMirror.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
     initialValue: string;
     onChange: (value: string) => void;

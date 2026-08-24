@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
+import { assertDefined, errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -10,7 +11,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  type InsertionPathResolution,
+  resolveInsertionPath,
+} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   parseCommaSeparatedIds,
   toLiveApiId,
@@ -75,9 +79,13 @@ export function wrapDevicesInRack({
     return wrapInstrumentsInRack(devices, toPath, name);
   }
 
-  const { container, position } = toPath
-    ? resolveInsertionPath(toPath)
+  const destination = toPath
+    ? rackDestination(toPath)
     : getDeviceInsertionPoint(assertDefined(devices[0], "first device"));
+
+  if (destination == null) return null;
+
+  const { container, position } = destination;
 
   if (!container?.exists()) {
     console.warn("wrapInRack: target container does not exist");
@@ -103,7 +111,7 @@ export function wrapDevicesInRack({
     const device = assertDefined(devices[i], `device at index ${i}`);
 
     // Ensure chain exists (create if needed)
-    const currentChainCount = rack.getChildren("chains").length;
+    const currentChainCount = rack.getChildCount("chains");
 
     if (i >= currentChainCount) {
       const chainsNeeded = i + 1 - currentChainCount;
@@ -143,22 +151,45 @@ function resolveDevices(items: string[], isIdBased: boolean): LiveAPI[] {
   const devices: LiveAPI[] = [];
 
   for (const item of items) {
-    const device = isIdBased ? LiveAPI.from(item) : resolveDeviceFromPath(item);
+    try {
+      const device = isIdBased
+        ? LiveAPI.from(item)
+        : resolveDeviceFromPath(item);
 
-    if (device?.exists()) {
-      const type = device.type;
-
-      if (type.endsWith("Device")) {
+      if (!device?.exists()) {
+        console.warn(`wrapInRack: device not found at "${item}"`);
+      } else if (device.type.endsWith("Device")) {
         devices.push(device);
       } else {
-        console.warn(`wrapInRack: "${item}" is not a device (type: ${type})`);
+        console.warn(
+          `wrapInRack: "${item}" is not a device (type: ${device.type})`,
+        );
       }
-    } else {
-      console.warn(`wrapInRack: device not found at "${item}"`);
+    } catch (error) {
+      // Resolution throws for a path that names nothing a device can sit in.
+      console.warn(`wrapInRack: ${errorMessage(error)}`);
     }
   }
 
   return devices;
+}
+
+/**
+ * Where the new rack goes. Resolution throws for a toPath that names nothing a
+ * device can go in — a missing track or device, a chain in a Drum Rack, a
+ * device that isn't a rack — and the sibling move warn-skips all of those, so
+ * do the same rather than failing the whole call.
+ * @param toPath - Target path for the new rack
+ * @returns The destination, or null when the path didn't resolve
+ */
+function rackDestination(toPath: string): InsertionPathResolution | null {
+  try {
+    return resolveInsertionPath(toPath, "toPath");
+  } catch (error) {
+    console.warn(`wrapInRack: ${errorMessage(error)}`);
+
+    return null;
+  }
 }
 
 /**
@@ -251,7 +282,7 @@ function wrapInstrumentsInRack(
   devices: LiveAPI[],
   toPath?: string,
   name?: string,
-): WrapResult {
+): WrapResult | null {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const firstDevice = assertDefined(devices[0], "first device");
 
@@ -262,12 +293,18 @@ function wrapInstrumentsInRack(
   // 2. Resolve and validate the destination BEFORE moving anything. A bad
   // toPath must fail here, while the instruments are still safely on their
   // source track — never after they've been staged on the temp track.
-  const { container, position } = toPath
-    ? resolveInsertionPath(toPath)
+  const destination = toPath
+    ? rackDestination(toPath)
     : { container: sourceContainer, position: devicePosition };
 
+  if (destination == null) return null;
+
+  const { container, position } = destination;
+
   if (!container?.exists()) {
-    throw new Error(`wrapInRack: target container does not exist`);
+    console.warn("wrapInRack: target container does not exist");
+
+    return null;
   }
 
   // 3. Create temp MIDI track (appended)
@@ -306,7 +343,7 @@ function wrapInstrumentsInRack(
     for (let i = devices.length - 1; i >= 0; i--) {
       // Create chain
       rack.call("insert_chain");
-      const chainIndex = rack.getChildren("chains").length - 1;
+      const chainIndex = rack.getChildCount("chains") - 1;
       const chain = LiveAPI.from(`${rack.path} chains ${chainIndex}`);
 
       // Get device at position 0 (always 0 since we move from front)
@@ -369,7 +406,7 @@ function restoreStrandedInstruments(
   const sourceId = toLiveApiId(sourceContainer.id);
   // Bounded by the initial count: each move removes device 0, so re-reading
   // slot 0 walks the list; the cap guards against a move that silently no-ops.
-  const count = tempTrack.getChildren("devices").length;
+  const count = tempTrack.getChildCount("devices");
 
   for (let i = 0; i < count; i++) {
     const stranded = tempTrack.child("devices", "0");

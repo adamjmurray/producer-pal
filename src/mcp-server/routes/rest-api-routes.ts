@@ -4,14 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type Express, type Request, type Response } from "express";
-import { z } from "zod";
+import { z, type ZodType } from "zod";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { WARNING_PREFIX } from "#src/shared/mcp-response-utils.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
-import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 import {
-  resolveModalDescription,
-  resolveParamModes,
-} from "#src/tools/shared/tool-framework/modal-config.ts";
+  collectHiddenParams,
+  hiddenParamWarnings,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
+import { resolveModalDescription } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
+import { unsetEmptyParams } from "#src/tools/shared/tool-framework/unset-empty-params.ts";
+import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -20,11 +25,7 @@ import {
   resolveRequestProfile,
   type RequestProfile,
 } from "../helpers/http/request-profile.ts";
-import {
-  MAX_TIMEOUT_MS,
-  type McpResponse,
-  type RequestOverrides,
-} from "../max-api-adapter.ts";
+import { type McpResponse, type RequestOverrides } from "../max-api-adapter.ts";
 import * as console from "../node-for-max-logger.ts";
 
 interface RestApiConfig {
@@ -85,12 +86,11 @@ export function registerRestApiRoutes(
     const tools = getActiveToolDefs()
       .filter((td) => enabledSet.has(td.toolName))
       .map((td) => {
-        const resolved = resolveParamModes(td.toolOptions.inputSchema, context);
-        const finalInputSchema = filterSchemaForSmallModel(
+        // Same resolution define-tool.ts registers with, deprecation filter
+        // included, so the REST catalog can't advertise a param MCP hides.
+        const { published } = resolveToolSchema(
           td.toolOptions.inputSchema,
-          resolved.excludeParams,
-          resolved.descriptionOverrides,
-          resolved.excludeEnumValues,
+          context,
         );
 
         return {
@@ -101,7 +101,7 @@ export function registerRestApiRoutes(
             context,
           ),
           annotations: td.toolOptions.annotations,
-          inputSchema: z.toJSONSchema(z.object(finalInputSchema)),
+          inputSchema: z.toJSONSchema(z.object(published)),
         };
       });
 
@@ -158,8 +158,12 @@ export function registerRestApiRoutes(
       // is on: `ppal-read-clip` with `include: ["warp"]`, `ppal-context` with
       // `action: "delete"`, and so on. Every filtered value is one the tool
       // still handles; only the advertising shrinks.
-      const schema = z.object(toolDef.toolOptions.inputSchema);
-      const parsed = schema.safeParse(req.body);
+      const { inputSchema } = toolDef.toolOptions;
+      const parsed = z
+        .object(inputSchema)
+        .safeParse(
+          unsetEmptyParams(req.body as Record<string, unknown>, inputSchema),
+        );
 
       if (!parsed.success) {
         res.status(400).json({
@@ -193,6 +197,13 @@ export function registerRestApiRoutes(
           return;
         }
 
+        appendDeprecationNotices(
+          mcpResponse,
+          toolName,
+          toolDef.toolOptions.inputSchema,
+          parsed.data,
+        );
+
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
       } catch (error) {
         console.error(`REST API error calling ${toolName}: ${String(error)}`);
@@ -200,6 +211,34 @@ export function registerRestApiRoutes(
       }
     },
   );
+}
+
+/**
+ * Steers a REST caller off a hidden param, the way define-tool.ts does for MCP.
+ * The catalog no longer lists the param, so this notice is the only signal a
+ * REST caller gets that it is retired or a fallback.
+ * @param response - The tool's response, appended to in place
+ * @param toolName - Tool that was called
+ * @param inputSchema - The tool's raw input schema
+ * @param args - The validated arguments
+ */
+function appendDeprecationNotices(
+  response: McpResponse,
+  toolName: string,
+  inputSchema: Record<string, ZodType>,
+  args: Record<string, unknown>,
+): void {
+  const hidden = collectHiddenParams(inputSchema);
+  // Same predicate define-tool.ts uses, so a value the handler never honored
+  // doesn't earn a "use X instead" notice. A blank survives the schema on a
+  // string-typed param, and != null would count it as sent.
+  const usedKeys = Object.keys(hidden).filter((key) =>
+    paramNamesSomething(args[key]),
+  );
+
+  for (const text of hiddenParamWarnings(toolName, usedKeys, hidden)) {
+    response.content.push({ type: "text", text });
+  }
 }
 
 /**
@@ -273,8 +312,6 @@ interface UnwrappedResponse {
   warnings?: string[];
   appended?: string[];
 }
-
-const WARNING_PREFIX = "WARNING: ";
 
 /**
  * Unwrap MCP response format into a plain REST response.

@@ -16,7 +16,7 @@ export function RetryButton({ onClick }: RetryButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm size-7 flex items-center justify-center rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+      className="flex size-7 items-center justify-center rounded text-sm text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
       title="Retry from your last message"
       aria-label="Retry from your last message"
     >

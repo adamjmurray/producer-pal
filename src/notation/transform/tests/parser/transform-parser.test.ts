@@ -179,8 +179,12 @@ describe("Transform Parser", () => {
     });
 
     it("throws on invalid pitch (out of range)", () => {
-      expect(() => parseAssignments("C10: velocity += 10")).toThrow();
-      expect(() => parseAssignments("C-5: velocity += 10")).toThrow();
+      expect(() => parseAssignments("C10: velocity += 10")).toThrow(
+        "MIDI pitch 144 (C10) outside valid range 0-127",
+      );
+      expect(() => parseAssignments("C-5: velocity += 10")).toThrow(
+        "MIDI pitch -36 (C-5) outside valid range 0-127",
+      );
     });
   });
 
@@ -270,7 +274,7 @@ describe("Transform Parser", () => {
     });
 
     it("rejects old : operator", () => {
-      expect(() => parseAssignments("velocity: 10")).toThrow();
+      expect(() => parseAssignments("velocity: 10")).toThrow('but "v" found');
     });
   });
 
@@ -308,15 +312,17 @@ describe("Transform Parser", () => {
 
   describe("error cases", () => {
     it("throws on invalid parameter name", () => {
-      expect(() => parseAssignments("invalid += 10")).toThrow();
+      expect(() => parseAssignments("invalid += 10")).toThrow('but "i" found');
     });
 
     it("throws on missing expression", () => {
-      expect(() => parseAssignments("velocity +=")).toThrow();
+      expect(() => parseAssignments("velocity +=")).toThrow('but "v" found');
     });
 
     it("throws on invalid function name", () => {
-      expect(() => parseAssignments("velocity += invalid(1)")).toThrow();
+      expect(() => parseAssignments("velocity += invalid(1)")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("accepts plain number as function argument", () => {
@@ -328,21 +334,25 @@ describe("Transform Parser", () => {
     });
 
     it("throws on unclosed parenthesis", () => {
-      expect(() => parseAssignments("velocity += (10 + 5")).toThrow();
+      expect(() => parseAssignments("velocity += (10 + 5")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("throws on unmatched closing parenthesis", () => {
-      expect(() => parseAssignments("velocity += 10 + 5)")).toThrow();
+      expect(() => parseAssignments("velocity += 10 + 5)")).toThrow(
+        'but ")" found',
+      );
     });
 
     it("provides labeled error for invalid parameter", () => {
       // Labels help identify valid parameters instead of raw character classes
-      expect(() => parseAssignments("invalid += 10")).toThrow();
+      expect(() => parseAssignments("invalid += 10")).toThrow('but "i" found');
     });
 
     it("provides labeled error for missing expression", () => {
       // Labels help identify what's expected instead of raw character classes
-      expect(() => parseAssignments("velocity +=")).toThrow();
+      expect(() => parseAssignments("velocity +=")).toThrow('but "v" found');
     });
   });
 
@@ -506,19 +516,27 @@ describe("Transform Parser", () => {
     });
 
     it("rejects invalid audio property", () => {
-      expect(() => parseAssignments("gain = audio.velocity")).toThrow();
+      expect(() => parseAssignments("gain = audio.velocity")).toThrow(
+        'but "g" found',
+      );
     });
 
     it("rejects invalid note property", () => {
-      expect(() => parseAssignments("velocity = note.gain")).toThrow();
+      expect(() => parseAssignments("velocity = note.gain")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects invalid clip property", () => {
-      expect(() => parseAssignments("velocity = clip.invalid")).toThrow();
+      expect(() => parseAssignments("velocity = clip.invalid")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects invalid bar property", () => {
-      expect(() => parseAssignments("velocity = bar.invalid")).toThrow();
+      expect(() => parseAssignments("velocity = bar.invalid")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("parses next.pitch with namespace", () => {
@@ -552,11 +570,15 @@ describe("Transform Parser", () => {
     });
 
     it("rejects next.index (not a valid next property)", () => {
-      expect(() => parseAssignments("velocity = next.index")).toThrow();
+      expect(() => parseAssignments("velocity = next.index")).toThrow(
+        'but "v" found',
+      );
     });
 
     it("rejects next.count (not a valid next property)", () => {
-      expect(() => parseAssignments("velocity = next.count")).toThrow();
+      expect(() => parseAssignments("velocity = next.count")).toThrow(
+        'but "v" found',
+      );
     });
   });
 

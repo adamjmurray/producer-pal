@@ -1,9 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import {
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  STATE,
+} from "#src/tools/constants.ts";
+import { readChainMixer } from "./chain-mixer-helpers.ts";
 
 export interface BuildChainInfoOptions {
   path?: string | null;
@@ -11,16 +16,12 @@ export interface BuildChainInfoOptions {
   deviceCount?: number;
 }
 
-export interface DeviceInfo {
-  type: string;
-  chains?: Array<{ devices?: DeviceInfo[] }>;
-}
-
 /**
  * Build chain info object with standard properties
  * @param chain - Chain Live API object
  * @param options - Build options
- * @returns Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
+ * @returns Chain info object with id, path, type, name, color, mappedPitch,
+ *   chokeGroup, non-default mixer settings (gainDb, pan, sends), and state
  */
 export function buildChainInfo(
   chain: LiveAPI,
@@ -65,6 +66,8 @@ export function buildChainInfo(
       chainInfo.chokeGroup = chokeGroup;
     }
   }
+
+  Object.assign(chainInfo, readChainMixer(chain));
 
   const chainState = computeState(chain);
 
@@ -124,43 +127,24 @@ export function computeState(
 }
 
 /**
- * Check if device is an instrument type
- * @param deviceType - Device type string
- * @returns True if device is an instrument
+ * Whether a device makes sound — an instrument, or a rack with one inside.
+ * Live types a rack as an instrument whether or not it holds anything, so an
+ * empty one has to be looked into: otherwise a silent pad is listed in the drum
+ * map as playable. Reads Live directly rather than the processed tree, so the
+ * answer is the same however deep the rack sits.
+ * @param device - Device LiveAPI object
+ * @returns True if the device, or something nested in it, is an instrument
  */
-export function isInstrumentDevice(deviceType: string): boolean {
-  return (
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
-    deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
-  );
-}
-
-/**
- * Check if any device in the list is an instrument
- * @param devices - Array of device objects
- * @returns True if any instrument found
- */
-export function hasInstrumentInDevices(
-  devices: DeviceInfo[] | null | undefined,
-): boolean {
-  if (!devices || devices.length === 0) {
+export function deviceHasInstrument(device: LiveAPI): boolean {
+  if (device.getProperty("type") !== LIVE_API_DEVICE_TYPE_INSTRUMENT) {
     return false;
   }
 
-  for (const device of devices) {
-    if (isInstrumentDevice(device.type)) {
-      return true;
-    }
-
-    if (device.chains) {
-      for (const chain of device.chains) {
-        if (chain.devices && hasInstrumentInDevices(chain.devices)) {
-          return true;
-        }
-      }
-    }
+  if (!device.getProperty("can_have_chains")) {
+    return true;
   }
 
-  return false;
+  return device.someChild("chains", (chain) =>
+    chain.someChild("devices", deviceHasInstrument),
+  );
 }

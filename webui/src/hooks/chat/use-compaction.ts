@@ -22,6 +22,11 @@ interface UseCompactionParams<
    * without restore support can omit it.
    */
   bootstrapClientRef?: { current: (() => Promise<void>) | null };
+  /**
+   * Restored-but-not-yet-sent history — what a failed bootstrap has left to
+   * render the conversation from.
+   */
+  pendingHistoryRef: { current: TMessage[] | null };
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   autoSaveRef?: { current: (() => void) | null };
   messages: UIMessage[];
@@ -53,6 +58,7 @@ interface UseCompactionReturn {
  * @param params - Compaction inputs from useChat
  * @param params.clientRef - Ref to the active chat client
  * @param params.bootstrapClientRef - Ref to a callback that creates a client from pending history
+ * @param params.pendingHistoryRef - Ref to restored-but-unsent history (or null)
  * @param params.adapter - Chat adapter (formats messages, builds the summary message)
  * @param params.autoSaveRef - Ref to the conversation auto-save callback
  * @param params.messages - Current UI messages (used to resolve the cut point)
@@ -67,6 +73,7 @@ export function useCompaction<
 >({
   clientRef,
   bootstrapClientRef,
+  pendingHistoryRef,
   adapter,
   autoSaveRef,
   messages,
@@ -144,10 +151,16 @@ export function useCompaction<
         // Don't surface the error on a conversation we've since left.
         if (client && clientRef.current !== client) return;
 
+        // No client means the bootstrap threw before building one, so the
+        // conversation is still only in the pending history — render it behind
+        // the error instead of a lone error bubble. Copy it: createErrorMessage
+        // pushes onto the array it is given, and the conversation the next send
+        // bootstraps from must not pick up a stray error turn.
         setMessages(
           adapter.createErrorMessage(
             error,
-            clientRef.current?.chatHistory ?? [],
+            clientRef.current?.chatHistory ??
+              (pendingHistoryRef.current ? [...pendingHistoryRef.current] : []),
           ),
         );
       } finally {
@@ -163,6 +176,7 @@ export function useCompaction<
       autoSaveRef,
       clientRef,
       bootstrapClientRef,
+      pendingHistoryRef,
       setMessages,
     ],
   );

@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.1.0";
+export const VERSION = "2.2.0";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
@@ -52,6 +52,32 @@ export const MIN_LIVE_VERSION = "12.3.0";
  * together.
  */
 export const SAME_TIME_EPSILON = 0.001;
+
+// --- Tool-call timeouts ---
+
+/**
+ * Ceiling on a tool call's server-side deadline: the max for the device's
+ * Timeout setting and for the REST `?timeoutMs=` override.
+ *
+ * Held under 60s on purpose — that is the MCP SDK's client-side default. At 60s
+ * the client's timer wins the race (it starts first) and the user gets a generic
+ * abort instead of the partial results and warnings our timeout returns. The gap
+ * is room to serialize that response.
+ *
+ * Lowering our ceiling is the only lever that works for external clients: the
+ * 60s belongs to whoever built the client, and nothing in the protocol lets a
+ * server ask for longer.
+ */
+export const MAX_TIMEOUT_MS = 55_000;
+
+/**
+ * Tool-call timeout for the MCP clients we DO own — the built-in chat and the
+ * voice bridges. A backstop for a wedged connection, not the normal way a long
+ * call ends: the server always answers by MAX_TIMEOUT_MS with whatever landed.
+ *
+ * Derived, so it can never collide with the ceiling the way a hardcoded 60s did.
+ */
+export const CLIENT_TOOL_TIMEOUT_MS = MAX_TIMEOUT_MS + 10_000;
 
 // --- Web UI chat system instruction ---
 

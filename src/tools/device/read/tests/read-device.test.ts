@@ -20,7 +20,7 @@ describe("readDevice", () => {
 
   it("should read basic device properties", () => {
     setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
-    const result = readDevice({ deviceId: "device-123" });
+    const result = readDevice({ id: "device-123" });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -31,7 +31,7 @@ describe("readDevice", () => {
   it("should throw error for non-existent device", () => {
     mockNonExistentObjects();
 
-    expect(() => readDevice({ deviceId: "invalid-id" })).toThrow(
+    expect(() => readDevice({ id: "invalid-id" })).toThrow(
       "Device with ID invalid-id not found",
     );
   });
@@ -44,7 +44,7 @@ describe("readDevice", () => {
       can_have_chains: 1,
     });
     const result = readDevice({
-      deviceId: "rack-device-123",
+      id: "rack-device-123",
       include: ["chains"],
     });
 
@@ -64,7 +64,7 @@ describe("readDevice", () => {
       can_have_drum_pads: 1,
     });
     const result = readDevice({
-      deviceId: "drum-rack-123",
+      id: "drum-rack-123",
       include: ["drum-pads"],
     });
 
@@ -81,7 +81,7 @@ describe("readDevice", () => {
       type: 2,
       can_have_chains: 1,
     });
-    const result = readDevice({ deviceId: "device-123", include: ["*"] });
+    const result = readDevice({ id: "device-123", include: ["*"] });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -94,7 +94,7 @@ describe("readDevice", () => {
   it('include: ["actions"] lists a specialized device\'s actions', () => {
     setupBasicDeviceMock({ class_display_name: "Simpler", type: 1 });
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["actions"],
     });
 
@@ -108,7 +108,7 @@ describe("readDevice", () => {
   it('include: ["actions"] omits the field for a device with no actions', () => {
     setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["actions"],
     });
 
@@ -121,7 +121,7 @@ describe("readDevice", () => {
       type: 2,
       is_active: 0,
     });
-    const result = readDevice({ deviceId: "device-123" });
+    const result = readDevice({ id: "device-123" });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -136,7 +136,7 @@ describe("readDevice", () => {
       class_display_name: "Operator",
       type: 1,
     });
-    const result = readDevice({ deviceId: "device-123" });
+    const result = readDevice({ id: "device-123" });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -151,7 +151,7 @@ describe("readDevice", () => {
       type: 4,
       can_have_chains: 1,
     });
-    const result = readDevice({ deviceId: "device-123" });
+    const result = readDevice({ id: "device-123" });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -161,7 +161,7 @@ describe("readDevice", () => {
 
   it("should identify simple midi effect", () => {
     setupBasicDeviceMock({ class_display_name: "Arpeggiator", type: 4 });
-    const result = readDevice({ deviceId: "device-123" });
+    const result = readDevice({ id: "device-123" });
 
     expect(result).toStrictEqual({
       id: "device-123",
@@ -187,7 +187,7 @@ describe("readDevice", () => {
         sample: "/path/to/sample.wav",
       });
       const result = readDevice({
-        deviceId: "device-123",
+        id: "device-123",
         include: ["sample"],
       });
 
@@ -206,7 +206,7 @@ describe("readDevice", () => {
         type: 1,
         sample: "/path/to/sample.wav",
       });
-      const result = readDevice({ deviceId: "device-123" });
+      const result = readDevice({ id: "device-123" });
 
       expect(result).toStrictEqual({
         id: "device-123",
@@ -217,7 +217,7 @@ describe("readDevice", () => {
     it("should not include sample for non-Simpler instruments", () => {
       setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
       const result = readDevice({
-        deviceId: "device-123",
+        id: "device-123",
         include: ["sample"],
       });
 
@@ -233,7 +233,7 @@ describe("readDevice", () => {
         type: 1,
         sample: "/path/to/sample.wav",
       });
-      const result = readDevice({ deviceId: "device-123", include: ["*"] });
+      const result = readDevice({ id: "device-123", include: ["*"] });
 
       // "*" sets both params and sample includes. They are independent, so the
       // flat top-level `sample` is emitted alongside the `sample` param entry.
@@ -277,7 +277,7 @@ describe("readDevice", () => {
       setupRackWithReturnChain();
 
       const result = readDevice({
-        deviceId: "rack-rc",
+        id: "rack-rc",
         include: ["return-chains"],
       });
 
@@ -287,7 +287,7 @@ describe("readDevice", () => {
     it("omits returnChains when only chains are requested", () => {
       setupRackWithReturnChain();
 
-      const result = readDevice({ deviceId: "rack-rc", include: ["chains"] });
+      const result = readDevice({ id: "rack-rc", include: ["chains"] });
 
       // The rack HAS return chains, but they must not appear unless requested.
       expect(result).not.toHaveProperty("returnChains");
@@ -308,7 +308,13 @@ describe("readDevice", () => {
           is_active: 1,
           parameters: [],
           chains: ["id", "chain-1"],
+          drum_pads: ["id", "pad-36"],
         },
+      });
+
+      registerMockObject("pad-36", {
+        type: "DrumPad",
+        properties: { note: 36 },
       });
 
       registerMockObject("chain-1", {
@@ -343,7 +349,7 @@ describe("readDevice", () => {
       setupDrumRackWithChain();
 
       const result = readDevice({
-        deviceId: "drum-rack-123",
+        id: "drum-rack-123",
         include: ["drum-map"],
       });
 
@@ -369,7 +375,7 @@ describe("readDevice", () => {
       setupDrumRackWithChain();
 
       const result = readDevice({
-        deviceId: "drum-rack-123",
+        id: "drum-rack-123",
         include: ["drum-pads"],
         maxDepth: 0,
       });
@@ -378,6 +384,7 @@ describe("readDevice", () => {
 
       expect(drumPads).toHaveLength(1);
       expect(drumPads[0]).toMatchObject({
+        id: "pad-36",
         note: 36,
         pitch: "C1",
         name: "Kick",

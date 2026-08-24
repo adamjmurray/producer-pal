@@ -7,6 +7,10 @@ import { z } from "zod";
 import { MAX_CODE_LENGTH, MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
@@ -23,7 +27,21 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
 
   inputSchema: {
     // Basic clip properties
-    ids: z.coerce.string().describe("comma-separated clip ID(s) to update"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("clip ID(s) to update, comma-separated for multiple"),
+
+    ids: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+    }),
+    path: param(z.coerce.string().optional(), {
+      default:
+        "clip slot(s) to update instead of id, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
+      smallModel: "clip slot to update instead of id (e.g., 't0/s1')",
+    }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated for each (extras keep existing name)",
@@ -31,7 +49,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the clips)",
       smallModel: "#RRGGBB",
     }),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
@@ -69,15 +87,32 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+          "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
-    toSlot: z.coerce
+    arrangementSplit: param(z.string().optional(), {
+      default:
+        `comma-separated bar|beat positions to cut clips at, on the song timeline like arrangementStart (e.g., '9|1, 17|1') - max ${MAX_SPLIT_POINTS} points. ` +
+        "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
+      smallModel: null,
+    }),
+    toSlot: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+    }),
+    toPath: z.coerce
       .string()
       .optional()
-      .describe("trackIndex/sceneIndex to move session clip (e.g., '2/3')"),
-    split: param(z.string().optional(), {
-      default: `comma-separated bar|beat split positions, measured from the clip's start (1|1 = clip start, NOT song time) (e.g., '2|1, 3|1') - max ${MAX_SPLIT_POINTS} points, arrangement clips only; song meter`,
-      smallModel: null,
+      .describe(
+        "clip slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
+          "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
+          "id/path, in order - destinations don't cycle, so name one slot per clip",
+      ),
+    // Deprecated because its positions are clip-relative: models reason in song
+    // time, so they aimed at the wrong bar every time. Kept working unchanged
+    // for callers that scripted against it; arrangementSplit is the published
+    // param and reads song-timeline positions.
+    split: deprecatedParam(z.string().optional(), {
+      replacedBy: "arrangementSplit",
     }),
 
     // Audio clip parameters
@@ -86,7 +121,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .min(-70)
       .max(24)
       .optional()
-      .describe("audio clip gain in decibels (ignored for MIDI)"),
+      .describe("audio clip gain in decibels, 0 = unity (ignored for MIDI)"),
     pitchShift: z.coerce
       .number()
       .min(-48)
@@ -124,19 +159,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions applied AFTER merging notes (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+        "transform expressions applied AFTER merging notes (broadcast across the clips); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
       smallModel: null,
     }),
     preTransforms: param(z.string().optional(), {
       default:
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip. v0 deletes (zero velocity): clear a whole bar ('3|*: v0', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: v0'), or all ('v0'); also remap a drum lane ('C1: C4'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across the clips); clear or edit notes already in the clip. 'delete' (alias 'v0') removes: a whole bar ('3|*: delete', |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: delete'), one pitch ('C1: delete'), a pitch range ('C1-C5: delete'), or all ('delete'); also remap a drum lane ('C1: C4'). Works with or without notes",
       smallModel:
         "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: param(boundedString(MAX_CODE_LENGTH).optional(), {
-            default: `JS function body (broadcast across ids; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
+            default: `JS function body (broadcast across the clips; max ${MAX_CODE_LENGTH} chars): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)`,
             smallModel: null,
           }),
         }
@@ -149,7 +184,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe(
-        "MIDI quantize strength 0-1 (1 = full snap); snaps note starts to quantizeGrid (default 1/16). MIDI clips only",
+        "quantize strength 0-1; default 1 (full snap) when quantizeGrid is set. Snaps note starts to quantizeGrid. MIDI clips only",
       ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),

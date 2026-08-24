@@ -39,7 +39,7 @@ auto-reconnection:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal"]
+args = ["-y", "producer-pal@latest"]
 ```
 
 ::: tip Scripting or building against Producer Pal?
@@ -52,7 +52,7 @@ the args:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal", "--format", "json", "--notation", "midi-json"]
+args = ["-y", "producer-pal@latest", "--format", "json", "--notation", "midi-json"]
 ```
 
 <!--@include: ../_partials/scripting-tip.md-->
@@ -66,7 +66,7 @@ Narrow the toolset and every conversation gets smaller:
 ```toml
 [mcp_servers.producer-pal]
 command = "npx"
-args = ["-y", "producer-pal", "--tools", "core,clip,track"]
+args = ["-y", "producer-pal@latest", "--tools", "core,clip,track"]
 ```
 
 <!--@include: ../_partials/toolset-tip.md-->

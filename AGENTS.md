@@ -93,12 +93,29 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   not raw `.get("property")?.[0]`. Build paths with `livePath` from
   `src/shared/live-api-path-builders.ts` — never hardcode a path string. On a
   runtime `LiveAPI`, reach child objects with `api.child("name")` (chainable),
-  never by concatenating onto `api.path`.
+  never by concatenating onto `api.path`. Never call `new LiveAPI()` — only
+  `LiveAPI.from()` tracks the object for release, and an untracked one leaves a
+  Live path listener armed for the life of the device.
+
+- **Never hold a `LiveAPI` across requests** — not in module state, not in a
+  cache, not in a callback that outlives the call. Objects are released when the
+  request ends and reused by the next one, so a stale reference silently points
+  at a different Live object. Build them where you use them. See
+  `src/live-api-adapter/live-api-release.ts`.
 
 - **Update tools never throw** for a bad param combo or an operation that
   doesn't apply. `console.warn()`, skip that operation, and keep going, so the
   rest of a multi-item call still succeeds. Warnings are not silent — they're
   appended to the tool response as `WARNING:` blocks the model reads.
+
+- **A warning belongs to the request that raised it.** V8 buffers warnings
+  per-request and appends them to that request's own response, and it has no
+  async context to do that automatically. So: adding an `await` to
+  `handleRequest` needs a matching `resumeWarningCapture()`, and any new promise
+  V8 can suspend on needs `suspendWarningCapture()`. Miss either and warnings
+  silently land on another request's response. Warnings raised with no request
+  in flight go to the Max console instead — don't try to route them into a
+  response. See `src/shared/max/v8-warning-capture.ts`.
 
 - **Tool schemas**: use `z.coerce.string()` for ID params and
   `z.coerce.number()` for numeric ones — models send both strings and numbers,
@@ -128,11 +145,25 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 
 - **Exact dependency versions**: no `^`/`~`/ranges anywhere in package.json.
 
+- **The issue tracker is not durable storage** — assume any tracker (Linear,
+  GitHub issues) will be deleted someday, and that not every contributor can
+  read it. A ticket is a to-do, not a record. Anything worth keeping goes in the
+  repo: code comments for local reasoning, `dev/` docs for how a system works,
+  `dev/decisions/` ADRs for why a settled choice went that way, and user-facing
+  docs when it changes what users see. A commit or PR that only points at a
+  ticket has lost the information.
+
 - **No Linear ticket references anywhere in the repo** — this is a public repo
   with private ticket numbers. Never write `AJM-NNN` in a tracked file or a
   commit message; explain the reasoning instead. `npm run check` scans both
   tracked files and your commits on this branch, but only locally, so run it
   before pushing. PR titles and bodies are fine.
+
+- **GitHub issues go in the commit message, not the release PR body** — put
+  `Resolves #NNNN` in the commit that fixes it. `dev -> main` merges onto the
+  default branch, so the issue closes when the release lands. One keyword per
+  issue: extra `Refs #NNNN` on supporting commits just add permanent timeline
+  events to a public issue. Don't name an issue you aren't fixing.
 
 - **Keep the Skills and specs current**: the Producer Pal Skills
   (`src/skills/fragments/`) need updating whenever notation or tool behavior
@@ -162,6 +193,30 @@ return types on exported functions. Every exported function declaration needs a
 JSDoc block with `@param`/`@returns` descriptions — no types, since TypeScript
 already has them.
 
+**TypeScript 6 and 7 are installed side-by-side.** TypeScript 7 ships no
+programmatic API (it's the Go port; a new API is expected in 7.1), but oxlint's
+`jsPlugins` bridge needs one, so `package.json` follows the upstream-recommended
+aliasing:
+
+```json
+"@typescript/native": "npm:typescript@7.0.2",
+"typescript": "npm:@typescript/typescript6@6.0.2"
+```
+
+The practical consequences:
+
+- `tsc` is **TypeScript 7** — this is what `npm run typecheck` runs. `tsc6` is
+  the 6.0.2 compiler, kept only so the bridge resolves; don't typecheck with it.
+- `import ts from "typescript"` gets the **6.0.2 API**, which is why
+  `scripts/stats/loc.ts` and `src/test/helpers/vi-mock-scan-test-helpers.ts`
+  still use the compiler API normally.
+- TS 7 reports overload-mismatch errors on the **failing argument**, not the
+  call expression, so a `@ts-expect-error` for one goes directly above the
+  offending argument (see `duplicate-mocks-test-helpers.ts`). That placement is
+  TS-7-only — `tsc6` will call it unused.
+- Version pins may be npm aliases; `src/test/package-json-versions.test.ts`
+  accepts `npm:<name>@<exact>` but still rejects ranges.
+
 ## Testing
 
 - Run `npm run check` after any code change. **Before claiming done**:
@@ -169,7 +224,8 @@ already has them.
   touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
   tool, code execution, and work-in-progress warp markers, none of which exist
-  in a release build.
+  in a release build. `npm run check:build` overwrites it with a release build,
+  so re-run `build:debug` afterwards or the device in Live is the wrong one.
 - **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
   use `console.warn()` — it shows up in the CLI and in the live MCP response.
   `console.log()` and `console.error()` don't.
@@ -196,6 +252,15 @@ current one, which can destroy work in progress.
 ```bash
 npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
+
+**A new track is not always empty.** Live applies the user's default track
+preset (User Library → `Defaults/Creating Tracks/`) to every track it creates,
+and that preset varies per machine — one dev's new MIDI track arrives bare,
+another's already has a Channel EQ and a Utility on it. So never hardcode a
+device index for a device the test just created: use `createTestDeviceAt()`,
+which returns the path the device actually landed at. A test that assumes `d1`
+passes for whoever wrote it and fails for everyone else. The same goes for any
+other per-machine Live preference a test might lean on.
 
 ## Protected Files (Require User Approval)
 

@@ -12,13 +12,14 @@ import {
 } from "#webui/lib/utils/enabled-tools";
 import { type Provider } from "#webui/types/settings";
 
-/** Locked conversation state: model/provider/small-model mode/notation/toolset from the active conversation */
+/** Locked conversation state: model/provider/small-model mode/notation/toolset/step budget from the active conversation */
 export interface ConversationLock {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeSmallModelMode: boolean | null;
   activeNotation: Notation | null;
   activeEnabledTools: Record<string, boolean> | null;
+  activeMaxToolSteps: number | null;
 }
 
 interface LockedSettingsNoticeProps {
@@ -29,6 +30,7 @@ interface LockedSettingsNoticeProps {
   notation: Notation;
   enabledTools: Record<string, boolean>;
   liveApiEnabled: boolean;
+  maxToolSteps: number;
 }
 
 /**
@@ -44,6 +46,7 @@ interface LockedSettingsNoticeProps {
  * @param props.notation - Current notation setting
  * @param props.enabledTools - Current tool selection
  * @param props.liveApiEnabled - Current Direct Live API flag (the modal's buffer)
+ * @param props.maxToolSteps - Current per-turn tool-step budget
  * @returns Notice element or null
  */
 export function LockedSettingsNotice({
@@ -54,6 +57,7 @@ export function LockedSettingsNotice({
   notation,
   enabledTools,
   liveApiEnabled,
+  maxToolSteps,
 }: LockedSettingsNoticeProps) {
   const {
     activeModel,
@@ -61,6 +65,7 @@ export function LockedSettingsNotice({
     activeSmallModelMode,
     activeNotation,
     activeEnabledTools,
+    activeMaxToolSteps,
   } = conversationLock;
 
   if (activeModel == null) return null;
@@ -87,11 +92,17 @@ export function LockedSettingsNotice({
       withLiveApiTool(enabledTools, liveApiEnabled),
     );
 
+  // Null until the conversation's client is built — nothing is pinned yet, so
+  // there is nothing to have drifted from.
+  const stepsDiverge =
+    activeMaxToolSteps != null && activeMaxToolSteps !== maxToolSteps;
+
   if (
     !modelDiverges &&
     !smallModelDiverges &&
     !notationDiverges &&
-    !toolsDiverge
+    !toolsDiverge &&
+    !stepsDiverge
   ) {
     return null;
   }
@@ -116,8 +127,12 @@ export function LockedSettingsNotice({
     parts.push("a different set of tools");
   }
 
+  if (stepsDiverge) {
+    parts.push(`a ${String(activeMaxToolSteps)} step budget`);
+  }
+
   return (
-    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
       <p>Changes apply to new conversations only.</p>
 
       {/* Every divergence above contributes a part, so this line always has

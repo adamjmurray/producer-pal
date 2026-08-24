@@ -9,7 +9,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
 
 /**
  * Create a mock conversation manager with async methods.
@@ -37,19 +37,29 @@ function createMockManager(
   };
 }
 
-describe("useConversationHandlers", () => {
-  const stopResponse = vi.fn();
+/**
+ * Render the handlers over a fresh mock manager and its two callback spies.
+ * @param overrides - Manager method overrides
+ * @returns The manager, both spies, and the hook result handle
+ */
+function renderHandlers(overrides: Partial<UseConversationsReturn> = {}) {
+  const manager = createMockManager(overrides);
+  const stop = vi.fn();
+  const clearViewingMode = vi.fn();
+  const { result } = renderHook(() =>
+    useConversationHandlers(manager, stop, clearViewingMode),
+  );
 
+  return { manager, stop, clearViewingMode, result };
+}
+
+describe("useConversationHandlers", () => {
   it("logs rejected promises to console.error", async () => {
     const error = new Error("IndexedDB failure");
-    const manager = createMockManager({
+    const { result } = renderHandlers({
       deleteConversation: vi.fn().mockRejectedValue(error),
     });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stopResponse, vi.fn()),
-    );
 
     await act(() => result.current.handleDelete("conv-1"));
 
@@ -64,12 +74,9 @@ describe("useConversationHandlers", () => {
     // Deleting the actively-streaming conversation must stop the stream first
     // (like new/select/delete-all) so no further autosave writes the record
     // back to the DB after it is removed.
-    const manager = createMockManager({ activeConversationId: "conv-1" });
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers({
+      activeConversationId: "conv-1",
+    });
 
     await act(() => result.current.handleDelete("conv-1"));
 
@@ -82,12 +89,9 @@ describe("useConversationHandlers", () => {
     // active id), so stopping would only abort the user's in-flight response on
     // the active conversation and — mid-fork — risk overwriting the source
     // record. The delete must still proceed.
-    const manager = createMockManager({ activeConversationId: "active-conv" });
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers({
+      activeConversationId: "active-conv",
+    });
 
     await act(() => result.current.handleDelete("other-conv"));
 
@@ -96,12 +100,7 @@ describe("useConversationHandlers", () => {
   });
 
   it("stops response when selecting a conversation", async () => {
-    const manager = createMockManager();
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers();
 
     await act(() => result.current.handleSelect("conv-1"));
 
@@ -110,12 +109,7 @@ describe("useConversationHandlers", () => {
   });
 
   it("stops response when starting a new conversation", () => {
-    const manager = createMockManager();
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers();
 
     result.current.handleNew();
 
@@ -124,12 +118,7 @@ describe("useConversationHandlers", () => {
   });
 
   it("clears the foreign-mode view override when starting a new conversation", () => {
-    const manager = createMockManager();
-    const clearViewingMode = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, vi.fn(), clearViewingMode),
-    );
+    const { clearViewingMode, result } = renderHandlers();
 
     result.current.handleNew();
 
@@ -137,12 +126,7 @@ describe("useConversationHandlers", () => {
   });
 
   it("stops response and delegates to deleteAllConversations", () => {
-    const manager = createMockManager();
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers();
 
     result.current.handleDeleteAll();
 
@@ -151,12 +135,7 @@ describe("useConversationHandlers", () => {
   });
 
   it("stops response and delegates to deleteUnbookmarkedConversations", () => {
-    const manager = createMockManager();
-    const stop = vi.fn();
-
-    const { result } = renderHook(() =>
-      useConversationHandlers(manager, stop, vi.fn()),
-    );
+    const { manager, stop, result } = renderHandlers();
 
     result.current.handleDeleteUnbookmarked();
 

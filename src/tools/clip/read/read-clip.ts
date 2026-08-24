@@ -17,30 +17,39 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
-  formatSlot,
-  parseSlot,
-} from "#src/tools/shared/validation/position-parsing.ts";
+  arrangementPath,
+  slotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
   processWarpMarkers,
   resolveClip,
+  resolveClipLocation,
   WARP_MODE_MAPPING,
 } from "./helpers/read-clip-helpers.ts";
 
 interface ReadClipArgs {
+  /** Clip slot, "t<track>/s<scene>" */
+  path?: string | null;
+  /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string | null;
+  id?: string | null;
+  /** Hidden alias for id */
   clipId?: string | null;
   include?: string[];
   /** @internal Suppress warning for empty clip slots (used by batch readers) */
   suppressEmptyWarning?: boolean;
-  /** @internal Used by batch readers that already have parsed indices */
+  /** Hidden alias for path; also used by batch readers with parsed indices */
   trackIndex?: number | null;
-  /** @internal Used by batch readers that already have parsed indices */
+  /** Hidden alias for path; also used by batch readers with parsed indices */
   sceneIndex?: number | null;
   /** @internal Precomputed drum mode from a batch reader, so N clips of one
    * track don't each re-walk the track's device tree */
   drumMode?: boolean;
+  /** @internal The caller walked this track's or scene's own slots, so the
+   * address is real by construction and an empty slot needn't prove it */
+  slotValidated?: boolean;
 }
 
 interface WarpMarker {
@@ -71,11 +80,11 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  slot?: string;
-  trackIndex?: number | null;
-  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
-   * (`0` is the main lane). Only present for clips on a non-main take lane. */
-  takeLane?: number;
+  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
+   * arrangement. A clip slot pastes back into any path/toPath param; an
+   * arrangement one names a whole track, so only tools that take a track
+   * destination accept it — reach a specific arrangement clip by id. */
+  path?: string;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -96,8 +105,8 @@ export interface ReadClipResult {
 /**
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
- * @param args.slot - Session clip slot (e.g., "0/3")
- * @param args.clipId - Clip ID to directly access any clip
+ * @param args.path - Session clip slot (e.g., "t0/s3")
+ * @param args.id - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
  * @param context - Context object (supplies the global notation setting)
  * @returns Result object with clip information
@@ -117,16 +126,21 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId == null && (trackIndex == null || sceneIndex == null)) {
-    throw new Error("Either clipId or slot must be provided");
+    throw new Error("readClip failed: id or path is required");
   }
 
   // Resolve clip from ID or location
-  const resolved = resolveClip(clipId, trackIndex, sceneIndex);
+  const resolved = resolveClip(
+    clipId,
+    trackIndex,
+    sceneIndex,
+    args.slotValidated,
+  );
 
   if (!resolved.found) {
     if (!args.suppressEmptyWarning) {
       console.warn(
-        `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
+        `no clip at ${slotPath(trackIndex as number, sceneIndex as number)}`,
       );
     }
 
@@ -375,7 +389,7 @@ function processAudioClip(
 }
 
 /**
- * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
+ * Add clip location properties (path, plus arrangement timing)
  * @param result - Result object to add properties to
  * @param clip - LiveAPI clip object
  * @param isArrangementClip - Whether clip is in arrangement view
@@ -388,12 +402,10 @@ function addClipLocationProperties(
   includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    result.trackIndex = clip.trackIndex;
-    const takeLaneIndex = clip.takeLaneIndex;
-
-    if (takeLaneIndex != null) {
-      result.takeLane = takeLaneIndex + 1;
-    }
+    result.path = arrangementPath(
+      clip.trackIndex as number,
+      clip.takeLaneIndex,
+    );
 
     const startTimeBeats = clip.getProperty("start_time") as number;
 
@@ -421,33 +433,9 @@ function addClipLocationProperties(
       );
     }
   } else {
-    result.slot = formatSlot(
+    result.path = slotPath(
       clip.trackIndex as number,
       clip.sceneIndex as number,
     );
   }
-}
-
-/**
- * Resolve clip location from args, parsing slot if provided
- * @param args - ReadClipArgs
- * @returns Resolved clipId, trackIndex, and sceneIndex
- */
-function resolveClipLocation(args: ReadClipArgs): {
-  clipId: string | null;
-  trackIndex: number | null;
-  sceneIndex: number | null;
-} {
-  const clipId = args.clipId ?? null;
-  let trackIndex: number | null = args.trackIndex ?? null;
-  let sceneIndex: number | null = args.sceneIndex ?? null;
-
-  if (args.slot != null) {
-    const parsed = parseSlot(args.slot);
-
-    trackIndex = parsed.trackIndex;
-    sceneIndex = parsed.sceneIndex;
-  }
-
-  return { clipId, trackIndex, sceneIndex };
 }

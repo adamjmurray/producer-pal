@@ -97,6 +97,8 @@ export function useVoiceModeReporting(
         // voice transcript isn't resumable, so there is no earlier toolset to
         // report having drifted from either.
         activeEnabledTools: null,
+        // Voice runs no agentic tool loop, so no step budget to pin.
+        activeMaxToolSteps: null,
       },
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
       onDeleteUnbookmarkedConversations: () =>

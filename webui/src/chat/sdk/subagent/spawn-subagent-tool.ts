@@ -10,16 +10,11 @@ import {
   isToolEnabled,
   SPAWN_SUBAGENT_TOOL_NAME,
 } from "#webui/lib/utils/enabled-tools";
-import { withBriefing, withheldToolsApplied } from "./subagent-briefing";
-
-/**
- * A worker's nested tool-step budget. Higher than the orchestrator's default so
- * a delegated subtask — reading what it needs, then multi-step editing — has
- * room to finish. Not lowered when a briefing removes the connect step: a worker
- * that runs out of steps strands the orchestrator, and the unused headroom of a
- * short task costs nothing.
- */
-export const MAX_WORKER_STEPS = 20;
+import {
+  alwaysWithheldApplied,
+  withBriefing,
+  withheldToolsApplied,
+} from "./subagent-briefing";
 
 /**
  * Safety/cost cap on worker spawn ATTEMPTS one orchestrator TURN may make,
@@ -116,9 +111,9 @@ export interface SpawnSubagentDeps {
   /**
    * Fetch the worker's system-prompt briefing (skills, Live Set, context) for a
    * resolved worker config. Resolving null — or omitting this dep entirely —
-   * leaves the worker to bootstrap itself with ppal-connect, which is the
-   * pre-briefing behavior and the required fallback when the server or Live
-   * can't be reached.
+   * leaves the worker to bootstrap itself with ppal-connect, the required
+   * fallback when the server or Live can't be reached. ppal-context is not
+   * handed back with it; see resolveWorkerConfig.
    */
   getBriefing?: (
     config: ChatClientConfig,
@@ -239,10 +234,11 @@ export function createSpawnSubagentTool(deps: SpawnSubagentDeps): Tool {
  * The order matters and is not interchangeable. The withheld tools are applied
  * FIRST because the briefing request reads its toolset off the config — asking
  * for a briefing before withholding ppal-context would ship the worker guidance
- * for a tool it won't have. They are only KEPT when a briefing came back: a
- * worker with neither a briefing nor ppal-connect knows nothing about the Live
- * Set it is about to edit, which is strictly worse than the round-trip this
- * whole path exists to avoid.
+ * for a tool it won't have.
+ *
+ * Without a briefing the worker gets ppal-connect back, since one with neither
+ * knows nothing about the Live Set it is about to edit — but only that one.
+ * ALWAYS_WITHHELD_TOOLS is withheld for a reason the briefing has no bearing on.
  *
  * @param deps - The tool's injected dependencies
  * @param session - Recorded session to continue; omit to start fresh
@@ -256,17 +252,19 @@ async function resolveWorkerConfig(
 ): Promise<ChatClientConfig> {
   const inherited = buildWorkerConfig(deps.config, session);
 
-  if (!deps.getBriefing) return inherited;
+  if (!deps.getBriefing) return alwaysWithheldApplied(inherited);
 
   const narrowed = withheldToolsApplied(inherited);
   const briefing = await deps.getBriefing(narrowed, abortSignal);
 
-  return briefing == null ? inherited : withBriefing(narrowed, briefing);
+  return briefing == null
+    ? alwaysWithheldApplied(inherited)
+    : withBriefing(narrowed, briefing);
 }
 
 /**
- * Clone the orchestrator config for a worker: fresh history, the worker step
- * budget, and spawn_subagent disabled. Disabling it is the recursion guard — the
+ * Clone the orchestrator config for a worker: fresh history and spawn_subagent
+ * disabled. Disabling it is the recursion guard — the
  * worker's ToolSet omits the spawn tool (client.initialize only injects it when
  * enabled), so workers cannot spawn their own subagents.
  *
@@ -293,6 +291,11 @@ async function resolveWorkerConfig(
  * This is the INHERITED config, not the final one: resolveWorkerConfig layers
  * the briefing and its withheld tools on top when a briefing is available.
  *
+ * `maxSteps` rides along in the spread rather than being set here: a worker runs
+ * on the same per-turn budget as the turn that spawned it. If it runs out, the
+ * orchestrator is told to resume it (resumeFrom) rather than the worker being
+ * given headroom up front.
+ *
  * `session` continues an existing worker: it becomes the clone's chatHistory, so
  * the next turn lands on top of everything that worker already did. It must be a
  * copy the worker may mutate freely (collectSubagentTranscript returns one) —
@@ -315,7 +318,6 @@ export function buildWorkerConfig(
     ...rest,
     ...subagentConfig,
     chatHistory: session ?? [],
-    maxSteps: MAX_WORKER_STEPS,
     enabledTools: {
       // Preset toolset (if the preset saved one), used as-is; otherwise inherit
       // the orchestrator's. It's a sparse map — absent keys stay default-enabled
@@ -407,26 +409,38 @@ export function labelWorkerResult(index: number, result: string): string {
 }
 
 /**
+ * Whether a raw `resumeFrom` argument actually asks to continue an existing
+ * worker. Absent, empty, and `0` all mean "spawn a fresh one".
+ *
+ * `0` is the interesting one, and treating it as omitted is deliberate. Worker
+ * indices are 1-based, so 0 names no worker, but it is exactly what a model
+ * sends for an optional number it means to leave empty — observed repeatedly
+ * from GPT-5.6, which kept sending it after being told to omit the field.
+ * Treating it as "omitted" costs nothing (there is no worker it could have
+ * meant) and turns a whole failed turn into a normal spawn.
+ *
+ * Exported because the subagent card reads the RAW tool args to decide whether
+ * to show its "resumed" badge, so it has to apply the same rule this tool does —
+ * otherwise a `resumeFrom: 0` spawn renders as a resume that never happened.
+ * @param value - The raw argument value
+ * @returns Whether this asks to resume an existing worker
+ */
+export function isResumeRequest(value: unknown): boolean {
+  return value != null && value !== "" && Number(value) !== 0;
+}
+
+/**
  * Validate the `resumeFrom` argument, coercing the numeric string LLMs often
  * send. Anything else present but unusable throws rather than silently starting
  * a fresh worker — a resume that quietly becomes a new spawn would re-do work
  * and lose the context the caller was trying to reuse.
- *
- * `0` is the exception, and it is deliberate. Worker indices are 1-based, so 0
- * names no worker, but it is exactly what a model sends for an optional number
- * it means to leave empty — observed repeatedly from GPT-5.6, which kept sending
- * it after being told to omit the field. Treating it as "omitted" costs nothing
- * (there is no worker it could have meant) and turns a whole failed turn into a
- * normal spawn.
  * @param value - The raw argument value
  * @returns The worker index to resume, or undefined when not resuming
  */
 function parseResumeFrom(value: unknown): number | undefined {
-  if (value == null || value === "") return undefined;
+  if (!isResumeRequest(value)) return undefined;
 
   const index = Number(value);
-
-  if (index === 0) return undefined;
 
   if (!Number.isInteger(index) || index < 1) {
     throw new Error(

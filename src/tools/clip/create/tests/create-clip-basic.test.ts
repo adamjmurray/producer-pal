@@ -20,18 +20,29 @@ import {
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when neither slot nor arrangementStart is provided", async () => {
-    await expect(createClip({ trackIndex: 0 })).rejects.toThrow(
-      "createClip failed: slot or arrangementStart is required",
+  it("should throw error when nothing names a destination", async () => {
+    await expect(createClip({})).rejects.toThrow(
+      "createClip failed: path is required",
     );
   });
 
+  // A bare track is half a destination either way — it needs a scene or an
+  // arrangementStart — so the error names both fixes rather than the missing param.
+  it("should throw error when a track is named without a spot on it", async () => {
+    await expect(createClip({ path: "t0" })).rejects.toThrow(
+      'createClip failed: path "t0" names no position',
+    );
+  });
+
+  // create-clip has no toSlot, so the error names the param it does have.
   it("should throw error for invalid slot format", async () => {
     await expect(
       createClip({
         slot: "invalid",
       }),
-    ).rejects.toThrow("invalid toSlot");
+    ).rejects.toThrow(
+      'invalid slot "invalid" - expected trackIndex/sceneIndex format',
+    );
   });
 
   it("should validate time signature early when provided", async () => {
@@ -56,7 +67,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 2,
       length: "2bar",
     });
@@ -377,7 +388,7 @@ describe("handleAutoPlayback (unit)", () => {
     ).not.toThrow();
   });
 
-  it("no-ops (does not reach the switch) when there are no session slots", () => {
+  it("no-ops (does not reach the switch) when there are no clip slots", () => {
     // Empty slots → guard returns early. The `sessionSlots.length === 0` → false
     // mutant would fall through to the switch and throw on the unknown auto value.
     expect(() =>

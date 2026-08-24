@@ -65,7 +65,7 @@ export function RateLimitRetry({
         type="button"
         onClick={onRetry}
         disabled={!ready && !exhausted}
-        className="text-sm px-3 py-1 rounded border border-red-400 dark:border-red-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-100 dark:hover:bg-red-900/40"
+        className="rounded border border-red-400 px-3 py-1 text-sm hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-600 dark:hover:bg-red-900/40"
       >
         Retry now
       </button>

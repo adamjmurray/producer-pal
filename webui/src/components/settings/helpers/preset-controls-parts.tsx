@@ -40,13 +40,13 @@ export function PresetPickerRow(props: PresetPickerRowProps) {
   const { presets, selectedId, selected, naming } = props;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-wrap items-center gap-2">
       <select
         id="preset-select"
         value={selectedId}
         onChange={(e) => props.onSelect((e.target as HTMLSelectElement).value)}
         disabled={naming}
-        className={`flex-1 min-w-40 ${INPUT_CLASS} disabled:opacity-50`}
+        className={`min-w-40 flex-1 ${INPUT_CLASS} disabled:opacity-50`}
         data-testid="preset-select"
       >
         <option value="">— Select a preset —</option>
@@ -161,8 +161,8 @@ export function SubagentPresetRow(props: SubagentPresetRowProps) {
     value != null && presets.some((p) => p.id === value) ? value : "";
 
   return (
-    <div className="pt-3 border-t border-zinc-300 dark:border-zinc-600">
-      <label className="block text-sm mb-1" htmlFor="subagent-preset-select">
+    <div className="border-t border-zinc-300 pt-3 dark:border-zinc-600">
+      <label className="mb-1 block text-sm" htmlFor="subagent-preset-select">
         Subagent preset
       </label>
       <select
@@ -182,7 +182,7 @@ export function SubagentPresetRow(props: SubagentPresetRowProps) {
           </option>
         ))}
       </select>
-      <p className="text-xs text-zinc-500 dark:text-zinc-300 mt-1">
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-300">
         What spawned subagents run as when the Subagent tool is enabled. A
         preset runs each subagent on its own model, thinking, small-model mode,
         toolset, and notation (a preset saved without a toolset or notation
@@ -216,7 +216,7 @@ interface PresetCreateFormProps {
 export function PresetCreateForm(props: PresetCreateFormProps) {
   return (
     <div
-      className="space-y-2 p-3 rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-200/50 dark:bg-zinc-700/40"
+      className="space-y-2 rounded border border-zinc-300 bg-zinc-200/50 p-3 dark:border-zinc-600 dark:bg-zinc-700/40"
       data-testid="preset-create-form"
     >
       <p className="text-sm font-medium">New preset</p>
@@ -274,7 +274,7 @@ export function PresetDescriptionField(props: PresetDescriptionFieldProps) {
   return (
     <div>
       <label
-        className="block text-xs text-zinc-500 dark:text-zinc-300 mb-1"
+        className="mb-1 block text-xs text-zinc-500 dark:text-zinc-300"
         htmlFor="preset-description"
       >
         Description (optional)

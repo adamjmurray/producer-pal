@@ -10,6 +10,7 @@
 
 import { oversizedSingleMessageError } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { suspendWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 import {
   validateCodeNotes,
   buildCodeExecutionContext,
@@ -65,40 +66,47 @@ export function requestCodeExecution(
   const requestId = generateRequestId();
   const request = JSON.stringify({ code, globals });
 
-  return new Promise((resolve) => {
-    // A large clip's notes can push the request past the single-message IPC
-    // limit, where Max would silently truncate it. Fail loudly before sending.
-    const tooLarge = oversizedSingleMessageError(request, "code-exec request");
+  // Suspended across the await: another request can start while this one waits,
+  // and its warnings must not be collected against ours. See v8-warning-capture.
+  return suspendWarningCapture(
+    new Promise((resolve) => {
+      // A large clip's notes can push the request past the single-message IPC
+      // limit, where Max would silently truncate it. Fail loudly before sending.
+      const tooLarge = oversizedSingleMessageError(
+        request,
+        "code-exec request",
+      );
 
-    if (tooLarge) {
-      resolve({ success: false, error: tooLarge });
+      if (tooLarge) {
+        resolve({ success: false, error: tooLarge });
 
-      return;
-    }
-
-    // Set up timeout using Max Task
-    const timeoutCallback = (): void => {
-      if (pendingCodeExecs.has(requestId)) {
-        pendingCodeExecs.delete(requestId);
-        resolve({
-          success: false,
-          error: `Code execution timed out after ${CODE_EXEC_AWAIT_TIMEOUT_MS}ms`,
-        });
+        return;
       }
-    };
 
-    const task = new Task(timeoutCallback);
+      // Set up timeout using Max Task
+      const timeoutCallback = (): void => {
+        if (pendingCodeExecs.has(requestId)) {
+          pendingCodeExecs.delete(requestId);
+          resolve({
+            success: false,
+            error: `Code execution timed out after ${CODE_EXEC_AWAIT_TIMEOUT_MS}ms`,
+          });
+        }
+      };
 
-    task.schedule(CODE_EXEC_AWAIT_TIMEOUT_MS);
+      const task = new Task(timeoutCallback);
 
-    pendingCodeExecs.set(requestId, {
-      resolve,
-      timeoutTask: { cancel: () => task.schedule(-1) },
-    });
+      task.schedule(CODE_EXEC_AWAIT_TIMEOUT_MS);
 
-    // Send request to Node
-    outlet(0, "code_exec_request", requestId, request);
-  });
+      pendingCodeExecs.set(requestId, {
+        resolve,
+        timeoutTask: { cancel: () => task.schedule(-1) },
+      });
+
+      // Send request to Node
+      outlet(0, "code_exec_request", requestId, request);
+    }),
+  );
 }
 
 /**

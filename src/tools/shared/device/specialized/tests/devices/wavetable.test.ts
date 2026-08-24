@@ -752,7 +752,7 @@ describe("Wavetable via read-device", () => {
   it("includes pseudo-params without the modulation scan when include is params", () => {
     registerReadableWavetable();
 
-    const result = readDevice({ deviceId: "wt-1", include: ["params"] });
+    const result = readDevice({ id: "wt-1", include: ["params"] });
 
     expect(result.parameters).toContainEqual({
       name: "filterRouting",
@@ -774,7 +774,7 @@ describe("Wavetable via read-device", () => {
     registerReadableWavetable({}, { is_parameter_modulatable: () => 1 });
 
     const result = readDevice({
-      deviceId: "wt-1",
+      id: "wt-1",
       include: ["params", "options"],
     });
     const opts = result.options as Record<string, unknown>;

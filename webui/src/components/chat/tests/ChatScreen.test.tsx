@@ -99,10 +99,8 @@ describe("ChatScreen", () => {
 
     it("renders ChatInput component", () => {
       render(<ChatScreen {...defaultProps} />);
-      // ChatInput renders a textarea
-      const textarea = document.querySelector("textarea");
 
-      expect(textarea).toBeDefined();
+      expect(screen.getByRole("textbox", { name: "Message" })).toBeDefined();
     });
   });
 

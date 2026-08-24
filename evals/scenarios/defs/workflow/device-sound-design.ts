@@ -24,13 +24,12 @@
  * warning. We don't pin the device path (the model names its own track), we
  * inspect what it sent and whether the engine took it.
  *
- * The LLM judge is ADVISORY here: it reads the transcript, not Live state, and
- * is fooled by a confident-but-false claim. (First run, 2026-06-02,
- * gemini-3.5-flash: for the LFO route the model set the global "LFO 1 Amount"
- * param yet narrated "LFO 1 is mapped to Flt 1 Freq at 0.7" — a confabulated
- * route the judge passed and the deterministic check caught.) The custom
- * assertions, which require an ACCEPTED setModulation per route, are
- * authoritative.
+ * No LLM judge: it reads the transcript, not Live state, and is fooled by a
+ * confident-but-false claim. (2026-06-02, gemini-3.5-flash: for the LFO route
+ * the model set the global "LFO 1 Amount" param yet narrated "LFO 1 is mapped
+ * to Flt 1 Freq at 0.7" — a confabulated route the judge passed and the
+ * deterministic check caught.) The custom assertions, which require an ACCEPTED
+ * setModulation per route, are the grade.
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
@@ -48,7 +47,6 @@ export const deviceSoundDesign: EvalScenario = {
     "Route Wavetable modulation (LFO + envelope → filter) via the actions grammar",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  judgeAdvisory: true,
   // The whole task is the update-device `actions` grammar (setModulation),
   // which small-model mode strips from the schema — so the deterministic checks
   // can't pass there. Skip rather than score an unfair fail.
@@ -77,15 +75,6 @@ export const deviceSoundDesign: EvalScenario = {
       type: "response_contains",
       pattern: /lfo|filter|modulat|wobble/i,
       turn: 2,
-    },
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Created a MIDI track named "Wobble Bass" and added a Wavetable instrument
-2. Routed LFO 1 to the Wavetable's filter frequency with a strong amount (~0.7)
-3. Routed the second envelope (Env 2) to the same filter frequency with a gentle amount (~0.3)
-4. Used the modulation-matrix actions (setModulation) rather than claiming success without acting`,
     },
 
     {

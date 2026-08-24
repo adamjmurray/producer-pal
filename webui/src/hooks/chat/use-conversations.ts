@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
+import { useCanceledIds } from "#webui/hooks/chat/helpers/conversations/use-canceled-ids";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -14,12 +17,11 @@ import {
   buildConversationSaveRecord,
   buildLockedSettings,
   chainSave,
-  deleteConversationWithSnapshot,
   getHashConversationId,
   resolvePanelNotification,
   setLocationHash,
   useHashNavigation,
-} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
@@ -32,8 +34,6 @@ import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   type ConversationSummary,
-  deleteAllConversations as dbDeleteAllConversations,
-  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listAllConversationSummaries,
   listConversations,
   loadConversation,
@@ -116,13 +116,10 @@ export function useConversations({
   // Serializes conversation saves so a later save's read-back can't race ahead
   // of an earlier save's write (see saveCurrentConversation).
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
-  // Ids whose pending/in-flight save must be abandoned because the row was
-  // deleted. The delete paths drain saveChainRef, but that only covers saves
-  // already queued — a save enqueued *after* the drain (chiefly the
-  // stream-teardown autosave effect that stopResponse() triggers) would still
-  // resurrect the just-deleted row. Every save checks this set right before its
-  // DB write and bails. Mirrors the voice layer's canceledIdsRef guard.
-  const canceledIdsRef = useRef<Set<string>>(new Set());
+  // Tombstones for rows a delete has removed, so a save that slipped past the
+  // drain can't resurrect one. See useCanceledIds; mirrors the voice layer's
+  // canceledIdsRef guard.
+  const canceled = useCanceledIds();
   // Id reserved by a bulk delete for a brand-new conversation streaming its
   // first turn but not yet saved (activeIdRef still null). Such a conversation's
   // id is minted — fresh and uncancelable — inside the teardown autosave the
@@ -147,16 +144,9 @@ export function useConversations({
     setConversations(list);
   }, []);
 
-  // Un-cancel a restored conversation's id. canceledIdsRef is otherwise
-  // add-only; undo restores under the same id via a raw saveConversation that
-  // bypasses the guard, but the stale canceled flag would then bail every later
-  // autosave for that id at the check below (line ~254), silently losing all
-  // post-undo messages. Clearing it on a successful restore re-enables saving.
-  const uncancelRestoredId = useCallback((id: string) => {
-    canceledIdsRef.current.delete(id);
-  }, []);
-
-  const undoDelete = useUndoDelete(refreshList, uncancelRestoredId);
+  // Undo restores under the original id via a raw saveConversation that bypasses
+  // the guard, so lift that id's tombstone or every later autosave for it bails.
+  const undoDelete = useUndoDelete(refreshList, canceled.uncancel);
 
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -188,6 +178,20 @@ export function useConversations({
     setLocationHash(null);
   }, []);
 
+  const restoreRecord = useCallback(
+    (record: ConversationRecord) => {
+      // A conversation left mid-tool-call — the tab closed, the page reloaded —
+      // is saved with that call still missing its result, because the stream's
+      // own reconcile never got to run. Do it here or the card renders as
+      // forever "working…" and the next request 400s on the unmatched tool_use.
+      // "failed" rather than "canceled": the turn died under the call, nobody
+      // stopped it. Same text the wire form already substitutes for this case.
+      reconcileDanglingToolCalls(record.messages, 0, "failed");
+      restoreChatHistory(record.messages, buildLockedSettings(record));
+    },
+    [restoreChatHistory],
+  );
+
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
     const init = async () => {
@@ -206,7 +210,7 @@ export function useConversations({
 
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
-          restoreChatHistory(record.messages, buildLockedSettings(record));
+          restoreRecord(record);
           syncMetaRef(activeMetaRef, record);
         } else {
           // Hash ID no longer exists in DB
@@ -216,30 +220,26 @@ export function useConversations({
     };
 
     void init();
-  }, [
-    refreshList,
-    restoreChatHistory,
-    setActiveId,
-    clearActiveId,
-    onForeignRecord,
-  ]);
+  }, [refreshList, restoreRecord, setActiveId, clearActiveId, onForeignRecord]);
 
   const saveCurrentConversation = useCallback(
     (updatedAt?: number): Promise<void> => {
-      // Consume the fork signal first — before the empty-history early-return
-      // below. A fork aborted before it streamed any content (Stop, or a browser
-      // Back/Forward tearing the conversation down) reaches here with empty
-      // history; consuming the signal here rather than after the return keeps it
-      // from lingering and mis-branching the next, unrelated save. Forking needs
-      // a saved source (the active record) to preserve; with no active id it
-      // degrades to a normal save of the forked history as a fresh chat.
+      const chatHistory = getChatHistory();
+
+      // Nothing to write, so leave any pending fork signal alone. A fork stopped
+      // before it streamed reaches here with empty history but the client it
+      // built is still installed, so the next save is that fork continuing and
+      // must still branch. Consuming the signal here let that save reuse the
+      // source id and overwrite it with the fork's history. clearConversation
+      // drops the signal when the conversation goes away.
+      if (chatHistory.length === 0) return Promise.resolve();
+
+      // Forking needs a saved source (the active record) to preserve; with no
+      // active id it degrades to a normal save of the forked history as a fresh
+      // chat.
       const fork = pendingForkRef?.current ?? null;
 
       if (pendingForkRef) pendingForkRef.current = null;
-
-      const chatHistory = getChatHistory();
-
-      if (chatHistory.length === 0) return Promise.resolve();
 
       const reuseId = activeIdRef.current;
       // A fork mints a new id and switches to it (leaving the source intact); a
@@ -284,7 +284,7 @@ export function useConversations({
           // A delete for this id can land while this save was queued or while
           // the awaits above resolved. Check as late as possible — right before
           // the write — so a just-deleted conversation isn't resurrected.
-          if (canceledIdsRef.current.has(id)) return;
+          if (canceled.isCanceled(id)) return;
 
           const result = await saveConversation(record, protectedIds);
 
@@ -298,7 +298,7 @@ export function useConversations({
         }
       });
     },
-    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef],
+    [getChatHistory, refreshList, setActiveId, limit, pendingForkRef, canceled],
   );
 
   const switchConversation = useCallback(
@@ -325,8 +325,13 @@ export function useConversations({
       }
 
       clearConversation();
-      restoreChatHistory(record.messages, buildLockedSettings(record));
+      restoreRecord(record);
       setActiveId(id);
+      // The record loaded, so it is not deleted — lift any stale tombstone
+      // before the first autosave of this conversation checks it. Reachable
+      // when a delete was undone outside this hook (an import re-adding the id)
+      // or when the delete itself failed and left the row in place.
+      canceled.uncancel(id);
       syncMetaRef(activeMetaRef, record);
       // Re-collapse with the new active id so its family's row reflects — and
       // highlights — the sibling just switched to (e.g. via the branch arrows).
@@ -335,10 +340,11 @@ export function useConversations({
     [
       clearConversation,
       clearActiveId,
-      restoreChatHistory,
+      restoreRecord,
       setActiveId,
       onForeignRecord,
       refreshList,
+      canceled,
     ],
   );
 
@@ -347,21 +353,34 @@ export function useConversations({
     clearActiveId();
   }, [clearConversation, clearActiveId]);
 
+  // A fork branches off the active conversation, minting its id inside the save
+  // — an id canceledIdsRef can't have pre-canceled. With that conversation going
+  // away there is nothing left to branch from, so drop the signal before the
+  // teardown autosave reads it. That save then reuses the canceled active id and
+  // bails, instead of writing a sibling of the deleted row and moving the active
+  // id onto it (which also skipped the delete's own clear).
+  const dropPendingFork = useCallback(() => {
+    if (pendingForkRef) pendingForkRef.current = null;
+  }, [pendingForkRef]);
+
   const deleteConversation = useCallback(
     async (id: string) => {
       // Mark this id canceled before any async work. handleDelete calls
       // stopResponse() first, which flips isAssistantResponding and — from a
       // passive effect — fires one more autosave for this id *after* the drain
       // below has already captured the save chain. That late save would
-      // otherwise resurrect the row; instead it checks canceledIdsRef right
+      // otherwise resurrect the row; instead it checks the tombstone right
       // before its write and bails.
-      canceledIdsRef.current.add(id);
+      canceled.cancel(id);
+
+      if (activeIdRef.current === id) dropPendingFork();
+
       // Drain any autosave already in flight before removing the row, so its
       // write can't land afterward and resurrect the record. The save chain
       // never rejects (saveCurrentConversation's chained body swallows its own
       // errors), so awaiting it directly is safe.
       await saveChainRef.current;
-      await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
+      await canceled.deleteTombstoned(id, undoDelete.pushDeleted);
 
       if (activeIdRef.current === id) {
         clearConversation();
@@ -370,55 +389,29 @@ export function useConversations({
 
       await refreshList();
     },
-    [clearConversation, clearActiveId, refreshList, undoDelete],
+    [
+      clearConversation,
+      clearActiveId,
+      refreshList,
+      undoDelete,
+      dropPendingFork,
+      canceled,
+    ],
   );
 
-  const deleteAllConversations = useCallback(async () => {
-    // Cancel the active (streaming) conversation's pending/in-flight autosave,
-    // then drain the chain, mirroring deleteConversation. handleDeleteAll stops
-    // the stream first, so the two producers are the in-flight save (the drain
-    // covers it) and the stream-teardown autosave effect (the id guard covers
-    // it). A brand-new chat streaming its first turn has no active id yet — its
-    // id is minted lazily inside that teardown save — so reserve it here
-    // (pendingNewIdRef) and cancel that; the save adopts the reserved id instead
-    // of a fresh uncancelable one. Either way the just-cleared row can't be
-    // resurrected.
-    const activeId = activeIdRef.current;
-    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
-
-    canceledIdsRef.current.add(liveId);
-
-    await saveChainRef.current;
-    await dbDeleteAllConversations();
-    clearConversation();
-    clearActiveId();
-    await refreshList();
-  }, [clearConversation, clearActiveId, refreshList]);
-
-  const deleteUnbookmarkedConversations = useCallback(async () => {
-    // The active conversation is removed only when it's unbookmarked. A
-    // brand-new chat streaming its first turn (no active id yet) is implicitly
-    // unbookmarked, so it's swept too — reserve its lazily-minted id
-    // (pendingNewIdRef) so the teardown autosave adopts it and the guard cancels
-    // it. When it clears, cancel that live id (same resurrection guard as the
-    // other delete paths); a bookmarked active conversation survives, so its
-    // save must still land — hence the conditional add but unconditional drain.
-    const activeId = activeIdRef.current;
-    const liveId = activeId ?? (pendingNewIdRef.current = crypto.randomUUID());
-    const clearsActive = activeId == null || !activeMetaRef.current?.bookmarked;
-
-    if (clearsActive) canceledIdsRef.current.add(liveId);
-
-    await saveChainRef.current;
-    await dbDeleteUnbookmarkedConversations();
-
-    if (clearsActive) {
-      clearConversation();
-      clearActiveId();
-    }
-
-    await refreshList();
-  }, [clearConversation, clearActiveId, refreshList]);
+  const { deleteAllConversations, deleteUnbookmarkedConversations } =
+    useBulkDeletes({
+      activeIdRef,
+      activeMetaRef,
+      pendingNewIdRef,
+      canceledIdsRef: canceled.ref,
+      saveChainRef,
+      clearConversation,
+      clearActiveId,
+      refreshList,
+      dropPendingFork,
+      dropUndoable: undoDelete.dropUndoable,
+    });
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {

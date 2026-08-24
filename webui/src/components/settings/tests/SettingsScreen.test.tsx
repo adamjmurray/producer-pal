@@ -8,6 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
@@ -16,7 +17,7 @@ import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-hel
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
   const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
-    await import("#webui/components/settings/helpers/connection-tab-helpers");
+    await import("#webui/lib/constants/provider-urls");
 
   return {
     ConnectionTab: ({
@@ -39,7 +40,7 @@ vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
       <div>
         {/* Provider selector mock */}
         <div>
-          <label className="block text-sm mb-2">Provider</label>
+          <label className="mb-2 block text-sm">Provider</label>
           <select>
             <option value={provider}>{providerLabel}</option>
           </select>
@@ -145,6 +146,10 @@ describe("SettingsScreen", () => {
     setSmallModelMode: vi.fn(),
     subagentPresetId: null,
     setSubagentPresetId: vi.fn(),
+    savedSubagentPresetId: null,
+    forgetDeletedPreset: vi.fn(),
+    maxToolSteps: DEFAULT_MAX_TOOL_STEPS,
+    setMaxToolSteps: vi.fn(),
     liveApiEnabled: false,
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),
@@ -206,6 +211,7 @@ describe("SettingsScreen", () => {
       activeSmallModelMode: null,
       activeNotation: null,
       activeEnabledTools: null,
+      activeMaxToolSteps: null,
     },
     liveApiForcedOn: false,
     activeVoice: null,
@@ -503,7 +509,7 @@ describe("SettingsScreen", () => {
     );
 
     it.each([
-      ["LM Studio", lmstudioSettings],
+      ["Bionic", lmstudioSettings],
       ["Ollama", ollamaSettings],
       ["custom", customSettings],
     ])("does not show API key link for %s", (_label, settings) => {
@@ -613,7 +619,7 @@ describe("SettingsScreen", () => {
         "https://docs.mistral.ai/getting-started/models",
       ],
       ["OpenRouter", "openrouter", undefined, "https://openrouter.ai/models"],
-      ["LM Studio", "lmstudio", lmstudioSettings, "https://lmstudio.ai/models"],
+      ["Bionic", "lmstudio", lmstudioSettings, "https://lmstudio.ai/models"],
       ["Ollama", "ollama", ollamaSettings, "https://ollama.com/search"],
     ] as const)(
       "shows %s models link with correct URL",

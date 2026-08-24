@@ -10,56 +10,10 @@ import { act, fireEvent, render } from "@testing-library/preact";
 import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
-  useSettings: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
-  useTheme: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
-  useMcpConnection: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/chat/use-chat"), () => ({
-  useChat: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/chat/use-conversations"), () => ({
-  useConversations: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
-  useRemoteConfig: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
-  useUpdateCheck: () => ({ update: null, dismissUpdate: () => {} }),
-}));
-
-vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
-  useViewState: vi.fn(),
-}));
-
-// App renders the real ContextTabs + system-prompt hook, both of which fetch a
-// same-origin endpoint; stub them so these tests stay focused on the overlay
-// open/close plumbing and don't leak real localhost fetches. See
-// App-context-mocks for details.
-vi.mock(import("#webui/hooks/context/use-system-prompt"), () => ({
-  useSystemPrompt: systemPromptDocMock,
-}));
-vi.mock(import("#webui/components/context/ContextTabs"), () => ({
-  ContextTabs: ContextTabsStub,
-}));
-
+import "./App-mocks-test-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
-import {
-  ContextTabsStub,
-  setStubLeaveGuard,
-  systemPromptDocMock,
-} from "./App-context-mocks";
+import { setStubLeaveGuard } from "./App-context-mocks";
 import { installJsonFetchMock } from "#webui/hooks/context/tests/doc-transport-test-helpers";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
@@ -104,6 +58,32 @@ describe("App", () => {
       interact(container);
       await act(() => {
         vi.advanceTimersByTime(200);
+      });
+    };
+
+    /**
+     * Open Context, then press and release across the overlay/editor boundary. The
+     * browser fires the click on the common ancestor either way, so only the press
+     * and release say where the drag really began.
+     * @param pressOn - Where the drag starts
+     * @param releaseOn - Where it ends
+     */
+    const dragBetween = async (
+      pressOn: "inner" | "overlay",
+      releaseOn: "inner" | "overlay",
+    ): Promise<void> => {
+      setStubLeaveGuard(() => true);
+      await openContextThen((container) => {
+        const targets = {
+          overlay: container.querySelector(".settings-overlay"),
+          inner: contextStub(),
+        };
+
+        if (targets.overlay && targets.inner) {
+          fireEvent.mouseDown(targets[pressOn]!);
+          fireEvent.mouseUp(targets[releaseOn]!);
+          fireEvent.click(targets.overlay);
+        }
       });
     };
 
@@ -251,19 +231,9 @@ describe("App", () => {
     });
 
     it("keeps the overlay open when a drag starts inside and ends on the backdrop", async () => {
-      setStubLeaveGuard(() => true);
-      await openContextThen((container) => {
-        const overlay = container.querySelector(".settings-overlay");
-        const inner = contextStub();
-
-        // The browser fires the click on the overlay (the common ancestor of
-        // press and release), but the press began inside the editor.
-        if (overlay && inner) {
-          fireEvent.mouseDown(inner);
-          fireEvent.mouseUp(overlay);
-          fireEvent.click(overlay);
-        }
-      });
+      // The browser fires the click on the overlay (the common ancestor of
+      // press and release), but the press began inside the editor.
+      await dragBetween("inner", "overlay");
 
       expect(contextStub()).not.toBe(null);
       vi.useRealTimers();
@@ -272,17 +242,7 @@ describe("App", () => {
     it("keeps the overlay open when a drag starts on the backdrop and ends inside", async () => {
       // The mirror case: the press lands on the overlay, so only the release
       // says the user let go over the editor.
-      setStubLeaveGuard(() => true);
-      await openContextThen((container) => {
-        const overlay = container.querySelector(".settings-overlay");
-        const inner = contextStub();
-
-        if (overlay && inner) {
-          fireEvent.mouseDown(overlay);
-          fireEvent.mouseUp(inner);
-          fireEvent.click(overlay);
-        }
-      });
+      await dragBetween("overlay", "inner");
 
       expect(contextStub()).not.toBe(null);
       vi.useRealTimers();

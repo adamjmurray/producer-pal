@@ -47,7 +47,7 @@ export const CONTEXT_LIVE_SET = "basic-midi-4-track";
 /** Lead is track 3 in basic-midi-4-track — a melodic (non-drum) track. */
 export const LEAD_TRACK = 3;
 
-/** Session slot the clip-writing context scenarios fill (and clear in setup). */
+/** Clip slot the clip-writing context scenarios fill (and clear in setup). */
 export const LEAD_SLOT = `${LEAD_TRACK}/0`;
 
 /**

@@ -1,0 +1,464 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  isTakeLaneClip,
+  isTakeLaneRequested,
+  normalizeTakeLaneTarget,
+  takeLaneKey,
+  type ArrangementTrack,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
+import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
+import {
+  copySpanBeats,
+  planCopies,
+  sourceLastOrder,
+} from "./duplicate-clip-order-helpers.ts";
+import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
+import { type UnreachedDestination } from "../duplicate-position-helpers.ts";
+import {
+  NO_ENVELOPES_NOTE,
+  recreateMidiClip,
+} from "./duplicate-clip-recreate-helpers.ts";
+import {
+  labelDuplicateDestinations,
+  noBudgetForCopies,
+  stopMidFanOut,
+} from "./duplicate-clip-deadline-helpers.ts";
+import {
+  resolveDuplicateTakeLanes,
+  type ResolvedDuplicateLane,
+} from "./duplicate-take-lane-helpers.ts";
+import {
+  resolveArrangementPositions,
+  resolveDestinationTargets,
+} from "../duplicate-validation-helpers.ts";
+
+/**
+ * Duplicates a clip to its resolved destinations
+ * @param destinations - Where the copies go (clip slots or arrangement tracks)
+ * @param object - Live API object to duplicate
+ * @param id - ID of the object
+ * @param name - Base name for duplicated clips
+ * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param arrangementStart - Comma-separated bar|beat positions for arrangement
+ * @param locator - Arrangement locator ID(s) or name(s) for position
+ * @param arrangementLength - Duration in bar|beat format
+ * @param takeLane - Hidden alias for the toPath `l` segment
+ * @param takeLaneName - Name for a take lane newly created by this call
+ * @param context - Per-request context
+ * @returns Array of result objects
+ */
+export async function duplicateClipWithPositions(
+  destinations: ClipDestinations,
+  object: LiveAPI,
+  id: string,
+  name: string | undefined,
+  color: string | undefined,
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+  arrangementLength: string | undefined,
+  takeLane: number | string | undefined,
+  takeLaneName: string | undefined,
+  context: Partial<ToolContext>,
+): Promise<object[]> {
+  if (destinations.destination === "session") {
+    // A clip slot can't name a lane, so nothing here has one to honor.
+    return duplicateClipToSlots(destinations.slots, object, id, name, color);
+  }
+
+  return await duplicateClipToArrangementPositions(
+    destinations.arrangementTargets,
+    object,
+    id,
+    name,
+    color,
+    arrangementStart,
+    locator,
+    arrangementLength,
+    takeLane,
+    takeLaneName,
+    context,
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Copies a clip into the arrangement at each destination/position pair. A
+ * destination naming a take lane is re-created on the lane (lanes have no
+ * duplicate API); the rest go through Live's own arrangement duplicate.
+ * @param targets - Destinations, or empty for the source's own track
+ * @param object - Live API object to duplicate
+ * @param id - ID of the object
+ * @param name - Base name for duplicated clips
+ * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param arrangementStart - Comma-separated bar|beat positions for arrangement
+ * @param locator - Arrangement locator ID(s) or name(s) for position
+ * @param arrangementLength - Duration in bar|beat format
+ * @param takeLane - Hidden alias for the toPath `l` segment
+ * @param takeLaneName - Name for a take lane newly created by this call
+ * @param context - Per-request context
+ * @returns Array of result objects
+ */
+async function duplicateClipToArrangementPositions(
+  targets: (ArrangementTrack | null)[],
+  object: LiveAPI,
+  id: string,
+  name: string | undefined,
+  color: string | undefined,
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+  arrangementLength: string | undefined,
+  takeLane: number | string | undefined,
+  takeLaneName: string | undefined,
+  context: Partial<ToolContext>,
+): Promise<object[]> {
+  // The alias folds on after resolution, because an omitted toPath means the
+  // source clip's own track — which only exists as a destination once resolved.
+  const requested = applyTakeLaneAlias(
+    resolveDestinationTargets(object, targets),
+    takeLane,
+  );
+
+  // Only reachable once every named destination was skipped: an omitted toPath
+  // resolves to the source's own track. Nowhere left to copy to.
+  if (requested.every((target) => target == null)) return [];
+
+  const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
+    resolveSongPositions(arrangementStart, locator);
+
+  const {
+    copies,
+    targets: targetTracks,
+    positions: targetPositions,
+    requestIndices,
+  } = planCopies(requested, positionsInBeats);
+
+  // Nothing below can undo a lane, so check the budget before making any: out
+  // of time here means permanent empty lanes and not one clip on them.
+  if (
+    noBudgetForCopies(
+      targetTracks,
+      targetPositions,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context.deadline,
+    )
+  ) {
+    return [];
+  }
+
+  // Lanes are permanent (Live has no delete), so resolve every one up front:
+  // a capacity error partway through would strand the lanes already created.
+  const lanes = resolveDuplicateTakeLanes(
+    object,
+    id,
+    targetTracks,
+    takeLaneName,
+  );
+
+  // Labelled after the lanes exist, so a stop names the lane it created rather
+  // than the "l+" that made it — re-running "l+" would append another one.
+  const destinations = labelDuplicateDestinations(
+    targetTracks,
+    targetPositions,
+    lanes,
+  );
+
+  const canPromote = warnRecreatedCopyLimits(
+    object,
+    id,
+    targetTracks,
+    arrangementLength,
+    lanes,
+  );
+
+  const parsedNames = parseCommaSeparatedNames(name, copies);
+  const parsedColors = parseCommaSeparatedColors(color, copies);
+
+  warnExtraNames(parsedNames, copies, "duplicate");
+
+  // Results keep the order the destinations were asked for, even though the
+  // copies are made in another one.
+  const order = sourceLastOrder(
+    object,
+    targetTracks,
+    targetPositions,
+    copySpanBeats(
+      object,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  );
+  const results: (object | null)[] = Array.from(
+    { length: targetTracks.length },
+    () => null,
+  );
+  // A destination that was attempted and skipped is in neither the slice ahead
+  // nor the landed tally, so without this it drops out of the report entirely.
+  const skipped: UnreachedDestination[] = [];
+
+  for (let done = 0; done < order.length; done++) {
+    const i = order[done] as number; // bounded by the loop
+    const requestIndex = requestIndices[i] as number; // one per copy
+
+    // Each copy can tile a long span, so the budget can run out mid-list.
+    if (
+      stopMidFanOut({
+        skipped,
+        unreached: order
+          .slice(done)
+          .map((index) => destinations[index] as UnreachedDestination),
+        results,
+        total: targetTracks.length,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+        deadline: context.deadline,
+      })
+    ) {
+      break;
+    }
+
+    const result = await duplicateOneCopy({
+      target: targetTracks[i] as ArrangementTrack,
+      startBeats: targetPositions[i] as number,
+      lanes,
+      canPromote,
+      object,
+      id,
+      name: getNameForIndex(name, requestIndex, parsedNames),
+      color: getColorForIndex(color, requestIndex, parsedColors),
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context,
+    });
+
+    if (result != null) {
+      results[i] = result;
+    } else {
+      skipped.push(destinations[i] as UnreachedDestination);
+    }
+  }
+
+  return results.filter((result) => result != null);
+}
+
+/**
+ * Reads the song meter and resolves the positions the copies land on.
+ * @param arrangementStart - Comma-separated bar|beat positions
+ * @param locator - Arrangement locator ID(s) or name(s) for position
+ * @returns The song time signature and one position per entry, in Ableton beats
+ */
+function resolveSongPositions(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): {
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  positionsInBeats: number[];
+} {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const songTimeSigNumerator = liveSet.getProperty(
+    "signature_numerator",
+  ) as number;
+  const songTimeSigDenominator = liveSet.getProperty(
+    "signature_denominator",
+  ) as number;
+
+  return {
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+    // Positions come from a locator or bar|beat (both comma-separated for
+    // multiple); shared with scene duplication.
+    positionsInBeats: resolveArrangementPositions(
+      liveSet,
+      arrangementStart,
+      locator,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
+  };
+}
+
+/**
+ * Warns once per call about what re-creating a copy costs, and says whether a
+ * take-lane source may be re-created on the main lane.
+ *
+ * Per call, not per copy: a mixed toPath like "t1,t1/l0" would otherwise repeat
+ * every warning for every position.
+ * @param object - The source clip
+ * @param id - ID of the source clip
+ * @param targetTracks - Destination per copy
+ * @param arrangementLength - The raw arrangementLength param
+ * @param lanes - Take lanes resolved for this call
+ * @returns Whether the source can be promoted to the main lane (MIDI only)
+ */
+function warnRecreatedCopyLimits(
+  object: LiveAPI,
+  id: string,
+  targetTracks: ArrangementTrack[],
+  arrangementLength: string | undefined,
+  lanes: Map<string, ResolvedDuplicateLane>,
+): boolean {
+  // A take-lane source going to the main lane is re-created there too, for the
+  // same reason a lane destination is: Live's arrangement duplicate can't do it.
+  const promotes =
+    isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null);
+  const canPromote = promotes && object.getProperty("is_midi_clip") === 1;
+
+  if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
+    console.warn(
+      "duplicate: arrangementLength ignored for the re-created copies (they use the source clip's length)",
+    );
+  }
+
+  if (canPromote) {
+    console.warn(
+      `duplicate: promoted to the main lane by re-creating the clip (${NO_ENVELOPES_NOTE})`,
+    );
+  } else if (promotes) {
+    console.warn(
+      `duplicate: promoting to the main lane re-creates the clip from its notes, so audio clip "${id}" can't be promoted off its take lane; drag it in Live's UI`,
+    );
+  }
+
+  return canPromote;
+}
+
+/**
+ * Folds the `takeLane` alias onto the destinations. It names one lane for the
+ * whole call, so a toPath that already named its own lane wins — the alias is a
+ * fallback for a caller that didn't use the segment.
+ * @param targets - Resolved arrangement destinations, null where unusable
+ * @param takeLane - The raw takeLane param
+ * @returns The destinations, with the alias applied where a lane was unnamed
+ */
+function applyTakeLaneAlias(
+  targets: (ArrangementTrack | null)[],
+  takeLane: number | string | undefined,
+): (ArrangementTrack | null)[] {
+  if (!isTakeLaneRequested(takeLane)) return targets;
+
+  // A destination this call can't use is null and names no lane, so it can't
+  // block the alias for the ones around it.
+  if (targets.some((target) => target?.takeLane != null)) {
+    console.warn(
+      'duplicate: takeLane ignored — "toPath" already names the take lane',
+    );
+
+    return targets;
+  }
+
+  const target = normalizeTakeLaneTarget(takeLane);
+
+  return targets.map((entry) =>
+    entry == null ? null : { ...entry, takeLane: target },
+  );
+}
+
+interface CopyOptions {
+  target: ArrangementTrack;
+  startBeats: number;
+  lanes: Map<string, ResolvedDuplicateLane>;
+  /** Whether a take-lane source may be re-created on the main lane (MIDI only). */
+  canPromote: boolean;
+  object: LiveAPI;
+  id: string;
+  name: string | undefined;
+  color: string | undefined;
+  arrangementLength: string | undefined;
+  songTimeSigNumerator: number;
+  songTimeSigDenominator: number;
+  context: Partial<ToolContext>;
+}
+
+/**
+ * Makes one arrangement copy, on a take lane or the main lane.
+ * @param options - Everything the copy needs
+ * @returns The created clip info, or null when the copy was skipped
+ */
+async function duplicateOneCopy(options: CopyOptions): Promise<object | null> {
+  const { target, startBeats, lanes, object, id } = options;
+
+  if (target.takeLane != null) {
+    const resolved = lanes.get(takeLaneKey(target));
+
+    // A rejected source (audio, for now) warned once during lane resolution.
+    if (resolved == null) return null;
+
+    return recreateCopy(options, resolved.lane, "take-lane");
+  }
+
+  // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
+  // silently no-ops on a take-lane source id (see take-lane-helpers.ts header),
+  // so re-create it here instead. An audio source warned once in the caller.
+  if (isTakeLaneClip(object)) {
+    if (!options.canPromote) return null;
+
+    return recreateCopy(
+      options,
+      LiveAPI.from(livePath.track(target.trackIndex)),
+      "promoted",
+    );
+  }
+
+  return await duplicateClipToArrangement(
+    id,
+    startBeats,
+    target.trackIndex,
+    options.name,
+    options.color,
+    options.arrangementLength,
+    options.songTimeSigNumerator,
+    options.songTimeSigDenominator,
+    options.context,
+  );
+}
+
+/**
+ * Re-creates one copy, warning and skipping if Live refuses it so the rest of a
+ * multi-position call still lands.
+ * @param options - Everything the copy needs
+ * @param destination - The TakeLane, or the Track for a promoted copy
+ * @param kind - What to call this copy in the warning
+ * @returns The created clip info, or null when Live refused it
+ */
+function recreateCopy(
+  options: CopyOptions,
+  destination: LiveAPI,
+  kind: "take-lane" | "promoted",
+): object | null {
+  try {
+    return recreateMidiClip(
+      options.object,
+      destination,
+      options.startBeats,
+      options.name,
+      options.color,
+    );
+  } catch (error) {
+    console.warn(
+      `duplicate: failed to create ${kind} clip at beat ${options.startBeats}: ${errorMessage(error)}`,
+    );
+
+    return null;
+  }
+}

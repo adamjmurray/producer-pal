@@ -3,43 +3,48 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
-import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
+import { duplicateClipWithPositions } from "./helpers/clip/duplicate-clip-position-helpers.ts";
+import { resolveClipDestinations } from "./helpers/clip/duplicate-destination-helpers.ts";
+import { duplicateDeviceWithPaths } from "./helpers/duplicate-device-helpers.ts";
+import {
+  duplicateDrumPad,
+  resolveSourcePad,
+  type PadTarget,
+} from "./helpers/duplicate-drum-pad-helpers.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
+import { duplicateSceneToArrangementAtPositions } from "./helpers/duplicate-position-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
-  calculateSceneLength,
-  duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.ts";
-import { applyTransformsToDuplicatedClips } from "./helpers/duplicate-transform-helpers.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/clip/duplicate-transform-helpers.ts";
 import {
-  resolveArrangementPositions,
-  inferDestination,
+  hasArrangementPosition,
+  resolveDestinationAndWarn,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
-  validateClipParameters,
-  validateDestinationParameter,
-  validateArrangementParameters,
 } from "./helpers/duplicate-validation-helpers.ts";
 
 interface DuplicateArgs {
   type: string;
-  id: string;
+  id?: string;
+  /** Hidden alias for id */
+  ids?: string;
+  path?: string;
   count?: number;
 
   arrangementStart?: string;
@@ -73,6 +78,8 @@ interface DuplicateParams {
  * @param args - The parameters
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Source drum pad path, instead of id
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
  * @param args.locator - Arrangement locator ID(s) or name(s)
@@ -83,8 +90,8 @@ interface DuplicateParams {
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
  * @param args.focus - Focus duplicated clip/scene
- * @param args.toSlot - Destination clip slot(s)
- * @param args.toPath - Destination path
+ * @param args.toSlot - Deprecated destination clip slot(s); use toPath
+ * @param args.toPath - Destination path(s): track, clip slot, or device
  * @param args.transforms - Transform expressions broadcast across all copies
  * @param args.code - JavaScript function body broadcast across all copies
  * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
@@ -96,6 +103,8 @@ export async function duplicate(
   {
     type,
     id,
+    ids,
+    path,
     count = 1,
     arrangementStart,
     locator,
@@ -115,8 +124,13 @@ export async function duplicate(
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
+  // A value the schema coerced from a JSON null names nothing. Counting it as
+  // sent refuses the call over a param the caller deliberately left empty.
+  id = namedIdParam(id, ids, "ids");
+  path = namedParam(path, "path");
+
   // Validate basic inputs
-  validateBasicInputs(type, id, count);
+  validateBasicInputs(type, id, count, path);
 
   // Auto-configure for routing back to source
   const routeToSourceConfig = validateAndConfigureRouteToSource(
@@ -129,64 +143,69 @@ export async function duplicate(
   withoutClips = routeToSourceConfig.withoutClips;
   withoutDevices = routeToSourceConfig.withoutDevices;
 
-  // Validate the ID exists and matches the expected type
-  const object = validateIdType(id, type, "duplicate");
+  // Validate the ID exists and matches the expected type. Only a drum-pad call
+  // naming its source by path gets here without one.
+  const object = id ? validateIdType(id, type, "duplicate") : null;
 
-  // Infer destination from position parameters
-  const destination = inferDestination(type, arrangementStart, locator, toSlot);
+  // Resolve a clip's destination up front, so a bad path fails before anything
+  // is created. Other types have no destination path.
+  const clipDestinations =
+    type === "clip"
+      ? resolveClipDestinations(
+          toPath,
+          toSlot,
+          hasArrangementPosition(arrangementStart, locator),
+        )
+      : null;
 
-  // Validate clip-specific parameters
-  validateClipParameters(type, destination, toSlot);
+  const destination = resolveDestinationAndWarn({
+    type,
+    clipDestinations,
+    count,
+    toPath,
+    toSlot,
+    arrangementStart,
+    locator,
+    arrangementLength,
+    takeLane,
+    takeLaneName,
+    transforms,
+    code,
+  });
 
-  // Validate destination parameter compatibility with type
-  validateDestinationParameter(type, destination);
+  // Both of these take comma-separated toPath for multiple destinations
+  if (type === "drum-pad") {
+    const sourcePad = resolveSourcePad(object, path);
 
-  // Validate arrangement parameters
-  validateArrangementParameters(destination, arrangementStart, locator);
-
-  // transforms/code only apply to clips
-  if (type !== "clip" && (transforms != null || code != null)) {
-    console.warn(
-      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
-    );
+    return sourcePad == null
+      ? []
+      : duplicateDrumPadToPaths(sourcePad, toPath, name, count);
   }
 
-  // takeLane only applies to arrangement-destination clips; the helper warns
-  // and returns null for non-clip types and session-destination clips so a
-  // malformed value doesn't throw before the warn-and-ignore path.
-  const takeLaneTarget = resolveTakeLaneForDuplicate(
-    type,
-    destination,
-    takeLane,
-    console.warn,
-  );
-
-  // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
-    return duplicateDeviceWithPaths(object, toPath, name, count);
+    return duplicateDeviceWithPaths(object as LiveAPI, toPath, name, count);
   }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
-  const createdObjects = await (type === "clip"
+  const createdObjects = await (clipDestinations != null
     ? duplicateClipWithPositions(
-        destination,
-        object,
-        id,
+        clipDestinations,
+        object as LiveAPI,
+        id as string,
         name,
         color,
-        toSlot,
         arrangementStart,
         locator,
         arrangementLength,
-        takeLaneTarget,
+        takeLane,
         takeLaneName,
         context,
       )
     : duplicateTrackOrSceneWithCount(
         type,
         destination,
-        object,
-        id,
+        object as LiveAPI,
+        id as string,
         count,
         name,
         color,
@@ -223,33 +242,56 @@ export async function duplicate(
 }
 
 /**
- * Duplicates a device to one or more destination paths.
+ * Copies a drum pad to one or more destination pads.
  * Supports comma-separated toPath for multiple destinations.
- * @param object - LiveAPI device object
- * @param toPath - Destination path(s), comma-separated for multiple
- * @param name - Optional name for duplicated device(s)
+ * @param source - The pad to copy from
+ * @param toPath - Destination pad path(s), comma-separated for multiple
+ * @param name - Optional name(s) for the chain(s) each copy creates
  * @param count - Number of copies (warns if > 1)
- * @returns Result object or array of result objects
+ * @returns Result object, or an array of them for multiple destinations
  */
-function duplicateDeviceWithPaths(
-  object: LiveAPI,
+function duplicateDrumPadToPaths(
+  source: PadTarget,
   toPath: string | undefined,
   name: string | undefined,
   count: number,
 ): object | object[] {
-  const paths = parseCommaSeparatedIds(toPath);
+  if (count > 1) {
+    console.warn(
+      `count ${count} ignored: a drum pad copy goes to the pads toPath names`,
+    );
+  }
 
-  if (paths.length <= 1) {
-    return duplicateDevice(object, toPath, name, count);
+  const paths = pathEntries(toPath, "toPath");
+
+  // Unlike a device, a pad has no natural "next" slot to default to — the next
+  // MIDI note is as likely to be occupied as empty — so the caller must say.
+  if (paths.length === 0) {
+    throw new Error("duplicate failed: toPath is required for drum pads");
   }
 
   const parsedNames = parseCommaSeparatedNames(name, paths.length);
 
   warnExtraNames(parsedNames, paths.length, "duplicate");
 
-  return paths.map((path, i) =>
-    duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
-  );
+  const results = paths
+    .map((destination, i) =>
+      duplicateDrumPad(
+        source,
+        destination,
+        getNameForIndex(name, i, parsedNames),
+      ),
+    )
+    .filter((result) => result != null);
+
+  // Collapse on what was asked for, not on what survived: one object back from
+  // a two-destination call would read as a one-destination call that worked.
+  if (paths.length > 1) {
+    return results;
+  }
+
+  // A lone copy that was skipped has nothing to report but its warning.
+  return results[0] ?? results;
 }
 
 /**
@@ -262,7 +304,7 @@ function duplicateDeviceWithPaths(
  * @param name - Base name for duplicated objects
  * @param color - Color for duplicated objects (cycles if comma-separated)
  * @param params - Additional parameters
- * @param context - Context object with holdingAreaStartBeats
+ * @param context - Per-request context
  * @returns Array of result objects
  */
 async function duplicateTrackOrSceneWithCount(
@@ -297,103 +339,30 @@ async function duplicateTrackOrSceneWithCount(
   warnExtraNames(parsedNames, count, "duplicate");
 
   for (let i = 0; i < count; i++) {
-    const result = duplicateTrackOrSceneToSession(
-      type,
-      object,
-      id,
-      i,
-      getNameForIndex(name, i, parsedNames),
-      getColorForIndex(color, i, parsedColors),
-      withoutClips,
-      withoutDevices,
-      routeToSource,
-    );
-
-    if (result != null) {
-      createdObjects.push(result);
+    if (
+      stopForDeadline(
+        context.deadline,
+        () =>
+          `Ran out of time after duplicating ${createdObjects.length} of ${count} ${type}s. ` +
+          `Re-run for the rest.`,
+      )
+    ) {
+      break;
     }
-  }
 
-  return createdObjects;
-}
-
-/**
- * Duplicates a scene to the arrangement at one or more positions.
- * Supports multiple positions from comma-separated locator IDs/names.
- * When a single position is given with count > 1, places copies sequentially.
- * @param object - Live API scene object
- * @param id - Scene ID
- * @param count - Number of copies (for sequential placement from a single position)
- * @param name - Base name for duplicated objects
- * @param params - Arrangement parameters (arrangementStart, locator, etc.)
- * @param context - Context object
- * @returns Array of result objects
- */
-async function duplicateSceneToArrangementAtPositions(
-  object: LiveAPI,
-  id: string,
-  count: number,
-  name: string | undefined,
-  params: DuplicateParams,
-  context: Partial<ToolContext>,
-): Promise<object[]> {
-  const { arrangementStart, locator, arrangementLength } = params;
-  const withoutClips = params.withoutClips;
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
-
-  // Resolve all positions from bar|beat or locator(s)
-  const positions = resolveArrangementPositions(
-    liveSet,
-    arrangementStart,
-    locator,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  const sceneIndex = object.sceneIndex;
-
-  if (sceneIndex == null) {
-    throw new Error(
-      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
+    createdObjects.push(
+      duplicateTrackOrSceneToSession(
+        type,
+        object,
+        id,
+        i,
+        getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
+        withoutClips,
+        withoutDevices,
+        routeToSource,
+      ),
     );
-  }
-
-  // When single position + count > 1, expand to sequential positions
-  const sceneLength = calculateSceneLength(sceneIndex);
-  const allPositions =
-    positions.length === 1 && count > 1
-      ? Array.from(
-          { length: count },
-          // bounded by count, index always valid
-          (_, i) => (positions[0] as number) + i * sceneLength,
-        )
-      : positions;
-
-  const createdObjects: object[] = [];
-  const parsedNames = parseCommaSeparatedNames(name, allPositions.length);
-
-  warnExtraNames(parsedNames, allPositions.length, "duplicate");
-
-  for (let i = 0; i < allPositions.length; i++) {
-    const result = await duplicateSceneToArrangement(
-      id,
-      allPositions[i] as number, // bounded by loop
-      getNameForIndex(name, i, parsedNames),
-      withoutClips,
-      arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context,
-    );
-
-    createdObjects.push(result);
   }
 
   return createdObjects;
@@ -422,7 +391,7 @@ function duplicateTrackOrSceneToSession(
   withoutClips: boolean | undefined,
   withoutDevices: boolean | undefined,
   routeToSource: boolean | undefined,
-): object | undefined {
+): object {
   if (type === "track") {
     const trackIndex = object.trackIndex;
 
@@ -443,24 +412,24 @@ function duplicateTrackOrSceneToSession(
       routeToSource,
       trackIndex,
     );
-  } else if (type === "scene") {
-    const sceneIndex = object.sceneIndex;
+  }
 
-    if (sceneIndex == null) {
-      throw new Error(
-        `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-      );
-    }
+  // Only "track" and "scene" get here: clip, device and drum-pad all return
+  // from duplicate() before the count-based path.
+  const sceneIndex = object.sceneIndex;
 
-    const actualSceneIndex = sceneIndex + i;
-
-    return duplicateScene(
-      actualSceneIndex,
-      objectName,
-      objectColor,
-      withoutClips,
+  if (sceneIndex == null) {
+    throw new Error(
+      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
     );
   }
 
-  return undefined;
+  const actualSceneIndex = sceneIndex + i;
+
+  return duplicateScene(
+    actualSceneIndex,
+    objectName,
+    objectColor,
+    withoutClips,
+  );
 }

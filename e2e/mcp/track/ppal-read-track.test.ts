@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  parseAliasedToolResult,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
@@ -30,12 +31,18 @@ describe("ppal-read-track", () => {
     const firstTrack = liveSet.tracks![0]!;
     const trackId = firstTrack.id;
 
-    // Test 1: Read track by trackId
+    // Test 1: Read track by id, spelled the way a model guesses it. "trackId"
+    // is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: { trackId },
     });
-    const byId = parseToolResult<ReadTrackResult>(byIdResult);
+    const byId = parseAliasedToolResult<ReadTrackResult>(
+      byIdResult,
+      "ppal-read-track",
+      "trackId",
+      "id",
+    );
 
     expect(byId.id).toBe(trackId);
     expect(byId.name).toBe(firstTrack.name);
@@ -85,7 +92,7 @@ describe("ppal-read-track", () => {
     // Test 6: Read with include: ["mixer"]
     const mixerResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["mixer"] },
+      arguments: { id: trackId, include: ["mixer"] },
     });
     const mixer = parseToolResult<ReadTrackResult>(mixerResult);
 
@@ -95,7 +102,7 @@ describe("ppal-read-track", () => {
     // Test 7: Read with include: ["color"]
     const colorResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["color"] },
+      arguments: { id: trackId, include: ["color"] },
     });
     const color = parseToolResult<ReadTrackResult>(colorResult);
 
@@ -105,7 +112,7 @@ describe("ppal-read-track", () => {
     // Test 8: Read with include: ["*"] (all data)
     const allResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId, include: ["*"] },
+      arguments: { id: trackId, include: ["*"] },
     });
     const all = parseToolResult<ReadTrackResult>(allResult);
 

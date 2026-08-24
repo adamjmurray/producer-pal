@@ -183,7 +183,7 @@ describe("Transform Evaluator - swing()", () => {
     it("rejects zero arguments (parse error)", () => {
       expect(() =>
         evaluateTransform("timing = swing()", createContext({ position: 0 })),
-      ).toThrow();
+      ).toThrow('but "t" found');
     });
 
     it("rejects three non-raw arguments (parse error)", () => {
@@ -192,7 +192,7 @@ describe("Transform Evaluator - swing()", () => {
           "timing = swing(0.05, n/4, 0.5)",
           createContext({ position: 0 }),
         ),
-      ).toThrow();
+      ).toThrow('but "t" found');
     });
   });
 });

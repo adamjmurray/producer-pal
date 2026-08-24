@@ -75,7 +75,7 @@ describe("readGlobalContext", () => {
     // reads as "". Stands in for the transient-permission/IO case.
     mkdirSync(join(getDir(), "context.md"));
 
-    expect(() => readGlobalContext()).toThrow();
+    expect(() => readGlobalContext()).toThrow("EISDIR");
   });
 
   it("is inert under Vitest without a dir override (never reads real home)", () => {

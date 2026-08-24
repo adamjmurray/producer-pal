@@ -103,7 +103,7 @@ to send a corrupt blob — it replaces the payload with a clear "response too
 large" error instead. (You can find the chunking logic in
 [`mcp-response-utils.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/mcp-response-utils.ts).)
 
-## Problem 2: capturing warnings from the V8 side
+## Problem 2: getting warnings onto the right response
 
 The second problem is subtler. While a tool runs, the V8 code may want to warn
 the AI about something — _"quantize parameter ignored for audio clip,"_ for
@@ -112,40 +112,28 @@ warnings need to reach the AI as part of the response.
 
 But there's a catch: **a runtime's log and error output doesn't travel down
 patch cables.** When the `v8` object prints to the Max console, that text goes
-to the Max window — it's not part of any message coming out of the object. So we
-can't just rely on console output; the warnings have to be deliberately routed
-onto an outlet and then **stitched into the response message** before it crosses
-back to Node.
+to the Max window — it's not part of any message coming out of the object. So
+warnings have to be deliberately collected and **stitched into the response
+message** before it crosses back to Node.
 
-Producer Pal does this in two halves — the V8 code and the Max patch cooperate:
+The tricky part is _which_ response. A tool call is not the only thing running:
+parallel tool calls are routine, and some of Producer Pal's own bookkeeping runs
+after a response has already gone out. A warning that gets appended to whatever
+response happens to leave next is worse than no warning at all — it tells one
+request about a mistake another one made.
 
-**On the V8 side**, the object has **two outlets**:
+So `console.warn()` hands each warning to the request in flight, which buffers
+it and appends it to **its own** response (see
+[`v8-warning-capture.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/max/v8-warning-capture.ts)).
+V8 is single-threaded, so keeping that pointed at the right request comes down
+to two rules: a request re-asserts itself after every `await` it performs, and
+the two places V8 can suspend on a round trip to Node clear the buffer for the
+wait and restore it on resume. When nothing is in flight there is no response to
+append to, so the warning goes to the Max console instead — a real audience, and
+nobody else's tool result gets polluted.
 
-- **Outlet 0** carries the actual result: the chunked JSON, terminated by a
-  special delimiter string.
-- **Outlet 1** carries **warnings**. `console.warn()` is wired to emit each
-  warning string out of outlet 1 (see
-  [`v8-max-console.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/shared/max/v8-max-console.ts)).
-
-**In the Max patch**, a small subpatcher named **`route-results-and-warnings`**
-recombines those two separate streams into a single message:
-
-<img
-  class="screenshot-narrow"
-  src="/img/main-patch-route-results-and-warnings.png"
-  alt="The route-results-and-warnings subpatcher: inlet 1 and inlet 2 feeding a t l b zlclear, a list.group 1000, and a list.join"
-/>
-
-Inlet 1 receives the result (the chunked JSON and its delimiter); inlet 2
-receives warnings. The `list.group 1000` object **buffers warnings** as they
-arrive, and when the result comes in, `t l b zlclear` triggers `list.join` to
-**append the buffered warnings onto the end of the result list** (then clears
-the buffer for the next request). The merged message is what finally crosses
-back to Node.
-
-The key to keeping the two halves apart is a **demarking symbol**: V8 appends it
-to outlet 0 right after the JSON chunks, and the Max patch appends the warnings
-after that:
+The key to keeping the warnings apart from the result is a **demarking symbol**,
+which V8 appends to outlet 0 right after the JSON chunks:
 
 ```
 $$___MAX_ERRORS___$$
@@ -163,7 +151,7 @@ The Node side splits on that delimiter:
 
 - Everything **before** it is JSON chunks → reassemble and `JSON.parse()`.
 - Everything **after** it is captured warnings → each one is appended to the
-  response as a `WARNING:` text block.
+  response as a `WARNING:` text block, with repeats collapsed to a `(xN)` count.
 
 That last step is what makes warn-and-skip real, actionable feedback: the
 warnings the V8 code emitted while talking to the Live API end up as text the AI
@@ -174,9 +162,9 @@ throws loudly instead of trying to parse a malformed message.
 ## Why it's built this way
 
 Two separate JavaScript runtimes, JSON marshalled into Max atoms, chunked to
-dodge a length limit, with a side channel for warnings merged back in by the
-patch — it's more machinery than a single process would need. But it's exactly
-this machinery that lets one Max for Live device offer **both** a modern Node.js
-server **and** complete, real-time Live control at once. Solving the bridge
-once, properly, is what keeps everything above it simple: you drop in
+dodge a length limit, with per-request warnings folded in on the way out — it's
+more machinery than a single process would need. But it's exactly this machinery
+that lets one Max for Live device offer **both** a modern Node.js server **and**
+complete, real-time Live control at once. Solving the bridge once, properly, is
+what keeps everything above it simple: you drop in
 [one device](/how-it-works/running-inside-live) and the whole thing just works.

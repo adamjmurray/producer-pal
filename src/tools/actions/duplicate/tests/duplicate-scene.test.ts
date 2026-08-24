@@ -9,19 +9,20 @@ import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createStandardMidiClipMock,
-  registerArrangementClip,
   registerClipMocks,
   registerClipSlot,
   registerMockObject,
-  registerTrackWithArrangementDup,
   setupArrangementSceneMocks,
   setupSessionSceneMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 
 interface DuplicateClipResult {
   id: string;
-  slot?: string;
-  trackIndex?: number;
+  path?: string;
   name?: string;
 }
 
@@ -65,11 +66,11 @@ describe("duplicate - scene duplication", () => {
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          slot: "0/1",
+          path: "t0/s1",
         },
         {
           id: "live_set/tracks/1/clip_slots/1/clip",
-          slot: "1/1",
+          path: "t1/s1",
         },
       ],
     });
@@ -106,11 +107,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            slot: "0/1",
+            path: "t0/s1",
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            slot: "1/1",
+            path: "t1/s1",
           },
         ],
       },
@@ -120,11 +121,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
-            slot: "0/2",
+            path: "t0/s2",
           },
           {
             id: "live_set/tracks/1/clip_slots/2/clip",
-            slot: "1/2",
+            path: "t1/s2",
           },
         ],
       },
@@ -261,7 +262,7 @@ describe("duplicate - scene duplication", () => {
       // At least the exact-match clip (track 2) should appear
       // Track 0's lengthening via updateClip is tested in updateClip's own tests
       expect(
-        result.clips.some((c: DuplicateClipResult) => c.trackIndex === 2),
+        result.clips.some((c: DuplicateClipResult) => c.path === "t2"),
       ).toBe(true);
     });
 
@@ -331,7 +332,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(0),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],
@@ -341,7 +342,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(1),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],
@@ -351,7 +352,7 @@ describe("duplicate - scene duplication", () => {
           clips: [
             {
               id: livePath.track(0).arrangementClip(2),
-              trackIndex: 0,
+              path: "t0",
               name: "Scene Copy",
             },
           ],
@@ -478,5 +479,25 @@ describe("duplicate - scene duplication", () => {
     expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);
     expect(result.id).toBe("live_set/scenes/1");
     expect(result.sceneIndex).toBe(1);
+  });
+
+  it("names the positions a cut-short arrangement duplicate did not reach", async () => {
+    // A scene copy places a clip per track, so a few can eat the whole budget.
+    setupArrangementSceneMocks(1);
+
+    const track0 = registerTrackWithArrangementDup(0);
+
+    const result = await duplicate(
+      { type: "scene", id: "scene1", arrangementStart: "5|1,9|1" },
+      { deadline: Date.now() - 1 },
+    );
+
+    expect(result).toStrictEqual([]);
+    expect(track0.call).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "Ran out of time after duplicating 0 of 2. " +
+        "Not duplicated: 5|1, 9|1. Re-run for those positions.",
+    );
   });
 });

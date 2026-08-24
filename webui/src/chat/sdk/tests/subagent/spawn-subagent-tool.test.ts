@@ -6,7 +6,6 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import {
   MAX_SPAWNS,
-  MAX_WORKER_STEPS,
   type RunWorkerOptions,
   type WorkerRunResult,
   buildWorkerConfig,
@@ -15,6 +14,7 @@ import {
   labelWorkerResult,
 } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups";
+import { DEFAULT_MAX_TOOL_STEPS } from "#webui/chat/sdk/step-budget";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
 import {
   type ChatClientConfig,
@@ -48,14 +48,18 @@ describe("buildWorkerConfig", () => {
     expect(worker.enabledTools?.["ppal-read-live-set"]).toBe(true);
   });
 
-  it("gives the worker its own step budget and a fresh history", () => {
+  it("gives the worker the orchestrator's step budget and a fresh history", () => {
+    // Deliberately not the default: a clone that dropped maxSteps would fall
+    // back to DEFAULT_MAX_TOOL_STEPS downstream and still pass with 25 here.
+    const steps = DEFAULT_MAX_TOOL_STEPS + 12;
     const config = createConfig({
+      maxSteps: steps,
       chatHistory: [{ role: "user", content: "orchestrator turn" }],
     });
 
     const worker = buildWorkerConfig(config);
 
-    expect(worker.maxSteps).toBe(MAX_WORKER_STEPS);
+    expect(worker.maxSteps).toBe(steps);
     expect(worker.chatHistory).toStrictEqual([]);
   });
 
@@ -329,6 +333,19 @@ describe("createSpawnSubagentTool", () => {
     expect(workerConfig.chatHistory).toStrictEqual([]);
   });
 
+  it("withholds ppal-context even with no briefing to fetch", async () => {
+    // Nothing about the context store's write race depends on the briefing, so
+    // the tool withholds it on every path — here, one with no getBriefing dep.
+    const { tool, runWorker } = setup();
+
+    await tool.execute!({ task: "x" }, options());
+
+    const workerConfig = await firstCall(runWorker).resolveConfig();
+
+    expect(workerConfig.enabledTools?.["ppal-context"]).toBe(false);
+    expect(workerConfig.enabledTools?.["ppal-connect"]).toBeUndefined();
+  });
+
   it("forwards the tool-call id and abort signal to the worker", async () => {
     const { tool, runWorker } = setup();
     const controller = new AbortController();
@@ -413,7 +430,7 @@ describe("createSpawnSubagentTool", () => {
 
     expect(spawnState.count).toBe(2);
     expect(
-      runWorker.mock.calls.map((c) => c[0].toolCallId).sort(),
+      runWorker.mock.calls.map((c) => c[0].toolCallId).toSorted(),
     ).toStrictEqual(["tc1", "tc2"]);
     // Two workers, two distinct identities.
     expect(

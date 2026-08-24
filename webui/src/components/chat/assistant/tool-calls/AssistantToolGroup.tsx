@@ -55,28 +55,28 @@ export function AssistantToolGroup({
 
   return (
     <details
-      className={`disclosure text-xs p-2 font-mono bg-zinc-400/50 dark:bg-zinc-900 rounded-lg ${
+      className={`disclosure rounded-lg bg-zinc-400/50 p-2 font-mono text-xs dark:bg-zinc-900 ${
         hasPending ? "animate-pulse" : ""
       } ${hasError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
-      <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
         <DisclosureChevron />
         🛠️ {hasPending ? "using tools: " : ""}
         {firstName} and {otherCount} other tool{otherCount !== 1 ? "s" : ""}
         {hasError && !hasPending && (
-          <span className="text-red-700 dark:text-red-400 font-normal">
+          <span className="font-normal text-red-700 dark:text-red-400">
             {" "}
             — {errorCount} failed
           </span>
         )}
         {hasWarnings && !hasError && !hasPending && (
-          <span className="text-yellow-700 dark:text-yellow-400 font-normal">
+          <span className="font-normal text-yellow-700 dark:text-yellow-400">
             {" "}
             — {warningCount} warning{warningCount !== 1 ? "s" : ""}
           </span>
         )}
       </summary>
-      <div className="flex flex-col gap-2 mt-2">
+      <div className="mt-2 flex flex-col gap-2">
         {parts.map((part, i) => {
           if (part.type !== "tool") return null;
 

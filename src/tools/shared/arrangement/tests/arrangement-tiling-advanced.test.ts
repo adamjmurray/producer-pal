@@ -16,7 +16,7 @@ import {
   setupScene,
   setupTileClip,
   setupTrackWithQueuedMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import { createPartialTile, tileClipToRange } from "../arrangement-tiling.ts";
 
 beforeEach(() => {
@@ -75,7 +75,6 @@ describe("createPartialTile", () => {
       track,
       500,
       6,
-      1000,
       true,
       mockContext,
     );
@@ -90,16 +89,9 @@ describe("createPartialTile", () => {
       holdingEndTime: 1010,
     });
 
-    createPartialTile(
-      sourceClip,
-      track,
-      500,
-      8,
-      1000,
-      true,
-      mockContext,
-      false,
-    );
+    createPartialTile(sourceClip, track, 500, 8, true, mockContext, {
+      adjustPreRoll: false,
+    });
 
     expect(track.call).toHaveBeenCalledTimes(5);
   });
@@ -138,11 +130,9 @@ describe("createPartialTile", () => {
       track,
       500,
       6,
-      1000,
       true,
       mockContext,
-      false,
-      10,
+      { adjustPreRoll: false, contentOffset: 10 },
     );
 
     expect(result.set).toHaveBeenCalledWith("start_marker", 4);
@@ -165,16 +155,9 @@ describe("createPartialTile", () => {
       finalClipProps: { start_marker: 2, loop_start: 6, end_time: 100 },
     });
 
-    return createPartialTile(
-      sourceClip,
-      track,
-      500,
-      6,
-      1000,
-      true,
-      mockContext,
+    return createPartialTile(sourceClip, track, 500, 6, true, mockContext, {
       adjustPreRoll,
-    );
+    });
   }
 });
 
@@ -193,14 +176,7 @@ describe("tileClipToRange", () => {
     setupTileClip("201");
     setupTileClip("202");
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      12,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 12, mockContext);
 
     expect(track.call).toHaveBeenCalledTimes(3);
     expect(track.call).toHaveBeenNthCalledWith(
@@ -243,14 +219,7 @@ describe("tileClipToRange", () => {
     setupClip("300", { properties: { end_time: 1004 } });
     setupTileClip("302");
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      10,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 10, mockContext);
 
     expect(result.length).toBeGreaterThan(2);
   });
@@ -270,14 +239,7 @@ describe("tileClipToRange", () => {
     const track = setupTrackWithQueuedMethods(0, {});
 
     // totalLength 2 < clipLength 4 → zero full tiles, a 2-beat partial at 100.
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      2,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 2, mockContext);
 
     expect(result).toStrictEqual([]);
     expect(track.call).not.toHaveBeenCalled();
@@ -300,14 +262,7 @@ describe("tileClipToRange", () => {
 
     // totalLength 4 === clipLength 4 → one full tile at 100, on top of the
     // source [100,104]. Remainder is 0, so there is no partial tile either.
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      4,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
     expect(result).toStrictEqual([]);
     expect(track.call).not.toHaveBeenCalled();
@@ -321,14 +276,7 @@ describe("tileClipToRange", () => {
 
     setupTileClip("200");
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      4.0005,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 4.0005, mockContext);
 
     expect(track.call).toHaveBeenCalledTimes(1);
     expect(result).toHaveLength(1);
@@ -347,7 +295,7 @@ describe("tileClipToRange", () => {
 
     setupTileClip("200", { start_marker: 2, loop_start: 4 });
 
-    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext, {
+    tileClipToRange(sourceClip, track, 100, 4, mockContext, {
       adjustPreRoll: false,
     });
 
@@ -358,14 +306,7 @@ describe("tileClipToRange", () => {
     const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {});
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      0,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 0, mockContext);
 
     expect(track.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual([]);
@@ -396,17 +337,9 @@ describe("tileClipToRange", () => {
     const tile2 = setupTileClip("201", { start_marker: 2, loop_start: 2 });
     const tile3 = setupTileClip("202", { start_marker: 2, loop_start: 2 });
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      24,
-      1000,
-      mockContext,
-      {
-        startOffset: 3,
-      },
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 24, mockContext, {
+      startOffset: 3,
+    });
 
     expect(tile1.set).toHaveBeenCalledWith("start_marker", 5);
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 5);
@@ -456,7 +389,7 @@ describe("tileClipToRange", () => {
       end_time: 100,
     });
 
-    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+    tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
     expect(tile.set).toHaveBeenCalledWith("start_marker", 4);
   });
@@ -479,15 +412,9 @@ describe("tileClipToRange", () => {
     const { sourceClip, track, tiles } = setupThreeTileMocks();
 
     // Use tileLength larger than clip to shift offset through content
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      15,
-      1000,
-      mockContext,
-      { tileLength: 5 },
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 15, mockContext, {
+      tileLength: 5,
+    });
 
     // tile0: offset=0, marker = 0+0 = 0
     // tile1: offset=5, marker = 0+(5%4) = 0+1 = 1
@@ -501,17 +428,9 @@ describe("tileClipToRange", () => {
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
     const { sourceClip, track, tiles } = setupThreeTileMocks();
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      12,
-      1000,
-      mockContext,
-      {
-        startOffset: 0,
-      },
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 12, mockContext, {
+      startOffset: 0,
+    });
 
     expect(tiles[0]!.set).toHaveBeenCalledWith("start_marker", 0);
     expect(tiles[1]!.set).toHaveBeenCalledWith("start_marker", 0);
@@ -548,7 +467,7 @@ describe("tileClipToRange", () => {
 
     setupClip("700", { path: "live_set tracks 0 clip_slots 0 clip" });
 
-    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+    tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
     expect(slot.call).toHaveBeenCalledWith(
       "create_audio_clip",
@@ -576,7 +495,7 @@ describe("tileClipToRange", () => {
     });
     const tile = setupTileClip("200");
 
-    tileClipToRange(sourceClip, track, 100, 12, 1000, mockContext, {
+    tileClipToRange(sourceClip, track, 100, 12, mockContext, {
       tileLength: 6,
     });
 
@@ -608,7 +527,7 @@ describe("tileClipToRange", () => {
     setupTileClip("200");
     const tile2 = setupTileClip("202");
 
-    tileClipToRange(sourceClip, track, 200, 18, 1000, mockContext, {
+    tileClipToRange(sourceClip, track, 200, 18, mockContext, {
       tileLength: 6,
     });
 
@@ -631,14 +550,7 @@ describe("tileClipToRange", () => {
     setupTileClip("200");
     setupTileClip("202");
 
-    const result = tileClipToRange(
-      sourceClip,
-      track,
-      100,
-      12,
-      1000,
-      mockContext,
-    );
+    const result = tileClipToRange(sourceClip, track, 100, 12, mockContext);
 
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -680,7 +592,7 @@ function tilePartialOnlyMidiSource() {
   setupClip("300", { properties: { end_time: 1008 } });
   setupTileClip("301");
 
-  const result = tileClipToRange(sourceClip, track, 100, 3, 1000, mockContext);
+  const result = tileClipToRange(sourceClip, track, 100, 3, mockContext);
 
   return { result, track };
 }
@@ -697,7 +609,7 @@ function tileSourceAsSingleFullTile(sourceClip: LiveAPI) {
   });
   const tile = setupTileClip("200");
 
-  tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
+  tileClipToRange(sourceClip, track, 100, 4, mockContext);
 
   return { track, tile };
 }

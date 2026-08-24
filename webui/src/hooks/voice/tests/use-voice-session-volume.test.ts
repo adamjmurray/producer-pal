@@ -106,7 +106,8 @@ import {
   type VoiceAudioGraph,
 } from "#webui/hooks/voice/voice-audio-graph";
 
-const { defaultParams, stubFetchOk } = createVoiceSessionTestKit(mocks);
+const { connectAndGetSession, defaultParams, stubFetchOk } =
+  createVoiceSessionTestKit(mocks);
 
 const REAL_FETCH = globalThis.fetch;
 const REAL_AUDIO_CONTEXT = (globalThis as { AudioContext?: unknown })
@@ -424,14 +425,7 @@ describe("useVoiceSession output volume (Web Audio gain)", () => {
   });
 
   it("tears down the gain graph (disconnect + close) on disconnect", async () => {
-    stubFetchOk({ value: "ek_x" });
-
-    const { result } = renderHook(() => useVoiceSession(defaultParams()));
-
-    await act(async () => {
-      await result.current.connect();
-    });
-
+    const { result } = await connectAndGetSession();
     const gain = gainNodes[0]!;
 
     await act(async () => {

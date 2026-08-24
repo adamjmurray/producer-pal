@@ -4,16 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { haltRunningToolCalls } from "#webui/chat/helpers/halt-running-tool-calls";
 import { type UIMessage } from "#webui/types/messages";
 import {
+  beginTurn,
   filterOverrides,
-  resolveInitConnection,
   runChatTurn,
   showMissingApiKeyError,
-  validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
 import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
+import { useInitializeChat } from "./helpers/use-initialize-chat";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -55,7 +56,7 @@ export function useChat<
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const active = useActiveSettings();
-  const { lockSettings, restoreSettings, clearSettings } = active;
+  const { restoreSettings, clearSettings } = active;
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
@@ -69,6 +70,11 @@ export function useChat<
   } = useMessageQueue();
   const [toolLimitReached, setToolLimitReached] = useState(false);
   const clientRef = useRef<TClient | null>(null);
+  // The in-flight client.initialize() of whichever turn built the current
+  // client, or null once it settles. clientRef is assigned before that connect
+  // resolves, so a turn that finds a client still has to wait on this before
+  // streaming; see the send path below.
+  const pendingInitRef = useRef<Promise<void> | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   // Bootstraps a client from pending history when compaction is requested on a
   // restored-but-not-yet-sent conversation. Held in a ref because useCompaction
@@ -77,6 +83,9 @@ export function useChat<
   const abortControllerRef = useRef<AbortController | null>(null);
   // Per-turn state runChatTurn owns; see there for why a turn takes a ticket.
   const turnIdRef = useRef(0);
+  // Bumped every time the loaded conversation is torn down. A turn that fails
+  // after a bump has nothing left to recover onto — see runChatTurn.
+  const conversationGenRef = useRef(0);
   const pendingUserMessageRef = useRef<TMessage | null>(null);
   const thinkingRef = useRef(active.activeThinking);
 
@@ -91,6 +100,23 @@ export function useChat<
   // teardown, so without this the final client's MCP connection leaks. dispose()
   // is idempotent, so this no-ops when the client was already disposed/cleared.
   useEffect(() => () => clientRef.current?.dispose?.(), []);
+
+  const { initializeChat, applyPendingLock, clearPendingLock } =
+    useInitializeChat({
+      provider,
+      model,
+      thinking,
+      enabledTools,
+      mcpStatus,
+      mcpError,
+      checkMcpConnection,
+      resolveConnection,
+      adapter,
+      extraParams,
+      active,
+      clientRef,
+      pendingInitRef,
+    });
 
   const { executeWithRetry, abortRetry } = useExecuteWithRetry({
     adapter,
@@ -110,6 +136,7 @@ export function useChat<
   } = useCompaction({
     clientRef,
     bootstrapClientRef,
+    pendingHistoryRef,
     adapter,
     autoSaveRef,
     messages,
@@ -119,10 +146,16 @@ export function useChat<
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
-    // Drop any pending-fork signal on teardown. A fork aborted before it streamed
-    // assistant content never autosaves, so the signal would otherwise linger and
-    // mis-branch the next, unrelated conversation's save into a spurious sibling.
-    if (pendingForkRef) pendingForkRef.current = null;
+    // Mark whatever tool call was in flight as stopped. The stream reconciles
+    // its own history on the way out, but that repaint arrives after the abort
+    // and onMessageUpdate drops it, so the card would otherwise sit at
+    // "working…" for the rest of the session.
+    setMessages(haltRunningToolCalls);
+    // Leave any pending-fork signal set. Stop ends the turn, but the client it
+    // built still holds the fork's truncated history, so the teardown autosave
+    // that follows must still branch — clearing the signal here made that save
+    // reuse the source id and overwrite the conversation with the truncation.
+    // clearConversation drops the signal when the conversation itself goes away.
     abortRetry();
     setIsAssistantResponding(false);
     setRateLimitState(null);
@@ -130,19 +163,29 @@ export function useChat<
     // Deliberately leave the queue intact: aborting a turn is the same as a
     // failed turn, so queued follow-ups stay visible and flush on the next send.
     // Tearing down for a conversation switch clears the queue in clearConversation.
-  }, [abortRetry, pendingForkRef]);
+  }, [abortRetry]);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
+    // Every switch/new/delete/back-forward funnels through here, so this is the
+    // one place that knows the conversation a running turn belongs to is gone.
+    conversationGenRef.current++;
     clientRef.current?.dispose?.();
     clientRef.current = null;
+    // The client this lock described is gone, so it must not carry into the
+    // next conversation.
+    clearPendingLock();
     pendingHistoryRef.current = null;
+    // The conversation this fork branched from is gone, so nothing is left to
+    // branch: drop the signal here or it mis-branches the next, unrelated save
+    // into a spurious sibling. stopResponse deliberately keeps it.
+    if (pendingForkRef) pendingForkRef.current = null;
     // stopResponse aborts any in-flight stream and resets the transient response
-    // state (incl. the pending-fork signal). A UI-driven switch already called it,
-    // but a browser Back/Forward (hashchange) reaches here directly — without the
-    // abort the orphaned stream's setMessages clobbers the freshly-restored
-    // conversation and autosaves the mixed history under the new id. Idempotent,
-    // so safe for every entry point.
+    // state. A UI-driven switch already called it, but a browser Back/Forward
+    // (hashchange) reaches here directly — without the abort the orphaned
+    // stream's setMessages clobbers the freshly-restored conversation and
+    // autosaves the mixed history under the new id. Idempotent, so safe for
+    // every entry point.
     stopResponse();
     // Switching/clearing a conversation drops any queued follow-ups so they
     // can't leak into the next conversation (stopResponse leaves them intact
@@ -150,7 +193,14 @@ export function useChat<
     clearQueue();
     clearSettings();
     invalidateCompactionUndo();
-  }, [stopResponse, clearQueue, clearSettings, invalidateCompactionUndo]);
+  }, [
+    stopResponse,
+    clearQueue,
+    clearSettings,
+    invalidateCompactionUndo,
+    clearPendingLock,
+    pendingForkRef,
+  ]);
 
   const getChatHistory = useGetChatHistory(clientRef, pendingHistoryRef);
 
@@ -162,6 +212,8 @@ export function useChat<
       // actually replace a live client — clearConversation and initializeChat —
       // own the dispose.
       clientRef.current = null;
+      // Same as clearConversation: no client, so no lock to hand anyone.
+      clearPendingLock();
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
       restoreSettings(lockedSettings);
@@ -169,78 +221,7 @@ export function useChat<
       setToolLimitReached(false);
       invalidateCompactionUndo();
     },
-    [adapter, restoreSettings, invalidateCompactionUndo],
-  );
-
-  const initializeChat = useCallback(
-    async (
-      chatHistory?: TMessage[],
-      overrides?: MessageOverrides,
-      stillCurrent?: () => boolean,
-    ) => {
-      await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
-
-      const effectiveThinking = overrides?.thinking ?? thinking;
-      // Continue a restored conversation on its locked provider+model (see
-      // resolveInitConnection); brand-new conversations fall back to current
-      // settings. Rebuilding from current settings here is what previously
-      // switched restored conversations to the selected model on the next send.
-      const init = resolveInitConnection(
-        active,
-        { provider, model, enabledTools },
-        resolveConnection,
-        extraParams,
-      );
-
-      const config = adapter.buildConfig(
-        init.model,
-        effectiveThinking,
-        init.enabledTools,
-        chatHistory,
-        init.extraParams,
-      );
-
-      // The connection check can take real network round-trips, and Stop
-      // re-enables the composer while this turn is still in it — so by now the
-      // user may have re-sent, and the newer turn may already be streaming on
-      // the client below. Disposing it would close that stream's MCP connection
-      // mid-flight, so a superseded init bails instead. Callers with no ticket
-      // (compaction bootstrap) aren't racing a turn.
-      if (stillCurrent && !stillCurrent()) return;
-
-      // Dispose any prior client before replacing it — initializeChat is the
-      // fork/retry re-init path, so a live client (with an open MCP connection)
-      // can already be here.
-      clientRef.current?.dispose?.();
-      clientRef.current = adapter.createClient(init.apiKey, config);
-      await clientRef.current.initialize();
-      lockSettings({
-        model: init.model,
-        provider: init.provider,
-        thinking: effectiveThinking,
-        smallModelMode: init.smallModelMode,
-        systemInstruction: init.systemInstruction,
-        notation: init.notation,
-        // Pinned like the rest: a restored conversation reconnects with the
-        // toolset it ran with, so the model never loses a tool it has already
-        // used (or gains one its transcript never mentions).
-        enabledTools: init.enabledTools,
-      });
-    },
-    [
-      mcpStatus,
-      mcpError,
-      checkMcpConnection,
-      model,
-      provider,
-      thinking,
-      enabledTools,
-      resolveConnection,
-      active,
-      adapter,
-      extraParams,
-      lockSettings,
-    ],
+    [adapter, restoreSettings, invalidateCompactionUndo, clearPendingLock],
   );
 
   // Bootstrap a client from the restored history (mirrors handleSend's first-
@@ -251,8 +232,28 @@ export function useChat<
 
     if (!pendingHistory || !apiKey) return;
 
+    // The connect below takes real network round-trips, and nothing blocks the
+    // user from switching conversations during them. Every switch bumps the
+    // generation, so this is the same liveness check the send and fork paths
+    // make — it just tracks the conversation rather than a turn, since a
+    // bootstrap isn't one.
+    const conversationGen = conversationGenRef.current;
+    const stillLive = () => conversationGen === conversationGenRef.current;
+
+    await initializeChat(pendingHistory, undefined, stillLive);
+
+    // Switched while connecting. The refs below belong to the conversation the
+    // user moved TO, and this bootstrap has nothing to say about it: nulling
+    // its pending history would leave it with no client and nothing to send
+    // from, which the teardown autosave then persists over the real thing.
+    if (!stillLive()) return;
+
+    // The client owns the restored history now (init baked it in), so drop the
+    // fallback. Deferred until after init, same as the send and fork paths: a
+    // thrown init (MCP down, unusable provider config) leaves it intact so the
+    // conversation is still there for the next send. Nulling it up front left
+    // that send nothing to continue from, and it persisted the empty start.
     pendingHistoryRef.current = null;
-    await initializeChat(pendingHistory);
   }, [apiKey, initializeChat]);
 
   useEffect(() => {
@@ -272,6 +273,7 @@ export function useChat<
         autoSaveRef,
         pendingForkRef,
         turnIdRef,
+        conversationGenRef,
         pendingUserMessageRef,
         setMessages,
         setIsAssistantResponding,
@@ -305,6 +307,7 @@ export function useChat<
             adapter,
             userMessage,
             setMessages,
+            clientRef,
             pendingHistoryRef,
           );
 
@@ -315,19 +318,37 @@ export function useChat<
         const sendOptions = currentOptions;
 
         const succeeded = await runWithChat(async (stillCurrent) => {
-          if (!clientRef.current) {
-            const pendingHistory = pendingHistoryRef.current ?? undefined;
+          // Taken before setup so Stop can reach this turn while it is parked in
+          // the connect below — see beginTurn. Both parking points need it: this
+          // turn's own connect, and another turn's connect that this one adopts.
+          const { controller, stillLive } = beginTurn(
+            abortControllerRef,
+            stillCurrent,
+          );
 
-            pendingHistoryRef.current = null;
-            await initializeChat(pendingHistory, sendOptions, stillCurrent);
+          if (!clientRef.current) {
+            await initializeChat(
+              pendingHistoryRef.current ?? undefined,
+              sendOptions,
+              stillLive,
+            );
+          } else if (pendingInitRef.current) {
+            // A client is here but another turn is still connecting it — the
+            // user stopped that turn mid-connect (which re-enables the composer)
+            // and re-sent. Adopt the client, but wait for its connect: streaming
+            // now would send before the MCP tool catalog has landed.
+            await pendingInitRef.current;
           }
 
-          // Superseded while setting up: the user stopped this turn mid-connect
-          // (which re-enables the composer) and re-sent. The newer turn owns the
-          // abort ref and the client's stream now, so bail before taking either
-          // — two turns streaming into one chatHistory interleave, and both
-          // paint and autosave.
-          if (!stillCurrent()) return false;
+          // Stopped or superseded while setting up. Superseded: the user stopped
+          // this turn mid-connect (which re-enables the composer) and re-sent, so
+          // the newer turn owns the client's stream now — two turns streaming into
+          // one chatHistory interleave, and both paint and autosave. Stopped: the
+          // user is done with this turn, or switched conversations out from under
+          // it. Bailing here is also what keeps a switch from reaching the throw
+          // below, whose error recovery would overwrite the conversation the user
+          // just switched TO with this turn's stray message.
+          if (!stillLive()) return false;
 
           const client = clientRef.current;
 
@@ -335,9 +356,18 @@ export function useChat<
             throw new Error("Failed to initialize chat client");
           }
 
-          const controller = new AbortController();
+          // The client owns the restored history now (init baked it in), so
+          // drop the fallback. Deferred until here, same as a fork: a thrown
+          // init leaves it intact so the failure renders the existing
+          // conversation instead of replacing it with the message that failed
+          // to send — which the teardown autosave would then persist.
+          pendingHistoryRef.current = null;
 
-          abortControllerRef.current = controller;
+          // This turn is the one that streams, so it owns the lock for the
+          // client it's about to use — including one published by an init that
+          // was superseded (the adopt branch above never inits, so it would
+          // otherwise stream with nothing locked).
+          applyPendingLock();
 
           const filtered = filterOverrides(sendOptions, {
             thinking: thinkingRef.current,
@@ -362,6 +392,7 @@ export function useChat<
               client.resumeStream(controller.signal, filtered, shouldInterrupt),
             getHistory: () => client.chatHistory,
             stillCurrent,
+            stillLive,
           });
         }, userMessageEntry);
 
@@ -392,6 +423,7 @@ export function useChat<
       isCompactingRef,
       queueRef,
       drainQueue,
+      applyPendingLock,
     ],
   );
 
@@ -420,6 +452,7 @@ export function useChat<
     pendingForkRef,
     autoSaveRef,
     drainQueuedFollowUps,
+    applyPendingLock,
   });
 
   return {

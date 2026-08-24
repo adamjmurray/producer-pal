@@ -20,7 +20,6 @@ import {
   KICK_FILE,
   parseToolResult,
   type ReadClipResult,
-  resetConfig,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
@@ -165,15 +164,11 @@ describe("arrangement clip duplication crash workaround", () => {
   let audioShortId: string; // kick.aiff (shorter)
 
   beforeAll(async () => {
-    // Enable JSON output before creating clips (beforeEach hasn't run yet)
-    await resetConfig();
-    await sleep(50);
-
     // 4-bar MIDI session clip on t8/s0
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${MIDI_TRACK}/0`,
+        path: `t${MIDI_TRACK}/s0`,
         notes: "C3 1|1",
         length: "4bar",
       },
@@ -185,7 +180,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiShort = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${MIDI_TRACK}/1`,
+        path: `t${MIDI_TRACK}/s1`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -196,7 +191,7 @@ describe("arrangement clip duplication crash workaround", () => {
     // Read existing session sample clip on t5/s0 (sample.aiff — the longer one)
     const sample = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { slot: `${AUDIO_TRACK}/0` },
+      arguments: { path: `t${AUDIO_TRACK}/s0` },
     });
 
     audioLongId = parseToolResult<{ id: string }>(sample).id;
@@ -205,7 +200,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const kick = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${AUDIO_TRACK}/1`,
+        path: `t${AUDIO_TRACK}/s1`,
         sampleFile: KICK_FILE,
       },
     });

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   BodyField,
   DescriptionField,
@@ -62,33 +62,41 @@ export function MemoryEntryEditor(
 
   const targetName = isNew ? name : entry.name;
   const validation = useMemoryValidation(isNew, name, description, body);
-  // Autosave/create only when name (new only), description, and body are all
-  // non-empty — clearing a required field blocks the write and shows its error.
+  // Gate the write on the fields it actually writes. Creating, that's all three.
+  // Editing, the name field is a rename control and the write targets
+  // entry.name, so an emptied name must only refuse the rename — gating the
+  // autosave on it too would silently discard a body/description edit typed
+  // before the name was cleared.
   // Deliberately not gated on an in-flight save: the autosave hook chains
   // overlapping writes, and gating here would drop its unmount flush mid-save.
-  const canSave = validation.isValid;
+  const canSave = isNew ? validation.isValid : validation.contentValid;
 
   // Creating (or re-creating a memory deleted out from under us) is create-only
   // so it can't silently overwrite an existing entry the name collides with.
   const doSave = (): Promise<MemoryEntryView | null> =>
     collection.saveEntry(targetName, { description, content: body }, isNew);
 
-  const { noteSaved, externalUpdate, adoptExternal, settlePendingSave } =
-    useCollectionEntryAutosave({
-      canSave,
-      draftKey: memoryEntryKey({ name: targetName, description, body }),
-      autosaveOnIdle: !isNew,
-      // A new draft is created only by the explicit Create button — never
-      // silently flushed on navigate-away. Leaving a dirty new draft is guarded
-      // by a discard confirm (useNewMemoryLeaveGuard) instead.
-      flushOnLeave: !isNew,
-      persist: async () => {
-        const saved = await doSave();
+  const {
+    noteSaved,
+    externalUpdate,
+    adoptExternal,
+    settlePendingSave,
+    resumePendingSave,
+  } = useCollectionEntryAutosave({
+    canSave,
+    draftKey: memoryEntryKey({ name: targetName, description, body }),
+    autosaveOnIdle: !isNew,
+    // A new draft is created only by the explicit Create button — never
+    // silently flushed on navigate-away. Leaving a dirty new draft is guarded
+    // by a discard confirm (useNewMemoryLeaveGuard) instead.
+    flushOnLeave: !isNew,
+    persist: async () => {
+      const saved = await doSave();
 
-        return saved ? memoryEntryKey(saved) : null;
-      },
-      externalKey: entry != null ? memoryEntryKey(entry) : undefined,
-    });
+      return saved ? memoryEntryKey(saved) : null;
+    },
+    externalKey: entry != null ? memoryEntryKey(entry) : undefined,
+  });
 
   // A new draft with any field filled guards against silent loss: leaving it
   // (select another memory, switch tabs, close, or close the browser tab)
@@ -102,15 +110,17 @@ export function MemoryEntryEditor(
 
   // The name field's error + change/rename handlers (rename commit, and
   // surfacing a failed rename's reason under the field). See useMemoryRename.
-  const { nameError, onNameChange, onRename } = useMemoryRename({
+  const { nameError, renaming, onNameChange, onRename } = useMemoryRename({
     collection,
     entry,
     setName,
     description,
     body,
+    canSave,
     requiredError: validation.errors.name,
     noteSaved,
     settlePendingSave,
+    resumePendingSave,
     onRenamed,
   });
 
@@ -151,7 +161,7 @@ export function MemoryEntryEditor(
   };
 
   return (
-    <div className="flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {externalUpdate && (
         <ExternalUpdateBanner
           message="This memory was changed elsewhere (the assistant or another tab)."
@@ -167,6 +177,7 @@ export function MemoryEntryEditor(
         onBlur={() => validation.markTouched("name")}
         error={nameError}
         onRename={onRename}
+        renameDisabled={renaming}
       />
       <DescriptionField
         hint="One-line recall hook shown in the index."
@@ -203,7 +214,7 @@ const DISCARD_NEW_MEMORY_MESSAGE =
 
 /** What {@link useMemoryRename} needs from the editor's live draft. */
 interface MemoryRenameParams {
-  /** The collection hook (owns renameEntry + the shared saveError). */
+  /** The collection hook (owns renameEntry). */
   collection: UseMemoryCollectionReturn;
   /** The entry being edited, or null when creating (no rename in that mode). */
   entry: MemoryEntryView | null;
@@ -213,21 +224,27 @@ interface MemoryRenameParams {
   description: string;
   /** The current body draft (carried into the rename write). */
   body: string;
+  /** Whether the draft's content is savable — the autosave's own gate. */
+  canSave: boolean;
   /** The client-side required-name error; it takes priority over a rename error. */
   requiredError?: string;
   /** Advance the autosave baseline to the renamed entry's echo. */
   noteSaved: (echoKey: string) => void;
   /** Settle the idle autosave (which targets the OLD slug) before renaming. */
   settlePendingSave: () => Promise<void>;
+  /** Put a dirty draft back on the autosave clock once the rename is over. */
+  resumePendingSave: () => boolean;
   /** Follow the entry to its new slug, keeping this editor mounted. */
   onRenamed: (from: string, to: string) => void;
 }
 
 /**
  * The name field's error plus its change/rename handlers. The error is a
- * required-field miss, else the reason a rename was refused (a name collision or
- * a server-rejected slug) — read fresh from the collection each render, not off
- * the stale rename closure — cleared as soon as the user edits the name. An
+ * required-field miss, else the reason a rename was refused (a collision, a
+ * server-rejected slug, a request that timed out), cleared as soon as the user
+ * edits the name. The rename's own message is pinned in local state rather than
+ * read off the shared saveError, which the autosave resumed just below clears
+ * on its next write. An
  * emptied/unchanged name never renames (an emptied one keeps its required error
  * visible; an unchanged one just normalizes whitespace). The current draft
  * fields ride along on the write so a dirty body isn't lost.
@@ -239,58 +256,114 @@ interface MemoryRenameParams {
  * draft that did diverge mid-rename is left dirty for the autosave to persist
  * under the NEW name — and a clean one doesn't re-save.
  *
- * The idle autosave is settled BEFORE the rename is dispatched
- * ({@link CollectionEntryAutosaveReturn.settlePendingSave}): both writes target
- * the current slug, and a save still racing the rename can re-create the entry
- * the rename just moved away from.
+ * The idle autosave is settled BEFORE the rename is dispatched and held off
+ * until it returns ({@link CollectionEntryAutosaveReturn.settlePendingSave}):
+ * both writes target the current slug, and a save still racing the rename can
+ * re-create the entry the rename just moved away from.
  * Extracted so the editor body stays within the line limit.
  * @param params - The live draft + collection the rename needs
  * @returns The name field's error and its change/rename handlers
  */
 function useMemoryRename(params: MemoryRenameParams): {
   nameError?: string;
+  renaming: boolean;
   onNameChange: (value: string) => void;
   onRename: (raw: string) => void;
 } {
   const { collection, entry, setName, description, body } = params;
   const { requiredError, noteSaved, settlePendingSave, onRenamed } = params;
-  const [renameFailed, setRenameFailed] = useState(false);
+  const { resumePendingSave, canSave } = params;
+  const [renameError, setRenameError] = useState<string | null>(null);
+  // One rename at a time. The list commits a rename only on success, so `entry`
+  // still reads the OLD slug during the round trip: a second commit would name
+  // the slug the first is already moving, and its refusal would then revert the
+  // name field — silently undoing the rename that did land. The ref refuses it;
+  // the state disables the field so the refusal is visible rather than mute.
+  const [renaming, setRenaming] = useState(false);
+  const renamingRef = useRef(false);
+  // The live draft, for the close-during-rename catch-up below: commitRename's
+  // own closure is blur-time stale, and what the user typed after the rename
+  // went out is exactly what the rename didn't carry. Synced in an effect
+  // (never during render); the catch-up only ever reads it after an await.
+  const draftRef = useRef({ description, body, canSave });
 
-  const nameError =
-    requiredError ??
-    (renameFailed ? (collection.saveError ?? undefined) : undefined);
+  useEffect(() => {
+    draftRef.current = { description, body, canSave };
+  });
+
+  const nameError = requiredError ?? renameError ?? undefined;
 
   // Drive the name input and dismiss any stale rename error as the user edits.
   const onNameChange = (value: string): void => {
     setName(value);
-    setRenameFailed(false);
+    setRenameError(null);
   };
 
   // Commit a rename on blur / Enter; see the hook's doc for the full contract.
-  const commitRename = async (oldName: string, to: string): Promise<void> => {
-    // Never leave an autosave of the OLD slug racing the rename.
-    await settlePendingSave();
+  // Takes the entry rather than its name: a refused rename leaves it the live
+  // one, and the catch-up below needs it whole.
+  const commitRename = async (
+    from: MemoryEntryView,
+    to: string,
+  ): Promise<void> => {
+    renamingRef.current = true;
+    setRenaming(true);
 
-    const renamed = await collection.renameEntry(oldName, to, {
-      description,
-      content: body,
-    });
+    try {
+      // Never leave an autosave of the OLD slug racing the rename — this holds the
+      // autosave off for the whole round trip, not just the debounce armed now.
+      await settlePendingSave();
 
-    if (renamed == null) {
-      setRenameFailed(true);
-      setName(oldName);
+      const { entry: renamed, error } = await collection.renameEntry(
+        from.name,
+        to,
+        {
+          description,
+          content: body,
+        },
+      );
 
-      return;
+      // The move is over either way, so put the draft back on the clock: nothing
+      // here moves draftKey (it follows entry.name, not the name field), so a body
+      // edit typed before or during the rename would otherwise sit off the clock
+      // until the next keystroke. False means the editor closed meanwhile, so
+      // there is no clock left and the draft is this continuation's to write.
+      const onTheClock = resumePendingSave();
+
+      if (renamed == null) {
+        setRenameError(error);
+        setName(from.name);
+
+        // The move didn't happen, so `from` is still the live entry — and a
+        // closed editor has no clock left to write what was typed after the
+        // rename went out. Same catch-up as the success path, against the slug
+        // that stayed put. Skipping it lost the draft outright: the refused
+        // write saved nothing, and the hold suppressed the unmount flush.
+        if (!onTheClock) {
+          await saveDraftAfterClose(collection, from, draftRef.current);
+        }
+
+        return;
+      }
+
+      setRenameError(null);
+      setName(renamed.name);
+      noteSaved(memoryEntryKey(renamed));
+      onRenamed(from.name, renamed.name);
+
+      if (!onTheClock) {
+        await saveDraftAfterClose(collection, renamed, draftRef.current);
+      }
+    } finally {
+      // Never latch: miss this and the field stays disabled for the rest of the
+      // mount, with every later rename refused.
+      renamingRef.current = false;
+      setRenaming(false);
     }
-
-    setRenameFailed(false);
-    setName(renamed.name);
-    noteSaved(memoryEntryKey(renamed));
-    onRenamed(oldName, renamed.name);
   };
 
   const onRename = (raw: string): void => {
-    if (entry == null) return;
+    if (entry == null || renamingRef.current) return;
     const trimmed = raw.trim();
 
     if (trimmed === "" || trimmed === entry.name) {
@@ -299,10 +372,42 @@ function useMemoryRename(params: MemoryRenameParams): {
       return;
     }
 
-    void commitRename(entry.name, trimmed);
+    void commitRename(entry, trimmed);
   };
 
-  return { nameError, onNameChange, onRename };
+  return { nameError, renaming, onNameChange, onRename };
+}
+
+/**
+ * Write a draft the closing editor's autosave never got to, once a rename it
+ * was held off for has landed.
+ *
+ * Closing during the round trip is the one gap the hold leaves: it suppresses
+ * the unmount flush too, so nothing typed after the rename was dispatched has
+ * anywhere to go. Which slug to write depends on how the rename ended. On
+ * success it is the NEW one: the old is gone, and re-creating it would
+ * resurrect the entry the rename moved away from. On a refusal it is the OLD
+ * one, still live precisely because the move never happened.
+ * @param collection - The collection hook (still mounted above the editor)
+ * @param target - The entry the draft belongs to now
+ * @param draft - The editor's last live draft, and its own savable gate
+ */
+async function saveDraftAfterClose(
+  collection: UseMemoryCollectionReturn,
+  target: MemoryEntryView,
+  draft: { description: string; body: string; canSave: boolean },
+): Promise<void> {
+  const { description, body } = draft;
+
+  if (!draft.canSave) return;
+
+  if (
+    memoryEntryKey({ ...target, description, body }) === memoryEntryKey(target)
+  ) {
+    return;
+  }
+
+  await collection.saveEntry(target.name, { description, content: body });
 }
 
 /**
@@ -325,7 +430,7 @@ function CreateMemoryFooter(props: {
         type="button"
         onClick={props.onCreate}
         disabled={props.saveStatus === "saving"}
-        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Create memory
       </button>
@@ -347,6 +452,12 @@ interface MemoryValidation {
   errors: Partial<Record<MemoryField, string>>;
   /** Whether every required field (name, description, body) is non-empty. */
   isValid: boolean;
+  /**
+   * Whether the two fields an existing memory's write carries (description,
+   * body) are non-empty. Excludes the name, which is that mode's rename
+   * control rather than part of the write.
+   */
+  contentValid: boolean;
   /** Mark a field touched so its error can surface (on blur). */
   markTouched: (field: MemoryField) => void;
   /** Reveal every field's error (a failed Create). */
@@ -359,14 +470,15 @@ interface MemoryValidation {
  * attempted, while an existing memory starts "touched" so an already-empty
  * required field (e.g. an assistant-made memory with no description) is flagged
  * immediately. All three fields (name, description, body) are required in both
- * modes: emptying an existing memory's name shows the error and blocks the save
- * (the rename control keeps the field empty until a valid name is typed) just
- * like the description and body.
+ * modes, but they don't block the same things: emptying an existing memory's
+ * name shows the error and refuses the rename (the field stays empty until a
+ * valid name is typed) while its description and body keep autosaving —
+ * see `contentValid`.
  * @param isNew - Whether this is a new (create) draft
  * @param name - The current name draft (or the rename value for an existing one)
  * @param description - The current description draft
  * @param body - The current body draft
- * @returns The per-field errors, overall validity, and touch controls
+ * @returns The per-field errors, both validity flags, and touch controls
  */
 function useMemoryValidation(
   isNew: boolean,
@@ -400,10 +512,10 @@ function useMemoryValidation(
         ? "Memory contents are required."
         : undefined,
   };
-  const isValid =
-    !nameMissing && description.trim() !== "" && body.trim() !== "";
+  const contentValid = description.trim() !== "" && body.trim() !== "";
+  const isValid = !nameMissing && contentValid;
 
-  return { errors, isValid, markTouched, revealAll };
+  return { errors, isValid, contentValid, markTouched, revealAll };
 }
 
 /**

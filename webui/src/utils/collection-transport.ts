@@ -10,6 +10,8 @@
 // utilities rather than inside the hook module (see
 // #webui/hooks/context/use-doc-collection).
 
+import { COLLECTION_REQUEST_TIMEOUT_MS } from "#webui/lib/constants/transport";
+
 /**
  * GET the full collection.
  * @param url - The collection list endpoint
@@ -20,17 +22,22 @@ export async function fetchEntries<TView>(
   url: string,
   label: string,
 ): Promise<TView[]> {
-  const response = await fetch(url, { cache: "no-store" });
+  return await withDeadline(
+    url,
+    { cache: "no-store" },
+    `${label} request timed out`,
+    async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          `${label} request failed (${response.status} ${response.statusText})`,
+        );
+      }
 
-  if (!response.ok) {
-    throw new Error(
-      `${label} request failed (${response.status} ${response.statusText})`,
-    );
-  }
+      const body = (await response.json()) as { entries?: TView[] };
 
-  const body = (await response.json()) as { entries?: TView[] };
-
-  return body.entries ?? [];
+      return body.entries ?? [];
+    },
+  );
 }
 
 // The mutating writes below set `keepalive: true` so a save/delete dispatched
@@ -41,6 +48,12 @@ export async function fetchEntries<TView>(
 // here — unlike the single-doc context/system-prompt writes (see
 // #webui/hooks/context/use-doc `makeContentTransport`), whose imported
 // bodies can far exceed it, so those deliberately stay a plain fetch.
+//
+// Every request here — the list read included — also runs under a deadline (see
+// withDeadline). A caller can't tell a hung request from a slow one, so it keeps
+// waiting: the memory editor holds autosave off across a rename until the write
+// settles, and one that never settled used to kill autosave silently for the
+// rest of the editor's mount.
 
 /**
  * PUT one entry.
@@ -89,11 +102,7 @@ export async function deleteEntryRequest(
   url: string,
   label: string,
 ): Promise<void> {
-  const response = await fetch(url, { method: "DELETE", keepalive: true });
-
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
-  }
+  await writeRequest(url, { method: "DELETE" }, label, () => Promise.resolve());
 }
 
 /**
@@ -108,20 +117,83 @@ async function putJson<TView>(
   body: unknown,
   label: string,
 ): Promise<TView> {
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    keepalive: true,
-  });
+  return await writeRequest(
+    url,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    label,
+    async (response) => ((await response.json()) as { entry: TView }).entry,
+  );
+}
 
-  if (!response.ok) {
-    throw new Error(await writeErrorMessage(response, label));
+/**
+ * Send one write under the collection deadline, failing it on a non-2xx with
+ * the server's own error message.
+ * @param url - The endpoint to write to
+ * @param init - Method, headers, and body for the request
+ * @param label - Error-message label (e.g. "Memory")
+ * @param readBody - Reads the successful response
+ * @returns Whatever readBody read
+ */
+async function writeRequest<T>(
+  url: string,
+  init: RequestInit,
+  label: string,
+  readBody: (response: Response) => Promise<T>,
+): Promise<T> {
+  return await withDeadline(
+    url,
+    { ...init, keepalive: true },
+    `${label} update timed out`,
+    async (response) => {
+      if (!response.ok)
+        throw new Error(await writeErrorMessage(response, label));
+
+      return await readBody(response);
+    },
+  );
+}
+
+/**
+ * Run one request and fail it if the server doesn't answer in time. The deadline
+ * covers the body read too, since a response whose stream stalls hangs the
+ * caller exactly the way an unanswered request does.
+ * @param url - The endpoint to request
+ * @param init - Cache, method, headers, and body for the request
+ * @param timedOut - Error message for a request that outran the deadline
+ * @param handle - Checks the response and reads its body
+ * @returns Whatever handle read
+ */
+async function withDeadline<T>(
+  url: string,
+  init: RequestInit,
+  timedOut: string,
+  handle: (response: Response) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  // Nothing fires it once the page is gone, so a keepalive write dispatched from
+  // the beforeunload/unmount flush still finishes on its own.
+  const timer = setTimeout(
+    controller.abort.bind(controller),
+    COLLECTION_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    return await handle(
+      await fetch(url, { ...init, signal: controller.signal }),
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(timedOut, { cause: error });
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const parsed = (await response.json()) as { entry: TView };
-
-  return parsed.entry;
 }
 
 /**

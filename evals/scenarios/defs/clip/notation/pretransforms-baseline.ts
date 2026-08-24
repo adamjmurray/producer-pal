@@ -157,7 +157,7 @@ function recordFallbackPath(turn: number): EvalAssertion {
 /**
  * Common assertion head shared by every rewrite scenario below: connect ran,
  * the model read the notes (turn 1), it issued an update-clip (turn 2), and
- * the fallback path is classified. Each scenario appends its own llm_judge.
+ * the fallback path is classified.
  *
  * @returns The leading assertions every rewrite scenario shares
  */
@@ -183,11 +183,7 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
   kind: "capability",
   liveSet: LIVE_SET,
   // These scenarios grade the PATH the model takes (classifyFallback), not
-  // outcome quality — see the file header. recordFallbackPath is the
-  // authoritative gate; the judge is advisory commentary on the outcome and
-  // must not flip the result (it tends to misread the `transformed` count and
-  // misjudge pitch-scoped clears as risky).
-  judgeAdvisory: true,
+  // outcome quality — see the file header. recordFallbackPath is the grade.
 
   messages: [
     MSG_CONNECT,
@@ -197,14 +193,6 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
 
   assertions: [
     ...rewriteAssertionHead(),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the rewrite outcome (turn 2), not how the model framed it:
-1. The lead clip in bars 1–2 contains exactly the new phrase (C4 D4 Eb4 F4 G4 Ab4 G4 F4 on consecutive beats)
-2. None of the original melody notes remain in bars 1–2
-3. The work was done — pass even if the model used multiple tool calls`,
-    },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],
@@ -224,11 +212,7 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
   kind: "capability",
   liveSet: LIVE_SET,
   // These scenarios grade the PATH the model takes (classifyFallback), not
-  // outcome quality — see the file header. recordFallbackPath is the
-  // authoritative gate; the judge is advisory commentary on the outcome and
-  // must not flip the result (it tends to misread the `transformed` count and
-  // misjudge pitch-scoped clears as risky).
-  judgeAdvisory: true,
+  // outcome quality — see the file header. recordFallbackPath is the grade.
 
   messages: [
     MSG_CONNECT,
@@ -238,14 +222,6 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
 
   assertions: [
     ...rewriteAssertionHead(),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the rewrite outcome (turn 2):
-1. Bar 2 of the drum clip now has exactly 16 evenly-spaced hat hits on the closed-hat pitch (Ab1 in this drum rack)
-2. Bar 1's drum content is unchanged (kick, snare, hats from the original — none lost, none added)
-3. Any earlier hat fills that were in bar 2 are gone`,
-    },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],
@@ -263,11 +239,7 @@ export const pretransformsSnareSwapBaseline: EvalScenario = {
   kind: "capability",
   liveSet: LIVE_SET,
   // These scenarios grade the PATH the model takes (classifyFallback), not
-  // outcome quality — see the file header. recordFallbackPath is the
-  // authoritative gate; the judge is advisory commentary on the outcome and
-  // must not flip the result (it tends to misread the `transformed` count and
-  // misjudge pitch-scoped clears as risky).
-  judgeAdvisory: true,
+  // outcome quality — see the file header. recordFallbackPath is the grade.
 
   messages: [
     MSG_CONNECT,
@@ -277,14 +249,6 @@ export const pretransformsSnareSwapBaseline: EvalScenario = {
 
   assertions: [
     ...rewriteAssertionHead(),
-
-    {
-      type: "llm_judge",
-      prompt: `Evaluate ONLY the rewrite outcome (turn 2):
-1. Snare (E1) hits land on beats 2, 2.5, 4, 4.5 of EACH bar of the 2-bar drum clip (8 snares total)
-2. Original kicks (C1) and hats (Ab1) are unchanged in count and position
-3. No previous snare hits remain (the original snare on beats 2 and 4 has been cleared)`,
-    },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
   ],

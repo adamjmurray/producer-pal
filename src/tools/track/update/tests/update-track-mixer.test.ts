@@ -46,7 +46,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update gain only", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: -6,
     });
 
@@ -55,7 +55,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update pan only", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       pan: 0.5,
     });
 
@@ -64,7 +64,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update both gain and pan", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: -3,
       pan: -0.25,
     });
@@ -75,7 +75,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update gain/pan with other properties", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       name: "Test Track",
       gainDb: -12,
       pan: 1,
@@ -90,7 +90,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should handle minimum gain value", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: -70,
     });
 
@@ -99,7 +99,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should handle maximum gain value", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: 6,
     });
 
@@ -108,7 +108,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should handle minimum pan value (full left)", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       pan: -1,
     });
 
@@ -117,7 +117,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should handle maximum pan value (full right)", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       pan: 1,
     });
 
@@ -126,7 +126,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should handle zero gain and center pan", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: 0,
       pan: 0,
     });
@@ -137,7 +137,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should update mixer properties for multiple tracks", () => {
     updateTrack({
-      ids: "123,456",
+      id: "123,456",
       gainDb: -6,
       pan: 0.5,
     });
@@ -155,7 +155,7 @@ describe("updateTrack - mixer properties", () => {
     });
 
     updateTrack({
-      ids: "123",
+      id: "123",
       gainDb: -6,
       pan: 0.5,
     });
@@ -167,7 +167,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should set panning mode to split", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       panningMode: "split",
     });
 
@@ -176,7 +176,7 @@ describe("updateTrack - mixer properties", () => {
 
   it("should set panning mode to stereo", () => {
     updateTrack({
-      ids: "123",
+      id: "123",
       panningMode: "stereo",
     });
 
@@ -193,7 +193,7 @@ describe("updateTrack - mixer properties", () => {
     });
 
     updateTrack({
-      ids: "123",
+      id: "123",
       leftPan: -0.75,
       rightPan: 0.5,
     });
@@ -212,7 +212,7 @@ describe("updateTrack - mixer properties", () => {
     });
 
     updateTrack({
-      ids: "123",
+      id: "123",
       pan: 0.5,
     });
 
@@ -229,7 +229,7 @@ describe("updateTrack - mixer properties", () => {
     // Default panning_mode is 0 (stereo) from createGetMock fallback
 
     updateTrack({
-      ids: "123",
+      id: "123",
       leftPan: -0.5,
       rightPan: 0.5,
     });
@@ -249,7 +249,7 @@ describe("updateTrack - mixer properties", () => {
     // Start in stereo mode (default)
 
     updateTrack({
-      ids: "123",
+      id: "123",
       panningMode: "split",
       leftPan: -1,
       rightPan: 1,
@@ -269,7 +269,7 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} volume`,
     });
 
-    updateTrack({ ids: "123", gainDb: -6 });
+    updateTrack({ id: "123", gainDb: -6 });
 
     expect(volumeParam1.set).not.toHaveBeenCalled();
   });
@@ -280,7 +280,7 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} panning`,
     });
 
-    updateTrack({ ids: "123", pan: 0.5 });
+    updateTrack({ id: "123", pan: 0.5 });
 
     expect(panningParam1.set).not.toHaveBeenCalled();
   });
@@ -299,10 +299,27 @@ describe("updateTrack - mixer properties", () => {
       path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
-    updateTrack({ ids: "123", leftPan: -0.75, rightPan: 0.5 });
+    updateTrack({ id: "123", leftPan: -0.75, rightPan: 0.5 });
 
     expect(leftSplitParam1.set).not.toHaveBeenCalled();
     expect(rightSplitParam1.set).not.toHaveBeenCalled();
+  });
+
+  // Live accepts a set on a disabled parameter and ignores it. A track mixer
+  // is harder to disable than a rack chain's, but the guard is the same.
+  it("should warn and skip a disabled volume", () => {
+    volumeParam1 = registerMockObject("volume_param_1", {
+      path: `${livePath.track(0).mixerDevice()} volume`,
+      properties: { is_enabled: 0 },
+    });
+
+    updateTrack({ id: "123", gainDb: -6 });
+
+    expect(volumeParam1.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("updateTrack: gainDb is disabled"),
+    );
   });
 });
 

@@ -8,7 +8,8 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseIdOrPath } from "./live-api-path-utils.ts";
+import { buildOrReuse } from "./live-api-build.ts";
+import { NONEXISTENT_ID, parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {
   /**
@@ -19,7 +20,7 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.from = function (
     idOrPath: string | number | [string, string | number] | PathLike,
   ): LiveAPI {
-    return new LiveAPI(parseIdOrPath(idOrPath));
+    return buildOrReuse(parseIdOrPath(idOrPath));
   };
   LiveAPI.prototype.exists = function (this: LiveAPI): boolean {
     // A nonexistent object reports id "0" (a string) on Live 12.4.3 (v8) —
@@ -34,7 +35,7 @@ if (typeof LiveAPI !== "undefined") {
     // a path cleared to "" — it describes the wrapper, not the target.
     const id = this.id as string | number;
 
-    return id !== "id 0" && id !== "0" && id !== 0;
+    return id !== "id 0" && id !== NONEXISTENT_ID && id !== 0;
   };
 
   /**
@@ -71,15 +72,15 @@ if (typeof LiveAPI !== "undefined") {
       case "input_routing_type":
       case "output_routing_channel":
       case "output_routing_type": {
-        const rawValue = this.get(property) as unknown[] | undefined;
-        if (rawValue?.[0]) {
+        const rawValue = this.get(property);
+        if (Array.isArray(rawValue) && rawValue[0]) {
           try {
             const parsed = JSON.parse(rawValue[0] as string);
 
             return parsed[property];
           } catch (error) {
             console.warn(
-              `LiveAPI getProperty: failed to parse "${property}" response: ${errorMessage(error)}`,
+              `LiveAPI getProperty: failed to parse "${property}" response ${JSON.stringify(rawValue[0])}: ${errorMessage(error)}`,
             );
             return null;
           }
@@ -88,8 +89,11 @@ if (typeof LiveAPI !== "undefined") {
         return null;
       }
       default: {
-        const result = this.get(property) as unknown[] | undefined;
-        return result?.[0];
+        // get() returns the number 1, not an array, when there is no object.
+        // Array.isArray is what keeps that sentinel from reaching callers as a
+        // value. See the note on get() in src/types/live-api.d.ts.
+        const result = this.get(property);
+        return Array.isArray(result) ? result[0] : undefined;
       }
     }
   };
@@ -105,6 +109,8 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     property: string,
   ): unknown[] {
+    // Not defensive coding: get() returns the number 1 when there is no
+    // object, so this is the check that turns "no object" into an empty list.
     const result = this.get(property);
 
     return Array.isArray(result) ? result : [];
@@ -130,7 +136,8 @@ if (typeof LiveAPI !== "undefined") {
       case "output_routing_channel": {
         // Convert value to JSON format expected by Live API
         const jsonValue = JSON.stringify({ [property]: val });
-        return this.set(property, jsonValue);
+        this.set(property, jsonValue);
+        return;
       }
       case "selected_track":
       case "selected_scene":
@@ -141,11 +148,12 @@ if (typeof LiveAPI !== "undefined") {
           typeof val === "string" && !val.startsWith("id ") && /^\d+$/.test(val)
             ? `id ${val}`
             : val;
-        return this.set(property, formattedValue);
+        this.set(property, formattedValue);
+        return;
       }
       default:
         // For all other properties, use regular set
-        return this.set(property, val);
+        this.set(property, val);
     }
   };
 
@@ -160,6 +168,8 @@ if (typeof LiveAPI !== "undefined") {
   ): string[] {
     const idArray = this.get(name);
 
+    // get() returns the number 1 when there is no object, so this is what makes
+    // a missing collection read as empty rather than throwing.
     if (!Array.isArray(idArray)) {
       return [];
     }
@@ -182,7 +192,56 @@ if (typeof LiveAPI !== "undefined") {
     this: LiveAPI,
     name: string,
   ): LiveAPI[] {
-    return this.getChildIds(name).map((id) => new LiveAPI(id));
+    return this.getChildIds(name).map((id) => buildOrReuse(id));
+  };
+
+  /**
+   * Count a collection without building it. Use this instead of
+   * `getChildren(name).length`, which builds every child to read one number.
+   * @param name - Collection name to query
+   * @returns Number of children
+   */
+  LiveAPI.prototype.getChildCount = function (
+    this: LiveAPI,
+    name: string,
+  ): number {
+    return this.getChildIds(name).length;
+  };
+
+  /**
+   * Get one child of a collection, building only that one.
+   * @param name - Collection name to query
+   * @param index - Child index
+   * @returns The child, or null when the index is out of range
+   */
+  LiveAPI.prototype.getChildAt = function (
+    this: LiveAPI,
+    name: string,
+    index: number,
+  ): LiveAPI | null {
+    const id = this.getChildIds(name)[index];
+
+    return id == null ? null : buildOrReuse(id);
+  };
+
+  /**
+   * Whether any child passes a test, building children one at a time and
+   * stopping at the first pass. `getChildren(name).some(...)` builds the whole
+   * collection first, however early the answer is known.
+   * @param name - Collection name to query
+   * @param predicate - Test run against each child in order
+   * @returns True as soon as a child passes
+   */
+  LiveAPI.prototype.someChild = function (
+    this: LiveAPI,
+    name: string,
+    predicate: (child: LiveAPI) => boolean,
+  ): boolean {
+    for (const id of this.getChildIds(name)) {
+      if (predicate(buildOrReuse(id))) return true;
+    }
+
+    return false;
   };
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {

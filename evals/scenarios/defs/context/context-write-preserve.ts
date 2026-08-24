@@ -4,8 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenarios: when the model adds a fact to a user-owned layer, does the rest of
- * the document SURVIVE?
+ * When the model adds a fact to a user-owned layer, does the rest of the
+ * document SURVIVE?
  *
  * `action:write` replaces the whole document — there is no append mode. So to
  * add one fact, the model must send back everything that was already there plus
@@ -15,13 +15,14 @@
  * This is the severity question behind the confirm-before-writing failure. A
  * model that skips the confirmation but carries the document forward is merely
  * presumptuous. A model that skips the confirmation AND sends only the new fact
- * silently destroys everything the user had accumulated. These scenarios seed a
- * NON-EMPTY document — which the layer-routing scenarios deliberately do not —
- * and inspect the `content` the model actually sends.
+ * silently destroys everything the user had accumulated. This scenario seeds
+ * NON-EMPTY documents — which the layer-routing scenarios deliberately do not —
+ * and inspects the `content` the model actually sends. Both layers are exercised
+ * in one run; the project write comes first, and carrying that document forward
+ * does prime the global write that follows.
  *
- * The judge is ADVISORY here: what survived the write is read straight off the
- * `content` argument, so the custom assertion pins it exactly. See
- * context-write-layers.ts for why an un-advisory judge misfires on these.
+ * No LLM judge: what survived the write is read straight off the `content`
+ * argument, so the custom assertion pins it exactly.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -50,60 +51,21 @@ const EXISTING_GLOBAL = [
   "- I like strong chord progressions rooted in western music theory.",
 ].join("\n");
 
-export const contextWritePreservesProject: EvalScenario = {
-  id: "context-write-preserves-project",
-  description: "Adding a project fact keeps the rest of the document",
+export const contextWritePreserves: EvalScenario = {
+  id: "context-write-preserves",
+  description: "Adding a fact to project or global context keeps the rest",
   kind: "regression",
   liveSet: CONTEXT_LIVE_SET,
   reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   config: { projectContext: EXISTING_PROJECT },
-
-  ...seedContext({}),
-
-  messages: [
-    MSG_CONNECT,
-    "One more thing about this track: the drop lands at bar 33, and I want the " +
-      "bass sidechained hard to the kick. Save that with the project notes.",
-  ],
-
-  assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    // The write is explicitly asked for here, so confirmation isn't in play —
-    // this isolates the one question: did the existing document survive?
-    assertContextWritePreserves({
-      scope: "project",
-      turn: "any",
-      mustContain: ["deep house", "Burial", "16 bars"],
-    }),
-
-    {
-      type: "llm_judge",
-      prompt: `The project context already recorded the genre (deep house, 124 BPM),
-a reference track (Burial - Archangel), and a 16-bar pad intro. The user asked to
-add a new fact (drop at bar 33, sidechained bass). Since action:write REPLACES the
-whole document, evaluate whether the assistant wrote back the existing facts ALONG
-WITH the new one, rather than replacing the document with only the new fact.`,
-    },
-  ],
-};
-
-export const contextWritePreservesGlobal: EvalScenario = {
-  id: "context-write-preserves-global",
-  description: "Adding a global preference keeps the rest of the document",
-  kind: "regression",
-  liveSet: CONTEXT_LIVE_SET,
-  reuseLiveSet: true,
-  // Judge is commentary, not a gate — see the file header.
-  judgeAdvisory: true,
 
   ...seedContext({ global: EXISTING_GLOBAL }),
 
   messages: [
     MSG_CONNECT,
+    "One more thing about this track: the drop lands at bar 33, and I want the " +
+      "bass sidechained hard to the kick. Save that with the project notes.",
     "Add this to my global preferences: I always want tracks named in lowercase, " +
       "in every project.",
   ],
@@ -111,18 +73,17 @@ export const contextWritePreservesGlobal: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
+    // Both writes are explicitly asked for, so confirmation isn't in play —
+    // this isolates the one question: did the existing document survive?
+    assertContextWritePreserves({
+      scope: "project",
+      turn: "any",
+      mustContain: ["deep house", "Burial", "16 bars"],
+    }),
     assertContextWritePreserves({
       scope: "global",
       turn: "any",
       mustContain: ["Adam", "chord progressions"],
     }),
-
-    {
-      type: "llm_judge",
-      prompt: `The global context already said to call the user Adam and that they
-like strong chord progressions. The user asked to ADD a naming preference. Since
-action:write REPLACES the whole document, evaluate whether the assistant preserved
-the existing preferences alongside the new one, rather than wiping them.`,
-    },
   ],
 };

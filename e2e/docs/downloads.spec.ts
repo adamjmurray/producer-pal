@@ -34,7 +34,7 @@ function findDownloadHrefs(): string[] {
     }
   }
 
-  return [...hrefs].sort();
+  return [...hrefs].toSorted();
 }
 
 const linkedHrefs = findDownloadHrefs();

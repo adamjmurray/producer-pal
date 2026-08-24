@@ -3,8 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -133,6 +134,38 @@ function setupNumberedSessionClips(count: number): RegisteredMockObject[] {
 }
 
 describe("createClip - session view", () => {
+  // Regression: Live declines a create it can't do — a MIDI clip on an audio
+  // track, say — without raising, and the clip that isn't there reads back as
+  // id "0". Reported as created, that id poisoned every follow-up call.
+  it.each([
+    ["a MIDI clip", {}, "a MIDI clip needs a MIDI track"],
+    [
+      "an audio clip",
+      { sampleFile: "/tmp/kick.wav" },
+      "an audio clip needs an audio track",
+    ],
+  ])(
+    "warns and skips %s Live declined to create",
+    async (_what, extra, reason) => {
+      const warn = vi.spyOn(console, "warn");
+
+      mockNonExistentObjects();
+      setupLiveSet();
+      setupTrack(0);
+      registerMockObject("clip-slot-0-0", {
+        path: livePath.track(0).clipSlot(0),
+        properties: { has_clip: 0 },
+      });
+
+      const result = await createClip({ path: "t0/s0", ...extra });
+
+      expect(result).toStrictEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        `Failed to create clip at t0/s0: Live created no clip - ${reason}`,
+      );
+    },
+  );
+
   it("should create a single clip with notes", async () => {
     setupLiveSet();
     setupTrack(0);
@@ -169,7 +202,7 @@ describe("createClip - session view", () => {
 
     expect(result).toStrictEqual({
       id: "clip_0_0",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 3,
       length: "1bar",
     });
@@ -247,13 +280,13 @@ describe("createClip - session view", () => {
     expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 1,
       length: "1bar",
     });
   });
 
-  it("should throw error when session slot track does not exist", async () => {
+  it("should throw error when clip slot track does not exist", async () => {
     mockNonExistentObjects();
     setupLiveSet();
 
@@ -276,9 +309,7 @@ describe("createClip - session view", () => {
         notes: "C3 1|1",
         auto: "play-scene",
       }),
-    ).rejects.toThrow(
-      'createClip auto="play-scene" failed: scene at sceneIndex=0 does not exist',
-    );
+    ).rejects.toThrow('createClip auto="play-scene" failed: no scene at "s0"');
   });
 
   it("should throw error for invalid auto value", async () => {
@@ -331,9 +362,9 @@ describe("createClip - session view", () => {
     expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
     expect(result).toStrictEqual([
-      { id: "clip_0_1", slot: "0/1" },
-      { id: "clip_0_2", slot: "0/2" },
-      { id: "clip_0_3", slot: "0/3" },
+      { id: "clip_0_1", path: "t0/s1" },
+      { id: "clip_0_2", path: "t0/s2" },
+      { id: "clip_0_3", path: "t0/s3" },
     ]);
   });
 
@@ -426,21 +457,21 @@ describe("createClip - session view - per-clip transforms", () => {
     expect(result).toStrictEqual([
       {
         id: "clip_0_1",
-        slot: "0/1",
+        path: "t0/s1",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
       },
       {
         id: "clip_0_2",
-        slot: "0/2",
+        path: "t0/s2",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
       },
       {
         id: "clip_0_3",
-        slot: "0/3",
+        path: "t0/s3",
         noteCount: 1,
         transformed: 1,
         length: "1bar",
@@ -486,7 +517,7 @@ describe("createClip - session view - per-clip transforms", () => {
     });
     expect(result).toStrictEqual({
       id: "clip_0_0",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 1,
       transformed: 1,
       length: "1bar",

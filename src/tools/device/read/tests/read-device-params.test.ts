@@ -170,7 +170,7 @@ describe("readDevice params include option (lightweight)", () => {
     setupDeviceParamMocks();
 
     const result = readDevice({
-      deviceId: "device-123",
+      id: "device-123",
       include: ["params"],
     });
 
@@ -192,7 +192,7 @@ function readDeviceParamValues(): {
   params: Record<string, unknown>[];
 } {
   const result = readDevice({
-    deviceId: "device-123",
+    id: "device-123",
     include: ["param-values"],
   });
 

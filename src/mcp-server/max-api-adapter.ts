@@ -11,8 +11,10 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
+  WARNING_PREFIX,
   type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
+import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
@@ -20,10 +22,7 @@ import * as console from "./node-for-max-logger.ts";
 import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
-export {
-  MAX_TIMEOUT_MS,
-  type RequestOverrides,
-} from "./helpers/request-overrides/request-overrides.ts";
+export { type RequestOverrides } from "./helpers/request-overrides/request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;
@@ -49,7 +48,9 @@ interface PendingRequest {
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
 
-const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
+// Under MAX_TIMEOUT_MS, which is itself under the MCP SDK's client-side
+// default — see MAX_TIMEOUT_MS for why that matters.
+const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 45_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map<string, PendingRequest>();
@@ -59,11 +60,19 @@ let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 Max.addHandler("timeoutMs", (input: unknown) => {
   const n = Number(input);
 
-  if (n > 0 && n <= 60_000) {
-    timeoutMs = n;
-  } else {
+  if (!(n > 0)) {
     console.error(`Invalid Live API timeoutMs: ${String(input)}`);
+
+    return;
   }
+
+  // Clamp rather than discard: dropping the value left the old timeout in
+  // place with nothing the user could see to explain it.
+  if (n > MAX_TIMEOUT_MS) {
+    console.warn(`Live API timeoutMs ${n} capped at ${MAX_TIMEOUT_MS}`);
+  }
+
+  timeoutMs = Math.min(n, MAX_TIMEOUT_MS);
 });
 
 /**
@@ -126,9 +135,13 @@ function callLiveApi(
           // Always resolve (not reject) with the standard error format.
           // Tag with the "timeout" discriminator so the REST route can map it
           // to HTTP 504 (other formatErrorResponse calls stay untagged).
+          // The message must not read as "nothing happened": V8 runs the tool
+          // synchronously with no cancellation channel, so the Set is likely
+          // still being mutated as this resolves.
           resolve(
             formatErrorResponse(
-              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
+              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms. ` +
+                `Live may still be applying it — wait, then re-read before acting.`,
               "timeout",
             ),
           );
@@ -179,7 +192,12 @@ function handleLiveApiResult(...args: unknown[]): void {
       );
       let errorMessageLength = 0;
 
-      // Add any Max errors as warnings
+      // Add any Max errors as warnings, collapsing repeats. A tool that loops
+      // over N clips re-runs the same interpretation N times, so one bad note
+      // relays N identical warnings; the copies cost the model context without
+      // telling it anything the count doesn't.
+      const warningCounts = new Map<string, number>();
+
       for (const err of maxErrors) {
         let msg = String(err);
 
@@ -190,11 +208,16 @@ function handleLiveApiResult(...args: unknown[]): void {
 
         // Only add if there's actual content after cleaning
         if (msg.length > 0) {
-          const errorText = `WARNING: ${msg}`;
-
-          result.content.push({ type: "text", text: errorText });
-          errorMessageLength += errorText.length;
+          warningCounts.set(msg, (warningCounts.get(msg) ?? 0) + 1);
         }
+      }
+
+      for (const [msg, count] of warningCounts) {
+        const repeats = count > 1 ? ` (x${count})` : "";
+        const errorText = `${WARNING_PREFIX}${msg}${repeats}`;
+
+        result.content.push({ type: "text", text: errorText });
+        errorMessageLength += errorText.length;
       }
 
       console.info(

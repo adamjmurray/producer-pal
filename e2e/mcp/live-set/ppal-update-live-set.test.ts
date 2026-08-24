@@ -5,7 +5,7 @@
 
 /**
  * E2E tests for ppal-update-live-set tool
- * Automatically opens the basic-midi-4-track Live Set before each test.
+ * Automatically opens the e2e-test-set Live Set before each test.
  *
  * Run with: npm run e2e:mcp
  */

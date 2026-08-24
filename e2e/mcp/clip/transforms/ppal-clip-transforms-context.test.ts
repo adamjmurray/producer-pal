@@ -93,7 +93,7 @@ describe("ppal-clip-transforms (context variables)", () => {
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${clipId1},${clipId2}`,
+        id: `${clipId1},${clipId2}`,
         transforms: "pitch += clip.index * 7",
       },
     });
@@ -133,7 +133,7 @@ describe("ppal-clip-transforms (context variables)", () => {
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: `${clipId1},${clipId2}`,
+        id: `${clipId1},${clipId2}`,
         transforms: "velocity = clip.count * 30",
       },
     });
@@ -164,7 +164,7 @@ describe("ppal-clip-transforms (context variables)", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${track.trackIndex}/0,${track.trackIndex}/1,${track.trackIndex}/2`,
+        path: `t${track.trackIndex}/s0,t${track.trackIndex}/s1,t${track.trackIndex}/s2`,
         notes: "v100 C3 1|1",
         transforms: "velocity = clipseq(20, 50, 90)",
       },

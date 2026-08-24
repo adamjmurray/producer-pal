@@ -50,6 +50,21 @@ async function expectAutoDismissAfter4s(result: {
   vi.useRealTimers();
 }
 
+/**
+ * Raise the ordinary "deleted 2, under the limit" warning.
+ * @param result - The rendered hook
+ */
+async function showWarning(result: {
+  current: ReturnType<typeof useLimitNotification>;
+}): Promise<void> {
+  await act(() => {
+    result.current.showLimitNotification({
+      deletedCount: 2,
+      limitReached: false,
+    });
+  });
+}
+
 describe("useLimitNotification", () => {
   it("starts with null notification", () => {
     const { result } = renderHook(() => useLimitNotification());
@@ -210,12 +225,7 @@ describe("useLimitNotification", () => {
 
       const { result } = renderHook(() => useLimitNotification());
 
-      await act(() => {
-        result.current.showLimitNotification({
-          deletedCount: 2,
-          limitReached: false,
-        });
-      });
+      await showWarning(result);
       await act(() => {
         result.current.showSaveError(new Error("boom"));
       });
@@ -230,12 +240,7 @@ describe("useLimitNotification", () => {
 
     const { result } = renderHook(() => useLimitNotification());
 
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 2,
-        limitReached: false,
-      });
-    });
+    await showWarning(result);
 
     expect(result.current.limitNotification).not.toBeNull();
 

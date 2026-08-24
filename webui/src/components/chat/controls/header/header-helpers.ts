@@ -29,7 +29,7 @@ const BRAND_NAMES: Record<Provider, string> = {
   openai: "OpenAI",
   mistral: "Mistral",
   openrouter: "OpenRouter",
-  lmstudio: "LM Studio",
+  lmstudio: "Bionic",
   ollama: "Ollama",
   custom: "Custom",
 };

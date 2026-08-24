@@ -20,6 +20,26 @@ vi.mock(import("#webui/lib/api-key-crypto"), () => ({
 
 const { useSettings } = await import("#webui/hooks/settings/use-settings");
 
+/**
+ * Render the hook and wait out the post-mount decrypt, which fails under this
+ * suite's crypto mock. saveSettings is gated on that settling — the load's
+ * catch is what unlocks save so the user can recover.
+ * @returns The hook handle and the console.error spy
+ */
+async function renderPastFailedLoad() {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const { result } = renderHook(() => useSettings());
+
+  await waitFor(() => {
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to load provider settings",
+      expect.any(Error),
+    );
+  });
+
+  return { result, errorSpy };
+}
+
 describe("useSettings crypto error handling", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -43,18 +63,7 @@ describe("useSettings crypto error handling", () => {
   });
 
   it("surfaces a saveError and leaves saved* unchanged when encrypt fails", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { result } = renderHook(() => useSettings());
-
-    // saveSettings is gated on the post-mount decrypt settling — with the
-    // crypto mock that rejects, the load's catch still unlocks save so the
-    // user can recover. Wait for that settle first.
-    await waitFor(() => {
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to load provider settings",
-        expect.any(Error),
-      );
-    });
+    const { result, errorSpy } = await renderPastFailedLoad();
 
     const initialSavedModel = result.current.savedModel;
     const initialSettingsConfigured = result.current.settingsConfigured;
@@ -89,15 +98,7 @@ describe("useSettings crypto error handling", () => {
   it("leaves the localStorage flags alone when the encrypted write fails", async () => {
     localStorage.setItem("producer_pal_subagent_preset", "before");
     localStorage.setItem("producer_pal_small_model_mode", "false");
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { result } = renderHook(() => useSettings());
-
-    await waitFor(() => {
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to load provider settings",
-        expect.any(Error),
-      );
-    });
+    const { result } = await renderPastFailedLoad();
 
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");

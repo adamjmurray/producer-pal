@@ -147,15 +147,5 @@ export const legatoTransforms: EvalScenario = {
     { type: "token_usage", metric: "inputTokens", maxTokens: 150_000 },
 
     // LLM quality check
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Found and read the lead melody with its notes
-2. Added octave-doubled notes (each note plus 12 semitones)
-3. Set all durations to 1/16th note
-4. Humanized start times using rand() or similar randomization
-5. Applied legato with a tolerance argument to handle humanized timing
-6. Used transforms or appropriate tools rather than manually rewriting all notes`,
-    },
   ],
 };

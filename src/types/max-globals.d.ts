@@ -24,9 +24,14 @@ interface ToolContext {
    */
   notation?: "barbeat" | "midi-json" | "stark";
   sampleFolder: string | null;
-  holdingAreaStartBeats?: number;
   silenceWavPath?: string;
   timeoutMs?: number;
+  /**
+   * Absolute timestamp the request must finish by, derived from timeoutMs by
+   * the tool that owns the loop. Long inner loops check it so they can stop and
+   * report partial progress before the Node-side timeout discards the response.
+   */
+  deadline?: number | null;
   /**
    * Per-request override for output format. true = compact JS-literal,
    * false = JSON. When undefined, V8 uses the global compactOutput config.

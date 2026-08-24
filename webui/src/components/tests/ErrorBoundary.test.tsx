@@ -1,0 +1,62 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @vitest-environment happy-dom
+ */
+import { render, screen } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
+import { RenderErrorFallback } from "#webui/components/chat/assistant/helpers/message-list-helpers";
+import { ErrorBoundary } from "#webui/components/ErrorBoundary";
+
+function ThrowingChild(): never {
+  throw new Error("render crash");
+}
+
+/**
+ * Render a child that throws, with console.error silenced.
+ * @returns The console.error spy, for the caller to assert on and restore
+ */
+function renderThrowingChild(): ReturnType<typeof vi.spyOn> {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  render(
+    <ErrorBoundary fallback={<RenderErrorFallback />}>
+      <ThrowingChild />
+    </ErrorBoundary>,
+  );
+
+  return spy;
+}
+
+describe("ErrorBoundary", () => {
+  it("renders children when no error occurs", () => {
+    render(
+      <ErrorBoundary fallback={<RenderErrorFallback />}>
+        <div>child content</div>
+      </ErrorBoundary>,
+    );
+
+    expect(screen.getByText("child content")).toBeDefined();
+    expect(screen.queryByText("Failed to render")).toBeNull();
+  });
+
+  it("renders fallback when child throws during render", () => {
+    const spy = renderThrowingChild();
+
+    expect(screen.getByText("Failed to render this message")).toBeDefined();
+    spy.mockRestore();
+  });
+
+  it("logs the error to console.error", () => {
+    const spy = renderThrowingChild();
+
+    expect(spy).toHaveBeenCalledWith(
+      "ErrorBoundary caught render error:",
+      expect.any(Error),
+    );
+    spy.mockRestore();
+  });
+});

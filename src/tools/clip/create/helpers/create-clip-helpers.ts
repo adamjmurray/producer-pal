@@ -14,6 +14,7 @@ import { setAudioClipProperties } from "#src/tools/clip/helpers/audio-clip-prope
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import {
   prepareSessionClipSlot,
+  requireCreatedSessionClip,
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
@@ -146,7 +147,7 @@ function createSessionClip(
   clipSlot.call("create_clip", clipLength);
 
   return {
-    clip: LiveAPI.from(`${clipSlot.path} clip`),
+    clip: requireCreatedSessionClip(clipSlot, "MIDI"),
     sceneIndex,
   };
 }

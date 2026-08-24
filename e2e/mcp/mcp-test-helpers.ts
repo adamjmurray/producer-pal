@@ -16,6 +16,7 @@ import {
   type McpConnection,
 } from "#evals/chat/mcp.ts";
 import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
+import { type SkillOverrides } from "#src/skills/build-skills.ts";
 import {
   CONFIG_URL,
   resetConfig,
@@ -116,6 +117,15 @@ export function getToolErrorMessage(result: unknown): string {
 }
 
 /**
+ * The LiveAPI object counter rides the same warning channel, and a build made
+ * with ENABLE_BUILD_STATS attaches one to every response. It is instrumentation,
+ * not something a tool is telling us, so it never counts as a tool warning —
+ * otherwise measuring against real Live would fail this whole suite on the first
+ * parseToolResult(). See dev/Development-Tools.md.
+ */
+const BUILD_STATS_WARNING = "WARNING: LiveAPI stats:";
+
+/**
  * Extract warning messages from a tool result.
  * Warnings are content items that start with "WARNING: ".
  */
@@ -127,7 +137,12 @@ export function getToolWarnings(result: unknown): string[] {
   if (!typed?.content) return [];
 
   return typed.content
-    .filter((item) => item.type === "text" && item.text?.startsWith("WARNING:"))
+    .filter(
+      (item) =>
+        item.type === "text" &&
+        item.text?.startsWith("WARNING:") &&
+        !item.text.startsWith(BUILD_STATS_WARNING),
+    )
     .map((item) => item.text ?? "");
 }
 
@@ -157,6 +172,34 @@ export function parseToolResultWithWarnings<T>(
   }
 
   return { data, warnings: getToolWarnings(result) };
+}
+
+/**
+ * Parse a result from a call that used a param alias, asserting the tool both
+ * honored it and named the real param.
+ *
+ * Aliases exist for the names a model reaches for unprompted, so they are worth
+ * one live check each — folded into a test that already reads the same object
+ * the canonical way, rather than a suite of its own.
+ * @param result - Raw tool result
+ * @param toolName - Tool that was called
+ * @param alias - The alias param the call used
+ * @param canonical - The param it folds onto
+ * @returns The parsed result
+ */
+export function parseAliasedToolResult<T>(
+  result: unknown,
+  toolName: string,
+  alias: string,
+  canonical: string,
+): T {
+  const { data, warnings } = parseToolResultWithWarnings<T>(result);
+
+  expect(warnings).toStrictEqual([
+    `WARNING: ${toolName} accepts "${alias}" as a fallback; the parameter is "${canonical}"`,
+  ]);
+
+  return data;
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
@@ -206,20 +249,33 @@ export function setupMcpTestContext(options?: SetupOptions): McpTestContext {
     await openLiveSet(options?.liveSetPath ?? LIVE_SET_PATH);
     ctx.connection = await connectMcp(MCP_URL);
     ctx.client = ctx.connection.client;
+
+    // The reset below is a beforeEach, so it runs after any beforeAll in the
+    // test file — a tool call from there would get the compact output format
+    // and fail to parse as JSON. Reset here too so that can't happen. Only
+    // needed under `once`: otherwise there is no client yet in a beforeAll.
+    if (options?.once) {
+      await resetConfigAndSettle();
+    }
   });
 
   // Always reset config before each test (even when reusing connection)
-  beforeEach(async () => {
-    await resetConfig();
-    // Small delay to ensure Max processes the config message before test runs
-    await sleep(50);
-  });
+  beforeEach(resetConfigAndSettle);
 
   teardown(async () => {
     await ctx.client?.close();
   });
 
   return ctx;
+}
+
+/**
+ * Reset the server config and give Max time to process the message.
+ * @returns Nothing
+ */
+async function resetConfigAndSettle(): Promise<void> {
+  await resetConfig();
+  await sleep(50);
 }
 
 interface CreateDeviceResult {
@@ -236,6 +292,68 @@ export async function createTestDevice(
   deviceName: string,
   path: string,
 ): Promise<string> {
+  return (await createDevice(client, deviceName, path)).id;
+}
+
+/**
+ * Creates a device and returns the path it actually landed at.
+ *
+ * Use this whenever a later step addresses the device — never hardcode `d0`,
+ * `d1`, … A machine with default track presets starts every new track with
+ * devices already on it, so device indices are not portable between machines.
+ *
+ * @param client - Connected MCP client
+ * @param deviceName - Device to create
+ * @param path - Container to create it in (e.g. `t3`, `t3/d0/c0`)
+ * @returns The new device's path (e.g. `t3/d2`)
+ */
+export async function createTestDeviceAt(
+  client: Client,
+  deviceName: string,
+  path: string,
+): Promise<string> {
+  return createdDevice(path, await createDevice(client, deviceName, path)).path;
+}
+
+export interface CreatedDevice {
+  /** Producer Pal path to the device, e.g. `t3/d2` */
+  path: string;
+  /** The device's index in its container */
+  deviceIndex: number;
+}
+
+/**
+ * Where a just-created device landed.
+ * @param containerPath - Container the device was created in
+ * @param created - The create-device result
+ * @returns The device's path and index
+ */
+function createdDevice(
+  containerPath: string,
+  created: CreateDeviceResult,
+): CreatedDevice {
+  if (created.deviceIndex == null) {
+    throw new Error(`create-device gave no index for "${containerPath}"`);
+  }
+
+  return {
+    path: `${containerPath}/d${created.deviceIndex}`,
+    deviceIndex: created.deviceIndex,
+  };
+}
+
+/**
+ * Shared body for the createTestDevice* helpers.
+ * @param client - Connected MCP client
+ * @param deviceName - Device to create
+ * @param path - Container to create it in
+ * @returns The tool's parsed result
+ */
+async function createDevice(
+  client: Client,
+  deviceName: string,
+  path: string,
+): Promise<CreateDeviceResult> {
   const result = await client.callTool({
     name: "ppal-create-device",
     arguments: { deviceName, path },
@@ -244,7 +362,80 @@ export async function createTestDevice(
 
   await sleep(100);
 
-  return created.id;
+  return created;
+}
+
+/**
+ * Count the devices on a track.
+ *
+ * Use this instead of assuming a track the test just made is empty — a default
+ * track preset puts devices on every track Live creates, and that preset varies
+ * per machine. Assert against this count, not a literal.
+ *
+ * @param client - Connected MCP client
+ * @param trackIndex - Track to read
+ * @returns How many devices the track holds
+ */
+export async function readDeviceCount(
+  client: Client,
+  trackIndex: number,
+): Promise<number> {
+  const track = parseToolResult<{ devices?: unknown[] }>(
+    await client.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex, include: ["devices"] },
+    }),
+  );
+
+  return track.devices?.length ?? 0;
+}
+
+/**
+ * Creates a fresh MIDI track and waits for state to settle.
+ * @param client - Connected MCP client
+ * @returns The new track's index
+ */
+export async function createMidiTrack(client: Client): Promise<number> {
+  const track = parseToolResult<{ trackIndex: number }>(
+    await client.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi" },
+    }),
+  );
+
+  await sleep(150);
+
+  return track.trackIndex;
+}
+
+/**
+ * Creates a Drum Rack at `path` with two populated pads (C1 = kick, D1 = the
+ * generic sample) and waits for state to settle.
+ * @param client - Connected MCP client
+ * @param path - Container to create it in (e.g. `t3`, `t3/d0/c0`)
+ * @returns Where the rack landed — never assume `d0`
+ */
+export async function createTwoPadDrumRack(
+  client: Client,
+  path: string,
+): Promise<CreatedDevice> {
+  const created = parseToolResult<CreateDeviceResult>(
+    await client.callTool({
+      name: "ppal-create-device",
+      arguments: {
+        deviceName: "Drum Rack",
+        path,
+        params: [
+          { name: "pC1/d0/sample", value: KICK_FILE },
+          { name: "pD1/d0/sample", value: SAMPLE_FILE },
+        ],
+      },
+    }),
+  );
+
+  await sleep(200);
+
+  return createdDevice(path, created);
 }
 
 /**
@@ -257,10 +448,89 @@ export async function readClipWithNotes(
 ): Promise<ReadClipResult> {
   const result = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
+    arguments: { id: clipId, include: ["notes"] },
   });
 
   return parseToolResult<ReadClipResult>(result);
+}
+
+/**
+ * The skills overrides the server under test will apply, read from its own
+ * ~/.producer-pal via GET /skill-overrides.
+ *
+ * E2E deliberately runs against a config dir that is NOT inert (open-live-set.ts
+ * strips VITEST before launching Live), so a developer with a saved override
+ * gets a blob a bare `buildSkills()` can't reproduce. Pass this as its second
+ * argument to expect what this machine actually serves. Reading it off the
+ * server rather than the local disk also keeps a remote MCP_URL honest.
+ *
+ * Slot files only: a fork's own non-slot fragment (skills/my/frag.md) isn't
+ * listed by this route, so a slot override that includes one still diverges.
+ *
+ * @returns Override bodies and disabled names, keyed by fragment include name
+ */
+export async function fetchSkillOverrides(): Promise<SkillOverrides> {
+  const response = await fetch(MCP_URL.replace("/mcp", "/skill-overrides"));
+
+  expect(response.ok).toBe(true);
+
+  const { slots } = (await response.json()) as {
+    slots: Array<{ name: string; override: string; enabled: boolean }>;
+  };
+  const fragments: Record<string, string> = {};
+  const disabled: string[] = [];
+
+  for (const slot of slots) {
+    if (slot.override) fragments[slot.name] = slot.override;
+    if (!slot.enabled) disabled.push(slot.name);
+  }
+
+  return { fragments, disabled };
+}
+
+/**
+ * Ask Live which version it is, via ppal-connect.
+ *
+ * @param client - Connected MCP client
+ * @returns The version string (e.g. "12.4.3")
+ */
+export async function readLiveVersion(client: Client): Promise<string> {
+  const result = await client.callTool({ name: "ppal-connect", arguments: {} });
+
+  return parseToolResult<{ abletonLiveVersion: string }>(result)
+    .abletonLiveVersion;
+}
+
+/**
+ * Whether this Live can load a sample into Simpler. Simpler's `replace_sample`
+ * arrived in Live 12.4; on 12.3 a `sample` write warn-skips instead.
+ *
+ * @param client - Connected MCP client
+ * @returns True on Live 12.4 and later
+ */
+export async function supportsSampleLoading(client: Client): Promise<boolean> {
+  const [major = 0, minor = 0] = (await readLiveVersion(client))
+    .split(".")
+    .map(Number);
+
+  return major > 12 || (major === 12 && minor >= 4);
+}
+
+/**
+ * Whether the SERVED build has code execution compiled in. The flag is baked in
+ * at build time (`build:debug` forces it on), so this process's own
+ * ENABLE_CODE_EXEC says nothing about the device under test. `ppal-create-clip`
+ * publishes its `code` param only when the feature is on, which makes the
+ * published schema the honest signal.
+ *
+ * @param client - Connected MCP client
+ * @returns True when the running device was built with code exec enabled
+ */
+export async function serverHasCodeExec(client: Client): Promise<boolean> {
+  const { tools } = await client.listTools();
+  const createClip = tools.find((tool) => tool.name === "ppal-create-clip");
+
+  return createClip?.inputSchema.properties?.code != null;
 }
 
 // ============================================================================
@@ -273,6 +543,8 @@ export interface CreateClipResult {
   noteCount?: number;
   transformed?: number;
   length?: string;
+  /** Where the clip landed: "t0/s3", "t0", or "t0/l1" */
+  path?: string;
   /** Audio clips only: whether Live is time-stretching the sample */
   warping?: boolean;
 }
@@ -302,9 +574,8 @@ export interface ReadClipResult {
   start?: string;
   end?: string;
   length?: string;
-  slot?: string;
-  trackIndex?: number | null;
-  sceneIndex?: number | null;
+  /** Where the clip is: "t0/s3", "t0", or "t0/l1" */
+  path?: string;
   arrangementStart?: string;
   arrangementLength?: string;
   noteCount?: number;

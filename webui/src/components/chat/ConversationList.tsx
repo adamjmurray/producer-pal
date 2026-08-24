@@ -170,12 +170,12 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full px-4 py-1.5 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+      className="flex w-full items-center gap-1.5 border-b border-zinc-200 bg-zinc-100 px-4 py-1.5 transition-colors hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
     >
       <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
         <DisclosureChevron />
       </span>
-      <span className="text-[10px] text-zinc-600 dark:text-zinc-300 uppercase tracking-wide">
+      <span className="text-[10px] tracking-wide text-zinc-600 uppercase dark:text-zinc-300">
         {label} ({count})
       </span>
     </button>

@@ -228,13 +228,12 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: "ppal-read-clip",
-        args: { trackIndex: 0, sceneIndex: 5 },
+        args: { path: "t0/s5" },
         result: toolResult({
           error: "No clip in this slot",
           id: null,
           type: null,
-          trackIndex: 0,
-          sceneIndex: 5,
+          path: "t0/s5",
         }),
       },
     ],
@@ -247,7 +246,7 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: TOOL_UPDATE_CLIP,
-        args: { ids: "44", quantize: 0.5, quantizeGrid: "1/8" },
+        args: { id: "44", quantize: 0.5, quantizeGrid: "1/8" },
         result: toolResult(
           UPDATE_CLIP_RESULT,
           "WARNING: quantize parameter ignored for audio clip (id 44)",
@@ -264,7 +263,7 @@ export const demoMessages: UIMessage[] = [
       {
         name: TOOL_UPDATE_CLIP,
         args: {
-          ids: "44",
+          id: "44",
           quantize: 0.5,
           quantizeGrid: "1/8",
           color: "#ZZZZZZ",
@@ -286,17 +285,8 @@ export const demoMessages: UIMessage[] = [
         name: "ppal-select",
         args: { trackIndex: 0, invalidParam: "test" },
         result: toolResult(
-          {
-            view: "arrangement",
-            detailView: "clip",
-            showBrowser: true,
-            selectedTrack: { trackId: "1", type: "midi", trackIndex: 0 },
-            selectedClipId: "47",
-            selectedDeviceId: null,
-            selectedScene: { sceneId: "16", sceneIndex: 0 },
-            selectedClipSlot: { trackIndex: 0, sceneIndex: 0 },
-          },
-          "Warning: ppal-select ignored unexpected argument(s): invalidParam",
+          { selectedTrack: { id: "1", type: "midi", trackIndex: 0 } },
+          "WARNING: ppal-select ignored unexpected argument(s): invalidParam",
         ),
       },
     ],
@@ -312,7 +302,7 @@ export const demoMessages: UIMessage[] = [
         name: TOOL_READ_TRACK,
         args: { trackIndex: 0, include: ["arrangement-clips"] },
         result: JSON.stringify(
-          "Tool call 'ppal-read-track' timed out after 30000ms",
+          "Tool call 'ppal-read-track' timed out after 30000ms. Live may still be applying it — wait, then re-read before acting.",
         ),
         isError: true,
       },
@@ -360,7 +350,7 @@ export const demoMessages: UIMessage[] = [
     tools: [
       {
         name: "ppal-read-clip",
-        args: { clipId: "13", include: ["notes", "timing"] },
+        args: { id: "13", include: ["notes", "timing"] },
         result: toolResult(READ_CLIP_RESULT),
       },
       {

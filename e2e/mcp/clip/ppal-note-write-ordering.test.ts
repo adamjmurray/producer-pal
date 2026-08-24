@@ -64,20 +64,20 @@ async function createOrderingTrack(name: string): Promise<number> {
 /**
  * Create a clip and assert how many notes Live actually stored. noteCount is
  * read back from the clip, so it is the survival count, not the input count.
- * @param slot - Session slot (trackIndex/sceneIndex)
+ * @param path - Clip slot ("t<track>/s<scene>")
  * @param notes - bar|beat notation for the clip
  * @param noteCount - Expected stored note count
  * @returns The created clip
  */
 async function createClipWithCount(
-  slot: string,
+  path: string,
   notes: string,
   noteCount: number,
 ): Promise<CreateClipResult> {
   const created = parseToolResult<CreateClipResult>(
     await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { slot, notes },
+      arguments: { path, notes },
     }),
   );
 
@@ -96,7 +96,7 @@ async function readClipNotes(clipId: string): Promise<string> {
   const clip = parseToolResult<ReadClipResult>(
     await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId, include: ["notes"] },
+      arguments: { id: clipId, include: ["notes"] },
     }),
   );
 
@@ -113,7 +113,7 @@ describe("note write ordering (create + update transforms)", () => {
     // only a tail overlap, which Live truncates — so BOTH notes survive. A
     // stored count of 2 proves it.
     const sorted = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|3 1|2.5",
       2,
     );
@@ -131,7 +131,7 @@ describe("note write ordering (create + update transforms)", () => {
     const dupResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${trackIndex}/1`,
+        path: `t${trackIndex}/s1`,
         notes: "C1 C1 1|1",
       },
     });
@@ -153,7 +153,7 @@ describe("note write ordering (create + update transforms)", () => {
 
     // Two non-overlapping C1 quarter notes at start 0 and start 2.
     const created = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|1 1|3",
       2,
     );
@@ -165,7 +165,7 @@ describe("note write ordering (create + update transforms)", () => {
     const updateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: created.id,
+        id: created.id,
         transforms: "1|1-1|2.5: timing += 2.5",
       },
     });
@@ -181,7 +181,7 @@ describe("note write ordering (create + update transforms)", () => {
 
     // Overlap-survival: existing C1 quarter at 1|3 (start 2, spans [2,3]).
     const created = await createClipWithCount(
-      `${trackIndex}/0`,
+      `t${trackIndex}/s0`,
       "n/4 C1 1|3",
       1,
     );
@@ -192,7 +192,7 @@ describe("note write ordering (create + update transforms)", () => {
     const mergeResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: created.id,
+        id: created.id,
         notes: "n/2 C1 1|2",
       },
     });
@@ -216,7 +216,7 @@ describe("note write ordering (create + update transforms)", () => {
     // Overwrite/dedupe: restating a note at the same pitch+start must not double
     // it up — the new note replaces the existing one (count stays 1).
     const dupCreated = await createClipWithCount(
-      `${trackIndex}/1`,
+      `t${trackIndex}/s1`,
       "n/2 C1 1|1",
       1,
     );
@@ -224,7 +224,7 @@ describe("note write ordering (create + update transforms)", () => {
     const overwrite = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
-        ids: dupCreated.id,
+        id: dupCreated.id,
         notes: "n/4 C1 1|1",
       },
     });

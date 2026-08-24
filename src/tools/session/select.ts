@@ -5,7 +5,12 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+  paramNamesSomething,
+  toLiveApiView,
+} from "#src/tools/shared/utils.ts";
 import {
   applyDetailView,
   applyPluginEditorWindow,
@@ -15,12 +20,18 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
+  type TrackCategory,
 } from "./helpers/select-helpers.ts";
+import { requireSelectTargets } from "./helpers/select-existence-helpers.ts";
 import {
   determineAutoDetailView,
-  parseClipSlot,
   resolveIdParam,
 } from "./helpers/select-id-helpers.ts";
+import { resolvePath } from "./helpers/select-path-helpers.ts";
+import {
+  resolveRackTarget,
+  selectRackTarget,
+} from "./helpers/select-rack-helpers.ts";
 import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
@@ -31,22 +42,29 @@ import {
   readFullState,
 } from "./helpers/select-response-helpers.ts";
 
-interface SelectArgs {
+export interface SelectArgs {
   // External params (from schema)
   id?: string;
   view?: "session" | "arrangement";
   trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
+  /** Clip slot "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
+  path?: string;
+  /** Deprecated clip slot, trackIndex/sceneIndex */
   slot?: string;
+  /** Deprecated device path */
   devicePath?: string;
   openPluginWindow?: boolean;
 
-  // Internal-only params (used by other tools calling select() directly)
+  // Hidden aliases for id. They all fold onto it, so they carry no type
+  // information — the type comes from the object, as it does for `id`.
   trackId?: string;
   sceneId?: string;
   clipId?: string;
   deviceId?: string;
+
+  // Internal-only param (used by other tools calling select() directly)
   detailView?: "clip" | "device" | "none";
 }
 
@@ -56,12 +74,19 @@ export interface SelectResult {
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;
-    slot?: string;
-    trackIndex?: number;
+    /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
+     * arrangement. Only the session form names the clip — an arrangement one
+     * names its track or take lane, which select's own path won't take. */
+    path?: string;
     arrangementStart?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
+  selectedDrumPad?: { id: string; path: string };
+  selectedChain?: { id: string; path: string };
 }
+
+/** The alias params that fold onto `id`, in the order a caller's is read. */
+const ID_ALIASES = ["trackId", "sceneId", "clipId", "deviceId"] as const;
 
 /**
  * Reads or updates the view state and selection in Ableton Live.
@@ -79,24 +104,41 @@ export function select(
   _context: Partial<ToolContext> = {},
 ): SelectResult {
   const resolved = resolveArgs(args);
-  const { view, trackType, trackIndex, devicePath, detailView } = args;
-  const category = trackType ?? "regular";
+  const { view, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
+  const { trackIndex, category, sceneIndex, devicePath } = resolved;
+  const { rackTargetId, rackTargetPath } = resolved;
+  const devicePathParam = resolved.devicePathParam ?? "path";
 
   validateParameters({
     trackId,
     category,
     trackIndex,
     sceneId,
-    sceneIndex: args.sceneIndex,
-    deviceId,
-    devicePath,
+    sceneIndex,
+    deviceId: deviceId ?? rackTargetId,
+    devicePath: devicePath ?? rackTargetPath,
+    devicePathParam,
     slot: parsedClipSlot,
   });
 
   if (!resolved.hasArgs) {
     return readFullState();
   }
+
+  requireSelectTargets({
+    trackId,
+    category,
+    trackIndex,
+    sceneId,
+    sceneIndex,
+    clipSlot: parsedClipSlot,
+    devicePath,
+  });
+
+  // Resolved before any view change, like requireSelectTargets, so a path
+  // naming nothing leaves Live untouched.
+  const rackTarget = resolveRackTarget(rackTargetId, rackTargetPath);
 
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
@@ -111,7 +153,7 @@ export function select(
 
   // Auto-switch to session view for scene/slot (session-only concepts)
   const needsSessionView =
-    sceneId != null || args.sceneIndex != null || parsedClipSlot != null;
+    sceneId != null || sceneIndex != null || parsedClipSlot != null;
 
   if (view == null && needsSessionView) {
     appView.call("show_view", toLiveApiView("session"));
@@ -128,7 +170,7 @@ export function select(
   const sceneResult = updateSceneSelection({
     songView,
     sceneId,
-    sceneIndex: args.sceneIndex,
+    sceneIndex,
   });
 
   if (clipId !== undefined) {
@@ -139,6 +181,7 @@ export function select(
     songView,
     deviceId,
     devicePath,
+    devicePathParam,
   });
 
   let pluginWindowOpen: boolean | undefined;
@@ -152,6 +195,9 @@ export function select(
     if (applied) pluginWindowOpen = args.openPluginWindow;
   }
 
+  const rackSelection =
+    rackTarget == null ? undefined : selectRackTarget(songView, rackTarget);
+
   const clipSlotHasClip =
     parsedClipSlot != null &&
     updateClipSlotSelection({ songView, clipSlot: parsedClipSlot });
@@ -163,6 +209,7 @@ export function select(
     clipId,
     deviceId,
     devicePath,
+    hasRackTarget: rackTarget != null,
     clipSlotHasClip,
     viewOnly: resolved.viewOnly,
   });
@@ -175,7 +222,8 @@ export function select(
   addTrackToResponse(result, trackResult.selectedTrackId);
   addSceneToResponse(result, sceneResult.selectedSceneId);
   addClipToResponse(result, resolved, clipSlotHasClip);
-  addDeviceToResponse(result, resolved, args);
+  addDeviceToResponse(result, resolved);
+  Object.assign(result, rackSelection);
 
   if (pluginWindowOpen != null && result.selectedDevice != null) {
     result.selectedDevice.pluginWindowOpen = pluginWindowOpen;
@@ -190,6 +238,7 @@ interface ApplyViewChangesOptions {
   clipId?: string;
   deviceId?: string;
   devicePath?: string;
+  hasRackTarget: boolean;
   clipSlotHasClip: boolean;
   viewOnly: boolean;
 }
@@ -202,6 +251,7 @@ interface ApplyViewChangesOptions {
  * @param options.clipId - Selected clip ID
  * @param options.deviceId - Selected device ID
  * @param options.devicePath - Selected device path
+ * @param options.hasRackTarget - Whether a drum pad or rack chain was selected
  * @param options.clipSlotHasClip - Whether the selected clip slot contains a clip
  * @param options.viewOnly - Whether only the view param was provided
  */
@@ -211,6 +261,7 @@ function applyViewChanges({
   clipId,
   deviceId,
   devicePath,
+  hasRackTarget,
   clipSlotHasClip,
   viewOnly,
 }: ApplyViewChangesOptions): void {
@@ -220,6 +271,7 @@ function applyViewChanges({
       clipId,
       deviceId,
       devicePath,
+      hasRackTarget,
       clipSlotHasClip,
       viewOnly,
     });
@@ -238,40 +290,57 @@ interface ResolvedArgs {
   sceneId?: string;
   clipId?: string;
   deviceId?: string;
+  trackIndex?: number;
+  category: TrackCategory;
+  sceneIndex?: number;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
+  devicePath?: string;
+  devicePathParam?: "path" | "devicePath";
+  rackTargetId?: string;
+  rackTargetPath?: string;
   hasArgs: boolean;
   viewOnly: boolean;
 }
 
 /**
- * Resolve external params (id, clipSlot string) to internal representations
+ * Resolve external params (id, path, slot string) to internal representations
  * @param args - Raw select arguments
  * @returns Resolved arguments with parsed clipSlot
  */
 function resolveArgs(args: SelectArgs): ResolvedArgs {
-  let { trackId, sceneId, clipId, deviceId } = args;
+  const id = namedSelectId(args);
+  let trackId: string | undefined;
+  let sceneId: string | undefined;
+  let clipId: string | undefined;
+  let deviceId: string | undefined;
+  let rackTargetId: string | undefined;
 
-  if (args.id != null) {
-    const resolved = resolveIdParam(args.id);
+  if (id != null) {
+    const resolved = resolveIdParam(id);
 
-    trackId = resolved.trackId ?? trackId;
-    sceneId = resolved.sceneId ?? sceneId;
-    clipId = resolved.clipId ?? clipId;
-    deviceId = resolved.deviceId ?? deviceId;
+    trackId = resolved.trackId;
+    sceneId = resolved.sceneId;
+    clipId = resolved.clipId;
+    deviceId = resolved.deviceId;
+    rackTargetId = resolved.rackTargetId;
   }
 
-  const parsedClipSlot =
-    typeof args.slot === "string" ? parseClipSlot(args.slot) : undefined;
+  const fromPath = resolvePath(args, { trackId, sceneId, clipId, deviceId });
+  const { parsedClipSlot, devicePath, devicePathParam, rackTargetPath } =
+    fromPath;
+  const { trackIndex, category, sceneIndex } = fromPath;
 
   const hasSelectionArgs =
     trackId != null ||
-    args.trackIndex != null ||
-    args.trackType != null ||
+    trackIndex != null ||
+    category != null ||
     sceneId != null ||
-    args.sceneIndex != null ||
+    sceneIndex != null ||
     clipId != null ||
     deviceId != null ||
-    args.devicePath != null ||
+    devicePath != null ||
+    rackTargetId != null ||
+    rackTargetPath != null ||
     args.openPluginWindow != null ||
     parsedClipSlot != null;
 
@@ -283,10 +352,35 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     sceneId,
     clipId,
     deviceId,
+    trackIndex,
+    category: category ?? "regular",
+    sceneIndex,
     parsedClipSlot,
+    devicePath,
+    devicePathParam,
+    rackTargetId,
+    rackTargetPath,
     hasArgs,
     viewOnly,
   };
+}
+
+/**
+ * The id the caller named, whatever they called it. The first alias that names
+ * something stands in for `id`, so every spelling ends up type-detected and
+ * existence-checked the same way.
+ * @param args - Raw select arguments
+ * @returns The id, or undefined when no spelling named one
+ */
+function namedSelectId(args: SelectArgs): string | undefined {
+  // Which alias was sent is checked silently: none of the four is published, so
+  // "trackId names nothing" is a line about a param the caller can't act on —
+  // and it would be four of them for a client that nulls every unused field.
+  const label = ID_ALIASES.find((key) => paramNamesSomething(args[key]));
+
+  return label == null
+    ? namedParam(args.id, "id")
+    : namedIdParam(args.id, args[label], label);
 }
 
 /**
@@ -341,7 +435,7 @@ function addClipToResponse(
       // A clip selection always switches Live to the clip's required view
       // (session for slotted clips, arrangement otherwise), so report that view
       // even when it overrides an explicitly requested, conflicting view.
-      result.view = info.slot != null ? "session" : "arrangement";
+      result.view = info.arrangementStart == null ? "session" : "arrangement";
     }
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);
@@ -354,19 +448,17 @@ function addClipToResponse(
  * Add device info to action response if a device was selected
  * @param result - Response being built
  * @param resolved - Resolved args
- * @param args - Original args
  */
 function addDeviceToResponse(
   result: SelectResult,
   resolved: ResolvedArgs,
-  args: SelectArgs,
 ): void {
   if (resolved.deviceId != null) {
     const info = buildDeviceResponseFromId(resolved.deviceId);
 
     if (info) result.selectedDevice = info;
-  } else if (args.devicePath != null) {
-    const info = buildDeviceResponseFromPath(args.devicePath);
+  } else if (resolved.devicePath != null) {
+    const info = buildDeviceResponseFromPath(resolved.devicePath);
 
     if (info) result.selectedDevice = info;
   }

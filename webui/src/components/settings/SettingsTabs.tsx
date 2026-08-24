@@ -40,15 +40,15 @@ export function SettingsTabs({
   return (
     <div>
       {/* Tab buttons */}
-      <div className="flex overflow-x-auto border-b border-zinc-300 dark:border-zinc-600 mb-6">
+      <div className="mb-6 flex overflow-x-auto border-b border-zinc-300 dark:border-zinc-600">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`shrink-0 px-4 py-2 font-medium text-sm transition-colors ${
+            className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                : "text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
             {tab.label}

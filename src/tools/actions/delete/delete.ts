@@ -3,24 +3,36 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
+import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
 import {
-  resolveDrumPadFromPath,
-  resolvePathToLiveApi,
-} from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import {
+  namedIdParam,
+  namedPathParam,
   parseCommaSeparatedIds,
   toLiveApiId,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 
-const PATH_SUPPORTED_TYPES = new Set(["device", "drum-pad"]);
+const PATH_SUPPORTED_TYPES = new Set(["clip", "device", "drum-pad", "chain"]);
+
+const DELETABLE_TYPES = [
+  "track",
+  "scene",
+  "clip",
+  "device",
+  "drum-pad",
+  "chain",
+];
+
+const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
+  ", ",
+);
 
 interface DeleteResult {
   id: string;
@@ -29,55 +41,66 @@ interface DeleteResult {
 }
 
 interface DeleteArgs {
+  id?: string;
+  /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   type: string;
 }
 
 /**
  * Deletes objects by ids and/or paths
  * @param args - The parameters
- * @param args.ids - Comma-separated list of object IDs
- * @param args.path - Comma-separated paths for device/drum-pad
+ * @param args.id - Comma-separated list of object IDs
+ * @param args.ids - Hidden alias for id
+ * @param args.path - Comma-separated paths for clip/device/drum-pad/chain
+ * @param args.paths - Hidden alias for path
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result object(s) with success information
  */
 export function deleteObject(
-  { ids, path, type }: DeleteArgs,
+  args: DeleteArgs,
   _context: Partial<ToolContext> = {},
 ): DeleteResult | DeleteResult[] {
+  const { type } = args;
+  const path = namedPathParam(args.path, args.paths);
+  const targets = namedIdParam(args.id, args.ids, "ids");
+
   if (!type) {
     throw new Error("delete failed: type is required");
   }
 
-  if (!["track", "scene", "clip", "device", "drum-pad"].includes(type)) {
+  if (!DELETABLE_TYPES.includes(type)) {
     throw new Error(
-      `delete failed: type must be one of "track", "scene", "clip", "device", or "drum-pad"`,
+      `delete failed: type must be one of ${DELETABLE_TYPE_LIST}`,
     );
   }
 
   // Handle path parameter - only valid for devices and drum-pads
   if (path && !PATH_SUPPORTED_TYPES.has(type)) {
     console.warn(
-      `delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths`,
+      `delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths`,
     );
   }
 
   // Collect IDs from both sources
-  const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
+  const objectIds = targets ? parseCommaSeparatedIds(targets) : [];
 
-  // Resolve paths to IDs for device or drum-pad types
+  // Resolve paths to IDs for the types that can be addressed by location
   if (path && PATH_SUPPORTED_TYPES.has(type)) {
-    const paths = parseCommaSeparatedIds(path);
-    const pathIds = resolvePathsToIds(paths, type);
-
-    objectIds.push(...pathIds);
+    objectIds.push(
+      ...(type === "clip"
+        ? clipIdsAtPaths(path, "delete")
+        : resolvePathsToIds(parseCommaSeparatedIds(path), type)),
+    );
   }
 
   if (objectIds.length === 0) {
-    if (!ids && !path) {
-      throw new Error("delete failed: ids or path is required");
+    if (!targets && !path) {
+      throw new Error("delete failed: id or path is required");
     }
 
     return [];
@@ -90,9 +113,12 @@ export function deleteObject(
   // same object) must be deleted once. A second positional delete would shift
   // onto and remove a different object.
   const seenIds = new Set<string>();
-  const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
-    skipInvalid: true,
-  })
+  const objectsToDelete = validateIdTypes(
+    type === "chain" ? objectIds : objectIds.filter((id) => !isRackChain(id)),
+    type,
+    "delete",
+    { skipInvalid: true },
+  )
     .map((object) => ({ id: object.id, object }))
     .filter(({ id }) => {
       if (seenIds.has(id)) return false;
@@ -105,6 +131,12 @@ export function deleteObject(
   // Tracks, scenes, and devices delete by position, so an earlier delete shifts
   // later siblings. Sort highest-index-first so each delete targets the right
   // object.
+  //
+  // Clips and chains are deliberately NOT sorted: they delete by id
+  // (`delete_clip <id>`, and a chain by parking it on a free pad), so a sibling
+  // shift never reaches them. Measured on 12.4.3 by
+  // e2e/mcp/operations/ppal-delete-batch-ordering.test.ts, which deletes three
+  // of four ascending — the worst case — and checks which one survived.
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
@@ -134,10 +166,61 @@ export function deleteObject(
 }
 
 /**
+ * Reports whether an id names a rack chain, warning when it does. A DrumChain
+ * would otherwise slip past the drum-pad type check and take a
+ * `delete_all_chains` that silently does nothing. Only reached for the other
+ * types — `type="chain"` is how a caller means a chain.
+ * @param id - The object ID
+ * @returns True when the id names a chain, which this type must skip
+ */
+function isRackChain(id: string): boolean {
+  const object = LiveAPI.from(id);
+
+  // Leave a nonexistent id to validateIdTypes, which already warns about it.
+  if (!object.exists()) return false;
+
+  if (object.type !== "Chain" && object.type !== "DrumChain") return false;
+
+  console.warn(
+    `delete: id "${id}" is a ${object.type}. ` +
+      (object.type === "DrumChain"
+        ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
+        : "Deleting rack chains is not supported."),
+  );
+
+  return true;
+}
+
+/**
+ * Confirms a delete landed. Live refuses some of them without saying so — the
+ * call returns the same thing either way — so whether the object is still there
+ * is the only signal.
+ *
+ * Look the id up again rather than asking the object the delete ran through:
+ * measured on 12.4.3, that one still reports its old id and path afterward. A
+ * fresh lookup of a dead id lands nowhere and reads id "0".
+ *
+ * @param type - The tool-level type, for the warning
+ * @param id - The object ID
+ * @returns true if the object is gone, false if it survived
+ */
+function confirmDeleted(type: string, id: string): boolean {
+  if (LiveAPI.from(id).exists()) {
+    console.warn(
+      `delete: ${type} "${id}" still exists, so Live did not delete it`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Deletes a track by its index
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the track is gone, false if skipped or Live refused
  */
 function deleteTrackObject(id: string, object: LiveAPI): boolean {
   // Check for return track first
@@ -149,7 +232,7 @@ function deleteTrackObject(id: string, object: LiveAPI): boolean {
 
     liveSet.call("delete_return_track", returnTrackIndex);
 
-    return true;
+    return confirmDeleted("track", id);
   }
 
   // Regular track
@@ -177,14 +260,14 @@ function deleteTrackObject(id: string, object: LiveAPI): boolean {
 
   liveSet.call("delete_track", trackIndex);
 
-  return true;
+  return confirmDeleted("track", id);
 }
 
 /**
  * Deletes a scene by its index
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the scene is gone, false if skipped or Live refused
  */
 function deleteSceneObject(id: string, object: LiveAPI): boolean {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
@@ -201,14 +284,14 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
 
   liveSet.call("delete_scene", sceneIndex);
 
-  return true;
+  return confirmDeleted("scene", id);
 }
 
 /**
  * Deletes a clip by its track and clip ID
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the clip is gone, false if skipped or Live refused
  */
 function deleteClipObject(id: string, object: LiveAPI): boolean {
   // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
@@ -235,7 +318,7 @@ function deleteClipObject(id: string, object: LiveAPI): boolean {
 
   track.call("delete_clip", toLiveApiId(object.id));
 
-  return true;
+  return confirmDeleted("clip", id);
 }
 
 interface PathSegment {
@@ -309,7 +392,7 @@ function parsePathSegments(path: string): PathSegment[] {
  * Deletes a device by its ID via the parent (track or chain)
  * @param id - The object ID
  * @param object - The object to delete
- * @returns true if deleted, false if skipped with warning
+ * @returns true if the device is gone, false if skipped or Live refused
  */
 function deleteDeviceObject(id: string, object: LiveAPI): boolean {
   // Find the LAST "devices X" in the path to handle nested devices
@@ -343,26 +426,35 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   parent.call("delete_device", deviceIndex);
 
-  return true;
+  return confirmDeleted("device", id);
 }
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param _id - The object ID (unused, kept for consistent signature)
+ * @param id - The object ID
  * @param object - The object to delete
- * @returns true (drum-pad clear has no validation failure path)
+ * @returns true if the pad's chains are gone, false if any survived
  */
-function deleteDrumPadObject(_id: string, object: LiveAPI): boolean {
-  const drumPad = LiveAPI.from(toLiveApiId(object.id));
+function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
+  object.call("delete_all_chains");
 
-  drumPad.call("delete_all_chains");
+  // The pad outlives its own delete, so there is no dead object to test for.
+  // Read the chains back instead: a refused clear is otherwise indistinguishable
+  // from a successful one.
+  if (object.getChildCount("chains") > 0) {
+    console.warn(
+      `delete: drum pad "${id}" still has chains, so Live did not clear it`,
+    );
+
+    return false;
+  }
 
   return true;
 }
 
 /**
  * Deletes an object based on its type
- * @param type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
+ * @param type - The type of object ("track", "scene", "clip", "device", "drum-pad", or "chain")
  * @param id - The object ID
  * @param object - The object to delete
  * @returns true if deleted, false if skipped with a warning
@@ -378,119 +470,5 @@ function deleteObjectByType(
   if (type === "device") return deleteDeviceObject(id, object);
   if (type === "drum-pad") return deleteDrumPadObject(id, object);
 
-  return false;
-}
-
-/**
- * Resolves paths to their IDs for device or drum-pad types
- * @param paths - Array of paths to resolve
- * @param type - The target type ("device" or "drum-pad")
- * @returns Array of resolved IDs
- */
-function resolvePathsToIds(paths: string[], type: string): string[] {
-  const ids: string[] = [];
-
-  for (const targetPath of paths) {
-    try {
-      const resolved = resolvePathToLiveApi(targetPath);
-      const resolvedId = resolvePathToId(resolved, targetPath, type);
-
-      if (resolvedId) {
-        ids.push(resolvedId);
-      }
-    } catch (e) {
-      console.warn(`delete: ${errorMessage(e)}`);
-    }
-  }
-
-  return ids;
-}
-
-/**
- * Resolves a single path resolution result to an ID
- * @param resolved - Result from resolvePathToLiveApi
- * @param targetPath - Original path for error messages
- * @param type - The target type ("device" or "drum-pad")
- * @returns The resolved ID or null
- */
-function resolvePathToId(
-  resolved: ResolvedPath,
-  targetPath: string,
-  type: string,
-): string | null {
-  // For drum-pad type, only accept drum-pad paths (no nested navigation)
-  if (type === "drum-pad") {
-    if (resolved.targetType !== "drum-pad") {
-      console.warn(
-        `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
-      );
-
-      return null;
-    }
-
-    // Use shared helper to get just the drum pad (no remaining segments)
-    const result = resolveDrumPadFromPath(
-      resolved.liveApiPath,
-      resolved.drumPadNote as string,
-      [], // Ignore remaining segments for drum-pad deletion
-    );
-
-    if (!result.target) {
-      console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
-
-      return null;
-    }
-
-    return result.target.id;
-  }
-
-  // For device type, handle both direct device paths and nested device paths in drum pads
-  if (type === "device") {
-    // Direct device path (not through drum pad)
-    if (resolved.targetType === "device") {
-      const target = LiveAPI.from(resolved.liveApiPath);
-
-      if (!target.exists()) {
-        console.warn(`delete: device at path "${targetPath}" does not exist`);
-
-        return null;
-      }
-
-      return target.id;
-    }
-
-    // Device nested inside a drum pad. Two forms resolve to the same device:
-    // the explicit-chain `t0/d0/pC1/c0/d0` (remainingSegments ["c0","d0"]) and
-    // the implicit-chain `t0/d0/pC1/d0` (["d0"], chain 0 implied) — matching the
-    // forms read-device and update-device accept. `>= 1` covers both; a bare pad
-    // (`pC1`, length 0) is the whole-pad case handled as a "drum-pad" delete, and
-    // an explicit chain with no device (`pC1/c0`, ["c0"]) resolves to a chain and
-    // is rejected by the targetType check below.
-    if (
-      resolved.targetType === "drum-pad" &&
-      resolved.remainingSegments.length > 0
-    ) {
-      const result = resolveDrumPadFromPath(
-        resolved.liveApiPath,
-        resolved.drumPadNote as string,
-        resolved.remainingSegments,
-      );
-
-      if (!result.target || result.targetType !== "device") {
-        console.warn(`delete: device at path "${targetPath}" does not exist`);
-
-        return null;
-      }
-
-      return result.target.id;
-    }
-
-    console.warn(
-      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
-    );
-
-    return null;
-  }
-
-  return null;
+  return deleteDrumChain(id, object);
 }

@@ -114,7 +114,7 @@ export function PresetControls({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm mb-1" htmlFor="preset-select">
+      <label className="mb-1 block text-sm" htmlFor="preset-select">
         Preset
       </label>
       <PresetPickerRow
@@ -135,6 +135,7 @@ export function PresetControls({
           // the list, and clearing here would drop the user out of Update/Delete
           // with only the error notice to say why.
           if (selected && deletePreset(selected.id) != null) return;
+          if (selected) settings.forgetDeletedPreset(selected.id);
           setSelectedId("");
           setEditDescription("");
         }}

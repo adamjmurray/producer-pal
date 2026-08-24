@@ -48,18 +48,18 @@ export function setAudioClipProperties(
   clip: LiveAPI,
   { gainDb, pitchShift, warpMode }: AudioClipProperties,
 ): void {
-  if (gainDb !== undefined) {
+  if (gainDb != null) {
     clip.set("gain", dbToLiveGain(gainDb));
   }
 
-  if (pitchShift !== undefined) {
+  if (pitchShift != null) {
     const { coarse, fine } = pitchShiftToCoarseFine(pitchShift);
 
     clip.set("pitch_coarse", coarse);
     clip.set("pitch_fine", fine);
   }
 
-  if (warpMode !== undefined && WARP_MODE_VALUES[warpMode] !== undefined) {
+  if (warpMode != null && WARP_MODE_VALUES[warpMode] !== undefined) {
     clip.set("warp_mode", WARP_MODE_VALUES[warpMode]);
   }
 }

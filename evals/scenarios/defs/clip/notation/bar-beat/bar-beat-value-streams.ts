@@ -22,8 +22,8 @@
  * 16 hand-listed notes), since hand-listing is the only fallback when a model
  * doesn't know the idiom.
  *
- * Deterministic read-back assertions are authoritative; the LLM judge is
- * advisory (judges miscount bar|beat notation).
+ * The deterministic read-back assertions are the whole grade — no LLM judge,
+ * which would only miscount bar|beat notation.
  */
 
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -58,7 +58,7 @@ function eightNoteCheck(
   return (events) => {
     if (events.length !== 8) return false;
 
-    const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+    const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
 
     return sorted.every((e, i) => e.pitch === 60 && perNote(e, i));
   };
@@ -83,9 +83,6 @@ export const barBeatVelocityAccent: EvalScenario = leadClipNotationScenario({
       Math.abs(e.start_time - i * 0.5) < EPS &&
       e.velocity === (i % 2 === 0 ? 110 : 70),
   ),
-  judgePrompt: `Evaluate if the assistant:
-1. Created a clip with eight eighth notes on C3 filling a 4/4 bar (Ableton beats 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5)
-2. Alternated the velocity loud/soft across the line: 110, 70, 110, 70, … — a real alternation, NOT one flat velocity`,
 });
 
 /** Dotted-eighth + sixteenth onsets repeating across a 4/4 bar (4 pairs). */
@@ -96,9 +93,9 @@ const GALLOP_ONSETS = [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75];
  * bar (eight notes on C3). The canonical bracket form is `[n3/16 n/16] C3 1|1x8`
  * — with no `@step`, the duration stream folds its long/short lengths into the
  * note SPACING, producing the uneven gallop onsets. The read-back grades the
- * onset pattern (the long-short spacing a note count can't see); durations are
- * left to the advisory judge since a hand-written gallop may voice lengths
- * differently while keeping the same onsets.
+ * onset pattern (the long-short spacing a note count can't see). Durations go
+ * ungraded: a hand-written gallop may voice lengths differently while keeping
+ * the same onsets.
  */
 export const barBeatGallop: EvalScenario = leadClipNotationScenario({
   id: "bar-beat-gallop",
@@ -109,9 +106,6 @@ export const barBeatGallop: EvalScenario = leadClipNotationScenario({
   check: eightNoteCheck(
     (e, i) => Math.abs(e.start_time - (GALLOP_ONSETS[i] as number)) < EPS,
   ),
-  judgePrompt: `Evaluate if the assistant:
-1. Created a clip with eight notes on C3 filling a 4/4 bar
-2. Produced a GALLOP rhythm — dotted-eighth + sixteenth pairs (onsets at Ableton beats 0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75), a long-short feel, NOT eight even notes`,
 });
 
 // ───────────────────────── stream zip (duration × pitch) ─────────────────────
@@ -134,11 +128,6 @@ const ZIP_MESSAGE =
   "other — the same pitch falls on a long note one time and a short note the " +
   "next.";
 
-const ZIP_JUDGE = `Evaluate whether the assistant produced this polyrhythmic run with Producer Pal's stream-zip idiom rather than hand-listing every note:
-1. A 16-note run cycling the C major triad (C3, E3, G3) with a galloping quarter-then-eighth rhythm.
-2. Zipped a duration stream against a pitch stream on a single repeat — e.g. \`[n/4 n/8] [C3 E3 G3] 1|1x16\` (no @step, so the duration folds into the spacing) — NOT 16 hand-listed notes.
-3. The two cycles phase (duration length 2 vs pitch length 3): the same pitch alternates long/short across the run.`;
-
 /**
  * Read-back verdict for the zip: exactly the phased gallop the canonical form
  * emits. Builds the expected (pitch, onset, duration) on the fly — onset
@@ -153,7 +142,7 @@ const ZIP_JUDGE = `Evaluate whether the assistant produced this polyrhythmic run
 function checkZip(events: NoteEvent[]): boolean {
   if (events.length !== ZIP_NOTE_COUNT) return false;
 
-  const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+  const sorted = events.toSorted((a, b) => a.start_time - b.start_time);
   let onset = 0;
 
   for (let i = 0; i < ZIP_NOTE_COUNT; i++) {
@@ -232,7 +221,6 @@ export const barBeatZipStreams: EvalScenario = createClipScenario({
     clipStateAssertion(LEAD_SLOT_1, "4/4", checkZip),
     usesStreamZip,
     zipUsesRepeatNotation,
-    { type: "llm_judge", prompt: ZIP_JUDGE },
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
 });

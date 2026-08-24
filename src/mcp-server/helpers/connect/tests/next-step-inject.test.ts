@@ -129,6 +129,17 @@ describe("withNextStep", () => {
       expect(block).not.toContain("Currently empty");
     });
 
+    // Regression: this line was ungated while the memory block and the
+    // onboarding ask were gated, so it became the only mention of layers this
+    // caller can neither read nor fill.
+    it("names nothing when the caller has no ppal-context", async () => {
+      const block = await nextStep({
+        tools: ["ppal-connect", "ppal-read-track"],
+      });
+
+      expect(block).not.toContain("Currently empty");
+    });
+
     // Small-model mode's ppal-context has no scope:memory, so naming memory
     // would point it at a layer it cannot address.
     it("never names memory in small-model mode", async () => {
@@ -207,6 +218,26 @@ describe("withNextStep", () => {
 
       expect(block).not.toContain(ASKS);
       expect(block).toContain("wait for their instructions");
+    });
+
+    // Same reasoning, harder: with no ppal-context at all there is nowhere to
+    // put the answer OR the decline, so the ask would repeat forever.
+    it("never asks when the caller has no ppal-context", async () => {
+      const block = await nextStep({
+        tools: ["ppal-connect", "ppal-read-track"],
+      });
+
+      expect(block).not.toContain(ASKS);
+      expect(block).not.toContain("ppal-context");
+      expect(block).toContain("wait for their instructions");
+    });
+
+    it("asks when the toolset keeps ppal-context", async () => {
+      const block = await nextStep({
+        tools: ["ppal-connect", "ppal-context"],
+      });
+
+      expect(block).toContain(ASKS);
     });
   });
 });

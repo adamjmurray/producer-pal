@@ -210,7 +210,7 @@ describe("EQ Eight via read-device", () => {
   it("includes pseudo-params in parameters and omits modulations", () => {
     registerReadableEqEight();
 
-    const result = readDevice({ deviceId: "eq8-1", include: ["params"] });
+    const result = readDevice({ id: "eq8-1", include: ["params"] });
 
     expect(result.parameters).toStrictEqual([
       { name: "globalMode", value: "L/R" },
@@ -222,7 +222,7 @@ describe("EQ Eight via read-device", () => {
   it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableEqEight();
 
-    const result = readDevice({ deviceId: "eq8-1", include: ["options"] });
+    const result = readDevice({ id: "eq8-1", include: ["options"] });
 
     expect(
       (result.options as Record<string, unknown>).paramOptions,

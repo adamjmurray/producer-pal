@@ -14,8 +14,8 @@
  * read-back. The signal is meter-safety — a stepping melody must keep correct
  * note-value spacing in 4/4, 5/4, 6/8, and 12/8, with and without `@step`.
  *
- * Mirrors bar-beat-absolute-durations.ts: deterministic read-back assertions are
- * authoritative; LLM judges are advisory (they miscount bar|beat notation).
+ * Mirrors bar-beat-absolute-durations.ts: the deterministic read-back
+ * assertions are the whole grade — no LLM judge.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../../../types.ts";
@@ -73,9 +73,8 @@ function assertMelody(
  * @param opts.id - Scenario id
  * @param opts.description - One-line description
  * @param opts.prompts - User turns after the connect turn
- * @param opts.slots - Session slots to clear in setup
+ * @param opts.slots - Clip slots to clear in setup
  * @param opts.melodies - Per-clip read-back checks
- * @param opts.judgePrompt - Advisory LLM-judge prompt
  * @returns The scenario
  */
 function meterSteppingScenario(opts: {
@@ -84,7 +83,6 @@ function meterSteppingScenario(opts: {
   prompts: string[];
   slots: string[];
   melodies: EvalAssertion[];
-  judgePrompt: string;
 }): EvalScenario {
   return createClipScenario({
     id: opts.id,
@@ -94,7 +92,6 @@ function meterSteppingScenario(opts: {
     clearSlots: opts.slots,
     assertions: [
       ...opts.melodies,
-      { type: "llm_judge", prompt: opts.judgePrompt },
       { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
     ],
   });
@@ -122,10 +119,6 @@ export const barBeatMelodicStepping: EvalScenario = meterSteppingScenario({
       { pitch: 67, start: 4, duration: 1 },
     ]),
   ],
-  judgePrompt: `Evaluate if the assistant:
-1. Created a 4/4 clip with the ascending melody C3, D3, E3, F3 — one per quarter beat (Ableton beats 0, 1, 2, 3)
-2. Created a 5/4 clip with the ascending melody C3, D3, E3, F3, G3 — one per quarter beat filling the bar (Ableton beats 0, 1, 2, 3, 4)
-3. Kept each note distinct (a true stepping melody), NOT a chord or a single repeated pitch`,
 });
 
 /**
@@ -159,10 +152,6 @@ export const barBeatMelodicCompoundStepping: EvalScenario =
         { pitch: 72, start: 4.5 },
       ]),
     ],
-    judgePrompt: `Evaluate if the assistant:
-1. Created a 6/8 clip with two notes C3 then G3 on the felt dotted-quarter pulse (Ableton beats 0 and 1.5) — NOT on every eighth
-2. Created a 12/8 clip with the ascending arpeggio C3, E3, G3, C4 on the four felt pulses (Ableton beats 0, 1.5, 3, 4.5)
-3. Grouped the eighths into dotted-quarter beats rather than placing notes on every eighth or miscounting`,
   });
 
 /**
@@ -188,8 +177,4 @@ export const barBeatMelodicLegatoRun: EvalScenario = meterSteppingScenario({
       { pitch: 65, start: 1.5, duration: 0.5 },
     ]),
   ],
-  judgePrompt: `Evaluate if the assistant:
-1. Created a clip with four eighth notes C3, D3, E3, F3 starting at beat 1
-2. Spaced them back-to-back (legato): an eighth apart at Ableton beats 0, 0.5, 1, 1.5 — NOT a quarter apart
-3. Gave each note an eighth-note duration`,
 });

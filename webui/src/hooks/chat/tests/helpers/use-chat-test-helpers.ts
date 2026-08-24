@@ -118,12 +118,10 @@ export function createMockAdapter(): ChatAdapter<
   const adapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
     createClient: vi.fn(() => new MockChatClient()),
 
-    buildConfig: vi.fn(
-      (model: string, thinking: string): TestConfig => ({
-        model,
-        thinking,
-      }),
-    ),
+    buildConfig: vi.fn((model: string, thinking: string): TestConfig => ({
+      model,
+      thinking,
+    })),
 
     formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
       return messages.map((msg, idx) => ({
@@ -160,19 +158,15 @@ export function createMockAdapter(): ChatAdapter<
       return message.role === "user" ? message.content : undefined;
     }),
 
-    createUserMessage: vi.fn(
-      (text: string): TestMessage => ({
-        role: "user",
-        content: text,
-      }),
-    ),
+    createUserMessage: vi.fn((text: string): TestMessage => ({
+      role: "user",
+      content: text,
+    })),
 
-    createCompactionSummary: vi.fn(
-      (summary: string): TestMessage => ({
-        role: "user",
-        content: summary,
-      }),
-    ),
+    createCompactionSummary: vi.fn((summary: string): TestMessage => ({
+      role: "user",
+      content: summary,
+    })),
   };
 
   return adapter;
@@ -199,6 +193,72 @@ export function adapterWithClient(
       return client;
     }),
   };
+}
+
+/**
+ * An adapter whose clients record what they were asked to do: every client
+ * created, every message sent, and every abort signal streamed with. `gate`
+ * holds each stream open after its first yield so a test can keep a turn
+ * in-flight; `customize` mutates each client as it is built (e.g. to hang one
+ * client's initialize() and park a turn in its connect).
+ * @param recorded - Arrays to record into, plus the optional stream gate
+ * @param recorded.clients - Receives every client the adapter builds
+ * @param recorded.sent - Receives every message streamed
+ * @param recorded.signals - Receives every stream's abort signal
+ * @param recorded.gate - Held open after the first yield of each stream
+ * @param customize - Optional mutator applied to each created client
+ * @returns The recording adapter
+ */
+export function trackingAdapter(
+  recorded: {
+    clients: MockChatClient[];
+    sent?: string[];
+    signals?: AbortSignal[];
+    gate?: Promise<void>;
+  },
+  customize?: (client: MockChatClient) => void,
+): ChatAdapter<MockChatClient, TestMessage, TestConfig> {
+  const { clients, sent, signals, gate } = recorded;
+
+  return adapterWithClient((client) => {
+    clients.push(client);
+
+    client.sendMessage = async function* (
+      message: string,
+      signal: AbortSignal,
+    ) {
+      sent?.push(message);
+      signals?.push(signal);
+      yield echoUserTurn(client, message);
+
+      await gate;
+    };
+
+    customize?.(client);
+  });
+}
+
+/**
+ * Let pending microtasks — and the streams they start — settle.
+ */
+export async function tick(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Record the user's message on a client's history and hand back the snapshot to
+ * yield — the two lines every scripted stream opens with.
+ * @param client - The mock client whose history the turn lands on
+ * @param message - The user's message text
+ * @returns The history snapshot to yield
+ */
+export function echoUserTurn(
+  client: MockChatClient,
+  message: string,
+): TestMessage[] {
+  client.chatHistory.push({ role: "user", content: message });
+
+  return [...client.chatHistory];
 }
 
 /**
@@ -274,11 +334,13 @@ export async function streamingHelpersMockBody(): Promise<
     // Pure helpers (no streaming side effects) — keep the real implementations
     // so client (re)init still resolves the locked provider/model correctly and
     // turn-failure recovery (error rendering, fork-signal cleanup) actually runs.
+    beginTurn: actual.beginTurn,
     resolveInitConnection: actual.resolveInitConnection,
     resolveLockedNotation: actual.resolveLockedNotation,
     resolveLockedSmallModelMode: actual.resolveLockedSmallModelMode,
     recoverFromChatError: actual.recoverFromChatError,
     runChatTurn: actual.runChatTurn,
+    connectClient: actual.connectClient,
     handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
       for await (const chatHistory of stream) {
         onUpdate(formatter(chatHistory));
@@ -288,17 +350,7 @@ export async function streamingHelpersMockBody(): Promise<
     }),
     validateMcpConnection: vi.fn(),
     filterOverrides: vi.fn((overrides) => overrides),
-    showMissingApiKeyError: vi.fn(
-      (adapter, msg, setMessages, pendingHistoryRef) => {
-        const entry = adapter.createUserMessage(msg);
-        const error = new Error(
-          "No API key configured. Please add your API key in Settings.",
-        );
-
-        pendingHistoryRef.current = [entry];
-        setMessages(adapter.createErrorMessage(error, [entry]));
-      },
-    ) as typeof StreamingHelpers.showMissingApiKeyError,
+    showMissingApiKeyError: actual.showMissingApiKeyError,
   };
 }
 
@@ -376,8 +428,7 @@ export function createEchoThenRateLimitAdapter(
       async function* (message: string) {
         attempts.push({ kind: "send", message });
 
-        client.chatHistory.push({ role: "user", content: message });
-        yield [...client.chatHistory];
+        yield echoUserTurn(client, message);
 
         if (options.partialContent != null) {
           client.chatHistory.push({

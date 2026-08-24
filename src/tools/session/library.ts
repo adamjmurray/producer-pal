@@ -368,18 +368,18 @@ function sortPartition(
   sort: LibrarySort | undefined,
 ): LibraryItem[] {
   if (sort === "name") {
-    return [...items].sort((a, b) => a.name.localeCompare(b.name));
+    return items.toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
   if (sort === "mod_date") {
     // sampleFolder items have no mod_date metadata; fall back to name order.
     // DB items keep their upstream order (already mod_date-sorted by SQL).
     return items.every((i) => i.source === "sampleFolder")
-      ? [...items].sort((a, b) => a.name.localeCompare(b.name))
+      ? items.toSorted((a, b) => a.name.localeCompare(b.name))
       : [...items];
   }
 
-  return [...items].sort(
+  return items.toSorted(
     (a, b) => b.useCount - a.useCount || a.name.localeCompare(b.name),
   );
 }

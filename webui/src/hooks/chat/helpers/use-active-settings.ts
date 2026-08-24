@@ -17,6 +17,7 @@ export interface ActiveSettings {
   activeSystemInstruction: string | null;
   activeNotation: Notation | null;
   activeEnabledTools: Record<string, boolean> | null;
+  activeMaxToolSteps: number | null;
 }
 
 /**
@@ -32,6 +33,7 @@ export interface LockedSettingsInput {
   systemInstruction: string;
   notation: Notation | null;
   enabledTools: Record<string, boolean>;
+  maxToolSteps: number;
 }
 
 interface ActiveSettingsActions {
@@ -66,6 +68,12 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     string,
     boolean
   > | null>(null);
+  // Not carried on the saved record like the others: the budget doesn't change
+  // what the model is told, so a restored conversation re-locks on whatever is
+  // set at the time its client is built.
+  const [activeMaxToolSteps, setActiveMaxToolSteps] = useState<number | null>(
+    null,
+  );
 
   const lockSettings = useCallback((settings: LockedSettingsInput) => {
     setActiveModel(settings.model);
@@ -75,6 +83,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveSystemInstruction(settings.systemInstruction);
     setActiveNotation(settings.notation);
     setActiveEnabledTools(settings.enabledTools);
+    setActiveMaxToolSteps(settings.maxToolSteps);
   }, []);
 
   const restoreSettings = useCallback(
@@ -86,6 +95,8 @@ export function useActiveSettings(): UseActiveSettingsReturn {
       setActiveSystemInstruction(lockedSettings?.systemInstruction ?? null);
       setActiveNotation(lockedSettings?.notation ?? null);
       setActiveEnabledTools(lockedSettings?.enabledTools ?? null);
+      // Nothing to restore — it locks when this conversation's client is built.
+      setActiveMaxToolSteps(null);
     },
     [],
   );
@@ -98,6 +109,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     setActiveSystemInstruction(null);
     setActiveNotation(null);
     setActiveEnabledTools(null);
+    setActiveMaxToolSteps(null);
   }, []);
 
   return {
@@ -108,6 +120,7 @@ export function useActiveSettings(): UseActiveSettingsReturn {
     activeSystemInstruction,
     activeNotation,
     activeEnabledTools,
+    activeMaxToolSteps,
     lockSettings,
     restoreSettings,
     clearSettings,

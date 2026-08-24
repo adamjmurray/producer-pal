@@ -232,27 +232,31 @@ describe("useConversations branching", () => {
     expect(pendingForkRef.current).toBeNull();
   });
 
-  it("consumes a leaked fork signal on an empty-history save so a later save isn't mis-branched", async () => {
+  it("keeps the fork signal on an empty-history save so the source can't be overwritten later", async () => {
     const { result, state, pendingForkRef, originalId } =
       await setupWithSavedOriginal();
 
-    // A fork aborted before streaming any content (e.g. edit the first message,
-    // then Stop) reaches the save with empty history. The signal must be
-    // consumed here even though there's nothing to persist...
+    // A fork stopped before it streamed anything (edit the first message, then
+    // Stop) reaches the save with empty history. Nothing is written, so nothing
+    // consumes the signal...
     await saveAsFork(result, state, pendingForkRef, []);
 
-    expect(pendingForkRef.current).toBeNull(); // consumed despite empty history
+    expect(pendingForkRef.current).toStrictEqual({ anchorIndex: 0 });
     expect(result.current.activeConversationId).toBe(originalId); // no new record
 
-    // ...so the next, unrelated save continues the original conversation rather
-    // than consuming the stale signal and branching a spurious sibling.
-    await save(result, state, [...ORIGINAL, { role: "user", content: "more" }]);
+    // ...because the fork's client is still installed: the next save is that
+    // fork continuing, so it branches instead of writing the truncated history
+    // over the original.
+    await save(result, state, FORKED);
 
-    expect(result.current.activeConversationId).toBe(originalId);
+    const forkId = result.current.activeConversationId;
 
-    const saved = await loadConversation(originalId);
+    expect(forkId).not.toBe(originalId);
 
-    expect(saved?.forkParentId).toBeUndefined();
-    expect(await listConversations()).toHaveLength(1);
+    const original = await loadConversation(originalId);
+
+    expect(original?.messages).toStrictEqual(ORIGINAL);
+    expect(pendingForkRef.current).toBeNull();
+    expect(await listConversations()).toHaveLength(1); // one collapsed family
   });
 });

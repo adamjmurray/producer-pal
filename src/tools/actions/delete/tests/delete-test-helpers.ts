@@ -11,12 +11,11 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
-interface DrumChainConfig {
+interface DrumPadPathConfig {
   devicePath: string;
-  chainPath: string;
   drumRackId: string;
-  chainId: string;
-  inNote?: number;
+  padId: string;
+  note?: number;
   extraPadPath?: Record<string, string> | null;
 }
 
@@ -138,55 +137,54 @@ export function setupDrumPadMocks(
 }
 
 /**
- * Setup mocks for drum chain deletion tests (path-based drum pad deletion).
+ * Setup mocks for path-based drum pad deletion: a drum rack whose `drum_pads`
+ * child is one DrumPad with the given note.
  * @param config - Configuration object
  * @param config.devicePath - Live API path for the drum rack device
- * @param config.chainPath - Live API path for the drum chain
  * @param config.drumRackId - Mock ID for the drum rack
- * @param config.chainId - Mock ID for the chain
- * @param config.inNote - MIDI note for the drum pad (default 36/C1)
+ * @param config.padId - Mock ID for the drum pad
+ * @param config.note - MIDI note of the pad (default 36/C1)
  * @param config.extraPadPath - Optional map of extra pad IDs to paths
- * @returns Drum rack, chain, and extra pad handles
+ * @returns Drum rack, pad, and extra pad handles
  */
-export function setupDrumChainMocks({
+export function setupDrumPadPathMocks({
   devicePath,
-  chainPath,
   drumRackId,
-  chainId,
-  inNote = 36,
+  padId,
+  note = 36,
   extraPadPath = null,
-}: DrumChainConfig): {
+}: DrumPadPathConfig): {
   drumRack: RegisteredMockObject;
-  chain: RegisteredMockObject;
+  pad: RegisteredMockObject;
   extraPads: Map<string, RegisteredMockObject>;
 } {
   const drumRack = registerMockObject(drumRackId, {
     path: devicePath,
     type: "RackDevice",
     properties: {
-      chains: children(chainId),
+      drum_pads: children(padId),
       can_have_drum_pads: 1,
     },
   });
 
-  const chain = registerMockObject(chainId, {
-    path: chainPath,
-    type: "DrumChain",
-    properties: { in_note: inNote },
+  const pad = registerMockObject(padId, {
+    path: `${devicePath} drum_pads ${note}`,
+    type: "DrumPad",
+    properties: { note },
   });
 
   const extraPads = new Map<string, RegisteredMockObject>();
 
   if (extraPadPath) {
-    for (const [padId, padPath] of Object.entries(extraPadPath)) {
+    for (const [extraId, padPath] of Object.entries(extraPadPath)) {
       extraPads.set(
-        padId,
-        registerMockObject(padId, { path: padPath, type: "DrumPad" }),
+        extraId,
+        registerMockObject(extraId, { path: padPath, type: "DrumPad" }),
       );
     }
   }
 
-  return { drumRack, chain, extraPads };
+  return { drumRack, pad, extraPads };
 }
 
 /**

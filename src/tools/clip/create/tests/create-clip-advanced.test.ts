@@ -88,7 +88,7 @@ describe("createClip - advanced features", () => {
     expect(clip.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
     });
   });
 
@@ -124,7 +124,7 @@ describe("createClip - advanced features", () => {
 
     expect(singleResult).toMatchObject({
       id: expect.any(String),
-      slot: "0/0",
+      path: "t0/s0",
     });
     expect((singleResult as { length?: unknown }).length).toBeUndefined();
 
@@ -132,11 +132,11 @@ describe("createClip - advanced features", () => {
     expect(arrayResult).toHaveLength(2);
     expect((arrayResult as object[])[0]).toStrictEqual({
       id: expect.any(String),
-      slot: "0/1",
+      path: "t0/s1",
     });
     expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
-      slot: "0/2",
+      path: "t0/s2",
     });
   });
 
@@ -154,7 +154,7 @@ describe("createClip - advanced features", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      slot: "0/0",
+      path: "t0/s0",
       noteCount: 2,
       length: "1bar",
     }); // C3 and E3, D3 filtered out
@@ -208,7 +208,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "live_set/tracks/0/clip_slots/0/clip",
+        id: "live_set/tracks/0/clip_slots/0/clip",
         detailView: "clip",
       });
     });
@@ -223,9 +223,32 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "arrangement_clip",
+        id: "arrangement_clip",
         detailView: "clip",
       });
+    });
+
+    // The clip exists by the time the focus runs, and select throws on an id it
+    // can't resolve. Letting that out would report the whole create as an error
+    // with no record of the clip.
+    it("still reports the clip when the focus fails", async () => {
+      const warn = vi.spyOn(v8Console, "warn").mockImplementation(() => {});
+
+      setupSessionMocks({
+        liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+      selectMockRef.get().mockImplementationOnce(() => {
+        throw new Error('select failed: id "gone" does not exist');
+      });
+
+      const result = await createClip({ slot: "0/0", focus: true });
+
+      expect(result).toMatchObject({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+      });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not move the focus"),
+      );
     });
 
     it("should not call select when focus=false", async () => {
@@ -253,7 +276,7 @@ describe("createClip - advanced features", () => {
       });
 
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "live_set/tracks/0/clip_slots/1/clip",
+        id: "live_set/tracks/0/clip_slots/1/clip",
         detailView: "clip",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
@@ -273,7 +296,7 @@ describe("createClip - advanced features", () => {
 
       // Arrangement clip gets focus priority over session clip
       expect(selectMockRef.get()).toHaveBeenCalledWith({
-        clipId: "arrangement_clip",
+        id: "arrangement_clip",
         detailView: "clip",
       });
       expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
@@ -296,11 +319,11 @@ describe("createClip - advanced features", () => {
       expect(clips).toHaveLength(2);
       expect(clips[0]).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/0/clip",
-        slot: "0/0",
+        path: "t0/s0",
       });
       expect(clips[1]).toStrictEqual({
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "1|1",
       });
     });
@@ -548,6 +571,6 @@ describe("buildClipResult (unit)", () => {
 
     expect(result.length).toBeUndefined();
     expect(result.noteCount).toBe(0);
-    expect(result.slot).toBe("0/0");
+    expect(result.path).toBe("t0/s0");
   });
 });

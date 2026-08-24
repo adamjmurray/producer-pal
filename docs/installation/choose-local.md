@@ -22,7 +22,7 @@ with a capable Nvidia GPU (8GB VRAM minimum, 4080+ recommended).
 - Best for: simple clip creation, basic playback control, experimentation
 - Challenging for: multi-step arrangements, complex notation, nuanced musical
   decisions
-- Recommended models: Qwen 3.5, Gemma 4, Devstral, GLM Flash
+- Recommended models: Qwen, Gemma, Mistral, Nemotron
 
 ## Hardware Requirements
 

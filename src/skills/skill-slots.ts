@@ -252,7 +252,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   library: {
     title: "Library search",
     description:
-      "How to find samples, MIDI clips, and plugins with ppal-library.",
+      "Reading ppal-library's results: checking a noisy tag hit against the file's folder, and loading a result's path into a clip or a Simpler. The search filters themselves live in the tool's own schema.",
     builtIn: library,
   },
 
@@ -287,7 +287,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "arrangement-write": {
     title: "Arrangement: placing clips",
     description:
-      "Moving and splitting clips on the arrangement timeline, and stacking take lanes. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
+      "Moving clips with toPath — along the arrangement timeline and between clip slots — plus splitting them and stacking take lanes. It's the only place toPath is explained. Only create-clip, update-clip, and duplicate can act on it, so a read-only caller never gets it. Needs the arrangement guide it sits under.",
     builtIn: arrangementWrite,
   },
 

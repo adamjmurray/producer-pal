@@ -26,7 +26,7 @@ const editorFocus = vi.fn();
 const editorBlur = vi.fn();
 let lastEditorProps: {
   initialValue: string;
-  readOnly: boolean;
+  readOnly?: boolean;
 } | null = null;
 // Captures the `initialValue` snapshot at each MOUNT (not re-render). Mimics
 // the real MarkdownEditor's seed-only contract — without this, the mock would
@@ -34,10 +34,10 @@ let lastEditorProps: {
 // content.
 const editorMountedValues: string[] = [];
 
-vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
     initialValue: string;
-    readOnly: boolean;
+    readOnly?: boolean;
     onChange: (v: string) => void;
     onFocus?: () => void;
     onBlur?: () => void;

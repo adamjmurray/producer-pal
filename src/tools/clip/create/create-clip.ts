@@ -4,8 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/session/select.ts";
+import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
 import {
@@ -14,31 +13,36 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import {
   parseArrangementStartList,
-  parseSlotList,
   type SlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
+import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
   createClips,
   prepareClipData,
 } from "./helpers/create-clip-loop-helpers.ts";
 import {
   resolveClipTimingContext,
-  resolveCreateClipTakeLane,
+  resolveCreateClipTakeLanes,
+  validateArrangementPositions,
 } from "./helpers/create-clip-prep-helpers.ts";
 import {
   handleAutoPlayback,
   validateCreateClipParams,
+  validateDestinationTracks,
   validatePositions,
-  validateSessionTracks,
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
-  /** Session clip slot(s), trackIndex/sceneIndex comma-separated */
+  /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
+  path?: string | null;
+  /** Deprecated session clip slot(s), trackIndex/sceneIndex comma-separated */
   slot?: string | null;
-  /** Track index (0-based, arrangement clips) */
+  /** Hidden alias for path: track index (0-based) */
   trackIndex?: number | null;
+  /** Hidden alias for path: scene index (0-based), with trackIndex */
+  sceneIndex?: number | null;
   /** Bar|beat position(s), comma-separated */
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
@@ -84,8 +88,10 @@ export interface CreateClipArgs {
 /**
  * Creates MIDI or audio clips in Session or Arrangement view
  * @param args - The clip parameters
- * @param args.slot - Session clip slot(s), trackIndex/sceneIndex comma-separated
- * @param args.trackIndex - Track index (arrangement clips)
+ * @param args.path - Where the clip(s) go, comma-separated for multiple
+ * @param args.slot - Deprecated session clip slot(s), trackIndex/sceneIndex
+ * @param args.trackIndex - Hidden alias for path: track index
+ * @param args.sceneIndex - Hidden alias for path: scene index, with trackIndex
  * @param args.arrangementStart - Bar|beat position(s), comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
  * @param args.transforms - Transform expressions
@@ -111,8 +117,12 @@ export interface CreateClipArgs {
  */
 export async function createClip(
   {
-    slot = null,
-    trackIndex = null,
+    // No `= null` defaults: these four only get forwarded to the destination
+    // resolver, which already reads an absent one as unset.
+    path,
+    slot,
+    trackIndex,
+    sceneIndex,
     arrangementStart = null,
     notes: notationString = null,
     transforms: transformString = null,
@@ -136,25 +146,29 @@ export async function createClip(
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
-  const deadline = computeLoopDeadline(_context.timeoutMs);
+  // Set once per request by the V8 adapter (see buildRequestContext).
+  const deadline = _context.deadline;
   const audio = { warping, gainDb, pitchShift, warpMode };
 
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
-  // Parse position lists
-  const sessionSlots = parseSlotList(slot);
+  // Resolve where the clips go before touching Live, so a bad destination fails
+  // instead of creating half of them somewhere else.
   const arrangementStarts = parseArrangementStartList(arrangementStart);
+  const destinations = resolveCreateClipDestinations(
+    { path, slot, trackIndex, sceneIndex, takeLane },
+    arrangementStarts,
+  );
+  const { sessionSlots, arrangementPositions } = destinations;
 
-  // Validate at least one position type is provided
-  validatePositions(sessionSlots, arrangementStarts);
+  validatePositions(destinations);
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
   warnAudioOnlyMidiParams(sampleFile, audio);
-  validateSessionTracks(sessionSlots);
-  validateArrangementTrack(arrangementStarts, trackIndex);
+  validateDestinationTracks(destinations);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -182,17 +196,22 @@ export async function createClip(
   const { parsedNames, parsedColors } = parseMultiClipParams(
     name,
     color,
-    sessionSlots.length + arrangementStarts.length,
+    sessionSlots.length + arrangementPositions.length,
   );
 
-  // Resolve the arrangement take lane (auto-creates lanes as needed). Overlap
+  // Before any clip or take lane exists: a position that won't parse has to
+  // stop the call while there is still nothing to report.
+  validateArrangementPositions(
+    arrangementPositions,
+    timing.songTimeSigNumerator,
+    timing.songTimeSigDenominator,
+  );
+
+  // Resolve the arrangement take lanes (auto-creates lanes as needed). Overlap
   // replaces existing clips, like the main lane.
-  const takeLaneCreator = resolveCreateClipTakeLane(
-    takeLane,
+  const takeLanes = resolveCreateClipTakeLanes(
     takeLaneName,
-    sessionSlots.length,
-    arrangementStarts,
-    trackIndex,
+    arrangementPositions,
   );
 
   // Create session clips first, then arrangement (order gives arrangement focus priority)
@@ -202,10 +221,9 @@ export async function createClip(
   ) =>
     createClips({
       view,
-      trackIndex: trackIndex ?? 0,
-      takeLane: takeLaneCreator,
+      takeLanes,
       sessionSlots,
-      arrangementStarts,
+      arrangementPositions,
       baseName: name,
       parsedNames,
       parsedColors,
@@ -259,7 +277,7 @@ function normalizeTransforms(transformString: string | null): string | null {
  * Handle auto-playback and focus for the created clips, then unwrap the result.
  * @param createdClips - All created clip result objects
  * @param auto - Automatic playback action
- * @param sessionSlots - Parsed session slot positions
+ * @param sessionSlots - Parsed clip slot positions
  * @param focus - Whether to select the last created clip
  * @returns Single clip object when one, array when multiple
  */
@@ -277,7 +295,7 @@ function finalizeCreatedClips(
   if (focus && createdClips.length > 0) {
     const lastClip = createdClips.at(-1) as { id: string };
 
-    select({ clipId: lastClip.id, detailView: "clip" });
+    focusSelect({ id: lastClip.id, detailView: "clip" });
   }
 
   return unwrapSingleResult(createdClips);
@@ -307,28 +325,4 @@ function parseMultiClipParams(
   warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
   return { parsedNames, parsedColors };
-}
-
-/**
- * Validate track exists when arrangement clips are requested
- * @param arrangementStarts - Parsed arrangement positions
- * @param trackIndex - Track index for arrangement clips
- */
-function validateArrangementTrack(
-  arrangementStarts: string[],
-  trackIndex: number | null,
-): void {
-  if (arrangementStarts.length === 0) return;
-
-  if (trackIndex == null) {
-    throw new Error(
-      "createClip failed: trackIndex is required for arrangement clips",
-    );
-  }
-
-  const track = LiveAPI.from(livePath.track(trackIndex));
-
-  if (!track.exists()) {
-    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
-  }
 }

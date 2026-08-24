@@ -109,7 +109,7 @@
         "@eslint-community/eslint-plugin-eslint-comments",
         "@stylistic/eslint-plugin"
       ],
-      "plugins": ["import"],
+      "plugins": ["import", "oxc"],
       "rules": {
         "constructor-super": "error",
         "for-direction": "error",
@@ -138,6 +138,7 @@
         "no-fallthrough": "error",
         "no-func-assign": "error",
         "no-global-assign": "error",
+        "no-implicit-globals": "error",
         "no-import-assign": "error",
         "no-invalid-regexp": "error",
         // oxlint skips comments, templates, regexes and JSX by default; eslint
@@ -157,6 +158,7 @@
         "no-new-native-nonconstructor": "error",
         "no-nonoctal-decimal-escape": "error",
         "no-obj-calls": "error",
+        "no-proto": "error",
         "no-prototype-builtins": "error",
         "no-redeclare": "error",
         "no-regex-spaces": "error",
@@ -240,7 +242,9 @@
         ],
         "max-depth": ["error", 4],
         "complexity": ["error", 20],
+        "oxc/no-accumulating-spread": "error",
         "import/first": "error",
+        "import/no-commonjs": "error",
         "import/no-cycle": "error",
         "import/no-self-import": "error",
         "import/no-duplicates": [
@@ -352,6 +356,7 @@
         "unicorn/prefer-string-starts-ends-with": "error",
         "unicorn/no-object-as-default-parameter": "error",
         "unicorn/explicit-length-check": "error",
+        "unicorn/no-abusive-eslint-disable": "error",
         "unicorn-js/no-accidental-bitwise-operator": "error",
         "unicorn-js/no-array-sort-for-min-max": "error",
         "unicorn-js/no-async-promise-finally": "error",
@@ -363,6 +368,7 @@
         "unicorn-js/no-invalid-argument-count": "error",
         "unicorn-js/no-mismatched-map-key": "error",
         "unicorn-js/no-misrefactored-assignment": "error",
+        "unicorn-js/no-multiple-promise-resolver-calls": "error",
         "unicorn-js/no-unsafe-promise-all-settled-values": "error",
         "unicorn/no-array-for-each": "error"
       }
@@ -750,7 +756,14 @@
       "files": ["webui/**/*.{ts,tsx}"],
       "rules": {
         "react/rules-of-hooks": "error",
-        "react/exhaustive-deps": "error"
+        "react/exhaustive-deps": "error",
+        "react/jsx-no-constructed-context-values": "error",
+        "react/only-export-components": [
+          "error",
+          {
+            "allowConstantExport": true
+          }
+        ]
       },
       "plugins": ["react"],
       "env": {
@@ -1088,15 +1101,15 @@
         "no-underscore-dangle": "off"
       }
     },
-    // PERMANENT, both. A polyfill is the one place these two rules are
-    // exactly backwards. The
-    // Max V8 runtime lacks the ES2023 array methods, which is why this module
-    // installs them onto the prototype (no-extend-native, 8 hits, all here) by
-    // hand-writing the very method the rule wants called (no-array-reverse —
-    // its fixer rewrites `[...arr].reverse()` in polyfillToReversed to
-    // `[...arr].toReversed()`, i.e. the polyfill calling itself). If this
-    // opt-out is ever dropped, es2023-array.test.ts is what fails — it deletes
-    // the natives before re-importing — but it fails in a case named for
+    // PERMANENT, all three. A polyfill is the one place these rules are exactly
+    // backwards. The Max V8 runtime lacks the ES2023 array methods, which is why
+    // this module installs them onto the prototype (no-extend-native, 8 hits,
+    // all here) by hand-writing the very methods the rules want called
+    // (no-array-reverse / no-array-sort — the reverse fixer rewrites
+    // `[...arr].reverse()` in polyfillToReversed to `[...arr].toReversed()`,
+    // i.e. the polyfill calling itself; polyfillToSorted is the same shape). If
+    // an opt-out is ever dropped, es2023-array.test.ts is what fails — it
+    // deletes the natives before re-importing — but it fails in a case named for
     // prototype installation, so the message points at the harness rather than
     // at the rewritten body.
     {
@@ -1104,7 +1117,8 @@
       "plugins": ["unicorn"],
       "rules": {
         "no-extend-native": "off",
-        "unicorn/no-array-reverse": "off"
+        "unicorn/no-array-reverse": "off",
+        "unicorn/no-array-sort": "off"
       }
     },
     {
@@ -1144,12 +1158,6 @@
       ],
       "plugins": ["unicorn"],
       "rules": {
-        // DEFERRED. 110 in 54 files (69 in src/). The fix rewrites `.sort()`
-        // to `.toSorted()`, which changes whether the receiver is mutated. Not
-        // mechanical — every call site has to be read for whether something
-        // relies on the mutation. Safe in the V8 runtime: live-api-adapter.ts
-        // imports the es2023-array polyfill.
-        "unicorn/no-array-sort": "off",
         // PERMANENT. 0 — off for a conflict, not for debt. It bans
         // `return undefined`, which is exactly what typescript/consistent-return
         // requires of a function that returns a value on some paths (23 sites,
@@ -1209,11 +1217,7 @@
         // PERMANENT. 1315 in 231 files. Wants a type parameter on every
         // `vi.fn()`; these mocks are typed by the assertion that reads them
         // instead. 1315 hand edits restating types, catching no bugs.
-        "vitest/require-mock-type-parameters": "off",
-        // DEFERRED. 104 in 29 files. Argues every `expect(...).toThrow()`
-        // should assert the message. Worth doing, but it is 104 separate
-        // decisions about what to assert.
-        "vitest/require-to-throw-message": "off"
+        "vitest/require-mock-type-parameters": "off"
       }
     },
     {
@@ -1248,10 +1252,9 @@
     // which the unicorn block above does not cover — the alternative was a
     // hand-rolled "unicorn's trees, intersected with test paths" glob list,
     // and test-file-classification.test.ts rejects rival spellings of a whole
-    // category for good reason. The widening surfaced nothing but no-array-sort
-    // (already deferred), so it is turned off here too and the rest of the
-    // plugin becomes new coverage for those suites. Same for
-    // prefer-add-event-listener over e2e/ui's WebSocket handles.
+    // category for good reason. The rest of the plugin becomes new coverage for
+    // those suites; prefer-add-event-listener is off for e2e/ui's WebSocket
+    // handles, same as the block above.
     //
     // consistent-function-scoping: PERMANENT. 136 of its 144 hits are in test
     // files, where a helper defined inside a `describe` sits next to the cases
@@ -1273,7 +1276,6 @@
       "plugins": ["unicorn"],
       "rules": {
         "unicorn/consistent-function-scoping": "off",
-        "unicorn/no-array-sort": "off",
         "unicorn/prefer-add-event-listener": "off"
       }
     },
@@ -1296,6 +1298,62 @@
       "plugins": ["typescript"],
       "rules": {
         "typescript/no-unnecessary-type-parameters": "off"
+      }
+    },
+    // Enabling the oxc plugin (for `no-accumulating-spread`) turns its whole
+    // category on, and two of its rules are wrong here.
+    //
+    // PERMANENT, 5. `no-async-endpoint-handlers` is an Express 4 rule: it
+    // exists because Express 4 drops a rejected promise from an async handler.
+    // Express 5 forwards it to the error middleware, and this repo is on 5.
+    //
+    // PERMANENT, 1. `approx-constant` reports `3.14159` in a serializer test
+    // asserting that literal round-trips to the string "3.14159". `Math.PI`
+    // would serialize to "3.141592653589793" and break the case.
+    {
+      "files": [
+        "webui/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "evals/**/*.ts",
+        "src/**/*.ts",
+        "config/**/*.ts",
+        "vitest.config.ts",
+        "config/**/*.{js,mjs}",
+        "evals/**/*.mjs",
+        "examples/**/*.{js,mjs}",
+        "e2e/docs/**/*.{js,mjs}",
+        "e2e/webui/**/*.ts",
+        "e2e/docs/**/*.ts",
+        "e2e/ui/**/*.ts",
+        "docs/.vitepress/**/*.{ts,vue}",
+        "e2e/mcp/**/*.ts"
+      ],
+      "plugins": ["oxc"],
+      "rules": {
+        "oxc/approx-constant": "off",
+        "oxc/no-async-endpoint-handlers": "off"
+      }
+    },
+    // PERMANENT, 5. Every violation is a test rendering a provider once to
+    // assert what a consumer receives. The rule guards against a value that is
+    // rebuilt on each re-render; these never re-render, and hoisting the value
+    // out would stop each case from getting a fresh guard. No production
+    // component violates it, which is where the rule earns its keep.
+    {
+      "files": ["webui/**/*.test.tsx"],
+      "plugins": ["react"],
+      "rules": {
+        "react/jsx-no-constructed-context-values": "off"
+      }
+    },
+    // PERMANENT, 2. A test file mixing mock components with the mock state they
+    // read. The rule exists so a file can hot-update in `ui:dev`; a test helper
+    // is never in that graph.
+    {
+      "files": ["webui/src/components/tests/App-context-mocks.tsx"],
+      "plugins": ["react"],
+      "rules": {
+        "react/only-export-components": "off"
       }
     }
   ]

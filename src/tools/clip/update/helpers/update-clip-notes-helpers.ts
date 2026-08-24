@@ -369,7 +369,7 @@ function applyPreTransformsToExisting(
  * Handle quantization for MIDI clips
  * @param clip - The clip to quantize
  * @param options - Quantization options
- * @param options.quantize - Quantization strength 0-1
+ * @param options.quantize - Quantization strength 0-1 (defaults to 1)
  * @param options.quantizeGrid - Note grid value (defaults to 1/16)
  * @param options.quantizePitch - Limit to specific pitch (optional)
  */
@@ -377,13 +377,25 @@ export function handleQuantization(
   clip: LiveAPI,
   { quantize, quantizeGrid, quantizePitch }: QuantizationOptions,
 ): void {
-  if (quantize == null) {
+  if (quantize == null && quantizeGrid == null && quantizePitch == null) {
     return;
   }
 
-  // Warn and skip for audio clips
+  // Grid or pitch alone means "quantize fully"; strength defaults to 1
+  const strength = quantize ?? 1;
+
+  // Warn and skip for audio clips. Grid or pitch alone triggers quantization,
+  // so name what the caller sent rather than a `quantize` they may not have.
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
-    console.warn(`quantize parameter ignored for audio clip (id ${clip.id})`);
+    const sent = [
+      quantize != null ? "quantize" : null,
+      quantizeGrid != null ? "quantizeGrid" : null,
+      quantizePitch != null ? "quantizePitch" : null,
+    ].filter((param) => param != null);
+
+    console.warn(
+      `${sent.join("/")} ignored for audio clip (id ${clip.id}): quantization is MIDI-only`,
+    );
 
     return;
   }
@@ -407,8 +419,8 @@ export function handleQuantization(
       return;
     }
 
-    clip.call("quantize_pitch", midiPitch, gridValue, quantize);
+    clip.call("quantize_pitch", midiPitch, gridValue, strength);
   } else {
-    clip.call("quantize", gridValue, quantize);
+    clip.call("quantize", gridValue, strength);
   }
 }

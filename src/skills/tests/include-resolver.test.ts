@@ -266,6 +266,99 @@ describe("resolveIncludes - blank line collapse", () => {
 
     expect(result).toBe("a\n\nb");
   });
+
+  it("leaves a blank-line run inside a fragment alone", () => {
+    // Only reachable through a user override today, and only cosmetic unless
+    // the spacing means something — which inside a fenced block it does.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n\nb`,
+        x: "```\nfirst\n\n\nlast\n```",
+      }),
+    );
+
+    expect(result).toBe("a\n\n```\nfirst\n\n\nlast\n```\n\nb");
+  });
+
+  it("tidies the seam when a fragment body ends with its own newline", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n\n@include "./x.md"\n\nb`, x: "body\n" }),
+    );
+
+    expect(result).toBe("a\n\nbody\n\nb");
+  });
+
+  it("tidies the seam when a fragment body starts with its own newline", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n\n@include "./x.md"\n\nb`, x: "\nbody" }),
+    );
+
+    expect(result).toBe("a\n\nbody\n\nb");
+  });
+
+  it("keeps a paragraph break when a dropped fragment held the only one", () => {
+    // The include line has no blank line in front of it, so its own is all that
+    // separates a from b. Taking it would merge two paragraphs into one.
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n@include "./gone.md"\n\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("a\n\nb");
+  });
+
+  it("drops a dropped fragment's line whole when nothing followed it", () => {
+    const result = resolveIncludes(
+      "root",
+      options({ root: `a\n@include "./gone.md"\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("a\nb");
+  });
+
+  it("collapses a run left by empty includes on consecutive lines", () => {
+    // The second include sits after a line that is no longer there, so its seam
+    // has to be read from what was emitted, not from where it started out.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n@include "./y.md"\n\nb`,
+        x: "",
+        y: "",
+      }),
+    );
+
+    expect(result).toBe("a\n\nb");
+  });
+
+  it("leaves a mid-line dropped fragment's paragraph break alone", () => {
+    // The directive never owned a line, so taking one of the newlines after it
+    // would pull the next paragraph up into the list item.
+    const result = resolveIncludes(
+      "root",
+      options({ root: `- item @include "./gone.md"\n\nb`, gone: "" }),
+    );
+
+    expect(result).toBe("- item \n\nb");
+  });
+
+  it("takes the line of a refused nested include with it", () => {
+    // Same tidying an expansion of nothing gets — otherwise the refusal leaves
+    // the blank lines that framed it on both sides.
+    const result = resolveIncludes(
+      "root",
+      options({
+        root: `a\n\n@include "./x.md"\n\nb`,
+        x: `p\n\n@include "./nested.md"\n\nq`,
+        nested: "N",
+      }),
+    );
+
+    expect(result).toBe("a\n\np\n\nq\n\nb");
+  });
 });
 
 describe("resolveIncludes - path safety", () => {

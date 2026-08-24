@@ -74,7 +74,11 @@ describe("validateBarBeatPosition", () => {
   describe("parity with the notes grammar", () => {
     for (const pos of REJECTED_POSITIONS) {
       it(`notes parser also rejects "${pos} C3"`, () => {
-        expect(() => parser.parse(`${pos} C3`)).toThrow();
+        // A bad beat gets the grammar's 1-indexing steer; a zero/leading-zero
+        // bar fails earlier, as a plain syntax error at the "|".
+        expect(() => parser.parse(`${pos} C3`)).toThrow(
+          /1-indexed|but "\|" found/,
+        );
       });
     }
 

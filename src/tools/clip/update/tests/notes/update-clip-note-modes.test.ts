@@ -73,7 +73,7 @@ describe("updateClip - Note updates", () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
     });
 
@@ -107,7 +107,7 @@ describe("updateClip - Note updates", () => {
     // Audio clips can't hold MIDI notes; writing them would throw and abort a
     // multi-clip batch. Warn-and-skip instead (mirrors create-clip's guard).
     await expect(
-      updateClip({ ids: "123", notes: "C3 1|1" }),
+      updateClip({ id: "123", notes: "C3 1|1" }),
     ).resolves.toBeDefined();
 
     expect(outlet).toHaveBeenCalledWith(
@@ -124,7 +124,7 @@ describe("updateClip - Note updates", () => {
     setupMidiClipMock(mocks.clip123);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
     });
 
@@ -154,7 +154,7 @@ describe("updateClip - Note updates", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "C3 1|1",
     });
 
@@ -186,7 +186,7 @@ describe("updateClip - Note updates", () => {
 
     const result = await updateClip(
       {
-        ids: "123",
+        id: "123",
         notes: '[{"pitch":64,"start":1,"duration":1,"velocity":100}]',
       },
       { notation: "midi-json" },
@@ -216,7 +216,7 @@ describe("updateClip - Note updates", () => {
     // velocity-0 note reaches add_new_notes (Live rejects it).
     const result = await updateClip(
       {
-        ids: "123",
+        id: "123",
         notes: "[{p:60,t:0,d:1,v:0},{p:64,t:1,d:1,v:100}]",
       },
       { notation: "midi-json" },
@@ -233,7 +233,7 @@ describe("updateClip - Note updates", () => {
     mockMergeNoteTracking(mocks.clip123, [DEFAULT_C3_NOTE]);
 
     await updateClip(
-      { ids: "123", notes: "[{p:60,t:0,d:1,v:0}]" },
+      { id: "123", notes: "[{p:60,t:0,d:1,v:0}]" },
       { notation: "midi-json" },
     );
 
@@ -255,7 +255,7 @@ describe("updateClip - Note updates", () => {
     });
 
     await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v0 C3 1|1", // All notes filtered out
     });
 
@@ -313,7 +313,7 @@ describe("updateClip - Note updates", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       transforms: "velocity = 50",
       // No notes param: transforms-only path
     });

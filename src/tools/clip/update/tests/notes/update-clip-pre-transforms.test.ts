@@ -75,7 +75,7 @@ describe("updateClip - preTransforms", () => {
     ]);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "1|1-1|4: velocity = 0", // clears all of bar 1
       notes: "C4 1|1 D4 1|2 E4 1|3 F4 1|4",
     });
@@ -83,8 +83,8 @@ describe("updateClip - preTransforms", () => {
     const finalNotes = addedNotes(mocks.clip123);
     const bar1 = finalNotes.filter((n) => n.start_time < 4);
     const bar2 = finalNotes.filter((n) => n.start_time >= 4);
-    const bar1Pitches = bar1.map((n) => n.pitch).sort((a, b) => a - b);
-    const bar2Pitches = bar2.map((n) => n.pitch).sort((a, b) => a - b);
+    const bar1Pitches = bar1.map((n) => n.pitch).toSorted((a, b) => a - b);
+    const bar2Pitches = bar2.map((n) => n.pitch).toSorted((a, b) => a - b);
 
     // Bar 1: original 60/62/64/65 cleared by preTransforms; only new 72/74/76/77 land
     expect(bar1Pitches).toStrictEqual([72, 74, 76, 77]);
@@ -96,7 +96,7 @@ describe("updateClip - preTransforms", () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0, 100), note(62, 1, 100)]);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "velocity = 60", // no range → all notes
       notes: "v110 G3 1|3", // new note at start_time 2, pitch 67
     });
@@ -115,7 +115,7 @@ describe("updateClip - preTransforms", () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0, 100), note(62, 1, 100)]);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "1|1-1|1: velocity = 0", // delete pitch 60 at beat 1 only
       notes: "G3 1|3", // pitch 67 at start_time 2
       transforms: "velocity += 5", // bumps survivors + new note
@@ -135,17 +135,17 @@ describe("updateClip - preTransforms", () => {
     mockMergeNoteTracking(mocks.clip456, [note(62, 0), note(69, 4)]);
 
     await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       preTransforms: "1|1-1|4: velocity = 0",
       notes: "A4 1|1", // pitch 81 at start_time 0
     });
 
     const clip123Final = addedNotes(mocks.clip123)
       .map((n) => n.pitch)
-      .sort((a, b) => a - b);
+      .toSorted((a, b) => a - b);
     const clip456Final = addedNotes(mocks.clip456)
       .map((n) => n.pitch)
-      .sort((a, b) => a - b);
+      .toSorted((a, b) => a - b);
 
     expect(clip123Final).toStrictEqual([67, 81]); // bar 2 G3 + new bar 1 A4
     expect(clip456Final).toStrictEqual([69, 81]); // bar 2 A3 + new bar 1 A4
@@ -155,7 +155,7 @@ describe("updateClip - preTransforms", () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0), note(62, 1)]);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "v0", // clear everything, no new notes
     });
 
@@ -175,7 +175,7 @@ describe("updateClip - preTransforms", () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0, 100), note(62, 1, 100)]);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "velocity = 50", // no range, no new notes → edit all in place
     });
 
@@ -190,7 +190,7 @@ describe("updateClip - preTransforms", () => {
     setupAudioClipMock(mocks.clip123, { length: 8 });
 
     await updateClip({
-      ids: "123",
+      id: "123",
       preTransforms: "1|1-1|4: velocity = 0",
       gainDb: -6,
     });

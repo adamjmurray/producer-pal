@@ -8,10 +8,10 @@ on:
     paths:
       - "docs/**"
       - "examples/skills/**"
-      - "src/shared/config.ts"
-      - "src/tools/**"
-      - "src/skills/**"
-      - "scripts/build-and-release/generate-tool-schema-docs.ts"
+      # All of src/: the tool reference's example output comes from running the
+      # tools, so notation, the adapter, and the connect helpers all feed it.
+      - "src/**"
+      - "scripts/build-and-release/tool-reference/**"
       - "scripts/build-and-release/generate-docs-markdown.ts"
       - "scripts/build-and-release/generate-skill-downloads.ts"
       - ".github/workflows/deploy-docs.yml"

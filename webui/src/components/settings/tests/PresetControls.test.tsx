@@ -20,6 +20,7 @@ import {
 import { usePresetSelection } from "#webui/hooks/settings/presets/use-preset-selection";
 import { breakStorageWrites } from "#webui/test-utils/dom-test-helpers";
 import { type ChatPreset, type UseSettingsReturn } from "#webui/types/settings";
+import { makePresetSettings } from "./helpers/preset-settings-test-helpers";
 
 /**
  * The controls with the selection state their parent owns in the app (the
@@ -56,28 +57,6 @@ function TabSwitcher({ settings }: { settings: UseSettingsReturn }) {
   );
 }
 
-/**
- * Build a minimal settings stub exposing just the fields PresetControls reads.
- * @param over - Field overrides
- * @returns A UseSettingsReturn-shaped stub
- */
-function makeSettings(over?: Partial<UseSettingsReturn>): UseSettingsReturn {
-  return {
-    provider: "anthropic",
-    model: "claude",
-    thinking: "Default",
-    smallModelMode: false,
-    enabledTools: {},
-    setEnabledTools: vi.fn(),
-    applyPreset: vi.fn(),
-    subagentPresetId: null,
-    setSubagentPresetId: vi.fn(),
-    settingsLoaded: true,
-    getProviderConnection: vi.fn(() => ({ apiKey: "sk-test" })),
-    ...over,
-  } as unknown as UseSettingsReturn;
-}
-
 const seeded: ChatPreset = {
   id: "seed",
   name: "Seeded",
@@ -102,6 +81,53 @@ function createPreset(settings: UseSettingsReturn, name: string): void {
   fireEvent.click(screen.getByTestId("preset-create-confirm"));
 }
 
+/**
+ * Pick a preset in the main selector.
+ * @param id - The preset to select
+ */
+function selectPreset(id: string): void {
+  fireEvent.change(screen.getByTestId("preset-select"), {
+    target: { value: id },
+  });
+}
+
+/**
+ * The option labels currently offered by the Subagent preset selector.
+ * @returns One label per option, in order
+ */
+function subagentOptionLabels(): (string | null)[] {
+  const select = screen.getByTestId(
+    "subagent-preset-select",
+  ) as HTMLSelectElement;
+
+  return [...select.options].map((o) => o.textContent);
+}
+
+/**
+ * Seed presets and render with a Subagent preset chosen. Which copies of the
+ * pointer a delete clears is useSettings' job, tested against the real hook in
+ * use-settings-subagent-preset.test.ts; here we only check the hand-off.
+ * @param presets - Presets to write to storage
+ * @returns The spy standing in for useSettings' forgetDeletedPreset
+ */
+function renderWithSubagentPreset(
+  presets: ChatPreset[],
+): ReturnType<typeof vi.fn> {
+  savePresets(presets);
+  const forgetDeletedPreset = vi.fn();
+
+  render(
+    <Controls
+      settings={makePresetSettings({
+        subagentPresetId: presets[0]?.id,
+        forgetDeletedPreset,
+      })}
+    />,
+  );
+
+  return forgetDeletedPreset;
+}
+
 describe("PresetControls", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -115,11 +141,9 @@ describe("PresetControls", () => {
 
     const applyPreset = vi.fn();
 
-    render(<TabSwitcher settings={makeSettings({ applyPreset })} />);
+    render(<TabSwitcher settings={makePresetSettings({ applyPreset })} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
     fireEvent.click(screen.getByTestId("leave-tab"));
     fireEvent.click(screen.getByTestId("leave-tab"));
 
@@ -132,7 +156,7 @@ describe("PresetControls", () => {
   });
 
   it("shows New… and hides Update/Delete when nothing is selected", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     expect(screen.getByTestId("preset-new")).toBeTruthy();
     expect(screen.queryByTestId("preset-update")).toBeNull();
@@ -140,7 +164,7 @@ describe("PresetControls", () => {
   });
 
   it("saves the current settings as a new named preset", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
@@ -163,7 +187,7 @@ describe("PresetControls", () => {
 
   it("captures the notation once it is known", () => {
     createPreset(
-      makeSettings({ notation: "stark", notationKnown: true }),
+      makePresetSettings({ notation: "stark", notationKnown: true }),
       "Stark",
     );
 
@@ -175,7 +199,7 @@ describe("PresetControls", () => {
     // default. Capturing it would make the preset impose bar|beat on every
     // later apply; omitted, it means "inherit the current notation".
     createPreset(
-      makeSettings({ notation: "barbeat", notationKnown: false }),
+      makePresetSettings({ notation: "barbeat", notationKnown: false }),
       "Unknown",
     );
 
@@ -183,7 +207,7 @@ describe("PresetControls", () => {
   });
 
   it("saves via the Enter key in the name field", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
@@ -204,7 +228,7 @@ describe("PresetControls", () => {
 
     const applyPreset = vi.fn();
 
-    render(<Controls settings={makeSettings({ applyPreset })} />);
+    render(<Controls settings={makePresetSettings({ applyPreset })} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
 
@@ -221,7 +245,7 @@ describe("PresetControls", () => {
   });
 
   it("dismisses the name form via the Escape key", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
@@ -236,7 +260,7 @@ describe("PresetControls", () => {
   });
 
   it("dismisses the name form on Cancel without saving", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     expect(screen.getByTestId("preset-name-input")).toBeTruthy();
@@ -248,7 +272,7 @@ describe("PresetControls", () => {
   });
 
   it("shows an error and stores nothing for a blank name", () => {
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.click(screen.getByTestId("preset-create-confirm"));
@@ -259,7 +283,7 @@ describe("PresetControls", () => {
 
   it("keeps the form open and explains itself when the write fails", () => {
     breakStorageWrites();
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
     fireEvent.click(screen.getByTestId("preset-new"));
     fireEvent.input(screen.getByTestId("preset-name-input"), {
@@ -277,11 +301,9 @@ describe("PresetControls", () => {
 
   it("surfaces a failed write from Update, which has no result to return", () => {
     savePresets([seeded]);
-    render(<Controls settings={makeSettings({ model: "changed" })} />);
+    render(<Controls settings={makePresetSettings({ model: "changed" })} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
     breakStorageWrites();
     fireEvent.click(screen.getByTestId("preset-update"));
 
@@ -294,7 +316,9 @@ describe("PresetControls", () => {
   it("captures the description and enabled toolset in a new preset", () => {
     render(
       <Controls
-        settings={makeSettings({ enabledTools: { "ppal-delete": false } })}
+        settings={makePresetSettings({
+          enabledTools: { "ppal-delete": false },
+        })}
       />,
     );
 
@@ -317,11 +341,9 @@ describe("PresetControls", () => {
   it("persists a description edit as it's typed, without touching the settings", () => {
     savePresets([{ ...seeded, description: "existing note" }]);
     // Buffer drifted from the preset: a description edit must not capture it.
-    render(<Controls settings={makeSettings({ model: "changed" })} />);
+    render(<Controls settings={makePresetSettings({ model: "changed" })} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
 
     const editor = screen.getByTestId(
       "preset-description-input",
@@ -342,22 +364,18 @@ describe("PresetControls", () => {
     savePresets([seeded]);
     const applyPreset = vi.fn();
 
-    render(<Controls settings={makeSettings({ applyPreset })} />);
+    render(<Controls settings={makePresetSettings({ applyPreset })} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
 
     expect(applyPreset).toHaveBeenCalledWith(seeded);
   });
 
   it("updates then deletes the selected preset", () => {
     savePresets([seeded]);
-    render(<Controls settings={makeSettings({ model: "changed" })} />);
+    render(<Controls settings={makePresetSettings({ model: "changed" })} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
     fireEvent.click(screen.getByTestId("preset-update"));
     expect(loadPresets()[0]?.model).toBe("changed");
 
@@ -368,11 +386,9 @@ describe("PresetControls", () => {
 
   it("keeps the selection when a delete can't be written", () => {
     savePresets([seeded]);
-    render(<Controls settings={makeSettings()} />);
+    render(<Controls settings={makePresetSettings()} />);
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
     breakStorageWrites();
     fireEvent.click(screen.getByTestId("preset-delete"));
 
@@ -387,25 +403,53 @@ describe("PresetControls", () => {
     );
   });
 
+  /**
+   * Select a preset and press Delete.
+   * @param id - The preset to delete
+   */
+  function deletePreset(id: string): void {
+    selectPreset(id);
+    fireEvent.click(screen.getByTestId("preset-delete"));
+  }
+
+  it("hands the deleted preset to useSettings to drop the pointer", () => {
+    const forgetDeletedPreset = renderWithSubagentPreset([seeded]);
+
+    deletePreset("seed");
+
+    expect(forgetDeletedPreset).toHaveBeenCalledWith("seed");
+  });
+
+  it("keeps the Subagent preset when the delete can't be written", () => {
+    const forgetDeletedPreset = renderWithSubagentPreset([seeded]);
+
+    breakStorageWrites();
+    deletePreset("seed");
+
+    // The preset is still there, so the pointer at it is still good.
+    expect(forgetDeletedPreset).not.toHaveBeenCalled();
+  });
+
   it("offers Inherit plus every preset in the Subagent preset selector", () => {
     savePresets([seeded]);
-    render(<Controls settings={makeSettings({ subagentPresetId: "seed" })} />);
+    render(
+      <Controls settings={makePresetSettings({ subagentPresetId: "seed" })} />,
+    );
 
-    const select = screen.getByTestId(
-      "subagent-preset-select",
-    ) as HTMLSelectElement;
-
-    expect(select.value).toBe("seed");
-    const optionLabels = [...select.options].map((o) => o.textContent);
-
-    expect(optionLabels).toStrictEqual(["Inherit current settings", "Seeded"]);
+    expect(
+      (screen.getByTestId("subagent-preset-select") as HTMLSelectElement).value,
+    ).toBe("seed");
+    expect(subagentOptionLabels()).toStrictEqual([
+      "Inherit current settings",
+      "Seeded",
+    ]);
   });
 
   it("sets the subagent preset (and null for Inherit)", () => {
     savePresets([seeded]);
     const setSubagentPresetId = vi.fn();
 
-    render(<Controls settings={makeSettings({ setSubagentPresetId })} />);
+    render(<Controls settings={makePresetSettings({ setSubagentPresetId })} />);
 
     fireEvent.change(screen.getByTestId("subagent-preset-select"), {
       target: { value: "seed" },
@@ -426,7 +470,7 @@ describe("PresetControls", () => {
     ]);
     render(
       <Controls
-        settings={makeSettings({
+        settings={makePresetSettings({
           getProviderConnection: vi.fn((p: string) => ({
             apiKey: p === "anthropic" ? "sk-ok" : "",
           })),
@@ -434,12 +478,7 @@ describe("PresetControls", () => {
       />,
     );
 
-    const labels = [
-      ...(screen.getByTestId("subagent-preset-select") as HTMLSelectElement)
-        .options,
-    ].map((o) => o.textContent);
-
-    expect(labels).toStrictEqual([
+    expect(subagentOptionLabels()).toStrictEqual([
       "Inherit current settings",
       "Keyed",
       "Keyless (no API key)",
@@ -453,25 +492,25 @@ describe("PresetControls", () => {
     ]);
     render(
       <Controls
-        settings={makeSettings({
+        settings={makePresetSettings({
           settingsLoaded: false,
           getProviderConnection: vi.fn(() => ({ apiKey: "" })),
         })}
       />,
     );
 
-    const labels = [
-      ...(screen.getByTestId("subagent-preset-select") as HTMLSelectElement)
-        .options,
-    ].map((o) => o.textContent);
-
-    expect(labels).toStrictEqual(["Inherit current settings", "Keyless"]);
+    expect(subagentOptionLabels()).toStrictEqual([
+      "Inherit current settings",
+      "Keyless",
+    ]);
   });
 
   it("shows Inherit when the saved default id no longer matches a preset", () => {
     savePresets([seeded]);
     render(
-      <Controls settings={makeSettings({ subagentPresetId: "deleted" })} />,
+      <Controls
+        settings={makePresetSettings({ subagentPresetId: "deleted" })}
+      />,
     );
 
     expect(
@@ -483,7 +522,7 @@ describe("PresetControls", () => {
     savePresets([seeded]);
     render(
       <Controls
-        settings={makeSettings({
+        settings={makePresetSettings({
           provider: "ollama",
           model: "different",
           thinking: "Off",
@@ -492,9 +531,7 @@ describe("PresetControls", () => {
       />,
     );
 
-    fireEvent.change(screen.getByTestId("preset-select"), {
-      target: { value: "seed" },
-    });
+    selectPreset("seed");
 
     expect(screen.getByText(/no longer match/)).toBeTruthy();
   });
@@ -504,7 +541,7 @@ describe("PresetControls", () => {
 
     render(
       <Controls
-        settings={makeSettings()}
+        settings={makePresetSettings()}
         onDraftOpenChange={onDraftOpenChange}
       />,
     );
@@ -521,7 +558,7 @@ describe("PresetControls", () => {
     const onDraftOpenChange = vi.fn();
     const { unmount } = render(
       <Controls
-        settings={makeSettings()}
+        settings={makePresetSettings()}
         onDraftOpenChange={onDraftOpenChange}
       />,
     );

@@ -16,6 +16,8 @@ export const LIVE_API_OPERATION_TYPES = [
   "call",
   "goto",
   "info",
+  "getcount",
+  "getstring",
 
   // Producer Pal helpers, returning normalized values
   "getProperty",
@@ -28,9 +30,8 @@ export const LIVE_API_OPERATION_TYPES = [
   "get_property",
   "set_path",
   "set_mode",
+  "set_id",
   "call_method",
-  "getcount",
-  "getstring",
 ] as const;
 
 // call/call_method and get/get_property are not aliases: `call` and `get` reach

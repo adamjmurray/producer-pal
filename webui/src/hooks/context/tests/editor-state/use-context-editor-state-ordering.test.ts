@@ -22,7 +22,7 @@ import {
   flushDebounceWindow,
   renderReadyEditor,
   startBlockedClear,
-  startClear,
+  startHeldClear,
   stubConfirm,
   typeDraft,
 } from "./use-context-editor-state-test-helpers";
@@ -221,14 +221,10 @@ describe("useContextEditorState write ordering", () => {
     });
 
     it("blocks an Import fired while the clear POST is still on the wire", async () => {
-      const save = vi.fn().mockResolvedValue(true);
-      const { save: clear, resolveSave: resolveClear } = deferredSave();
-      const { result } = renderReadyEditor({ save, clear });
-
-      stubConfirm(true);
+      const { save, clear, resolveClear, result, clearPromise } =
+        await startHeldClear();
 
       let importPromise: Promise<void> | undefined;
-      const { pending: clearPromise } = await startClear(result);
 
       expect(clear).toHaveBeenCalledTimes(1);
 
@@ -400,13 +396,8 @@ describe("useContextEditorState write ordering", () => {
     // an external edit. The replace is what the user ends up looking at, so the
     // draft is dropped instead.
     it("drops a draft typed during an in-flight Clear", async () => {
-      const save = vi.fn().mockResolvedValue(true);
-      const { save: clear, resolveSave: resolveClear } = deferredSave();
-      const { result } = renderReadyEditor({ save, clear });
-
-      stubConfirm(true);
-
-      const { pending: clearPromise } = await startClear(result);
+      const { save, clear, resolveClear, result, clearPromise } =
+        await startHeldClear();
 
       expect(clear).toHaveBeenCalledTimes(1);
 
@@ -456,13 +447,8 @@ describe("useContextEditorState write ordering", () => {
 
     it("autosaves again normally once the Clear has landed", async () => {
       // The drop lasts only as long as the replace is on the wire.
-      const save = vi.fn().mockResolvedValue(true);
-      const { save: clear, resolveSave: resolveClear } = deferredSave();
-      const { result } = renderReadyEditor({ save, clear });
-
-      stubConfirm(true);
-
-      const { pending: clearPromise } = await startClear(result);
+      const { save, resolveClear, result, clearPromise } =
+        await startHeldClear();
 
       await act(async () => {
         resolveClear(true);

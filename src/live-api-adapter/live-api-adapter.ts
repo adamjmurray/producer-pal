@@ -23,11 +23,17 @@ import {
   type Notation,
 } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import {
+  beginWarningCapture,
+  endWarningCapture,
+  resumeWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
 import { deleteObject } from "#src/tools/actions/delete/delete.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { liveApi } from "#src/tools/advanced/live-api.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
+import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import { connect } from "#src/tools/core/connect.ts";
@@ -47,6 +53,11 @@ import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import {
+  beginLiveApiBuildStats,
+  reportLiveApiBuildStats,
+} from "./live-api-build-stats.ts";
+import { beginLiveApiScope, endLiveApiScope } from "./live-api-release.ts";
 import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 import {
   backupProjectContextOnEdit,
@@ -93,38 +104,35 @@ const sessionState: SessionState = {
  * @returns Fresh ToolContext owned by the calling request
  */
 function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
-  return {
+  const context: ToolContext = {
     projectContext: sessionState.projectContext,
     smallModelMode: sessionState.smallModelMode,
     notation: sessionState.notation,
     sampleFolder: sessionState.sampleFolder,
     ...incoming,
   };
-}
 
-/**
- * Initialize holding area start position from current song_length on the
- * given per-request context. This ensures holding area is always just past
- * actual content, avoiding permanent song_length bloat from hardcoded
- * positions.
- *
- * @param ctx - Per-request context to populate
- */
-function initHoldingArea(ctx: ToolContext): void {
-  const liveSet = LiveAPI.from("live_set");
+  // One deadline for the whole request, set here and not at tool entry: a tool
+  // that calls another (duplicate -> updateClip) would otherwise hand the nested
+  // call a fresh full budget, so N of them can overrun the timeout together and
+  // lose the response to it.
+  context.deadline = computeLoopDeadline(context.timeoutMs);
 
-  ctx.holdingAreaStartBeats = liveSet.getProperty("song_length") as number;
+  return context;
 }
 
 /*
 **IMPORTANT**: Always pass args AND ctx to tool functions
 Use the `(args, ctx) => toolFunction(args, ctx)` pattern
-This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
+This ensures all tools have access to context (silenceWavPath, deadline, etc.)
 Exception: ppal-connect takes args only — its signature intentionally dropped ctx
 (see the `connect(args)` line below), so it does not follow this pattern.
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
-const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
+const toolDispatch: Record<
+  string,
+  (args: unknown, ctx: ToolContext) => unknown
+> = {
   "ppal-connect": (args) => connect(args as any),
   "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
   "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
@@ -136,22 +144,14 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
   "ppal-update-scene": (args, ctx) => updateScene(args as any, ctx),
   "ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
   "ppal-read-clip": (args, ctx) => readClip(args as any, ctx),
-  "ppal-update-clip": (args, ctx) => {
-    initHoldingArea(ctx);
-
-    return updateClip(args as any, ctx);
-  },
+  "ppal-update-clip": (args, ctx) => updateClip(args as any, ctx),
   "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
   "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
   "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
   "ppal-playback": (args, ctx) => playback(args as any, ctx),
   "ppal-select": (args, ctx) => select(args as any, ctx),
   "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
-  "ppal-duplicate": (args, ctx) => {
-    initHoldingArea(ctx);
-
-    return duplicate(args as any, ctx);
-  },
+  "ppal-duplicate": (args, ctx) => duplicate(args as any, ctx),
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
@@ -164,18 +164,26 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
  * (STANDARD_TOOL_DEFS + the opt-in ppal-live-api) — a missing entry would make a
  * shipped tool fail at runtime with "Unknown tool".
  */
-export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(tools);
+export const DISPATCH_TOOL_NAMES: readonly string[] = Object.keys(toolDispatch);
 
 /**
  * Call a tool by name with the given arguments and per-request context.
+ *
+ * Exported for the docs generator, which runs the tools against a mock Live Set
+ * to produce the example output in the tool reference. Going through the same
+ * dispatch is what keeps those examples honest.
  *
  * @param toolName - Name of the tool to call
  * @param args - Arguments to pass to the tool
  * @param ctx - Per-request context for the tool
  * @returns Tool execution result
  */
-function callTool(toolName: string, args: object, ctx: ToolContext): unknown {
-  const tool = tools[toolName];
+export function callTool(
+  toolName: string,
+  args: object,
+  ctx: ToolContext,
+): unknown {
+  const tool = toolDispatch[toolName];
 
   if (!tool) {
     throw new Error(`Unknown tool: ${toolName}`);
@@ -240,25 +248,34 @@ let expectLoadEcho = true;
  * @param content - Project context content
  */
 export function projectContext(content: unknown): void {
-  const value = textEditParamToString(content);
-  const isLoadEcho = expectLoadEcho;
+  // Scoped like a tool call: the backup below reads the Live Set's file path,
+  // and that LiveAPI object's listener has to come down too. It is built before
+  // the backup's first await, so the sync scope covers it.
+  beginLiveApiScope();
 
-  expectLoadEcho = false;
+  try {
+    const value = textEditParamToString(content);
+    const isLoadEcho = expectLoadEcho;
 
-  // A set that changes nothing can't be an edit: it's another load-time echo of
-  // the blob we already hold (Live's textedit restore and the two -started
-  // resync bangs all re-emit the same content, in no guaranteed order).
-  const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
+    expectLoadEcho = false;
 
-  sessionState.projectContext.content = value;
+    // A set that changes nothing can't be an edit: it's another load-time echo
+    // of the blob we already hold (Live's textedit restore and the two -started
+    // resync bangs all re-emit the same content, in no guaranteed order).
+    const isEdit = !isLoadEcho && value !== sessionState.projectContext.content;
 
-  if (isLoadEcho) noteProjectContextLoaded(value);
+    sessionState.projectContext.content = value;
 
-  // Device-UI and webui edits reach us only through this setter (never an MCP
-  // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
-  // forget: the write is Node-side and must not block the param update, and
-  // requestNode never rejects so this can't throw.
-  if (isEdit) void backupProjectContextOnEdit(value);
+    if (isLoadEcho) noteProjectContextLoaded(value);
+
+    // Device-UI and webui edits reach us only through this setter (never an MCP
+    // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
+    // forget: the write is Node-side and must not block the param update, and
+    // requestNode never rejects so this can't throw.
+    if (isEdit) void backupProjectContextOnEdit(value);
+  } finally {
+    endLiveApiScope();
+  }
 }
 
 /**
@@ -281,6 +298,10 @@ function applyRestoredProjectContext(
   snapshot: string,
 ): void {
   if (restored == null) return;
+
+  // Two session starts applying the SAME restore is not a divergence, even
+  // though the second one's snapshot no longer matches. Nothing left to do.
+  if (sessionState.projectContext.content === restored) return;
 
   if (sessionState.projectContext.content !== snapshot) {
     console.warn(
@@ -306,13 +327,37 @@ export function sampleFolder(path: unknown): void {
   sessionState.sampleFolder = value;
 }
 
+// The device fans the server's whole config outlet at both V8 and the Setup
+// tab, so keys only the UI needs still arrive here. Max logs "no function <key>"
+// for a config message V8 doesn't export, so each one needs a setter even when
+// V8 ignores the value. Don't delete these as dead code — see the parity test in
+// tests/config-key-parity.test.ts.
+
+/**
+ * Ignore the Direct Live API flag. The tool gate is entirely server-side: the
+ * server decides whether to register ppal-live-api and rejects the name when
+ * it's off, so anything reaching V8 has already passed that gate.
+ */
+export function liveApiEnabled(): void {}
+
+/**
+ * Ignore the enabled-tools whitelist. The server filters tool calls against it
+ * before they reach V8.
+ */
+export function tools(): void {}
+
 /**
  * Send a response back to the MCP server
  *
  * @param requestId - Request identifier
  * @param result - Result object to send
+ * @param warnings - Warnings this request raised, appended after the delimiter
  */
-function sendResponse(requestId: string, result: object): void {
+function sendResponse(
+  requestId: string,
+  result: object,
+  warnings: string[],
+): void {
   const jsonString = JSON.stringify(result);
   const { chunks, tooLargeError } = planChunks(jsonString);
 
@@ -325,13 +370,21 @@ function sendResponse(requestId: string, result: object): void {
       requestId,
       JSON.stringify(errorResult),
       MAX_ERROR_DELIMITER,
+      ...warnings,
     );
 
     return;
   }
 
-  // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
-  outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
+  // Send as: ["mcp_response", requestId, chunk1, ..., delimiter, warning1, ...]
+  outlet(
+    0,
+    "mcp_response",
+    requestId,
+    ...chunks,
+    MAX_ERROR_DELIMITER,
+    ...warnings,
+  );
 }
 
 /**
@@ -387,6 +440,33 @@ export async function mcp_request(
   argsJSON: string,
   contextJSON?: string | null,
 ): Promise<void> {
+  beginLiveApiScope();
+
+  try {
+    await handleRequest(requestId, tool, argsJSON, contextJSON);
+  } finally {
+    endLiveApiScope();
+  }
+}
+
+/**
+ * Run one tool call and send its response. Split out of mcp_request so the
+ * LiveAPI release scope there wraps the whole request, response included.
+ *
+ * @param requestId - Request identifier
+ * @param tool - Tool name to execute
+ * @param argsJSON - JSON string of arguments
+ * @param contextJSON - JSON string of context
+ */
+async function handleRequest(
+  requestId: string,
+  tool: string,
+  argsJSON: string,
+  contextJSON?: string | null,
+): Promise<void> {
+  // Opened before the arg parse so a warning from any part of the request —
+  // including the contextJSON fallback below — reaches this request's response.
+  const warnings = beginWarningCapture();
   let result;
 
   try {
@@ -418,11 +498,17 @@ export async function mcp_request(
     // post-await write to sessionState lives in a helper so concurrent requests
     // don't trip require-atomic-updates.
     const contextBeforeSync = sessionState.projectContext.content;
+    const restored = await syncProjectContextBackup(contextBeforeSync);
 
-    applyRestoredProjectContext(
-      await syncProjectContextBackup(contextBeforeSync),
-      contextBeforeSync,
-    );
+    // Re-assert after every await below: a request that started while this one
+    // was parked is the active capture now, and warnings from here on belong to
+    // this one. See v8-warning-capture.ts.
+    resumeWarningCapture(warnings);
+    applyRestoredProjectContext(restored, contextBeforeSync);
+
+    // Counts only the tool's own objects, not the project-context sync above.
+    // A build without ENABLE_BUILD_STATS gets a stub here and counts nothing.
+    beginLiveApiBuildStats();
 
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
@@ -431,6 +517,8 @@ export async function mcp_request(
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
       const output = (await callTool(tool, args, requestContext)) as object;
+
+      resumeWarningCapture(warnings);
 
       // Per-request override (REST ?format=json|compact) takes precedence
       // over the global compactOutput config.
@@ -446,6 +534,11 @@ export async function mcp_request(
       result = formatErrorResponse(
         `Error executing tool '${tool}': ${message}`,
       );
+    } finally {
+      // Before the response is assembled: the patch appends whatever is on
+      // outlet 1 at that moment, so reporting later files the numbers under
+      // some other call. A failed call still built objects, hence the finally.
+      reportLiveApiBuildStats();
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -454,7 +547,7 @@ export async function mcp_request(
   }
 
   // Send response back to Node for Max
-  sendResponse(requestId, result);
+  sendResponse(requestId, result, endWarningCapture(warnings));
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
@@ -473,12 +566,18 @@ outlet(0, "started");
  * Called by the Max patch after the device is fully loaded (LiveAPI is not available at top-level).
  */
 export function checkLiveVersion(): void {
-  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
-  const liveVersion = String(
-    LiveAPI.from("live_app").call("get_version_string"),
-  );
+  beginLiveApiScope();
 
-  if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
-    outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);
+  try {
+    // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
+    const liveVersion = String(
+      LiveAPI.from("live_app").call("get_version_string"),
+    );
+
+    if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
+      outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);
+    }
+  } finally {
+    endLiveApiScope();
   }
 }

@@ -6,6 +6,7 @@
 import { type ComponentChildren, Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 import { SPAWN_SUBAGENT_TOOL_NAME } from "#webui/lib/utils/enabled-tools";
+import { isResumeRequest } from "#webui/chat/sdk/subagent/spawn-subagent-tool";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   type UIMessage,
@@ -20,7 +21,8 @@ import {
   type ToolGroupRenderItem,
   groupToolParts,
 } from "./helpers/group-tool-parts";
-import { StepUsageLabel, calcStepNewContent } from "./StepUsageLabel";
+import { calcStepNewContent } from "./helpers/step-usage-helpers";
+import { StepUsageLabel } from "./StepUsageLabel";
 import { AssistantSubagentCall } from "./tool-calls/AssistantSubagentCall";
 import { AssistantToolCall } from "./tool-calls/AssistantToolCall";
 import { AssistantToolGroup } from "./tool-calls/AssistantToolGroup";
@@ -146,7 +148,7 @@ function renderSinglePart(
           toolCallId={part.id}
           transcript={renderSubagentTranscript(part.subagentMessages)}
           index={part.subagentIndex}
-          resumed={part.args.resumeFrom != null}
+          resumed={isResumeRequest(part.args.resumeFrom)}
         />
       );
     }
@@ -195,7 +197,7 @@ function renderSubagentTranscript(
     m.role === "user" ? (
       <div
         key={idx}
-        className="text-xs bg-blue-100 dark:bg-blue-900/60 rounded px-2 py-1 whitespace-pre-wrap wrap-break-word"
+        className="rounded bg-blue-100 px-2 py-1 text-xs wrap-break-word whitespace-pre-wrap dark:bg-blue-900/60"
       >
         {userTranscriptText(m)}
       </div>

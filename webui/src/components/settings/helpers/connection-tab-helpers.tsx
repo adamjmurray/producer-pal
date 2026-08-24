@@ -18,31 +18,9 @@ import {
   isRealtimeSelection,
   REALTIME_VOICES,
 } from "#webui/lib/constants/models";
+import { MODEL_DOCS_URLS } from "#webui/lib/constants/provider-urls";
 import { VOICE_LANGUAGES } from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
-
-export const API_KEY_URLS: Record<string, string | undefined> = {
-  anthropic: "https://console.anthropic.com/settings/keys",
-  gemini: "https://aistudio.google.com/apikey",
-  openai: "https://platform.openai.com/api-keys",
-  mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
-  openrouter: "https://openrouter.ai/settings/keys",
-};
-
-export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
-  anthropic: "https://docs.anthropic.com/en/docs/about-claude/models",
-  gemini: "https://ai.google.dev/gemini-api/docs/models",
-  openai: "https://platform.openai.com/docs/models",
-  mistral: "https://docs.mistral.ai/getting-started/models",
-  openrouter: "https://openrouter.ai/models",
-  lmstudio: "https://lmstudio.ai/models",
-  ollama: "https://ollama.com/search",
-};
-
-export const DEFAULT_LOCAL_URLS: Record<string, string> = {
-  lmstudio: "http://localhost:1234",
-  ollama: "http://localhost:11434",
-};
 
 interface ModelDocsLinkProps {
   provider: Provider;
@@ -63,12 +41,12 @@ export function ModelDocsLink({ provider, providerLabel }: ModelDocsLinkProps) {
   if (!url) return null;
 
   return (
-    <p className="text-xs text-zinc-500 dark:text-zinc-300 -mt-2">
+    <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-300">
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-blue-600 dark:text-blue-400 hover:underline"
+        className="text-blue-600 hover:underline dark:text-blue-400"
       >
         {providerLabel} models
       </a>
@@ -95,14 +73,14 @@ export function ThinkingSelector({
   return (
     <div className="flex items-center gap-2">
       <ThinkingStateIcon level={thinking} />
-      <label htmlFor="thinking-select" className="text-sm shrink-0">
+      <label htmlFor="thinking-select" className="shrink-0 text-sm">
         Thinking
       </label>
       <select
         id="thinking-select"
         value={thinking}
         onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
-        className="px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded text-sm"
+        className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-700"
       >
         {THINKING_LEVELS.map((level) => (
           <option key={level} value={level}>
@@ -132,7 +110,7 @@ export function SmallModelToggle({
   setSmallModelMode,
 }: SmallModelToggleProps) {
   return (
-    <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <label className="flex cursor-pointer items-center gap-2 text-sm">
       <span className={smallModelMode ? "" : "text-xl"}>
         {smallModelMode ? "🐢" : "🐘"}
       </span>{" "}
@@ -145,7 +123,7 @@ export function SmallModelToggle({
         }
       />
       Small model mode
-      <Tooltip text="Simplifies skills and tool parameters for less capable models. Recommended for local models (Ollama and LM Studio)." />
+      <Tooltip text="Simplifies skills and tool parameters for less capable models. Recommended for local models (Ollama and Bionic)." />
     </label>
   );
 }
@@ -170,14 +148,14 @@ export function VoiceLanguageSelector({
 }: VoiceLanguageSelectorProps) {
   return (
     <div>
-      <label htmlFor="voice-language-select" className="block text-sm mb-2">
+      <label htmlFor="voice-language-select" className="mb-2 block text-sm">
         Language
       </label>
       <select
         id="voice-language-select"
         value={language}
         onChange={(e) => setLanguage((e.target as HTMLSelectElement).value)}
-        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        className="w-full rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-600 dark:bg-zinc-700"
         data-testid="voice-language-select"
       >
         {VOICE_LANGUAGES.map(({ code, label }) => (
@@ -263,8 +241,8 @@ export function VoiceSettings({
         language={voiceLanguage}
         setLanguage={setVoiceLanguage}
       />
-      <details className="disclosure open:rounded-lg open:border open:border-zinc-300 dark:open:border-zinc-700 open:bg-zinc-200 dark:open:bg-zinc-900 open:p-3">
-        <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+      <details className="disclosure open:rounded-lg open:border open:border-zinc-300 open:bg-zinc-200 open:p-3 dark:open:border-zinc-700 dark:open:bg-zinc-900">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-sm select-none [&::-webkit-details-marker]:hidden">
           <DisclosureChevron />
           Voice Settings
         </summary>

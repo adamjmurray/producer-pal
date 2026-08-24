@@ -265,6 +265,20 @@ renames are preserved.
 **Lazy record creation**: `activeConversationId` is null until first save, which
 creates the record with a new UUID.
 
+**Dangling tool calls on restore**: autosave fires on the first assistant
+content, and a tool-call part counts — so a conversation left mid-tool-call is
+saved with that call missing its result. Restoring runs
+`reconcileDanglingToolCalls` over the record so the call gets the same synthetic
+result the wire form would substitute anyway. Without it the card renders as
+forever "working…" and the next request 400s on the unmatched tool_use. The
+cards read that placeholder back as "stopped" or "interrupted".
+
+Pressing Stop mid-call needs its own fix: the stream reconciles its own history
+on the way out, but that repaint lands after the abort and `onMessageUpdate`
+drops it (it has to — a conversation switch aborts the same way, and a late
+paint would clobber the conversation the user switched to). `stopResponse` marks
+the rendered cards itself, via `haltRunningToolCalls`.
+
 **Active conversation routing**: The active conversation ID is stored in the URL
 hash (`#<conversation-id>`), enabling browser back/forward navigation between
 conversations. On page load, the hash is read to restore the last conversation.
@@ -376,9 +390,11 @@ overview, the skills for its toolset and notation, and the user's context
 layers, fetched once from `GET /subagent-briefing`
 (`subagent/subagent-briefing.ts`). That replaces the `ppal-connect` call each
 worker used to make, so `ppal-connect` and `ppal-context` are withheld from a
-briefed worker. If the briefing can't be fetched, both stay enabled and the
-worker bootstraps itself as before — see Architecture.md → Subagent briefings
-for why the blob belongs in the system prompt.
+briefed worker. If the briefing can't be fetched, `ppal-connect` comes back and
+the worker bootstraps itself as before; `ppal-context` stays withheld either
+way, since it's withheld to keep parallel workers off the user's context store
+rather than because the briefing replaced it — see Architecture.md → Subagent
+briefings for why the blob belongs in the system prompt.
 
 **Formatting:**
 
@@ -423,7 +439,7 @@ the rest of voice mode doesn't branch on provider.
 `realtime-items-to-ui-messages.ts` and rendered with the same `MessageList`;
 conversations persist to the same IndexedDB store with a `sessionType: "voice"`
 discriminant and use the shared `ConversationPanel`; MCP tools are dispatched
-through `voice-mcp-call.ts` (a 30s-timeout wrapper that returns errors as text
+through `voice-mcp-call.ts` (a 60s-timeout wrapper that returns errors as text
 rather than throwing), wrapped per provider by `realtime-mcp-tools.ts` (OpenAI)
 and `gemini-mcp-tools.ts` (Gemini).
 

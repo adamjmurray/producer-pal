@@ -34,7 +34,7 @@ export function NewEntryButton(props: NewEntryButtonProps): preact.JSX.Element {
     <button
       type="button"
       onClick={props.onClick}
-      className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors ${
+      className={`flex items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap text-white transition-colors ${
         props.active ? "bg-blue-600" : "bg-blue-500 hover:bg-blue-600"
       }`}
     >

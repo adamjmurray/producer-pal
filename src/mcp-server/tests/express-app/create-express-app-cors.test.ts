@@ -6,6 +6,7 @@
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BRIEFING_REQUEST_HEADER } from "#src/shared/config.ts";
 
 /**
  * Sends a request to a freshly created Express app and returns the response.
@@ -15,12 +16,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * @param options.method - HTTP method (default "OPTIONS")
  * @param options.origin - Origin header to send, if any
  * @param options.path - Request path (default "/mcp")
+ * @param options.headers - Extra headers to send
  * @returns The response
  */
 async function requestApp(options: {
   method?: string;
   origin?: string;
   path?: string;
+  headers?: Record<string, string>;
 }): Promise<Response> {
   const method = options.method ?? "OPTIONS";
   const { createExpressApp } = await import("../../create-express-app.ts");
@@ -30,7 +33,7 @@ async function requestApp(options: {
   });
   const port = (server.address() as AddressInfo).port;
   const url = `http://localhost:${port}${options.path ?? "/mcp"}`;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
 
   if (options.origin != null) {
     headers.Origin = options.origin;
@@ -108,6 +111,22 @@ describe("MCP Express App - CORS", () => {
       expect(res.headers.get("vary")).toBeNull();
       expect(res.headers.get("access-control-allow-methods")).toContain("POST");
       expect(res.headers.get("access-control-allow-headers")).toBe("*");
+    });
+
+    it("still blocks a foreign origin from the briefing, the one read that drives Live", async () => {
+      // This is the build where /subagent-briefing's own origin gate is the
+      // whole defense: CORS is no longer keeping the response away from the
+      // page, so a foreign page could read the result of every Live call it
+      // triggered.
+      const res = await requestApp({
+        method: "GET",
+        path: "/subagent-briefing",
+        origin: "https://evil.example",
+        headers: { [BRIEFING_REQUEST_HEADER]: "1" },
+      });
+
+      expect(res.status).toBe(403);
+      expect(res.headers.get("access-control-allow-origin")).toBe("*");
     });
   });
 });

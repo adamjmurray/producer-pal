@@ -10,6 +10,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
@@ -36,6 +37,47 @@ interface LoopEndParams {
 interface ResolvedStartTime {
   startTimeBeats?: number;
   useLocatorStart: boolean;
+}
+
+/** The params that address the arrangement timeline: the playhead and the loop. */
+export interface ArrangementParams
+  extends StartTimeParams, LoopStartParams, LoopEndParams {
+  loop?: boolean;
+}
+
+/** The actions that read the arrangement timeline. The rest work the session. */
+const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
+
+/**
+ * Drop the arrangement-timeline params on an action that doesn't use them.
+ *
+ * These are written to the Live Set before the action runs, so a session action
+ * used to apply them anyway: "play scene 3 from bar 5" fired the scene and moved
+ * the arrangement playhead, without a word. The scene had nothing to do with the
+ * arrangement, so the caller got a change to their Live Set they never asked for.
+ * @param action - The playback action, which decides whether they apply
+ * @param params - The timeline params as the caller sent them
+ * @returns The params, or none of them when the action works the session
+ */
+export function resolveArrangementParams(
+  action: string,
+  params: ArrangementParams,
+): ArrangementParams {
+  if (ARRANGEMENT_ACTIONS.has(action)) return params;
+
+  const sent = (Object.keys(params) as Array<keyof ArrangementParams>).filter(
+    (key) => params[key] != null,
+  );
+
+  if (sent.length > 0) {
+    console.warn(
+      `${sent.join("/")} ignored: action "${action}" doesn't take arrangement ` +
+        `timeline params; use "play-arrangement" or "update-arrangement" for ` +
+        `the playhead and loop`,
+    );
+  }
+
+  return {};
 }
 
 /**
@@ -108,6 +150,21 @@ export function validateLocatorOrTime(
       `playback failed: ${paramName} cannot be used with ${locatorParamBase}Locator`,
     );
   }
+}
+
+/**
+ * Refuse a timeline whose position is named twice — once as a bar|beat and
+ * once as a locator. All three positions get the same rule.
+ * @param timeline - The arrangement params this action kept
+ */
+export function validateTimelineParams(timeline: ArrangementParams): void {
+  validateLocatorOrTime(timeline.startTime, timeline.startLocator, "startTime");
+  validateLocatorOrTime(
+    timeline.loopStart,
+    timeline.loopStartLocator,
+    "loopStart",
+  );
+  validateLocatorOrTime(timeline.loopEnd, timeline.loopEndLocator, "loopEnd");
 }
 
 /**
@@ -233,9 +290,20 @@ export function resolveLoopEnd(
   }
 }
 
+/** The scene play-scene fired, for the response */
+export interface FiredScene {
+  sceneIndex: number;
+  sceneName: string;
+}
+
 export interface PlaybackState {
   isPlaying: boolean;
   currentTimeBeats: number;
+  /**
+   * Set by play-scene only. The scene can be named by a scene id or by a clip
+   * in it, so the caller doesn't always know which one fired.
+   */
+  scene?: FiredScene;
 }
 
 /**
@@ -282,7 +350,7 @@ export function handlePlayScene(
 ): PlaybackState {
   if (sceneIndex == null) {
     throw new Error(
-      `playback failed: sceneIndex is required for action "play-scene"`,
+      `playback failed: sceneIndex, path "s<scene>", or a scene id is required for action "play-scene"`,
     );
   }
 
@@ -299,5 +367,6 @@ export function handlePlayScene(
   return {
     isPlaying: true,
     currentTimeBeats: state.currentTimeBeats,
+    scene: { sceneIndex, sceneName: sceneDisplayName(scene, sceneIndex) },
   };
 }

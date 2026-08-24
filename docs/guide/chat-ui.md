@@ -156,6 +156,13 @@ overrides it for individual messages.
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
 
+The text area is a markdown editor, so **Tab** and **Shift+Tab** indent and
+outdent rather than moving focus. To leave it with the keyboard, press
+**Escape** and then **Tab** — Escape hands Tab back to the page for a couple of
+seconds. **Ctrl+M** makes that permanent: press it once and Tab always moves
+focus, press it again to get indenting back. The same keys work in the context,
+memory, and skill editors.
+
 ### Message Queue
 
 You don't have to wait for the AI to finish. Keep typing and pressing **Send**
@@ -309,7 +316,7 @@ The Connection tab is where you choose and configure your AI provider and model:
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
-  LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
+  Bionic / LM Studio (local), OpenRouter, or Custom (OpenAI-compatible)
 - **API Key** - Your API key (for cloud providers)
 - **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
@@ -317,9 +324,9 @@ The Connection tab is where you choose and configure your AI provider and model:
   Max). Can also be overridden per-message using the thinking toggle in the
   message input area
 - **Small model mode** - Reduces tool descriptions to save context for local
-  models. Recommended when using Ollama or LM Studio
+  models. Recommended when using Ollama or Bionic
 
-#### Local AI settings (Ollama, LM Studio)
+#### Local AI settings (Ollama, Bionic)
 
 <img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
@@ -330,7 +337,7 @@ Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
 
 - **URL** - Server address (default: `http://localhost:11434` for Ollama,
-  `http://localhost:1234` for LM Studio)
+  `http://localhost:1234` for Bionic)
 - **Model** - Select from installed models
 
 In most cases, you should use the default URL. This is an advanced configuration
@@ -338,12 +345,12 @@ option.
 
 You may need to change the URL if:
 
-- You've modified the port in your Ollama or LM Studio installation
-- You're running Ollama or LM Studio on a different computer on your local
-  network (or anywhere on the Internet). This allows another computer to handle
-  the resource-intensive language model processing while your main computer
-  focuses on running Ableton Live. Replace `localhost` with the other computer's
-  network address (e.g., `http://192.168.1.100:11434`)
+- You've modified the port in your Ollama or Bionic installation
+- You're running Ollama or Bionic on a different computer on your local network
+  (or anywhere on the Internet). This allows another computer to handle the
+  resource-intensive language model processing while your main computer focuses
+  on running Ableton Live. Replace `localhost` with the other computer's network
+  address (e.g., `http://192.168.1.100:11434`)
 
 #### Voice
 
@@ -461,7 +468,7 @@ its own worker, never to the device.
 
 The Tools tab controls which tools are available to the AI when using the chat
 UI. This is important for reducing context size for local models (when using the
-Ollama or LM Studio provider). For local models, only enable the tools you need.
+Ollama or Bionic provider). For local models, only enable the tools you need.
 For state-of-the-art cloud providers (Gemini, OpenAI, etc), you generally want
 to keep everything enabled to make full use of Producer Pal's capabilities. If
 you want to prevent the AI from using a specific tool, you can disable it here.
@@ -544,6 +551,11 @@ The Preferences tab controls visual preferences and conversation management:
   GitHub once per device load whether a newer release exists, and shows an
   `(update)` link next to the version number when there is one. Turn this off
   and it never contacts GitHub.
+- **Tool steps per turn** - How much tool work one turn may do before it stops
+  and hands control back (5-100, default 25). Raise it if long arrangement tasks
+  keep stopping partway; lower it to keep a looping model on a shorter leash.
+  Subagents get the same budget for their own work. A change applies to new
+  conversations — the open one keeps the budget it started with.
 - **Cleanup Conversations** - Bulk-delete conversations:
   - **Delete unstarred** - Remove all non-bookmarked conversations
   - **Delete all** - Remove every conversation

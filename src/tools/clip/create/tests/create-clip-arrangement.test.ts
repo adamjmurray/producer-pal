@@ -74,7 +74,7 @@ describe("createClip - arrangement view", () => {
 
     expect(result).toStrictEqual({
       id: "arrangement_clip",
-      trackIndex: 0,
+      path: "t0",
       arrangementStart: "3|1",
       noteCount: 3,
       length: "1bar",
@@ -82,10 +82,9 @@ describe("createClip - arrangement view", () => {
   });
 
   it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {
-    setupArrangementClipMocks();
+    const { track } = setupArrangementClipMocks();
 
-    // arrangementStart is converted per-position in the create loop; a
-    // 0-indexed/zero-bar position is a hard error there, not a silent pre-origin
+    // A 0-indexed/zero-bar position is a hard error, not a silent pre-origin
     // beat. Also covers the per-item check in a comma-separated list.
     await expect(
       createClip({ trackIndex: 0, arrangementStart: "1|0", notes: "C3 1|1" }),
@@ -97,6 +96,14 @@ describe("createClip - arrangement view", () => {
         notes: "C3 1|1",
       }),
     ).rejects.toThrow(/1-indexed/);
+    // Regression: every position is checked before the first clip is made, so
+    // the bar-3 clip doesn't get left behind by the bar-0 error — which is all
+    // the caller gets back, and it names no clip.
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("should create arrangement clips at specified positions", async () => {
@@ -117,21 +124,21 @@ describe("createClip - arrangement view", () => {
     expect(result).toStrictEqual([
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "3|1",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "4|1",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        trackIndex: 0,
+        path: "t0",
         arrangementStart: "5|1",
         noteCount: 2,
         length: "1bar",
@@ -171,13 +178,13 @@ describe("createClip - arrangement view", () => {
     expect(result).toStrictEqual([]);
   });
 
-  it("should throw when arrangementStart is provided without trackIndex", async () => {
+  it("should throw when arrangementStart names no track", async () => {
     await expect(
       createClip({
         arrangementStart: "1|1",
         notes: "C4 1|1",
       }),
-    ).rejects.toThrow("trackIndex is required for arrangement clips");
+    ).rejects.toThrow("createClip failed: arrangementStart needs a track");
   });
 
   it("cycles clipseq() by clip.index across arrangement positions", async () => {

@@ -50,7 +50,7 @@ describe("updateClip - Advanced note operations", () => {
     setupMidiClipMock(mocks.clip123, { looping: 1 });
 
     await updateClip({
-      ids: "123",
+      id: "123",
       start: "1|3",
     });
 
@@ -76,7 +76,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
     });
 
@@ -130,7 +130,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
     });
 
@@ -151,7 +151,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v100 C3 1|1",
     });
 
@@ -184,7 +184,7 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "@2=1", // Copy bar 1 to bar 2
     });
 
@@ -232,7 +232,7 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "C3 1|1 D3 2|1 E3 3|1 F3 6|1", // beats 0, 4, 8, 20
       length: "2bar", // Clip length = 2 bars (8 beats)
     });
@@ -272,7 +272,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
     });
 
@@ -293,7 +293,7 @@ describe("updateClip - Advanced note operations", () => {
     setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       warpMode: "complex",
     });
 
@@ -309,7 +309,7 @@ describe("updateClip - Advanced note operations", () => {
     setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       warping: true,
     });
 
@@ -326,7 +326,7 @@ describe("updateClip - Advanced note operations", () => {
     setupAudioClipMock(mocks.clip123, { warping: 1 });
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       warpMode: "beats",
       warping: false,
     });
@@ -357,7 +357,7 @@ describe("updateClip - Advanced note operations", () => {
       ]);
 
       const result = await updateClip({
-        ids: "123",
+        id: "123",
         // New C1 half note at 1|2 (beat 1) spanning [1,3] — its onset precedes
         // the existing note's. Unsorted (existing@2 then new@1), Live would
         // delete the existing note; sorted ascending it becomes a tail overlap.
@@ -379,7 +379,7 @@ describe("updateClip - Advanced note operations", () => {
       ]);
 
       const result = await updateClip({
-        ids: "123",
+        id: "123",
         // Restate C1 at 1|1 as a quarter note — overwrites, not doubles up.
         notes: "n/4 C1 1|1",
       });

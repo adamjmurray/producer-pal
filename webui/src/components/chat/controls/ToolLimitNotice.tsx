@@ -24,8 +24,8 @@ export function ToolLimitNotice({
   disabled,
 }: ToolLimitNoticeProps) {
   return (
-    <div className="flex flex-col items-center py-4 px-6">
-      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3 text-center">
+    <div className="flex flex-col items-center px-6 py-4">
+      <div className="mb-3 text-center text-sm text-zinc-600 dark:text-zinc-400">
         Reached the tool-call limit for one turn. The task may not be finished —
         continue to let it keep working.
       </div>
@@ -33,7 +33,7 @@ export function ToolLimitNotice({
       <button
         onClick={onContinue}
         disabled={disabled}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
+        className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
       >
         Continue
       </button>

@@ -1,0 +1,110 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown";
+import { EditorState, type Extension, Prec } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+
+/**
+ * Dispatch a focus or blur callback based on whether the editor has focus.
+ * Separate from the component so it can be unit-tested directly — happy-dom
+ * doesn't reliably drive CodeMirror's focus tracking.
+ * @param hasFocus - Editor focus state after the update
+ * @param onFocus - Focus callback (optional)
+ * @param onBlur - Blur callback (optional)
+ */
+export function notifyFocusChange(
+  hasFocus: boolean,
+  onFocus: (() => void) | undefined,
+  onBlur: (() => void) | undefined,
+): void {
+  if (hasFocus) {
+    onFocus?.();
+  } else {
+    onBlur?.();
+  }
+}
+
+/**
+ * Enter submits, Shift+Enter inserts a newline (continuing a list item the
+ * way plain Enter does elsewhere). `Prec.highest` so it beats both the
+ * markdown keymap's Enter (`Prec.high`) and the default keymap's.
+ * @param onSubmit - Called on Enter
+ * @returns The keymap extension
+ */
+export function submitKeymap(onSubmit: () => void): Extension {
+  return Prec.highest([
+    // A DOM handler rather than a key binding so Cmd/Ctrl/Alt+Enter submit
+    // too (as the old textarea did) instead of reaching defaultKeymap's
+    // Mod-Enter. No IME guard needed: CodeMirror drops key events while
+    // composing before any handler runs.
+    EditorView.domEventHandlers({
+      keydown(event) {
+        if (event.key !== "Enter" || event.shiftKey) return false;
+        onSubmit();
+
+        return true;
+      },
+    }),
+    keymap.of([{ key: "Shift-Enter", run: insertNewlineContinueMarkup }]),
+  ]);
+}
+
+/**
+ * The read-only / editable state for a compartment. `readOnly` blocks edits
+ * but keeps focus and selection; `disabled` also drops focus (contenteditable
+ * off), like a disabled form control.
+ *
+ * The Tab hint rides along because it is only true where edits land: indentMore
+ * returns false under EditorState.readOnly, so a preview tabs straight out and
+ * must not be told to press Escape first.
+ * @param readOnly - Block edits
+ * @param disabled - Block edits and focus
+ * @param tabHintId - Id of the screen-reader hint describing Tab
+ * @returns The extensions for the editable compartment
+ */
+export function editableConfig(
+  readOnly: boolean,
+  disabled: boolean,
+  tabHintId: string,
+): Extension {
+  return [
+    EditorState.readOnly.of(readOnly || disabled),
+    EditorView.editable.of(!disabled),
+    ...(readOnly
+      ? []
+      : [EditorView.contentAttributes.of({ "aria-describedby": tabHintId })]),
+  ];
+}
+
+const BASE_FRAME_CLASS =
+  "border focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500/60 overflow-hidden flex flex-col";
+
+const VARIANT_FRAME_CLASS = {
+  card: "rounded-md border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50",
+  chat: "rounded-lg border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800 shadow-inner",
+};
+
+/**
+ * Tailwind classes for the editor's outer frame.
+ * @param variant - Which look to render
+ * @param disabled - Dim the frame like a disabled control
+ * @param className - Extra classes from the parent (sizing, usually)
+ * @returns The class string
+ */
+export function frameClassName(
+  variant: "card" | "chat",
+  disabled: boolean,
+  className: string | undefined,
+): string {
+  return [
+    BASE_FRAME_CLASS,
+    VARIANT_FRAME_CLASS[variant],
+    disabled ? "opacity-50" : "",
+    className ?? "",
+  ]
+    .filter((c) => c !== "")
+    .join(" ");
+}

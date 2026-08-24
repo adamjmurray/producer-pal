@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getToolErrorMessage,
+  parseAliasedToolResult,
   isToolError,
   parseToolResult,
   setupMcpTestContext,
@@ -30,12 +31,18 @@ describe("ppal-read-scene", () => {
     const firstScene = liveSet.scenes![0]!;
     const sceneId = firstScene.id;
 
-    // Test 1: Read scene by sceneId
+    // Test 1: Read scene by id, spelled the way a model guesses it. "sceneId"
+    // is a permanent alias, so this checks the read and the steer.
     const byIdResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
       arguments: { sceneId },
     });
-    const byId = parseToolResult<ReadSceneResult>(byIdResult);
+    const byId = parseAliasedToolResult<ReadSceneResult>(
+      byIdResult,
+      "ppal-read-scene",
+      "sceneId",
+      "id",
+    );
 
     expect(byId.id).toBe(sceneId);
     expect(byId.name).toBeDefined();
@@ -57,16 +64,26 @@ describe("ppal-read-scene", () => {
     // Test 4: Read with include: ["clips"]
     const clipsResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["clips"] },
+      arguments: { id: sceneId, include: ["clips"] },
     });
     const withClips = parseToolResult<ReadSceneResult>(clipsResult);
 
     expect(Array.isArray(withClips.clips)).toBe(true);
 
+    // Each clip names the track it sits on. The path ("t0/s0") says which
+    // track by index but not which one it is, so without this a caller asking
+    // what a scene holds can't tell the drums from the bass.
+    expect(withClips.clips).toStrictEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "t0/s0", trackName: "Drums" }),
+        expect.objectContaining({ path: "t1/s0", trackName: "Bass" }),
+      ]),
+    );
+
     // Test 5: Read with include: ["color"]
     const colorResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["color"] },
+      arguments: { id: sceneId, include: ["color"] },
     });
     const withColor = parseToolResult<ReadSceneResult>(colorResult);
 
@@ -76,7 +93,7 @@ describe("ppal-read-scene", () => {
     // Test 6: Read with include: ["*"] (all data)
     const allResult = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["*"] },
+      arguments: { id: sceneId, include: ["*"] },
     });
     const all = parseToolResult<ReadSceneResult>(allResult);
 
@@ -111,6 +128,6 @@ interface ReadSceneResult {
   color?: string;
   tempo?: number;
   timeSignature?: string;
-  clips?: object[];
+  clips?: Array<{ path?: string; trackName?: string }>;
   clipCount?: number;
 }

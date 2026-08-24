@@ -40,6 +40,15 @@ and see how much is accumulating for the release.
 artifacts, not just git. Nothing downstream has to infer which build it's
 holding.
 
+**Minor versions carry the work.** Features, tool-schema changes, and the bug
+fixes that ride along with them all go in a `2.N.0`. Patch versions are for
+simple follow-ups and urgent fixes on top of a release — not a place to
+accumulate a cycle's worth of changes.
+
+Batch generously into one minor rather than splitting across two closely spaced
+releases. Step 3 is cross-platform and largely manual, so a release costs about
+the same to test whatever it contains.
+
 The rest of the cycle moves within that version:
 
 ```sh
@@ -109,6 +118,10 @@ release build.
 
    This creates:
    - `release/Producer_Pal.mcpb` (Claude Desktop extension)
+
+   It refuses to build if your shell has a debug flag set — they are substituted
+   into the bundles, so a leftover `ENABLE_CODE_EXEC=true` would ship code
+   execution to everyone.
 
    It also prints the **build** these files identify themselves as. The release
    tag has to land on that commit — see
@@ -244,13 +257,13 @@ in CI — see `e2e/ui/README.md`.
       Quick Connect (free models are excluded from E2E tests due to rate limits)
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
-- [ ] **LM Studio** - With LM Studio running its local server, select the LM
+- [ ] **Bionic** - With Bionic running its local server, select the Bionic / LM
       Studio provider in the chat UI, enter a loaded model id, and run a simple
-      task. This exercises the webui → LM Studio path (OpenAI-compatible **Chat
-      Completions** API), which is distinct from using LM Studio as an MCP
-      client (Step 4). Regression-prone: the OpenAI-compatible providers must
-      use the Chat Completions API, not the Responses API (`.chat()` in
-      `provider-factories.ts`), or LM Studio returns a 400 "Invalid type for
+      task. This exercises the webui → Bionic path (OpenAI-compatible **Chat
+      Completions** API), which is distinct from using Bionic as an MCP client
+      (Step 4). Regression-prone: the OpenAI-compatible providers must use the
+      Chat Completions API, not the Responses API (`.chat()` in
+      `provider-factories.ts`), or the server returns a 400 "Invalid type for
       'input'".
 
 ## Step 4: Test the npm portal locally
@@ -270,8 +283,7 @@ tar -tzf producer-pal-*.tgz           # inspect contents
 npm install -g ./producer-pal-*.tgz
 ```
 
-Then point an MCP client (LM Studio or similar) at the globally installed
-command:
+Then point an MCP client (Bionic or similar) at the globally installed command:
 
 ```json
 "producer-pal": {

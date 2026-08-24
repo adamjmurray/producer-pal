@@ -66,7 +66,7 @@ export function note(
  * Shared mock context for update-clip tests
  */
 export const mockContext = {
-  holdingAreaStartBeats: 40000,
+  silenceWavPath: "/tmp/test-silence.wav",
 };
 
 export interface UpdateClipMocks {
@@ -434,8 +434,8 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
  * Assert that session-based file boundary detection ran correctly.
  * Verifies the session clip was created for boundary detection and cleaned up.
  * @param mockCreate - Spy on createAudioClipInSession
- * @param sessionSlot - Mock session slot with a call method
- * @param sessionSlot.call - Mock function for session slot calls
+ * @param sessionSlot - Mock clip slot with a call method
+ * @param sessionSlot.call - Mock function for clip slot calls
  * @param filePath - Expected audio file path
  */
 export function assertBoundaryDetection(

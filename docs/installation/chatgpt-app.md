@@ -25,13 +25,6 @@ similar, but it's no longer officially supported — the new app is recommended.
 
 :::
 
-::: warning macOS and Windows Only
-
-The ChatGPT desktop app runs on macOS (Apple Silicon) and Windows. On Linux, see
-[Codex CLI](./codex-cli) or the [ChatGPT web app](./chatgpt-web).
-
-:::
-
 ## Requirements
 
 <!--@include: ../_partials/live-requirement.md-->
@@ -61,8 +54,8 @@ Set **Type** to **STDIO** and fill in:
 
 - **Name:** `Producer Pal`
 - **Command to launch:** `npx`
-- **Arguments:** `-y` and `producer-pal` as separate entries (click "+ Add
-  argument" for each one)
+- **Arguments:** `-y` and `producer-pal@latest` as separate entries (click "+
+  Add argument" for each one)
 
 <img src="/img/chatgpt-app-add-mcp-stdio.png" alt="STDIO MCP configuration for Producer Pal" width="650"/><br>
 

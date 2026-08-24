@@ -110,7 +110,7 @@ export function clipStateAssertion(
   return {
     type: "state",
     tool: TOOL_READ_CLIP,
-    args: { slot, include: ["notes", "timing"] },
+    args: { path: slotToPath(slot), include: ["notes", "timing"] },
     expect: (result: unknown): boolean => {
       const clip = result as { notes?: string; timeSignature?: string };
 
@@ -243,10 +243,10 @@ export function diffNotes(
   events: NoteEvent[],
   expected: ExpectedNote[],
 ): string {
-  const sortedEvents = [...events].sort(
+  const sortedEvents = events.toSorted(
     (a, b) => a.start_time - b.start_time || a.pitch - b.pitch,
   );
-  const sortedExpected = [...expected].sort(
+  const sortedExpected = expected.toSorted(
     (a, b) =>
       a.start - b.start || pitchSortKey(a.pitch) - pitchSortKey(b.pitch),
   );
@@ -380,10 +380,16 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
 }
 
 /**
- * Pull the created clip's id and target slot from the ppal-create-clip call in
- * the given turn. Lets a grading read fetch the clip by id (wherever the model
+ * Pull the created clip's id and path from the ppal-create-clip call in the
+ * given turn. Lets a grading read fetch the clip by id (wherever the model
  * placed it — small models often misjudge 0-based scene indexing) while a
  * separate assertion checks whether it landed in the intended slot.
+ *
+ * Both come off the RESULT, not the args. The tool takes a destination several
+ * ways — `path`, the hidden trackIndex/sceneIndex alias, the tolerated old
+ * "0/0" spelling — and reports back one canonical path either way. Grading the
+ * args would score a model that used a spelling this reader didn't know as a
+ * placement failure for a clip that landed correctly.
  *
  * Reads the last SUCCESSFUL create call: a model that hits a param error is
  * told to fix the args and retry, and grading the discarded first attempt got
@@ -392,21 +398,22 @@ export function getCreateClipNotes(turns: EvalTurnResult[], turn = 1): string {
  *
  * @param turns - All turn results
  * @param turn - Turn index containing the create-clip call (default 1)
- * @returns The created clip's id and slot (either may be undefined if absent)
+ * @returns The created clip's id and path (either may be undefined if absent)
  */
 export function getCreatedClip(
   turns: EvalTurnResult[],
   turn = 1,
-): { id?: string; slot?: string } {
+): { id?: string; path?: string } {
   const call = lastSuccessfulToolCall(turns, turn, TOOL_CREATE_CLIP);
 
   if (!call) return {};
 
-  const slot = typeof call.args.slot === "string" ? call.args.slot : undefined;
   const parsed = parsedToolResult(call);
-  const id = parsed?.id == null ? undefined : argText(parsed.id);
 
-  return { id, slot };
+  return {
+    id: parsed?.id == null ? undefined : argText(parsed.id),
+    path: typeof parsed?.path === "string" ? parsed.path : undefined,
+  };
 }
 
 /**
@@ -515,9 +522,22 @@ function clipObjectsFrom(parsed: unknown): ClipShape[] {
 }
 
 /**
+ * Convert a "trackIndex/sceneIndex" slot string into the path the clip tools
+ * take. Scenario definitions still name slots in the older format, so the
+ * conversion lives here rather than at every call site.
+ * @param slot - Slot string, "trackIndex/sceneIndex"
+ * @returns The equivalent session path, "t<track>/s<scene>"
+ */
+export function slotToPath(slot: string): string {
+  const [trackIndex, sceneIndex] = slot.split("/");
+
+  return `t${trackIndex}/s${sceneIndex}`;
+}
+
+/**
  * Delete any existing session clips in the given slots. Use as a scenario
- * `setup` so repeat trials (`-r N`, which reuse the open Live Set) each start
- * with empty slots instead of inheriting clips from the previous trial.
+ * `setup` so a run against an already-open Live Set starts with empty slots
+ * instead of inheriting clips from the previous one.
  *
  * @param mcpClient - MCP client for tool calls
  * @param slots - Session clip slots to clear (e.g. ["0/0", "0/1", "0/2"])
@@ -531,7 +551,7 @@ export async function clearSessionSlots(
   for (const slot of slots) {
     const result = await mcpClient.callTool({
       name: "ppal-read-clip",
-      arguments: { slot, include: [] },
+      arguments: { path: slotToPath(slot), include: [] },
     });
 
     let id: unknown;
@@ -549,7 +569,7 @@ export async function clearSessionSlots(
   if (ids.length > 0) {
     await mcpClient.callTool({
       name: "ppal-delete",
-      arguments: { ids: ids.join(","), type: "clip" },
+      arguments: { id: ids.join(","), type: "clip" },
     });
   }
 }

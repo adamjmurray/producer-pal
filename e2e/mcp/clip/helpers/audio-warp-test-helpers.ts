@@ -101,7 +101,7 @@ export async function readClipFully(
 ): Promise<ReadClipResult> {
   const result = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["*"] },
+    arguments: { id: clipId, include: ["*"] },
   });
 
   return parseToolResult<ReadClipResult>(result);
@@ -114,20 +114,20 @@ export async function readClipFully(
 export const DRUM_LOOP_BEATS = 4;
 
 /**
- * Create an unwarped drum-loop clip in a session slot.
+ * Create an unwarped drum-loop clip in a clip slot.
  * @param client - The MCP client
- * @param slot - The session slot, "trackIndex/sceneIndex"
+ * @param path - The clip slot, "t<track>/s<scene>"
  * @returns The new clip's id
  */
 export async function createUnwarpedDrumLoop(
   client: Client,
-  slot: string,
+  path: string,
 ): Promise<string> {
   const result = await client.callTool({
     name: "ppal-create-clip",
     arguments: {
       sampleFile: DRUM_LOOP_FILE,
-      slot,
+      path,
       name: "unwarped loop",
       warping: false,
     },
@@ -156,7 +156,7 @@ export async function halveDrumLoopRegion(
 ): Promise<void> {
   await client.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, start: "1|1", length: "n/2" },
+    arguments: { id: clipId, start: "1|1", length: "n/2" },
   });
 
   await sleep(100);

@@ -49,33 +49,33 @@ export function RateLimitIndicator({
   const progress = 1 - remainingMs / retryDelayMs;
 
   return (
-    <div className="mx-4 my-3 flex flex-col items-center rounded-lg border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-400/[0.07] py-4 px-6">
-      <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-2">
+    <div className="mx-4 my-3 flex flex-col items-center rounded-lg border border-amber-300 bg-amber-50 px-6 py-4 dark:border-amber-500/40 dark:bg-amber-400/[0.07]">
+      <div className="mb-2 flex items-center gap-3 text-amber-600 dark:text-amber-400">
         <RetryIcon />
         <span className="font-medium">Rate limit reached</span>
       </div>
 
-      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+      <div className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
         Retry attempt {retryAttempt + 1} of {maxAttempts}
       </div>
 
-      <div className="w-48 mb-3">
-        <div className="h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+      <div className="mb-3 w-48">
+        <div className="h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
           <div
-            className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-100 ease-linear"
+            className="h-full bg-amber-500 transition-all duration-100 ease-linear dark:bg-amber-400"
             style={{ width: `${progress * 100}%` }}
           />
         </div>
       </div>
 
-      <div className="text-lg font-mono text-zinc-700 dark:text-zinc-300 mb-3">
+      <div className="mb-3 font-mono text-lg text-zinc-700 dark:text-zinc-300">
         Retrying in {remainingSeconds}s
       </div>
 
       {onCancel && (
         <button
           onClick={onCancel}
-          className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 px-3 py-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+          className="rounded px-3 py-1 text-sm text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
         >
           Cancel
         </button>
@@ -91,7 +91,7 @@ export function RateLimitIndicator({
 function RetryIcon() {
   return (
     <svg
-      className="w-5 h-5 animate-spin"
+      className="h-5 w-5 animate-spin"
       style={{ animationDuration: "2s" }}
       fill="none"
       viewBox="0 0 24 24"

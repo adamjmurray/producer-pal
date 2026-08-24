@@ -1,11 +1,71 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { assertDefined } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+
+/**
+ * Duplicates a device to one or more destination paths.
+ * Supports comma-separated toPath for multiple destinations.
+ * @param object - LiveAPI device object
+ * @param toPath - Destination path(s), comma-separated for multiple
+ * @param name - Optional name for duplicated device(s)
+ * @param count - Number of copies (warns if > 1)
+ * @returns Result object, or an array of them for multiple destinations
+ */
+export function duplicateDeviceWithPaths(
+  object: LiveAPI,
+  toPath: string | undefined,
+  name: string | undefined,
+  count: number,
+): object | object[] {
+  // Reads a blank toPath as omitted the way clips do, and refuses one that
+  // names nothing rather than quietly falling back to the default destination.
+  const paths = pathEntries(toPath, "toPath");
+
+  if (paths.length <= 1) {
+    // A lone copy that was skipped has nothing to report but its warning.
+    return duplicateDevice(object, paths[0], name, count) ?? [];
+  }
+
+  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+
+  warnExtraNames(parsedNames, paths.length, "duplicate");
+
+  // Read the source fresh per destination. A LiveAPI object follows its path,
+  // and an earlier copy inserted at or before the source's own index shifts it
+  // up — so reusing this one would duplicate whatever moved into its place.
+  // Take the id before anything moves; after the first copy the path is stale.
+  const sourceId = object.id;
+
+  // Always an array here: one object back from a two-destination call would
+  // read as a one-destination call that worked.
+  return paths
+    .map((path, i) =>
+      duplicateDevice(
+        LiveAPI.from(sourceId),
+        path,
+        getNameForIndex(name, i, parsedNames),
+        1,
+      ),
+    )
+    .filter((result) => result != null);
+}
 
 /**
  * Duplicate a device using the track duplication workaround.
@@ -18,14 +78,14 @@ import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-
  * @param toPath - Destination path (e.g., "t1/d0", "t0/d0/c0/d1")
  * @param name - Optional name for the duplicated device
  * @param count - Number of duplicates (only 1 supported, warns if > 1)
- * @returns Result with duplicated device info
+ * @returns The new device, or null when the copy was skipped
  */
-export function duplicateDevice(
+function duplicateDevice(
   device: LiveAPI,
   toPath: string | undefined,
   name: string | undefined,
   count = 1,
-): { id: string } {
+): { id: string } | null {
   if (count > 1) {
     console.warn(
       "count parameter ignored for device duplication (only single copy supported)",
@@ -49,47 +109,75 @@ export function duplicateDevice(
 
   liveSet.call("duplicate_track", trackIndex);
   const tempTrackIndex = trackIndex + 1;
-
-  // 4. Find the corresponding device on the temp track
   const tempDevicePath = `${livePath.track(tempTrackIndex)} ${devicePathWithinTrack}`;
-  const tempDevice = LiveAPI.from(tempDevicePath);
 
-  if (!tempDevice.exists()) {
-    // Clean up temp track and throw
-    liveSet.call("delete_track", tempTrackIndex);
-    throw new Error(
-      `duplicate failed: device not found in duplicated track at path "${tempDevicePath}"`,
+  // From here on a full copy of the source track — devices, clips and all — is
+  // parked at tempTrackIndex, so every exit deletes it. Anything that throws in
+  // between (a bad destination path, an unreachable chain) used to strand it.
+  try {
+    // 4. Find the corresponding device on the temp track
+    const tempDevice = LiveAPI.from(tempDevicePath);
+
+    if (!tempDevice.exists()) {
+      throw new Error(
+        `duplicate failed: device not found in duplicated track at path "${tempDevicePath}"`,
+      );
+    }
+
+    // 5. Determine destination path
+    const destination = toPath ?? calculateDefaultDestination(device.path);
+
+    // 6. Adjust destination if it references tracks after the source track.
+    // Canonicalize first: the adjuster only knows the "t<n>" spelling, so a
+    // bare "2" went through unshifted and the copy landed a track short.
+    const adjustedDestination = adjustTrackIndicesForTempTrack(
+      canonicalPath(destination),
+      trackIndex,
     );
+
+    // 7. Move the copy to the destination. Skip rather than throw, so the other
+    // destinations of a comma-separated toPath still get their copies. Name the
+    // caller's toPath, not the adjusted one — the temp track shifted its track
+    // index. Either way nothing survives: the copy is still on the temp track,
+    // which the cleanup below deletes.
+    const outcome = moveDeviceToPath(
+      tempDevice,
+      adjustedDestination,
+      device,
+      destination,
+    );
+
+    if (outcome === "no-destination") {
+      console.warn(`duplicate: no destination at toPath "${destination}"`);
+
+      return null;
+    }
+
+    if (outcome === "refused") {
+      console.warn(
+        `duplicate: the copy could not be moved to "${destination}"`,
+      );
+
+      return null;
+    }
+
+    // A path that didn't resolve at all already warned why, naming this path.
+    if (outcome === "unresolvable") {
+      return null;
+    }
+
+    // 8. Set name if provided
+    if (name) {
+      tempDevice.set("name", name);
+    }
+
+    // 9. Read the device's id before the temp track goes away
+    return { id: tempDevice.id };
+  } finally {
+    // Moving a device creates and deletes no tracks, so the temp track is still
+    // where duplicate_track put it.
+    liveSet.call("delete_track", tempTrackIndex);
   }
-
-  // 5. Determine destination path
-  const destination =
-    toPath ?? calculateDefaultDestination(device.path, trackIndex);
-
-  // 6. Adjust destination if it references tracks after the source track
-  const adjustedDestination = adjustTrackIndicesForTempTrack(
-    destination,
-    trackIndex,
-  );
-
-  // 7. Move device to destination
-  moveDeviceToPath(tempDevice, adjustedDestination);
-
-  // 8. Set name if provided
-  if (name) {
-    tempDevice.set("name", name);
-  }
-
-  // 9. Get device info before deleting temp track
-  const deviceId = tempDevice.id;
-
-  // 10. Calculate the temp track's current index (may have shifted if device moved before it)
-  const currentTempTrackIndex = recalculateTempTrackIndex(tempTrackIndex);
-
-  // 11. Delete the temporary track
-  liveSet.call("delete_track", currentTempTrackIndex);
-
-  return { id: deviceId };
 }
 
 /**
@@ -125,20 +213,15 @@ function extractDevicePathWithinTrack(devicePath: string): string {
 /**
  * Calculate the default destination: position after the original device on the same track
  * @param devicePath - Full Live API path of the source device
- * @param trackIndex - Track index
  * @returns Simplified path for destination
  */
-function calculateDefaultDestination(
-  devicePath: string,
-  trackIndex: number,
-): string {
-  // Get simplified path (e.g., "t1/d0/c2/d1")
-  const simplifiedPath = extractDevicePath(devicePath);
-
-  if (!simplifiedPath) {
-    // Fallback: append to the track
-    return `t${trackIndex}`;
-  }
+function calculateDefaultDestination(devicePath: string): string {
+  // Never null here: extractRegularTrackIndex already matched the same
+  // "live_set tracks N" prefix extractDevicePath needs.
+  const simplifiedPath = assertDefined(
+    extractDevicePath(devicePath),
+    `device path for "${devicePath}"`,
+  );
 
   // Parse the path to increment the last device index
   const segments = simplifiedPath.split("/");
@@ -154,6 +237,20 @@ function calculateDefaultDestination(
 
   // Fallback: append to the container
   return simplifiedPath;
+}
+
+/**
+ * The canonical spelling of a path, or the path unchanged when it doesn't
+ * parse — moveDeviceToPath reports the bad one as it warns and skips.
+ * @param path - The destination path as the caller wrote it
+ * @returns The canonical spelling
+ */
+function canonicalPath(path: string): string {
+  try {
+    return formatObjectPath(parseObjectPath(path, "toPath"));
+  } catch {
+    return path;
+  }
 }
 
 /**
@@ -183,14 +280,4 @@ function adjustTrackIndicesForTempTrack(
   }
 
   return toPath;
-}
-
-/**
- * Recalculate the temp track's index after the device has been moved.
- * Device movement doesn't create/delete tracks, so temp track index is stable.
- * @param originalTempTrackIndex - Original index of the temp track (sourceTrackIndex + 1)
- * @returns Current index of the temp track
- */
-function recalculateTempTrackIndex(originalTempTrackIndex: number): number {
-  return originalTempTrackIndex;
 }

@@ -122,9 +122,11 @@ function isValidPreset(value: unknown): value is ChatPreset {
     typeof p.thinking === "string" &&
     typeof p.smallModelMode === "boolean" &&
     // The additive fields are all optional; reject only a present-but-wrong-
-    // typed value so a hand-edited entry can't crash the picker.
-    (p.description === undefined || typeof p.description === "string") &&
-    (p.enabledTools === undefined || isEnabledToolsMap(p.enabledTools)) &&
-    (p.notation === undefined || isNotation(p.notation))
+    // typed value so a hand-edited entry can't crash the picker. A JSON `null`
+    // counts as absent — every reader of these three is nullish-tolerant, and
+    // dropping a whole preset over one is worse than honoring the rest of it.
+    (p.description == null || typeof p.description === "string") &&
+    (p.enabledTools == null || isEnabledToolsMap(p.enabledTools)) &&
+    (p.notation == null || isNotation(p.notation))
   );
 }

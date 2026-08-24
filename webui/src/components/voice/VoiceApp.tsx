@@ -14,7 +14,7 @@ import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
 import {
   type UseConversationSearchReturn,
   useConversationSearch,
-} from "#webui/hooks/chat/helpers/use-conversation-search";
+} from "#webui/hooks/chat/helpers/conversations/use-conversation-search";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
@@ -96,7 +96,7 @@ export function VoiceApp(props: VoiceAppProps) {
       />
 
       {voice.error && (
-        <div className="border-t border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm space-y-2">
+        <div className="space-y-2 border-t border-red-300 bg-red-50 px-4 py-3 text-sm dark:border-red-700 dark:bg-red-950/30">
           <div>
             <span className="font-medium">Error: </span>
             {voice.error}

@@ -69,8 +69,8 @@ export function ChatHeader({
   onToggleBookmark,
 }: ChatHeaderProps) {
   return (
-    <header className="bg-zinc-200 dark:bg-zinc-800 px-4 py-2 border-b border-zinc-400 dark:border-zinc-700 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] flex items-center gap-2 relative z-20">
-      <div className="flex items-center gap-0.75 -ml-2">
+    <header className="relative z-20 flex items-center gap-2 border-b border-zinc-400 bg-zinc-200 px-4 py-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:border-zinc-700 dark:bg-zinc-800 dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)]">
+      <div className="-ml-2 flex items-center gap-0.75">
         <button
           onClick={onToggleHistory}
           className={iconBtn}
@@ -89,7 +89,7 @@ export function ChatHeader({
         </button>
         <button
           onClick={onToggleBookmark}
-          className={`${iconBtn}${isActiveBookmarked ? " text-amber-400! dark:text-amber-400!" : ""}${onToggleBookmark ? "" : " opacity-30 cursor-default!"}`}
+          className={`${iconBtn}${isActiveBookmarked ? " text-amber-400! dark:text-amber-400!" : ""}${onToggleBookmark ? "" : " cursor-default! opacity-30"}`}
           disabled={!onToggleBookmark}
           aria-label={
             isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
@@ -106,7 +106,7 @@ export function ChatHeader({
         href="https://producer-pal.org"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative flex items-center pl-7 lg:pl-9 ml-2.5 hover:opacity-80 transition-opacity no-underline shrink-0"
+        className="relative ml-2.5 flex shrink-0 items-center pl-7 no-underline transition-opacity hover:opacity-80 lg:pl-9"
         title="Producer Pal website"
       >
         <img
@@ -114,7 +114,7 @@ export function ChatHeader({
           alt="Producer Pal"
           className="absolute left-0 h-5 scale-200"
         />
-        <h1 className="hidden lg:inline text-lg font-semibold">
+        <h1 className="hidden text-lg font-semibold lg:inline">
           Producer Pal Chat
         </h1>
       </a>

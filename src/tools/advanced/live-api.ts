@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  clearLiveApiMemo,
+  untrackLiveApiObject,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   MAX_OPERATIONS,
@@ -63,6 +67,7 @@ const OPERATION_REQUIREMENTS: Record<OperationType, OperationRequirements> = {
   // valueDefined, not valueTruthy: "" and 0 are the meaningful values here.
   set_path: { valueDefined: true },
   set_mode: { valueDefined: true },
+  set_id: { valueDefined: true },
   getcount: { property: true },
   getstring: { property: true },
 };
@@ -92,6 +97,7 @@ const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
     setColor: { value: "setColor operation requires value (color)" },
     set_path: { value: "set_path operation requires value (path)" },
     set_mode: { value: "set_mode operation requires value (mode)" },
+    set_id: { value: "set_id operation requires value (id)" },
     getcount: { property: "getcount operation requires property (child type)" },
     getstring: { property: "getstring operation requires property" },
   };
@@ -153,7 +159,7 @@ function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
     case "set_property":
       api.set(property, operation.value);
 
-      // api.set() returns nothing, so echo the input rather than undefined.
+      // api.set() returns 1 whether or not the write lands, so echo the input.
       return operation.value;
 
     case "call": {
@@ -211,8 +217,8 @@ function executeObjectOperation(
 
     case "set_path":
       // `path` is readonly in the type declarations so ordinary code can't
-      // retarget an object. This tool is the deliberate exception: assigning ""
-      // is the only way to release the path listeners Live installs.
+      // retarget an object. This debug tool is a deliberate exception; the
+      // other write is the automatic release in live-api-release.ts.
       (api as unknown as { path: string }).path = operation.value as string;
 
       // Read back — Max may normalize or reject the value.
@@ -223,12 +229,29 @@ function executeObjectOperation(
 
       return api.mode;
 
+    case "set_id":
+      // Retargets by id, the way set_path does by path. Wants the bare number:
+      // the "id N" form points the object at nothing instead.
+      (api as unknown as { id: string | number }).id = operation.value as
+        | string
+        | number;
+
+      // Read back — a bad id is ignored silently, leaving the previous target.
+      return api.id;
+
     case "call_method": {
       const args = operation.args ?? [];
       const methodFn = (api as unknown as Record<string, unknown>)[method];
 
       if (typeof methodFn !== "function") {
         throw new Error(`Method "${method}" not found on LiveAPI object`);
+      }
+
+      // freepeer() frees the JS peer and leaves the path listener armed — bad
+      // enough on its own, and it's what the probes here are for. Pooling the
+      // result would be worse: a later request would be handed a freed object.
+      if (method === "freepeer") {
+        untrackLiveApiObject(api);
       }
 
       return methodFn.apply(api, args);
@@ -268,6 +291,14 @@ export function liveApi(
   }
 
   const defaultPath = "live_set";
+
+  // This tool retargets its object in place — goto, set_path, set_id, set_mode
+  // — and can freepeer it outright, none of which any other caller does.
+  // Emptying the memo first means the object it gets is its own rather than one
+  // some other part of the request is still holding, and emptying it after
+  // keeps the retargeted object from being handed out under its original path.
+  clearLiveApiMemo();
+
   const api = LiveAPI.from(path ?? defaultPath);
   const results: OperationResult[] = [];
 
@@ -289,28 +320,19 @@ export function liveApi(
         result,
       });
     }
-
-    // Read both before the release below zeroes them.
-    const finalPath = api.path;
-    const finalId = api.id;
-
-    // Include path in result if:
-    // 1. Path was explicitly provided, OR
-    // 2. Path changed during operations (e.g., via goto)
-    const pathChanged = finalPath !== defaultPath;
-    const includePath = path != null || pathChanged;
-
-    return {
-      ...(includePath ? { path: finalPath } : {}),
-      id: finalId,
-      results,
-    };
   } finally {
-    // Live arms a path listener on every collection along a path-based
-    // LiveAPI's path and never takes them down on its own — clearing the path
-    // is the only thing that does. Skip this and every call leaves one armed
-    // for the life of the device, costing ~4,900 bytes of Ableton log apiece
-    // on every later structural change to the Live Set. Measured on 12.4.3.
-    (api as unknown as { path: string }).path = "";
+    clearLiveApiMemo();
   }
+
+  // Include path in result if:
+  // 1. Path was explicitly provided, OR
+  // 2. Path changed during operations (e.g., via goto)
+  const pathChanged = api.path !== defaultPath;
+  const includePath = path != null || pathChanged;
+
+  return {
+    ...(includePath ? { path: api.path } : {}),
+    id: api.id,
+    results,
+  };
 }

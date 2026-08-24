@@ -1,23 +1,40 @@
 # Roadmap
 
-## Exploring
+## Next
 
-### Extensibility (post-2.1)
+### 2.3
 
-These aren't commitments — see
-[Extending Producer Pal](/extending#ideas-under-consideration) for the full
-framing:
+In consideration:
 
-- Custom skills: write your own instruction packs, plus a curated set of
-  examples to install and adapt
-- Personas: presets that carry their own context and skills, not just a model
-  and tool set
-- Workflows: pre-defined tool call sequences for reliable, repeatable operations
+- Improved Drum Rack support
+- Continue to improve performance
+- Continues standardizing tool interfaces on path-based locators for Live
+  objects
+- Fetch model options from Ollama and LM Studio/Bionic servers instead of
+  hard-coding
 
 ## Changelog
 
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
+
+### 2.2 - Performance and paths (August 2026)
+
+- Producer Pal no longer leaks Live API objects, so Ableton stays fast over a
+  long session instead of slowing down and filling its log file
+- Drum kit, Live Set, and arrangement operations do a fraction of the work they
+  did — heavy arrangement edits could freeze Live
+- One shorthand syntax locates anything in a Live Set: `t2/s3` is a clip slot,
+  `t2/l0` a take lane, `t1/d0/pC1` a drum pad. `path` replaces `slot`, and clip
+  results report it — **breaking** for anything reading `slot` or `trackIndex`
+- Every id param is just `id`, and a param sent as `null` reads as unset
+- Drum Racks: copy a pad, delete a single chain, read and write chain mixers,
+  and nested racks work
+- Copy or move a clip to another track in the arrangement, and split arrangement
+  clips at song positions
+- Calls that run long report what landed instead of failing outright
+- Built-in chat: the input is a markdown editor, and the per-turn tool-step
+  budget is 25 and configurable
 
 ### 2.1 - Delegation (August 2026)
 
@@ -119,10 +136,3 @@ Expanded features and support for multiple AI platforms.
 
 Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
-
-## Beyond 2.0
-
-- Audio synthesis
-- Audio analysis
-- Microtonal support
-- Add any new Live API features as they arrive

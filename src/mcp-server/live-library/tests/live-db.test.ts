@@ -80,7 +80,9 @@ describe("openLiveDb", () => {
   });
 
   it("throws when the file does not exist", async () => {
-    await expect(openLiveDb(join(scratchDir, "missing.db"))).rejects.toThrow();
+    await expect(openLiveDb(join(scratchDir, "missing.db"))).rejects.toThrow(
+      "unable to open database file",
+    );
   });
 });
 

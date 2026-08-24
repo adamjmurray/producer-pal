@@ -7,19 +7,12 @@
  * @vitest-environment happy-dom
  */
 import { act, fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { installClipboardMock } from "#webui/test-utils/clipboard-test-helpers";
 import { CopyButton } from "#webui/components/context/collection/CopyButton";
 
 describe("CopyButton", () => {
-  let writeText: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
-  });
+  const writeText = installClipboardMock();
 
   afterEach(() => {
     vi.useRealTimers();

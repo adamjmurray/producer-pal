@@ -39,6 +39,25 @@ function makeEditor(content = "current"): {
   };
 }
 
+/**
+ * Run an import that the picker refuses and assert the failure reached
+ * onImportError rather than the editor.
+ * @param message - The message the picker's refusal maps to
+ */
+async function expectImportError(message: string): Promise<void> {
+  const { editor, handleImport } = makeEditor();
+  const onImportError = vi.fn();
+  const { onImport } = makeContextIoHandlers({
+    editor,
+    exportBasename: "base",
+    onImportError,
+  });
+
+  onImport();
+  await vi.waitFor(() => expect(onImportError).toHaveBeenCalledWith(message));
+  expect(handleImport).not.toHaveBeenCalled();
+}
+
 describe("makeContextIoHandlers", () => {
   beforeEach(() => {
     downloadTextFile.mockReset();
@@ -170,35 +189,11 @@ describe("makeContextIoHandlers", () => {
 
   it("onImport reports an oversized pick to onImportError, not the editor", async () => {
     pickTextFile.mockResolvedValue({ kind: "too-large" });
-    const { editor, handleImport } = makeEditor();
-    const onImportError = vi.fn();
-    const { onImport } = makeContextIoHandlers({
-      editor,
-      exportBasename: "base",
-      onImportError,
-    });
-
-    onImport();
-    await vi.waitFor(() =>
-      expect(onImportError).toHaveBeenCalledWith(fileIo.TOO_LARGE_MESSAGE),
-    );
-    expect(handleImport).not.toHaveBeenCalled();
+    await expectImportError(fileIo.TOO_LARGE_MESSAGE);
   });
 
   it("onImport reports an unreadable pick to onImportError", async () => {
     pickTextFile.mockResolvedValue({ kind: "read-error" });
-    const { editor, handleImport } = makeEditor();
-    const onImportError = vi.fn();
-    const { onImport } = makeContextIoHandlers({
-      editor,
-      exportBasename: "base",
-      onImportError,
-    });
-
-    onImport();
-    await vi.waitFor(() =>
-      expect(onImportError).toHaveBeenCalledWith(fileIo.READ_ERROR_MESSAGE),
-    );
-    expect(handleImport).not.toHaveBeenCalled();
+    await expectImportError(fileIo.READ_ERROR_MESSAGE);
   });
 });

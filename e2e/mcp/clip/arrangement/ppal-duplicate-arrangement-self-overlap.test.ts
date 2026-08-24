@@ -20,22 +20,24 @@
  * Run with: npm run e2e:mcp -- ppal-duplicate-arrangement-self-overlap
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   parseToolResult,
   type ReadClipResult,
-  resetConfig,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import {
+  type ArrangementClipResult,
+  beats,
+  callTool,
+  clipAt,
+  clipsInBarRange,
+  duplicateClipToArrangement,
+  lengthBeats,
+  readArrangementClips,
+} from "../helpers/arrangement-clip-query-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-interface ClipResult {
-  id: string;
-  arrangementStart?: string;
-  arrangementLength?: string;
-}
 
 const MIDI_TRACK = 8;
 const AUDIO_TRACK = 5;
@@ -45,19 +47,16 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
   let audioId: string; // session sample clip on t5/s0
 
   beforeAll(async () => {
-    await resetConfig();
-    await sleep(50);
-
-    const midi = await callTool("ppal-create-clip", {
-      slot: `${MIDI_TRACK}/0`,
+    const midi = await callTool(ctx.client!, "ppal-create-clip", {
+      path: `t${MIDI_TRACK}/s0`,
       notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
       length: "4bar",
     });
 
     midi4barId = parseToolResult<{ id: string }>(midi).id;
 
-    const sample = await callTool("ppal-read-clip", {
-      slot: `${AUDIO_TRACK}/0`,
+    const sample = await callTool(ctx.client!, "ppal-read-clip", {
+      path: `t${AUDIO_TRACK}/s0`,
     });
 
     audioId = parseToolResult<{ id: string }>(sample).id;
@@ -154,19 +153,6 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 });
 
 /**
- * Call an MCP tool with the given arguments.
- * @param name - Tool name (e.g. "ppal-duplicate")
- * @param args - Tool arguments
- * @returns Raw tool result
- */
-async function callTool(
-  name: string,
-  args: Record<string, unknown>,
-): Promise<unknown> {
-  return ctx.client!.callTool({ name, arguments: args });
-}
-
-/**
  * Duplicate a clip to an arrangement position.
  * @param id - Source clip ID
  * @param arrangementStart - Target position in bar|beat format
@@ -175,17 +161,8 @@ async function callTool(
 async function dupToArr(
   id: string,
   arrangementStart: string,
-): Promise<ClipResult> {
-  const result = await callTool("ppal-duplicate", {
-    type: "clip",
-    id,
-    arrangementStart,
-  });
-  const clip = parseToolResult<ClipResult>(result);
-
-  await sleep(100);
-
-  return clip;
+): Promise<ArrangementClipResult> {
+  return duplicateClipToArrangement(ctx.client!, id, arrangementStart);
 }
 
 /**
@@ -197,7 +174,10 @@ async function moveArrClip(
   id: string,
   arrangementStart: string,
 ): Promise<void> {
-  await callTool("ppal-update-clip", { ids: id, arrangementStart });
+  await callTool(ctx.client!, "ppal-update-clip", {
+    id: id,
+    arrangementStart,
+  });
   await sleep(100);
 }
 
@@ -207,15 +187,7 @@ async function moveArrClip(
  * @returns Array of arrangement clip data
  */
 async function readArrClips(trackIndex: number): Promise<ReadClipResult[]> {
-  const result = await callTool("ppal-read-track", {
-    trackIndex,
-    include: ["arrangement-clips", "timing"],
-  });
-
-  return (
-    parseToolResult<{ arrangementClips?: ReadClipResult[] }>(result)
-      .arrangementClips ?? []
-  );
+  return readArrangementClips(ctx.client!, trackIndex);
 }
 
 /**
@@ -228,64 +200,12 @@ async function readClip(
   clipId: string,
   include: string[],
 ): Promise<ReadClipResult> {
-  const result = await callTool("ppal-read-clip", { clipId, include });
+  const result = await callTool(ctx.client!, "ppal-read-clip", {
+    id: clipId,
+    include,
+  });
 
   return parseToolResult<ReadClipResult>(result);
-}
-
-/**
- * Filter clips whose bar number falls within [minBar, maxBar].
- * @param clips - Array of clip results
- * @param minBar - Minimum bar number (inclusive)
- * @param maxBar - Maximum bar number (inclusive)
- * @returns Filtered clips
- */
-function clipsInBarRange(
-  clips: ReadClipResult[],
-  minBar: number,
-  maxBar: number,
-): ReadClipResult[] {
-  return clips.filter((c) => {
-    const bar = Number.parseInt(c.arrangementStart?.split("|")[0] ?? "", 10);
-
-    return bar >= minBar && bar <= maxBar;
-  });
-}
-
-/**
- * Find a clip at an exact arrangement position.
- * @param clips - Array of clip results
- * @param arrangementStart - Position in bar|beat format
- * @returns The matching clip, if any
- */
-function clipAt(
-  clips: ReadClipResult[],
-  arrangementStart: string,
-): ReadClipResult | undefined {
-  return clips.find((c) => c.arrangementStart === arrangementStart);
-}
-
-/**
- * Get a clip's arrangement length in beats.
- * @param clip - Clip result (must have arrangementLength)
- * @returns Length in Ableton beats (4/4)
- */
-function lengthBeats(clip: ReadClipResult | undefined): number {
-  if (!clip?.arrangementLength) {
-    throw new Error("clip missing arrangementLength");
-  }
-
-  return beats(clip.arrangementLength);
-}
-
-/**
- * Parse a duration string to absolute beats (4/4). Handles every output shape:
- * "Nbar", "n<fraction>", "Nbar+n<fraction>", and off-grid bare beats.
- * @param duration - Arrangement length duration string (e.g. "4bar")
- * @returns Length in Ableton beats (4/4)
- */
-function beats(duration: string): number {
-  return durationToAbletonBeats(duration, 4, 4);
 }
 
 /**

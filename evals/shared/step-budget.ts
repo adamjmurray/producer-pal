@@ -16,4 +16,4 @@
  * halves the tool work the same budget buys.
  */
 
-export const MAX_TOOL_STEPS = 10;
+export const MAX_TOOL_STEPS = 25;

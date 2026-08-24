@@ -34,13 +34,13 @@ describe("ppal-update-scene", () => {
     // Test 1: Update scene name
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, name: "Renamed Scene" },
+      arguments: { id: sceneId, name: "Renamed Scene" },
     });
 
     await sleep(100);
     const afterName = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const namedScene = parseToolResult<ReadSceneResult>(afterName);
 
@@ -49,13 +49,13 @@ describe("ppal-update-scene", () => {
     // Test 2: Update scene color
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, color: "#00FF00" },
+      arguments: { id: sceneId, color: "#00FF00" },
     });
 
     await sleep(100);
     const afterColor = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId, include: ["color"] },
+      arguments: { id: sceneId, include: ["color"] },
     });
     const coloredScene = parseToolResult<ReadSceneResult>(afterColor);
 
@@ -65,13 +65,13 @@ describe("ppal-update-scene", () => {
     // Test 3: Update scene tempo
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, tempo: 140 },
+      arguments: { id: sceneId, tempo: 140 },
     });
 
     await sleep(100);
     const afterTempo = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const tempoScene = parseToolResult<ReadSceneResult>(afterTempo);
 
@@ -80,13 +80,13 @@ describe("ppal-update-scene", () => {
     // Test 4: Update scene time signature
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, timeSignature: "6/8" },
+      arguments: { id: sceneId, timeSignature: "6/8" },
     });
 
     await sleep(100);
     const afterTimeSig = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const timeSigScene = parseToolResult<ReadSceneResult>(afterTimeSig);
 
@@ -95,13 +95,13 @@ describe("ppal-update-scene", () => {
     // Test 5: Disable tempo with -1
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, tempo: -1 },
+      arguments: { id: sceneId, tempo: -1 },
     });
 
     await sleep(100);
     const afterDisableTempo = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const disabledTempoScene =
       parseToolResult<ReadSceneResult>(afterDisableTempo);
@@ -112,13 +112,13 @@ describe("ppal-update-scene", () => {
     // Test 6: Disable time signature with "disabled"
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: sceneId, timeSignature: "disabled" },
+      arguments: { id: sceneId, timeSignature: "disabled" },
     });
 
     await sleep(100);
     const afterDisableTimeSig = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const disabledTimeSigScene =
       parseToolResult<ReadSceneResult>(afterDisableTimeSig);
@@ -129,7 +129,7 @@ describe("ppal-update-scene", () => {
     // Test 7: Batch update multiple scenes
     const batchResult = await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { ids: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
+      arguments: { id: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
     });
 
     parseBatchResult<UpdateSceneResult>(batchResult, 2);
@@ -137,11 +137,11 @@ describe("ppal-update-scene", () => {
     await sleep(100);
     const verifyFirst = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId },
+      arguments: { id: sceneId },
     });
     const verifySecond = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneId: secondSceneId },
+      arguments: { id: secondSceneId },
     });
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);

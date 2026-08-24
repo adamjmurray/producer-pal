@@ -41,7 +41,7 @@ async function readClipTiming(
 
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["timing"] },
+    arguments: { id: clipId, include: ["timing"] },
   });
 
   return parseToolResult<ReadClipResult>(result)[field];
@@ -53,7 +53,7 @@ async function readClipTiming(
  * @returns The new clip's id
  */
 function createLoopingClip(length: string): Promise<string> {
-  return createClipInSlot(ctx, `${emptyMidiTrack}/0`, {
+  return createClipInSlot(ctx, `t${emptyMidiTrack}/s0`, {
     notes: "C3 1|1",
     looping: true,
     length,
@@ -86,7 +86,7 @@ describe("clip duration round-trips (absolute note values)", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clipId, length: "n/2" },
+      arguments: { id: clipId, length: "n/2" },
     });
 
     await sleep(100);
@@ -100,7 +100,7 @@ describe("clip duration round-trips (absolute note values)", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        path: `t${emptyMidiTrack}`,
         arrangementStart: "10|1",
         notes: "C3 1|1",
         looping: false,
@@ -115,7 +115,7 @@ describe("clip duration round-trips (absolute note values)", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, arrangementLength: "4bar" },
+      arguments: { id: clip.id, arrangementLength: "4bar" },
     });
 
     await sleep(200);

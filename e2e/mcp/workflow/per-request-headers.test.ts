@@ -25,11 +25,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
 import { DISABLED_TOOLS_HEADER } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
-import { buildSkills } from "#src/skills/build-skills.ts";
+import { buildSkills, type SkillOverrides } from "#src/skills/build-skills.ts";
 import { builtinFragments } from "#src/skills/builtin-fragments.ts";
 import {
   CONFIG_URL,
   type CreateClipResult,
+  fetchSkillOverrides,
   getToolErrorMessage,
   isToolError,
   MCP_URL,
@@ -131,14 +132,17 @@ async function connectSkills(client: Client): Promise<string> {
 }
 
 /**
- * A built-in fragment's longest line, as a marker for "this fragment shipped".
- * The longest one is prose rather than a heading or an `@include`, so it is both
- * unique to the fragment and unlikely to be a substring of anything else.
+ * A fragment's longest line, as a marker for "this fragment shipped". The
+ * longest one is prose rather than a heading or an `@include`, so it is both
+ * unique to the fragment and unlikely to be a substring of anything else. The
+ * dev machine's override wins where it has one — that, not the built-in, is the
+ * text the live server assembled.
  * @param fragment - The fragment's include name
+ * @param overrides - The server's skills overrides
  * @returns The line
  */
-function longestLine(fragment: string): string {
-  const body = builtinFragments()[fragment];
+function longestLine(fragment: string, overrides: SkillOverrides): string {
+  const body = overrides.fragments?.[fragment] ?? builtinFragments()[fragment];
 
   expect(body, `fragment ${fragment} not found`).toBeDefined();
 
@@ -175,7 +179,7 @@ function removedLines(full: string, gated: string): string[] {
 async function readNotes(client: Client, clipId: string): Promise<string> {
   const result = await client.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
+    arguments: { id: clipId, include: ["notes"] },
   });
 
   return parseToolResult<ReadClipResult>(result).notes ?? "";
@@ -238,21 +242,27 @@ describe("x-producer-pal-disabled-tools", () => {
     const skills = await connectSkills(subset);
     const ungated = await connectSkills(ctx.client!);
     const removed = removedLines(ungated, skills);
+    // e2e runs against a live ~/.producer-pal, so the dev machine's own skills
+    // overrides are part of both blobs the server just served.
+    const overrides = await fetchSkillOverrides();
 
     // The live server dropped exactly what assembling the same toolset drops
     // here — so this tracks any future skills reorg on its own, rather than
     // going stale against hand-picked content markers.
     expect(removed).toStrictEqual(
       removedLines(
-        buildSkills({ notation: "barbeat" }),
-        buildSkills({ notation: "barbeat", tools }),
+        buildSkills({ notation: "barbeat" }, overrides),
+        buildSkills({ notation: "barbeat", tools }, overrides),
       ),
     );
 
     // …and it dropped something, named by the fragments' own text, so the
-    // equality above can't pass by both sides removing nothing.
+    // equality above can't pass by both sides removing nothing. A fragment the
+    // dev switched off is in neither blob, so it has nothing to prove.
     for (const fragment of GATED_OUT) {
-      const marker = longestLine(fragment);
+      if (overrides.disabled?.includes(fragment)) continue;
+
+      const marker = longestLine(fragment, overrides);
 
       expect(ungated).toContain(marker);
       expect(removed).toContain(marker);
@@ -300,7 +310,7 @@ describe("x-producer-pal-notation", () => {
       await stark.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot: `${EMPTY_MIDI_TRACK}/0`,
+          path: `t${EMPTY_MIDI_TRACK}/s0`,
           notes: "melody: C E G",
           length: "1bar",
         },
@@ -333,7 +343,7 @@ describe("x-producer-pal-notation", () => {
     const created = await restCallTool<CreateClipResult>(
       "ppal-create-clip",
       {
-        slot: `${EMPTY_MIDI_TRACK}/1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "melody: D F A",
         length: "1bar",
       },
@@ -344,7 +354,7 @@ describe("x-producer-pal-notation", () => {
 
     const starkClip = await restCallTool<ReadClipResult>(
       "ppal-read-clip",
-      { clipId: created.id, include: ["notes"] },
+      { id: created.id, include: ["notes"] },
       { [NOTATION_HEADER]: "stark" },
     );
 

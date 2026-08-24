@@ -157,6 +157,8 @@ export interface UseChatReturn {
   activeNotation: Notation | null;
   /** The tool selection the active conversation last connected with. */
   activeEnabledTools: Record<string, boolean> | null;
+  /** The per-turn tool-step budget pinned for the active conversation. */
+  activeMaxToolSteps: number | null;
   rateLimitState: RateLimitState | null;
   queuedMessages: QueuedMessage[];
   enqueueMessage: (text: string, overrides?: MessageOverrides) => void;

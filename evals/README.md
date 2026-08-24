@@ -128,6 +128,10 @@ to Producer Pal: built-in tools off, settings and plugins off, other MCP servers
 ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
 (which is also what keeps the user's memory files out of the run).
 
+On Codex the plugin part takes its own flag, `--disable apps`.
+`--ignore-user-config` does not reach the installed apps, and they come back as
+MCP tools — a second Producer Pal among them, competing with the eval's server.
+
 A looping model is bounded the same way it is on the AI SDK path. Neither CLI
 takes a step limit we can rely on, so the transports count the model's actions
 (each tool call, each reply) off the event stream and kill the subprocess once
@@ -245,15 +249,23 @@ Each scenario has assertions that contribute to pass/fail:
 - **`state`** - Verifies Live Set state via MCP tool calls
 - **`custom`** - Arbitrary callback assertions on turn data
 
-Plus informational-only assertions (don't affect pass/fail):
+Plus:
 
-- **`llm_judge`** - LLM evaluates response quality with pass/fail + issues
+- **`llm_judge`** - LLM evaluates response quality with pass/fail + issues. It
+  gates the result unless the scenario sets `judgeAdvisory: true`, which keeps
+  the commentary but stops it flipping a run to fail.
 - **`token_usage`** - Tracks token efficiency against a target budget
+  (informational only)
 
-The judge defaults to Gemini 3 Flash. Override with `-j`.
+The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
+with `--skip-judge`.
 
 When using `-r N`, the summary aggregates across trials: checks are totaled,
 efficiency is averaged, and judge shows a pass rate.
+
+Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
+leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
+write — skip the reopen and run faster.
 
 ### Comparing models
 
@@ -362,7 +374,6 @@ export const myScenario: EvalScenario = {
       args: { trackIndex: 0 },
       expect: { name: "Drums" },
     },
-    { type: "llm_judge", prompt: "Evaluate if..." },
   ],
 };
 ```
@@ -372,13 +383,22 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
 
 ### Design guidelines
 
-- **Target ~20 scenarios total.** Each eval run requires Ableton Live and takes
-  real time, so keep the suite focused. Don't add scenarios for the sake of
-  coverage — add them when you find a bug, add a tool, or want to validate a
-  specific model's behavior.
-- **Prefer deterministic assertions.** `tool_called`, `state`, and
-  `response_contains` are fast, cheap, and reproducible. Use `llm_judge` only
-  when you need to evaluate something subjective (tone, reasoning quality).
+- **Every scenario costs a full run.** Each one needs Ableton Live, opens a Live
+  Set, and adds minutes to the suite — and the suite is already long enough that
+  most runs are a filtered subset, not the whole thing. Add a scenario when you
+  find a bug, ship a tool, or need to compare models on something specific;
+  don't add one for coverage's sake.
+- **Fold a new case into an existing scenario when it fits.** An extra turn on a
+  scenario that already opened the right Live Set is far cheaper than a new
+  scenario, and often reads better. Keep it separate when the new case must be
+  measured UNPRIMED — a reach-for probe (which API/idiom does the model pick
+  unprompted?) is worthless once an earlier turn has shown it the answer.
+- **Default to no judge.** `tool_called`, `state`, and `response_contains` are
+  fast, cheap, and reproducible; a judge costs an LLM call per scenario and
+  miscounts anything musical. Add `llm_judge` only when the thing being graded
+  is the assistant's PROSE and no state check can see it — did it offer, did it
+  re-ask, did it accept a no. If deterministic checks already pin the outcome
+  and you only want the commentary, mark it `judgeAdvisory: true`.
 - **Grade outcomes, not paths.** Assert on the final state (e.g., "clip has
   these notes") rather than the exact sequence of tool calls. This avoids
   penalizing models that find valid alternative approaches.

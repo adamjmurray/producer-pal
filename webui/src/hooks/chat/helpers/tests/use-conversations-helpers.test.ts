@@ -12,7 +12,7 @@ import {
   deriveTitle,
   resolvePanelNotification,
   sumMessageUsage,
-} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import { loadConversation } from "#webui/lib/conversation-db";
 
 vi.mock(import("#webui/lib/conversation-db"), () => ({
@@ -193,6 +193,26 @@ describe("buildSaveRecord toolset snapshot", () => {
   });
 });
 
+/**
+ * Save a fork of the "trunk" conversation.
+ * @param anchorIndex - Where the fork branches from the trunk
+ * @param currentRefs - The live refs the save reads its current settings from
+ * @returns The record the save would write
+ */
+async function buildForkRecord(
+  anchorIndex: number,
+  currentRefs = refs(),
+): ReturnType<typeof buildConversationSaveRecord> {
+  return await buildConversationSaveRecord({
+    id: "fork-1",
+    reuseId: "trunk",
+    fork: { anchorIndex },
+    refs: currentRefs,
+    chatHistory: HISTORY,
+    updatedAt: undefined,
+  });
+}
+
 describe("buildConversationSaveRecord fork inheritance", () => {
   afterEach(() => {
     vi.mocked(loadConversation).mockReset();
@@ -204,14 +224,10 @@ describe("buildConversationSaveRecord fork inheritance", () => {
       systemInstruction: "TRUNK SI",
     } as never);
 
-    const rec = await buildConversationSaveRecord({
-      id: "fork-1",
-      reuseId: "trunk",
-      fork: { anchorIndex: 1 },
-      refs: refs({ systemInstruction: "CURRENT GLOBAL" }),
-      chatHistory: HISTORY,
-      updatedAt: undefined,
-    });
+    const rec = await buildForkRecord(
+      1,
+      refs({ systemInstruction: "CURRENT GLOBAL" }),
+    );
 
     expect(rec.systemInstruction).toBe("TRUNK SI");
     expect(rec.forkParentId).toBe("trunk");
@@ -225,14 +241,7 @@ describe("buildConversationSaveRecord fork inheritance", () => {
       notation: "stark",
     } as never);
 
-    const rec = await buildConversationSaveRecord({
-      id: "fork-1",
-      reuseId: "trunk",
-      fork: { anchorIndex: 1 },
-      refs: refs({ notation: "barbeat" }),
-      chatHistory: HISTORY,
-      updatedAt: undefined,
-    });
+    const rec = await buildForkRecord(1, refs({ notation: "barbeat" }));
 
     expect(rec.notation).toBe("stark");
   });
@@ -240,14 +249,10 @@ describe("buildConversationSaveRecord fork inheritance", () => {
   it("uses the current instruction when the trunk has no snapshot", async () => {
     vi.mocked(loadConversation).mockResolvedValue({ id: "trunk" } as never);
 
-    const rec = await buildConversationSaveRecord({
-      id: "fork-1",
-      reuseId: "trunk",
-      fork: { anchorIndex: 1 },
-      refs: refs({ systemInstruction: "CURRENT GLOBAL" }),
-      chatHistory: HISTORY,
-      updatedAt: undefined,
-    });
+    const rec = await buildForkRecord(
+      1,
+      refs({ systemInstruction: "CURRENT GLOBAL" }),
+    );
 
     expect(rec.systemInstruction).toBe("CURRENT GLOBAL");
   });
@@ -257,14 +262,7 @@ describe("buildConversationSaveRecord fork inheritance", () => {
     // derive a parent from, the fork attaches directly to the reuse id.
     vi.mocked(loadConversation).mockResolvedValue(null as never);
 
-    const rec = await buildConversationSaveRecord({
-      id: "fork-1",
-      reuseId: "trunk",
-      fork: { anchorIndex: 2 },
-      refs: refs(),
-      chatHistory: HISTORY,
-      updatedAt: undefined,
-    });
+    const rec = await buildForkRecord(2, refs());
 
     expect(rec.forkParentId).toBe("trunk");
     expect(rec.forkedAtIndex).toBe(2);

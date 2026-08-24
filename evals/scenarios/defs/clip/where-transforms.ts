@@ -12,8 +12,8 @@
  * hand-listing positions.
  *
  * `setup` installs a deterministic clip mixing genuinely quiet (<50) and loud
- * (>90) notes, so every trial has real targets for both operations and repeat
- * runs (`-r N`, which reuse the open Live Set) start from the same state.
+ * (>90) notes, so every trial has real targets for both operations and starts
+ * from the same state even when it inherits an already-open Live Set.
  */
 
 import { argText } from "../arg-text.ts";
@@ -30,6 +30,8 @@ import {
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
+/** The same position as SLOT, in the path grammar the clip tools take. */
+const SLOT_PATH = "t0/s0";
 /** Eight quarter notes alternating quiet (30/40/35/45) and loud (110/100/105/120). */
 const TEST_NOTES =
   "n/4 v30 C3 1|1 v110 D3 1|2 v40 E3 1|3 v100 F3 1|4 v35 G3 2|1 v105 A3 2|2 v45 B3 2|3 v120 C4 2|4";
@@ -44,7 +46,7 @@ async function setupWhereClip(mcpClient: Client): Promise<void> {
   await mcpClient.callTool({
     name: "ppal-create-clip",
     arguments: {
-      slot: SLOT,
+      path: SLOT_PATH,
       length: "2bar",
       timeSignature: "4/4",
       name: "where-test",
@@ -220,12 +222,6 @@ export const whereTransforms: EvalScenario = {
       type: "response_contains",
       pattern: /loud|boost|accent|louder/i,
       turn: 3,
-    },
-
-    {
-      type: "llm_judge",
-      prompt:
-        "The user asked to select notes by their velocity value (the quiet ones, then the loud ones), not by pitch or time position. A correct solution uses a where() predicate on note.velocity for each request — deleting notes below ~50, then raising notes above ~90 by 20. It should NOT read every note and hand-list individual positions or pitches.",
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 120_000 },

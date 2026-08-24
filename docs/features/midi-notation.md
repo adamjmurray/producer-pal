@@ -58,7 +58,7 @@ places:
   [Setup tab](/guide/device#behavior)
 - **Chat UI** — Settings → Tools, at the bottom of the **Clip** group
 - **REST API** — `POST /config` with `{"notation": "stark"}`
-- **Command line** — `npx producer-pal --notation stark`
+- **Command line** — `npx producer-pal@latest --notation stark`
 
 A client can also pick its own notation for a single request, without changing
 the global — the `x-producer-pal-notation`

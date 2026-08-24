@@ -7,46 +7,8 @@
  * @vitest-environment happy-dom
  */
 import { render, screen } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-const mocks = vi.hoisted(() => ({
-  getMcpUrl: vi.fn(),
-  useVoiceSession: vi.fn(),
-  useGeminiVoiceSession: vi.fn(),
-  isFirefox: vi.fn(),
-  useUpdateCheck: vi.fn(),
-  useVoicePersistence: vi.fn(),
-  useConversationTransfer: vi.fn(),
-}));
-
-vi.mock(import("#webui/utils/mcp-url"), () => ({
-  getMcpUrl: mocks.getMcpUrl,
-}));
-
-vi.mock(import("#webui/utils/browser-detect"), () => ({
-  isFirefox: mocks.isFirefox,
-}));
-
-vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
-  useVoiceSession: mocks.useVoiceSession,
-}));
-
-vi.mock(import("#webui/hooks/voice/gemini/use-gemini-voice-session"), () => ({
-  useGeminiVoiceSession: mocks.useGeminiVoiceSession,
-}));
-
-vi.mock(import("#webui/hooks/connection/use-update-check"), () => ({
-  useUpdateCheck: mocks.useUpdateCheck,
-}));
-
-vi.mock(import("#webui/hooks/voice/use-voice-persistence"), () => ({
-  useVoicePersistence: mocks.useVoicePersistence,
-}));
-
-vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
-  useConversationTransfer: mocks.useConversationTransfer,
-}));
-
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import "./helpers/voice-app-mocks-test-helpers";
 import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   basePersistence,
@@ -54,7 +16,8 @@ import {
   makeProps,
   type PropOverrides,
   resetVoiceAppMocks,
-} from "./voice-app-test-helpers";
+  voiceAppMocks as mocks,
+} from "./helpers/voice-app-test-helpers";
 import { VoiceApp } from "./VoiceApp";
 
 beforeEach(() => installVoiceAppMockDefaults(mocks));

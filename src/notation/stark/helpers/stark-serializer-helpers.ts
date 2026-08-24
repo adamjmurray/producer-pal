@@ -50,7 +50,7 @@ export function classifyPitchedLine(notes: NoteEvent[]): PitchedClassification {
   // mercy of the caller's ordering, so re-serializing the interpreter's
   // (pitch-sorted) output produced a different string — a fixpoint break.
   const sorted = sortNotes(notes);
-  const pitches = sorted.map((n) => n.pitch).sort((a, b) => a - b);
+  const pitches = sorted.map((n) => n.pitch).toSorted((a, b) => a - b);
   const medianPitch = pitches[Math.floor(pitches.length / 2)] ?? 60;
   const lineType = medianPitch < 48 ? "bass" : "melody";
   const registerDefault =

@@ -43,7 +43,7 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 2,
       args: expect.objectContaining({
-        ids: expect.any(String),
+        id: expect.any(String),
         // transforms is a single newline-separated string (de-arrayed);
         // stringMatching does a substring search across all transform lines.
         transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
@@ -56,7 +56,7 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 3,
       args: expect.objectContaining({
-        ids: expect.any(String),
+        id: expect.any(String),
         // transforms is a single newline-separated string (de-arrayed);
         // stringMatching does a substring search across all transform lines.
         transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
@@ -108,7 +108,7 @@ export const swingAndQuantize: EvalScenario = {
       tool: TOOL_UPDATE_CLIP,
       turn: 4,
       args: expect.objectContaining({
-        ids: expect.any(String),
+        id: expect.any(String),
         // 16th-note grid: n/16 (absolute note value) or 0.25 (bare beats, =
         // a 16th in 4/4). The old synced-period form 1/4t was removed.
         transforms: expect.stringMatching(

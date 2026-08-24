@@ -11,6 +11,7 @@ import {
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
   parseTimeSignature,
+  roundPan,
   setAllNonNull,
   toLiveApiView,
   withoutNulls,
@@ -754,5 +755,14 @@ describe("assertDefined", () => {
     expect(() => assertDefined(null, "custom error message")).toThrow(
       "Bug: custom error message",
     );
+  });
+});
+
+describe("roundPan", () => {
+  it("rounds to two decimals", () => {
+    expect(roundPan(-0.30000001192092896)).toBe(-0.3);
+    expect(roundPan(0.125)).toBe(0.13);
+    expect(roundPan(1)).toBe(1);
+    expect(roundPan(0)).toBe(0);
   });
 });

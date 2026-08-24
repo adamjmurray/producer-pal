@@ -1,0 +1,200 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  findSourceFiles,
+  projectRoot,
+} from "#src/test/helpers/meta-test-helpers.ts";
+import {
+  buildFlagGuard,
+  DEV_BUILD_OVERRIDE,
+  GUARDED_BUILD_FLAGS,
+} from "../../../../scripts/build-and-release/helpers/build-flag-guard.ts";
+import packageJson from "../../../../package.json" with { type: "json" };
+
+// Build flags gate code out of release bundles at build time, so every flag
+// needs a documented way to switch it ON — otherwise the code it guards is
+// unreachable in every build and can never be exercised by hand.
+//
+// Debug flags are turned on by build:debug / dev:debug, so a development build
+// always has them. Opt-in flags are deliberately left off and set by hand for a
+// specific need (a LAN/remote browser origin, in the CORS case).
+const DEBUG_FLAGS = [
+  "ENABLE_LIVE_API",
+  "ENABLE_CODE_EXEC",
+  "ENABLE_WARP_MARKERS",
+];
+const OPT_IN_FLAGS = ["ENABLE_REMOTE_CORS", "ENABLE_BUILD_STATS"];
+const BUILD_FLAGS = [...DEBUG_FLAGS, ...OPT_IN_FLAGS];
+
+// A flag can gate code either way. Most pick a VALUE that rolldown substitutes
+// into a `process.env.X === "true"` test in src/. A substitution-only flag picks
+// a MODULE instead — the bundler resolves the real one or a do-nothing stub (see
+// config/rolldown-plugin-stub-modules.mjs) — so src/ never reads it and the
+// replacements have nothing to put in its place.
+const SUBSTITUTION_ONLY_FLAGS = ["ENABLE_BUILD_STATS"];
+const REPLACED_FLAGS = BUILD_FLAGS.filter(
+  (flag) => !SUBSTITUTION_ONLY_FLAGS.includes(flag),
+);
+
+// Runtime flags are read from the real environment when the portal runs (users
+// set them in their MCP client config), so they must stay out of the rolldown
+// replacements — substituting one would freeze it off at build time.
+const RUNTIME_FLAGS = ["ENABLE_LOGGING"];
+
+const FLAG_READ = /process\.env\.(ENABLE_[A-Z0-9_]+)/g;
+
+const scripts = packageJson.scripts as Record<string, string>;
+const rolldownConfig = readRepoFile("config/rolldown.config.mjs");
+const ciWorkflow = readRepoFile(".github/workflows/run-checks-and-tests.yml");
+
+describe("build flags", () => {
+  it("only reads flags that are classified as build-time or runtime", () => {
+    expect([...flagsReadInSrc()].toSorted()).toStrictEqual(
+      [...REPLACED_FLAGS, ...RUNTIME_FLAGS].toSorted(),
+    );
+  });
+
+  it("declares every replaced flag in the rolldown replacements", () => {
+    // Unreplaced process.env references would throw in the Max V8 runtime. The
+    // quoted form is the replacement key; the bare name also appears in the
+    // config as an ordinary read, which would satisfy an unquoted match.
+    for (const flag of REPLACED_FLAGS) {
+      expect(rolldownConfig).toContain(`"process.env.${flag}"`);
+    }
+  });
+
+  // Replacing one would be harmless but misleading: it would read as though
+  // some src/ file tests its value, when the flag only picks a module.
+  it("keeps substitution-only flags out of the rolldown replacements", () => {
+    for (const flag of SUBSTITUTION_ONLY_FLAGS) {
+      expect(rolldownConfig).not.toContain(`"process.env.${flag}"`);
+    }
+  });
+
+  it("gates a stub substitution on every substitution-only flag", () => {
+    for (const flag of SUBSTITUTION_ONLY_FLAGS) {
+      expect(rolldownConfig).toContain(`process.env.${flag} !== "true"`);
+    }
+  });
+
+  // Without this, a substitution-only flag listed ONLY here would change the
+  // shipped bytes while every check below — the release guard, the CI step,
+  // the flag-read inventory — silently skipped it, since they all walk
+  // BUILD_FLAGS.
+  it("counts every substitution-only flag as a build flag", () => {
+    for (const flag of SUBSTITUTION_ONLY_FLAGS) {
+      expect(BUILD_FLAGS).toContain(flag);
+    }
+  });
+
+  it("keeps runtime flags out of the rolldown replacements", () => {
+    for (const flag of RUNTIME_FLAGS) {
+      expect(rolldownConfig).not.toContain(flag);
+    }
+  });
+
+  it("enables every debug flag in build:debug and dev:debug", () => {
+    for (const flag of DEBUG_FLAGS) {
+      expect(scripts["build:debug"]).toContain(`${flag}=true`);
+      expect(scripts["dev:debug"]).toContain(`${flag}=true`);
+    }
+  });
+
+  it("leaves every flag off in production build scripts", () => {
+    expect(scripts.build).not.toMatch(/ENABLE_/);
+    expect(scripts.dev).not.toMatch(/ENABLE_/);
+  });
+
+  it("never enables opt-in flags from an npm script", () => {
+    for (const flag of OPT_IN_FLAGS) {
+      expect(Object.values(scripts).join("\n")).not.toContain(flag);
+    }
+  });
+
+  it("guards every build flag against leaking into CI builds", () => {
+    for (const flag of BUILD_FLAGS) {
+      expect(ciWorkflow).toContain(`"\${${flag}:-}" = "true"`);
+    }
+  });
+
+  // The CI guard above checks the runner, whose artifacts are thrown away. The
+  // bytes users get are built on the maintainer's machine, so the build itself
+  // has to refuse a flag the shell happened to be exporting.
+  it("runs the release guard before the production build does anything", () => {
+    expect(scripts.build).toMatch(
+      /^node scripts\/build-and-release\/helpers\/check-build-flags\.ts &&/,
+    );
+  });
+
+  it("refuses every build flag at build time", () => {
+    for (const flag of BUILD_FLAGS) {
+      expect(buildFlagGuard({ [flag]: "true" })).toContain(`${flag}=true`);
+    }
+  });
+
+  it("lets runtime flags through, since the build never substitutes them", () => {
+    for (const flag of RUNTIME_FLAGS) {
+      expect(buildFlagGuard({ [flag]: "true" })).toBe(null);
+    }
+  });
+
+  // The guard names its flags rather than matching ENABLE_*, which is not this
+  // project's namespace — GitHub's runners export ENABLE_RUNNER_TRACING. This
+  // is what keeps the list from going stale: a new flag fails here first.
+  it("holds the guard's flag list equal to the inventory above", () => {
+    expect(GUARDED_BUILD_FLAGS.toSorted()).toStrictEqual(
+      BUILD_FLAGS.toSorted(),
+    );
+  });
+
+  it("opts the debug build out of the guard", () => {
+    expect(scripts["build:debug"]).toContain(`${DEV_BUILD_OVERRIDE}=true`);
+  });
+});
+
+describe("build identity", () => {
+  // BUILD_SHA is not a feature flag — it's the build's identity, read in
+  // src/shared/config.ts so the update check can tell two builds of the same
+  // version apart. Every bundler must substitute it: left unreplaced, the
+  // `process` reference throws in the Max V8 runtime and the browser bundle.
+  it("substitutes BUILD_SHA in the rolldown bundles", () => {
+    expect(rolldownConfig).toContain("process.env.BUILD_SHA");
+  });
+
+  it("substitutes BUILD_SHA in the chat UI bundle", () => {
+    expect(readRepoFile("config/vite.config.ts")).toContain(
+      "process.env.BUILD_SHA",
+    );
+  });
+});
+
+/**
+ * Collect the build flags read from process.env anywhere in src/
+ * @returns Set of flag names
+ */
+function flagsReadInSrc(): Set<string> {
+  const flags = new Set<string>();
+
+  for (const file of findSourceFiles(path.join(projectRoot, "src"), true)) {
+    for (const match of fs.readFileSync(file, "utf8").matchAll(FLAG_READ)) {
+      flags.add(match[1] as string);
+    }
+  }
+
+  return flags;
+}
+
+/**
+ * Read a repo file as text
+ * @param relativePath - Path relative to the project root
+ * @returns File contents
+ */
+function readRepoFile(relativePath: string): string {
+  return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
+}

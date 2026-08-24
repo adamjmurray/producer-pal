@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   extractToolResultText,
+  parseAliasedToolResult,
   parseToolResult,
   parseToolResultWithWarnings,
   setupMcpTestContext,
@@ -33,11 +34,18 @@ describe("ppal-delete", () => {
 
     await sleep(100);
 
+    // Deleted by id, spelled the way a model guesses it. "ids" is a permanent
+    // alias, so this checks the delete and the steer.
     const deleteTrack = await ctx.client!.callTool({
       name: "ppal-delete",
       arguments: { ids: track.id, type: "track" },
     });
-    const deletedTrack = parseToolResult<DeleteResult>(deleteTrack);
+    const deletedTrack = parseAliasedToolResult<DeleteResult>(
+      deleteTrack,
+      "ppal-delete",
+      "ids",
+      "id",
+    );
 
     expect(deletedTrack.id).toBe(track.id);
     expect(deletedTrack.type).toBe("track");
@@ -46,7 +54,7 @@ describe("ppal-delete", () => {
     // Verify track no longer exists
     const verifyTrack = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: track.id },
+      arguments: { id: track.id },
     });
     const verifyTrackText = extractToolResultText(verifyTrack);
 
@@ -69,7 +77,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleTracks = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${track1.id},${track2.id}`, type: "track" },
+      arguments: { id: `${track1.id},${track2.id}`, type: "track" },
     });
     const deletedMultiple =
       parseToolResult<DeleteResult[]>(deleteMultipleTracks);
@@ -89,7 +97,7 @@ describe("ppal-delete", () => {
 
     const deleteReturn = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: returnTrack.id, type: "track" },
+      arguments: { id: returnTrack.id, type: "track" },
     });
     const deletedReturn = parseToolResult<DeleteResult>(deleteReturn);
 
@@ -105,7 +113,7 @@ describe("ppal-delete", () => {
 
     const deleteHost = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: hostTrack.id, type: "track" },
+      arguments: { id: hostTrack.id, type: "track" },
     });
     const { data: deletedHost, warnings: deleteHostWarnings } =
       parseToolResultWithWarnings<DeleteResult>(deleteHost);
@@ -120,7 +128,7 @@ describe("ppal-delete", () => {
     // Verify host track still exists
     const verifyHost = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackId: hostTrack.id },
+      arguments: { id: hostTrack.id },
     });
     const verifiedHost = parseToolResult<{ id: string }>(verifyHost);
 
@@ -137,7 +145,7 @@ describe("ppal-delete", () => {
 
     const deleteScene = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: scene.id, type: "scene" },
+      arguments: { id: scene.id, type: "scene" },
     });
     const deletedScene = parseToolResult<DeleteResult>(deleteScene);
 
@@ -162,7 +170,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleScenes = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${scene1.id},${scene2.id}`, type: "scene" },
+      arguments: { id: `${scene1.id},${scene2.id}`, type: "scene" },
     });
     const deletedScenes = parseToolResult<DeleteResult[]>(deleteMultipleScenes);
 
@@ -179,7 +187,7 @@ describe("ppal-delete", () => {
     const createClip = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/0`,
+        path: `t${emptyMidiTrack}/s0`,
       },
     });
     const clip = parseToolResult<CreateClipResult>(createClip);
@@ -188,7 +196,7 @@ describe("ppal-delete", () => {
 
     const deleteClip = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: clip.id, type: "clip" },
+      arguments: { id: clip.id, type: "clip" },
     });
     const deletedClip = parseToolResult<DeleteResult>(deleteClip);
 
@@ -199,7 +207,7 @@ describe("ppal-delete", () => {
     // Verify clip no longer exists
     const verifyClip = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { clipId: clip.id },
+      arguments: { id: clip.id },
     });
     const verifyClipText = extractToolResultText(verifyClip);
 
@@ -209,7 +217,7 @@ describe("ppal-delete", () => {
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/1`,
+        path: `t${emptyMidiTrack}/s1`,
       },
     });
     const clip1 = parseToolResult<CreateClipResult>(createClip1);
@@ -217,7 +225,7 @@ describe("ppal-delete", () => {
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        slot: `${emptyMidiTrack}/2`,
+        path: `t${emptyMidiTrack}/s2`,
       },
     });
     const clip2 = parseToolResult<CreateClipResult>(createClip2);
@@ -226,7 +234,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleClips = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${clip1.id},${clip2.id}`, type: "clip" },
+      arguments: { id: `${clip1.id},${clip2.id}`, type: "clip" },
     });
     const deletedClips = parseToolResult<DeleteResult[]>(deleteMultipleClips);
 
@@ -243,7 +251,7 @@ describe("ppal-delete", () => {
 
     const deleteDevice = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: deviceId, type: "device" },
+      arguments: { id: deviceId, type: "device" },
     });
     const deletedDevice = parseToolResult<DeleteResult>(deleteDevice);
 
@@ -253,7 +261,7 @@ describe("ppal-delete", () => {
     // Verify device no longer exists
     const verifyDevice = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { deviceId },
+      arguments: { id: deviceId },
     });
     const verifyDeviceText = extractToolResultText(verifyDevice);
 
@@ -291,7 +299,7 @@ describe("ppal-delete", () => {
 
     const deleteMultipleDevices = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { ids: `${device1Id},${device2Id}`, type: "device" },
+      arguments: { id: `${device1Id},${device2Id}`, type: "device" },
     });
     const deletedDevices = parseToolResult<DeleteResult[]>(
       deleteMultipleDevices,
@@ -301,13 +309,19 @@ describe("ppal-delete", () => {
     expect(deletedDevices[0]!.deleted).toBe(true);
     expect(deletedDevices[1]!.deleted).toBe(true);
 
-    // Test 12: Delete drum pad by path
+    // Test 12: Delete drum pad by path, spelled the way a model guesses it.
+    // "paths" is a permanent alias, so this checks the delete and the steer.
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
     const deleteDrumPad = await ctx.client!.callTool({
       name: "ppal-delete",
-      arguments: { path: "t0/d0/pC1", type: "drum-pad" },
+      arguments: { paths: "t0/d0/pC1", type: "drum-pad" },
     });
-    const deletedDrumPad = parseToolResult<DeleteResult>(deleteDrumPad);
+    const deletedDrumPad = parseAliasedToolResult<DeleteResult>(
+      deleteDrumPad,
+      "ppal-delete",
+      "paths",
+      "path",
+    );
 
     expect(deletedDrumPad.deleted).toBe(true);
     expect(deletedDrumPad.type).toBe("drum-pad");

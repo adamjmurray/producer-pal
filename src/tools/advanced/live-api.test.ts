@@ -3,7 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+  resetLiveApiTracking,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
@@ -205,6 +210,53 @@ describe("liveApi", () => {
           ],
         }),
       ).toThrow('Method "nonExistentMethod" not found on LiveAPI object');
+    });
+
+    it("should forget an object whose peer it just freed", () => {
+      // A freed peer on the free list would be handed to a later request.
+      const freed: LiveAPI[] = [];
+      const prototype = LiveAPI.prototype as unknown as {
+        freepeer?: (this: LiveAPI) => void;
+      };
+
+      prototype.freepeer = function (this: LiveAPI) {
+        freed.push(this);
+      };
+
+      try {
+        resetLiveApiTracking();
+        beginLiveApiScope();
+
+        liveApi({ operations: [{ type: "call_method", method: "freepeer" }] });
+
+        endLiveApiScope();
+        beginLiveApiScope();
+
+        expect(LiveAPI.from(livePath.liveSet)).not.toBe(freed[0]);
+
+        endLiveApiScope();
+      } finally {
+        delete prototype.freepeer;
+      }
+    });
+  });
+
+  describe("memo isolation", () => {
+    // This tool is the only caller that retargets its object in place, so it
+    // must not be handed one the rest of the request is sharing, and must not
+    // leave a retargeted one behind under the path it started from.
+    it("keeps its retargeted object out of the request's memo", () => {
+      const before = LiveAPI.from(livePath.liveSet);
+
+      liveApi({
+        path: "live_set",
+        operations: [{ type: "goto", value: String(livePath.track(0)) }],
+      });
+
+      const after = LiveAPI.from(livePath.liveSet);
+
+      expect(after).not.toBe(before);
+      expect(after.path).toBe(livePath.liveSet);
     });
   });
 
@@ -439,6 +491,41 @@ describe("liveApi", () => {
       ).toThrow("set_path operation requires value (path)");
     });
 
+    it("should handle set_id operation", () => {
+      registerMockObject("7", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      const result = liveApi({
+        operations: [{ type: "set_id", value: 7 }],
+      });
+
+      // The result is a read-back of api.id, not an echo of the input: a bad id
+      // is dropped silently and leaves the previous target in place.
+      expect(result.results[0]!.result).toBe("7");
+      expect(result.path).toBe(String(livePath.track(0)));
+    });
+
+    it('should point at nothing for a set_id given the "id N" form', () => {
+      // The bare number is the only form that retargets. Worth pinning down
+      // because it fails the way everything else here does — silently.
+      const result = liveApi({
+        operations: [{ type: "set_id", value: "id 7" }],
+      });
+
+      expect(result.results[0]!.result).toBe("0");
+      expect(result.path).toBe("");
+    });
+
+    it("should throw error for set_id without value", () => {
+      expect(() =>
+        liveApi({
+          operations: [{ type: "set_id" }],
+        }),
+      ).toThrow("set_id operation requires value (id)");
+    });
+
     it("should handle set_mode operation", () => {
       const result = liveApi({
         operations: [
@@ -501,54 +588,6 @@ describe("liveApi", () => {
           operations: [{ type: "getstring" }],
         }),
       ).toThrow("getstring operation requires property");
-    });
-  });
-
-  describe("releasing the object", () => {
-    // Live arms a path listener on every collection along a path-based
-    // LiveAPI's path and never takes it down; clearing the path is the only
-    // thing that does. LiveAPI.from is wrapped so the test can reach the
-    // instance liveApi() builds internally.
-    let created: { path: string }[];
-    let originalFrom: typeof LiveAPI.from;
-
-    beforeEach(() => {
-      created = [];
-      originalFrom = LiveAPI.from.bind(LiveAPI);
-      LiveAPI.from = ((idOrPath: Parameters<typeof LiveAPI.from>[0]) => {
-        const api = originalFrom(idOrPath);
-
-        created.push(api as unknown as { path: string });
-
-        return api;
-      }) as typeof LiveAPI.from;
-    });
-
-    afterEach(() => {
-      LiveAPI.from = originalFrom;
-    });
-
-    it("should clear the path when the call ends", () => {
-      const result = liveApi({
-        path: String(livePath.track(0)),
-        operations: [{ type: "exists" }],
-      });
-
-      // The response still reports the path — it is captured before release.
-      expect(result.path).toBe(String(livePath.track(0)));
-      expect(created).toHaveLength(1);
-      expect(created[0]!.path).toBe("");
-    });
-
-    it("should clear the path even when an operation fails", () => {
-      // A failed call armed a listener just the same, so the release has to
-      // survive the throw.
-      expect(() => liveApi({ operations: [{ type: "get_property" }] })).toThrow(
-        "Operation failed",
-      );
-
-      expect(created).toHaveLength(1);
-      expect(created[0]!.path).toBe("");
     });
   });
 

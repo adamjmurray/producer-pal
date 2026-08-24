@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { act, renderHook } from "@testing-library/preact";
-import { type Mock, vi } from "vitest";
+import { expect, type Mock, vi } from "vitest";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
 /** Shape of the FakeSession instance the test doubles construct. */
@@ -72,6 +72,10 @@ export interface VoiceSessionTestKit {
   stubFetchOk: (body: unknown) => void;
   renderAndConnect: () => Promise<{ result: HookResult }>;
   connectAndGetSession: () => Promise<{
+    result: HookResult;
+    session: FakeRealtimeSession;
+  }>;
+  connectAndDisconnect: () => Promise<{
     result: HookResult;
     session: FakeRealtimeSession;
   }>;
@@ -209,6 +213,23 @@ export function createVoiceSessionTestKit(
     return { result, session };
   }
 
+  /** Connect, then disconnect on purpose, asserting the session went idle. */
+  async function connectAndDisconnect(): Promise<{
+    result: HookResult;
+    session: FakeRealtimeSession;
+  }> {
+    const { result, session } = await connectAndGetSession();
+
+    await act(async () => {
+      await result.current.disconnect();
+    });
+
+    expect(session.close).toHaveBeenCalled();
+    expect(result.current.status).toBe("idle");
+
+    return { result, session };
+  }
+
   async function connectWithSeed(seed: unknown[]): Promise<HookResult> {
     const { result } = renderHook(() => useVoiceSession(defaultParams()));
 
@@ -311,6 +332,7 @@ export function createVoiceSessionTestKit(
     stubFetchOk,
     renderAndConnect,
     connectAndGetSession,
+    connectAndDisconnect,
     connectWithSeed,
     emitResponseFailure,
     fireTransportDisconnect,

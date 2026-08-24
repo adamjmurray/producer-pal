@@ -10,7 +10,7 @@ import {
   setupClip,
   setupTrack,
   tilingTrackMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import {
   duplicateSelfOverlappingClip,
   setArrangementDuplicateCrashWorkaround,
@@ -73,6 +73,20 @@ describe("sourceOverlapsTarget", () => {
     // covers [4,8], which is inside the source — placing it would trim the source.
     setupClip("100", {
       properties: { is_arrangement_clip: 1, start_time: 0, end_time: 16 },
+    });
+
+    expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);
+  });
+
+  it("has no track check, unlike clearClipAtDuplicateTarget", () => {
+    // Tiling always places tiles on the source clip's own track, so there is no
+    // second track to compare against and no track parameter. Pinned so a
+    // cross-track tiling caller can't appear without adding that check — it
+    // would read a cross-track source as a self-overlap and skip its tiles.
+    setupArrangementClip("100", 1, {
+      is_arrangement_clip: 1,
+      start_time: 0,
+      end_time: 16,
     });
 
     expect(sourceOverlapsTarget("100", 4, 4)).toBe(true);

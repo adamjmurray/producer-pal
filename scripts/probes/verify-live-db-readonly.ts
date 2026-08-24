@@ -307,7 +307,7 @@ function maybeReportProgress(
  */
 function reportQueryResults(results: QueryResult[]): void {
   for (const r of results) {
-    const sorted = [...r.timingsMs].sort((a, b) => a - b);
+    const sorted = r.timingsMs.toSorted((a, b) => a - b);
     const min = sorted[0]?.toFixed(1) ?? "—";
     const p50 = sorted[Math.floor(sorted.length / 2)]?.toFixed(1) ?? "—";
     const max = sorted.at(-1)?.toFixed(1) ?? "—";

@@ -22,21 +22,26 @@ import {
   sendMessage,
   sendThenStopDuringRetryDelay,
   stopResponse,
+  supersedeInFlightTurn,
   userMessageIndex,
   type MockChatProps,
 } from "./helpers/use-chat-render-test-helpers";
 import {
   MockChatClient,
   RATE_LIMIT_ERROR,
-  adapterWithClient,
   createDefaultProps,
   createEchoThenRateLimitAdapter,
   createMockAdapter,
   createScriptedAdapter,
+  echoUserTurn,
   lockedSettings,
   RESTORED_HISTORY,
+  tick,
+  trackingAdapter,
+  type ScriptedAttempt,
   type TestMessage,
 } from "./helpers/use-chat-test-helpers";
+import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -131,55 +136,6 @@ function createSendMessageFailingAdapter(
   };
 }
 
-/**
- * Build an adapter recording every client it creates. Each client streams one
- * user echo and then holds the turn open until `gate` resolves, so the abort ref
- * stays live while the test asserts on it.
- * @param recorded - Where to record what the clients did
- * @param recorded.clients - Clients the adapter created, in order
- * @param recorded.sent - Messages the clients streamed, in order
- * @param recorded.signals - Abort signal each stream was given, in order
- * @param recorded.gate - Held by every stream after its first chunk
- * @param customize - Applied to each new client
- * @returns The adapter
- */
-function trackingAdapter(
-  recorded: {
-    clients: MockChatClient[];
-    sent?: string[];
-    signals?: AbortSignal[];
-    gate?: Promise<void>;
-  },
-  customize?: (client: MockChatClient) => void,
-): typeof mockAdapter {
-  const { clients, sent, signals, gate } = recorded;
-
-  return adapterWithClient((client) => {
-    clients.push(client);
-
-    client.sendMessage = async function* (
-      message: string,
-      signal: AbortSignal,
-    ) {
-      sent?.push(message);
-      signals?.push(signal);
-      client.chatHistory.push({ role: "user", content: message });
-      yield [...client.chatHistory];
-
-      await gate;
-    };
-
-    customize?.(client);
-  });
-}
-
-/**
- * Let pending microtasks — and the streams they start — settle.
- */
-async function tick(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 const defaultProps: MockChatProps = createDefaultProps(mockAdapter);
 
 /**
@@ -189,6 +145,42 @@ const defaultProps: MockChatProps = createDefaultProps(mockAdapter);
  */
 function propsWith(adapter: typeof mockAdapter): MockChatProps {
   return { ...defaultProps, adapter };
+}
+
+/**
+ * Assert the rate-limit retry resumed the interrupted turn rather than sending
+ * the user's message a second time.
+ * @param attempts - Attempts recorded by the scripted adapter
+ */
+function expectResumedNotResent(attempts: ScriptedAttempt[]): void {
+  expect(attempts).toStrictEqual([
+    { kind: "send", message: "Hello" },
+    { kind: "resume" },
+  ]);
+}
+
+/**
+ * The overlap window with the stopped turn's client still connecting: the newer
+ * turn adopts a half-built client whose initialize() hasn't resolved. Release
+ * `releaseInit` to land that connect, `releaseStreams` to end both streams.
+ * @param signals - Collects each stream's abort signal, when a test needs them
+ * @returns The tracked clients and sends, the hook handle, the stopped turn's
+ *   send promise, and the two releases
+ */
+async function supersedeDuringConnect(signals?: AbortSignal[]) {
+  const [connecting, releaseInit] = openGate();
+  const [gate, releaseStreams] = openGate();
+  const clients: MockChatClient[] = [];
+  const sent: string[] = [];
+  const adapter = trackingAdapter({ clients, sent, signals, gate }, (c) => {
+    if (clients.length === 1) {
+      c.initialize = vi.fn(async () => await connecting);
+    }
+  });
+  const { result } = renderChat(propsWith(adapter));
+  const { stoppedSend } = await supersedeInFlightTurn(result);
+
+  return { clients, sent, result, stoppedSend, releaseInit, releaseStreams };
 }
 
 describe("useChat", () => {
@@ -550,10 +542,7 @@ describe("useChat", () => {
 
       const { result } = await renderAndSend(propsWith(adapter));
 
-      expect(attempts).toStrictEqual([
-        { kind: "send", message: "Hello" },
-        { kind: "resume" },
-      ]);
+      expectResumedNotResent(attempts);
       expect(
         (result.current.getChatHistory() as TestMessage[]).filter(
           (m) => m.role === "user",
@@ -574,10 +563,7 @@ describe("useChat", () => {
 
       const { result } = await renderAndSend(propsWith(adapter));
 
-      expect(attempts).toStrictEqual([
-        { kind: "send", message: "Hello" },
-        { kind: "resume" },
-      ]);
+      expectResumedNotResent(attempts);
       // The partial work survives rather than being rewound.
       expect(
         (result.current.getChatHistory() as TestMessage[]).map(
@@ -606,18 +592,14 @@ describe("useChat", () => {
       // We use a gate Promise to pause the second sendMessage mid-stream,
       // then assert the indicator is already cleared while the stream is
       // still in flight.
-      let resolveGate: () => void = () => {};
-      const gate = new Promise<void>((resolve) => {
-        resolveGate = resolve;
-      });
+      const [gate, resolveGate] = openGate();
 
       const rateLimitAdapter = createScriptedAdapter(
         mockAdapter,
         (client) =>
           // Echoes the user turn like the real sendMessage, then rate-limits.
           async function* (message) {
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
 
             throw new Error("Resource has been exhausted");
           },
@@ -697,8 +679,7 @@ describe("useChat", () => {
           capturedClient = client;
 
           return async function* (message: string) {
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
             throw new Error(RATE_LIMIT_ERROR);
           };
         },
@@ -720,17 +701,13 @@ describe("useChat", () => {
       // so the next turn can take over the shared refs. The retry path's own
       // aborted-signal checks then read the NEW turn's controllers and stop
       // protecting anything — the ticket check is what holds.
-      let releaseStopped!: () => void;
-      const stoppedUnwind = new Promise<void>((resolve) => {
-        releaseStopped = resolve;
-      });
+      const [stoppedUnwind, releaseStopped] = openGate();
       let turn = 0;
       const adapter = createScriptedAdapter(
         mockAdapter,
         (client) =>
           async function* (message: string) {
-            client.chatHistory.push({ role: "user", content: message });
-            yield [...client.chatHistory];
+            yield echoUserTurn(client, message);
 
             if (++turn === 1) {
               await stoppedUnwind;
@@ -742,20 +719,11 @@ describe("useChat", () => {
           },
       );
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       releaseStopped();
       await stoppedSend;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
 
       expect(hasErrorPart(result)).toBe(false);
       expect(result.current.isAssistantResponding).toBe(true);
@@ -770,33 +738,15 @@ describe("useChat", () => {
       // The newer turn adopted the half-built client and is streaming on it, so
       // the late turn must not stream a second time into the same history — nor
       // take the abort ref the streaming turn's Stop needs.
-      let releaseInit!: () => void;
-      let releaseStreams!: () => void;
-      const connecting = new Promise<void>((resolve) => {
-        releaseInit = resolve;
-      });
-      const gate = new Promise<void>((resolve) => {
-        releaseStreams = resolve;
-      });
-      const clients: MockChatClient[] = [];
-      const sent: string[] = [];
       const signals: AbortSignal[] = [];
-      const adapter = trackingAdapter({ clients, sent, signals, gate }, (c) => {
-        if (clients.length === 1) {
-          c.initialize = vi.fn(async () => await connecting);
-        }
-      });
-      const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await tick();
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await tick();
+      const {
+        clients,
+        sent,
+        result,
+        stoppedSend,
+        releaseInit,
+        releaseStreams,
+      } = await supersedeDuringConnect(signals);
 
       // The stopped turn's client finishes connecting only now, after the newer
       // turn has already claimed it.
@@ -815,14 +765,30 @@ describe("useChat", () => {
       await stoppedSend;
     });
 
+    it("waits for the in-flight connect before streaming on an adopted client", async () => {
+      // The newer turn finds a client and skips its own init, but that client's
+      // initialize() — the MCP connect — hasn't resolved yet. Streaming there
+      // would send before the tool catalog landed, so the turn waits it out.
+      const { clients, sent, stoppedSend, releaseInit, releaseStreams } =
+        await supersedeDuringConnect();
+
+      expect(clients).toHaveLength(1);
+      expect(sent).toStrictEqual([]);
+
+      releaseInit();
+      await tick();
+
+      expect(sent).toStrictEqual(["second"]);
+
+      releaseStreams();
+      await stoppedSend;
+    });
+
     it("doesn't let a superseded turn's setup dispose the newer turn's client", async () => {
       // Stop lands during the connection check, so the newer turn runs its own
       // init and streams. The stopped turn's setup resumes afterward: replacing
       // the client there would close the MCP connection under that stream.
-      let releaseCheck!: () => void;
-      const checking = new Promise<void>((resolve) => {
-        releaseCheck = resolve;
-      });
+      const [checking, releaseCheck] = openGate();
 
       vi.mocked(validateMcpConnection).mockImplementationOnce(
         async () => await checking,
@@ -831,16 +797,7 @@ describe("useChat", () => {
       const clients: MockChatClient[] = [];
       const adapter = trackingAdapter({ clients });
       const { result } = renderChat(propsWith(adapter));
-      const stoppedSend = act(async () => {
-        await result.current.handleSend("first");
-      });
-
-      await tick();
-      await stopResponse(result);
-      void act(() => {
-        void result.current.handleSend("second");
-      });
-      await tick();
+      const { stoppedSend } = await supersedeInFlightTurn(result);
 
       releaseCheck();
       await stoppedSend;

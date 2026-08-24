@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -11,16 +12,6 @@ import {
 export interface SlotPosition {
   trackIndex: number;
   sceneIndex: number;
-}
-
-/**
- * Formats a track index and scene index into a slot string
- * @param trackIndex - 0-based track index
- * @param sceneIndex - 0-based scene index
- * @returns Slot string (e.g., "0/3")
- */
-export function formatSlot(trackIndex: number, sceneIndex: number): string {
-  return `${trackIndex}/${sceneIndex}`;
 }
 
 /**
@@ -43,32 +34,38 @@ export function parseSlot(input: string): SlotPosition {
 /**
  * Parses a comma-separated string of slot positions (trackIndex/sceneIndex format)
  * @param input - Comma-separated slots (e.g., "0/1" or "0/1, 2/3")
+ * @param label - The param the caller sent, for messages ("slot", "slots", "toSlot")
  * @returns Array of slot positions
  */
-export function parseSlotList(input?: string | null): SlotPosition[] {
+export function parseSlotList(
+  input: string | null | undefined,
+  label: string,
+): SlotPosition[] {
   const entries = parseCommaSeparatedIds(input);
+  const trimmed = input?.trim();
+
+  // Slots are read positionally, so a dropped entry shifts every later one onto
+  // the wrong scene instead of just making one fewer. toPath warns about this.
+  if (trimmed && entries.length < trimmed.split(",").length) {
+    console.warn(`${label} "${input}" has empty entries, which were dropped`);
+  }
 
   return entries.map((entry) => {
     const parts = entry.split("/");
 
     if (parts.length < 2) {
       throw new Error(
-        `invalid toSlot "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
+        `invalid ${label} "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
       );
     }
 
     if (parts.length > 2) {
       console.warn(
-        `toSlot "${entry}" has extra parts, using first two (trackIndex/sceneIndex)`,
+        `${label} "${entry}" has extra parts, using first two (trackIndex/sceneIndex)`,
       );
     }
 
-    return parseSlotParts(
-      parts[0] as string,
-      parts[1] as string,
-      "toSlot",
-      entry,
-    );
+    return parseSlotParts(parts[0] as string, parts[1] as string, label, entry);
   });
 }
 
@@ -106,7 +103,7 @@ export function parseArrangementStartList(input?: string | null): string[] {
  * Validate and parse two string parts into a SlotPosition.
  * @param trackPart - String to parse as trackIndex
  * @param scenePart - String to parse as sceneIndex
- * @param label - Label for error messages ("slot" or "toSlot")
+ * @param label - The param the caller sent, for messages
  * @param input - Original input string for error messages
  * @returns Parsed slot position
  */

@@ -26,7 +26,7 @@ Quick options:
 - **[Command Line Tools](/installation#command-line)** - Gemini CLI, Codex CLI,
   Claude Code, and other MCP-compatible coding agents
 - **[Local Models](/installation/choose-local)** - Run completely offline with
-  Ollama, Bionic (LM Studio), and other MCP-compatible platforms
+  Ollama, LM Studio Bionic, and other MCP-compatible platforms
 - **[Agent Skill](/guide/skills)** - Drop a folder into Claude Code, Codex CLI,
   or Gemini CLI — no MCP config
 - **[REST API](/guide/rest-api)** - Script Live over plain HTTP, no AI required

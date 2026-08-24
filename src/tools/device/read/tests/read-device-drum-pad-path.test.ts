@@ -4,8 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
-import { setupDrumPadMocks } from "./read-device-test-helpers.ts";
+import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
 
 /** Simpler device props reused across tests */
 const simplerDevice = {
@@ -67,6 +70,50 @@ function setupKickPadWithChainDevice() {
 }
 
 /**
+ * Setup a rack whose only chain is the catch-all (in_note -1, Live's "All
+ * Notes"). No drum_pads entry exists for it, so it is reachable only through
+ * the rack's own chain list.
+ */
+function setupCatchAllChainMocks() {
+  const rackPath = String(livePath.track(1).device(0));
+
+  registerMockObject("drum-rack-1", {
+    path: rackPath,
+    type: "Device",
+    properties: {
+      class_display_name: "Drum Rack",
+      type: 1,
+      is_active: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: [],
+      chains: children("catch-all"),
+    },
+  });
+  registerMockObject("catch-all", {
+    path: `${rackPath} chains 0`,
+    type: "DrumChain",
+    properties: {
+      name: "All Notes",
+      in_note: -1,
+      out_note: 36,
+      devices: children("device-1"),
+    },
+  });
+  registerMockObject("device-1", {
+    path: `${rackPath} chains 0 devices 0`,
+    type: "Device",
+    properties: {
+      ...simplerDevice,
+      is_active: 1,
+      can_have_chains: 0,
+      can_have_drum_pads: 0,
+      devices: [],
+    },
+  });
+}
+
+/**
  * Assert a read result is the "device-1" Simpler instrument.
  * @param result - The readDevice result to check
  */
@@ -92,6 +139,53 @@ describe("readDevice with drum pad path", () => {
       note: 36,
       pitch: "C1",
     });
+  });
+
+  // Live's two chain lists disagree once a pad holds layers: a copied-on layer
+  // comes first in the rack's `chains` and last in the pad's. Every path
+  // resolves against the rack's, so reading the pad's would hand back paths
+  // that address the other layer.
+  it("numbers a layered pad's chains the way its paths resolve", () => {
+    const rackPath = String(livePath.track(1).device(0));
+
+    registerMockObject("drum-rack-1", {
+      path: rackPath,
+      type: "Device",
+      properties: {
+        can_have_drum_pads: 1,
+        drum_pads: children("pad-36"),
+        chains: children("layer-a", "layer-b"),
+      },
+    });
+    registerMockObject("pad-36", {
+      path: `${rackPath} drum_pads 36`,
+      type: "DrumPad",
+      properties: {
+        note: 36,
+        name: "Multi",
+        chains: children("layer-b", "layer-a"),
+      },
+    });
+
+    for (const [index, id] of ["layer-a", "layer-b"].entries()) {
+      registerMockObject(id, {
+        path: `${rackPath} chains ${index}`,
+        type: "DrumChain",
+        properties: { name: id, in_note: 36, out_note: 36 },
+      });
+    }
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as { id: string; path: string }[];
+
+    expect(chains.map((c) => c.id)).toStrictEqual(["layer-a", "layer-b"]);
+    expect(chains.map((c) => c.path)).toStrictEqual([
+      "t1/d0/pC1/c0",
+      "t1/d0/pC1/c1",
+    ]);
+    expect(readDevice({ path: "t1/d0/pC1/c1", include: [] }).id).toBe(
+      "layer-b",
+    );
   });
 
   it("should read muted drum pad", () => {
@@ -138,6 +232,68 @@ describe("readDevice with drum pad path", () => {
       chokeGroup: 2,
       devices: [],
     });
+  });
+
+  it("lists the chain's own trim when it is non-default", () => {
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
+      chainProperties: { "chain-1": { name: "Layer 1", out_note: 48 } },
+    });
+
+    const mixerPath = `${livePath.track(1).device(0)} chains 0 mixer_device`;
+
+    registerMockObject("mixer-1", { path: mixerPath });
+    registerMockObject("volume-1", {
+      path: `${mixerPath} volume`,
+      properties: { display_value: -15 },
+    });
+    registerMockObject("panning-1", {
+      path: `${mixerPath} panning`,
+      properties: { value: 0.25 },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as Record<string, unknown>[];
+
+    expect(chains[0]).toStrictEqual({
+      id: "chain-1",
+      path: "t1/d0/pC1/c0",
+      type: "DrumChain",
+      name: "Layer 1",
+      mappedPitch: "C2",
+      gainDb: -15,
+      pan: 0.25,
+      devices: [],
+    });
+  });
+
+  it("names a drum chain's sends after the rack's return chains", () => {
+    // The send names come from walking up the chain path to its rack. A drum
+    // chain sits at "<rack> chains N", so that walk only lands on the rack when
+    // the path is right — the reason this test exists.
+    setupDrumPadMocks({
+      padIds: ["pad-36"],
+      padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
+      chainProperties: { "chain-1": { name: "Layer 1", out_note: 48 } },
+      returnChainNames: ["A Reverb", "B Delay"],
+    });
+
+    const mixerPath = `${livePath.track(1).device(0)} chains 0 mixer_device`;
+
+    registerMockObject("mixer-1", {
+      path: mixerPath,
+      properties: { sends: children("send-0", "send-1") },
+    });
+    registerMockObject("send-0", { properties: { value: 0 } });
+    registerMockObject("send-1", {
+      properties: { value: 0.5, display_value: -9 },
+    });
+
+    const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
+    const chains = result.chains as Record<string, unknown>[];
+
+    // Only the send that is turned up is listed, named after return chain B.
+    expect(chains[0]!.sends).toStrictEqual([{ return: "B Delay", gainDb: -9 }]);
   });
 
   it("should read drum pad with chains containing devices", () => {
@@ -222,7 +378,77 @@ describe("readDevice with drum pad path", () => {
     setupKickPadMocks();
 
     expect(() => readDevice({ path: "t1/d0/pXYZ" })).toThrow(
-      "Invalid drum pad note name: XYZ",
+      /"pXYZ" names no drum pad/,
+    );
+  });
+
+  // The catch-all is a chain with in_note -1, not a drum_pads entry, so there
+  // is no DrumPad here to describe.
+  it("should report the catch-all pad as not found", () => {
+    setupKickPadMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*" })).toThrow(
+      "Drum pad * not found",
+    );
+  });
+
+  // Same rack, but a chain does route to the catch-all: there is a pad to
+  // describe, just no DrumPad object to give it an id or a mute/solo state.
+  it("reads the catch-all pad when a chain routes to it", () => {
+    setupCatchAllChainMocks();
+
+    expect(readDevice({ path: "t1/d0/p*", include: [] })).toStrictEqual({
+      path: "t1/d0/p*",
+      name: "All Notes",
+      note: -1,
+      pitch: "*",
+    });
+  });
+
+  // read-device prints `p*/cN` for a catch-all chain, so it has to read one
+  // back. There is no pad to resolve through — the chains come off the rack.
+  it("reads back the catch-all chain path it prints", () => {
+    setupCatchAllChainMocks();
+
+    const rack = readDevice({
+      path: "t1/d0",
+      include: ["drum-pads", "chains"],
+    });
+    const pads = rack.drumPads as {
+      pitch: string;
+      chains: { path: string }[];
+    }[];
+
+    expect(pads[0]?.pitch).toBe("*");
+    expect(pads[0]?.chains.map((c) => c.path)).toStrictEqual(["t1/d0/p*/c0"]);
+
+    const chain = readDevice({ path: "t1/d0/p*/c0", include: [] });
+
+    expect(chain.id).toBe("catch-all");
+    expect(chain.path).toBe("t1/d0/p*/c0");
+  });
+
+  it("reads a device inside the catch-all chain", () => {
+    setupCatchAllChainMocks();
+
+    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/d0" }));
+    expectSimplerDeviceResult(readDevice({ path: "t1/d0/p*/c0/d0" }));
+  });
+
+  it("rejects a chain index past the catch-all's chains", () => {
+    setupCatchAllChainMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*/c1" })).toThrow(
+      "Invalid chain index in path: t1/d0/p*/c1",
+    );
+  });
+
+  // A rack with no catch-all chain has nothing for the path to name.
+  it("reports the catch-all as not found when no chain routes to it", () => {
+    setupKickPadMocks();
+
+    expect(() => readDevice({ path: "t1/d0/p*/c0" })).toThrow(
+      "Drum pad * not found",
     );
   });
 
@@ -245,11 +471,12 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric chain segment", () => {
-    // "cX" parses to NaN; the NaN guard must reject it with the index error.
+    // Segments past a drum pad are still segments: the grammar rejects "cX"
+    // before any of this resolves against the rack.
     setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
 
     expect(() => readDevice({ path: "t1/d0/pC1/cX" })).toThrow(
-      "Invalid chain index in path: t1/d0/pC1/cX",
+      'invalid path "t1/d0/pC1/cX" - "cX" is not a device, chain, or drum pad',
     );
   });
 
@@ -292,11 +519,10 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw for a non-numeric device segment", () => {
-    // "dX" parses to NaN; the NaN guard must reject it with the index error.
     setupKickPadWithChainDevice();
 
     expect(() => readDevice({ path: "t1/d0/pC1/c0/dX" })).toThrow(
-      "Invalid device index in path: t1/d0/pC1/c0/dX",
+      'invalid path "t1/d0/pC1/c0/dX" - "dX" is not a device, chain, or drum pad',
     );
   });
 });

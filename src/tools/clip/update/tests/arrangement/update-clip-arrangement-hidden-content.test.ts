@@ -43,7 +43,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
     });
 
     const result = await updateClip({
-      ids: "789",
+      id: "789",
       arrangementLength: "1bar+n5/8", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });
 

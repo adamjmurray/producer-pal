@@ -72,7 +72,7 @@ async function runWarpedAudioLengthening(
   const { mockCreate, sessionSlot } = setupSessionTilingMock(fileBoundary);
 
   const result = await updateClip(
-    { ids: clipId, arrangementLength },
+    { id: clipId, arrangementLength },
     mockContext,
   );
 
@@ -211,7 +211,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const { mockCreate } = setupSessionTilingMock(40.0);
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3bar+n/2" },
+      { id: clipId, arrangementLength: "3bar+n/2" },
       mockContext,
     );
 
@@ -240,7 +240,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     );
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3bar+n/2" },
+      { id: clipId, arrangementLength: "3bar+n/2" },
       mockContext,
     );
 

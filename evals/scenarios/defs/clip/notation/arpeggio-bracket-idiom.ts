@@ -8,8 +8,8 @@
  * idiom, or hand-list every note?
  *
  * Unlike the other notation scenarios — which grade only the OUTCOME because
- * "brackets are author-only sugar with the same canonical read-back" — these
- * also grade the PATH. The failure they reproduce (seen in the wild on a
+ * "brackets are author-only sugar with the same canonical read-back" — this one
+ * also grades the PATH. The failure it reproduces (seen in the wild on a
  * frontier model) is a CORRECT arpeggio written the long way: dozens of
  * hand-enumerated notes instead of one compact `[A3 C4 E4] 1|1x8` line per
  * chord. The read-back is identical, so the only way to see the difference is to
@@ -20,15 +20,15 @@
  *   - few anchor positions (repeats used)? → tier 2 (brackets but every position
  *     listed) vs tier 3 (`xN` repeats, ~one anchor per bar)
  * The outcome assertion guards musical validity so brackets-producing-garbage
- * can't pass. The LLM judge stays advisory (judges miscount bar|beat notation).
+ * can't pass. No LLM judge — judges miscount bar|beat notation.
  *
- * Two difficulty rungs:
- *   - arpeggio-bracket-idiom: straight eighths in every bar. Trivially
- *     bracketable; even small models pass. Acts as a baseline / regression guard.
- *   - arpeggio-mixed-durations: a DIFFERENT note value per bar. Targets the
+ * Two difficulty rungs, in one run:
+ *   - mixed durations (turn 1): a DIFFERENT note value per bar. Targets the
  *     misconception that made the wild failure ("mixed durations defeat
  *     brackets, so I'll hand-list") — the model must change the duration token
  *     per bar and keep one compact line each, not fall back to enumeration.
+ *   - straight eighths (turn 2): trivially bracketable; even small models pass.
+ *     Acts as a baseline / regression guard.
  */
 
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -40,10 +40,12 @@ import {
 import {
   clipStateAssertion,
   getCreateClipNotes,
+  TOOL_CREATE_CLIP,
 } from "../helpers/clip-scenario-helpers.ts";
 import {
   createClipScenario,
   LEAD_SLOT_1,
+  LEAD_SLOT_2,
 } from "../helpers/clip-scenario-builders.ts";
 
 /** Float tolerance for note start_time comparisons (in beats). */
@@ -89,7 +91,7 @@ const MIXED_BARS: ArpBar[] = [
 ];
 
 const STRAIGHT_MESSAGE =
-  "On the Lead track, create a 4-bar MIDI clip in scene 1: an eighth-note " +
+  "Now, on the Lead track, create a 4-bar MIDI clip in scene 2: an eighth-note " +
   "arpeggio over a four-chord progression, one chord per bar. In each bar, " +
   "cycle upward through the chord's tones as straight eighth notes — eight " +
   "notes per bar. Bar 1 is A minor (A3, C4, E4), bar 2 is F major " +
@@ -103,16 +105,6 @@ const MIXED_MESSAGE =
   "bar 2 straight sixteenth notes — F major (F3, A3, C4); bar 3 straight " +
   "quarter notes — C major (C4, E4, G4); bar 4 straight eighth notes — " +
   "G major (G3, B3, D4).";
-
-const STRAIGHT_JUDGE = `Evaluate whether the assistant wrote the arpeggio with Producer Pal's compact pattern-bracket idiom rather than hand-listing every note:
-1. Created a 4-bar clip: an eighth-note arpeggio cycling each bar's chord tones — A minor, F major, C major, G major (32 notes, eight per bar).
-2. Used pitch-bracket cycling WITH repeat notation — e.g. \`[A3 C4 E4] 1|1x8\` — roughly one compact line per chord, NOT 32 hand-listed note positions and NOT brackets with every position spelled out.
-3. The arpeggio is musically correct: each bar cycles its own triad across straight eighths.`;
-
-const MIXED_JUDGE = `Evaluate whether the assistant wrote this mixed-rhythm arpeggio with Producer Pal's compact pattern-bracket idiom rather than hand-listing every note:
-1. Created a 4-bar clip filling each bar with its own note value — bar 1 eighths (8 notes), bar 2 sixteenths (16), bar 3 quarters (4), bar 4 eighths (8) — cycling A minor, F major, C major, G major.
-2. Used pitch-bracket cycling WITH repeat notation — roughly one compact line per bar, e.g. \`n/16 [F3 A3 C4] 2|1x16\` — changing the note value per bar with a duration token, NOT hand-listing the 36 notes and NOT spelling out every position. Mixed durations across bars do NOT require hand-listing.
-3. The arpeggio is musically correct: each bar cycles its own triad across its note value.`;
 
 /**
  * Build a read-back verdict for the given per-bar arpeggio spec: the right total
@@ -153,102 +145,79 @@ function makeArpCheck(bars: ArpBar[]): (events: NoteEvent[]) => boolean {
   };
 }
 
-/** PATH (tier 1 vs 2+): the notes must use pitch-bracket cycling `[...]`. */
-const usesBracketCycling: EvalAssertion = {
-  type: "custom",
-  description: "create-clip notes use pitch-bracket cycling [...] for the arp",
-  assert: (turns: EvalTurnResult[]) => {
-    const notes = getCreateClipNotes(turns);
-
-    if (!/\[[^\]]+]/.test(notes)) {
-      throw new Error(
-        `no bracket cycling — pitches hand-listed: ${notes.slice(0, 120)}`,
-      );
-    }
-
-    return true;
-  },
-};
-
-/** PATH (tier 2 vs 3): repeats keep anchor positions few, not hand-listed. */
-const usesRepeatNotation: EvalAssertion = {
-  type: "custom",
-  description: `create-clip notes use repeats (≤${MAX_POSITION_TOKENS} bar|beat anchors), not hand-listed positions`,
-  assert: (turns: EvalTurnResult[]) => {
-    const notes = getCreateClipNotes(turns);
-    const positions = notes.match(/\d+\|\d/g) ?? [];
-
-    if (positions.length > MAX_POSITION_TOKENS) {
-      throw new Error(
-        `${positions.length} explicit bar|beat positions — expected ≤ ${MAX_POSITION_TOKENS} via repeat notation`,
-      );
-    }
-
-    return true;
-  },
-};
-
 /**
- * Assemble an arpeggio-idiom scenario: connect (turn 0), one create-clip
- * (turn 1), then grade both the OUTCOME (`makeArpCheck`) and the PATH (bracket
- * cycling + repeats). The two rungs share everything but the prompt, the per-bar
- * spec, and the judge prompt.
+ * PATH (tier 1 vs 2+): the notes must use pitch-bracket cycling `[...]`.
  *
- * @param opts - Scenario specifics
- * @param opts.id - Scenario id
- * @param opts.description - One-line description
- * @param opts.message - User turn after the connect turn
- * @param opts.bars - Per-bar arpeggio spec for the read-back check
- * @param opts.judgePrompt - Advisory LLM-judge prompt
- * @returns The assembled scenario
+ * @param turn - Turn whose create-clip call to inspect
+ * @returns A custom assertion
  */
-function arpScenario(opts: {
-  id: string;
-  description: string;
-  message: string;
-  bars: ArpBar[];
-  judgePrompt: string;
-}): EvalScenario {
-  return createClipScenario({
-    id: opts.id,
-    description: opts.description,
-    requires: { brackets: true },
-    messages: [opts.message],
-    clearSlots: [LEAD_SLOT_1],
-    assertions: [
-      clipStateAssertion(LEAD_SLOT_1, "4/4", makeArpCheck(opts.bars)),
-      usesBracketCycling,
-      usesRepeatNotation,
-      { type: "llm_judge", prompt: opts.judgePrompt },
-      { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
-    ],
-  });
+function usesBracketCycling(turn: number): EvalAssertion {
+  return {
+    type: "custom",
+    description: `turn ${turn}: create-clip notes use pitch-bracket cycling [...] for the arp`,
+    assert: (turns: EvalTurnResult[]) => {
+      const notes = getCreateClipNotes(turns, turn);
+
+      if (!/\[[^\]]+]/.test(notes)) {
+        throw new Error(
+          `no bracket cycling — pitches hand-listed: ${notes.slice(0, 120)}`,
+        );
+      }
+
+      return true;
+    },
+  };
 }
 
 /**
- * Baseline: straight-eighth arpeggio over the progression. Trivially
- * bracketable — passes on small models — so it doubles as a regression guard
- * that the idiom keeps working.
+ * PATH (tier 2 vs 3): repeats keep anchor positions few, not hand-listed.
+ *
+ * @param turn - Turn whose create-clip call to inspect
+ * @returns A custom assertion
  */
-export const arpeggioBracketIdiom: EvalScenario = arpScenario({
-  id: "arpeggio-bracket-idiom",
-  description:
-    "Arpeggio over a 4-chord progression — reach for pitch-bracket + repeat notation, not 32 hand-listed notes",
-  message: STRAIGHT_MESSAGE,
-  bars: STRAIGHT_BARS,
-  judgePrompt: STRAIGHT_JUDGE,
-});
+function usesRepeatNotation(turn: number): EvalAssertion {
+  return {
+    type: "custom",
+    description: `turn ${turn}: create-clip notes use repeats (≤${MAX_POSITION_TOKENS} bar|beat anchors), not hand-listed positions`,
+    assert: (turns: EvalTurnResult[]) => {
+      const notes = getCreateClipNotes(turns, turn);
+      const positions = notes.match(/\d+\|\d/g) ?? [];
+
+      if (positions.length > MAX_POSITION_TOKENS) {
+        throw new Error(
+          `${positions.length} explicit bar|beat positions — expected ≤ ${MAX_POSITION_TOKENS} via repeat notation`,
+        );
+      }
+
+      return true;
+    },
+  };
+}
 
 /**
- * Harder rung: a different note value per bar. Reproduces the wild failure's
- * trigger — mixed durations tempting the model to hand-list rather than change
- * the duration token per compact bracket line.
+ * One scenario, two rungs. The MIXED rung runs first and unprimed: it is the
+ * one that reproduces the wild failure (a different note value per bar tempts
+ * the model to hand-list), and seeing the idiom work once would give it away.
+ * The straight-eighths rung follows as the baseline regression guard — even
+ * small models pass it.
  */
-export const arpeggioMixedDurations: EvalScenario = arpScenario({
-  id: "arpeggio-mixed-durations",
+export const arpeggioBracketIdiom: EvalScenario = createClipScenario({
+  id: "arpeggio-bracket-idiom",
   description:
-    "Arpeggio with a different note value per bar — mixed durations must NOT trigger hand-listing",
-  message: MIXED_MESSAGE,
-  bars: MIXED_BARS,
-  judgePrompt: MIXED_JUDGE,
+    "Arpeggios over a 4-chord progression — reach for pitch-bracket + repeat notation, not hand-listed notes",
+  requires: { brackets: true },
+  messages: [MIXED_MESSAGE, STRAIGHT_MESSAGE],
+  clearSlots: [LEAD_SLOT_1, LEAD_SLOT_2],
+  assertions: [
+    clipStateAssertion(LEAD_SLOT_1, "4/4", makeArpCheck(MIXED_BARS)),
+    usesBracketCycling(1),
+    usesRepeatNotation(1),
+
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 2 },
+    clipStateAssertion(LEAD_SLOT_2, "4/4", makeArpCheck(STRAIGHT_BARS)),
+    usesBracketCycling(2),
+    usesRepeatNotation(2),
+
+    { type: "token_usage", metric: "inputTokens", maxTokens: 160_000 },
+  ],
 });

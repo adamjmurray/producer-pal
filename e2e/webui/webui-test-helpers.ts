@@ -5,6 +5,15 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
+/**
+ * Network errors the stubs make unavoidable: 405 on /mcp (a stateless
+ * endpoint), 403/429 from API providers (tests use fake keys). Matched as whole
+ * numbers — a bundled stack trace carries line:column offsets, and a plain
+ * substring test drops a real error whose offset happens to contain a code
+ * (column 42934 reads as a 429).
+ */
+const EXPECTED_NETWORK_ERROR = /\b(?:403|405|429)\b/;
+
 interface ConsoleLogs {
   errors: string[];
   warnings: string[];
@@ -29,14 +38,7 @@ export function setupConsoleCapture(): ConsoleLogs {
       const text = msg.text();
 
       if (type === "error") {
-        // Filter expected network errors:
-        // - 405 on /mcp (stateless endpoint)
-        // - 403/429 from API providers (fake keys in tests)
-        if (
-          !text.includes("405") &&
-          !text.includes("403") &&
-          !text.includes("429")
-        ) {
+        if (!EXPECTED_NETWORK_ERROR.test(text)) {
           captured.errors.push(text);
         }
       } else if (type === "warning") {
@@ -62,7 +64,13 @@ export function setupConsoleCapture(): ConsoleLogs {
     });
 
     page.on("pageerror", (error) => {
-      captured.errors.push(error.message);
+      // A stream that dies before emitting anything (a 429, say) rejects one of
+      // streamText's side promises with no one awaiting it, so the failure also
+      // lands here as an unhandled rejection. Benign whenever a retry layer goes
+      // on to succeed, which is exactly what the subagent backoff spec drives.
+      if (!error.message.includes("No output generated")) {
+        captured.errors.push(error.message);
+      }
     });
   });
 

@@ -7,7 +7,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerMockObject,
+  registerSessionClipDuplication,
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { registerSessionClipForArrangementDup } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 describe("duplicate - input validation", () => {
@@ -63,8 +67,34 @@ describe("duplicate - input validation", () => {
   });
 });
 
+// Every other write tool takes `ids`, so a model carries the plural here too.
+describe("duplicate - the ids alias", () => {
+  it("takes ids as the source when id is unset", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    await expect(
+      duplicate({ type: "track", ids: "track1" }),
+    ).resolves.toBeDefined();
+  });
+
+  // duplicate copies one object per call, so the list `ids` implies has to be
+  // refused by name — handing "track1,track2" to Live reads as a missing object.
+  it("refuses a source list rather than looking one up", async () => {
+    await expect(
+      duplicate({ type: "track", ids: "track1,track2" }),
+    ).rejects.toThrow(
+      'duplicate failed: id "track1,track2" names more than one source; duplicate copies one object per call',
+    );
+  });
+
+  it("refuses a list sent as id too", async () => {
+    await expect(
+      duplicate({ type: "track", id: "track1,track2" }),
+    ).rejects.toThrow("names more than one source");
+  });
+});
+
 describe("duplicate - clip session validation", () => {
-  it("should throw an error when toSlot is empty for session clip", async () => {
+  it("should ask for toPath when toSlot names nothing", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -73,10 +103,77 @@ describe("duplicate - clip session validation", () => {
       duplicate({
         type: "clip",
         id: "clip1",
-        toSlot: "  ",
+        toSlot: ",",
       }),
-    ).rejects.toThrow("duplicate failed: toSlot is required for session clips");
+    ).rejects.toThrow("duplicate failed: clip requires toPath");
   });
+
+  // Every other inapplicable param on this tool warns; these two used to be
+  // dropped without a word, so the copy count / length silently didn't happen.
+  it("warns that a clip copy ignores count", async () => {
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0/s1",
+      count: 3,
+    });
+
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/0/clip_slots/1/clip",
+      path: "t0/s1",
+    });
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("count ignored for clips"),
+    );
+  });
+
+  it("warns that a session copy ignores arrangementLength", async () => {
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toPath: "t0/s1",
+      arrangementLength: "4bar",
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("arrangementLength ignored"),
+    );
+  });
+});
+
+// A caller on the old schema still sends takeLane, and z.coerce.string() turns
+// its null into "null" — which used to throw before any copy was made.
+describe("duplicate - coerced-null takeLane", () => {
+  it.each([
+    ["omitted", undefined],
+    ["a coerced null", "null"],
+    ["a coerced undefined", "undefined"],
+  ])(
+    "copies to the main lane when takeLane is %s",
+    async (_label, takeLane) => {
+      const track0 = registerSessionClipForArrangementDup();
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1",
+        takeLane,
+      });
+
+      expect(track0.call).not.toHaveBeenCalledWith("create_take_lane");
+      expect(result).toStrictEqual({
+        id: livePath.track(0).arrangementClip(0),
+        path: "t0",
+        arrangementStart: "3|1",
+      });
+    },
+  );
 });
 
 describe("duplicate - return format", () => {

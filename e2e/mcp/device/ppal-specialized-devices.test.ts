@@ -100,7 +100,7 @@ async function readDevice(
   include?: string[],
   paramSearch?: string,
 ): Promise<ReadDeviceResult> {
-  const args: Record<string, unknown> = { deviceId };
+  const args: Record<string, unknown> = { id: deviceId };
 
   if (include) args.include = include;
   if (paramSearch) args.paramSearch = paramSearch;
@@ -122,7 +122,7 @@ async function updateDevice(
 ): Promise<void> {
   await ctx.client!.callTool({
     name: "ppal-update-device",
-    arguments: { ids: deviceId, ...args },
+    arguments: { id: deviceId, ...args },
   });
 
   await sleep(100);
@@ -189,7 +189,7 @@ describe("specialized devices: Drift", () => {
       await ctx.client!.callTool({
         name: "ppal-update-device",
         arguments: {
-          ids: id,
+          id: id,
           params: [{ name: "pitchBendRange", value: "13" }],
         },
       }),

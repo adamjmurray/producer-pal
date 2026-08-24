@@ -16,7 +16,8 @@ import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
   () => ({
-    moveDeviceToPath: vi.fn(),
+    // Reports a completed move; tests that need a failed one override it.
+    moveDeviceToPath: vi.fn((): DeviceMoveOutcome => "moved"),
   }),
 );
 
@@ -28,7 +29,10 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 // Import the mocks after vi.mock
-import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/helpers/update-device-helpers.ts";
+import {
+  type DeviceMoveOutcome,
+  moveDeviceToPath as moveDeviceToPathMock,
+} from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 describe("duplicate - device duplication", () => {
@@ -71,6 +75,8 @@ describe("duplicate - device duplication", () => {
         _path: String(livePath.track(1).device(2)),
       }),
       "t0/d3",
+      expect.anything(),
+      expect.any(String),
     );
 
     // Should delete the temp track
@@ -96,6 +102,8 @@ describe("duplicate - device duplication", () => {
         _path: String(livePath.track(1).device(1)),
       }),
       "t3/d0",
+      expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -122,12 +130,15 @@ describe("duplicate - device duplication", () => {
     // Should duplicate track 1
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 1);
 
-    // Should move device (from temp track at index 2)
+    // Should move device (from temp track at index 2), naming the real source
+    // so the chain-mixer warning reads the source chain, not the temp copy
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.objectContaining({
         _path: String(livePath.track(2).device(0).chain(0).device(1)),
       }),
       "t1/d0/c0/d2",
+      expect.objectContaining({ _id: "rack_device1" }),
+      expect.any(String),
     );
 
     // Should delete the temp track at index 2
@@ -198,6 +209,25 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t2/d0",
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
+  // The old bare-index spelling is still accepted, so it needs the same temp
+  // track adjustment as "t2" — without it the copy landed a track short, on
+  // whatever the caller's t1 is, and was reported as a success.
+  it("adjusts a bare track index for the temp track", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "2" });
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t3",
+      expect.anything(),
+      // Warnings keep the spelling the caller sent.
+      "2",
     );
   });
 
@@ -222,6 +252,141 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
+  it("deletes the temp track when the move fails", async () => {
+    // duplicate_track parks a full copy of the source track — devices, clips
+    // and all — next to it. A throw between that and the cleanup leaked one
+    // per failed call, and they accumulated.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
+      throw new Error("nope");
+    });
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "t2/d0" }),
+    ).rejects.toThrow("nope");
+
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("skips, in the caller's coordinates, when the destination does not exist", async () => {
+    // Without this the temp device's id came back as a success, for a device
+    // that the cleanup was about to delete.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("no-destination");
+
+    // The path handed to the move is t100 (shifted past the temp track); the
+    // warning names the t99 the caller sent.
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t99",
+    });
+
+    expect(result).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'duplicate: no destination at toPath "t99"',
+    );
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t100",
+      expect.anything(),
+      // The move reports failures in the caller's own coordinates, not t100's.
+      "t99",
+    );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("skips when Live would not take the copy at the destination", async () => {
+    // The copy is still on the temp track, which the cleanup deletes, so
+    // reporting its id named a device that no longer existed.
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    vi.mocked(moveDeviceToPathMock).mockReturnValueOnce("refused");
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t2/d0",
+    });
+
+    expect(result).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'duplicate: the copy could not be moved to "t2/d0"',
+    );
+    expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
+  });
+
+  it("keeps the copies that worked when one destination fails", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    vi.mocked(moveDeviceToPathMock)
+      .mockReturnValueOnce("moved")
+      .mockReturnValueOnce("refused")
+      .mockReturnValueOnce("moved");
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t2/d0, t3/d0, t4/d0",
+    });
+
+    // The bad destination in the middle keeps neither the copy before it nor
+    // the one after it from being reported.
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/1/devices/1" },
+      { id: "live_set/tracks/1/devices/1" },
+    ]);
+    expect(moveDeviceToPathMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("reads a blank toPath as omitted, the way clips do", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "",
+    });
+
+    expect(result).toStrictEqual({ id: "live_set/tracks/1/devices/1" });
+    // Omitted means "after the original on the source track".
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t0/d2",
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
+  it("refuses a toPath that was sent but names nothing", async () => {
+    const { liveSet } = setupDeviceDuplicationMocks();
+
+    await expect(
+      duplicate({ type: "device", id: "device1", toPath: "," }),
+    ).rejects.toThrow('invalid toPath "," - it names nothing');
+
+    // Refused before anything was created.
+    expect(liveSet.call).not.toHaveBeenCalledWith(
+      "duplicate_track",
+      expect.anything(),
+    );
+  });
+
+  it("trims a single toPath instead of forwarding it raw", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "  t2/d0  " });
+
+    expect(moveDeviceToPathMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "t3/d0",
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
   it("should not adjust non-track destination path (return/master)", async () => {
     setupDeviceDuplicationMocks();
 
@@ -232,6 +397,8 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "r0/d0",
+      expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -281,6 +448,8 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t12/d1",
+      expect.anything(),
+      expect.any(String),
     );
   });
 
@@ -302,6 +471,8 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t13/d0",
+      expect.anything(),
+      "t12/d0",
     );
   });
 
@@ -325,6 +496,75 @@ describe("duplicate - device duplication", () => {
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
       "t0/d0/c0",
+      expect.anything(),
+      expect.any(String),
+    );
+  });
+
+  // Every other inapplicable param on this tool warns; these were dropped in
+  // silence, so the caller read a copy inside the chain as a timeline placement.
+  it("warns that arrangement params do not apply to a device", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t1/d0",
+      arrangementStart: "5|1",
+      arrangementLength: "4|0",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      'arrangementStart/arrangementLength ignored: a device has no arrangement position (type "device")',
+    );
+  });
+
+  it("re-reads the source device for each destination", async () => {
+    // A LiveAPI follows its path. The first copy lands in the source's own
+    // container at or before its index, so Live shifts the source up one and
+    // an object built before that now names whatever took its place.
+    registerMockObject("src_device", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/1", {
+      path: livePath.track(1).device(1),
+    });
+    registerMockObject("live_set/tracks/1/devices/2", {
+      path: livePath.track(1).device(2),
+    });
+
+    vi.mocked(moveDeviceToPathMock).mockImplementationOnce(() => {
+      // The copy inserted at t0/d0 pushed the source from d1 to d2.
+      registerMockObject("src_device", {
+        path: livePath.track(0).device(2),
+        type: "PluginDevice",
+      });
+
+      return "moved";
+    });
+
+    await duplicate({
+      type: "device",
+      id: "src_device",
+      toPath: "t0/d0,t2/d0",
+    });
+
+    // The temp track mirrors the source track, so the copy the second
+    // destination moves is the one at the source's CURRENT index.
+    expect(vi.mocked(moveDeviceToPathMock).mock.calls[1]?.[0]).toMatchObject({
+      _path: String(livePath.track(1).device(2)),
+    });
+  });
+
+  it("stays quiet when no arrangement param was sent", async () => {
+    setupDeviceDuplicationMocks(1);
+
+    await duplicate({ type: "device", id: "device1", toPath: "t1/d0" });
+
+    expect(consoleMock.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("has no arrangement position"),
     );
   });
 });

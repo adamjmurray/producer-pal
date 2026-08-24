@@ -1,9 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  formatDeviceSegment,
+  liveApiCollection,
+  parseObjectPath,
+  type ObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import {
+  requireDevicePath,
+  trackSegmentPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export type TargetType = "device" | "chain" | "drum-pad" | "return-chain";
 
@@ -14,164 +23,48 @@ export interface ResolvedPath {
   remainingSegments: string[];
 }
 
-interface ChainSegmentResult {
-  earlyReturn?: ResolvedPath;
-  liveApiPath?: string;
-  targetType?: TargetType;
-  remainingSegments?: string[];
-}
-
 /**
- * Parse the track segment and return the Live API path prefix
- * @param trackSegment - Track segment (e.g., "t1", "rt0", "mt")
- * @param path - Full path for error messages
- * @returns Live API path prefix
- */
-function parseTrackSegment(trackSegment: string, path: string): string {
-  if (trackSegment === "mt") return livePath.masterTrack().toString();
-
-  if (trackSegment.startsWith("rt")) {
-    const index = Number.parseInt(trackSegment.slice(2));
-
-    if (Number.isNaN(index))
-      throw new Error(`Invalid return track index in path: ${path}`);
-
-    return livePath.returnTrack(index).toString();
-  }
-
-  if (trackSegment.startsWith("t")) {
-    const index = Number.parseInt(trackSegment.slice(1));
-
-    if (Number.isNaN(index))
-      throw new Error(`Invalid track index in path: ${path}`);
-
-    return livePath.track(index).toString();
-  }
-
-  throw new Error(`Invalid track segment in path: ${path}`);
-}
-
-/**
- * Parse a chain segment (c-prefixed chain, rc-prefixed return chain, or p-prefixed drum pad)
- * @param segment - Chain segment to parse (e.g., "c0", "rc0", "pC1")
- * @param path - Full path for error messages
- * @param liveApiPath - Current Live API path
- * @param segments - All path segments
- * @param index - Current segment index
- * @returns Result with liveApiPath, targetType, and optional early return
- */
-function parseChainSegment(
-  segment: string,
-  path: string,
-  liveApiPath: string,
-  segments: string[],
-  index: number,
-): ChainSegmentResult {
-  // Drum pad - return partial resolution for Live API lookup
-  if (segment.startsWith("p")) {
-    const noteName = segment.slice(1);
-
-    if (!noteName) {
-      throw new Error(`Invalid drum pad note in path: ${path}`);
-    }
-
-    return {
-      earlyReturn: {
-        liveApiPath,
-        targetType: "drum-pad",
-        drumPadNote: noteName,
-        remainingSegments: segments.slice(index + 1),
-      },
-    };
-  }
-
-  // Return chain (rc prefix)
-  if (segment.startsWith("rc")) {
-    const returnChainIndex = Number.parseInt(segment.slice(2));
-
-    if (Number.isNaN(returnChainIndex)) {
-      throw new Error(`Invalid return chain index in path: ${path}`);
-    }
-
-    return {
-      liveApiPath: `${liveApiPath} return_chains ${returnChainIndex}`,
-      targetType: "return-chain",
-      remainingSegments: [],
-    };
-  }
-
-  // Regular chain (c prefix)
-  if (segment.startsWith("c")) {
-    const chainIndex = Number.parseInt(segment.slice(1));
-
-    if (Number.isNaN(chainIndex)) {
-      throw new Error(`Invalid chain index in path: ${path}`);
-    }
-
-    return {
-      liveApiPath: `${liveApiPath} chains ${chainIndex}`,
-      targetType: "chain",
-      remainingSegments: [],
-    };
-  }
-
-  throw new Error(`Invalid chain segment in path: ${path}`);
-}
-
-/**
- * Resolve a simplified path to a Live API path
- * @param path - e.g., "t1/d0", "t1/d0/c0", "rt0/d0", "mt/d0", "t1/d0/pC1", "t1/d0/rc0"
+ * Resolves a device path to a Live API path.
+ * @param path - e.g., "t1/d0", "t1/d0/c0", "rt0/d0", "mt/d0", "t1/d0/pC1"
+ * @param label - Param name the path came from, for error messages
  * @returns Resolved path info
- * @throws If path format is invalid
  */
-export function resolvePathToLiveApi(path: string): ResolvedPath {
-  if (!path || typeof path !== "string") {
-    throw new Error("Path must be a non-empty string");
-  }
+export function resolvePathToLiveApi(
+  path: string,
+  label = "path",
+): ResolvedPath {
+  return resolveDevicePath(parseObjectPath(path, label), label);
+}
 
-  const segments = path.split("/");
+/**
+ * Resolves an already-parsed device path to a Live API path.
+ * @param path - Parsed path
+ * @param label - Param name the path came from, for error messages
+ * @returns Resolved path info
+ */
+export function resolveDevicePath(
+  path: ObjectPath,
+  label = "path",
+): ResolvedPath {
+  const { root, segments } = requireDevicePath(path, label);
 
-  const firstSegment = assertDefined(segments[0], "first path segment");
-
-  if (segments.length === 0 || firstSegment === "") {
-    throw new Error(`Invalid path: ${path}`);
-  }
-
-  let liveApiPath = parseTrackSegment(firstSegment, path);
-
-  // Track-only path is not valid for devices
-  if (segments.length === 1) {
-    throw new Error(`Path must include at least a device index: ${path}`);
-  }
-
-  // Parse remaining segments using explicit prefixes
+  let liveApiPath = trackSegmentPath(root).toString();
   let targetType: TargetType = "device";
 
-  for (let i = 1; i < segments.length; i++) {
-    const segment = segments[i] as string;
-
-    if (segment.startsWith("d")) {
-      // Device segment
-      const deviceIndex = Number.parseInt(segment.slice(1));
-
-      if (Number.isNaN(deviceIndex)) {
-        throw new Error(`Invalid device index in path: ${path}`);
-      }
-
-      liveApiPath += ` devices ${deviceIndex}`;
-      targetType = "device";
-    } else {
-      // Chain segment (c, rc, or p prefix)
-      const result = parseChainSegment(segment, path, liveApiPath, segments, i);
-
-      if (result.earlyReturn) {
-        return result.earlyReturn;
-      }
-
-      // After earlyReturn check, liveApiPath and targetType are guaranteed
-      liveApiPath = result.liveApiPath as string;
-      targetType = result.targetType as TargetType;
+  for (const [index, segment] of segments.entries()) {
+    // Live indexes drum pads by MIDI note, so everything past one only resolves
+    // against a live rack — hand the caller the tail to walk itself.
+    if (segment.kind === "drum-pad") {
+      return {
+        liveApiPath,
+        targetType: "drum-pad",
+        drumPadNote: segment.note,
+        remainingSegments: segments.slice(index + 1).map(formatDeviceSegment),
+      };
     }
+
+    liveApiPath += ` ${liveApiCollection(segment)} ${segment.index}`;
+    targetType = segment.kind;
   }
 
   return { liveApiPath, targetType, remainingSegments: [] };

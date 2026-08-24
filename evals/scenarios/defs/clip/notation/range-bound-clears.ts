@@ -11,12 +11,12 @@
  * the model wrote `3|1-4|1: v0`, whose inclusive end also deleted the note on
  * 4|1 (the first note of bar 4). The fix adds half-open selectors — the `N|*`
  * whole-bar wildcard and the `-<` exclusive-end marker — and the skills now
- * steer toward them. These scenarios guard the user-visible OUTCOME (the
+ * steer toward them. The scenario guards the user-visible OUTCOME (the
  * boundary note survives), not which syntax the model emits — a model that
  * writes the clean `3|*` / `3|1-<3|3` passes; one that overshoots fails.
  *
  * A `setup` hook builds a deterministic 4-bar clip (a C3 quarter on every beat)
- * so the boundary note (bar-4 downbeat / bar-3 midpoint) is always present.
+ * so the boundary notes (bar-4 downbeat / bar-1 midpoint) are always present.
  */
 
 import { argText } from "../../arg-text.ts";
@@ -34,14 +34,16 @@ import {
 
 const LIVE_SET = "basic-midi-4-track";
 const SLOT = "0/0";
+/** The same position as SLOT, in the path grammar the clip tools take. */
+const SLOT_PATH = "t0/s0";
 /** A C3 quarter on every beat of 4 bars — bar 3 is full and 4|1 is occupied. */
 const TEST_NOTES = "n/4 C3 1|1,2,3,4 2|1,2,3,4 3|1,2,3,4 4|1,2,3,4";
 /** Float tolerance for matching note start times (musical beats). */
 const EPS = 1e-6;
 
 /**
- * Rebuild the deterministic test clip in slot 0/0. Clears the slot first so
- * repeat trials (`-r N`, which reuse the open Live Set) start clean.
+ * Rebuild the deterministic test clip in slot 0/0. Clears the slot first so a
+ * run that inherits an already-open Live Set still starts clean.
  *
  * @param mcpClient - MCP client for tool calls
  */
@@ -50,7 +52,7 @@ async function setupRangeClip(mcpClient: Client): Promise<void> {
   await mcpClient.callTool({
     name: "ppal-create-clip",
     arguments: {
-      slot: SLOT,
+      path: SLOT_PATH,
       length: "4bar",
       timeSignature: "4/4",
       name: "range-bound-test",
@@ -186,82 +188,55 @@ function recordClearSyntax(turn: number): EvalAssertion {
   };
 }
 
-/** The parts that vary between range-clear scenarios. */
-interface RangeClearSpec {
-  id: string;
-  description: string;
-  /** The turn-2 clear instruction. */
-  instruction: string;
-  /** Maps beats-per-bar to the half-open [start, end) window to clear. */
-  windowOf: (beatsPerBar: number) => [number, number];
-  /** Description for the cleared-region assertion. */
-  windowLabel: string;
-  judgePrompt: string;
-}
-
 /**
- * Build a range-clear scenario. All of them share the same 4-turn shape —
- * connect, read, clear, read back — and the same assertion set.
- *
- * @param spec - The varying parts
- * @returns The assembled scenario
+ * One scenario, two clears: a whole bar (bar 3, whose exclusive end is the
+ * bar-4 downbeat) then a half bar (the first half of bar 1, whose exclusive end
+ * is the beat-3 note). Both boundary notes must survive. The clears target
+ * different bars so the second still has a full region to work on.
  */
-function rangeClearScenario(spec: RangeClearSpec): EvalScenario {
-  return {
-    id: spec.id,
-    description: spec.description,
-    kind: "capability",
-    liveSet: LIVE_SET,
-    setup: setupRangeClip,
-
-    messages: [
-      MSG_CONNECT,
-      "Read the notes of the clip in the first track's first scene.",
-      spec.instruction,
-      "Read that clip's notes again so we can confirm.",
-    ],
-
-    assertions: [
-      { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-      assertNotesRead(1),
-      { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
-      recordClearSyntax(2),
-      assertRegionCleared(1, 3, spec.windowOf, spec.windowLabel),
-      { type: "llm_judge", prompt: spec.judgePrompt },
-      { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
-    ],
-  };
-}
-
-/** Clear a whole bar; the next bar's downbeat note must survive. */
-export const rangeClearWholeBar: EvalScenario = rangeClearScenario({
-  id: "range-clear-whole-bar",
+export const rangeClearBoundaries: EvalScenario = {
+  id: "range-clear-boundaries",
   description:
-    "Delete a whole measure without deleting the next bar's downbeat",
-  instruction: "Delete all the notes in the third measure.",
-  // bar N starts at (N-1)*beatsPerBar; bar 3 = [2*bpb, 3*bpb).
-  windowOf: (bpb) => [2 * bpb, 3 * bpb],
-  windowLabel: "bar 3 cleared, bar-4 downbeat (and all else) intact",
-  judgePrompt: `Evaluate the edit (turns 2–3):
-1. Every note in bar 3 (the third measure) was deleted
-2. The note on the downbeat of bar 4 still exists — it must NOT have been deleted
-3. Bars 1, 2, and the rest of bar 4 are unchanged (no notes lost or added)`,
-});
+    "Clear a whole bar and a half bar without deleting the boundary note",
+  kind: "capability",
+  liveSet: LIVE_SET,
+  setup: setupRangeClip,
 
-/** Clear the first half of a bar; the midpoint downbeat note must survive. */
-export const rangeClearFirstHalf: EvalScenario = rangeClearScenario({
-  id: "range-clear-first-half-bar",
-  description:
-    "Clear the first half of a bar without deleting the midpoint note",
-  instruction:
-    "Clear just the first half of the third measure; leave the second half alone.",
-  // First half of bar 3 = [2*bpb, 2*bpb + bpb/2); the midpoint note at
-  // 2*bpb + bpb/2 (beat 3 in 4/4) sits on the exclusive boundary and survives.
-  windowOf: (bpb) => [2 * bpb, 2 * bpb + bpb / 2],
-  windowLabel:
-    "first half of bar 3 cleared, midpoint note (and all else) intact",
-  judgePrompt: `Evaluate the edit (turns 2–3):
-1. The notes in the first half of bar 3 (its first two beats, in 4/4) were deleted
-2. The note on the bar's midpoint — the downbeat of the second half (beat 3 in 4/4) — still exists and must NOT have been deleted
-3. The fourth beat of bar 3 and all of bars 1, 2, and 4 are unchanged`,
-});
+  messages: [
+    MSG_CONNECT,
+    "Read the notes of the clip in the first track's first scene.",
+    "Delete all the notes in the third measure.",
+    "Read that clip's notes again so we can confirm.",
+    "Now clear just the first half of the FIRST measure; leave the second half alone.",
+    "Read that clip's notes one more time.",
+  ],
+
+  assertions: [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    assertNotesRead(1),
+
+    // Whole bar: bar N starts at (N-1)*beatsPerBar, so bar 3 = [2*bpb, 3*bpb).
+    // The note at 3*bpb (bar-4 downbeat) sits on the exclusive edge.
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
+    recordClearSyntax(2),
+    assertRegionCleared(
+      1,
+      3,
+      (bpb) => [2 * bpb, 3 * bpb],
+      "bar 3 cleared, bar-4 downbeat (and all else) intact",
+    ),
+
+    // Half bar: [0, bpb/2). The midpoint note at bpb/2 (beat 3 in 4/4) sits on
+    // the exclusive edge. Graded against the turn-3 read, not the original.
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 4 },
+    recordClearSyntax(4),
+    assertRegionCleared(
+      3,
+      5,
+      (bpb) => [0, bpb / 2],
+      "first half of bar 1 cleared, midpoint note (and all else) intact",
+    ),
+
+    { type: "token_usage", metric: "inputTokens", maxTokens: 200_000 },
+  ],
+};

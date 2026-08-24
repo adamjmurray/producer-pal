@@ -14,8 +14,10 @@ import {
   waitFor,
 } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { markdownEditorTestMock } from "#webui/components/context/tests/markdown-editor-test-mock";
+import { markdownEditorTestMock } from "#webui/components/markdown-editor/tests/markdown-editor-test-mock";
 import { fakeDocCollection } from "#webui/hooks/context/tests/doc-collection-test-helpers";
+import { type RenameOutcome } from "#webui/hooks/context/use-doc-collection";
+import { DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS } from "#webui/lib/constants/autosave";
 import {
   type MemoryEntryInput,
   type MemoryEntryView,
@@ -24,7 +26,7 @@ import {
 import { MemoryEntryEditor } from "#webui/components/context/memory/MemoryEntryEditor";
 
 // Stub the CodeMirror body editor for happy-dom; see markdown-editor-test-mock.
-vi.mock(import("#webui/components/context/MarkdownEditor"), () =>
+vi.mock(import("#webui/components/markdown-editor/MarkdownEditor"), () =>
   markdownEditorTestMock(),
 );
 
@@ -86,6 +88,7 @@ const EXISTING: MemoryEntryView = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -111,6 +114,20 @@ function fillCreateForm(values: {
   fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
     target: { value: values.body },
   });
+}
+
+/**
+ * Open the existing memory with a saveEntry spy, so a test can assert what the
+ * unmount flush wrote (or refused to).
+ * @returns The stub collection and the editor's unmount
+ */
+function renderExistingWithSave() {
+  const collection = fakeCollection({
+    saveEntry: vi.fn().mockResolvedValue(EXISTING),
+  });
+  const { unmount } = renderEditor({ collection, entry: EXISTING });
+
+  return { collection, unmount };
 }
 
 describe("MemoryEntryEditor — new entry", () => {
@@ -227,11 +244,7 @@ describe("MemoryEntryEditor — new draft is not auto-saved on close", () => {
 
 describe("MemoryEntryEditor — existing entry", () => {
   it("seeds the editable name and autosaves body edits on close under the same slug", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
-    });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
+    const { collection, unmount } = renderExistingWithSave();
 
     // The name is an editable Rename field seeded with the current slug.
     expect(
@@ -267,11 +280,7 @@ describe("MemoryEntryEditor — existing entry", () => {
   });
 
   it("flags a cleared required field and blocks its autosave (no silent loss)", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
-    });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
+    const { collection, unmount } = renderExistingWithSave();
 
     // Clearing the required description surfaces its error (existing entries are
     // pre-touched, so it shows at once) and blocks the autosave.
@@ -296,26 +305,30 @@ describe("MemoryEntryEditor — existing entry", () => {
     expect(screen.getByText("Memory contents are required.")).toBeTruthy();
   });
 
-  it("flags a cleared name and blocks the save, like the other fields", () => {
-    const collection = fakeCollection({
-      saveEntry: vi.fn().mockResolvedValue(EXISTING),
+  it("flags a cleared name but still autosaves the body under the existing slug", () => {
+    const { collection, unmount } = renderExistingWithSave();
+
+    // The name field renames; it isn't part of the write (which targets
+    // entry.name). So emptying it surfaces its error and refuses the rename,
+    // but must not swallow the body edit — in either order.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "typed before the name was cleared" },
     });
-
-    const { unmount } = renderEditor({ collection, entry: EXISTING });
-
-    // Emptying the name surfaces its error (existing entries are pre-touched),
-    // and a later body edit can't autosave while the form is invalid.
     fireEvent.input(screen.getByRole("textbox", { name: "Rename" }), {
       target: { value: "" },
     });
     expect(screen.getByText("Name is required.")).toBeTruthy();
 
-    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
-      target: { value: "edited while name is blank" },
-    });
     unmount();
 
-    expect(collection.saveEntry).not.toHaveBeenCalled();
+    expect(collection.saveEntry).toHaveBeenCalledWith(
+      "prefers-c-minor",
+      {
+        description: "default key & genre",
+        content: "typed before the name was cleared",
+      },
+      false,
+    );
   });
 });
 
@@ -327,7 +340,9 @@ describe("MemoryEntryEditor — rename", () => {
   };
 
   it("renames on blur, carrying the current fields and following the new slug", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const renameEntry = vi
+      .fn()
+      .mockResolvedValue({ entry: RENAMED, error: null });
     const collection = fakeCollection({ renameEntry });
     const onSaved = vi.fn();
     const onRenamed = vi.fn();
@@ -357,7 +372,9 @@ describe("MemoryEntryEditor — rename", () => {
   });
 
   it("commits the rename on Enter", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(RENAMED);
+    const renameEntry = vi
+      .fn()
+      .mockResolvedValue({ entry: RENAMED, error: null });
     const collection = fakeCollection({ renameEntry });
 
     renderEditor({ collection, entry: EXISTING });
@@ -428,12 +445,13 @@ describe("MemoryEntryEditor — rename", () => {
   });
 
   it("reverts the field AND surfaces the collision reason under the name on a failed rename", async () => {
-    const renameEntry = vi.fn().mockResolvedValue(null);
-    const collection = fakeCollection({
-      renameEntry,
-      saveStatus: "error",
-      saveError: 'A memory named "taken" already exists',
+    // The reason rides back on the rename's own result, not the collection's
+    // shared saveError — that one is cleared by whatever writes next.
+    const renameEntry = vi.fn().mockResolvedValue({
+      entry: null,
+      error: 'A memory named "taken" already exists',
     });
+    const collection = fakeCollection({ renameEntry, saveStatus: "error" });
 
     renderEditor({ collection, entry: EXISTING });
 
@@ -461,6 +479,105 @@ describe("MemoryEntryEditor — rename", () => {
     expect(
       screen.queryByText('A memory named "taken" already exists'),
     ).toBeNull();
+  });
+
+  it("holds the autosave off for the whole rename round trip, then saves under the new slug", async () => {
+    // draftKey still names the OLD slug until the rename lands, so a body edit
+    // typed during the round trip would re-arm the debounce on the slug being
+    // moved — that PUT re-creates the entry the rename just left (a duplicate
+    // under the old name, holding the pre-edit body).
+    vi.useFakeTimers();
+
+    let landRename: (entry: MemoryEntryView) => void = () => {};
+    const renameEntry = vi.fn(
+      () =>
+        new Promise<RenameOutcome<MemoryEntryView>>((resolve) => {
+          landRename = (entry) => resolve({ entry, error: null });
+        }),
+    );
+    const saveEntry = vi.fn().mockResolvedValue(RENAMED);
+    const onRenamed = vi.fn();
+    const collection = fakeCollection({ renameEntry, saveEntry });
+    const { rerender } = renderEditor({
+      collection,
+      entry: EXISTING,
+      onRenamed,
+    });
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "new-slug" } });
+    fireEvent.blur(nameInput);
+
+    await vi.waitFor(() => {
+      expect(renameEntry).toHaveBeenCalled();
+    });
+
+    // Keep typing while the rename PUT is still in flight.
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "typed during the rename" },
+    });
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS * 2);
+
+    expect(saveEntry).not.toHaveBeenCalled();
+
+    // The rename lands and the parent follows the entry to its new slug (the
+    // editor stays mounted, so the body typed above is still the live draft).
+    landRename(RENAMED);
+    await vi.waitFor(() => {
+      expect(onRenamed).toHaveBeenCalledWith("prefers-c-minor", "new-slug");
+    });
+    rerender(editorElement({ collection, entry: RENAMED, onRenamed }));
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+
+    expect(saveEntry).toHaveBeenCalledWith(
+      "new-slug",
+      {
+        description: "default key & genre",
+        content: "typed during the rename",
+      },
+      false,
+    );
+  });
+
+  it("keeps a pending body edit on the autosave clock when the rename fails", async () => {
+    // The rename settles the armed autosave before dispatching, so the old slug
+    // isn't racing it. On failure the name reverts — but the revert doesn't move
+    // draftKey (it derives from entry.name), so nothing re-arms on its own and a
+    // pending body edit would sit off the clock until the next keystroke.
+    vi.useFakeTimers();
+
+    const saveEntry = vi.fn().mockResolvedValue(EXISTING);
+    const collection = fakeCollection({
+      saveEntry,
+      renameEntry: vi.fn().mockResolvedValue({ entry: null, error: null }),
+    });
+
+    renderEditor({ collection, entry: EXISTING });
+
+    fireEvent.input(screen.getByRole("textbox", { name: /Memory/ }), {
+      target: { value: "Composes in C minor and F minor." },
+    });
+
+    const nameInput = screen.getByRole("textbox", { name: "Rename" });
+
+    fireEvent.input(nameInput, { target: { value: "taken" } });
+    fireEvent.blur(nameInput);
+
+    await vi.waitFor(() => {
+      expect(collection.renameEntry).toHaveBeenCalled();
+    });
+
+    await vi.advanceTimersByTimeAsync(DOC_COLLECTION_AUTOSAVE_DEBOUNCE_MS);
+
+    expect(saveEntry).toHaveBeenCalledWith(
+      "prefers-c-minor",
+      {
+        description: "default key & genre",
+        content: "Composes in C minor and F minor.",
+      },
+      false,
+    );
   });
 });
 

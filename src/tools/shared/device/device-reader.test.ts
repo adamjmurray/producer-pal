@@ -258,6 +258,18 @@ describe("device-reader", () => {
       });
     });
 
+    it("cleans the devices of a chain read at the top level", () => {
+      const obj = {
+        type: "Chain",
+        devices: [{ type: "drum-rack", _processedDrumPads: [] }],
+      };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "Chain",
+        devices: [{ type: "drum-rack" }],
+      });
+    });
+
     it("returns chain unchanged when it has no devices property", () => {
       const obj = {
         type: "audio-effect-rack",
@@ -289,6 +301,17 @@ describe("device-reader", () => {
       expect(cleanupInternalDrumPads(obj)).toStrictEqual({
         type: "audio-effect-rack",
         chains: ["raw-entry"],
+      });
+    });
+
+    it("returns a non-object drum pad entry unchanged", () => {
+      // Same short-circuit as chains: destructuring a primitive pad would
+      // rebuild it as an empty object and lose the entry.
+      const obj = { type: "drum-rack", drumPads: ["raw-pad", null] };
+
+      expect(cleanupInternalDrumPads(obj)).toStrictEqual({
+        type: "drum-rack",
+        drumPads: ["raw-pad", null],
       });
     });
   });

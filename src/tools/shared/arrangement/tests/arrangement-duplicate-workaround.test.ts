@@ -9,8 +9,9 @@ import {
   setupArrangementClip,
   setupClip,
   setupTrack,
+  setupTrackWithoutIndex,
   tilingTrackMethods,
-} from "./arrangement-tiling-test-helpers.ts";
+} from "./helpers/arrangement-tiling-test-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
   setArrangementDuplicateCrashWorkaround,
@@ -462,6 +463,69 @@ describe("clearClipAtDuplicateTarget", () => {
 
     expect(safe).toBe(false);
     // The source must be untouched: no trim, no delete, no duplicate.
+    expect(trackMock.call).not.toHaveBeenCalled();
+  });
+
+  it("returns true for a source on ANOTHER track that shares the target's beats", () => {
+    // Cross-track duplicate: the source [8,20] on track 1 shares beats with the
+    // target [12,24] on track 0, but it isn't on the timeline being cleared, so
+    // it is not a self-overlap. Treating it as one would send every cross-track
+    // copy through the holding area for nothing.
+    setupArrangementClip("100", 1, {
+      is_arrangement_clip: 1,
+      start_time: 8,
+      end_time: 20,
+    });
+
+    const otherClip = setupArrangementClip(
+      "200",
+      0,
+      { start_time: 12, end_time: 24 },
+      1,
+    );
+
+    const trackMock = setupTrack(0, {
+      properties: { arrangement_clips: ["id", otherClip.id] },
+      methods: { delete_clip: () => null },
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      12,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(true);
+    // The destination track's own overlapping clip is still cleared.
+    expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 200");
+  });
+
+  it("treats an unknown TARGET track index as this track", () => {
+    // Same geometry as the cross-track case, but the target track's path
+    // carries no index. With nothing to compare, assume the source is on this
+    // timeline — clearing it would destroy the content being duplicated.
+    setupArrangementClip("100", 1, {
+      is_arrangement_clip: 1,
+      start_time: 8,
+      end_time: 20,
+    });
+
+    const trackMock = setupTrackWithoutIndex({
+      properties: { arrangement_clips: ["id", "100"] },
+      methods: tilingTrackMethods(),
+    });
+
+    const safe = clearClipAtDuplicateTarget(
+      LiveAPI.from(trackMock.path),
+      "100",
+      12,
+      true,
+      mockContext,
+    );
+
+    expect(safe).toBe(false);
     expect(trackMock.call).not.toHaveBeenCalled();
   });
 

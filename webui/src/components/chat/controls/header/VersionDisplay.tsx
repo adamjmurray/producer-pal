@@ -30,7 +30,7 @@ export function VersionDisplay({
   onDismissUpdate,
 }: VersionDisplayProps) {
   return (
-    <span className="hidden sm:inline text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+    <span className="hidden text-xs font-normal text-zinc-500 sm:inline dark:text-zinc-400">
       <span title={build ? `Build ${build}` : undefined}>v{version}</span>
       {update && (
         <>
@@ -39,7 +39,7 @@ export function VersionDisplay({
             href={UPGRADE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sky-500 dark:text-sky-400 hover:underline"
+            className="text-sky-500 hover:underline dark:text-sky-400"
             title={`v${update.version} available — click for upgrade instructions`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -51,7 +51,7 @@ export function VersionDisplay({
               e.stopPropagation();
               onDismissUpdate();
             }}
-            className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
+            className="text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
             aria-label={`Dismiss the v${update.version} update notification`}
             title="Dismiss until a newer version is released"
           >

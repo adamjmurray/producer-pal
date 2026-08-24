@@ -10,8 +10,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
+import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export interface MidiNote {
   pitch: number;
@@ -36,8 +35,8 @@ export interface ClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
-  slot?: string;
-  trackIndex?: number;
+  /** Where the clip is, as a path. Pastes back into any path/toPath param. */
+  path?: string;
 }
 
 /**
@@ -122,7 +121,7 @@ export function buildClipResultObject(
   }
 
   if (slot != null) {
-    result.slot = formatSlot(slot.trackIndex, slot.sceneIndex);
+    result.path = slotPath(slot.trackIndex, slot.sceneIndex);
   }
 
   return result;
@@ -166,9 +165,7 @@ export function prepareSessionClipSlot(
 ): LiveAPI {
   if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
-        MAX_AUTO_CREATED_SCENES - 1
-      }`,
+      `scene "s${sceneIndex}" is out of range: scenes auto-create only through "s${maxAutoCreatedScenes - 1}"`,
     );
   }
 
@@ -188,9 +185,39 @@ export function prepareSessionClipSlot(
 
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
+      `a clip already exists at ${slotPath(trackIndex, sceneIndex)}`,
     );
   }
 
   return clipSlot;
+}
+
+/**
+ * The clip Live just put in the slot.
+ *
+ * Live declines a create it can't do — a MIDI clip on an audio track, say —
+ * without raising, and a LiveAPI pointing at nothing reads back as id "0". Left
+ * unchecked that ships as a successful create and poisons every follow-up call
+ * that uses the id.
+ * @param clipSlot - The slot the clip was created in
+ * @param kind - Which clip was asked for
+ * @returns The new clip
+ * @throws When Live created nothing
+ */
+export function requireCreatedSessionClip(
+  clipSlot: LiveAPI,
+  kind: "MIDI" | "audio",
+): LiveAPI {
+  const clip = clipSlot.child("clip");
+
+  if (!clip.exists()) {
+    const needs =
+      kind === "MIDI"
+        ? "a MIDI clip needs a MIDI track"
+        : "an audio clip needs an audio track";
+
+    throw new Error(`Live created no clip - ${needs}`);
+  }
+
+  return clip;
 }

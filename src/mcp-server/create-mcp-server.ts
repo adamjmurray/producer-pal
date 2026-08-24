@@ -26,7 +26,7 @@ import { toolDefLibrary } from "#src/tools/session/library.def.ts";
 import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
 import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { resolveParamModes } from "#src/tools/shared/tool-framework/modal-config.ts";
+import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
@@ -68,23 +68,29 @@ export const TOOL_NAMES: readonly string[] = Object.freeze(
 );
 
 /**
- * Union of params dropped from tool input schemas under small-model mode,
- * across all standard tools. Derived from each tool's co-located param modes
- * (params whose `smallModel` mode is `null`) so it stays a single source of
- * truth. The eval framework consults this to SKIP (not fail) scenarios that
- * depend on a param small models never receive — keeping small-model scores
- * apples-to-apples. NOTE: a flat union skips CONSERVATIVELY — a shared param
- * name hidden by only SOME tools (e.g. `name`: hidden on ppal-context along
- * with its memory scope, still live on the create/update tools) skips every
- * scenario requiring that name. If a scenario ever legitimately requires such
- * a param on a tool that keeps it, the skip check must become tool-scoped.
+ * Union of params a small model never sees, across all standard tools: the ones
+ * its mode hides (`smallModel: null`) plus the hidden ones no mode publishes.
+ * Read off `resolveToolSchema`, the one place that answers "what does the model
+ * get", so a retired param can't leak back in. The eval framework consults this
+ * to SKIP (not fail) scenarios that depend on such a param — keeping
+ * small-model scores apples-to-apples. NOTE: a flat union skips CONSERVATIVELY
+ * — a shared param name hidden by only SOME tools skips every scenario
+ * requiring that name. Two instances today: `name` (hidden on ppal-context
+ * along with its memory scope, still live on the create/update tools) and
+ * `trackIndex`/`sceneIndex` (alias params on ppal-create-clip, still published
+ * on read-track, read-scene, select, create-track, create-scene). If a scenario
+ * ever legitimately requires such a param on a tool that keeps it, the skip
+ * check must become tool-scoped.
  */
 export const SMALL_MODEL_EXCLUDED_PARAMS: ReadonlySet<string> = new Set(
-  STANDARD_TOOL_DEFS.flatMap(
-    (td) =>
-      resolveParamModes(td.toolOptions.inputSchema, { smallModelMode: true })
-        .excludeParams,
-  ),
+  STANDARD_TOOL_DEFS.flatMap((td) => {
+    const { inputSchema } = td.toolOptions;
+    const { published } = resolveToolSchema(inputSchema, {
+      smallModelMode: true,
+    });
+
+    return Object.keys(inputSchema).filter((key) => !(key in published));
+  }),
 );
 
 interface CreateMcpServerOptions {

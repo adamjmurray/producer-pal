@@ -64,7 +64,7 @@ describe("updateClip - duplicateLoop", () => {
     setupMidiClipMock(mocks.clip123);
     mockNoteCount(mocks.clip123, 8);
 
-    const result = await updateClip({ ids: "123", duplicateLoop: true });
+    const result = await updateClip({ id: "123", duplicateLoop: true });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual({ id: "123", noteCount: 8 });
@@ -74,7 +74,7 @@ describe("updateClip - duplicateLoop", () => {
     setupArrangementMidiClipMock(mocks.clip789);
     mockNoteCount(mocks.clip789, 4);
 
-    const result = await updateClip({ ids: "789", duplicateLoop: true });
+    const result = await updateClip({ id: "789", duplicateLoop: true });
 
     expect(mocks.clip789.call).toHaveBeenCalledWith("duplicate_loop");
     expect(result).toStrictEqual({ id: "789", noteCount: 4 });
@@ -83,7 +83,7 @@ describe("updateClip - duplicateLoop", () => {
   it("warns and skips audio clips without calling duplicate_loop", async () => {
     setupAudioClipMock(mocks.clip123);
 
-    const result = await updateClip({ ids: "123", duplicateLoop: true });
+    const result = await updateClip({ id: "123", duplicateLoop: true });
 
     expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
     expect(outlet).toHaveBeenCalledWith(
@@ -98,7 +98,7 @@ describe("updateClip - duplicateLoop", () => {
     setupAudioClipMock(mocks.clip456);
     mockNoteCount(mocks.clip123, 6);
 
-    const result = await updateClip({ ids: "123, 456", duplicateLoop: true });
+    const result = await updateClip({ id: "123, 456", duplicateLoop: true });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
@@ -114,7 +114,7 @@ describe("updateClip - duplicateLoop", () => {
     mockNoteCount(mocks.clip123, 8);
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       duplicateLoop: true,
       start: "1|1",
       length: "4bar",
@@ -145,7 +145,7 @@ describe("updateClip - duplicateLoop", () => {
     mockNoteCount(mocks.clip123, 8);
 
     await updateClip({
-      ids: "123, 456",
+      id: "123, 456",
       duplicateLoop: true,
       start: "1|1",
       length: "4bar",
@@ -172,7 +172,7 @@ describe("updateClip - duplicateLoop", () => {
       mockNoteCount(mocks.clip123, 8);
 
       const result = await updateClip({
-        ids: "123",
+        id: "123",
         duplicateLoop: true,
         [param]: value,
       });
@@ -194,7 +194,7 @@ describe("updateClip - duplicateLoop", () => {
     );
 
     const result = await updateClip({
-      ids: "123",
+      id: "123",
       duplicateLoop: true,
       code: "return notes;",
     });
@@ -213,7 +213,7 @@ describe("updateClip - duplicateLoop", () => {
     mockNoteCount(mocks.clip123, 8);
 
     await updateClip({
-      ids: "123",
+      id: "123",
       duplicateLoop: true,
       preTransforms: "pitch += 12",
       notes: "1|1 C3",

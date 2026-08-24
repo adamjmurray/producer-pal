@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
@@ -13,19 +13,61 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import * as console from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../update-device.ts";
 
 describe("updateDevice with path parameter", () => {
-  it("should throw error when neither ids nor path is provided", () => {
+  it("should throw error when neither id nor path is provided", () => {
     expect(() => updateDevice({})).toThrow(
-      "Either ids or path must be provided",
+      "Either id or path must be provided",
     );
   });
 
-  it("should throw error when both ids and path are provided", () => {
-    expect(() => updateDevice({ ids: "123", path: "t1/d0" })).toThrow(
-      "Provide either ids or path, not both",
+  it("should throw error when both id and path are provided", () => {
+    expect(() => updateDevice({ id: "123", path: "t1/d0" })).toThrow(
+      "Provide either id or path, not both",
     );
+  });
+
+  // Both spellings are published, so a model picking one nulls the other.
+  // z.coerce.string() renders that as "null" — counting it as sent refused the
+  // update over a param the caller deliberately left empty.
+  it("updates by path when id is a coerced null", () => {
+    const warn = vi.spyOn(console, "warn");
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ id: "null", path: "t1/d0", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+    expect(warn).toHaveBeenCalledWith('id "null" names nothing');
+  });
+
+  // A permanent alias, not a migration: models reach for the plural on their
+  // own, so it keeps working.
+  it("still updates by the ids alias", () => {
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ ids: "device-456", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
+  });
+
+  // `path` takes a list too, so the plural is the same guess `ids` is.
+  it("still updates by the paths alias", () => {
+    const device = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+
+    updateDevice({ paths: "t1/d0", name: "Renamed" });
+
+    expect(device.set).toHaveBeenCalledWith("name", "Renamed");
   });
 
   describe("device paths", () => {
@@ -146,6 +188,34 @@ describe("updateDevice with path parameter", () => {
       expect(returnChain456.set).toHaveBeenCalledWith("name", "Return Chain");
       expect(result).toStrictEqual({ id: "return-chain-456" });
     });
+
+    it("should drop the send letter when renaming a return chain", () => {
+      // Live re-adds the letter itself. read-device reports the prefixed name,
+      // so writing it back unchanged would store "A A Reverb".
+      updateDevice({ path: "t1/d0/rc0", name: "A Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "Reverb");
+    });
+
+    it("should drop a lower-case send letter too", () => {
+      updateDevice({ path: "t1/d0/rc0", name: "a Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "Reverb");
+    });
+
+    it("should keep a letter that is not the chain's own", () => {
+      // Only the chain's own letter is Live's doing; "B" here is the user's.
+      updateDevice({ path: "t1/d0/rc0", name: "B Reverb" });
+
+      expect(returnChain456.set).toHaveBeenCalledWith("name", "B Reverb");
+    });
+
+    it("should keep a leading letter on a regular chain", () => {
+      // Live only prefixes return chains, so a normal chain keeps the name.
+      updateDevice({ path: "t1/d0/c0", name: "A Reverb" });
+
+      expect(chain123.set).toHaveBeenCalledWith("name", "A Reverb");
+    });
   });
 
   describe("drum pad paths", () => {
@@ -181,23 +251,39 @@ describe("updateDevice with path parameter", () => {
         deviceProperties = {},
       } = config;
 
+      // One DrumPad per note the chains land on, the way a real rack has them.
+      const padNotes = [
+        ...new Set(chainIds.map((c) => chainProperties[c]?.inNote ?? 36)),
+      ];
+
       registerMockObject(deviceId, {
         path: livePath.track(1).device(0),
         type: "RackDevice",
         properties: {
           can_have_drum_pads: 1,
           chains: chainIds.flatMap((c) => ["id", c]),
+          drum_pads: padNotes.flatMap((n) => ["id", `pad-${n}`]),
         },
       });
 
+      for (const note of padNotes) {
+        registerMockObject(`pad-${note}`, {
+          type: "DrumPad",
+          properties: { note },
+        });
+      }
+
       const chains = new Map<string, RegisteredMockObject>();
 
-      for (const chainId of chainIds) {
+      for (const [chainIndex, chainId] of chainIds.entries()) {
         const chainProps = chainProperties[chainId] ?? {};
 
         chains.set(
           chainId,
           registerMockObject(chainId, {
+            // Drum chains live in the rack's own `chains` list, not under
+            // `drum_pads`.
+            path: `${livePath.track(1).device(0)} chains ${chainIndex}`,
             type: chainProps.type ?? "DrumChain",
             properties: {
               in_note: chainProps.inNote ?? 36,
@@ -233,8 +319,9 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "t1/d0/pC1", mute: true });
 
-      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "chain-36" });
+      // A bare pad path writes mute to the DrumPad; Live broadcasts from there.
+      expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("mute", 1);
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should update drum chain solo state by path (pNOTE)", () => {
@@ -245,8 +332,8 @@ describe("updateDevice with path parameter", () => {
 
       const result = updateDevice({ path: "t1/d0/pC1", solo: true });
 
-      expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("solo", 1);
-      expect(result).toStrictEqual({ id: "chain-36" });
+      expect(chains.get("chain-36")?.set).not.toHaveBeenCalledWith("solo", 1);
+      expect(result).toStrictEqual({ id: "pad-36" });
     });
 
     it("should return empty array for non-existent drum chain by path", () => {
@@ -336,7 +423,7 @@ describe("updateDevice with path parameter", () => {
   describe("path validation", () => {
     it("should throw error for empty path (treated as no path)", () => {
       expect(() => updateDevice({ path: "", name: "Test" })).toThrow(
-        "Either ids or path must be provided",
+        "Either id or path must be provided",
       );
     });
 

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { isSameSlot } from "./note-sort.ts";
 import { type NoteEvent } from "./types.ts";
 
 /**
@@ -18,18 +18,17 @@ import { type NoteEvent } from "./types.ts";
  * @returns Notes with v0 deletions applied (v0 notes filtered out)
  */
 export function applyV0Deletions(notes: NoteEvent[]): NoteEvent[] {
-  return notes.reduce<NoteEvent[]>((result, note) => {
+  let result: NoteEvent[] = [];
+
+  for (const note of notes) {
     if (note.velocity === 0) {
-      // v0 note - filter out matching notes from results so far, but DON'T add the v0 note
-      return result.filter(
-        (existingNote) =>
-          existingNote.pitch !== note.pitch ||
-          Math.abs(existingNote.start_time - note.start_time) >=
-            SAME_TIME_EPSILON,
-      );
+      // v0 note - drop matching notes from the results so far, and itself
+      result = result.filter((existingNote) => !isSameSlot(existingNote, note));
+      continue;
     }
 
-    // Regular note - add to results
-    return [...result, note];
-  }, []);
+    result.push(note);
+  }
+
+  return result;
 }

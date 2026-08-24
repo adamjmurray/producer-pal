@@ -11,6 +11,10 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+} from "#src/tools/constants.ts";
 import { resolveNestedParamTarget } from "../nested-param-target.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
@@ -56,7 +60,7 @@ function registerDrumChain(
 }
 
 /**
- * Register a device with a class_display_name.
+ * Register an instrument with a class_display_name.
  * @param id - Device object id
  * @param className - class_display_name value
  * @param type - Live object type override
@@ -71,7 +75,45 @@ function registerDevice(
     type: type as RegisteredMockObject["type"],
     properties: {
       class_display_name: className,
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
       multi_sample_mode: 0,
+      parameters: children(),
+    },
+  });
+}
+
+/**
+ * Register a MIDI effect, which Live sorts ahead of the instrument in a chain.
+ * @param id - Device object id
+ * @param className - class_display_name value
+ * @returns The device mock
+ */
+function registerMidiEffect(
+  id: string,
+  className: string,
+): RegisteredMockObject {
+  return registerMockObject(id, {
+    type: "Device",
+    properties: {
+      class_display_name: className,
+      type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+      parameters: children(),
+    },
+  });
+}
+
+/**
+ * Register a Simpler in multi-sample mode, whose sample the Live API can't set.
+ * @param id - Device object id
+ * @returns The device mock
+ */
+function registerMultiSampleSimpler(id: string): RegisteredMockObject {
+  return registerMockObject(id, {
+    type: "SimplerDevice",
+    properties: {
+      class_display_name: "Simpler",
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      multi_sample_mode: 1,
       parameters: children(),
     },
   });
@@ -86,10 +128,17 @@ function rack(): LiveAPI {
  * Resolve a nested param target for a `sample` write, which takes the
  * device-creating path.
  * @param prefix - The path prefix addressing a slot under the rack
+ * @param force - Allow the instrument-to-Simpler swap
  * @returns The resolved target, or null when resolution warn-skips
  */
-function resolveSampleTarget(prefix: string): LiveAPI | null {
-  return resolveNestedParamTarget(rack(), prefix, "sample", "createDevice");
+function resolveSampleTarget(prefix: string, force = false): LiveAPI | null {
+  return resolveNestedParamTarget(
+    rack(),
+    prefix,
+    "sample",
+    "createDevice",
+    force,
+  );
 }
 
 /**
@@ -145,7 +194,39 @@ describe("resolveNestedParamTarget", () => {
       expect(target?.id).toBe("existing-simpler");
     });
 
-    it("replaces a DrumSampler with a Simpler and emits a notice", () => {
+    it("skips a non-Simpler instrument without force, leaving it intact", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerDevice("ds-1", "DrumSampler");
+
+      const target = resolveSampleTarget("pC1/d0");
+
+      expectWarnedNull(target, "sample write SKIPPED on pad C1");
+      expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+      expectNoDeviceInserted(chain);
+    });
+
+    it("names force:true and the non-destructive alternatives in the skip warning", () => {
+      registerRack(["chain-c1"]);
+      registerDrumChain("chain-c1", 36, ["ds-1"]);
+      registerDevice("ds-1", "DrumSampler");
+
+      resolveSampleTarget("pC1/d0");
+
+      const warning = vi
+        .mocked(outlet)
+        .mock.calls.map((call) => String(call[1]))
+        .join("\n");
+
+      expect(warning).toContain("force:true");
+      expect(warning).toContain("another pad");
+      expect(warning).toContain('ppal-duplicate type:"device"');
+    });
+
+    it("replaces a non-Simpler instrument with a Simpler under force, and says so", () => {
       registerRack(["chain-c1"]);
       const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
         insert_device: () => ["id", "new-simpler"],
@@ -154,42 +235,98 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("ds-1", "DrumSampler");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      const target = resolveSampleTarget("pC1/d0");
+      const target = resolveSampleTarget("pC1/d0", true);
 
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
       expect(target?.id).toBe("new-simpler");
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("replaced DrumSampler"),
+        expect.stringContaining("replaced a DrumSampler"),
       );
     });
 
-    it("matches DrumSampler leniently (e.g. 'Drum Sampler')", () => {
+    // force is not device-specific: any instrument whose sample the Live API
+    // can't set is swappable, not just the DrumSampler that motivated the guard.
+    it("skips any other instrument without force, and swaps it under force", () => {
       registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["ds-1"], {
+      const chain = registerDrumChain("chain-c1", 36, ["op-1"], {
         insert_device: () => ["id", "new-simpler"],
       });
 
-      registerDevice("ds-1", "Drum Sampler");
+      registerDevice("op-1", "Operator");
+      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+      expectWarnedNull(resolveSampleTarget("pC1/d0"), "it holds an Operator");
+      expectNoDeviceInserted(chain);
+
+      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    });
+
+    it("skips a multi-sample Simpler without force, and swaps it under force", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["ms-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerMultiSampleSimpler("ms-1");
+      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+      expectWarnedNull(
+        resolveSampleTarget("pC1/d0"),
+        "it holds a Simpler in multi-sample mode",
+      );
+      expectNoDeviceInserted(chain);
+
+      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+    });
+
+    // Live sorts MIDI effects ahead of the instrument, so d0 is not the
+    // instrument on any pad holding one. Resolving by index would target — and
+    // under force delete — the wrong device.
+    it("finds the instrument behind a MIDI effect rather than device 0", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["arp-1", "simpler-1"]);
+
+      registerMidiEffect("arp-1", "Arpeggiator");
+      registerDevice("simpler-1", "Simpler", "SimplerDevice");
+
+      const target = resolveSampleTarget("pC1/d0");
+
+      expectNoDeviceInserted(chain);
+      expect(target?.id).toBe("simpler-1");
+    });
+
+    it("deletes the instrument's own index under force, not device 0", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["arp-1", "op-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerMidiEffect("arp-1", "Arpeggiator");
+      registerDevice("op-1", "Operator");
+      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(chain.call).toHaveBeenCalledWith("delete_device", 1);
+      expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    });
+
+    it("creates a Simpler on a pad holding only MIDI effects", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, ["arp-1"], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerMidiEffect("arp-1", "Arpeggiator");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
+      expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
       expect(target?.id).toBe("new-simpler");
-    });
-
-    it("skips and warns for a non-Simpler device on the pad", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["op-1"]);
-
-      registerDevice("op-1", "Operator");
-
-      const target = resolveSampleTarget("pC1/d0");
-
-      expectWarnedNull(target, "already has a Operator");
-      expectNoDeviceInserted(chain);
     });
 
     it("warns when the pad chain can't be resolved or created", () => {

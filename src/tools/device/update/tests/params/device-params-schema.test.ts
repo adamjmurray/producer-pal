@@ -24,7 +24,9 @@ describe("paramsInputSchema", () => {
   it("rejects a malformed JSON string rather than swallowing it as undefined", () => {
     // The catch must return the original (unparseable) string so array
     // validation fails; returning undefined would masquerade as "no params".
-    expect(() => paramsInputSchema.parse("not json [")).toThrow();
+    expect(() => paramsInputSchema.parse("not json [")).toThrow(
+      "Invalid input: expected array, received string",
+    );
   });
 
   it("coerces numeric name/value fields to strings", () => {
@@ -45,9 +47,11 @@ describe("paramsInputSchema", () => {
   });
 
   it("rejects a missing or null field", () => {
-    expect(() =>
-      paramsInputSchema.parse([{ name: null, value: "1" }]),
-    ).toThrow();
-    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow();
+    expect(() => paramsInputSchema.parse([{ name: null, value: "1" }])).toThrow(
+      "Invalid input: expected string, received null",
+    );
+    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow(
+      "Invalid input: expected string, received undefined",
+    );
   });
 });

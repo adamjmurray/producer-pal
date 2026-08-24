@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { CONTEXT_TOOL_ID } from "#src/shared/tool-groups.ts";
 import { type CallLiveApiFunction } from "../../create-mcp-server.ts";
 import { readGlobalContext } from "../global-context/global-context-store.ts";
 import { listMemoryEntries } from "../memory/memory-store.ts";
@@ -54,6 +55,11 @@ export interface NextStepConfig {
   smallModelMode: boolean;
   /** This Live Set's context blob (held by the Max device, not the fs). */
   projectContext: string;
+  /**
+   * The tools this caller can call — the global whitelist, or one request's
+   * narrowed set. Omitted ⇒ no gating.
+   */
+  tools?: readonly string[];
 }
 
 const BASE_NEXT_STEP =
@@ -118,6 +124,12 @@ function nextStepBlock(config: NextStepConfig): string {
  * @returns Names of the empty layers, in injected order
  */
 function emptyLayers(config: NextStepConfig): string[] {
+  // A caller without ppal-context can neither read these layers nor fill them,
+  // and the toolset gate already drops the context skills fragment — so this
+  // would be the only mention of them left, in a response that can do nothing
+  // about it.
+  if (!hasContextTool(config)) return [];
+
   const empty: string[] = [];
 
   if (!config.projectContext.trim()) empty.push("project context");
@@ -133,9 +145,12 @@ function emptyLayers(config: NextStepConfig): string[] {
 
 /**
  * Whether this is a user we have learned nothing about yet: no pinned global
- * context and no memories. Always false in small-model mode — that tool surface
- * drops scope:memory entirely, so a small model could neither save what it
- * learned nor record a decline, and would re-ask on every connect forever.
+ * context and no memories.
+ *
+ * Always false when nothing can record the outcome — small-model mode, whose
+ * tool surface drops scope:memory, and a caller with no ppal-context at all.
+ * Either way the assistant could neither save what it learned nor record a
+ * decline, so it would re-ask on every connect forever.
  *
  * Project context is deliberately not consulted: it describes the Live Set, not
  * the person, and a user can have a project blob while still being a stranger.
@@ -146,7 +161,18 @@ function emptyLayers(config: NextStepConfig): string[] {
 function isNewUser(config: NextStepConfig): boolean {
   if (config.smallModelMode) return false;
 
+  if (!hasContextTool(config)) return false;
+
   if (readGlobalContext().trim()) return false;
 
   return listMemoryEntries().length === 0;
+}
+
+/**
+ * Whether this caller can call ppal-context at all.
+ * @param config - Current device settings
+ * @returns True when ppal-context is available, or nothing narrows the toolset
+ */
+function hasContextTool(config: NextStepConfig): boolean {
+  return config.tools == null || config.tools.includes(CONTEXT_TOOL_ID);
 }

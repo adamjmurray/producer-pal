@@ -10,7 +10,11 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
+import {
+  fromLiveApiId,
+  toLiveApiId,
+  toLiveApiView,
+} from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
@@ -34,6 +38,7 @@ interface ValidateParametersOptions {
   sceneIndex?: number;
   deviceId?: string;
   devicePath?: string;
+  devicePathParam: "path" | "devicePath";
   slot?: { trackIndex: number; sceneIndex: number };
 }
 
@@ -54,6 +59,7 @@ interface UpdateDeviceSelectionOptions {
   songView: LiveAPI;
   deviceId?: string;
   devicePath?: string;
+  devicePathParam: "path" | "devicePath";
 }
 
 interface UpdateHighlightedClipSlotOptions {
@@ -106,6 +112,7 @@ export function buildTrackPath(
  * @param options.sceneIndex - Scene index
  * @param options.deviceId - Device ID
  * @param options.devicePath - Device path
+ * @param options.devicePathParam - The param the device path came from
  * @param options.slot - Clip slot coordinates
  */
 export function validateParameters({
@@ -116,6 +123,7 @@ export function validateParameters({
   sceneIndex,
   deviceId,
   devicePath,
+  devicePathParam,
   slot: _slot,
 }: ValidateParametersOptions): void {
   // Track selection validation
@@ -127,7 +135,7 @@ export function validateParameters({
 
   // Device selection validation
   if (deviceId != null && devicePath != null) {
-    throw new Error("cannot specify both id (device) and devicePath");
+    throw new Error(`cannot specify both id and ${devicePathParam}`);
   }
 
   // Cross-validation for track ID vs index (requires Live API calls)
@@ -189,18 +197,14 @@ export function updateTrackSelection({
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
-      const trackAPI = LiveAPI.from(trackPath);
+      const liveApiTrackId = toLiveApiId(LiveAPI.from(trackPath).id);
 
-      if (trackAPI.exists()) {
-        const liveApiTrackId = toLiveApiId(trackAPI.id);
+      songView.setProperty("selected_track", liveApiTrackId);
+      result.selectedTrackId = liveApiTrackId;
+      result.selectedCategory = finalCategory;
 
-        songView.setProperty("selected_track", liveApiTrackId);
-        result.selectedTrackId = liveApiTrackId;
-        result.selectedCategory = finalCategory;
-
-        if (finalCategory !== "master" && trackIndex != null) {
-          result.selectedTrackIndex = trackIndex;
-        }
+      if (finalCategory !== "master" && trackIndex != null) {
+        result.selectedTrackIndex = trackIndex;
       }
     }
   }
@@ -234,15 +238,13 @@ export function updateSceneSelection({
       result.selectedSceneIndex = sceneIndex;
     }
   } else if (sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
+    const finalSceneId = toLiveApiId(
+      LiveAPI.from(livePath.scene(sceneIndex)).id,
+    );
 
-    if (sceneAPI.exists()) {
-      const finalSceneId = toLiveApiId(sceneAPI.id);
-
-      songView.setProperty("selected_scene", finalSceneId);
-      result.selectedSceneId = finalSceneId;
-      result.selectedSceneIndex = sceneIndex;
-    }
+    songView.setProperty("selected_scene", finalSceneId);
+    result.selectedSceneId = finalSceneId;
+    result.selectedSceneIndex = sceneIndex;
   }
 
   return result;
@@ -254,12 +256,14 @@ export function updateSceneSelection({
  * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
  * @param options.devicePath - Device path (e.g. "t0/d1")
+ * @param options.devicePathParam - The param the device path came from
  * @returns The resolved device, or undefined if none was targeted/found
  */
 export function updateDeviceSelection({
   songView,
   deviceId,
   devicePath,
+  devicePathParam,
 }: UpdateDeviceSelectionOptions): LiveAPI | undefined {
   if (deviceId != null) {
     const deviceAPI = validateIdType(deviceId, "device", "select");
@@ -272,17 +276,15 @@ export function updateDeviceSelection({
 
     if (resolved.targetType !== "device") {
       throw new Error(
-        `devicePath "${devicePath}" does not resolve to a device`,
+        `${devicePathParam} "${devicePath}" does not resolve to a device`,
       );
     }
 
     const deviceAPI = LiveAPI.from(resolved.liveApiPath);
 
-    if (deviceAPI.exists()) {
-      songView.call("select_device", toLiveApiId(deviceAPI.id));
+    songView.call("select_device", toLiveApiId(deviceAPI.id));
 
-      return deviceAPI;
-    }
+    return deviceAPI;
   }
 
   return undefined;
@@ -302,7 +304,7 @@ export function applyPluginEditorWindow(
 ): boolean {
   if (device == null) {
     console.warn(
-      "select: openPluginWindow requires a plug-in device — specify id or devicePath",
+      "select: openPluginWindow requires a plug-in device — specify id or path",
     );
 
     return false;
@@ -367,8 +369,6 @@ export function updateClipSlotSelection({
   const clipSlotAPI = LiveAPI.from(
     livePath.track(clipSlot.trackIndex).clipSlot(clipSlot.sceneIndex),
   );
-
-  if (!clipSlotAPI.exists()) return false;
 
   const hasClip = clipSlotAPI.getProperty("has_clip") as number;
 
@@ -436,7 +436,7 @@ export function updateClipSelection({
   // Warn if user explicitly requested a conflicting view
   if (requestedView != null && requestedView !== requiredView) {
     console.warn(
-      `Warning: ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
+      `ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
     );
   }
 
@@ -458,10 +458,12 @@ export function updateClipSelection({
   }
 }
 
-function normalizeLiveApiId(id: string): string {
-  return id.startsWith("id ") ? id.slice(3) : id;
-}
-
-function isSameLiveApiId(idA: string, idB: string): boolean {
-  return normalizeLiveApiId(idA) === normalizeLiveApiId(idB);
+/**
+ * Compare two Live API ids, which reach us with or without the "id " prefix.
+ * @param idA - One id
+ * @param idB - The other id
+ * @returns Whether they name the same object
+ */
+export function isSameLiveApiId(idA: string, idB: string): boolean {
+  return fromLiveApiId(idA) === fromLiveApiId(idB);
 }

@@ -13,8 +13,9 @@ import {
   screen,
   waitFor,
 } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SkillsPreviewScreen } from "#webui/components/context/skills/SkillsPreviewScreen";
+import { installClipboardMock } from "#webui/test-utils/clipboard-test-helpers";
 
 const CONFIG_URL = "http://localhost:3000/config";
 
@@ -276,15 +277,7 @@ describe("SkillsPreviewScreen", () => {
   });
 
   describe("copy", () => {
-    let writeText: ReturnType<typeof vi.fn>;
-
-    beforeEach(() => {
-      writeText = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: { writeText },
-      });
-    });
+    const writeText = installClipboardMock();
 
     afterEach(() => {
       vi.restoreAllMocks();

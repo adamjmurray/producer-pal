@@ -51,6 +51,29 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
 }
 
 /**
+ * Register a track whose main-lane create_midi_clip returns a distinct
+ * arrangement clip. Use for the second track of a multi-destination call.
+ * @param trackIndex - 0-based track index
+ * @returns The registered track mock object
+ */
+export function registerArrangementTrack(
+  trackIndex: number,
+): RegisteredMockObject {
+  const track = registerMockObject(`track-${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    methods: {
+      create_midi_clip: () => ["id", `arrangement_clip_${trackIndex}`],
+    },
+  });
+
+  registerMockObject(`arrangement_clip_${trackIndex}`, {
+    properties: { length: 4 },
+  });
+
+  return track;
+}
+
+/**
  * Create a note object for assertions against Live API add_new_notes calls.
  * @param pitch - MIDI pitch number
  * @param startTime - Start time in beats

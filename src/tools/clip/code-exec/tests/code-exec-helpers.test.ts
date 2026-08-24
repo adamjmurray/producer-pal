@@ -365,7 +365,7 @@ describe("code-exec-helpers", () => {
         });
         expect(result.location).toStrictEqual({
           view: "session",
-          slot: "1/2",
+          path: "t1/s2",
         });
         expect(result.liveSet).toStrictEqual({
           tempo: 120,
@@ -439,10 +439,65 @@ describe("code-exec-helpers", () => {
         expect(result.clip.count).toBe(1);
         expect(result.location).toStrictEqual({
           view: "arrangement",
-          arrangementStart: 32,
+          arrangementStartBeats: 32,
         });
         expect(result.liveSet.scale).toBeUndefined();
         expect(result.beatsPerBar).toBe(3);
+      } finally {
+        LiveAPI.from = originalFrom;
+      }
+    });
+
+    // A clip on a take lane has to say so. Bare "t0" points user code at the
+    // main lane, which is a different clip in the same spot.
+    it("names the take lane in an arrangement clip's path", () => {
+      const mockClip = {
+        id: "clip-789",
+        path: livePath.track(0).takeLane(2).arrangementClip(0),
+        trackIndex: 0,
+        takeLaneIndex: 2,
+        getProperty: mockGetProperty({
+          name: "Take 3",
+          length: 4,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 0,
+        }),
+      };
+
+      const originalFrom = LiveAPI.from;
+
+      LiveAPI.from = vi.fn((pathLike: unknown) =>
+        String(pathLike) === "live_set"
+          ? ({
+              getProperty: mockGetProperty({
+                tempo: 120,
+                signature_numerator: 4,
+                signature_denominator: 4,
+                scale_mode: 0,
+              }),
+            } as unknown as LiveAPI)
+          : ({
+              getProperty: vi.fn(() => null),
+              getColor: vi.fn().mockReturnValue(null),
+            } as unknown as LiveAPI),
+      ) as typeof LiveAPI.from;
+
+      try {
+        const result = buildCodeExecutionContext(
+          mockClip as unknown as LiveAPI,
+          "arrangement",
+          0,
+          1,
+          undefined,
+          16,
+        );
+
+        expect(result.location).toStrictEqual({
+          view: "arrangement",
+          path: "t0/l2",
+          arrangementStartBeats: 16,
+        });
       } finally {
         LiveAPI.from = originalFrom;
       }

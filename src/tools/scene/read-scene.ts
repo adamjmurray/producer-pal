@@ -4,18 +4,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { readClip } from "#src/tools/clip/read/read-clip.ts";
+import { type Notation } from "#src/shared/notation.ts";
+import {
+  readClip,
+  type ReadClipResult,
+} from "#src/tools/clip/read/read-clip.ts";
+import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { stripFields } from "#src/tools/shared/utils.ts";
+import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;
+  id?: string;
+  /** Hidden alias for id */
   sceneId?: string;
   include?: string[];
+  /**
+   * Clips in this scene, when the caller already knows. A Live Set read counts
+   * every clip slot for its tracks anyway, and counting again here would
+   * build the whole grid a second time.
+   */
+  clipCount?: number;
 }
 
 interface ReadSceneResult {
@@ -30,16 +43,20 @@ interface ReadSceneResult {
   clipCount?: number;
 }
 
-interface ClipResult {
-  id?: string | null;
-}
+/**
+ * A clip as a scene read returns it. The track name is not in the clip's path
+ * ("t0/s3" says which track, not which one it is), so a caller asking what a
+ * scene holds would need a second read to learn what plays what.
+ */
+type SceneClip = ReadClipResult & { trackName?: string };
 
 /**
  * Read comprehensive information about a scene
  * @param args - The parameters
  * @param args.sceneIndex - Scene index (0-based)
- * @param args.sceneId - Scene ID to directly access any scene
+ * @param args.id - Scene ID to directly access any scene
  * @param args.include - Array of data to include
+ * @param args.clipCount - Clips in this scene, when the caller already counted them
  * @param context - Internal context object (supplies the active notation)
  * @returns Result object with scene information
  */
@@ -47,11 +64,12 @@ export function readScene(
   args: ReadSceneArgs = {},
   context: Partial<ToolContext> = {},
 ): ReadSceneResult {
-  const { sceneIndex, sceneId } = args;
+  const { sceneIndex } = args;
+  const sceneId = namedIdParam(args.id, args.sceneId, "sceneId");
 
   // Validate parameters
   if (sceneId == null && sceneIndex == null) {
-    throw new Error("Either sceneId or sceneIndex must be provided");
+    throw new Error("Either id or sceneIndex must be provided");
   }
 
   const { includeClips, includeColor } = parseIncludeArray(
@@ -64,13 +82,13 @@ export function readScene(
   let resolvedSceneIndex: number | null | undefined = sceneIndex;
 
   if (sceneId != null) {
-    // Use sceneId to access scene directly and validate it's a scene
+    // Use the id to access the scene directly and validate it's a scene
     scene = validateIdType(sceneId, "scene", "readScene");
 
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
-    // sceneIndex guaranteed defined here: null-check at function start covers sceneId==null case
+    // sceneIndex guaranteed defined here: null-check at function start covers the id==null case
     scene = LiveAPI.from(livePath.scene(sceneIndex as number));
   }
 
@@ -82,11 +100,9 @@ export function readScene(
   const isTimeSignatureEnabled =
     (scene.getProperty("time_signature_enabled") as number) > 0;
 
-  const rawName = scene.getProperty("name") as string | null;
-  const sceneName = rawName === "" ? null : rawName;
   const result: ReadSceneResult = {
     id: scene.id,
-    name: sceneName ?? `${(resolvedSceneIndex as number) + 1}`,
+    name: sceneDisplayName(scene, resolvedSceneIndex as number),
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };
@@ -108,20 +124,12 @@ export function readScene(
   }
 
   if (includeClips) {
-    const clips = liveSet
-      .getChildIds("tracks")
-      .map((_trackId, trackIndex) =>
-        readClip(
-          {
-            trackIndex,
-            sceneIndex: resolvedSceneIndex,
-            suppressEmptyWarning: true,
-            include: args.include,
-          },
-          { notation: context.notation },
-        ),
-      )
-      .filter((clip: ClipResult) => clip.id != null);
+    const clips = readSceneClips(
+      liveSet,
+      resolvedSceneIndex,
+      args.include,
+      context.notation,
+    );
 
     // Strip fields redundant with parent scene context
     stripFields(clips, "view");
@@ -129,10 +137,53 @@ export function readScene(
     result.clips = clips;
   } else {
     // Lightweight clip counting — only check existence instead of reading full clip properties
-    result.clipCount = countSceneClips(liveSet, resolvedSceneIndex as number);
+    result.clipCount =
+      args.clipCount ?? countSceneClips(liveSet, resolvedSceneIndex as number);
   }
 
   return result;
+}
+
+/**
+ * Read every clip in a scene, one per track, naming the track each sits on.
+ * @param liveSet - LiveAPI reference to the live set
+ * @param sceneIndex - Scene index (0-based)
+ * @param include - Include array for the nested clip reads
+ * @param notation - Active notation for nested clip note formatting
+ * @returns The scene's clips, skipping empty slots
+ */
+function readSceneClips(
+  liveSet: LiveAPI,
+  sceneIndex: number | null | undefined,
+  include?: string[],
+  notation?: Notation,
+): SceneClip[] {
+  const clips: SceneClip[] = [];
+
+  for (const [trackIndex] of liveSet.getChildIds("tracks").entries()) {
+    const clip: SceneClip = readClip(
+      {
+        trackIndex,
+        sceneIndex,
+        suppressEmptyWarning: true,
+        slotValidated: true,
+        include,
+      },
+      { notation },
+    );
+
+    if (clip.id == null) continue;
+
+    // Only for slots that hold something — an empty grid would otherwise pay
+    // for a track build per column it has no clip in.
+    clip.trackName = LiveAPI.from(livePath.track(trackIndex)).getProperty(
+      "name",
+    ) as string;
+
+    clips.push(clip);
+  }
+
+  return clips;
 }
 
 /**
