@@ -167,13 +167,15 @@ function autoCreateChains(
  * @param targetInNote - MIDI note for the chain's in_note property
  * @param targetIndex - Target chain index within the note group
  * @param existingCount - Current count of chains with this in_note
+ * @returns The last chain created, which is the one at targetIndex: a new chain
+ *   appends to the rack, so it lands last in its note group too
  */
-export function autoCreateDrumPadChains(
+function autoCreateDrumPadChains(
   device: LiveAPI,
   targetInNote: number,
   targetIndex: number,
   existingCount: number,
-): void {
+): LiveAPI | null {
   const chainsToCreate = targetIndex + 1 - existingCount;
 
   if (chainsToCreate > MAX_AUTO_CREATE_CHAINS) {
@@ -182,17 +184,23 @@ export function autoCreateDrumPadChains(
     );
   }
 
+  let created: LiveAPI | null = null;
+
   for (let i = 0; i < chainsToCreate; i++) {
     // A new chain appends to the end on note 36, so move it to the pad we want.
     device.call("insert_chain");
 
-    const chains = device.getChildren("chains");
-    const newChain = chains.at(-1);
+    // By id, not getChildren: naming the last chain would otherwise build every
+    // chain in the rack, once per chain created.
+    const newChainId = device.getChildIds("chains").at(-1);
 
-    if (newChain) {
-      newChain.set("in_note", targetInNote);
-    }
+    if (newChainId == null) continue;
+
+    created = LiveAPI.from(newChainId);
+    created.set("in_note", targetInNote);
   }
+
+  return created;
 }
 
 /**
@@ -275,20 +283,16 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
-  const matchingChains = rack
-    .getChildren("chains")
-    .filter((chain) => chain.getProperty("in_note") === targetInNote);
+  // The miss above already counted the pad's chains; counting them again would
+  // build every one of them a second time. Every earlier return from
+  // resolveDrumPadFromPath is one this function has already bailed on, so a
+  // chain miss that reaches here always carries the count.
+  const existingCount = assertDefined(existing.chainCount, "pad chain count");
 
-  if (chainIndex >= matchingChains.length) {
-    autoCreateDrumPadChains(
-      rack,
-      targetInNote,
-      chainIndex,
-      matchingChains.length,
-    );
-  }
-
-  return resolveDrumPadFromPath(rack.path, drumPadNote, chainSegments).target;
+  // The chain the miss was looking for is the one just created, so there is
+  // nothing to look up again — a second resolve would rebuild every chain on
+  // the pad to find it.
+  return autoCreateDrumPadChains(rack, targetInNote, chainIndex, existingCount);
 }
 
 /**

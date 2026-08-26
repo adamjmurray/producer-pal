@@ -7,6 +7,7 @@ import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { fromLiveApiId } from "#src/tools/shared/utils.ts";
 import { buildDrumPadPath, extractDevicePath } from "./device-path-builders.ts";
+import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 
@@ -15,6 +16,9 @@ const DRUM_PADS_TAIL = / drum_pads \d+$/;
 export interface DrumPadResolution {
   target: LiveAPI | null;
   targetType: DrumPadTargetType;
+  /** How many chains the pad already holds. Only a chain miss sets it, and only
+   * so a caller that has to create one doesn't count them a second time. */
+  chainCount?: number;
 }
 
 export interface DrumPadGroup {
@@ -255,7 +259,7 @@ export function resolveDrumPadFromPath(
   drumPadNote: string,
   remainingSegments: string[],
 ): DrumPadResolution {
-  const device = LiveAPI.from(liveApiPath);
+  const device = cachedDevicePath(liveApiPath);
 
   if (!device.exists()) {
     return { target: null, targetType: "chain" };
@@ -292,7 +296,11 @@ export function resolveDrumPadFromPath(
     chainIndexWithinNote < 0 ||
     chainIndexWithinNote >= matchingChains.length
   ) {
-    return { target: null, targetType: "chain" };
+    return {
+      target: null,
+      targetType: "chain",
+      chainCount: matchingChains.length,
+    };
   }
 
   const chain = assertDefined(
@@ -315,19 +323,20 @@ export function resolveDrumPadFromPath(
   }
 
   const deviceIndex = Number.parseInt(deviceSegment.slice(1));
-  const devices = chain.getChildren("devices");
+  // By id: indexing into getChildren would build every device in the chain to
+  // name one.
+  const deviceIds = chain.getChildIds("devices");
 
   if (
     Number.isNaN(deviceIndex) ||
     deviceIndex < 0 ||
-    deviceIndex >= devices.length
+    deviceIndex >= deviceIds.length
   ) {
     return { target: null, targetType: "device" };
   }
 
-  const targetDevice = assertDefined(
-    devices[deviceIndex],
-    `device at index ${deviceIndex}`,
+  const targetDevice = LiveAPI.from(
+    assertDefined(deviceIds[deviceIndex], `device at index ${deviceIndex}`),
   );
 
   // Check if there are more segments after the device index

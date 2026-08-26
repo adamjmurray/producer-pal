@@ -63,6 +63,47 @@ function resolves(shape: string): number {
   return liveApiBuildStats().byShape.find(([name]) => name === shape)?.[1] ?? 0;
 }
 
+const PAD_NOTES = ["C1", "D1", "E1", "F1"];
+const FIRST_NOTE = 36;
+
+/**
+ * A track holding a Drum Rack whose pads already carry a chain each. Live gives
+ * a rack all 128 pads whatever the kit holds, so the fixture does too.
+ */
+function setupKit(): void {
+  const padIds = Array.from({ length: 128 }, (_, note) => `pad${String(note)}`);
+  const chainIds = PAD_NOTES.map((_, i) => `kitchain${String(i)}`);
+
+  registerMockObject("track-1", {
+    path: livePath.track(1),
+    properties: { devices: children("kit") },
+  });
+  registerMockObject("kit", {
+    path: livePath.track(1).device(0),
+    properties: {
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: children(...padIds),
+      chains: children(...chainIds),
+    },
+  });
+
+  for (const [note, padId] of padIds.entries()) {
+    registerMockObject(padId, {
+      path: `${livePath.track(1).device(0).toString()} drum_pads ${String(note)}`,
+      properties: { note },
+    });
+  }
+
+  for (const [i, chainId] of chainIds.entries()) {
+    registerMockObject(chainId, {
+      path: livePath.track(1).device(0).chain(i),
+      properties: { in_note: FIRST_NOTE + i * 2, devices: children() },
+      methods: { insert_device: () => ["id", "newdev"] },
+    });
+  }
+}
+
 describe("createDevice build budget", () => {
   beforeEach(setupRack);
 
@@ -88,5 +129,18 @@ describe("createDevice build budget", () => {
     createDevice({ deviceName: "Operator", path: "t0/d0/c0" });
 
     expect(resolves("id newdev")).toBe(1);
+  });
+
+  // Building a kit in one call is the recommended usage, and every pad path
+  // used to resolve the rack twice over.
+  it("resolves the rack once for a whole kit of pad paths", () => {
+    setupKit();
+
+    createDevice({
+      deviceName: "Reverb",
+      path: PAD_NOTES.map((note) => `t1/d0/p${note}`).join(","),
+    });
+
+    expect(resolves("live_set tracks * devices *")).toBe(1);
   });
 });
