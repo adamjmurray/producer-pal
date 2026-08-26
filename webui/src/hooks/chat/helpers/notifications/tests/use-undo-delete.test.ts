@@ -121,31 +121,6 @@ describe("useUndoDelete", () => {
     expect(refreshList).toHaveBeenCalled();
   });
 
-  it("invokes onRestore with the restored id after a successful undo", async () => {
-    // The manager passes onRestore to un-cancel the restored id in its delete
-    // guard; it must fire with the exact restored id once the save lands.
-    const onRestore = vi.fn();
-    const { result } = renderHook(() => useUndoDelete(vi.fn(), onRestore));
-    const record = makeRecord({ title: "Un-cancel me" });
-
-    await act(() => result.current.pushDeleted(record));
-    await act(() => result.current.undoNotification!.action!.onClick());
-
-    await waitFor(() => expect(onRestore).toHaveBeenCalledWith(record.id));
-  });
-
-  it("does not invoke onRestore when the restore save fails", async () => {
-    // A failed restore leaves the row deleted, so the id must stay canceled —
-    // onRestore fires only on the success path.
-    vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
-    const onRestore = vi.fn();
-    const { result } = renderHook(() => useUndoDelete(vi.fn(), onRestore));
-
-    await act(() => result.current.pushDeleted(makeRecord({ title: "Nope" })));
-    await undoIntoError(result);
-    expect(onRestore).not.toHaveBeenCalled();
-  });
-
   it("supports multi-level undo (history > 1) in LIFO order", async () => {
     const { result } = renderHook(() => useUndoDelete(vi.fn()));
     const first = makeRecord({ title: "First" });

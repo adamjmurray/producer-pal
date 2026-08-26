@@ -9,7 +9,6 @@ import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
-  type ConversationRecord,
   listAllConversationSummaries,
   loadConversation,
 } from "#webui/lib/conversation-db";
@@ -163,7 +162,7 @@ async function expectInvariants(
   const carriers: string[] = [];
 
   for (const id of ids) {
-    if (await recordCarriesMarker(id)) carriers.push(id);
+    if (await conversationCarries(id, LATE_MARKER)) carriers.push(id);
   }
 
   expect(carriers.length).toBeLessThanOrEqual(1);
@@ -244,7 +243,7 @@ export async function saveHistory(
  * caller decides whether it lands before or after the racing operation.
  * @returns Release (let the write proceed) and restore (drop the spy)
  */
-function gateNextSave(): { release: () => void; restore: () => void } {
+export function gateNextSave(): { release: () => void; restore: () => void } {
   const original = conversationDb.saveConversation;
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -262,21 +261,18 @@ function gateNextSave(): { release: () => void; restore: () => void } {
 }
 
 /**
- * Whether a stored record carries the racing save's marker message.
+ * Whether a stored conversation's history contains the given text.
  * @param id - Conversation id to read
- * @returns True when the marker is in the record's history
+ * @param text - Text to look for
+ * @returns True when the record's messages contain it
  */
-async function recordCarriesMarker(id: string): Promise<boolean> {
-  return carriesMarker(await loadConversation(id));
-}
+export async function conversationCarries(
+  id: string,
+  text: string,
+): Promise<boolean> {
+  const record = await loadConversation(id);
 
-/**
- * Whether a record's messages include the racing save's marker.
- * @param record - Record to inspect, if it still exists
- * @returns True when the marker is present
- */
-function carriesMarker(record: ConversationRecord | undefined): boolean {
-  return JSON.stringify(record?.messages ?? []).includes(LATE_MARKER);
+  return JSON.stringify(record?.messages ?? []).includes(text);
 }
 
 /**

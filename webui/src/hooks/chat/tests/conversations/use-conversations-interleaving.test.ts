@@ -10,6 +10,8 @@ import "fake-indexeddb/auto";
 import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  LATE_MARKER,
+  conversationCarries,
   type DestructiveOp,
   type Handle,
   type SaveFlavor,
@@ -126,6 +128,35 @@ describe("useConversations save/operation interleavings", () => {
 
       expect(outcome.bystanderId).toBeDefined();
     });
+  });
+
+  it("keeps a first save that lands after the user clicks New", async () => {
+    // Leaving a conversation is not a reason to drop its save: the write
+    // carries the id it was started for, and losing the turn the user just
+    // sent because they moved on is data loss, not a race being closed.
+    const outcome = await runInterleaving(
+      OPS.find((op) => op.name === "starting a new conversation")!,
+      FLAVORS.find((flavor) => flavor.name.startsWith("a brand-new"))!,
+      "write-last",
+    );
+
+    const saved = outcome.ids.filter((id) => id !== outcome.bystanderId);
+
+    expect(saved).toHaveLength(1);
+    expect(await conversationCarries(saved[0]!, LATE_MARKER)).toBe(true);
+  });
+
+  it("keeps a first save that lands after the user switches away", async () => {
+    const outcome = await runInterleaving(
+      OPS.find((op) => op.name === "switching to another conversation")!,
+      FLAVORS.find((flavor) => flavor.name.startsWith("a brand-new"))!,
+      "write-last",
+    );
+
+    const saved = outcome.ids.filter((id) => id !== outcome.bystanderId);
+
+    expect(saved).toHaveLength(1);
+    expect(await conversationCarries(saved[0]!, LATE_MARKER)).toBe(true);
   });
 
   it("keeps a bookmarked conversation through the unbookmarked sweep", async () => {
