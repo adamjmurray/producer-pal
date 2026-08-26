@@ -15,7 +15,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   type CreatedClip,
   type TilingContext,
-} from "./arrangement-tiling-helpers.ts";
+} from "./helpers/arrangement-tiling-helpers.ts";
 import { adjustClipPreRoll } from "./arrangement-tiling-holding.ts";
 import {
   clearArrangementRange,

@@ -11,7 +11,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import {
   setupMidiClipMock,
   type UpdateClipMocks,

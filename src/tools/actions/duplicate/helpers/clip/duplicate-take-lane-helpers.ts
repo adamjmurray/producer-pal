@@ -10,7 +10,7 @@ import {
   takeLaneKey,
   takeLaneTargetsThatFit,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 

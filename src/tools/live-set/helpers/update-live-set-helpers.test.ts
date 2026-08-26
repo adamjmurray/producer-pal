@@ -13,7 +13,7 @@ import {
 } from "./update-live-set-helpers.ts";
 
 vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling-helpers.ts"),
+  import("#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts"),
   () => ({
     createAudioClipInSession: vi.fn(),
   }),
@@ -28,7 +28,7 @@ vi.mock(import("#src/shared/pitch.ts"), async (importOriginal) => {
   };
 });
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { pitchClassToNumber } from "#src/shared/pitch.ts";
 
 const g = globalThis as Record<string, unknown>;

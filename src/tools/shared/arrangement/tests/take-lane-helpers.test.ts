@@ -15,7 +15,7 @@ import {
   takeLaneTargetsThatFit,
   warnUnusedTakeLane,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "./helpers/take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 

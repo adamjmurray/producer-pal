@@ -10,13 +10,13 @@ import {
   buildClipResultObject,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {

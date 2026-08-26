@@ -20,7 +20,7 @@ import {
   takeLaneKey,
   takeLaneLabel,
   type TakeLaneTarget,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   arrangementPath,
   slotPath,

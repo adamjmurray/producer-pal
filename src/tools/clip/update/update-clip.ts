@@ -19,7 +19,7 @@ import {
   performSplitting,
   type SplitMode,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   namedIdParam,
   namedParam,

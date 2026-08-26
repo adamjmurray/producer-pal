@@ -6,7 +6,7 @@
 import {
   isTakeLaneClip,
   type ArrangementTrack,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { parseArrangementLength } from "../duplicate-helpers.ts";
 
 /**

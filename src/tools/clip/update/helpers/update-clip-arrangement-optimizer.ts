@@ -12,7 +12,7 @@
  * can be deleted without the expensive duplicate+move operation.
  */
 
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 
 interface ClipMoveInfo {
   clipId: string;

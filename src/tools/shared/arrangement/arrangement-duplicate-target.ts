@@ -10,7 +10,7 @@
  */
 
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { type TilingContext } from "./arrangement-tiling-helpers.ts";
+import { type TilingContext } from "./helpers/arrangement-tiling-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,
