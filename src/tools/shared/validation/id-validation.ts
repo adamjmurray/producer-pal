@@ -52,13 +52,43 @@ export function validateIdTypes(
   ids: string[],
   expectedType: string,
   toolName: string,
+  options: ValidateIdTypesOptions = {},
+): LiveAPI[] {
+  return validateObjectTypes(
+    ids.map((id) => ({ id, object: LiveAPI.from(id) })),
+    expectedType,
+    toolName,
+    options,
+  );
+}
+
+/** An id and the object it resolved to. */
+export interface IdentifiedObject {
+  id: string;
+  object: LiveAPI;
+}
+
+/**
+ * The same check as validateIdTypes, for a caller that already resolved the
+ * ids. Resolving one twice is not free, and a tool with its own check to run
+ * first would otherwise pay for both.
+ * @param targets - Ids paired with the objects they resolved to
+ * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
+ * @param toolName - Name of calling tool for error messages
+ * @param options - Validation options
+ * @param options.skipInvalid - If true, log warnings and skip invalid objects
+ * @returns Array of valid LiveAPI instances
+ * @throws Only if skipInvalid=false and any object is invalid
+ */
+export function validateObjectTypes(
+  targets: IdentifiedObject[],
+  expectedType: string,
+  toolName: string,
   { skipInvalid = false }: ValidateIdTypesOptions = {},
 ): LiveAPI[] {
   const validObjects: LiveAPI[] = [];
 
-  for (const id of ids) {
-    const object = LiveAPI.from(id);
-
+  for (const { id, object } of targets) {
     // Check existence
     if (!object.exists()) {
       if (skipInvalid) {

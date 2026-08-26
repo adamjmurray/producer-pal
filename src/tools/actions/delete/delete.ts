@@ -17,7 +17,10 @@ import {
   toLiveApiId,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
-import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  type IdentifiedObject,
+  validateObjectTypes,
+} from "#src/tools/shared/validation/id-validation.ts";
 
 const PATH_SUPPORTED_TYPES = new Set(["clip", "device", "drum-pad", "chain"]);
 
@@ -113,8 +116,17 @@ export function deleteObject(
   // same object) must be deleted once. A second positional delete would shift
   // onto and remove a different object.
   const seenIds = new Set<string>();
-  const objectsToDelete = validateIdTypes(
-    type === "chain" ? objectIds : objectIds.filter((id) => !isRackChain(id)),
+  // Resolve each id once and run both checks off that object: the rack-chain
+  // check used to build its own, so every target cost two objects before the
+  // delete itself.
+  const resolved: IdentifiedObject[] = objectIds.map((id) => ({
+    id,
+    object: LiveAPI.from(id),
+  }));
+  const objectsToDelete = validateObjectTypes(
+    type === "chain"
+      ? resolved
+      : resolved.filter((target) => !isRackChain(target.object)),
     type,
     "delete",
     { skipInvalid: true },
@@ -156,8 +168,12 @@ export function deleteObject(
     );
   }
 
+  // One object per track for the whole call, not per clip. Deleting a clip
+  // never moves a track, so the one resolved first stays the right one.
+  const tracks = new Map<number, LiveAPI>();
+
   for (const { id, object } of objectsToDelete) {
-    const deleted = deleteObjectByType(type, id, object);
+    const deleted = deleteObjectByType(type, id, object, tracks);
 
     deletedObjects.push({ id, type, deleted });
   }
@@ -166,23 +182,21 @@ export function deleteObject(
 }
 
 /**
- * Reports whether an id names a rack chain, warning when it does. A DrumChain
+ * Reports whether an object is a rack chain, warning when it is. A DrumChain
  * would otherwise slip past the drum-pad type check and take a
  * `delete_all_chains` that silently does nothing. Only reached for the other
  * types — `type="chain"` is how a caller means a chain.
- * @param id - The object ID
- * @returns True when the id names a chain, which this type must skip
+ * @param object - The resolved object
+ * @returns True when it is a chain, which this type must skip
  */
-function isRackChain(id: string): boolean {
-  const object = LiveAPI.from(id);
-
-  // Leave a nonexistent id to validateIdTypes, which already warns about it.
+function isRackChain(object: LiveAPI): boolean {
+  // Leave a nonexistent object to validateObjectTypes, which already warns.
   if (!object.exists()) return false;
 
   if (object.type !== "Chain" && object.type !== "DrumChain") return false;
 
   console.warn(
-    `delete: id "${id}" is a ${object.type}. ` +
+    `delete: id "${object.id}" is a ${object.type}. ` +
       (object.type === "DrumChain"
         ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
         : "Deleting rack chains is not supported."),
@@ -291,9 +305,14 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
  * Deletes a clip by its track and clip ID
  * @param id - The object ID
  * @param object - The object to delete
+ * @param tracks - Tracks already resolved this call, keyed by index
  * @returns true if the clip is gone, false if skipped or Live refused
  */
-function deleteClipObject(id: string, object: LiveAPI): boolean {
+function deleteClipObject(
+  id: string,
+  object: LiveAPI,
+  tracks: Map<number, LiveAPI>,
+): boolean {
   // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
   // them and there is no delete_take_lane) — the user must delete in Live's UI.
   if (isTakeLaneClip(object)) {
@@ -314,7 +333,7 @@ function deleteClipObject(id: string, object: LiveAPI): boolean {
     return false;
   }
 
-  const track = LiveAPI.from(livePath.track(Number(trackIndex)));
+  const track = trackAt(tracks, Number(trackIndex));
 
   track.call("delete_clip", toLiveApiId(object.id));
 
@@ -453,20 +472,40 @@ function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
 }
 
 /**
+ * The track at an index, resolved once per call.
+ * @param tracks - Tracks already resolved this call, keyed by index
+ * @param trackIndex - The track's index
+ * @returns The track
+ */
+function trackAt(tracks: Map<number, LiveAPI>, trackIndex: number): LiveAPI {
+  const known = tracks.get(trackIndex);
+
+  if (known != null) return known;
+
+  const track = LiveAPI.from(livePath.track(trackIndex));
+
+  tracks.set(trackIndex, track);
+
+  return track;
+}
+
+/**
  * Deletes an object based on its type
  * @param type - The type of object ("track", "scene", "clip", "device", "drum-pad", or "chain")
  * @param id - The object ID
  * @param object - The object to delete
+ * @param tracks - Tracks already resolved this call, keyed by index
  * @returns true if deleted, false if skipped with a warning
  */
 function deleteObjectByType(
   type: string,
   id: string,
   object: LiveAPI,
+  tracks: Map<number, LiveAPI>,
 ): boolean {
   if (type === "track") return deleteTrackObject(id, object);
   if (type === "scene") return deleteSceneObject(id, object);
-  if (type === "clip") return deleteClipObject(id, object);
+  if (type === "clip") return deleteClipObject(id, object, tracks);
   if (type === "device") return deleteDeviceObject(id, object);
   if (type === "drum-pad") return deleteDrumPadObject(id, object);
 
