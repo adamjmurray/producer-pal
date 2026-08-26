@@ -2,36 +2,54 @@
 
 ## Preparation
 
-Do this early in the development cycle, ideally soon after the previous release.
-This way, whenever going back to a previous release (e.g. to confirm a behavior
-is a regression), it's always clear which build is running.
+Do this right after the previous release lands on `main`. Every build then says
+which cycle it belongs to, so going back to a build to check whether something
+is a regression is unambiguous.
 
-1. Open the next release cycle:
+Two lanes open at once, each with its own long-lived draft PR. Open both now,
+even though one of them usually goes unused: **a PR's head branch can't be
+changed after the PR exists**, so a branch that will need a release PR has to
+exist before that PR does. Repurposing one later isn't possible.
 
-   ```sh
-   npm run version:bump        # patch: 0.9.0 → 0.9.1-rc1
-   npm run version:bump:minor  # minor: 0.9.1 → 0.10.0-rc1
-   npm run version:bump:major  # major: 0.9.1 → 1.0.0-rc1
-   ```
-
-   If unsure, start with patch. Any of these can be re-run during the cycle to
-   retarget: from `0.9.1-rc3`, `version:bump:minor` gives `0.10.0-rc1`. They
-   ignore the suffix that's already there and restart the candidate count,
-   because they name where the release is going, not where it's been.
-
-2. Commit and push:
+1. The patch lane, reserved for urgent fixes on top of the release:
 
    ```sh
+   git switch main && git pull
+   git switch -c X.Y.1
+   npm run version:bump   # X.Y.0 → X.Y.1-rc1
    npm run check
    git add .
-   git commit -m "bump version to X.Y.Z-rc1"
+   git commit -m "bump version to X.Y.1-rc1"
+   git push -u origin X.Y.1
+   ```
+
+   Open a draft PR `X.Y.1 → main` titled `X.Y.1`, with a body saying it's
+   reserved for urgent bug fixes and linking to the minor's PR. Usually nothing
+   lands here, and it gets closed when the minor ships.
+
+2. The minor lane, where the cycle's work goes:
+
+   ```sh
+   git switch dev
+   git rebase main
+   npm run version:bump:minor   # X.Y.1 → X.Y+1.0-rc1
+   npm run check
+   git add .
+   git commit -m "bump version to X.Y+1.0-rc1"
    git push origin dev
    ```
 
-3. Create a pull request via GitHub UI: `dev → main`
+   Open a draft PR `dev → main` titled `X.Y+1.0`. This is the release PR. It
+   lives all cycle, makes CI status and the accumulating scope easy to see, and
+   its body is the changelog.
 
-The PR can be long-lived during development. It makes it easy to check CI status
-and see how much is accumulating for the release.
+Don't carry the patch bump into `dev`. `dev` bumps straight to the minor, so the
+patch bump would only ride along as a dead commit.
+
+If a hotfix does ship, `main` moves: rebase `dev` onto it (never merge) and cut
+a fresh `X.Y.2` branch for the next patch lane.
+
+While both PRs are open, the changelog is the minor's PR body.
 
 ### About the Versioning System
 
@@ -48,6 +66,20 @@ accumulate a cycle's worth of changes.
 Batch generously into one minor rather than splitting across two closely spaced
 releases. Step 3 is cross-platform and largely manual, so a release costs about
 the same to test whatever it contains.
+
+**Retargeting mid-cycle is free.** The three opening bumps name where the
+release is going, not where it's been — they ignore the suffix already there and
+restart the candidate count, so `version:bump:major` on `2.3.0-rc3` gives
+`3.0.0-rc1`:
+
+```sh
+npm run version:bump        # patch: 0.9.0 → 0.9.1-rc1
+npm run version:bump:minor  # minor: 0.9.1 → 0.10.0-rc1
+npm run version:bump:major  # major: 0.9.1 → 1.0.0-rc1
+```
+
+The release PR lives on `dev`, so retargeting is that bump plus editing the PR
+title.
 
 The rest of the cycle moves within that version:
 
