@@ -14,7 +14,7 @@ import {
   expectTakeLaneMidiClip,
   registerTakeLaneTrack,
 } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
-import { registerArrangementTrack } from "./create-clip-test-helpers.ts";
+import { registerArrangementTrack } from "../create-clip-test-helpers.ts";
 
 // Capture take lane warnings (session-ignore, hints)
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({

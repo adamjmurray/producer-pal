@@ -26,16 +26,20 @@ export function validatePositions(destinations: ClipDestinations): void {
 }
 
 /**
- * Validates that every track the call targets exists
+ * Validates that every track the call targets exists, and keeps the objects.
+ * Creating a clip never moves a track, so the ones resolved here stay right for
+ * the whole call — reuse them instead of rebuilding a track per clip.
  * @param destinations - Resolved clip slots and arrangement positions
+ * @returns The resolved tracks, keyed by track index
  */
 export function validateDestinationTracks(
   destinations: ClipDestinations,
-): void {
+): Map<number, LiveAPI> {
   const trackIndices = [
     ...destinations.sessionSlots.map((slot) => slot.trackIndex),
     ...destinations.arrangementPositions.map((position) => position.trackIndex),
   ];
+  const tracks = new Map<number, LiveAPI>();
 
   for (const trackIndex of new Set(trackIndices)) {
     const track = LiveAPI.from(livePath.track(trackIndex));
@@ -43,7 +47,11 @@ export function validateDestinationTracks(
     if (!track.exists()) {
       throw new Error(`createClip failed: track ${trackIndex} does not exist`);
     }
+
+    tracks.set(trackIndex, track);
   }
+
+  return tracks;
 }
 
 /**

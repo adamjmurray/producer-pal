@@ -10,12 +10,12 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
-import { createClip } from "../create-clip.ts";
-import { processClipIteration } from "../helpers/create-clip-helpers.ts";
+import { createClip } from "../../create-clip.ts";
+import { processClipIteration } from "../../helpers/create-clip-helpers.ts";
 import {
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,
-} from "./create-clip-test-helpers.ts";
+} from "../create-clip-test-helpers.ts";
 
 /**
  * Call processClipIteration for a single arrangement position with sensible

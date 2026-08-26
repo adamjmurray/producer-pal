@@ -168,7 +168,7 @@ export async function createClip(
   validateCreateClipParams(notationString, sampleFile);
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
   warnAudioOnlyMidiParams(sampleFile, audio);
-  validateDestinationTracks(destinations);
+  const tracks = validateDestinationTracks(destinations);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -222,6 +222,7 @@ export async function createClip(
     createClips({
       view,
       takeLanes,
+      tracks,
       sessionSlots,
       arrangementPositions,
       baseName: name,
@@ -250,12 +251,10 @@ export async function createClip(
       ...audio,
     });
 
-  const sessionClips = await clipsForView("session", 0);
-  const arrangementClips = await clipsForView(
-    "arrangement",
-    sessionSlots.length,
-  );
-  const createdClips = [...sessionClips, ...arrangementClips];
+  const createdClips = [
+    ...(await clipsForView("session", 0)),
+    ...(await clipsForView("arrangement", sessionSlots.length)),
+  ];
 
   return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
 }

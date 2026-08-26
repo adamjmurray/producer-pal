@@ -67,6 +67,8 @@ export interface CreateClipsParams {
   code: string | null;
   /** Take lane per arrangement destination; no entry means the main lane */
   takeLanes: Map<string, LiveAPI>;
+  /** Every destination track, resolved once for the call */
+  tracks: Map<number, LiveAPI>;
   /** Requested audio warp state, or null to keep Live's own choice */
   warping: boolean | null;
   /** Audio clip gain in decibels; omitted leaves it alone */
@@ -212,6 +214,7 @@ async function createClipAtIndex(
         warpMode: params.warpMode,
       },
       params.timeSignature,
+      params.tracks.get(pos.trackIndex) ?? null,
     );
 
     createdClips.push(clipResult);
