@@ -6,50 +6,27 @@ Do this right after the previous release lands on `main`. Every build then says
 which cycle it belongs to, so going back to a build to check whether something
 is a regression is unambiguous.
 
-Two lanes open at once, each with its own long-lived draft PR. Open both now,
-even though one of them usually goes unused: **a PR's head branch can't be
-changed after the PR exists**, so a branch that will need a release PR has to
-exist before that PR does. Repurposing one later isn't possible.
-
-1. The patch lane, reserved for urgent fixes on top of the release:
-
-   ```sh
-   git switch main && git pull
-   git switch -c X.Y.1
-   npm run version:bump   # X.Y.0 → X.Y.1-rc1
-   npm run check
-   git add .
-   git commit -m "bump version to X.Y.1-rc1"
-   git push -u origin X.Y.1
-   ```
-
-   Open a draft PR `X.Y.1 → main` titled `X.Y.1`, with a body saying it's
-   reserved for urgent bug fixes and linking to the minor's PR. Usually nothing
-   lands here, and it gets closed when the minor ships.
-
-2. The minor lane, where the cycle's work goes:
+1. Point `dev` at the next minor:
 
    ```sh
    git switch dev
    git rebase main
-   npm run version:bump:minor   # X.Y.1 → X.Y+1.0-rc1
+   npm run version:bump:minor   # 2.2.0 → 2.3.0-rc1
    npm run check
    git add .
-   git commit -m "bump version to X.Y+1.0-rc1"
+   git commit -m "bump version to X.Y.0-rc1"
    git push origin dev
    ```
 
-   Open a draft PR `dev → main` titled `X.Y+1.0`. This is the release PR. It
-   lives all cycle, makes CI status and the accumulating scope easy to see, and
-   its body is the changelog.
+2. Open a draft PR `dev → main` titled with the version. This is the release PR:
+   it lives all cycle, makes CI status and the accumulating scope easy to see,
+   and its body is the changelog.
 
-Don't carry the patch bump into `dev`. `dev` bumps straight to the minor, so the
-patch bump would only ride along as a dead commit.
-
-If a hotfix does ship, `main` moves: rebase `dev` onto it (never merge) and cut
-a fresh `X.Y.2` branch for the next patch lane.
-
-While both PRs are open, the changelog is the minor's PR body.
+`dev` always goes straight to the next **minor**, never a patch, even when the
+cycle looks like it'll be small. Patch releases exist for urgent fixes on top of
+a shipped release, and they get their own branch off `main` — cut only when a
+bug actually calls for one. See
+[Urgent Fixes After a Release](#urgent-fixes-after-a-release).
 
 ### About the Versioning System
 
@@ -426,9 +403,32 @@ Any number of candidates can burn this way at no cost: they're never published
 to npm, and the version people upgrade to is still the plain `X.Y.Z` at the end
 of the cycle.
 
-If a problem is discovered **after** Step 5's npm publish, that version is spent
-— npm never lets a published version be replaced. Open a new cycle
-(`npm run version:bump` → `X.Y.Z+1-rc1`) and run the process again.
+## Urgent Fixes After a Release
+
+Once Step 5 publishes to npm, that version is spent — npm never lets a published
+version be replaced. A fix means a new patch release, on its own branch cut from
+`main` and named for the next unused patch:
+
+```sh
+git switch main && git pull
+git switch -c X.Y.Z+1     # after 2.3.0 that's 2.3.1; after 2.3.1, 2.3.2
+npm run version:bump      # → X.Y.Z+1-rc1
+npm run check
+git add .
+git commit -m "bump version to X.Y.Z+1-rc1"
+git push -u origin X.Y.Z+1
+```
+
+Open a PR `X.Y.Z+1 → main`, land the fix there, and run the release process from
+Step 0 against that branch instead of `dev`.
+
+Don't cut the branch or open its PR before a bug calls for one. Which patch
+number it should carry depends on what has shipped by then, and an empty
+placeholder can't be handed to a different branch later — **a PR's head branch
+is fixed once the PR exists**.
+
+Afterwards `main` has moved, so rebase `dev` onto it (never merge). `dev` keeps
+its own minor version, so resolve the version-file conflict in `dev`'s favor.
 
 ## Publishing to npm
 
