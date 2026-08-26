@@ -408,6 +408,14 @@ silently overwrites it**, and nothing else says so.
 Run one call at a time. The counters reset once per request, so overlapping
 calls mix their counts.
 
+## Object staleness probe
+
+`ENABLE_OBJECT_PROBE=true` adds an optional `path` to each `ppal-live-api`
+operation, so one call can mutate through one object while still holding another
+— the question of whether a held object goes stale after a mutation. The field
+is absent from every other build. See `dev/LiveAPI-Object-Reuse.md` for what is
+open and how to drive it.
+
 Do this whenever a budget test's fixture changes. A test that counts against the
 mock is measuring the mock: a fixture missing a property the tools read makes a
 walk stop early and the count comes out low — green, and wrong in the flattering

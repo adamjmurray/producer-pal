@@ -29,7 +29,11 @@ const DEBUG_FLAGS = [
   "ENABLE_CODE_EXEC",
   "ENABLE_WARP_MARKERS",
 ];
-const OPT_IN_FLAGS = ["ENABLE_REMOTE_CORS", "ENABLE_BUILD_STATS"];
+const OPT_IN_FLAGS = [
+  "ENABLE_REMOTE_CORS",
+  "ENABLE_BUILD_STATS",
+  "ENABLE_OBJECT_PROBE",
+];
 const BUILD_FLAGS = [...DEBUG_FLAGS, ...OPT_IN_FLAGS];
 
 // A flag can gate code either way. Most pick a VALUE that rolldown substitutes

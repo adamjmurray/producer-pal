@@ -32,6 +32,8 @@ export interface LiveApiOperation {
   method?: string;
   value?: unknown;
   args?: unknown[];
+  /** Probe builds only: run this one operation against its own object. */
+  path?: string;
 }
 
 interface LiveApiArgs {
@@ -269,6 +271,40 @@ function executeObjectOperation(
 }
 
 /**
+ * Pick the object an operation runs against.
+ *
+ * An operation carrying its own `path` gets a separate object, so the call can
+ * mutate through one while still holding another — the one thing `goto` cannot
+ * do, since it moves the only object there is. Measuring whether a held object
+ * goes stale after a mutation needs exactly that. Everything else runs against
+ * the object the call's top-level `path` built.
+ *
+ * Probe builds only. Without ENABLE_OBJECT_PROBE the schema has no
+ * per-operation `path`, and this guard makes the behavior unreachable even for
+ * a caller that skips the schema.
+ *
+ * @param defaultApi - The object built from the call's top-level path
+ * @param operation - The operation about to run
+ * @returns The object to run it against
+ */
+function objectForOperation(
+  defaultApi: LiveAPI,
+  operation: LiveApiOperation,
+): LiveAPI {
+  if (operation.path == null || process.env.ENABLE_OBJECT_PROBE !== "true") {
+    return defaultApi;
+  }
+
+  // Emptying the memo is what makes this a *separate* object. live_set and the
+  // four other STABLE_TARGETS are memoized, so without it two handles onto one
+  // of them would be the same object — and a probe reading one object through
+  // two handles reports "not stale" for the wrong reason.
+  clearLiveApiMemo();
+
+  return LiveAPI.from(operation.path);
+}
+
+/**
  * Provides direct, low-level access to the Live API for research, development, and debugging
  * @param args - The parameters
  * @param args.path - Optional LiveAPI path
@@ -308,7 +344,10 @@ export function liveApi(
 
       try {
         validateOperationParameters(operation);
-        result = executeOperation(api, operation);
+        result = executeOperation(
+          objectForOperation(api, operation),
+          operation,
+        );
       } catch (error) {
         throw new Error(`Operation failed: ${errorMessage(error)}`, {
           cause: error,
