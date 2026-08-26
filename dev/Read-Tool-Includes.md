@@ -536,7 +536,7 @@ Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
 sidechain sources, current-category wavetables, `modulatableParameters`) plus
 Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
 can be expensive. Only devices that contribute add anything; others omit the
-field. See `dev/Specialized-Devices.md` for per-device contents.
+field. See `dev/specialized-devices/` for per-device contents.
 
 | Field         | Type       | Description                                  |
 | ------------- | ---------- | -------------------------------------------- |

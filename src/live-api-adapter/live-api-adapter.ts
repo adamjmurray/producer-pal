@@ -238,7 +238,7 @@ export function notation(value: unknown): void {
  *     changes nothing is never an edit (see the guard in projectContext()).
  *
  * Without this, opening an older Set in a Live Project backs its stale blob up
- * over the folder's newer shared sidecar. See dev/Memory-System.md.
+ * over the folder's newer shared sidecar. See dev/memory-system/ppal-context-tool.md.
  */
 let expectLoadEcho = true;
 

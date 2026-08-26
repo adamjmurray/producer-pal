@@ -9,7 +9,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Compressor (CompressorDevice). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/audio-effects.md.
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
 // namespace; translation happens by matching track names to display_names.

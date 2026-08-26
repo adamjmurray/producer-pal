@@ -11,7 +11,7 @@ import {
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Hybrid Reverb (HybridReverbDevice). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/audio-effects.md.
 // Convolution IR library: category + file selectors plus IR shaping controls.
 // Category names use underscores as word separators in the Live API (e.g.,
 // "Early_Reflections"); user-facing names use spaces. File names already

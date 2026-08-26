@@ -176,8 +176,7 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   `{feature}-helpers.ts` beside it — don't compress code to squeak under the
   limit. Once a directory has 2+ helper files, move them into `helpers/`. Split
   test files as `{feature}-{area}.test.ts`, and give a feature its own `tests/`
-  directory once it has 3+ test files. See
-  `.claude/skills/refactoring/SKILL.md`.
+  directory once it has 3+ test files.
 
 - **Write lint suppressions with the `eslint-` prefix**, not `oxlint-`. Both
   work, but the rule requiring a `-- reason` on every directive only sees the
@@ -282,3 +281,20 @@ find one. The main ones: `dev/Architecture.md` (system design),
 the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
+
+**Keep a doc small enough to read whole.** Past ~20 KB, split it: an index with
+the concepts, plus one file per lookup-table chunk in a sibling directory
+(`dev/mutation-baselines/`, `dev/specialized-devices/`). Catalogs and per-scope
+results are the parts to move out; the reasoning stays in the index.
+
+### For agents: reading without burning context
+
+This repo is big — 900+ source files and ~1.3 MB of `dev/` docs. Reading whole
+files is the main way a session runs out of room.
+
+- **Search docs, don't read them.** `grep -n -A15` for the term you need. Read a
+  `dev/` doc end-to-end only if it's under ~15 KB.
+- **Read tests and long sources in ranges.** `sed -n '120,190p'` the block you
+  care about; test files here run to 800+ lines.
+- **Coverage:** `grep` the file you touched out of
+  `coverage/coverage-summary.txt` — don't print the whole thing.

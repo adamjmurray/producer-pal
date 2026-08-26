@@ -11,7 +11,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode
 // and voice-count controls at the class level — none are reachable as
-// DeviceParameters. See dev/Specialized-Devices.md.
+// DeviceParameters. See dev/specialized-devices/instruments.md.
 //
 // selected_engine is deliberately NOT exposed — it is a UI-only display
 // selector. Both A and B engine parameters are always addressable via A * / B *

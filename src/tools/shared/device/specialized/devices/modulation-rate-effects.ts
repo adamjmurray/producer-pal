@@ -14,7 +14,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // `inactiveWhen` rule. Mode→param mappings verified vs Live 12.4 (2026-06-04):
 // `LFO Rate` / `Rate` / `Mod Rate` are quantized note-value selectors (raw
 // 0-21, str_for_value → "1/4" etc.); `LFO 16th` / `16th` express the rate as a
-// count of sixteenths. See dev/Specialized-Devices.md.
+// count of sixteenths. See dev/specialized-devices/audio-effects.md.
 
 export const autoFilterSpec: SpecializedDeviceSpec = {
   displayNames: ["Auto Filter"],

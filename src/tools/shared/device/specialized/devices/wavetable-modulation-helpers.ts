@@ -8,7 +8,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { coerceInt } from "../specialized-device-param-helpers.ts";
 
 // Wavetable mod-matrix helpers. See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/instruments.md.
 //
 // Wavetable's modulation matrix is imperative: targets are registered by
 // DeviceParameter reference, indexed by position, and cells are read/written

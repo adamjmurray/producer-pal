@@ -111,11 +111,11 @@ Express routes on the MCP server mint/relay credentials server-side, both gated
 to local origins:
 
 - `POST /voice-token`
-  ([routes/voice-token-route.ts](../src/mcp-server/routes/voice-token-route.ts))
+  ([routes/voice/voice-token-route.ts](../src/mcp-server/routes/voice/voice-token-route.ts))
   forwards the user's OpenAI key to OpenAI's `client_secrets` endpoint
   server-to-server and returns only the short-lived `ek_...` ephemeral token.
 - `POST /gemini-voice-token`
-  ([routes/gemini-voice-token-route.ts](../src/mcp-server/routes/gemini-voice-token-route.ts))
+  ([routes/voice/gemini-voice-token-route.ts](../src/mcp-server/routes/voice/gemini-voice-token-route.ts))
   currently returns the Gemini key as-is (`ephemeral: false`) — Gemini Live
   accepts the API key directly from the browser — with a server-only upgrade
   path to v1alpha ephemeral tokens (the client already honors the `ephemeral`

@@ -20,7 +20,7 @@ import {
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). See
-// dev/Specialized-Devices.md.
+// dev/specialized-devices/instruments.md.
 //
 // `sample` (file path) and `gainDb` are normal writable pseudo-params: set them
 // via `params` {name, value} entries, read them back in `parameters` for
