@@ -117,8 +117,8 @@ describe("useUndoDelete", () => {
 
       expect(restored?.title).toBe("Restore me");
     });
+    await waitFor(() => expect(result.current.undoNotification).toBeNull());
     expect(refreshList).toHaveBeenCalled();
-    expect(result.current.undoNotification).toBeNull();
   });
 
   it("invokes onRestore with the restored id after a successful undo", async () => {
@@ -165,7 +165,9 @@ describe("useUndoDelete", () => {
 
       expect(restoredSecond?.title).toBe("Second");
     });
-    expect(result.current.undoNotification?.message).toBe("Deleted “First”");
+    await waitFor(() =>
+      expect(result.current.undoNotification?.message).toBe("Deleted “First”"),
+    );
 
     await act(() => result.current.undoNotification!.action!.onClick());
 
@@ -174,7 +176,7 @@ describe("useUndoDelete", () => {
 
       expect(restoredFirst?.title).toBe("First");
     });
-    expect(result.current.undoNotification).toBeNull();
+    await waitFor(() => expect(result.current.undoNotification).toBeNull());
   });
 
   it("keeps the record and shows a retryable error when the restore save fails", async () => {
@@ -205,8 +207,8 @@ describe("useUndoDelete", () => {
     await waitFor(async () => {
       expect(await loadConversation(record.id)).toBeDefined();
     });
+    await waitFor(() => expect(result.current.undoNotification).toBeNull());
     expect(refreshList).toHaveBeenCalled();
-    expect(result.current.undoNotification).toBeNull();
   });
 
   it("ignores a second undo click while the first restore is still saving", async () => {

@@ -623,7 +623,11 @@ describe("conversation limit enforcement", () => {
     const record = createRecord();
     const result = await saveConversation(record);
 
-    expect(result).toStrictEqual({ deletedCount: 0, limitReached: false });
+    expect(result).toStrictEqual({
+      deletedCount: 0,
+      limitReached: false,
+      saved: true,
+    });
 
     const list = await listConversations();
 
@@ -658,7 +662,9 @@ describe("conversation limit enforcement", () => {
     const oldest = records[0]!;
     const nextOldest = records[1]!;
     const newest = createRecord({ updatedAt: 99999 });
-    const result = await saveConversation(newest, new Set([oldest.id]));
+    const result = await saveConversation(newest, {
+      protectedIds: new Set([oldest.id]),
+    });
 
     expect(result.deletedCount).toBe(1);
     expect(await loadConversation(oldest.id)).toBeDefined(); // protected → kept
@@ -692,7 +698,7 @@ describe("conversation limit enforcement", () => {
       [trunk.id],
       [trunk, oldSibling, newSibling, ...filler],
     );
-    const result = await saveConversation(newSibling, protectedIds);
+    const result = await saveConversation(newSibling, { protectedIds });
 
     expect(result.deletedCount).toBe(1);
     // The family's old members survived despite being the oldest records...

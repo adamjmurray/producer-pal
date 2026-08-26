@@ -76,6 +76,34 @@ export interface EnforceLimitResult {
   limitReached: boolean;
 }
 
+/** Options for {@link saveConversation}. */
+export interface SaveConversationOptions {
+  /** Ids the limit must NOT trim (e.g. the whole batch during an import, so
+   * saving one imported record can't delete another just-imported record that
+   * happens to carry an older timestamp). */
+  protectedIds?: ReadonlySet<string>;
+  /**
+   * True when this record has been written before, which makes a missing row
+   * proof that it was deleted — so the write is refused instead of resurrecting
+   * it. This is the anti-resurrection guard, and it lives here rather than in
+   * the caller for two reasons: it reads the store inside the write transaction,
+   * so it also holds against a delete from another tab; and it heals itself when
+   * the record legitimately comes back (undo, import), unlike a tombstone
+   * somebody has to remember to lift.
+   *
+   * False for a first save — there is nothing on disk to resurrect. Losing a
+   * brand-new conversation the user just deleted is the caller's problem (see
+   * the conversation store's generation check).
+   */
+  expectPersisted?: boolean;
+}
+
+/** Outcome of a {@link saveConversation} call. */
+export interface SaveConversationResult extends EnforceLimitResult {
+  /** False when the record was deleted before the write, so nothing was written. */
+  saved: boolean;
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 /**
@@ -90,22 +118,41 @@ export function getConversationDb(): Promise<IDBPDatabase> {
 
 /**
  * Save or update a conversation record, enforcing the conversation limit.
+ *
+ * The existence check, the limit trim, and the write share one transaction, so
+ * a delete can't land between them. See {@link SaveConversationOptions.expectPersisted}.
  * @param record - The conversation to save
- * @param protectedIds - Ids that must NOT be trimmed by the limit (e.g. the
- *   whole batch during an import, so saving one imported record can't delete
- *   another just-imported record that happens to carry an older timestamp)
- * @returns Result indicating whether old conversations were deleted
+ * @param options - Limit protection and the anti-resurrection check
+ * @returns Whether the record was written, and what the limit evicted
  */
 export async function saveConversation(
   record: ConversationRecord,
-  protectedIds?: ReadonlySet<string>,
-): Promise<EnforceLimitResult> {
-  const result = await enforceConversationLimit(record.id, protectedIds);
+  options: SaveConversationOptions = {},
+): Promise<SaveConversationResult> {
+  const { protectedIds, expectPersisted = false } = options;
   const db = await getConversationDb();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const all = (await tx.store.getAll()) as ConversationRecord[];
+  const exists = all.some((r) => r.id === record.id);
 
-  await db.put(STORE_NAME, record);
+  if (expectPersisted && !exists) {
+    await tx.done;
 
-  return result;
+    return { deletedCount: 0, limitReached: false, saved: false };
+  }
+
+  const trim = selectLimitTrim(all, record.id, exists, protectedIds);
+
+  for (const id of trim.ids) void tx.store.delete(id);
+
+  void tx.store.put(record);
+  await tx.done;
+
+  return {
+    deletedCount: trim.ids.length,
+    limitReached: trim.limitReached,
+    saved: true,
+  };
 }
 
 /**
@@ -401,42 +448,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Enforce the conversation limit by deleting oldest non-bookmarked conversations.
- * @param excludeId - ID of the conversation being saved (excluded from deletion)
- * @param protectedIds - Additional ids excluded from deletion (e.g. an import
- *   batch), so trimming for one save can't delete another protected record
- * @returns Result with deletion count and whether the limit is fully consumed by bookmarks
+ * Pick the conversations the limit must evict to make room for a save: the
+ * oldest unbookmarked, unprotected ones.
+ * @param all - Every record currently in the store
+ * @param excludeId - Id of the conversation being saved (never evicted)
+ * @param exists - Whether that conversation is already among `all`
+ * @param protectedIds - Additional ids excluded from eviction (e.g. an import batch)
+ * @returns Ids to delete, and whether bookmarks consumed the slots we needed
  */
-async function enforceConversationLimit(
+function selectLimitTrim(
+  all: ConversationRecord[],
   excludeId: string,
+  exists: boolean,
   protectedIds?: ReadonlySet<string>,
-): Promise<EnforceLimitResult> {
-  const db = await getConversationDb();
-  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
-
-  // The excludeId conversation will be saved after this, so count it
-  const existingExcluded = all.some((r) => r.id === excludeId);
-  const totalAfterSave = existingExcluded ? all.length : all.length + 1;
+): { ids: string[]; limitReached: boolean } {
+  // The record is about to be written, so count it whether or not it's there yet.
+  const totalAfterSave = exists ? all.length : all.length + 1;
 
   if (totalAfterSave <= MAX_CONVERSATIONS) {
-    return { deletedCount: 0, limitReached: false };
+    return { ids: [], limitReached: false };
   }
 
   const excess = totalAfterSave - MAX_CONVERSATIONS;
-  const deletable = all
+  const ids = all
     .filter(
       (r) => !r.bookmarked && r.id !== excludeId && !protectedIds?.has(r.id),
     )
-    .toSorted((a, b) => a.updatedAt - b.updatedAt);
+    .toSorted((a, b) => a.updatedAt - b.updatedAt)
+    .slice(0, excess)
+    .map((r) => r.id);
 
-  const toDelete = deletable.slice(0, excess);
-
-  for (const record of toDelete) {
-    await db.delete(STORE_NAME, record.id);
-  }
-
-  return {
-    deletedCount: toDelete.length,
-    limitReached: toDelete.length < excess,
-  };
+  return { ids, limitReached: ids.length < excess };
 }

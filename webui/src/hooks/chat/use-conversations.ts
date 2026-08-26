@@ -286,7 +286,7 @@ export function useConversations({
           // the write — so a just-deleted conversation isn't resurrected.
           if (canceled.isCanceled(id)) return;
 
-          const result = await saveConversation(record, protectedIds);
+          const result = await saveConversation(record, { protectedIds });
 
           limit.showLimitNotification(result);
           await refreshList();

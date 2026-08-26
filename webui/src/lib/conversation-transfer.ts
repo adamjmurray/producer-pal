@@ -166,7 +166,7 @@ export async function importConversations(json: string): Promise<ImportResult> {
         continue;
       }
 
-      await saveConversation(normalized, protectedIds);
+      await saveConversation(normalized, { protectedIds });
 
       if (existing) {
         updatedCount++;
