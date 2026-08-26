@@ -100,6 +100,43 @@ describe("updateDevice - param conversion discriminators", () => {
     });
   });
 
+  describe("bare-number display labels arrive as numbers, not strings", () => {
+    let param: RegisteredMockObject;
+
+    beforeEach(() => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("bare-param") },
+      });
+      // Max hands back a JS number when a label has no unit or suffix. Display
+      // runs 0..100 over a raw 0..1 range, non-linearly, so a write that skips
+      // the search is unmistakable.
+      param = registerMockObject("bare-param", {
+        properties: {
+          name: "Attack",
+          original_name: "Attack",
+          is_quantized: 0,
+          value: 0,
+          min: 0,
+          max: 1,
+        },
+        methods: {
+          str_for_value: (v: unknown) =>
+            Math.round(Number(v) * Number(v) * 1000) / 10,
+        },
+      });
+    });
+
+    it("searches for the raw value instead of writing the display value", () => {
+      updateDevice({ id: "dev1", params: [{ name: "Attack", value: "25" }] });
+
+      // Display 25 sits at raw 0.5. Uncoerced, parseLabel rejects the numeric
+      // label, the search bails, and 25 is written as a raw value — 25x past max.
+      expect(expectValueSet(param)).toBeCloseTo(0.5, 2);
+    });
+  });
+
   describe("pan max value comes from the display labels, not the 50 fallback", () => {
     let param: RegisteredMockObject;
 

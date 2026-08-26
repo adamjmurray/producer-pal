@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import {
+  parseLabel,
+  strForValue,
+} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 
 // Enough to pin a boundary to ~1e-9 of the raw range, far finer than the
 // resolution Live actually stores. Each search costs one str_for_value call per
@@ -141,7 +144,7 @@ function searchBoundary(
  * @returns Display value, or null if the label isn't a parseable number
  */
 function displayAt(param: LiveAPI, raw: number): number | null {
-  const value = parseLabel(param.call("str_for_value", raw) as string).value;
+  const value = parseLabel(strForValue(param, raw)).value;
 
   return value == null || typeof value === "string" ? null : value;
 }

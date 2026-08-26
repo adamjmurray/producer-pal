@@ -12,6 +12,7 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
+  strForValue,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import {
@@ -264,8 +265,8 @@ function setParamValue(
   }
 
   // 3. Pan - detect via current label, convert -1/1 to internal range
-  const currentValue = param.getProperty("value");
-  const currentLabel = param.call("str_for_value", currentValue) as string;
+  const currentValue = param.getProperty("value") as number;
+  const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
     const min = param.getProperty("min") as number;
@@ -292,8 +293,8 @@ function setParamValue(
         return;
       }
 
-      const maxLabel = param.call("str_for_value", max) as string;
-      const minLabel = param.call("str_for_value", min) as string;
+      const maxLabel = strForValue(param, max);
+      const minLabel = strForValue(param, min);
       const maxPanValue =
         extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
 
@@ -312,7 +313,7 @@ function setParamValue(
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
   const rawMin = param.getProperty("min") as number;
-  const minLabel = param.call("str_for_value", rawMin) as string;
+  const minLabel = strForValue(param, rawMin);
 
   if (isDivisionLabel(currentLabel) || isDivisionLabel(minLabel)) {
     const rawValue = findDivisionRawValue(param, inputValue);
@@ -372,10 +373,7 @@ function findDivisionRawValue(
     typeof inputValue === "number" ? String(inputValue) : inputValue;
 
   for (let i = minInt; i <= maxInt; i++) {
-    const label = param.call("str_for_value", i);
-    const labelStr = typeof label === "number" ? String(label) : label;
-
-    if (labelStr === targetLabel) {
+    if (strForValue(param, i) === targetLabel) {
       return i;
     }
   }

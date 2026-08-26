@@ -76,6 +76,21 @@ function formatParamName(paramApi: LiveAPI): string {
 }
 
 /**
+ * Read a parameter's display label. Always call this instead of
+ * `param.call("str_for_value", ...)`: Max hands back a JS number, not a string,
+ * whenever the label is a bare number with no unit or suffix (EQ Eight `Q`, Glue
+ * Compressor `Attack`). Every consumer here wants a string, and an uncoerced
+ * number silently fails `parseLabel`'s type guard, which drops the param back to
+ * raw units on both the read and the write path.
+ * @param paramApi - LiveAPI parameter object
+ * @param rawValue - Raw value to render
+ * @returns The display label
+ */
+export function strForValue(paramApi: LiveAPI, rawValue: number): string {
+  return String(paramApi.call("str_for_value", rawValue));
+}
+
+/**
  * Parse a label string to extract numeric value and unit.
  * @param label - Display label from str_for_value()
  * @returns Parsed value and unit
@@ -160,7 +175,7 @@ export function isDivisionLabel(label: string): boolean {
 function buildDivisionParamResult(
   paramApi: LiveAPI,
   name: string,
-  valueLabel: string | number,
+  valueLabel: string,
   rawMin: number,
   rawMax: number,
 ): Record<string, unknown> {
@@ -170,15 +185,13 @@ function buildDivisionParamResult(
   const options: string[] = [];
 
   for (let i = minInt; i <= maxInt; i++) {
-    const label = paramApi.call("str_for_value", i) as string | number;
-
-    options.push(typeof label === "number" ? String(label) : label);
+    options.push(strForValue(paramApi, i));
   }
 
   return {
     id: paramApi.id,
     name,
-    value: typeof valueLabel === "number" ? String(valueLabel) : valueLabel,
+    value: valueLabel,
     options,
   };
 }
@@ -280,9 +293,9 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   const rawValue = paramApi.getProperty("value") as number;
   const rawMin = paramApi.getProperty("min") as number;
   const rawMax = paramApi.getProperty("max") as number;
-  const valueLabel = paramApi.call("str_for_value", rawValue) as string;
-  const minLabel = paramApi.call("str_for_value", rawMin) as string;
-  const maxLabel = paramApi.call("str_for_value", rawMax) as string;
+  const valueLabel = strForValue(paramApi, rawValue);
+  const minLabel = strForValue(paramApi, rawMin);
+  const maxLabel = strForValue(paramApi, rawMax);
 
   // Check for division-type params (fraction format like "1/8")
   if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {

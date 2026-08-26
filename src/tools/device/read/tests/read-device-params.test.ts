@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -87,6 +88,28 @@ describe("readDevice param-values include option", () => {
     expect(params[0]).toHaveProperty("min", 0);
     expect(params[0]).toHaveProperty("max", 48);
     expect(params[0]!.value).toBe(12);
+  });
+
+  it("should report the display range when Max returns bare-number labels", () => {
+    // Max hands back a JS number, not a string, when a label has no unit or
+    // suffix (EQ Eight `Q`, Glue Compressor `Attack`). Uncoerced, the label
+    // fails parseLabel's type guard and the param falls back to raw units —
+    // here that would report min 0, max 1, value 999.
+    setupDeviceParamMocks({
+      param: {
+        name: "1 Q A",
+        original_name: "1 Q A",
+        value: 0.5,
+        min: 0,
+        max: 1,
+        display_value: 999,
+      },
+      strForValue: (value) => 1 + Number(value) * 17,
+    });
+
+    const { params } = readDeviceParamValues();
+
+    expect(params[0]).toMatchObject({ value: 9.5, min: 1, max: 18 });
   });
 
   it("should not include min and max for quantized parameters", () => {
