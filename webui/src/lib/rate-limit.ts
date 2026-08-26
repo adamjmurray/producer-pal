@@ -169,8 +169,10 @@ function extractStatusCode(error: unknown): number | null {
  * Handles two distinct sources with different units:
  * - `errorObj.retryAfter`: SDK property exposed by AI SDK / Anthropic SDK,
  *   already converted to milliseconds
- * - `errorObj.headers["retry-after"]`: raw HTTP Retry-After header, in
- *   seconds per RFC 7231 (we don't handle the HTTP-date form)
+ * - `errorObj.headers["retry-after"]` / `errorObj.responseHeaders[...]`: raw
+ *   HTTP Retry-After header, in seconds per RFC 7231 (we don't handle the
+ *   HTTP-date form). The AI SDK's APICallError uses the `responseHeaders`
+ *   spelling.
  * @param {unknown} error - Error object to extract retry-after from
  * @returns {number | null} Retry delay in milliseconds or null if not found
  */
@@ -187,7 +189,9 @@ function extractRetryAfter(error: unknown): number | null {
   }
 
   // HTTP Retry-After header: per RFC 7231 the numeric form is in seconds
-  const headers = errorObj.headers as Record<string, unknown> | undefined;
+  const headers = (errorObj.headers ?? errorObj.responseHeaders) as
+    | Record<string, unknown>
+    | undefined;
   const headerValue = headers?.["retry-after"];
 
   if (typeof headerValue === "number") {
