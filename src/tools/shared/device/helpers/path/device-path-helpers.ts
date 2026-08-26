@@ -18,6 +18,7 @@ import {
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
 import { resolveDevicePath } from "./device-path-to-live-api.ts";
+import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 // Re-export all functions for backwards compatibility
 export { extractDevicePath } from "./device-path-builders.ts";
@@ -99,7 +100,8 @@ function resolveContainer(
     indexed.push(segment);
   }
 
-  if (indexed.length === 0) return LiveAPI.from(trackSegmentPath(root));
+  if (indexed.length === 0)
+    return cachedDevicePath(trackSegmentPath(root).toString());
 
   return resolveContainerWithAutoCreate(root, indexed, path);
 }
@@ -115,7 +117,7 @@ function resolveDrumPadContainer(
   segments: DeviceSegment[],
 ): LiveAPI | null {
   const resolved = resolveDevicePath({ kind: "device", root, segments });
-  const rack = LiveAPI.from(resolved.liveApiPath);
+  const rack = cachedDevicePath(resolved.liveApiPath);
 
   return resolveOrCreateDrumPadChain(
     rack,

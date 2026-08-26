@@ -11,6 +11,10 @@ import { setParamValues } from "#src/tools/device/update/update-device-param-set
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
+  invalidateDevicePathCache,
+  withDevicePathCache,
+} from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
+import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -86,12 +90,10 @@ export function createDevice(
 
   warnExtraNames(parsedNames, paths.length, "createDevice");
 
-  const results = createDevicesAtPaths(
-    deviceName,
-    paths,
-    name,
-    parsedNames,
-    params,
+  // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
+  // paths share track 0 and the rack. Resolve each one once for the whole call.
+  const results = withDevicePathCache(() =>
+    createDevicesAtPaths(deviceName, paths, name, parsedNames, params),
   );
 
   if (focus && results.length > 0) {
@@ -125,15 +127,14 @@ function createDevicesAtPaths(
     const p = paths[i] as string;
 
     try {
-      const result = createDeviceAtPath(deviceName, p);
-      const device = LiveAPI.from(`id ${result.id}`);
+      const { device, ...result } = createDeviceAtPath(deviceName, p);
       const displayName = getNameForIndex(baseName, i, parsedNames);
 
-      if (displayName != null && device.exists()) {
+      if (displayName != null) {
         device.set("name", displayName);
       }
 
-      if (params != null && device.exists()) {
+      if (params != null) {
         setParamValues(device, params, "createDevice");
       }
 
@@ -159,12 +160,12 @@ function createDevicesAtPaths(
  * Create device at a path (track or chain)
  * @param deviceName - Device name
  * @param path - Device path
- * @returns Object with deviceId and deviceIndex
+ * @returns Object with deviceId, deviceIndex, and the new device
  */
 function createDeviceAtPath(
   deviceName: string,
   path: string,
-): CreateDeviceResult {
+): CreateDeviceResult & { device: LiveAPI } {
   const { container, position } = resolveInsertionPath(path);
 
   if (!container?.exists()) {
@@ -199,6 +200,10 @@ function createDeviceAtPath(
           string | number,
         ]);
 
+  // A positioned insert shifts every later device down a slot, so paths cached
+  // before it no longer name what they named. An append moves nothing.
+  if (effectivePosition != null) invalidateDevicePathCache();
+
   const rawId = result[1];
   const id = rawId ? String(rawId) : null;
   const device = id ? LiveAPI.from(`id ${id}`) : null;
@@ -214,5 +219,6 @@ function createDeviceAtPath(
   return {
     id,
     deviceIndex: device.deviceIndex,
+    device,
   };
 }

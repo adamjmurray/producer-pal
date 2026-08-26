@@ -19,6 +19,7 @@ import {
   navigateRemainingSegments,
   resolveDrumPadFromPath,
 } from "./path/device-drumpad-navigation.ts";
+import { cachedDevicePath } from "./path/with-device-path-cache.ts";
 
 /** A chain segment: everything an IndexedSegment can be except a device. */
 type ChainSegment = Exclude<IndexedSegment, { kind: "device" }>;
@@ -39,7 +40,7 @@ export function resolveContainerWithAutoCreate(
   path: string,
 ): LiveAPI {
   let currentPath = trackSegmentPath(root).toString();
-  let current = LiveAPI.from(currentPath);
+  let current = cachedDevicePath(currentPath);
 
   if (!current.exists()) {
     throw new Error(`Track in path "${path}" does not exist`);
@@ -71,7 +72,7 @@ function navigateToDevice(
   fullPath: string,
 ): LiveAPI {
   const devicePath = `${currentPath} devices ${index}`;
-  const device = LiveAPI.from(devicePath);
+  const device = cachedDevicePath(devicePath);
 
   if (!device.exists()) {
     throw new Error(`Device in path "${fullPath}" does not exist`);
@@ -98,7 +99,7 @@ function navigateToChain(
 
   // Return chains are never auto-created
   if (segment.kind === "return-chain") {
-    const chain = LiveAPI.from(chainPath);
+    const chain = cachedDevicePath(chainPath);
 
     if (!chain.exists()) {
       throw new Error(`Return chain in path "${fullPath}" does not exist`);
@@ -111,7 +112,7 @@ function navigateToChain(
     autoCreateChains(parentDevice, segment.index, fullPath);
   }
 
-  return LiveAPI.from(chainPath);
+  return cachedDevicePath(chainPath);
 }
 
 /**
