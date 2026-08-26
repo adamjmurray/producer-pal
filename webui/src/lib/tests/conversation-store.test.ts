@@ -80,6 +80,33 @@ describe("createConversationStore", () => {
     expect(store.beginSave(false)).toBeNull();
   });
 
+  it("does not revive a conversation being deleted when its write lands", () => {
+    // The delete drains the queue, so a write it is already waiting for can
+    // finish after the slot is marked. Adopting it would republish an id the
+    // delete is about to remove.
+    const store = createConversationStore();
+    const snapshot = store.beginSave(false)!;
+
+    store.markDeleted();
+    store.markPersisted(snapshot, createTestRecord({ id: snapshot.id }));
+
+    expect(store.activeId()).toBeNull();
+    expect(store.beginSave(false)).toBeNull();
+  });
+
+  it("keeps the live id stable until the conversation moves on", () => {
+    const store = createConversationStore();
+    const before = store.liveId();
+
+    store.beginSave(false);
+
+    expect(store.liveId()).toBe(before);
+
+    store.reset();
+
+    expect(store.liveId()).not.toBe(before);
+  });
+
   it("puts the conversation back when a delete fails", () => {
     const store = createConversationStore();
     const first = store.beginSave(false)!;

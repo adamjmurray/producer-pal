@@ -97,6 +97,13 @@ export interface SaveSnapshot {
 export interface ConversationStore {
   /** Id for the sidebar and the URL hash; null while the chat is unsaved. */
   activeId: () => string | null;
+  /**
+   * The id the live conversation would save under, whatever state it is in.
+   * Unlike {@link activeId} this never goes null, so a save that is scheduled
+   * but not yet started (voice's autosave debounce) can hold onto it and check
+   * on firing whether it still belongs to the conversation it was meant for.
+   */
+  liveId: () => string;
   /** The active conversation's metadata. Written in place by useSyncActiveMeta. */
   metaRef: { current: ActiveMeta | null };
   /**
@@ -164,6 +171,7 @@ export function createConversationStore(
 
   return {
     activeId,
+    liveId: () => slot.id,
     metaRef,
 
     beginSave: (branch) => {
@@ -195,8 +203,10 @@ export function createConversationStore(
 
     markPersisted: (snapshot, record) => {
       // The write may have landed for a conversation the user has since left.
-      // It belongs in that record either way, but it says nothing about this one.
-      if (snapshot.id !== slot.id) return;
+      // It belongs in that record either way, but it says nothing about this
+      // one — and a slot being deleted must not be revived by a write the
+      // delete is already waiting to drain.
+      if (snapshot.id !== slot.id || slot.state === "deleted") return;
 
       metaRef.current = metaFromRecord(record);
       enter({ ...slot, state: "persisted" });

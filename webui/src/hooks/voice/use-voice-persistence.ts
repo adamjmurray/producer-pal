@@ -4,7 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
+import {
+  type ActiveMeta,
+  type ConversationStore,
+  type SaveSnapshot,
+  createConversationStore,
+} from "#webui/lib/conversation-store";
 import {
   deriveVoiceTitle,
   mergeVoiceHistory,
@@ -39,11 +51,10 @@ interface UseVoicePersistenceParams {
    * id. */
   onForeignRecord?: (record: ConversationRecord) => void;
   /** Invoked when a bulk delete (all / unbookmarked) removes the in-progress
-   * live record — the active one, or a pending-new one still on its reserved id.
-   * The voice layer wires this to stop and reset the live session so a deleted
-   * conversation isn't left streaming on screen and re-saved under a fresh id.
-   * Unlike the sidebar delete paths, the Settings bulk deletes have no other
-   * route to the session controls. */
+   * live record. The voice layer wires this to stop and reset the live session
+   * so a deleted conversation isn't left streaming on screen and re-saved under
+   * a fresh id. Unlike the sidebar delete paths, the Settings bulk deletes have
+   * no other route to the session controls. */
   onLiveRecordDeleted?: () => void;
 }
 
@@ -85,6 +96,13 @@ export interface UseVoicePersistenceReturn {
  * can still be viewed read-only. Text records selected from the sidebar
  * navigate to /chat — the chat hook owns those.
  *
+ * The live conversation and its write queue live in the shared conversation
+ * store, so voice gets the same two rules chat does: no save may start for a
+ * conversation being deleted, and a write whose row has gone is refused by the
+ * DB. Voice adds one wrinkle — its saves are debounced, so a save can be
+ * scheduled long before it starts. The debounce holds the id it was scheduled
+ * for and drops itself if the live conversation has moved on since.
+ *
  * @param params - hook parameters
  * @param params.liveHistory - Live voice transcript from useVoiceSession
  * @returns Voice conversation state and handlers
@@ -109,57 +127,54 @@ export function useVoicePersistence(
   const [activeRecordProvider, setActiveRecordProvider] = useState<
     string | null
   >(null);
-  const activeIdRef = useRef(activeConversationId);
-  const createdAtRef = useRef<number | null>(null);
-  const bookmarkedRef = useRef(false);
-  const titleRef = useRef<string | null>(null);
   // Snapshot of the loaded record's full voiceHistory (including function_call
   // items). Used by the auto-save merge so historical tool calls survive a
   // continued session even though the Realtime SDK can't re-seed them.
   const priorItemsRef = useRef<RealtimeItem[]>([]);
-  // Ids whose autosave must be abandoned because the record was deleted. A
-  // delete can land after the debounce timer has already fired (the in-flight
-  // IDB write is no longer cancellable), so the save checks this set right
-  // before writing to avoid resurrecting a just-deleted conversation.
-  const canceledIdsRef = useRef<Set<string>>(new Set());
-  // Id reserved for the in-progress new conversation, before its first save
-  // resolves and adopts it as the active id. Generating the id inline in the
-  // autosave effect would mint a fresh UUID on every transcript delta that
-  // lands in the window between the first save's debounce firing and its async
-  // write resolving (activeId still null) — creating a duplicate record. Hold
-  // it here so concurrent effect runs reuse the same id. Cleared on navigation.
-  const pendingNewIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    activeIdRef.current = activeConversationId;
-  }, [activeConversationId]);
+  const publishActiveId = useCallback((id: string | null) => {
+    setActiveConversationId(id);
+    setHashId(id);
+  }, []);
+
+  const store = useMemo((): ConversationStore => {
+    const created = createConversationStore(getHashId());
+
+    created.onActiveIdChange(publishActiveId);
+
+    return created;
+  }, [publishActiveId]);
 
   const refreshList = useCallback(async () => {
     // Pass the active id (as the chat path does) so its branch family is
     // represented by the conversation being viewed, keeping the list highlight
     // on the active sibling.
-    setConversations(await listConversations(activeIdRef.current));
-  }, []);
+    setConversations(await listConversations(store.activeId()));
+  }, [store]);
 
-  const setActiveId = useCallback((id: string | null) => {
-    setActiveConversationId(id);
-    activeIdRef.current = id;
-    setHashId(id);
-  }, []);
+  /** Leave the live conversation for a fresh, unsaved one. */
+  const startNewConversation = useCallback(() => {
+    priorItemsRef.current = [];
+    setSavedItems([]);
+    setActiveRecordModel(null);
+    setActiveRecordProvider(null);
+    store.reset();
+  }, [store]);
 
-  // Hydrate refs and saved-items state from a freshly loaded voice record.
-  // Refs and setters are stable, so this callback never changes identity.
-  const adoptRecord = useCallback((record: ConversationRecord) => {
-    createdAtRef.current = record.createdAt;
-    bookmarkedRef.current = record.bookmarked;
-    titleRef.current = record.title;
-    setActiveRecordModel(record.model ?? null);
-    setActiveRecordProvider(record.provider ?? null);
-    const items = (record.voiceHistory ?? []) as RealtimeItem[];
+  // Move onto a freshly loaded voice record. Refs and setters are stable, so
+  // this callback never changes identity.
+  const adoptRecord = useCallback(
+    (record: ConversationRecord) => {
+      store.adopt(record);
+      setActiveRecordModel(record.model ?? null);
+      setActiveRecordProvider(record.provider ?? null);
+      const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
-    priorItemsRef.current = items;
-    setSavedItems(items);
-  }, []);
+      priorItemsRef.current = items;
+      setSavedItems(items);
+    },
+    [store],
+  );
 
   // Initial mount: load active voice record from URL hash, if any
   useEffect(() => {
@@ -170,114 +185,87 @@ export function useVoicePersistence(
 
     void loadConversation(hashId).then((record) => {
       if (!record) {
-        setActiveId(null);
+        startNewConversation();
 
         return;
       }
 
       if (record.sessionType !== "voice") {
         if (onForeignRecord) onForeignRecord(record);
-        else setActiveId(null);
+        else startNewConversation();
 
         return;
       }
 
       adoptRecord(record);
     });
-  }, [refreshList, setActiveId, onForeignRecord, adoptRecord]);
+  }, [refreshList, startNewConversation, onForeignRecord, adoptRecord]);
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
     if (liveHistory.length === 0) return undefined;
 
-    const id =
-      activeIdRef.current ?? (pendingNewIdRef.current ??= crypto.randomUUID());
+    // The transcript belongs to whichever conversation is live now. If the user
+    // navigates away, or a delete takes it, before the debounce fires, this
+    // save is not the new conversation's to make.
+    const scheduledFor = store.liveId();
     const merged = mergeVoiceHistory(priorItemsRef.current, liveHistory);
     const timer = setTimeout(() => {
-      void saveVoiceRecord(
-        id,
-        merged,
-        {
-          createdAt: createdAtRef.current,
-          bookmarked: bookmarkedRef.current,
-          title: titleRef.current,
+      if (store.liveId() !== scheduledFor) return;
+
+      const snapshot = store.beginSave(false);
+
+      if (!snapshot) return;
+
+      void store.enqueue(async () => {
+        const record = await buildVoiceRecord(
+          snapshot,
+          merged,
           model,
-        },
-        () => canceledIdsRef.current.has(id),
-      ).then((record) => {
-        if (!record) return; // deleted while the save was pending/in-flight
-        // A delete can also land after saveVoiceRecord's pre-write check but
-        // during its await: the record gets written, then the delete removes
-        // it (the on-disk delete wins). Re-check here so we don't adopt a
-        // just-deleted id and leave a stale hash pointing at an empty list.
-        if (canceledIdsRef.current.has(id)) return;
-        createdAtRef.current = record.createdAt;
-        titleRef.current = record.title;
+          store.metaRef.current,
+        );
+        const result = await saveConversation(record, {
+          expectPersisted: snapshot.expectPersisted,
+        });
 
-        // Adopt the freshly-reserved id only if we're still on this pending-new
-        // conversation. If the user clicked New or selected a foreign record
-        // while this first save was in flight, navigation cleared/replaced
-        // pendingNewIdRef (and set activeId to null or the foreign id) — re-
-        // asserting `id` here would point the hash at an abandoned record while
-        // the screen shows another. The plain `activeIdRef.current !== id`
-        // check couldn't tell adoption from that stale-id race.
-        if (activeIdRef.current == null && pendingNewIdRef.current === id) {
-          setActiveId(id);
-        }
+        if (!result.saved) return;
 
-        void refreshList();
+        store.markPersisted(snapshot, record);
+        await refreshList();
       });
     }, VOICE_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [liveHistory, model, refreshList, setActiveId]);
+  }, [liveHistory, model, refreshList, store]);
 
   const switchConversation = useCallback(
     async (id: string) => {
-      pendingNewIdRef.current = null;
       const record = await loadConversation(id);
 
       if (!record) {
-        setActiveId(null);
-        setSavedItems([]);
-        setActiveRecordModel(null);
-        setActiveRecordProvider(null);
-        priorItemsRef.current = [];
+        startNewConversation();
 
         return;
       }
 
       if (record.sessionType !== "voice") {
-        // Foreign record. Update the URL hash to the new id *before* the
-        // mode swap so the freshly-mounted chat hook picks it up from the
-        // hash on mount.
+        // Foreign record. Adopting it points the URL hash at the new id *before*
+        // the mode swap, so the freshly-mounted chat hook picks it up from the
+        // hash. Nothing else here reads a chat record's metadata.
         if (onForeignRecord) {
-          setActiveId(id);
+          store.adopt(record);
           onForeignRecord(record);
         } else {
-          setActiveId(null);
+          startNewConversation();
         }
 
         return;
       }
 
       adoptRecord(record);
-      setActiveId(id);
     },
-    [setActiveId, onForeignRecord, adoptRecord],
+    [store, startNewConversation, onForeignRecord, adoptRecord],
   );
-
-  const startNewConversation = useCallback(() => {
-    createdAtRef.current = null;
-    bookmarkedRef.current = false;
-    titleRef.current = null;
-    priorItemsRef.current = [];
-    pendingNewIdRef.current = null;
-    setSavedItems([]);
-    setActiveRecordModel(null);
-    setActiveRecordProvider(null);
-    setActiveId(null);
-  }, [setActiveId]);
 
   const retainPriorHistory = useCallback((items: RealtimeItem[]) => {
     // The ref protects the next autosave merge (read synchronously, so it's in
@@ -289,55 +277,85 @@ export function useVoicePersistence(
 
   const deleteConversation = useCallback(
     async (id: string) => {
-      canceledIdsRef.current.add(id);
-      await dbDeleteConversation(id);
-      if (activeIdRef.current === id) startNewConversation();
+      const isLive = id === store.activeId();
+      const undoMark = isLive ? store.markDeleted() : null;
+
+      await store.drain();
+
+      try {
+        await dbDeleteConversation(id);
+      } catch (error) {
+        // The row is still there, so leaving the slot marked would silently
+        // stop autosaving the session the user is still in.
+        undoMark?.();
+        throw error;
+      }
+
+      if (isLive) startNewConversation();
       await refreshList();
     },
-    [refreshList, startNewConversation],
+    [store, refreshList, startNewConversation],
   );
 
-  const deleteAllConversations = useCallback(async () => {
-    // Cancel the in-flight autosave for the active record OR a not-yet-adopted
-    // new conversation (pendingNewIdRef holds its reserved id until the first
-    // save resolves and adopts it as the active id). A bulk delete doesn't stop
-    // the live session, so a save scheduled before the delete would otherwise
-    // resurrect the record.
-    const liveId = activeIdRef.current ?? pendingNewIdRef.current;
+  /**
+   * Wipe conversations, taking the live one with them unless it is spared.
+   * @param removeRows - Clears the matching rows from the DB
+   * @param sparesLive - True when the live conversation survives this wipe
+   */
+  const sweep = useCallback(
+    async (removeRows: () => Promise<void>, sparesLive: boolean) => {
+      let undoMark: (() => void) | null = null;
 
-    if (liveId != null) {
-      canceledIdsRef.current.add(liveId);
-      onLiveRecordDeleted?.();
-    }
+      if (!sparesLive) {
+        // Fire only for a conversation that reached the DB — a session with
+        // nothing saved yet has no record to lose. Ask before marking: a marked
+        // slot reports no active id.
+        if (store.activeId() != null) onLiveRecordDeleted?.();
+        // A bulk delete doesn't stop the live session, so without this the next
+        // autosave would write the wiped conversation straight back.
+        undoMark = store.markDeleted();
+      }
 
-    await dbDeleteAllConversations();
-    startNewConversation();
-    await refreshList();
-  }, [refreshList, startNewConversation, onLiveRecordDeleted]);
+      await store.drain();
 
-  const deleteUnbookmarkedConversations = useCallback(async () => {
-    // The live record (active, or a pending-new one still on its reserved id)
-    // is unbookmarked unless explicitly bookmarked, so this bulk delete removes
-    // it too. Cancel its in-flight autosave and reset to a fresh session.
-    const liveId = activeIdRef.current ?? pendingNewIdRef.current;
+      try {
+        await removeRows();
+      } catch (error) {
+        undoMark?.();
+        throw error;
+      }
 
-    if (liveId != null && !bookmarkedRef.current) {
-      canceledIdsRef.current.add(liveId);
-      onLiveRecordDeleted?.();
-      startNewConversation();
-    }
+      if (!sparesLive) startNewConversation();
+      await refreshList();
+    },
+    [store, refreshList, startNewConversation, onLiveRecordDeleted],
+  );
 
-    await dbDeleteUnbookmarkedConversations();
-    await refreshList();
-  }, [refreshList, startNewConversation, onLiveRecordDeleted]);
+  const deleteAllConversations = useCallback(
+    () => sweep(dbDeleteAllConversations, false),
+    [sweep],
+  );
+
+  const deleteUnbookmarkedConversations = useCallback(
+    () =>
+      sweep(
+        dbDeleteUnbookmarkedConversations,
+        store.metaRef.current?.bookmarked ?? false,
+      ),
+    [sweep, store],
+  );
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
       await dbRenameConversation(id, title);
-      if (activeIdRef.current === id) titleRef.current = title;
+
+      if (id === store.activeId() && store.metaRef.current) {
+        store.metaRef.current.title = title;
+      }
+
       await refreshList();
     },
-    [refreshList],
+    [store, refreshList],
   );
 
   const toggleBookmark = useCallback(
@@ -348,10 +366,14 @@ export function useVoicePersistence(
       const next = !conv.bookmarked;
 
       await setBookmark(id, next);
-      if (activeIdRef.current === id) bookmarkedRef.current = next;
+
+      if (id === store.activeId() && store.metaRef.current) {
+        store.metaRef.current.bookmarked = next;
+      }
+
       await refreshList();
     },
-    [conversations, refreshList],
+    [store, conversations, refreshList],
   );
 
   // Handle browser Back/Forward: re-route to whatever conversation the URL hash
@@ -365,7 +387,7 @@ export function useVoicePersistence(
     const handler = () => {
       const hashId = getHashId();
 
-      if (hashId === activeIdRef.current) return;
+      if (hashId === store.activeId()) return;
       if (hashId) void switchConversation(hashId);
       else startNewConversation();
     };
@@ -373,7 +395,7 @@ export function useVoicePersistence(
     window.addEventListener("hashchange", handler);
 
     return () => window.removeEventListener("hashchange", handler);
-  }, [switchConversation, startNewConversation]);
+  }, [store, switchConversation, startNewConversation]);
 
   return {
     conversations,
@@ -423,36 +445,30 @@ function setHashId(id: string | null): void {
   }
 }
 
-interface SaveContext {
-  createdAt: number | null;
-  bookmarked: boolean;
-  title: string | null;
-  model: string;
-}
-
 /**
- * Persist the current live voice transcript under the given conversation id.
- * @param id - Conversation id (existing or freshly generated)
- * @param items - Live RealtimeItem history
- * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, title, model)
- * @param isCanceled - Returns true if the record was deleted; bail before writing
- * @returns The saved record, or null if the save was canceled
+ * Build the record a voice autosave writes.
+ * @param snapshot - What the store stamped when the save started
+ * @param items - Merged RealtimeItem history to persist
+ * @param model - Realtime model id in effect
+ * @param meta - The live conversation's metadata, or null before the first save
+ * @returns The record to write
  */
-async function saveVoiceRecord(
-  id: string,
+async function buildVoiceRecord(
+  snapshot: SaveSnapshot,
   items: RealtimeItem[],
-  ctx: SaveContext,
-  isCanceled: () => boolean,
-): Promise<ConversationRecord | null> {
-  const existing = await loadConversation(id);
+  model: string,
+  meta: ActiveMeta | null,
+): Promise<ConversationRecord> {
+  const existing =
+    snapshot.reuseId == null ? null : await loadConversation(snapshot.reuseId);
   const now = Date.now();
-  const title = ctx.title ?? deriveVoiceTitle(items);
-  const record: ConversationRecord = {
-    id,
-    title,
-    createdAt: existing?.createdAt ?? ctx.createdAt ?? now,
+
+  return {
+    id: snapshot.id,
+    title: meta?.title ?? deriveVoiceTitle(items),
+    createdAt: existing?.createdAt ?? meta?.createdAt ?? now,
     updatedAt: now,
-    bookmarked: existing?.bookmarked ?? ctx.bookmarked,
+    bookmarked: existing?.bookmarked ?? meta?.bookmarked ?? false,
     // First-write-wins (like createdAt/bookmarked): a record keeps the provider
     // and model it was created with. Provider is derived from the model id (the
     // active backend) so a Gemini voice record isn't mislabeled "OpenAI" in the
@@ -460,9 +476,9 @@ async function saveVoiceRecord(
     // settings must not silently re-stamp the original provider/model/label.
     provider:
       existing?.provider ??
-      (isGeminiRealtimeModelId(ctx.model) ? "gemini" : "openai"),
-    model: existing?.model ?? ctx.model,
-    modelLabel: existing?.modelLabel ?? ctx.model,
+      (isGeminiRealtimeModelId(model) ? "gemini" : "openai"),
+    model: existing?.model ?? model,
+    modelLabel: existing?.modelLabel ?? model,
     thinking: null,
     smallModelMode: null,
     totalUsage: null,
@@ -470,13 +486,4 @@ async function saveVoiceRecord(
     messages: [],
     voiceHistory: items,
   };
-
-  // A delete for this id can land while the debounce was pending or while we
-  // awaited the read above. Check as late as possible — right before the write
-  // — so a just-deleted conversation isn't resurrected.
-  if (isCanceled()) return null;
-
-  await saveConversation(record);
-
-  return record;
 }
