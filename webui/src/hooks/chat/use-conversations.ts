@@ -12,15 +12,10 @@ import {
 } from "preact/hooks";
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
-import {
-  type ConversationStore,
-  createConversationStore,
-} from "#webui/hooks/chat/helpers/conversations/conversation-store";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
-  DEFAULT_META,
   buildConversationSaveRecord,
   buildLockedSettings,
   deleteConversationWithSnapshot,
@@ -33,6 +28,11 @@ import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
 } from "#webui/hooks/chat/helpers/use-sync-active-meta";
+import {
+  type ConversationStore,
+  DEFAULT_META,
+  createConversationStore,
+} from "#webui/lib/conversation-store";
 import {
   type ConversationLockedSettings,
   type PendingForkRef,
@@ -218,7 +218,7 @@ export function useConversations({
 
       // Everything this write is judged on is captured here, synchronously, at
       // call time — before any await can move the conversation out from under it.
-      const snapshot = store.beginSave(fork);
+      const snapshot = store.beginSave(fork != null);
 
       if (!snapshot) return Promise.resolve();
 
@@ -232,7 +232,7 @@ export function useConversations({
           const record = await buildConversationSaveRecord({
             id: snapshot.id,
             reuseId: snapshot.reuseId,
-            fork: snapshot.fork,
+            fork,
             refs: {
               id: snapshot.id,
               ...(store.metaRef.current ?? DEFAULT_META),
@@ -245,7 +245,7 @@ export function useConversations({
           // conversation-cap LRU can't evict the trunk this branch points back to
           // — or any sibling, which would orphan the family's ‹ n/m › navigation.
           const protectedIds =
-            snapshot.fork != null
+            fork != null
               ? await forkProtectedIds(record, snapshot.sourceId)
               : undefined;
 

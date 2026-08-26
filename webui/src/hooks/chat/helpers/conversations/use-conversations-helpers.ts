@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect } from "preact/hooks";
-import { type Notation } from "#src/shared/notation";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ConversationLockedSettings,
   type PendingFork,
 } from "#webui/hooks/chat/use-chat-types";
+import { type ActiveMeta } from "#webui/lib/conversation-store";
 import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
 import {
@@ -19,36 +19,6 @@ import {
   loadConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
-
-/** Mutable metadata for the active conversation (excludes ID which is tracked separately) */
-export interface ActiveMeta {
-  title: string | null;
-  createdAt: number | null;
-  bookmarked: boolean;
-  model: string | null;
-  provider: Provider | null;
-  thinking: string | null;
-  smallModelMode: boolean | null;
-  /** Resolved system instruction in effect (snapshotted onto the record). */
-  systemInstruction: string | null;
-  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
-  notation: Notation | null;
-  /** Toolset the conversation last connected with (recorded, not enforced). */
-  enabledTools: Record<string, boolean> | null;
-}
-
-export const DEFAULT_META: ActiveMeta = {
-  title: null,
-  createdAt: null,
-  bookmarked: false,
-  model: null,
-  provider: null,
-  thinking: null,
-  smallModelMode: null,
-  systemInstruction: null,
-  notation: null,
-  enabledTools: null,
-};
 
 /** Ref snapshot for building a save record */
 export interface ActiveRefs extends ActiveMeta {

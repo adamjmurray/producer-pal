@@ -3,12 +3,39 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  type ActiveMeta,
-  DEFAULT_META,
-} from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
-import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
+import { type Notation } from "#src/shared/notation";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { type Provider } from "#webui/types/settings";
+
+/** Mutable metadata for the live conversation. Its id is tracked separately. */
+export interface ActiveMeta {
+  title: string | null;
+  createdAt: number | null;
+  bookmarked: boolean;
+  model: string | null;
+  provider: Provider | null;
+  thinking: string | null;
+  smallModelMode: boolean | null;
+  /** Resolved system instruction in effect (snapshotted onto the record). */
+  systemInstruction: string | null;
+  /** Notation in effect (snapshotted onto the record so a restore keeps it). */
+  notation: Notation | null;
+  /** Toolset the conversation last connected with (recorded, not enforced). */
+  enabledTools: Record<string, boolean> | null;
+}
+
+export const DEFAULT_META: ActiveMeta = {
+  title: null,
+  createdAt: null,
+  bookmarked: false,
+  model: null,
+  provider: null,
+  thinking: null,
+  smallModelMode: null,
+  systemInstruction: null,
+  notation: null,
+  enabledTools: null,
+};
 
 /**
  * How far the live conversation has got toward having a row on disk.
@@ -40,13 +67,14 @@ export interface SaveSnapshot {
    * write first — but has no row to check yet.
    */
   reuseId: string | null;
-  /** For a fork, the conversation it branches off; null for a normal save. */
+  /** For a branching save, the conversation it branches off; else null. */
   sourceId: string | null;
-  fork: PendingFork | null;
 }
 
 /**
- * The one conversation the user is on, and the queue of writes for it.
+ * The one conversation the user is on, and the queue of writes for it. Shared
+ * by chat and voice: the two differ in what they write and when, not in what
+ * makes a write valid.
  *
  * A save may only be refused for one reason: the conversation it belongs to is
  * being deleted. Two checks cover that, split by whether there is a row to look
@@ -77,7 +105,7 @@ export interface ConversationStore {
    * for it, and one that starts on a fresh id would just write the deleted
    * conversation's history back under a new name.
    */
-  beginSave: (fork: PendingFork | null) => SaveSnapshot | null;
+  beginSave: (branch: boolean) => SaveSnapshot | null;
   /** Record that a snapshot's write landed, and adopt what it wrote. */
   markPersisted: (snapshot: SaveSnapshot, record: ConversationRecord) => void;
   /** Move onto an existing conversation. */
@@ -98,7 +126,7 @@ export interface ConversationStore {
 }
 
 /**
- * Create the conversation store backing one mounted chat session.
+ * Create the conversation store backing one mounted chat or voice session.
  *
  * Per-mount rather than module-wide: only one of chat and voice is live at a
  * time, and the mode swap hands the conversation over through the URL hash, so
@@ -138,24 +166,23 @@ export function createConversationStore(
     activeId,
     metaRef,
 
-    beginSave: (fork) => {
+    beginSave: (branch) => {
       if (slot.state === "deleted") return null;
 
-      // A fork leaves its source intact and branches onto a new record, so it
-      // starts a new live conversation rather than writing the current one.
-      // Both the id and the generation move here, synchronously, so a second
-      // save racing this one can't mint a second branch. With nothing saved to
+      // A branching save (a chat fork) leaves its source intact and writes a
+      // new record, so it starts a new live conversation rather than writing
+      // the current one. The id moves here, synchronously, so a second save
+      // racing this one can't mint a second branch. With nothing saved to
       // branch from, there is no source and it degrades to a normal save.
-      const sourceId = fork != null && slot.state !== "fresh" ? slot.id : null;
+      const sourceId = branch && slot.state !== "fresh" ? slot.id : null;
 
-      if (fork != null) enter(freshSlot());
+      if (branch) enter(freshSlot());
 
       const snapshot: SaveSnapshot = {
         id: slot.id,
         expectPersisted: slot.state === "persisted",
         reuseId: sourceId ?? (slot.state === "fresh" ? null : slot.id),
         sourceId,
-        fork,
       };
 
       // Publish the id now rather than when the write lands: the sidebar

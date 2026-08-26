@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback } from "preact/hooks";
-import { type ConversationStore } from "#webui/hooks/chat/helpers/conversations/conversation-store";
+import { type ConversationStore } from "#webui/lib/conversation-store";
 import {
   type ConversationRecord,
   deleteAllConversations as dbDeleteAllConversations,

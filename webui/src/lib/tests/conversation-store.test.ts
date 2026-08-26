@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { createConversationStore } from "#webui/hooks/chat/helpers/conversations/conversation-store";
+import { createConversationStore } from "#webui/lib/conversation-store";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 describe("createConversationStore", () => {
@@ -13,7 +13,7 @@ describe("createConversationStore", () => {
 
     expect(store.activeId()).toBeNull();
 
-    const snapshot = store.beginSave(null);
+    const snapshot = store.beginSave(false);
 
     // The id existed all along — the save didn't mint it, it published it.
     expect(snapshot?.id).toBeDefined();
@@ -24,18 +24,18 @@ describe("createConversationStore", () => {
     const store = createConversationStore("from-the-hash");
 
     expect(store.activeId()).toBe("from-the-hash");
-    expect(store.beginSave(null)?.expectPersisted).toBe(true);
+    expect(store.beginSave(false)?.expectPersisted).toBe(true);
   });
 
   it("expects a row only once a write has landed", () => {
     const store = createConversationStore();
-    const first = store.beginSave(null)!;
+    const first = store.beginSave(false)!;
 
     expect(first.expectPersisted).toBe(false);
 
     store.markPersisted(first, createTestRecord({ id: first.id }));
 
-    expect(store.beginSave(null)?.expectPersisted).toBe(true);
+    expect(store.beginSave(false)?.expectPersisted).toBe(true);
   });
 
   it("continues the claimed record before its first write lands", () => {
@@ -43,8 +43,8 @@ describe("createConversationStore", () => {
     // check, but it is still the same conversation and must read that record
     // back once the queue gets to it.
     const store = createConversationStore();
-    const first = store.beginSave(null)!;
-    const followUp = store.beginSave(null)!;
+    const first = store.beginSave(false)!;
+    const followUp = store.beginSave(false)!;
 
     expect(followUp.id).toBe(first.id);
     expect(followUp.reuseId).toBe(first.id);
@@ -53,8 +53,8 @@ describe("createConversationStore", () => {
 
   it("branches a fork onto a new conversation, keeping the source", () => {
     const store = createConversationStore();
-    const first = store.beginSave(null)!;
-    const fork = store.beginSave({ anchorIndex: 2 })!;
+    const first = store.beginSave(false)!;
+    const fork = store.beginSave(true)!;
 
     expect(fork.id).not.toBe(first.id);
     expect(fork.sourceId).toBe(first.id);
@@ -64,7 +64,7 @@ describe("createConversationStore", () => {
 
   it("degrades a fork with nothing saved to branch from into a plain save", () => {
     const store = createConversationStore();
-    const fork = store.beginSave({ anchorIndex: 0 })!;
+    const fork = store.beginSave(true)!;
 
     expect(fork.sourceId).toBeNull();
     expect(fork.reuseId).toBeNull();
@@ -73,28 +73,28 @@ describe("createConversationStore", () => {
   it("refuses to start a save for a conversation being deleted", () => {
     const store = createConversationStore();
 
-    store.beginSave(null);
+    store.beginSave(false);
     store.markDeleted();
 
     expect(store.activeId()).toBeNull();
-    expect(store.beginSave(null)).toBeNull();
+    expect(store.beginSave(false)).toBeNull();
   });
 
   it("puts the conversation back when a delete fails", () => {
     const store = createConversationStore();
-    const first = store.beginSave(null)!;
+    const first = store.beginSave(false)!;
     const undo = store.markDeleted();
 
     undo();
 
     expect(store.activeId()).toBe(first.id);
-    expect(store.beginSave(null)?.id).toBe(first.id);
+    expect(store.beginSave(false)?.id).toBe(first.id);
   });
 
   it("leaves a fresh conversation alone when a stale delete undo fires", () => {
     const store = createConversationStore();
 
-    store.beginSave(null);
+    store.beginSave(false);
 
     const undo = store.markDeleted();
 
@@ -109,7 +109,7 @@ describe("createConversationStore", () => {
 
   it("ignores a write that landed for a conversation the user has left", () => {
     const store = createConversationStore();
-    const left = store.beginSave(null)!;
+    const left = store.beginSave(false)!;
 
     store.reset();
     store.markPersisted(left, createTestRecord({ id: left.id, title: "Left" }));
@@ -135,7 +135,7 @@ describe("createConversationStore", () => {
 
     store.onActiveIdChange(listener);
 
-    const snapshot = store.beginSave(null)!;
+    const snapshot = store.beginSave(false)!;
 
     expect(listener).toHaveBeenCalledWith(snapshot.id);
 
@@ -151,7 +151,7 @@ describe("createConversationStore", () => {
   it("works before a listener is registered", () => {
     const store = createConversationStore();
 
-    expect(() => store.beginSave(null)).not.toThrow();
+    expect(() => store.beginSave(false)).not.toThrow();
   });
 
   it("runs queued work in order and drains it", async () => {
