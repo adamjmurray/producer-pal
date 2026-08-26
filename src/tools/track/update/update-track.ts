@@ -407,18 +407,27 @@ export function updateTrack(
   // Parse comma-separated string into array
   const trackIds = parseCommaSeparatedIds(targets);
 
-  // Validate all IDs are tracks, skip invalid ones
-  const tracks = validateIdTypes(trackIds, "track", "updateTrack", {
-    skipInvalid: true,
-  });
-
-  const parsedNames = parseNames(name, tracks.length, "updateTrack");
-  const parsedColors = parseCommaSeparatedColors(color, tracks.length);
+  // Parse names/colors against the original id count so the positional mapping
+  // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
+  // mid-list — otherwise every later name/color shifts onto the wrong track.
+  const parsedNames = parseNames(name, trackIds.length, "updateTrack");
+  const parsedColors = parseCommaSeparatedColors(color, trackIds.length);
 
   const updatedTracks: UpdateTrackResult[] = [];
 
-  for (let i = 0; i < tracks.length; i++) {
-    const track = tracks[i] as LiveAPI;
+  for (let i = 0; i < trackIds.length; i++) {
+    // Validate one id at a time (skip invalid) so the loop index stays aligned
+    // to the original ids: a skipped id must not pull later names/colors forward
+    // onto the wrong track.
+    const [track] = validateIdTypes(
+      [trackIds[i] as string],
+      "track",
+      "updateTrack",
+      { skipInvalid: true },
+    );
+
+    if (track == null) continue;
+
     const trackColor = getColorForIndex(color, i, parsedColors);
 
     track.setAll({
