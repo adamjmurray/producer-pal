@@ -25,25 +25,30 @@ import {
   getMinimalClipInfo,
 } from "../duplicate-helpers.ts";
 
+/** The source objects every copy in one call shares. */
+export interface SlotCopySource {
+  /** The slot the clip is copied from */
+  sourceClipSlot: LiveAPI;
+  /** The clip in that slot */
+  sourceClip: LiveAPI;
+  /** The destination tracks, keyed by index */
+  tracks: Map<number, LiveAPI>;
+}
+
 /**
- * Duplicate a clip slot to another slot
+ * Resolves everything a batch of copies shares: the slot it reads from and the
+ * tracks it writes to. Copying a clip into a slot moves neither, so one
+ * resolution of each serves the whole call.
  * @param sourceTrackIndex - Source track index
  * @param sourceSceneIndex - Source scene index
- * @param toTrackIndex - Destination track index
- * @param toSceneIndex - Destination scene index
- * @param name - Optional name for the duplicated clip
- * @param color - Optional color for the duplicated clip
- * @returns Minimal clip info object, or null when Live made no copy
+ * @param destinationTrackIndices - Track index of each destination slot
+ * @returns The source slot, its clip, and the destination tracks
  */
-export function duplicateClipSlot(
+export function resolveSlotCopySource(
   sourceTrackIndex: number,
   sourceSceneIndex: number,
-  toTrackIndex: number,
-  toSceneIndex: number,
-  name?: string,
-  color?: string,
-): MinimalClipInfo | null {
-  // Get source clip slot
+  destinationTrackIndices: number[] = [],
+): SlotCopySource {
   const sourceClipSlot = LiveAPI.from(
     livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
   );
@@ -60,7 +65,42 @@ export function duplicateClipSlot(
     );
   }
 
-  const sourceClip = sourceClipSlot.child("clip");
+  return {
+    sourceClipSlot,
+    sourceClip: sourceClipSlot.child("clip"),
+    tracks: new Map(
+      [...new Set(destinationTrackIndices)].map((trackIndex) => [
+        trackIndex,
+        LiveAPI.from(livePath.track(trackIndex)),
+      ]),
+    ),
+  };
+}
+
+/**
+ * Duplicate a clip slot to another slot
+ * @param sourceTrackIndex - Source track index
+ * @param sourceSceneIndex - Source scene index
+ * @param toTrackIndex - Destination track index
+ * @param toSceneIndex - Destination scene index
+ * @param name - Optional name for the duplicated clip
+ * @param color - Optional color for the duplicated clip
+ * @param shared - Source objects the caller already resolved for this call
+ * @returns Minimal clip info object, or null when Live made no copy
+ */
+export function duplicateClipSlot(
+  sourceTrackIndex: number,
+  sourceSceneIndex: number,
+  toTrackIndex: number,
+  toSceneIndex: number,
+  name?: string,
+  color?: string,
+  shared: SlotCopySource = resolveSlotCopySource(
+    sourceTrackIndex,
+    sourceSceneIndex,
+  ),
+): MinimalClipInfo | null {
+  const { sourceClipSlot, sourceClip, tracks } = shared;
 
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
@@ -80,7 +120,11 @@ export function duplicateClipSlot(
   // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
   // of failing, so check first rather than reporting a copy that never happened.
   const clipIsMidi = (sourceClip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(clipIsMidi, toTrackIndex);
+  const blocker = clipCopyBlocker(
+    clipIsMidi,
+    toTrackIndex,
+    tracks.get(toTrackIndex),
+  );
 
   if (blocker != null) {
     console.warn(
@@ -138,6 +182,12 @@ export function duplicateClipToSlots(
 
   warnExtraNames(parsedNames, slots.length, "duplicate");
 
+  const shared = resolveSlotCopySource(
+    trackIndex,
+    sourceSceneIndex,
+    slots.map((slot) => slot.trackIndex),
+  );
+
   // A copy Live declined warns and reports nothing, so the results only list
   // the copies that exist.
   return slots
@@ -149,6 +199,7 @@ export function duplicateClipToSlots(
         slot.sceneIndex,
         getNameForIndex(name, i, parsedNames),
         getColorForIndex(color, i, parsedColors),
+        shared,
       ),
     )
     .filter((clipInfo) => clipInfo != null);

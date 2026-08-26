@@ -74,6 +74,7 @@ export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
  * @param targetPosition - Target position in beats
  * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
  * @param context - Context with silenceWavPath for audio clip operations
+ * @param source - The source clip, when the caller already resolved it
  * @returns true if it is safe to duplicate the source directly to the target;
  *   false if the source overlaps its own target (caller must handle)
  */
@@ -83,10 +84,11 @@ export function clearClipAtDuplicateTarget(
   targetPosition: number,
   isMidiClip: boolean,
   context: TilingContext,
+  source: LiveAPI | null = null,
 ): boolean {
   if (!arrangementDuplicateCrashWorkaround) return true;
 
-  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+  const sourceClip = source ?? LiveAPI.from(toLiveApiId(sourceClipId));
 
   if (sourceClip.getProperty("is_arrangement_clip") !== 1) return true;
 

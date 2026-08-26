@@ -32,6 +32,7 @@ export interface ResolvedDuplicateLane {
  * @param id - Source clip ID (for messages)
  * @param targets - Destinations, in copy order
  * @param takeLaneName - Name for a take lane newly created by this call
+ * @param tracks - The destination tracks, keyed by index
  * @returns Lanes keyed by {@link takeLaneKey}
  */
 export function resolveDuplicateTakeLanes(
@@ -39,6 +40,7 @@ export function resolveDuplicateTakeLanes(
   id: string,
   targets: ArrangementTrack[],
   takeLaneName: string | undefined,
+  tracks: Map<number, LiveAPI> = new Map(),
 ): Map<string, ResolvedDuplicateLane> {
   const laneTargets = targets.filter((target) => target.takeLane != null);
 
@@ -71,7 +73,7 @@ export function resolveDuplicateTakeLanes(
     if (lanes.has(key)) continue;
 
     const { lane, laneIndex } = resolveTakeLane(
-      LiveAPI.from(livePath.track(trackIndex)),
+      tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex)),
       target,
       takeLaneName,
     );

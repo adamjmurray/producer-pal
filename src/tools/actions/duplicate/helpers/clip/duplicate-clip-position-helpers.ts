@@ -3,14 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneClip,
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
-  takeLaneKey,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
@@ -23,7 +21,10 @@ import {
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
-import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
+import {
+  destinationTracks,
+  duplicateOneCopy,
+} from "./duplicate-clip-copy-helpers.ts";
 import {
   copySpanBeats,
   planCopies,
@@ -31,10 +32,7 @@ import {
 } from "./duplicate-clip-order-helpers.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
 import { type UnreachedDestination } from "../duplicate-position-helpers.ts";
-import {
-  NO_ENVELOPES_NOTE,
-  recreateMidiClip,
-} from "./duplicate-clip-recreate-helpers.ts";
+import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,
@@ -164,6 +162,8 @@ async function duplicateClipToArrangementPositions(
     return [];
   }
 
+  const tracks = destinationTracks(targetTracks);
+
   // Lanes are permanent (Live has no delete), so resolve every one up front:
   // a capacity error partway through would strand the lanes already created.
   const lanes = resolveDuplicateTakeLanes(
@@ -171,6 +171,7 @@ async function duplicateClipToArrangementPositions(
     id,
     targetTracks,
     takeLaneName,
+    tracks,
   );
 
   // Labelled after the lanes exist, so a stop names the lane it created rather
@@ -207,10 +208,7 @@ async function duplicateClipToArrangementPositions(
       songTimeSigDenominator,
     ),
   );
-  const results: (object | null)[] = Array.from(
-    { length: targetTracks.length },
-    () => null,
-  );
+  const results: (object | null)[] = targetTracks.map(() => null);
   // A destination that was attempted and skipped is in neither the slice ahead
   // nor the landed tally, so without this it drops out of the report entirely.
   const skipped: UnreachedDestination[] = [];
@@ -237,6 +235,7 @@ async function duplicateClipToArrangementPositions(
     }
 
     const result = await duplicateOneCopy({
+      tracks,
       target: targetTracks[i] as ArrangementTrack,
       startBeats: targetPositions[i] as number,
       lanes,
@@ -372,93 +371,4 @@ function applyTakeLaneAlias(
   return targets.map((entry) =>
     entry == null ? null : { ...entry, takeLane: target },
   );
-}
-
-interface CopyOptions {
-  target: ArrangementTrack;
-  startBeats: number;
-  lanes: Map<string, ResolvedDuplicateLane>;
-  /** Whether a take-lane source may be re-created on the main lane (MIDI only). */
-  canPromote: boolean;
-  object: LiveAPI;
-  id: string;
-  name: string | undefined;
-  color: string | undefined;
-  arrangementLength: string | undefined;
-  songTimeSigNumerator: number;
-  songTimeSigDenominator: number;
-  context: Partial<ToolContext>;
-}
-
-/**
- * Makes one arrangement copy, on a take lane or the main lane.
- * @param options - Everything the copy needs
- * @returns The created clip info, or null when the copy was skipped
- */
-async function duplicateOneCopy(options: CopyOptions): Promise<object | null> {
-  const { target, startBeats, lanes, object, id } = options;
-
-  if (target.takeLane != null) {
-    const resolved = lanes.get(takeLaneKey(target));
-
-    // A rejected source (audio, for now) warned once during lane resolution.
-    if (resolved == null) return null;
-
-    return recreateCopy(options, resolved.lane, "take-lane");
-  }
-
-  // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
-  // silently no-ops on a take-lane source id (see take-lane-helpers.ts header),
-  // so re-create it here instead. An audio source warned once in the caller.
-  if (isTakeLaneClip(object)) {
-    if (!options.canPromote) return null;
-
-    return recreateCopy(
-      options,
-      LiveAPI.from(livePath.track(target.trackIndex)),
-      "promoted",
-    );
-  }
-
-  return await duplicateClipToArrangement(
-    id,
-    startBeats,
-    target.trackIndex,
-    options.name,
-    options.color,
-    options.arrangementLength,
-    options.songTimeSigNumerator,
-    options.songTimeSigDenominator,
-    options.context,
-  );
-}
-
-/**
- * Re-creates one copy, warning and skipping if Live refuses it so the rest of a
- * multi-position call still lands.
- * @param options - Everything the copy needs
- * @param destination - The TakeLane, or the Track for a promoted copy
- * @param kind - What to call this copy in the warning
- * @returns The created clip info, or null when Live refused it
- */
-function recreateCopy(
-  options: CopyOptions,
-  destination: LiveAPI,
-  kind: "take-lane" | "promoted",
-): object | null {
-  try {
-    return recreateMidiClip(
-      options.object,
-      destination,
-      options.startBeats,
-      options.name,
-      options.color,
-    );
-  } catch (error) {
-    console.warn(
-      `duplicate: failed to create ${kind} clip at beat ${options.startBeats}: ${errorMessage(error)}`,
-    );
-
-    return null;
-  }
 }

@@ -38,13 +38,14 @@ export function copyClipToSlot(
  * first is the only way to name the reason.
  * @param clipIsMidi - Whether the clip being copied is MIDI
  * @param trackIndex - Destination track index
+ * @param track - The destination track, when the caller already has it
  * @returns The reason, or null when the track takes the copy
  */
 export function clipCopyBlocker(
   clipIsMidi: boolean,
   trackIndex: number,
+  track: LiveAPI = LiveAPI.from(livePath.track(trackIndex)),
 ): string | null {
-  const track = LiveAPI.from(livePath.track(trackIndex));
   const trackIsMidi = (track.getProperty("has_midi_input") as number) > 0;
 
   if (clipIsMidi !== trackIsMidi) {

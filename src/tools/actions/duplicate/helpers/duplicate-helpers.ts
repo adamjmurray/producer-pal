@@ -219,6 +219,7 @@ export async function createClipsForLength(
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
+      sourceClip,
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than lengthen/label a
@@ -319,6 +320,8 @@ async function lengthenClipAndCollectInfo(
  * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
  * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
  * @param context - Context object with silenceWavPath
+ * @param sourceClip - The clip, when the caller already resolved it
+ * @param tracks - The destination tracks, keyed by index
  * @returns Clip info or object with trackIndex and clips array
  */
 export async function duplicateClipToArrangement(
@@ -331,9 +334,11 @@ export async function duplicateClipToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
+  sourceClip: LiveAPI | null = null,
+  tracks: Map<number, LiveAPI> = new Map(),
 ): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
   // Support "id {id}" (such as returned by childIds()) and id values directly
-  const clip = LiveAPI.from(clipId);
+  const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
@@ -347,7 +352,8 @@ export async function duplicateClipToArrangement(
     );
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  const track =
+    tracks.get(trackIndex) ?? LiveAPI.from(livePath.track(trackIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
@@ -386,6 +392,7 @@ export async function duplicateClipToArrangement(
       arrangementStartBeats,
       isMidiClip,
       context as TilingContext,
+      clip,
     );
 
     // Skip a silent Ableton dup failure (["id", 0]) rather than push a phantom
