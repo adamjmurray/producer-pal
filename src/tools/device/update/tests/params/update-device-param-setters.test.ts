@@ -268,13 +268,13 @@ describe("updateDevice - param value conversion", () => {
       param = registerBinarySearchParam("flaky-param", "Flaky", "---");
     });
 
-    it("should converge toward min when mid-range labels parse as NaN", () => {
+    it("should converge toward max when mid-range labels parse as NaN", () => {
       updateDevice({ id: "dev1", params: [{ name: "Flaky", value: "500" }] });
 
-      // "---" parses as NaN (leading hyphens match the number regex).
-      // NaN comparisons always false, so binary search treats it as
-      // greater-than-target and converges hi toward lo (near rawMin).
-      expect(expectValueSet(param)).toBeCloseTo(0.01, 1);
+      // "---" parses as NaN (leading hyphens match the number regex). NaN
+      // comparisons are always false, so the search never counts the target as
+      // reached and walks up into the top step (0.99..1).
+      expect(expectValueSet(param)).toBeCloseTo(0.995, 2);
     });
   });
 

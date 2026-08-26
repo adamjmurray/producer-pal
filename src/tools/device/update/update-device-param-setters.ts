@@ -12,7 +12,6 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
-  parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import {
@@ -20,9 +19,8 @@ import {
   warnParamDisabled,
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
-
-const BINARY_SEARCH_ITERATIONS = 40;
 
 /**
  * Set parameter values from an array of {name, value} entries. Specialized-device
@@ -383,87 +381,4 @@ function findDivisionRawValue(
   }
 
   return null;
-}
-
-/**
- * Find the raw value that corresponds to a target display value.
- * Uses direct mapping for linear params (display range ≈ raw range),
- * binary search for non-linear params (e.g., exponential envelope times).
- * @param param - LiveAPI parameter object
- * @param targetDisplay - Target value in display units
- * @param rawMin - Raw minimum value
- * @param rawMax - Raw maximum value
- * @param minLabel - Already-computed str_for_value(rawMin)
- * @returns Raw value to set, or null if labels aren't parseable
- */
-function findRawValueForDisplay(
-  param: LiveAPI,
-  targetDisplay: number,
-  rawMin: number,
-  rawMax: number,
-  minLabel: string,
-): number | null {
-  const minParsed = parseLabel(minLabel);
-
-  if (minParsed.value == null || typeof minParsed.value === "string") {
-    return null;
-  }
-
-  const maxLabel = param.call("str_for_value", rawMax) as string;
-  const maxParsed = parseLabel(maxLabel);
-
-  if (maxParsed.value == null || typeof maxParsed.value === "string") {
-    return null;
-  }
-
-  // Linear mapping: display values match raw values — set directly
-  const range = Math.abs(rawMax - rawMin);
-  const tolerance = range > 0 ? 0.01 * range : 0.01;
-
-  if (
-    Math.abs(minParsed.value - rawMin) < tolerance &&
-    Math.abs(maxParsed.value - rawMax) < tolerance
-  ) {
-    return targetDisplay;
-  }
-
-  // Non-linear mapping: binary search
-  return binarySearchRawValue(param, targetDisplay, rawMin, rawMax);
-}
-
-/**
- * Binary search the raw value range to find the value whose display matches the target.
- * @param param - LiveAPI parameter object
- * @param targetDisplay - Target display value
- * @param rawMin - Raw minimum
- * @param rawMax - Raw maximum
- * @returns Converged raw value
- */
-function binarySearchRawValue(
-  param: LiveAPI,
-  targetDisplay: number,
-  rawMin: number,
-  rawMax: number,
-): number {
-  let lo = rawMin;
-  let hi = rawMax;
-
-  for (let i = 0; i < BINARY_SEARCH_ITERATIONS; i++) {
-    const mid = (lo + hi) / 2;
-    const label = param.call("str_for_value", mid) as string;
-    const parsed = parseLabel(label);
-    const displayValue = parsed.value;
-
-    if (displayValue == null || typeof displayValue === "string") {
-      return mid;
-    }
-
-    if (displayValue < targetDisplay) {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-  }
-
-  return (lo + hi) / 2;
 }
