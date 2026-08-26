@@ -16,7 +16,7 @@
 // Currently in pre-release, working towards 1.0.0
 // NOTE: the VERSION value is updated in place by
 // scripts/build-and-release/bump-version.ts (regex on this exact line shape).
-export const VERSION = "2.2.1-rc1";
+export const VERSION = "2.3.0-rc1";
 
 // The short commit SHA this build came from, or "" when unknown (running from
 // source, tests). Substituted at build time by config/build-sha.mjs — read via
