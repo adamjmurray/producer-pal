@@ -80,7 +80,7 @@ uses. In practice:
   extends no lifetime and cannot go stale. `getChildCount` / `getChildAt` /
   `someChild` instead of `getChildren(...)`, or skipping a walk whose result is
   discarded, are always safe.
-- **Safe:** the six `STABLE_TARGETS` in `live-api-adapter/live-api-build.ts`.
+- **Safe:** the five `STABLE_TARGETS` in `live-api-adapter/live-api-build.ts`.
   Each names one object for the life of the Live Set.
 - **Needs review:** holding an object across a read-only stretch. Sound unless
   the user edits the Set mid-request, which no request can rule out.
