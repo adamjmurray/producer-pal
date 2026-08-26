@@ -31,7 +31,8 @@
  *     the clip that was already sitting there. Handing back the first object
  *     turns every copy into "no clip landed".
  *
- * Invalidating on mutation instead was considered and rejected: there is no
+ * Invalidating on mutation instead was considered and rejected, even though it
+ * catches about four times as many repeats as the list below. There is no
  * complete list of mutations to hook. Method calls could be caught, but writing
  * selected_track, selected_scene, detail_clip or highlighted_clip_slot moves
  * what a *path* names without a method call, and the user editing the Set while
@@ -42,15 +43,26 @@
  * There is exactly one Song, one Application and one master track, and no tool,
  * user, or concurrent request can repoint any of them.
  *
- * "One object for the life of the Set" is not enough on its own, and
- * this_device is the trap. There is exactly one Producer Pal device, but the
- * target resolves to an indexed path — live_set tracks 3 devices 0 — and
- * deleting an earlier track moves the device without moving the path. A
- * remembered object then reports the old trackIndex, and the guard that stops
- * delete from removing Producer Pal's own track is reading exactly that.
+ * "One object for the life of the Set" is not enough on its own. this_device
+ * resolves to an indexed path — live_set tracks 3 devices 0 — so it looked like
+ * the trap.
+ *
+ * It isn't the one we thought. Measured on 12.4.3: insert or delete a track
+ * ahead of the host and the held object rewrites its own path to the new index,
+ * still reading the same device. delete's host-track guard reads a correct
+ * trackIndex either way.
+ *
+ * That removes the stated reason for keeping this_device off the list, but not
+ * the measurement that would put it on — nobody has tested the this_device
+ * target itself, or the guard's exact scenario. Leave it off until someone
+ * does. See dev/LiveAPI-Object-Reuse.md.
  *
  * Repeats of anything else are fixed where they happen, by resolving once and
  * passing the object down.
+ *
+ * Memoizing read *values* rather than objects was rejected too: resolving the
+ * target is the expensive half and this already removes it, so a value memo
+ * would need its own invalidation for very little.
  */
 
 import {

@@ -1,4 +1,4 @@
-# Reusing LiveAPI Objects
+N# Reusing LiveAPI Objects
 
 Building a LiveAPI object is expensive (ADR-0023, and
 `dev/LiveAPI-Performance.md` for what it costs), so it is tempting to resolve
@@ -19,23 +19,43 @@ reason to skip the check below.
 
 ### What is measured
 
-One case, on Live 12.4.3: **an object whose target is deleted goes stale rather
-than noticing.** It keeps reporting its old id and path; a fresh lookup of the
-dead id lands nowhere and reads id `"0"`. `confirmDeleted` in
-`tools/actions/delete/delete.ts` depends on exactly that difference, and e2e
-covers it.
+All of the below on Live 12.4.3, with the probe in "Settling it". The short
+version: **a held object tracks its object, not its index — and when that object
+dies the handle half-notices.**
 
-So the held object does not track reality. That is the answer for a destroyed
-target.
+| What happened to the target                                  | The held object afterwards                                                                                          |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| **An earlier sibling was deleted**, shifting indices         | Follows the object. Its `path` is rewritten to the new index and every property still reads the same object.        |
+| **It was deleted**                                           | `path` clears to `""`, but `id` and `exists()` stay stale. Property reads return nothing.                           |
+| **It never existed** (empty slot, then a clip created there) | Never bound. `path` `""` and id `"0"` from the start, and it stays that way — it does not pick up the new occupant. |
+
+Two consequences worth keeping straight.
+
+**Index shift is safe.** Deleting `scenes 8` while holding `scenes 9` leaves the
+held object reading the same scene, with its path rewritten to `scenes 8`. It
+does not slide onto whatever now occupies the old index. Measured on both scenes
+and arrangement clips. This is the opposite of the obvious fear, and it is why
+`delete` sorting highest-index-first matters for the _arguments_ it passes, not
+for objects it holds.
+
+**A dead target disagrees with itself.** `path` tells the truth and `id` lies,
+so `exists()` — which is derived from the id — reports `true` for a clip that is
+gone. `confirmDeleted` in `tools/actions/delete/delete.ts` depends on a fresh
+lookup of the dead id reading `"0"`, which still holds. Do not substitute
+`exists()` on a held object for it.
+
+**An id-built object is not different.** Built from `id N`, an object resolves
+to a path immediately and then behaves exactly like a path-built one in every
+case above — including clearing its path on delete while keeping the stale id.
 
 ### What is not
 
-Whether a held object follows an **index shift** (delete `devices 2`, and does
-the object at `devices 3` now read the device that slid down?) and whether it
-sees a **path filled after the fact** (resolve an empty slot, create a clip in
-it, then read) are both open. Treat them as unknown.
+The cases above cover session clips, arrangement clips and scenes. Devices and
+rack chains were not measured, and neither was the user editing the Set from the
+UI mid-request. Nothing suggests they differ, but they are inference, not
+measurement.
 
-The unit-test mock cannot settle either: `createGetMock` in
+The unit-test mock settles none of it: `createGetMock` in
 `src/test/mocks/mock-registry.ts` closes over the property bag captured at
 registration, so a held mock object is stale _by construction_. A test simulates
 a mutation by re-registering, which builds a new `get` the held object never
@@ -44,9 +64,12 @@ sees. That makes the mock wrong in both directions — a test that re-registers 
 the mutation at all, so an **incorrect** refactor passes green. Which one you
 get is an accident of how each test was written.
 
-Do not read a green unit suite as evidence that a reuse refactor is correct.
-ADR-0028's rejection of path memoization ("breaks 8 files") is mock evidence
-too. Its decision is safe either way, but it is not proof of how Live behaves.
+Do not read a green unit suite as evidence that a reuse refactor is correct. The
+memo's own design — only the five stable targets, nothing indexed — was argued
+from the same mock ("memoizing any path breaks 8 test files"). That decision is
+safe either way, but the evidence for it was never proof of how Live behaves.
+The header comment of `live-api-adapter/live-api-build.ts` carries the
+reasoning.
 
 ## The rule
 
@@ -61,9 +84,15 @@ uses. In practice:
   Each names one object for the life of the Live Set.
 - **Needs review:** holding an object across a read-only stretch. Sound unless
   the user edits the Set mid-request, which no request can rule out.
-- **Unsafe until measured:** holding an object across a mutation — a `.call()`
-  that writes, a `.set()` / `setProperty`, or any tool operation on another
-  target in the same batch. This is the whole defect class.
+- **Safe:** holding an object across a mutation that only shifts indices —
+  inserting or deleting a sibling. The object follows its target and rewrites
+  its own path. Measured; see above.
+- **Unsafe:** holding an object across a mutation that can **destroy or fill**
+  its target, then trusting `id` or `exists()`. Both go stale. Re-look-up the
+  target instead, and compare — which is what the tools that get this right
+  already do.
+- **Unsafe:** resolving a path that is empty and expecting the object to notice
+  when something lands there. It never binds. Build it after the write.
 
 Nothing may outlive the request either way; see `live-api-release.ts`.
 
@@ -93,12 +122,47 @@ the same path again to check what happened is the exact shape that breaks.
 ## Settling it
 
 What is left open needs a probe that holds one object while mutating through
-another inside a single V8 request. Nothing available can do that today:
-`ppal-live-api` drives one instance, objects are released at request end so
-nothing survives across MCP calls, and code execution is scoped to clip notes.
+another inside a single V8 request. `ppal-live-api` can do that in a build made
+with `ENABLE_OBJECT_PROBE=true`: each operation takes an optional `path` that
+runs it against its own object, leaving the object built from the call's
+top-level `path` where it is.
 
-Until that probe exists, e2e (`e2e/mcp/`) is the only apparatus that runs
-against real Live and can catch this at all — and it can settle a specific site
-without settling the general question. A test that deletes three clips in one
-call and checks the right three died answers that site for good, whatever the
-underlying mechanism turns out to be.
+```bash
+ENABLE_OBJECT_PROBE=true npm run build:debug
+```
+
+```jsonc
+{
+  "path": "live_set tracks 0 clip_slots 0 clip", // held throughout
+  "operations": [
+    { "type": "exists" }, // read it
+    {
+      "path": "live_set tracks 0 clip_slots 0",
+      "type": "call",
+      "method": "create_clip",
+      "args": [4],
+    }, // mutate elsewhere
+    { "type": "exists" }, // read it again
+    { "type": "get_property", "property": "id" },
+  ],
+}
+```
+
+`goto` cannot substitute: it moves the only object there is, so the original
+target becomes unreachable. Naming the path again builds a _fresh_ object, which
+is the control to compare against, not the held handle under test.
+
+Two things to keep in mind while measuring. A path-less operation always means
+the default object, wherever it sits in the list. And each operation carrying a
+path gets its own object — two operations naming the same path are two objects,
+which is what makes the fresh-lookup control available.
+
+The field is absent from every other build, so nothing here changes what users
+see. Unit tests cannot stand in for the probe: the mock's `LiveAPI.from` builds
+a fresh instance with no memo and no pool, which is the blindness described
+above.
+
+e2e (`e2e/mcp/`) remains the way to settle a _specific site_ without settling
+the general question. A test that deletes three clips in one call and checks the
+right three died answers that site for good, whatever the underlying mechanism
+turns out to be.

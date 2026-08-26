@@ -31,8 +31,8 @@ answer belongs here.
 - **Don't renumber or delete an ADR on your own.** Cleanup happens with the user
   in the loop and only with their OK — usually because they asked for it. If you
   notice real bloat, redundancy, or records that contradict each other, say so
-  and ask whether to clean up. (ADR-0001 and ADR-0002 were removed this way;
-  their numbers stay retired.)
+  and ask whether to clean up. (ADR-0001, ADR-0002 and ADR-0028 were removed
+  this way; their numbers stay retired.)
 - Markdown docs are exempt from SPDX headers, same as the rest of `dev/`.
 
 ## Template
@@ -93,4 +93,3 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0025](0025-object-path-grammar.md)                      | One object-path grammar, scoped to clips and devices                  |
 | [0026](0026-small-model-read-output-trims-by-include.md) | Small-model read output trims by `include`, not by a second shape     |
 | [0027](0027-setproperty-stays-out-of-ppal-live-api.md)   | `setProperty` stays out of ppal-live-api                              |
-| [0028](0028-only-stable-targets-are-memoized.md)         | Only stable targets are memoized within a request                     |
