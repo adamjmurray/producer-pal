@@ -52,7 +52,7 @@ extension model, as it stands today, runs out of room.
 
 There's no command in the SDK to start or stop playback, or to launch a clip or
 a scene. Producer Pal isn't only an editor. A lot of what makes it useful is
-_"play that back,"_ _"launch the chorus,"_ _"loop bars 5–8."_ All of that needs
+_"play that back,"_ _"launch the chorus,"_ _"loop bars 5-8."_ All of that needs
 transport control the SDK doesn't currently offer.
 
 ### It can only see part of the Live Set

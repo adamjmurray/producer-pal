@@ -55,7 +55,7 @@ Colors are a clean translation: one integer in, one hex string out. Device
 parameters look like the same problem and turn out not to be.
 
 Ask the Live API for a Saturator's **Drive** and you get `0.5`. Not decibels: a
-raw number between 0 and 1, mapped onto the displayed range of −36 to +36 dB by
+raw number between 0 and 1, mapped onto the displayed range of -36 to +36 dB by
 a curve Live never describes anywhere. There's no `set_display_value` to write
 the number you actually want. Live _will_ render a raw value for you
 (`str_for_value`), but that's read-only: it answers _"what would `0.53` look
@@ -70,13 +70,13 @@ That gets you close. Landing exactly takes three more details, each of which was
 a real bug first:
 
 **Aim at the middle of a step, not its edge.** A displayed value isn't a point
-in raw space, it's a window. On that Saturator, `2.3 dB` covers raw
-`0.5312505`–`0.5326385`, about one part in seven hundred of the knob's travel.
-The search converges on the _edge_ of that window, and Live then snaps whatever
-you write to its own resolution (32-bit float at best). Either nudge is enough
-to tip you into the neighboring window, and the knob reads back `2.2`. So a
-second search finds the window's far edge, and Producer Pal writes the midpoint:
-`0.5319450`, as far from either edge as it can get.
+in raw space, it's a window. On that Saturator, `2.3 dB` covers raw `0.5312505`
+to `0.5326385`, about one part in seven hundred of the knob's travel. The search
+converges on the _edge_ of that window, and Live then snaps whatever you write
+to its own resolution (32-bit float at best). Either nudge is enough to tip you
+into the neighboring window, and the knob reads back `2.2`. So a second search
+finds the window's far edge, and Producer Pal writes the midpoint: `0.5319450`,
+as far from either edge as it can get.
 
 **Round to the nearest reachable step.** Live's display resolution isn't
 uniform. That same Drive knob moves in 0.1 dB steps up to 10 dB and 1 dB steps
@@ -156,7 +156,7 @@ edge trimming via an overlapping clip, applied carefully
 For a clip split at beats 4 and 8:
 
 ```
-Original:   |=================|   beats 0–16
+Original:   |=================|   beats 0-16
             0    4    8      16
 
 Result:     |===|             segment 0  (right-trimmed in place)

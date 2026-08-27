@@ -374,17 +374,17 @@ controls differ because each provider exposes its own voice-activity-detection
 (VAD) knobs. **Speed** is OpenAI only (the Gemini Live API has no playback-speed
 setting).
 
-- **Volume** - Output loudness of the assistant's voice (0–125%, default 100%).
+- **Volume** - Output loudness of the assistant's voice (0-125%, default 100%).
   It boosts above 100% so you can lift the assistant over loud playback.
   Adjustable live during a session, so you can balance the assistant against the
   music coming from Ableton without touching Live's mixer.
 - **Speed** _(OpenAI only)_ - Playback speed of the assistant's voice
-  (0.5×–1.5×, default 1.0×).
+  (0.5×-1.5×, default 1.0×).
 - **Turn detection** - How the model decides you've finished speaking, via voice
   activity detection, or "VAD". The controls differ by provider:
   - **OpenAI** picks a VAD mode:
     - **Server VAD (volume-based)** - Detects the end of your turn from audio
-      volume. Adds **Threshold** (activation volume, 0–1; higher ignores quieter
+      volume. Adds **Threshold** (activation volume, 0-1; higher ignores quieter
       input) and **Pause** (how long to wait after you stop speaking).
     - **Semantic VAD (model-based)** - The model decides when you've finished a
       thought. Adds **Eagerness** (Auto, Low, Medium, or High).

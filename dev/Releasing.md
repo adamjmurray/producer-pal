@@ -334,8 +334,8 @@ After testing succeeds:
 2. Review and merge the PR in the GitHub UI
    - A squash merge prefills the body with every commit message on `dev`. One
      grandfathered commit still carries an `AJM-NNN` reference (allowlisted in
-     `src/test/meta/no-linear-refs.test.ts`) — delete that line before merging
-     so the private ticket number stays out of `main`.
+     `src/test/meta/content-guards/no-linear-refs.test.ts`) — delete that line
+     before merging so the private ticket number stays out of `main`.
 
 3. Build, tag, and release the GA version. It's a rebuild, not a re-labelling —
    the artifacts have to carry `X.Y.Z`, not `X.Y.Z-rc4`:
