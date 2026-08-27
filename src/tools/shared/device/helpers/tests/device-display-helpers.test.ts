@@ -11,10 +11,10 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
-  parseLabel,
   readParameter,
   readParameterBasic,
 } from "../device-display-helpers.ts";
+import { parseLabel } from "../device-label-helpers.ts";
 
 describe("device-display-helpers", () => {
   const mockGet = vi.fn();

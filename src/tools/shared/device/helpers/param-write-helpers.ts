@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { strForValue } from "./device-display-helpers.ts";
+import { strForValue } from "./device-label-helpers.ts";
 
 /**
  * Whether a parameter accepts writes. Live disables a parameter when something

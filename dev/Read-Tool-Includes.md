@@ -506,6 +506,11 @@ Adds parameter names, macro variation info, and A/B Compare state.
 Superset of `params` — includes full parameter details (value, min, max, state,
 display value, value items for quantized params).
 
+`min`/`max` are the range the parameter can actually display. When one end of
+that range is a word rather than a number — Glue Compressor's `Release` reads
+`"A"` for Auto, Compressor's `Ratio` reads `"inf : 1"` — the word is trimmed off
+the range and reported as `alsoAccepts`, which update-device takes as a value.
+
 ### Include: `"sample"`
 
 A focused discovery view: adds just the Simpler sample file path as a flat

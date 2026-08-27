@@ -13,8 +13,8 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
-  parseLabel,
 } from "../device-display-helpers.ts";
+import { parseLabel } from "../device-label-helpers.ts";
 
 // One well-formed label per LABEL_PATTERNS entry.
 const UNIT_LABELS = [

@@ -229,10 +229,10 @@ describe("updateDevice - display-value search on a linear param", () => {
   });
 });
 
-// Some params can't be converted at all: Glue Compressor's Release tops out at
-// the label "A" (Auto), so there's no display range to search and the request
-// goes to Live as a raw value. Live drops one outside the raw range without a
-// word, which is what the readback check is for.
+// Some params have no number line at all: Hybrid Reverb's Vintage runs
+// "Off".."Extreme". There is nothing to convert, so the request goes to Live as
+// a raw value — and Live drops one outside the raw range without a word, which
+// is what the readback check is for.
 describe("updateDevice - a request Live silently drops", () => {
   let param: RegisteredMockObject;
 
@@ -240,25 +240,27 @@ describe("updateDevice - a request Live silently drops", () => {
     registerMockObject("dev1", {
       path: livePath.track(0).device(0),
       type: "Device",
-      properties: { parameters: children("auto-param") },
+      properties: { parameters: children("word-param") },
     });
 
-    param = registerMockObject("auto-param", {
+    param = registerMockObject("word-param", {
       properties: {
-        name: "Release",
-        original_name: "Release",
+        name: "Vintage",
+        original_name: "Vintage",
         is_quantized: 0,
-        value: 3,
+        value: 1,
         min: 0,
-        max: 6,
+        max: 4,
       },
       methods: {
         str_for_value: (v: unknown) => {
           const raw = Number(v);
 
-          if (raw < 0 || raw > 6) return "";
+          if (raw < 0 || raw > 4) return "";
 
-          return raw >= 6 ? "A" : `${raw.toFixed(1)} s`;
+          return ["Off", "Subtle", "Old", "Older", "Extreme"][
+            Math.round(raw)
+          ] as string;
         },
       },
     });
@@ -266,26 +268,101 @@ describe("updateDevice - a request Live silently drops", () => {
     param.set.mockImplementation((property: string, value: unknown) => {
       const raw = Number(value);
 
-      if (property === "value" && raw >= 0 && raw <= 6) {
+      if (property === "value" && raw >= 0 && raw <= 4) {
         param.properties.value = Math.fround(raw);
       }
     });
   });
 
   it("warns when the value never changed", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Release", value: "10" }] });
+    updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "10" }] });
 
-    expect(param.properties.value).toBe(3);
+    expect(param.properties.value).toBe(1);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'updateDevice: param "Release" was not changed — it still reads "3.0 s". Live ignores a value outside the parameter\'s range.',
+      'updateDevice: param "Vintage" was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
     );
   });
 
   it("says nothing when the value does change", () => {
-    updateDevice({ id: "dev1", params: [{ name: "Release", value: "2" }] });
+    updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "2" }] });
 
     expect(param.properties.value).toBe(2);
     expect(outlet).not.toHaveBeenCalled();
+  });
+});
+
+// Glue Compressor's Release: raw 0..6 over seven display steps, the top of
+// which is the word "A" (Auto). Trimming that end off is what makes the numbers
+// below it reachable — before, the whole param fell back to raw units and
+// asking for 0.4 gave 0.1.
+function registerSentinelParam(): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children("sentinel-param") },
+  });
+
+  return registerMockObject("sentinel-param", {
+    properties: {
+      name: "Release",
+      original_name: "Release",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 6,
+    },
+    methods: {
+      str_for_value: (v: unknown) => {
+        const raw = Number(v);
+
+        if (raw >= 6) return "A";
+
+        return String(RELEASE_STEPS[Math.floor(raw)]);
+      },
+    },
+  });
+}
+
+const RELEASE_STEPS = [0.1, 0.2, 0.4, 0.6, 0.8, 1.2];
+
+describe("updateDevice - a word at the max end of the range", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerSentinelParam();
+  });
+
+  function displayAfterWrite(target: string): number | string {
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: target }] });
+
+    const raw = expectValueSet(param);
+
+    return raw >= 6 ? "A" : (RELEASE_STEPS[Math.floor(raw)] as number);
+  }
+
+  it("hits every step below the word", () => {
+    for (const step of RELEASE_STEPS) {
+      expect(displayAfterWrite(String(step))).toBe(step);
+    }
+  });
+
+  it("reaches the word by naming it", () => {
+    expect(displayAfterWrite("A")).toBe("A");
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
+  it("matches the word case-insensitively", () => {
+    expect(displayAfterWrite("a")).toBe("A");
+  });
+
+  it("names the word when a target overshoots the numbers", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: "3" }] });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateDevice: param "Release" only goes from 0.1 to 1.2 (or "A"), so 3 was set to the closest end.',
+    );
   });
 });

@@ -12,9 +12,13 @@ import {
   isDivisionLabel,
   isPanLabel,
   normalizePan,
-  strForValue,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { strForValue } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import {
+  readNumericRange,
+  sentinelRawValue,
+} from "#src/tools/shared/device/helpers/param-numeric-range.ts";
 import {
   isParamEnabled,
   setParamValueAndVerify,
@@ -271,44 +275,7 @@ function setParamValue(
   const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
-    const min = param.getProperty("min") as number;
-    const max = param.getProperty("max") as number;
-
-    // Input is the -1..1 number read-device reports, OR a directional display
-    // label ("50L"/"50R") the LLM may echo from Live's UI. Parse the label back
-    // to -1..1 via the param's own display max; reject other strings instead of
-    // writing NaN. ("C" already arrives as the number 0.)
-    //
-    // TypeScript narrows inputValue to `number` after the note branch above —
-    // isValidNoteName's `x is string` predicate makes its negative case `number`
-    // — but that's unsound: a non-note string like "50L" reaches here at runtime.
-    // Re-widen to the real union so the label form is handled, not dead-typed.
-    const panInput = inputValue as string | number;
-    let numValue: number;
-
-    if (typeof panInput === "string") {
-      if (!isPanLabel(panInput)) {
-        console.warn(
-          `${toolName}: "${panInput}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
-        );
-
-        return;
-      }
-
-      const maxLabel = strForValue(param, max);
-      const minLabel = strForValue(param, min);
-      const maxPanValue =
-        extractMaxPanValue(maxLabel) || extractMaxPanValue(minLabel) || 50;
-
-      numValue = normalizePan(panInput, maxPanValue);
-    } else {
-      numValue = panInput;
-    }
-
-    // Convert -1 to 1 → internal range
-    const internalValue = ((numValue + 1) / 2) * (max - min) + min;
-
-    setParamValueAndVerify(param, internalValue, label);
+    setPanParamValue(param, inputValue, label, toolName);
 
     return;
   }
@@ -331,29 +298,96 @@ function setParamValue(
     return;
   }
 
-  // 5. Numeric - convert display value to raw value
-  if (typeof inputValue === "number") {
-    const rawMax = param.getProperty("max") as number;
-    const rawValue = findRawValueForDisplay(
-      param,
-      inputValue,
-      rawMin,
-      rawMax,
-      minLabel,
-      label,
-    );
+  // 5. Numeric - convert display value to raw value. A param with no numeric
+  // range at all (a note-name or word-list display) has nothing to convert, so
+  // the input goes to Live as a raw value the way it always has.
+  const rawMax = param.getProperty("max") as number;
+  const range = readNumericRange(
+    param,
+    rawMin,
+    rawMax,
+    minLabel,
+    strForValue(param, rawMax),
+  );
 
-    setParamValueAndVerify(param, rawValue ?? inputValue, label);
+  if (typeof inputValue === "number") {
+    const rawValue =
+      range == null
+        ? inputValue
+        : findRawValueForDisplay(param, inputValue, range, label);
+
+    setParamValueAndVerify(param, rawValue, label);
 
     return;
   }
 
-  // 6. Uninterpretable string — Live silently rejects string writes to numeric
+  // 6. The word at one end of a numeric range — Glue Compressor's Release
+  // reads "A" (Auto) at its top. The search trims that end off, so naming the
+  // label is the only way left to reach it.
+  const sentinelRaw = range && sentinelRawValue(range, inputValue);
+
+  if (sentinelRaw != null) {
+    setParamValueAndVerify(param, sentinelRaw, label);
+
+    return;
+  }
+
+  // 7. Uninterpretable string — Live silently rejects string writes to numeric
   // params, so warn rather than pretending the update succeeded.
   const inputStr = String(inputValue);
 
   console.warn(
     `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
+  );
+}
+
+/**
+ * Write a pan parameter, converting the -1..1 scale read-device reports (or a
+ * directional label like "50L") into the parameter's own raw range.
+ * @param param - Parameter to set
+ * @param inputValue - Value to set
+ * @param label - How to name the parameter in a warning
+ * @param toolName - Calling tool name for warning prefix
+ */
+function setPanParamValue(
+  param: LiveAPI,
+  inputValue: string | number,
+  label: string,
+  toolName: string,
+): void {
+  const min = param.getProperty("min") as number;
+  const max = param.getProperty("max") as number;
+
+  // Input is the -1..1 number read-device reports, OR a directional display
+  // label ("50L"/"50R") the LLM may echo from Live's UI. Parse the label back
+  // to -1..1 via the param's own display max; reject other strings instead of
+  // writing NaN. ("C" already arrives as the number 0.)
+  let numValue: number;
+
+  if (typeof inputValue === "string") {
+    if (!isPanLabel(inputValue)) {
+      console.warn(
+        `${toolName}: "${inputValue}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
+      );
+
+      return;
+    }
+
+    const maxPanValue =
+      extractMaxPanValue(strForValue(param, max)) ||
+      extractMaxPanValue(strForValue(param, min)) ||
+      50;
+
+    numValue = normalizePan(inputValue, maxPanValue);
+  } else {
+    numValue = inputValue;
+  }
+
+  // Convert -1 to 1 → internal range
+  setParamValueAndVerify(
+    param,
+    ((numValue + 1) / 2) * (max - min) + min,
+    label,
   );
 }
 

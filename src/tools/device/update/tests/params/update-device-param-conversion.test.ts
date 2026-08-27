@@ -63,7 +63,16 @@ describe("updateDevice - param conversion discriminators", () => {
     });
   });
 
-  describe("min-label-unparseable numeric fallback", () => {
+  /**
+   * The mirror param's display value at a raw value.
+   * @param raw - Raw value written
+   * @returns Display value in Hz
+   */
+  function displayFor(raw: number): number {
+    return 1000 * raw;
+  }
+
+  describe("a word at the min end of the range", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
@@ -72,9 +81,9 @@ describe("updateDevice - param conversion discriminators", () => {
         type: "Device",
         properties: { parameters: children("mirror-param") },
       });
-      // Mirror of the existing max-unparseable case: here the MIN label can't be
-      // parsed while the max label can. The min-side null guard must short out to
-      // the raw input, not proceed into a (bogus) linear/binary conversion.
+      // Mirror of the max-end case (Glue Compressor's Release reads "A"): here
+      // the MIN label is the word. The numbers above it are still a range, so
+      // the search must use them rather than writing the input as a raw value.
       param = registerMockObject("mirror-param", {
         properties: {
           name: "Mirror",
@@ -91,12 +100,21 @@ describe("updateDevice - param conversion discriminators", () => {
       });
     });
 
-    it("falls back to the raw value when the min label is unparseable", () => {
+    it("converts against the numbers above the word", () => {
       updateDevice({ id: "dev1", params: [{ name: "Mirror", value: "0.7" }] });
 
-      // Unparseable min label => no linear range => write the raw input as-is.
-      // Skipping the guard would binary-search a garbage value near the min.
-      expect(param.set).toHaveBeenCalledWith("value", 0.7);
+      // 0.7 Hz, not raw 0.7 (which would be 700 Hz).
+      expect(displayFor(expectValueSet(param))).toBeCloseTo(0.7, 6);
+    });
+
+    it("reaches the word by naming it", () => {
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Mirror", value: "custom" }],
+      });
+
+      expect(param.set).toHaveBeenCalledWith("value", 0);
+      expect(outlet).not.toHaveBeenCalled();
     });
   });
 

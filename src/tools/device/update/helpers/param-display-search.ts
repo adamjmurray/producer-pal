@@ -5,9 +5,9 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  parseLabel,
-  strForValue,
-} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+  type ParamNumericRange,
+  displayAt,
+} from "#src/tools/shared/device/helpers/param-numeric-range.ts";
 
 // Enough to pin a boundary to ~1e-9 of the raw range, far finer than the
 // resolution Live actually stores. Each search costs one str_for_value call per
@@ -20,31 +20,17 @@ const BINARY_SEARCH_ITERATIONS = 30;
  * binary search for non-linear params (e.g., exponential envelope times).
  * @param param - LiveAPI parameter object
  * @param targetDisplay - Target value in display units
- * @param rawMin - Raw minimum value
- * @param rawMax - Raw maximum value
- * @param minLabel - Already-computed str_for_value(rawMin)
+ * @param range - The parameter's numeric display range
  * @param label - How to name the parameter in a warning
- * @returns Raw value to set, or null if labels aren't parseable
+ * @returns Raw value to set
  */
 export function findRawValueForDisplay(
   param: LiveAPI,
   targetDisplay: number,
-  rawMin: number,
-  rawMax: number,
-  minLabel: string,
+  range: ParamNumericRange,
   label: string,
-): number | null {
-  const minValue = parseLabel(minLabel).value;
-
-  if (minValue == null || typeof minValue === "string") {
-    return null;
-  }
-
-  const maxValue = displayAt(param, rawMax);
-
-  if (maxValue == null) {
-    return null;
-  }
+): number {
+  const { rawMin, rawMax, minValue, maxValue } = range;
 
   // Live drops a value outside the parameter's range instead of clamping it,
   // so both paths below keep to the range. Landing 14 dB from what was asked
@@ -53,14 +39,12 @@ export function findRawValueForDisplay(
     targetDisplay < Math.min(minValue, maxValue) ||
     targetDisplay > Math.max(minValue, maxValue)
   ) {
-    console.warn(
-      `${label} only goes from ${minLabel} to ${strForValue(param, rawMax)}, so ${targetDisplay} was set to the closest end.`,
-    );
+    warnOutOfRange(range, targetDisplay, label);
   }
 
   // Linear mapping: display values match raw values — set directly
-  const range = Math.abs(rawMax - rawMin);
-  const tolerance = range > 0 ? 0.01 * range : 0.01;
+  const span = Math.abs(rawMax - rawMin);
+  const tolerance = span > 0 ? 0.01 * span : 0.01;
 
   if (
     Math.abs(minValue - rawMin) < tolerance &&
@@ -70,6 +54,25 @@ export function findRawValueForDisplay(
   }
 
   return searchRawValueForDisplay(param, targetDisplay, rawMin, rawMax);
+}
+
+/**
+ * Warn that a target fell outside the range, in the parameter's own units.
+ * @param range - The parameter's numeric display range
+ * @param targetDisplay - Target value in display units
+ * @param label - How to name the parameter in the warning
+ */
+function warnOutOfRange(
+  range: ParamNumericRange,
+  targetDisplay: number,
+  label: string,
+): void {
+  const { minLabel, maxLabel, sentinel } = range;
+  const also = sentinel == null ? "" : ` (or "${sentinel.label}")`;
+
+  console.warn(
+    `${label} only goes from ${minLabel} to ${maxLabel}${also}, so ${targetDisplay} was set to the closest end.`,
+  );
 }
 
 /**
@@ -184,16 +187,4 @@ function searchBoundary(
   }
 
   return { lo, hi };
-}
-
-/**
- * Read a param's display value at a raw value.
- * @param param - LiveAPI parameter object
- * @param raw - Raw value to query
- * @returns Display value, or null if the label isn't a parseable number
- */
-function displayAt(param: LiveAPI, raw: number): number | null {
-  const value = parseLabel(strForValue(param, raw)).value;
-
-  return value == null || typeof value === "string" ? null : value;
 }

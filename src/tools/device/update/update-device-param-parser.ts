@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { parseLabel } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
 
 /**
  * Normalize a raw param value (always a string after schema coercion) into the
