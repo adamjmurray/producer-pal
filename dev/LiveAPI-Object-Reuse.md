@@ -1,4 +1,4 @@
-N# Reusing LiveAPI Objects
+# Reusing LiveAPI Objects
 
 Building a LiveAPI object is expensive (ADR-0023, and
 `dev/LiveAPI-Performance.md` for what it costs), so it is tempting to resolve
@@ -55,21 +55,36 @@ rack chains were not measured, and neither was the user editing the Set from the
 UI mid-request. Nothing suggests they differ, but they are inference, not
 measurement.
 
-The unit-test mock settles none of it: `createGetMock` in
-`src/test/mocks/mock-registry.ts` closes over the property bag captured at
-registration, so a held mock object is stale _by construction_. A test simulates
-a mutation by re-registering, which builds a new `get` the held object never
-sees. That makes the mock wrong in both directions — a test that re-registers is
-**stricter** than Live may be, and a test that doesn't re-register can't model
-the mutation at all, so an **incorrect** refactor passes green. Which one you
-get is an accident of how each test was written.
+### What the mock models
 
-Do not read a green unit suite as evidence that a reuse refactor is correct. The
-memo's own design — only the five stable targets, nothing indexed — was argued
-from the same mock ("memoizing any path breaks 8 test files"). That decision is
-safe either way, but the evidence for it was never proof of how Live behaves.
-The header comment of `live-api-adapter/live-api-build.ts` carries the
-reasoning.
+`src/test/mocks/mock-registry.ts` models two of the three rows. A held mock
+object binds to the registration rather than to a snapshot of it, so
+re-registering the same id changes what the holder reads; a deleted target
+clears its holders' paths while their ids go on lying; and an object built at an
+unregistered path never picks up a registration made later.
+`describe("mock staleness")` in `mock-registry.test.ts` pins them.
+
+**Index shift is deliberately not modeled.** A `delete_*` removes its target and
+leaves every later sibling's path where it was. Modeling the renumbering was
+tried and taken back out: nothing in the suite needed it, and nothing plausibly
+would. Shifting can only reach a test that calls `simulateMockDeletes()`, which
+is ppal-delete's tests alone — and `delete` sorts highest-index-first precisely
+so it never holds an object across a shift. If a tool ever does hold one, model
+it then, with that tool's tests as the consumer.
+
+Three more gaps, so a green suite is still not proof:
+
+- Deletes only take effect in a test that calls `simulateMockDeletes()`. Without
+  it a `delete_*` is inert.
+- `LiveAPI.from` builds a fresh instance every time — no memo, no pool. Two
+  handles onto one target are always two objects.
+- The user editing the Set mid-request still isn't modeled at all.
+
+The memo's own design — only the five stable targets, nothing indexed — was
+argued from the mock as it was before this ("memoizing any path breaks 8 test
+files"). That decision is safe either way, but the evidence for it was never
+proof of how Live behaves. The header comment of
+`live-api-adapter/live-api-build.ts` carries the reasoning.
 
 ## The rule
 
@@ -159,8 +174,8 @@ which is what makes the fresh-lookup control available.
 
 The field is absent from every other build, so nothing here changes what users
 see. Unit tests cannot stand in for the probe: the mock's `LiveAPI.from` builds
-a fresh instance with no memo and no pool, which is the blindness described
-above.
+a fresh instance with no memo and no pool, so it cannot show whether two handles
+onto one target really come apart.
 
 e2e (`e2e/mcp/`) remains the way to settle a _specific site_ without settling
 the general question. A test that deletes three clips in one call and checks the

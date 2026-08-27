@@ -54,6 +54,8 @@ export class LiveAPI {
   _registered?: RegisteredMockObject;
   /** Keys copied off the registration, so a retarget can take them back off. */
   _copiedKeys: string[] = [];
+  /** Handed to the registration, which calls it when it is re-described. */
+  _refresh = (): void => this._syncCopiedProperties();
   get!: Mock;
   set!: Mock;
   call!: Mock;
@@ -77,40 +79,17 @@ export class LiveAPI {
    * @param path - Path or "id N" string to point at
    */
   _retarget(path?: string): void {
-    // Properties copied for the previous target would shadow the new one's, and
-    // outlive a registration that doesn't define them at all.
-    for (const key of this._copiedKeys) {
-      delete (this as unknown as Record<string, unknown>)[key];
-    }
-
-    this._copiedKeys = [];
+    this._registered?.refreshers.delete(this._refresh);
     this._path = path;
     this._id = deriveId(path);
-
     this._registered = lookupMockObject(this._id, this._path);
+    this._registered?.refreshers.add(this._refresh);
+    this._syncCopiedProperties();
 
     if (this._registered) {
       this.get = this._registered.get;
       this.set = this._registered.set;
       this.call = this._registered.call;
-
-      // Copy registered properties onto the instance so they can be accessed directly
-      // (e.g., .category, .trackIndex instead of .get("category")[0])
-      // Use defineProperty to override extension getters
-      for (const [key, value] of Object.entries(this._registered.properties)) {
-        // Preserve core LiveAPI getters/setters.
-        if (key === "id" || key === "path" || key === "type") {
-          continue;
-        }
-
-        Object.defineProperty(this, key, {
-          value,
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        });
-        this._copiedKeys.push(key);
-      }
     } else {
       // Use getters (this.type/this.path) so defaults stay correct after goto
       this.get = vi.fn().mockImplementation((prop: string) => {
@@ -126,6 +105,43 @@ export class LiveAPI {
         .mockImplementation((method: string, ...args: unknown[]) =>
           defaultMockCall(method, args, this.path),
         ) as Mock;
+    }
+  }
+
+  /**
+   * Re-copy the registration's properties onto this instance.
+   *
+   * Registered properties are readable directly (`.category`, `.trackIndex`),
+   * so they have to be re-taken whenever the registration changes underneath —
+   * a held object in Live reads through to its target, it doesn't answer from
+   * the state it was built against. A deleted target copies nothing: its
+   * property reads dry up.
+   */
+  _syncCopiedProperties(): void {
+    // Copies made for a previous target would shadow the new one's, and outlive
+    // a registration that doesn't define them at all.
+    for (const key of this._copiedKeys) {
+      delete (this as unknown as Record<string, unknown>)[key];
+    }
+
+    this._copiedKeys = [];
+
+    if (this._registered == null || this._registered.deleted) return;
+
+    for (const [key, value] of Object.entries(this._registered.properties)) {
+      // Preserve core LiveAPI getters/setters.
+      if (key === "id" || key === "path" || key === "type") {
+        continue;
+      }
+
+      // defineProperty, to override the extension getters.
+      Object.defineProperty(this, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      this._copiedKeys.push(key);
     }
   }
 
@@ -152,10 +168,11 @@ export class LiveAPI {
   }
 
   get id(): string {
-    // Checked before the registration: an object built before a simulated
-    // delete still holds it, and in Live that object goes nonexistent too.
-    if (isMockObjectDeleted(this._id)) return "0";
+    // A held object keeps its id after its target dies — measured on 12.4.3, so
+    // exists() lies too. Only a fresh look-up reads "0", which is what
+    // confirmDeleted in tools/actions/delete/delete.ts relies on.
     if (this._registered) return this._registered.id;
+    if (isMockObjectDeleted(this._id)) return "0";
     if (isNonExistentByDefault()) return "0";
 
     return this._id ?? "";
@@ -174,6 +191,10 @@ export class LiveAPI {
 
   get path(): string {
     if (this._registered) {
+      // A dead target clears its path while keeping its id. The path is the
+      // half that tells the truth.
+      if (this._registered.deleted) return "";
+
       return this._registered.returnPath ?? this._registered.path;
     }
 

@@ -11,6 +11,7 @@ import {
   lookupMockObject,
   MOCK_LIVE_VERSION,
   registerMockObject,
+  simulateMockDeletes,
 } from "./mock-registry.ts";
 
 describe("mock-registry", () => {
@@ -324,6 +325,97 @@ describe("mock-registry", () => {
     it("should be cleared between tests by beforeEach", () => {
       // Verify registry is empty at test start (cleared by test-setup.ts)
       expect(lookupMockObject("123")).toBeUndefined();
+    });
+  });
+});
+
+// The mock's staleness model, measured against Live 12.4.3 and written up in
+// `dev/LiveAPI-Object-Reuse.md`. A held object reads through to its target
+// rather than answering from a snapshot, and when that target dies the handle
+// only half-notices. Get this wrong and the unit suite stops being evidence
+// about object reuse either way: too strict fails a correct refactor, too loose
+// passes an incorrect one.
+describe("mock staleness", () => {
+  describe("a deleted target", () => {
+    it("clears a held object's path but leaves its id lying", () => {
+      simulateMockDeletes();
+      registerMockObject("t0", {
+        path: livePath.track(0),
+        properties: { name: "Doomed" },
+      });
+
+      const held = LiveAPI.from("id t0");
+
+      LiveAPI.from(livePath.liveSet).call("delete_track", 0);
+
+      expect(held.path).toBe("");
+      expect(held.id).toBe("t0");
+      // exists() is derived from the id, so it lies too. confirmDeleted in
+      // tools/actions/delete/delete.ts uses a fresh look-up for that reason.
+      expect(held.exists()).toBe(true);
+      expect(held.getProperty("name")).toBeUndefined();
+    });
+
+    it("reads as gone through a fresh look-up", () => {
+      simulateMockDeletes();
+      registerMockObject("t0", { path: livePath.track(0) });
+
+      LiveAPI.from(livePath.liveSet).call("delete_track", 0);
+
+      expect(LiveAPI.from("id t0").exists()).toBe(false);
+      expect(LiveAPI.from(livePath.track(0)).exists()).toBe(false);
+    });
+  });
+
+  describe("re-registration", () => {
+    it("reaches an object already holding the same id", () => {
+      registerMockObject("t0", {
+        path: livePath.track(0),
+        properties: { name: "Before", color: 1 },
+      });
+
+      const held = LiveAPI.from("id t0");
+
+      registerMockObject("t0", {
+        path: livePath.track(0),
+        properties: { name: "After" },
+      });
+
+      expect(held.getProperty("name")).toBe("After");
+      // Properties readable straight off the instance are re-taken as well,
+      // including one the new registration drops.
+      expect(held).toHaveProperty("name", "After");
+      expect(held).not.toHaveProperty("color");
+    });
+
+    it("leaves holders of the old object alone when a different id arrives", () => {
+      const clipPath = livePath.track(0).clipSlot(0).clip();
+
+      registerMockObject("clip1", {
+        path: clipPath,
+        properties: { name: "Old" },
+      });
+
+      const held = LiveAPI.from(clipPath);
+
+      registerMockObject("clip2", {
+        path: clipPath,
+        properties: { name: "New" },
+      });
+
+      expect(held.getProperty("name")).toBe("Old");
+      expect(LiveAPI.from(clipPath).getProperty("name")).toBe("New");
+    });
+
+    it("keeps each id-0 registration its own dead end", () => {
+      const left = `${livePath.track(0).mixerDevice()} left_split_stereo`;
+      const right = `${livePath.track(0).mixerDevice()} right_split_stereo`;
+
+      registerMockObject("0", { path: left, type: "DeviceParameter" });
+      registerMockObject("0", { path: right, type: "DeviceParameter" });
+
+      expect(LiveAPI.from(left).exists()).toBe(false);
+      expect(LiveAPI.from(right).exists()).toBe(false);
     });
   });
 });

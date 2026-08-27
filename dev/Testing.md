@@ -45,10 +45,18 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`):
 - `registerMockObject(id, { path, type, properties, methods })` returns a mock
   with instance-level `get`/`set`/`call` spies. Assert on it directly:
   `expect(track.set).toHaveBeenCalledWith(...)`.
+- Registering the same id twice re-describes that object **in place**, so
+  anything already holding it reads the new state — the way a held LiveAPI does
+  in Live. Registering a _different_ id at the same path is a different object
+  arriving there, and holders of the old one keep the old one.
 - `mockNonExistentObjects()` makes unregistered IDs non-existent, for invalid-ID
-  tests.
+  tests. `simulateMockDeletes()` makes `delete_*` calls really remove the
+  target, leaving holders half-stale: cleared path, but the id still lying.
 - Domain helpers like `setupTrackMock()` wrap `registerMockObject()` for common
   object graphs.
+
+What the mock does and doesn't model about a held object going stale is in
+`dev/LiveAPI-Object-Reuse.md`.
 
 ## MCP server tests
 
