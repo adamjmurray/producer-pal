@@ -60,17 +60,18 @@ export function findRawValueForDisplay(
 /**
  * Binary search the raw range for a value that displays as the target.
  *
- * Two searches: one for where the target's display step starts, one for where
- * it ends. We return the middle of that step, never its edge. An edge value is
- * wrong about half the time: the true edge sits somewhere inside the search's
- * final interval, and Live then snaps what we write to its own resolution
- * (32-bit float at best, coarser on some params). Either nudge is enough to
- * land in the neighboring step, and the param reads back one step off.
+ * Two searches: one to bracket the target between the display steps on either
+ * side of it, one to find the far edge of whichever step is closer. We return
+ * the middle of that step, never its edge. An edge value is wrong about half
+ * the time: the true edge sits somewhere inside the search's final interval,
+ * and Live then snaps what we write to its own resolution (32-bit float at
+ * best, coarser on some params). Either nudge is enough to land in the
+ * neighboring step, and the param reads back one step off.
  * @param param - LiveAPI parameter object
  * @param targetDisplay - Target display value
  * @param rawMin - Raw minimum
  * @param rawMax - Raw maximum
- * @returns Raw value inside the target's display step
+ * @returns Raw value inside the nearest reachable display step
  */
 function searchRawValueForDisplay(
   param: LiveAPI,
@@ -78,44 +79,66 @@ function searchRawValueForDisplay(
   rawMin: number,
   rawMax: number,
 ): number {
-  const start = searchBoundary(
+  const { lo, hi } = searchBoundary(
     param,
     rawMin,
     rawMax,
     (display) => display >= targetDisplay,
   );
-  const startDisplay = displayAt(param, start);
+  const above = displayAt(param, hi);
 
-  if (startDisplay == null) {
-    return start;
+  if (above == null) {
+    return hi;
+  }
+
+  // `hi` is a shared edge: the bottom of the step at or above the target, and
+  // the top of the step below it. So rounding either way costs one more search,
+  // never two. Ties round up, matching Live's own display rounding.
+  const below = displayAt(param, lo);
+
+  if (
+    below != null &&
+    below < targetDisplay &&
+    targetDisplay - below < above - targetDisplay
+  ) {
+    const start = searchBoundary(
+      param,
+      rawMin,
+      lo,
+      (display) => display >= below,
+    ).hi;
+
+    return (start + hi) / 2;
   }
 
   const end = searchBoundary(
     param,
-    start,
+    hi,
     rawMax,
-    (display) => display > startDisplay,
-  );
+    (display) => display > above,
+  ).hi;
 
-  return (start + end) / 2;
+  return (hi + end) / 2;
 }
 
 /**
- * Find the lowest raw value whose display satisfies `reached`, assuming display
- * rises with the raw value. Returns rawMax if nothing in the range satisfies it,
- * or the current midpoint if a label stops being a parseable number.
+ * Bracket the lowest raw value whose display satisfies `reached`, assuming
+ * display rises with the raw value. Returns the final interval: `hi` is that
+ * value (or rawMax if nothing in the range satisfies it), `lo` is the last raw
+ * value known not to satisfy it. If a label stops being a parseable number,
+ * both collapse to the current midpoint.
  * @param param - LiveAPI parameter object
  * @param rawMin - Raw minimum
  * @param rawMax - Raw maximum
  * @param reached - Predicate on the display value
- * @returns Raw value at the boundary
+ * @returns The bracketing interval around the boundary
  */
 function searchBoundary(
   param: LiveAPI,
   rawMin: number,
   rawMax: number,
   reached: (display: number) => boolean,
-): number {
+): { lo: number; hi: number } {
   let lo = rawMin;
   let hi = rawMax;
 
@@ -124,7 +147,7 @@ function searchBoundary(
     const display = displayAt(param, mid);
 
     if (display == null) {
-      return mid;
+      return { lo: mid, hi: mid };
     }
 
     if (reached(display)) {
@@ -134,7 +157,7 @@ function searchBoundary(
     }
   }
 
-  return hi;
+  return { lo, hi };
 }
 
 /**

@@ -77,6 +77,17 @@ describe("updateDevice - display-value search", () => {
     }
   });
 
+  it("rounds down when the step below the target is closer", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "2.26" }] });
+
+    expect(displayFor(Math.fround(expectValueSet(param)))).toBe(2.3);
+
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "2.24" }] });
+
+    expect(displayFor(Math.fround(expectValueSet(param)))).toBe(2.2);
+  });
+
   it("clamps to the raw max when the target is above the display range", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "99" }] });
 
@@ -87,5 +98,65 @@ describe("updateDevice - display-value search", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "-99" }] });
 
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
+  });
+});
+
+// Glue Compressor's Attack: is_quantized is 0, but only seven displays are
+// reachable. A target between rungs is off by a lot no matter which way it
+// rounds, so this is where round-up vs. round-to-nearest is visible.
+const RUNGS = [0.01, 0.1, 0.3, 1, 3, 10, 30];
+
+function registerLadderParam(): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children("ladder-param") },
+  });
+
+  return registerMockObject("ladder-param", {
+    properties: {
+      name: "Attack",
+      original_name: "Attack",
+      is_quantized: 0,
+      value: 0,
+      min: 0,
+      max: 6,
+    },
+    methods: {
+      str_for_value: (v: unknown) =>
+        `${RUNGS[Math.min(Math.floor(Number(v)), RUNGS.length - 1)]} ms`,
+    },
+  });
+}
+
+describe("updateDevice - display-value search on a discrete ladder", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerLadderParam();
+  });
+
+  function displayAfterWrite(target: string): number {
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Attack", value: target }] });
+
+    return RUNGS[Math.floor(expectValueSet(param))] as number;
+  }
+
+  it("picks the nearer rung when the target falls between two", () => {
+    expect(displayAfterWrite("2")).toBe(3);
+    expect(displayAfterWrite("1.5")).toBe(1);
+    expect(displayAfterWrite("25")).toBe(30);
+    expect(displayAfterWrite("12")).toBe(10);
+  });
+
+  it("rounds a tie up", () => {
+    expect(displayAfterWrite("20")).toBe(30);
+  });
+
+  it("still hits every rung exactly", () => {
+    for (const rung of RUNGS) {
+      expect(displayAfterWrite(String(rung))).toBe(rung);
+    }
   });
 });
