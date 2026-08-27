@@ -23,10 +23,10 @@ for more detailed information.
 - Producer Pal no longer leaks Live API objects, so Ableton stays fast over a
   long session instead of slowing down and filling its log file
 - Drum kit, Live Set, and arrangement operations do a fraction of the work they
-  did — heavy arrangement edits could freeze Live
+  did; heavy arrangement edits could freeze Live
 - One shorthand syntax locates anything in a Live Set: `t2/s3` is a clip slot,
   `t2/l0` a take lane, `t1/d0/pC1` a drum pad. `path` replaces `slot`, and clip
-  results report it — **breaking** for anything reading `slot` or `trackIndex`
+  results report it. **Breaking** for anything reading `slot` or `trackIndex`
 - Every id param is just `id`, and a param sent as `null` reads as unset
 - Drum Racks: copy a pad, delete a single chain, read and write chain mixers,
   and nested racks work
@@ -40,7 +40,7 @@ for more detailed information.
 
 - Subagents: the built-in chat can delegate self-contained tasks to nested
   assistants that run in parallel, and be resumed for follow-up work
-- Presets: named bundles of provider, model, tool set, and notation — including
+- Presets: named bundles of provider, model, tool set, and notation, including
   what subagents run as
 - Skills fragments can be switched off individually, and are dropped
   automatically for tools you've turned off
@@ -92,8 +92,8 @@ Other improvements:
 
 - Split arrangement clips at specified positions
 - Multi-object create / update / duplicate operations. `transforms` on
-  update-clip and duplicate is a single string broadcast across every clip/copy
-  — use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
+  update-clip and duplicate is a single string broadcast across every clip/copy.
+  Use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
   variation, or make separate calls for structurally-distinct edits.
 - Per-project notes: improved UI, now always enabled by default (disable the
   `ppal-context` tool to prevent AI edits)

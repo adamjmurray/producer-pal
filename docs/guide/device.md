@@ -7,9 +7,6 @@ to AI by giving it an interface to the Live API.
 
 <img src="/img/device-main-tab.png" alt="Main tab" width="500"/>
 
-The Main tab shows the connection status and provides quick access to common
-actions.
-
 - **Version** - Current version number
 - **Status indicator** - Shows "Producer Pal Running" (green), "Producer Pal
   Stopped" (black), or "Producer Pal Error" (red) if something went wrong when
@@ -29,9 +26,9 @@ error message.
 
 <img src="/img/device-context-tab.png" alt="Context tab" width="500"/>
 
-The Context tab holds your **project context**: notes about this Live Set — its
-genre, structure, track layout, and the rules you want AI to follow — included
-in every conversation. It is saved in this project's Producer Pal device, so it
+The Context tab holds your **project context**: notes about this Live Set (its
+genre, structure, track layout, and the rules you want AI to follow) included in
+every conversation. It is saved in this project's Producer Pal device, so it
 travels with the Live Set (and is gone if you delete the device). AI can read
 and edit these notes too.
 
@@ -45,7 +42,7 @@ Example notes:
 - "Use strong harmonies with one chord per bar"
 
 To stop AI from reading your project context, clear the text area. To stop AI
-from writing to it, turn off the Context tool — in the built-in
+from writing to it, turn off the Context tool. In the built-in
 [Chat UI](/guide/chat-ui) that's the **Context** checkbox under Tools settings;
 other MCP clients have their own way to disable a tool.
 
@@ -54,7 +51,7 @@ other MCP clients have their own way to disable a tool.
 Project context lives with this Live Set. **Global context** (notes that apply
 across all your projects) and **memory** (facts AI records about you as you
 work) are stored on your computer instead. All three are edited in the context
-editor — the same editor the **Open Editor** button opens. See
+editor, the same one the **Open Editor** button opens. See
 [Context & Memory](/guide/context).
 
 :::
@@ -71,13 +68,13 @@ editor — the same editor the **Open Editor** button opens. See
   app uses this port). If you do change it, point your clients at the new port
   too: use the new URL directly wherever a doc shows `http://localhost:3350`,
   and for the `npx producer-pal` bridge set the `MCP_SERVER_ORIGIN` environment
-  variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`) — it defaults to
+  variable (e.g. `MCP_SERVER_ORIGIN=http://localhost:3400`), which defaults to
   `http://localhost:3350`.
 - **Timeout** - Maximum time for AI operations (default: 45 sec, max 55 sec;
   increase on slow computers if experiencing timeouts during complex
   operations). The cap stays under 60 sec because that is where most AI clients
-  give up — past it you would lose the partial results Producer Pal returns when
-  it times out
+  give up. Past that, you lose the partial results Producer Pal returns when it
+  times out
 
 ### Behavior
 
@@ -109,8 +106,7 @@ configured.
 
 ### Debug
 
-For development and diagnostic purposes. Generally not needed for day-to-day
-use.
+Diagnostics. Not needed for day-to-day use.
 
 - **Direct Live API** - Enables the opt-in
   [Direct Live API](/features/tools#ppal-live-api) tool, giving AI direct access

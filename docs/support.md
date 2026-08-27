@@ -2,8 +2,8 @@
 
 ## Getting Help
 
-- **Discord**: [Join the Producer Pal Discord](https://discord.gg/rmU3DSzgwH) —
-  ask questions, share tips, discuss ideas, and connect with other users
+- **Discord**: [Join the Producer Pal Discord](https://discord.gg/rmU3DSzgwH).
+  Ask questions, share tips, discuss ideas, and connect with other users
 - **GitHub Discussions**:
   [Questions & discussion](https://github.com/adamjmurray/producer-pal/discussions)
 - **Feedback Form**:
@@ -22,8 +22,8 @@ on GitHub for anything that needs tracking.
 
 ## Contributing
 
-I maintain the core tools and roadmap, but there's plenty of room to collaborate
-— contributions are meant to be low-friction, not gatekept. See
+I maintain the core tools and roadmap, but there's plenty of room to
+collaborate. Contributions are meant to be low-friction, not gatekept. See
 [Contributing back](/extending#contributing-back) for the areas I'm especially
 interested in and how to work with the project's code-quality checks. To help
 others discover the project, star

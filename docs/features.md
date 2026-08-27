@@ -2,16 +2,15 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 21 tools for tracks, MIDI/audio clips, devices, and
+  Ableton Live, with 21 tools for tracks, MIDI/audio clips, devices, and
   arrangements.
 ---
 
 # Features
 
-Producer Pal is an AI-powered music production assistant for Ableton Live — an
-Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses more than 20 specialized tools to work with
-tracks, clips, devices, and more in your Live Set.
+Producer Pal is an Ableton MCP server that lets any AI read, create, and modify
+your Live Set. Tell the AI what you want and it uses more than 20 tools to work
+with tracks, clips, devices, and the arrangement.
 
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
@@ -25,67 +24,67 @@ the loop.
 
 ## What It Can Do
 
-- **Tracks and mixing** — add MIDI, audio, and return tracks; set gain, pan,
+- **Tracks and mixing**: add MIDI, audio, and return tracks; set gain, pan,
   sends, routing, monitoring, mute/solo/arm, names, and colors.
   [Track tools →](/features/tools#track-tools)
-- **MIDI clips** — write and edit notes in a
+- **MIDI clips**: write and edit notes in a
   [text notation](#custom-music-notation) built for language models, with
   velocity ranges, probability, and complex rhythms, then reshape them with
   [transforms](#transforms). [Clip tools →](/features/tools#clip-tools)
-- **Audio clips** — place samples, set gain, pitch shift, and warp settings,
+- **Audio clips**: place samples, set gain, pitch shift, and warp settings,
   reshape the region, and arrange them on the timeline. Producer Pal manages
-  audio but can't listen to it — see [Limitations](/features/limitations).
+  audio but can't listen to it; see [Limitations](/features/limitations).
   [Clip tools →](/features/tools#clip-tools)
-- **Arrangement** — place, move, split, and duplicate clips along the timeline,
+- **Arrangement**: place, move, split, and duplicate clips along the timeline,
   add locators, and stack alternate versions on [take lanes](#take-lanes).
   [Clip tools →](/features/tools#clip-tools)
-- **Session view** — create scenes, capture what's playing into a new one, and
+- **Session view**: create scenes, capture what's playing into a new one, and
   give a scene its own tempo and time signature.
   [Scene tools →](/features/tools#scene-tools)
-- **Devices and instruments** — add and control native Live instruments and
+- **Devices and instruments**: add and control native Live instruments and
   effects, build Drum Racks and Simpler instruments from samples, move devices
   into racks, and drive macro variations. Third-party VST/AU plug-ins need a
-  mapping step first — see [Limitations](/features/limitations).
+  mapping step first; see [Limitations](/features/limitations).
   [Device tools →](/features/tools#device-tools)
-- **Library** — search Live's browser by name or tag, browse its category
+- **Library**: search Live's browser by name or tag, browse its category
   taxonomy, rank samples by similarity to a seed sample, and list installed
   plug-ins (Live 12.4+). Your own sample folder is searched by name.
   [Library →](/features/tools#ppal-library)
-- **Playback** — start and stop Session or Arrangement playback, launch clips
-  and scenes, set loop points, and jump to locators.
+- **Playback**: start and stop Session or Arrangement playback, launch clips and
+  scenes, set loop points, and jump to locators.
   [Playback →](/features/tools#ppal-playback)
-- **Project settings and overview** — read every track and scene in one call,
+- **Project settings and overview**: read every track and scene in one call,
   with a clip count per track; change tempo, time signature, and scale.
   [Live Set tools →](/features/tools#live-set-tools)
-- **Context & memory** — project notes, global preferences, and memory the AI
+- **Context & memory**: project notes, global preferences, and memory the AI
   builds as you work. [Context & Memory →](/guide/context)
 
 Every tool, with its full parameter list:
 **[Tool Reference →](/features/tools)**
 
-What it can't do — automation, VST/AU plug-in internals, audio analysis:
+What it can't do (automation, VST/AU plug-in internals, audio analysis):
 **[Limitations →](/features/limitations)**
 
 ## MIDI Notation {#custom-music-notation}
 
 Producer Pal gives the AI a text-based music notation to compose in, rather than
-raw MIDI note data. Used by [Create Clip](/features/tools#ppal-create-clip),
+raw MIDI note data, so it can translate "bar 3, beat 2" into the right position
+in a clip or on the arrangement timeline. Used by
+[Create Clip](/features/tools#ppal-create-clip),
 [Update Clip](/features/tools#ppal-update-clip), and
-[Read Clip](/features/tools#ppal-read-clip). It helps LLMs translate natural
-language expressions of time to the correct time positions in Ableton Live clips
-and the arrangement timeline.
+[Read Clip](/features/tools#ppal-read-clip).
 
 Three notations are available. The device setting picks the default, and a
 client can [override it per request](/guide/rest-api#per-request-notation):
 
-- **[`bar|beat`](/features/midi-notation#bar-beat)** — the default. Compact and
+- **[`bar|beat`](/features/midi-notation#bar-beat)**: the default. Compact and
   expressive: pitches are names (`C3`, `F#4`), time is `bar|beat` (`1|1`,
   `2|3`), durations are note values (`n/4`, `n/8`), plus velocity ranges,
   probability, and bar copying.
-- **[MIDI JSON](/features/midi-notation#midi-json)** — notes as a compact JSON
+- **[MIDI JSON](/features/midi-notation#midi-json)**: notes as a compact JSON
   array. The most exact, and the easiest for coding agents to generate and
   parse.
-- **[Stark](/features/midi-notation#stark)** — a literal, round-trippable
+- **[Stark](/features/midi-notation#stark)**: a literal, round-trippable
   notation with chord symbols and event-based drum lines, friendly to small and
   local models.
 
@@ -98,7 +97,7 @@ Apply complex changes to clips using math expressions via
 [Update Clip](/features/tools#ppal-update-clip), and
 [Duplicate](/features/tools#ppal-duplicate). Transforms work the same way in
 every notation. When updating or duplicating multiple clips at once, one
-transform string broadcasts across every clip/copy — use `clip.index` arithmetic
+transform string broadcasts across every clip/copy. Use `clip.index` arithmetic
 or `clipseq()` inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
@@ -117,8 +116,8 @@ or `clipseq()` inside the string for per-clip variation:
 ## Take Lanes {#take-lanes}
 
 Live's take lanes stack alternate versions of an arrangement clip at the same
-position — only the active take plays. They're the natural way to audition
-variations side by side without cluttering the timeline.
+position, and only the active take plays, so you can audition variations without
+cluttering the timeline.
 
 - A lane is part of the path: `t2/l0` is track 2's first take lane (0-based,
   auto-created up to it) and `t2/l+` appends a fresh one. Plain `t2` is the main
@@ -126,16 +125,16 @@ variations side by side without cluttering the timeline.
   `toPath` on [Duplicate](/features/tools#ppal-duplicate).
 - Every `l+` in a list appends its own lane, so `toPath: "t2/l+,t2/l+,t2/l+"` on
   one [Duplicate](/features/tools#ppal-duplicate) spreads three copies across
-  three fresh lanes — add [transforms](#transforms) to vary each one.
+  three fresh lanes. Add [transforms](#transforms) to vary each one.
 - Name a newly created lane with `takeLaneName`.
 - [Read Track](/features/tools#ppal-read-track) lists take lanes (with the
   `arrangement-clips` include).
 - [Duplicate](/features/tools#ppal-duplicate) also promotes a take-lane clip
-  back to the main lane — give it a `toPath` with no `l` segment. It's a copy:
+  back to the main lane: give it a `toPath` with no `l` segment. It's a copy,
   the take stays on its lane, since Live's API can't remove it.
 - Limits: 8 take lanes per track. Duplicating to or from a take lane is
   MIDI-only and recreates the clip from notes, so envelope automation isn't
-  preserved. Once placed, take-lane clips are append-only — they can't be split,
+  preserved. Once placed, take-lane clips are append-only: they can't be split,
   moved, resized, or deleted through tools, and Producer Pal can't pick the
   active take. All of that stays in Live's UI. Expand the take-lane arrow on a
   track header to see them.
@@ -153,7 +152,7 @@ Adapts Producer Pal for less capable AI models by returning simplified
 ongoing R&D effort aimed at making [local models](/installation/choose-local)
 viable for completely offline, free, and private usage. Enable it on the
 [device's Setup tab](/guide/device#behavior), in the [Chat UI](/guide/chat-ui)
-settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags) — like
+settings, or via the [`--small-model-mode` flag](/guide/npx-cli#flags). Like
 [notation](/features/midi-notation), that's a global default MCP clients pick up
 too, and a single client can
 [override it per request](/guide/rest-api#per-request-small-model-mode). It's
@@ -164,7 +163,7 @@ also the biggest reduction in what a conversation costs; see
 
 You don't have to run every tool. Withholding one drops its schema _and_ the
 part of the [skills](#skills) that teaches it, so a narrower toolset makes every
-conversation cheaper — `read-only` alone cuts the schemas and skills by 62%.
+conversation cheaper: `read-only` alone cuts the schemas and skills by 62%.
 Worth doing if you only ever use part of Producer Pal, or if you're running a
 [small/local model](/installation/choose-local) that does better with a short
 tool list. See [Optimizing](/guide/optimizing) for the numbers and the other
@@ -175,36 +174,36 @@ levers.
 There are **21 tools on by default**. Two more are experimental and opt-in:
 [Direct Live API](/features/tools#ppal-live-api) and [Subagent](#subagents). The
 Chat UI counts all 23, so it reads `21/23` out of the box. An MCP client sees 21
-— Subagent is client-side and never appears in `listTools`, and Direct Live API
-is only registered when the device flag is on (which makes it 22).
+because Subagent is client-side and never appears in `listTools`, and Direct
+Live API is only registered when the device flag is on (which makes it 22).
 
 :::
 
 Where you set it depends on the client:
 
-- **[Chat UI](/guide/chat-ui#tools)** — the Tools tab, per conversation and per
+- **[Chat UI](/guide/chat-ui#tools)**: the Tools tab, per conversation and per
   [preset](/guide/chat-ui#presets).
-- **MCP clients via [`npx producer-pal`](/guide/npx-cli#toolset)** — the
+- **MCP clients via [`npx producer-pal`](/guide/npx-cli#toolset)**: the
   `--tools` and `--disable-tools` flags. Run
   `npx producer-pal@latest --list-tools` for the group names and the tools your
   device currently offers.
-- **[Claude Desktop](/installation/claude-desktop)** — the extension's **Tools**
+- **[Claude Desktop](/installation/claude-desktop)**: the extension's **Tools**
   and **Disable tools** settings.
-- **[REST API](/guide/rest-api#per-request-toolset)** — the
+- **[REST API](/guide/rest-api#per-request-toolset)**: the
   `x-producer-pal-disabled-tools` header, per request. This is also what the
   [Agent Skill](/guide/skills)'s `--disable-tools` flag sends.
 
 All of these are per client, so narrowing one client's toolset leaves the Chat
-UI and everything else alone — as do the
+UI and everything else alone, as do the
 [notation and small-model-mode headers](/guide/rest-api#per-request-settings)
 that travel with it. Each of the clients above keeps `ppal-connect`, since it is
-how the AI connects and receives the skills — only the raw header lets you drop
+how the AI connects and receives the skills. Only the raw header lets you drop
 it.
 
 ## Subagents {#subagents}
 
 In the [Chat UI](/guide/chat-ui#subagents), AI can hand a self-contained task to
-a nested assistant working in the same Live Set — plan a track's arrangement,
+a nested assistant working in the same Live Set: plan a track's arrangement,
 then delegate each part and check the results. Independent tasks run in
 parallel, and a subagent can be given follow-up work rather than replaced by a
 fresh one.
@@ -212,7 +211,7 @@ fresh one.
 The point is cost and context as much as speed: a worker's transcript never
 enters the main conversation, only its final answer, and each worker can run a
 cheaper model with a narrower toolset than the assistant directing it. That
-pairing is what [presets](/guide/chat-ui#presets) are for — a named bundle of
+pairing is what [presets](/guide/chat-ui#presets) are for: a named bundle of
 provider, model, tool set, and notation, with one designated as what subagents
 run as. This is experimental and off by default.
 
@@ -227,14 +226,14 @@ conventions. It's sent to external MCP clients in the `ppal-connect` result and
 used by the built-in [Chat UI](/guide/chat-ui) on every conversation.
 
 The exact text depends on the active [notation](/features/midi-notation) and on
-[small model mode](#small-model-mode) — six combinations in all — so rather than
+[small model mode](#small-model-mode), six combinations in all, so rather than
 reproduce them here:
 
 - **Read them** in the Chat UI's [Skills tab](/guide/context#skills) →
   **Preview**, which assembles the whole document for any notation and model
   size, with your own overrides applied. A ★ marks the combination your current
   settings use, and a size readout shows what it costs you per conversation.
-- **Change them** — every fragment can be overridden or dropped. See
+- **Change them**: every fragment can be overridden or dropped. See
   [Customizing Skills](/guide/customizing-skills).
 - **Browse the source** in
   [`src/skills/`](https://github.com/adamjmurray/producer-pal/tree/main/src/skills)
@@ -244,15 +243,13 @@ reproduce them here:
 
 Not to be confused with the skills above: an **[Agent Skill](/guide/skills)** is
 the portable `SKILL.md` convention that Claude Code, Codex CLI, and Gemini CLI
-share. Producer Pal ships one — a drop-in folder that drives the
+share. Producer Pal ships one: a drop-in folder that drives the
 [REST API](/guide/rest-api), so a coding agent can control Ableton Live with no
 MCP client at all.
 
 It stays a thin bootstrap rather than a copy of the guidance: it tells the agent
 to call [`ppal-connect`](/features/tools#ppal-connect) first, which returns the
-same skill set described above. So the two fit together — the Agent Skill is
-_how_ a coding agent reaches Producer Pal, and the skills it loads on connect
-are _what_ it learns. New tools and skill updates land in that response
-automatically, and the `SKILL.md` never needs to change.
+same skill set described above. New tools and skill updates land in that
+response automatically, so the `SKILL.md` never needs to change.
 
 [Set up the Agent Skill →](/guide/skills)

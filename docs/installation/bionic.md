@@ -18,11 +18,10 @@ server documentation and use the same settings this guide describes.
 
 ::: warning Experimental
 
-This requires a relatively new machine with decent specs (Apple Silicon with
-lots of RAM or PCs with Nvidia 4080+ graphics cards). It requires more technical
-know-how to setup and debug. The online options work significantly better and
-faster at the time of writing. However, completely offline and private usage is
-compelling.
+This needs a recent machine with decent specs (Apple Silicon with lots of RAM,
+or a PC with an Nvidia 4080+), and more technical know-how to set up and debug.
+The online options work significantly better and faster right now. Completely
+offline and private usage is still compelling.
 
 :::
 
@@ -178,10 +177,9 @@ further, you can customize Producer Pal's behavior for your specific model:
 5. Use the development version of `Producer_Pal.amxd` in Ableton Live
 6. Reload your Producer Pal MCP server in Bionic and start a new conversation
 
-**Share your findings:** If you discover configurations that work well for
-specific models, please share in
+**Share your findings:** If you find a configuration that works well for a
+specific model, post it in
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
-The community benefits from learning what works with different local models.
 
 ## Alternative: Built-in Chat UI
 

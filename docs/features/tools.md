@@ -1,17 +1,17 @@
 ---
 title: Ableton MCP Tool Reference
 description:
-  Every Producer Pal tool with its full parameter schema — tracks, scenes, MIDI
+  Every Producer Pal tool with its full parameter schema. Tracks, scenes, MIDI
   and audio clips, devices, arrangement, library, and playback.
 head:
   - - meta
     - property: og:title
-      content: Ableton MCP Tool Reference — Producer Pal
+      content: "Ableton MCP Tool Reference: Producer Pal"
   - - meta
     - property: og:description
       content:
-        Full parameter schemas for all of Producer Pal's Ableton Live tools —
-        clips, tracks, scenes, devices, arrangement, library, and playback.
+        Full parameter schemas for all of Producer Pal's Ableton Live tools.
+        Clips, tracks, scenes, devices, arrangement, library, and playback.
 ---
 
 # Tool Reference
@@ -19,17 +19,17 @@ head:
 Every Producer Pal tool and its parameters. For what Producer Pal can do in
 plain terms, start with [Features](/features).
 
-The AI picks these tools and fills in the parameters itself — you don't call
-them by hand. Read this when you want to know exactly what a tool accepts, or
-when you're driving Producer Pal from the [REST API](/guide/rest-api) or the
+The AI picks these tools and fills in the parameters itself; you don't call them
+by hand. Read this when you want to know exactly what a tool accepts, or when
+you're driving Producer Pal from the [REST API](/guide/rest-api) or the
 [Agent Skill](/guide/skills).
 
 ::: info About the example output
 
 Every tool shows one example call and what it returns. They all run against the
-same made-up Live Set — three tracks (Drums, Bass, Vocals), one return, two
-scenes — so the names, IDs, colors, and file paths are invented. IDs are opaque
-in real Live Sets too: read one from a tool result, don't guess it.
+same made-up Live Set (three tracks: Drums, Bass, Vocals, plus one return and
+two scenes), so the names, IDs, colors, and file paths are invented. IDs are
+opaque in real Live Sets too: read one from a tool result, don't guess it.
 
 The examples are pretty-printed here. Producer Pal sends a more compact form
 over the wire by default; `?format=json` on the [REST API](/guide/rest-api)
@@ -46,7 +46,7 @@ gives you this shape.
   teach the AI how to use Producer Pal effectively. Standard skills cover the
   full feature set. [Small model mode](/features#small-model-mode) provides
   simplified skills and schemas for less capable models.
-- Call it first when a model is driving Producer Pal — that's how the AI learns
+- Call it first when a model is driving Producer Pal. That's how the AI learns
   the notation and conventions. A plain REST script can skip it.
 
 <!--@include: ../_generated/ppal-connect-schema.md-->
@@ -95,19 +95,19 @@ Live, or make sure your standalone Max is up to date. See
   folder)
 - Also includes the user-configured sample folder when set, with results merged
   and de-duplicated against Live's library
-- Sort by `use_count` (Live's persistent usage counter — surfaces what you
+- Sort by `use_count` (Live's persistent usage counter, which surfaces what you
   actually use most), `mod_date`, or `name`
 - Enumerate available tags with `action: "listTags"` so the AI can discover the
   tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
   Drums, Genres, …) with `action: "listCategories"`
-- Run many filtered searches in one call with `action: "searchBatch"` — results
+- Run many filtered searches in one call with `action: "searchBatch"`; results
   grouped per query, so the AI can assemble a whole drum kit in one round trip
 - List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
   (filter by query, vendor, format, device kind, or subcategory)
 - Rank samples by audio similarity to a seed sample with `action: "findSimilar"`
-  — Live's own similarity index, not Producer Pal listening — or group library
+  (Live's own similarity index, not Producer Pal listening), or group library
   samples with identical audio (re-shipped duplicates) with
-  `action: "findDuplicates"` — both can be narrowed with the search filters
+  `action: "findDuplicates"`. Both can be narrowed with the search filters
 
 <!--@include: ../_generated/ppal-library-schema.md-->
 
@@ -155,11 +155,11 @@ Live, or make sure your standalone Max is up to date. See
 - Apply [transforms](/features#transforms) to each duplicated clip (e.g.
   transpose copies, vary velocities) without a separate update step
 - Stack MIDI variations on [take lanes](/features#take-lanes) with
-  `toPath: "t2/l+,t2/l+"` + transforms — one lane per `l+`, auditioned at the
+  `toPath: "t2/l+,t2/l+"` + transforms: one lane per `l+`, auditioned at the
   same arrangement position
 - Copy devices to any track, return track, or rack chain
 - Copy a whole drum pad to another pad in the same rack, bringing its chain
-  trim, pan, sends, choke group, and devices — a device-only copy leaves the
+  trim, pan, sends, choke group, and devices. A device-only copy leaves the
   chain (and its trim) behind
 - Route duplicated tracks to source instrument for MIDI layering
 
@@ -270,7 +270,7 @@ limitation).
 
 The `notes` parameter on Create Clip and Update Clip is rewritten to match the
 active [notation](/features/midi-notation). The tables below show it in
-`bar|beat`, the default — see [MIDI Notation](/features/midi-notation#bar-beat)
+`bar|beat`, the default. See [MIDI Notation](/features/midi-notation#bar-beat)
 for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 [Stark](/features/midi-notation#stark).
 
@@ -325,13 +325,13 @@ for how it reads under [MIDI JSON](/features/midi-notation#midi-json) and
 
 A new audio clip's region comes from its sample, so `start`, `length`,
 `firstStart`, and `looping` are MIDI-only on Create Clip and are ignored (with a
-warning) alongside a `sampleFile`. `timeSignature` and the audio properties —
-`gainDb`, `pitchShift`, `warpMode`, `warping` — do apply. On Update Clip,
+warning) alongside a `sampleFile`. `timeSignature` and the audio properties
+(`gainDb`, `pitchShift`, `warpMode`, `warping`) do apply. On Update Clip,
 `start` and `length` reshape an existing audio clip's region normally.
 
 **Warping.** When you create an audio clip, Live decides for itself whether to
-warp the sample, following your **Loop/Warp Short Samples** preference — which
-no API can read, so the same call can land differently on two machines. Pass
+warp the sample, following your **Loop/Warp Short Samples** preference, which no
+API can read, so the same call can land differently on two machines. Pass
 `warping: false` to play the file exactly as recorded or rendered. Omit it and
 Live still decides, but the result reports which way it went.
 
@@ -348,7 +348,7 @@ underneath. Two consequences on Update Clip:
 markers from beats to seconds when warping is off, and reports an unwarped
 session clip's `length` as though it were still warped. Producer Pal measures
 the region from the markers instead, so a 1.2-second one-shot reads as the beats
-it really occupies at your tempo rather than as 1.2 beats — which is also what
+it really occupies at your tempo rather than as 1.2 beats. That's also what
 keeps [Duplicate](#ppal-duplicate) from tiling copies over audio that's still
 sounding.
 
@@ -411,11 +411,11 @@ scripting and debugging.
 
 **Off by default.** Producer Pal's specialized tools are tuned for reliable
 results across most models; the raw Live API is low-level and can give weaker
-results out of the box, so it's hidden rather than competing with them. It's a
-powerful escape hatch for scripting and advanced workflows, especially with
-capable coding agents. Enable it on the **Setup** tab of the Producer Pal Max
-for Live device, or programmatically via `POST /config` (the `npx producer-pal`
-MCP server also accepts a `--live-api` flag). See the REST API's
+results out of the box, so it's hidden rather than competing with them. It's an
+escape hatch for scripting and advanced workflows, especially with capable
+coding agents. Enable it on the **Setup** tab of the Producer Pal Max for Live
+device, or programmatically via `POST /config` (the `npx producer-pal` MCP
+server also accepts a `--live-api` flag). See the REST API's
 [Live API section](/guide/rest-api#live-api) for the full operation reference
 and examples.
 

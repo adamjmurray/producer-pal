@@ -2,7 +2,7 @@
 title: npx producer-pal
 description:
   Command-line reference for npx producer-pal, the MCP bridge that connects any
-  MCP client to Ableton Live — every flag, every environment variable.
+  MCP client to Ableton Live. Every flag, every environment variable.
 head:
   - - meta
     - name: keywords
@@ -18,14 +18,14 @@ head:
 client spawns it, it speaks MCP over stdio, and it forwards everything to the
 Producer Pal device over HTTP (`http://localhost:3350/mcp` by default).
 
-It is not the MCP server — that runs inside the
+It is not the MCP server. That runs inside the
 [Max for Live device](/guide/device). The bridge exists because most MCP clients
 launch a command rather than connect to a URL, and because a subprocess can
 start before Ableton does and reconnect on its own. Needs
 [Node.js 20+](https://nodejs.org/en/download).
 
 This page is the flag and environment-variable reference. For setting it up in a
-particular client, see the [installation guides](/installation) — e.g.
+particular client, see the [installation guides](/installation), e.g.
 [Claude Code](/installation/claude-code) or
 [other MCP clients](/installation/other-mcp).
 
@@ -35,7 +35,7 @@ npx -y producer-pal@latest [flags]
 
 Keep the `@latest`. Without a version tag, `npx` runs any `producer-pal` already
 installed globally or in the current project's `node_modules` instead of
-fetching — which is how the bridge ends up older than the device. See
+fetching, which is how the bridge ends up older than the device. See
 [`npx` is running an old version](/support/troubleshooting#npx-is-running-an-old-version).
 
 ## Flags
@@ -56,12 +56,12 @@ Values take either form: `--notation stark` or `--notation=stark`.
 
 `--notation`, `--format`, `--small-model-mode`, and `--live-api` are pushed to
 the device on connect, exactly as if you had set them on its
-[Setup tab](/guide/device) — so they also change the [Chat UI](/guide/chat-ui)
+[Setup tab](/guide/device), so they also change the [Chat UI](/guide/chat-ui)
 and every other connected client. The bridge re-asserts them, so a device
 restart doesn't lose them. The two boolean flags only ever turn a setting _on_;
 neither can switch off something you enabled on the device.
 
-The toolset flags are the exception — see [Choosing tools](#toolset) below.
+The toolset flags are the exception. See [Choosing tools](#toolset) below.
 
 :::
 
@@ -82,7 +82,7 @@ See [Optimizing](/guide/optimizing) for what a narrower toolset actually saves.
 
 Prints the group aliases both toolset flags accept, then the tools available
 right now. The tool list comes from the running device when it can be reached,
-so it reflects your device's version and whether the Direct Live API is on — it
+so it reflects your device's version and whether the Direct Live API is on. It
 falls back to the bridge's own catalog when Ableton isn't running. Combine it
 with a toolset flag to see exactly what a session would get:
 
@@ -91,7 +91,7 @@ npx producer-pal@latest --tools clip,track --list-tools
 ```
 
 ```
-Producer Pal 2.1.0 — tools and groups
+Producer Pal 2.1.0 tools and groups
 
 Pass any of these to --tools (keep only these) or --disable-tools (drop
 these), comma or space separated. Names work bare or ppal- prefixed.
@@ -107,7 +107,7 @@ these), comma or space separated. Names work bare or ppal- prefixed.
   advanced   ppal-live-api
   read-only  ppal-connect ppal-library ppal-select ppal-read-live-set ...
 
-ppal-connect is always kept — it is how an MCP client reaches the Skills.
+ppal-connect is always kept: it is how an MCP client reaches the Skills.
 ppal-live-api also needs --live-api or the device's Setup-tab toggle.
 
 Available now (7):
@@ -145,10 +145,10 @@ config is easier to write with `env` than with `args`.
 Every setting variable is ignored unless `ALLOW_CONFIGURATION_OVERRIDES` is
 `true`. `MCP_SERVER_ORIGIN` and the logging variables are not gated.
 
-The reason is that environment variables are ambient — a shell inherits them,
-and the [Claude Desktop extension](/installation/claude-desktop) always sets
-them — so an unset toggle would otherwise silently overwrite settings you chose
-on the device. CLI flags need no gate: passing one is already deliberate.
+The reason is that environment variables are ambient. A shell inherits them, and
+the [Claude Desktop extension](/installation/claude-desktop) always sets them,
+so an unset toggle would otherwise silently overwrite settings you chose on the
+device. CLI flags need no gate: passing one is already deliberate.
 
 Unlike the flags, the boolean variables are three-state.
 `SMALL_MODEL_MODE=false` actively turns the setting _off_ on the device, where
@@ -157,7 +157,7 @@ device alone.
 
 :::
 
-An invalid value is logged and ignored rather than fatal — a bridge that `npx`
+An invalid value is logged and ignored rather than fatal, so a bridge that `npx`
 cached before your device was updated still starts when handed a tool name or
 notation it doesn't recognize.
 
@@ -178,11 +178,11 @@ Add `VERBOSE_LOGGING=true` for per-request detail. See
 
 The bridge is one of four ways to drive Producer Pal:
 
-- **HTTP MCP** — point an MCP client straight at `http://localhost:3350/mcp`, no
+- **HTTP MCP**: point an MCP client straight at `http://localhost:3350/mcp`, no
   Node required. Ableton has to be running first, and there's no
   auto-reconnection. See [other MCP clients](/installation/other-mcp).
-- **[REST API](/guide/rest-api)** — plain HTTP for scripts, with
+- **[REST API](/guide/rest-api)**: plain HTTP for scripts, with
   [per-request headers](/guide/rest-api#per-request-settings) for toolset,
   notation, and small-model mode.
-- **[Agent Skill](/guide/skills)** — the portable `SKILL.md` for coding agents,
+- **[Agent Skill](/guide/skills)**: the portable `SKILL.md` for coding agents,
   which drives the REST API.

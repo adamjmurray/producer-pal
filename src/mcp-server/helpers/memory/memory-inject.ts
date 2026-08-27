@@ -73,7 +73,7 @@ function memoryBlock({
   if (entries.length === 0) return null;
 
   return (
-    'Memory index — load a body with ppal-context (action:"read", ' +
+    'Memory index. Load a body with ppal-context (action:"read", ' +
     'scope:"memory", name:"<name>"):\n\n' +
     renderMemoryIndex(entries)
   );

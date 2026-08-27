@@ -1,13 +1,13 @@
 # Known Issues
 
-This page documents known bugs and rough edges in Producer Pal.
+Known bugs and rough edges.
 
 ::: tip Looking for what Producer Pal can't do?
 
 Automation and clip envelopes, VST/AU plug-in internals, audio analysis and
 synthesis, drum pitch maps, and lengthening looped arrangement clips are
-**[Limitations](/features/limitations)** — design boundaries rather than bugs,
-so they aren't listed here.
+**[Limitations](/features/limitations)**: design boundaries rather than bugs, so
+they aren't listed here.
 
 :::
 
@@ -30,11 +30,11 @@ UI between requests if you want separate undo steps.
 Your **project context** lives inside the Producer Pal device, so it travels
 with your Live Set. A newer `.amxd` starts as a fresh, empty device, so an
 upgrade used to lose it. Version 2.1.0 fixes that with a backup:
-`Producer Pal Project Context.md`, saved in your Live Project folder — one file,
+`Producer Pal Project Context.md`, saved in your Live Project folder. One file,
 shared by every Set in it. It restores automatically the first time the AI uses
 a tool after upgrading.
 
-**Upgrading from a device older than 2.1.0 has nothing to restore from** — those
+**Upgrading from a device older than 2.1.0 has nothing to restore from.** Those
 devices never wrote the backup. Copy the context out of the old device before
 you replace it.
 
@@ -45,16 +45,16 @@ narrow sequence can still leave the newest context un-backed-up:
 1. Change the project context,
 2. save the Set for the **first time**, or **Save As** to a new project folder,
    then
-3. later replace the device with a newer version — with no Producer Pal activity
+3. later replace the device with a newer version, with no Producer Pal activity
    in between.
 
 The backup lives in the project's folder, and it's that first save which
 establishes the folder. A Max for Live device has no reliable way to know when
 the Live Set is saved, so Producer Pal can only write the backup while it's
-already doing something — a tool call, chat, or context edit. If nothing touches
+already doing something: a tool call, chat, or context edit. If nothing touches
 the context after that first save, no backup has been written there yet.
 
-**To be safe:** after saving and before upgrading, use Producer Pal once — any
+**To be safe:** after saving and before upgrading, use Producer Pal once. Any
 chat, tool call, or context edit writes the backup.
 
 **Right after an upgrade, the context box looks empty.** The restore runs the
@@ -69,13 +69,12 @@ several).
 
 ## Claude Desktop Caches Tool Definitions
 
-If you change a setting that rewrites the tool definitions — **small model
-mode** or the **[notation](/features/midi-notation)** — in the Max for Live
-device while Claude Desktop is running, Claude Desktop will continue using the
-previously cached definitions. For example, if you launch Claude Desktop with
-small model mode enabled and then disable it, Claude Desktop will remain stuck
-in small model mode; switch the notation to Stark and it will keep writing
-bar|beat.
+If you change a setting that rewrites the tool definitions (**small model mode**
+or the **[notation](/features/midi-notation)**) in the Max for Live device while
+Claude Desktop is running, Claude Desktop will continue using the previously
+cached definitions. For example, if you launch Claude Desktop with small model
+mode enabled and then disable it, Claude Desktop will remain stuck in small
+model mode; switch the notation to Stark and it will keep writing bar|beat.
 
 **Workaround:** Either fully quit Claude Desktop (not just close the window) and
 relaunch it, or go to Settings → Extensions → Producer Pal → Configure and
@@ -88,8 +87,8 @@ This one only affects people working from a clone of the
 install is unaffected.
 
 If your AI tool runs `npx -y producer-pal` with its working directory set to the
-repository, `npx` finds the local `package.json` — also named `producer-pal`,
-but with no command for `npx` to run — and stops there instead of fetching the
+repository, `npx` finds the local `package.json`, also named `producer-pal` but
+with no command for `npx` to run, and stops there instead of fetching the
 published package. It exits right away with
 `could not determine executable to run`, so the AI reports that the MCP server
 closed the connection during startup.
@@ -97,7 +96,7 @@ closed the connection during startup.
 **Workaround:** use `producer-pal@latest` in your MCP config. A version tag
 makes `npx` resolve against npm instead of matching the local `package.json`.
 Failing that, run your AI tool from a folder outside the repository, or point
-the MCP server's working directory somewhere else — every tool configures that
+the MCP server's working directory somewhere else. Every tool configures that
 differently, so consult your AI tool's MCP documentation.
 
 ---

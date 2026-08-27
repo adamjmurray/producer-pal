@@ -8,15 +8,10 @@ description:
 
 # Why Not an Ableton Extension?
 
-Ableton's new **Extensions SDK** lets developers extend Live with JavaScript,
-and it's genuinely exciting. So it's a natural thing to wonder: _"Will there be
-a Producer Pal extension?"_ I get asked it a lot, and it's a fair question. On
-the surface, the SDK looks like it should be the perfect home for a tool like
-this.
-
-I've looked into it carefully, more than once, and for now I've landed on _not
-yet_. This page is me opening the hood and walking through how I got there, so
-you can see the reasoning and weigh it for yourself.
+Ableton's new **Extensions SDK** lets developers extend Live with JavaScript, so
+_"Will there be a Producer Pal extension?"_ is a fair question, and I get asked
+it a lot. I've looked into it more than once and landed on _not yet_. Here's the
+reasoning, so you can weigh it yourself.
 
 ::: tip SHORT ANSWER
 
@@ -33,8 +28,6 @@ _more_ to install, not a step forward.
 
 :::
 
-The rest of this page walks through each piece in plain terms.
-
 ## What an "extension" even is
 
 An Ableton **extension** is a small program, written in JavaScript, that Ableton
@@ -42,11 +35,11 @@ Live runs in the background while it's open. The Extensions SDK gives that
 program a curated set of commands for working with a Live Set: create a track,
 rename a clip, read a tempo, and so on.
 
-It's a real and welcome addition to Live. It was designed for a particular kind
-of task: **batch edits and offline processing triggered from Live's own menus**,
-like "rename every clip to match a pattern," or "strip silence from this audio
-file." Ableton's own documentation is upfront that extensions aren't aimed at
-real-time control, and the toolset reflects that focus.
+It was designed for a particular kind of task: **batch edits and offline
+processing triggered from Live's own menus**, like "rename every clip to match a
+pattern," or "strip silence from this audio file." Ableton's documentation is
+upfront that extensions aren't aimed at real-time control, and the toolset
+reflects that.
 
 Producer Pal is a different kind of beast. An AI assistant needs to do whatever
 you ask, whenever you ask it, including pressing play, launching a scene, and
@@ -72,11 +65,10 @@ that curated set, so the gaps are hard to work around.
 
 ### It can't reliably keep track of which clip is which
 
-This one is subtle but important. When Producer Pal tells the AI "here's clip
-#42," the AI may refer back to that same clip many steps later, after you've
-dragged clips around, added tracks, or reorganized your set. Producer Pal leans
-on Live giving each object a **stable name tag** that stays attached to it no
-matter where it moves.
+When Producer Pal tells the AI "here's clip #42," the AI may refer back to that
+same clip many steps later, after you've dragged clips around, added tracks, or
+reorganized your set. Producer Pal leans on Live giving each object a **stable
+name tag** that stays attached to it no matter where it moves.
 
 The Extensions SDK works differently. Its references are more like **seat
 numbers in a theater that get reshuffled every time someone stands up**: the
@@ -87,16 +79,17 @@ becomes an ongoing source of "wait, which clip did you mean?" mix-ups.
 
 ### It can't browse your sample folders
 
-An extension _can_ import a specific file from any path — the host does that on
-its behalf and copies the file into the project. What it can't do is **find**
-files on its own: its code is confined to its private storage and a temp folder,
-with no way to list or scan your Documents, your sample library, or anywhere
-else (and Ableton has said today's permission model will harden into a stricter
-sandbox). There isn't even a native file picker — selecting a file would mean
-building one yourself in a webview. So the AI couldn't browse your library and
-pick the right loop; at best you'd point it at specific files by hand. Producer
-Pal instead scans and reads the sample folders you point it at, plus your Live
-library, and references files in place rather than copying them in.
+An extension _can_ import a specific file from any path, since the host does
+that on its behalf and copies the file into the project. What it can't do is
+**find** files on its own: its code is confined to its private storage and a
+temp folder, with no way to list or scan your Documents, your sample library, or
+anywhere else (and Ableton has said today's permission model will harden into a
+stricter sandbox). There isn't even a native file picker, so selecting a file
+would mean building one yourself in a webview. So the AI couldn't browse your
+library and pick the right loop; at best you'd point it at specific files by
+hand. Producer Pal instead scans and reads the sample folders you point it at,
+plus your Live library, and references files in place rather than copying them
+in.
 
 ## What the SDK _can_ do that Max for Live can't, and how I weigh it
 
@@ -124,15 +117,13 @@ for an extension isn't there yet.
 
 ## "But couldn't Producer Pal use both?"
 
-It's a good question, and it deserves a real answer.
-
 In theory, yes. You could run an extension _and_ keep a Max for Live device for
-everything the extension can't do. When I was weighing this, I looked at how
-other people building AI tools for Live had approached it. They run into the
-same walls, and to get real work done each one ends up bolting a **Max for Live
-device** alongside the extension, reading the saved project file offline, or
-simply going without. On its own, the extension acts as a messenger; a Max for
-Live device (or nothing) does the actual work.
+everything the extension can't do. I looked at how other people building AI
+tools for Live had approached it. They hit the same walls, and to get real work
+done each one ends up bolting a **Max for Live device** alongside the extension,
+reading the saved project file offline, or simply going without. On its own, the
+extension acts as a messenger; a Max for Live device (or nothing) does the
+actual work.
 
 You can see this in their code too, not just take my word for it. One project's
 source notes that transport is _"not supported by [the] Ableton Extension API…
@@ -142,11 +133,10 @@ never holds them across turns,"_ which is the same seat-renumbering issue in
 their own words. A couple of them even started from a Max for Live bridge and
 gave up capabilities when they moved to the SDK.
 
-Which is really the heart of it: Producer Pal **is already that Max for Live
-device**, and Max for Live already does what the extension can't: playback, the
-full Live Set, stable references, your sample folders. Adding an extension on
-top wouldn't unlock anything new; it would just be a second thing to install,
-with the more limited piece out front.
+Producer Pal **is already that Max for Live device**, and Max for Live already
+does what the extension can't: playback, the full Live Set, stable references,
+your sample folders. Adding an extension on top wouldn't unlock anything new; it
+would just be a second thing to install, with the more limited piece out front.
 ([Curious how that works? Here's the hood open. →](/how-it-works/running-inside-live))
 
 ## "Wouldn't an extension reach more people?"
@@ -160,8 +150,7 @@ require **Live Suite** and are "not available in Live Standard, Intro, or Lite."
 That's the same audience that can already run Max for Live, if not _narrower_:
 Max for Live comes with Suite, but it can also be added to **Live Standard** as
 a paid add-on, so today's Producer Pal can in theory reach a few people an
-extension couldn't. So an extension wouldn't widen who can use Producer Pal,
-which removes the one upside that might have offset everything above.
+extension couldn't.
 
 ## What would change my mind
 

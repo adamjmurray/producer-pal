@@ -2,26 +2,25 @@
 title: Context & Memory
 description:
   Teach Producer Pal about your project and your taste. Project context, global
-  context, and memory — what AI sees on every conversation, where each layer is
+  context, and memory. What AI sees on every conversation, where each layer is
   stored, and how to edit them in the context editor.
 ---
 
 # Context & Memory
 
-Producer Pal remembers things about your music and about you, in three layers.
-Each one is available in every conversation, and each answers a different
-question:
+Producer Pal remembers things about your music and about you in three layers,
+each available in every conversation:
 
 | Layer               | Answers                        | Stored                                                           |
 | ------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| **Project context** | What is _this_ Live Set?       | In this project's Max for Live device — it travels with the Set  |
+| **Project context** | What is _this_ Live Set?       | In this project's Max for Live device; it travels with the Set   |
 | **Global context**  | What do you always want?       | On your computer, in `~/.producer-pal/context.md`                |
 | **Memory**          | What has AI learned about you? | On your computer, one file per fact in `~/.producer-pal/memory/` |
 
 `~` is your home folder, so `~/.producer-pal` is:
 
-- **macOS** — `/Users/you/.producer-pal`
-- **Windows** — `C:\Users\you\.producer-pal`
+- **macOS**: `/Users/you/.producer-pal`
+- **Windows**: `C:\Users\you\.producer-pal`
 
 That folder holds the files behind every layer, so you can open it to edit or
 back them up directly.
@@ -30,8 +29,8 @@ You write project and global context by hand. Memory is AI's own notebook: it
 records facts as you work, and you can edit them. AI can edit all three with the
 [Context tool](/features/tools#ppal-context).
 
-All three reach every client — the built-in [Chat UI](/guide/chat-ui), external
-MCP clients like Claude Desktop, and the [REST API](/guide/rest-api) — because
+All three reach every client (the built-in [Chat UI](/guide/chat-ui), external
+MCP clients like Claude Desktop, and the [REST API](/guide/rest-api)) because
 they ride along with the `ppal-connect` result, no matter which route called it.
 
 ## The context editor
@@ -47,9 +46,9 @@ prompted. Open it from:
 
 Every tab shares the same chrome: edits **auto-save** as you type (the header
 shows "Saved"), a size readout gives the character count and approximate token
-cost, and the import (⬆) / export (⬇) buttons read and write markdown files —
-you can also drag a `.md` file onto the editor. AI and the editor stay in sync:
-if AI writes while you have a tab open, a banner offers to reload.
+cost, and the import (⬆) / export (⬇) buttons read and write markdown files. You
+can also drag a `.md` file onto the editor. AI and the editor stay in sync: if
+AI writes while you have a tab open, a banner offers to reload.
 
 ## Project
 
@@ -60,14 +59,14 @@ arrangement is laid out, which track does what, and the rules you want followed.
 
 Project context is saved in this project's Producer Pal device, so it travels
 with the Live Set and is gone if you delete the device. This is the same text as
-the device's [Context tab](/guide/device#context-tab) — the device shows it in a
+the device's [Context tab](/guide/device#context-tab); the device shows it in a
 small box, the editor gives it room.
 
 Because a device upgrade starts you on a fresh, empty device, Producer Pal also
 mirrors this context to a `Producer Pal Project Context.md` file saved in your
-Live Project folder — one file, shared by every Set in it — and restores it the
+Live Project folder (one file, shared by every Set in it) and restores it the
 first time the AI uses a tool after upgrading. It's a backup, not the source of
-truth — you normally never touch it, and it's safe to delete. (Unlike the two
+truth: you normally never touch it, and it's safe to delete. (Unlike the two
 layers below, this is the one context file that lives with your project rather
 than under `~/.producer-pal`.) See
 [when an upgrade can still lose it](/support/known-issues#recent-project-context-can-be-lost-on-a-device-upgrade-pre-2-1-0-devices).
@@ -84,7 +83,7 @@ production habits, conventions you want AI to respect, and things you never want
 it to do.
 
 Global context is stored on your computer, so it follows you from project to
-project — a new Live Set starts with your preferences already in place.
+project, so a new Live Set starts with your preferences already in place.
 
 ::: tip AI can't replace either layer with just its own edit
 
@@ -92,9 +91,9 @@ When AI edits Project or Global context it rewrites the whole document, so a
 model that sends only its new fact would replace everything else with it.
 Producer Pal skips a write that keeps none of what's already there and tells AI
 to re-send the existing content along with its addition. It's a backstop against
-wholesale replacement rather than a merge check — a write that keeps some of
-your notes and drops the rest still goes through. Emptying a layer on purpose
-still works — from the editor, or by asking AI to clear it.
+wholesale replacement rather than a merge check: a write that keeps some of your
+notes and drops the rest still goes through. Emptying a layer on purpose still
+works, from the editor or by asking AI to clear it.
 
 :::
 
@@ -106,9 +105,9 @@ The system prompt for the built-in Chat UI. It ships with a default (shown in
 the editor, with its size) that tells AI to act as a music-composition assistant
 and to use its tools rather than asking you for details it could look up.
 
-Just start typing to make it yours — the first edit forks the default into your
+Just start typing to make it yours: the first edit forks the default into your
 own editable copy, and the trash button resets back to the default. Only the
-built-in Chat UI uses this — external apps like Claude Desktop or Claude Code
+built-in Chat UI uses this. External apps like Claude Desktop or Claude Code
 bring their own system prompt.
 
 ::: warning This replaces, not appends
@@ -116,7 +115,7 @@ bring their own system prompt.
 Custom instructions replace the default entirely. If you want AI to keep
 behaving like Producer Pal's assistant, edit the default rather than clearing it
 and starting from a blank page. To _add_ a preference, use Global context
-instead — that's what it's for.
+instead. That's what it's for.
 
 :::
 
@@ -124,10 +123,10 @@ instead — that's what it's for.
 
 <img src="/img/producer-pal-context-skills.png" alt="Skills tab" width="700"/>
 
-The **Producer Pal Skills** are the instructions AI receives when it connects —
+The **Producer Pal Skills** are the instructions AI receives when it connects:
 how to write notes, edit clips, build instruments, and search your library. The
-Skills tab lets you override any fragment of them — or leave one out entirely.
-The dropdown picks a fragment, listing each by its filename — the same name an
+Skills tab lets you override any fragment of them, or leave one out entirely.
+The dropdown picks a fragment, listing each by its filename, the same name an
 `@include` line uses, and the file your override is saved to; the fragment's
 title and a one-line explainer sit beside it. Each opens showing Producer Pal's
 default, and typing into it forks that default into your own override. The
@@ -136,7 +135,7 @@ receives, keeping your override for when you switch it back on.
 
 Customized fragments are marked ✎ in the dropdown, ✕ if switched off, and ⚠ if
 the built-in changed in a newer Producer Pal release after you forked it (your
-override still applies — the mark just tells you it's now behind).
+override still applies; the mark just tells you it's now behind).
 
 Once you've customized a fragment, **Show default** puts the built-in beside
 your override so you can see what you changed:
@@ -148,7 +147,7 @@ your override so you can see what you changed:
   **Hide** to collapse back to one column
 - The trash button beside "Your override" resets the fragment, deleting it
 
-The eye button at the end of the controls row shows what AI actually receives —
+The eye button at the end of the controls row shows what AI actually receives:
 the whole assembled document for a given notation and model size, with your
 overrides applied. The customized library fragment above appears here in place,
 right where it gets pulled in:
@@ -174,9 +173,9 @@ learns them ("you never want hats hard-quantized"), stored one file per fact.
 
 Each entry has three parts:
 
-- **Name** — a short slug, and the filename in `~/.producer-pal/memory/`
-- **Description** — a one-line recall hook
-- **Memory** — the fact itself
+- **Name**: a short slug, and the filename in `~/.producer-pal/memory/`
+- **Description**: a one-line recall hook
+- **Memory**: the fact itself
 
 Only the **names and descriptions** are sent to AI on every conversation, as an
 index. It reads a full entry only when the description suggests it's relevant.

@@ -18,10 +18,5 @@ Pal server.
 | [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription (for advanced settings) |
 | [Le Chat](./mistral-le-chat) | Mistral   | Free with a Mistral account (admin)  |
 
-## Why Use Web Apps?
-
-- No desktop app installation required
-- Works on any device with a browser
-- Same AI capabilities as desktop versions
-
-The main tradeoff is the extra step of setting up a web tunnel.
+Nothing to install, works on any device with a browser, and the AI is the same
+as the desktop versions. The tradeoff is setting up the tunnel.

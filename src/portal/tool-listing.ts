@@ -66,7 +66,7 @@ function formatGroups(): string[] {
   const width = Math.max(...rows.map(([alias]) => alias.length));
 
   return [
-    `Producer Pal ${VERSION} — tools and groups`,
+    `Producer Pal ${VERSION} tools and groups`,
     "",
     "Pass any of these to --tools (keep only these) or --disable-tools (drop",
     "these), comma or space separated. Names work bare or ppal- prefixed.",
@@ -75,7 +75,7 @@ function formatGroups(): string[] {
       ([alias, toolIds]) => `  ${alias.padEnd(width)}  ${toolIds.join(" ")}`,
     ),
     "",
-    `${CONNECT_TOOL_ID} is always kept — it is how an MCP client reaches the Skills.`,
+    `${CONNECT_TOOL_ID} is always kept: it is how an MCP client reaches the Skills.`,
     `${LIVE_API_TOOL_ID} also needs --live-api or the device's Setup-tab toggle.`,
   ];
 }

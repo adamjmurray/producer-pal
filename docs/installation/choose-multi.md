@@ -11,7 +11,7 @@ single API key with pay-per-use pricing. Access it via the
 ### Why OpenRouter?
 
 - **Model variety:** Switch between Claude, Gemini, GPT, Mistral, and more
-- **Cost optimization:** Use cheaper models for simple tasks, powerful ones for
+- **Cost optimization:** Use cheaper models for simple tasks, stronger ones for
   complex work
 - **Single billing:** One account for all providers
 - **Availability:** Fallback options when one provider is rate-limited
