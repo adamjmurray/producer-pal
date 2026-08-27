@@ -43,19 +43,15 @@
  * There is exactly one Song, one Application and one master track, and no tool,
  * user, or concurrent request can repoint any of them.
  *
- * "One object for the life of the Set" is not enough on its own. this_device
- * resolves to an indexed path — live_set tracks 3 devices 0 — so it looked like
- * the trap.
- *
- * It isn't the one we thought. Measured on 12.4.3: insert or delete a track
- * ahead of the host and the held object rewrites its own path to the new index,
- * still reading the same device. delete's host-track guard reads a correct
- * trackIndex either way.
- *
- * That removes the stated reason for keeping this_device off the list, but not
- * the measurement that would put it on — nobody has tested the this_device
- * target itself, or the guard's exact scenario. Leave it off until someone
- * does. See dev/LiveAPI-Object-Reuse.md.
+ * this_device is on the list for a different reason: it names one device, and
+ * Live keeps the held object pointed at it. Measured on 12.4.3, holding the
+ * object built from this_device while shifting everything around it — a track
+ * inserted or deleted ahead of the host, a device moved in front of it on the
+ * host track, the same with Producer Pal wrapped in a rack — the object rewrote
+ * its own path each time, kept its id, and read the same trackIndex a fresh
+ * lookup did. That last one is the case that had to pass: delete's "don't
+ * remove Producer Pal's own track" guard compares against exactly that number.
+ * See dev/LiveAPI-Object-Reuse.md.
  *
  * Repeats of anything else are fixed where they happen, by resolving once and
  * passing the object down.
@@ -78,10 +74,10 @@ import {
 } from "./live-api-release.ts";
 
 /**
- * The only targets that may be memoized. Each names one LOM object at a path
- * nothing can move. Do not add a path with an index in it or one that resolves
- * to an index (this_device does), and do not add a view pointer like
- * `live_set view selected_track` — those name whatever is selected right now.
+ * The only targets that may be memoized. Each names one LOM object for the life
+ * of the Set. Do not add a literal path with an index in it, and do not add a
+ * view pointer like `live_set view selected_track` — those name whatever is
+ * selected right now.
  */
 const STABLE_TARGETS = new Set([
   "live_app",
@@ -89,6 +85,7 @@ const STABLE_TARGETS = new Set([
   "live_set",
   "live_set master_track",
   "live_set view",
+  "this_device",
 ]);
 
 /**

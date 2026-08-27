@@ -23,14 +23,11 @@ describe("live-api memo", () => {
     );
   });
 
-  // this_device names one object forever but resolves to an indexed path
-  // (live_set tracks 3 devices 0), and deleting an earlier track moves the
-  // device without moving the path. A remembered object keeps reporting the
-  // host track it was resolved against — and delete's "don't remove Producer
-  // Pal's own track" guard compares against exactly that number.
-  it("resolves this_device afresh every time", () => {
-    expect(LiveAPI.from("this_device")).not.toBe(LiveAPI.from("this_device"));
-    expect(memoizedObject("this_device")).toBeUndefined();
+  // this_device resolves to an indexed path (live_set tracks 3 devices 0), but
+  // the held object follows its device: shift a track or a device ahead of it
+  // and Live rewrites the path. Measured — see live-api-build.ts.
+  it("hands back the same object for this_device", () => {
+    expect(LiveAPI.from("this_device")).toBe(LiveAPI.from("this_device"));
   });
 
   // The one that matters. Tools read a path, mutate, then read the same path

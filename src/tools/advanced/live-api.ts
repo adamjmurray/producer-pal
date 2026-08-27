@@ -296,9 +296,9 @@ function objectForOperation(
   }
 
   // Emptying the memo is what makes this a *separate* object. live_set and the
-  // four other STABLE_TARGETS are memoized, so without it two handles onto one
-  // of them would be the same object — and a probe reading one object through
-  // two handles reports "not stale" for the wrong reason.
+  // other STABLE_TARGETS are memoized, so without it two handles onto one of
+  // them would be the same object — and a probe reading one object through two
+  // handles reports "not stale" for the wrong reason.
   clearLiveApiMemo();
 
   return LiveAPI.from(operation.path);

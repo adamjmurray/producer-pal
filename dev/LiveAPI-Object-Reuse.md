@@ -48,12 +48,27 @@ lookup of the dead id reading `"0"`, which still holds. Do not substitute
 to a path immediately and then behaves exactly like a path-built one in every
 case above — including clearing its path on delete while keeping the stale id.
 
-### What is not
+### Devices, `this_device`, and rack chains
 
-The cases above cover session clips, arrangement clips and scenes. Devices and
-rack chains were not measured, and neither was the user editing the Set from the
-UI mid-request. Nothing suggests they differ, but they are inference, not
-measurement.
+Measured the same way, because the memo needed it: `this_device` was kept off
+`STABLE_TARGETS` on the theory that a remembered device would keep reporting the
+host track it was resolved against. It doesn't. A held device object follows its
+device through every index shift the tools can cause, at any depth:
+
+| What moved                                                    | The held `this_device` afterwards                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| A track inserted, then deleted, ahead of the host             | `tracks 11 -> 12 -> 11`, same id, `trackIndex` matching a fresh lookup         |
+| A device moved in front of it on the host track, then deleted | `devices 0 -> 1 -> 0`, same id                                                 |
+| The same, with Producer Pal wrapped in a rack                 | `tracks 11 devices 0 chains 0 devices 0` rewrites the track index the same way |
+| A drum rack chain removed ahead of a held nested device       | `chains 3 -> chains 2`, same id as a fresh lookup of the new path              |
+| **The device itself** moved to another track and back         | Path follows it to `tracks 0 devices 0` and back, same id                      |
+
+Live has no `delete_chain`, so a chain index under an instrument or MIDI effect
+rack cannot shift through the API at all; the drum rack row above uses the
+park-on-a-free-pad technique from `delete-chain-helpers.ts`.
+
+Still not measured: the user editing the Set from the UI mid-request. Nothing
+suggests it differs, but it is inference.
 
 ### What the mock models
 
@@ -80,11 +95,11 @@ Three more gaps, so a green suite is still not proof:
   handles onto one target are always two objects.
 - The user editing the Set mid-request still isn't modeled at all.
 
-The memo's own design — only the five stable targets, nothing indexed — was
-argued from the mock as it was before this ("memoizing any path breaks 8 test
-files"). That decision is safe either way, but the evidence for it was never
-proof of how Live behaves. The header comment of
-`live-api-adapter/live-api-build.ts` carries the reasoning.
+The memo's own design — only the stable targets, nothing indexed — was argued
+from the mock as it was before this ("memoizing any path breaks 8 test files").
+That decision is safe either way, but the evidence for it was never proof of how
+Live behaves. The header comment of `live-api-adapter/live-api-build.ts` carries
+the reasoning.
 
 ## The rule
 
@@ -95,7 +110,7 @@ uses. In practice:
   extends no lifetime and cannot go stale. `getChildCount` / `getChildAt` /
   `someChild` instead of `getChildren(...)`, or skipping a walk whose result is
   discarded, are always safe.
-- **Safe:** the five `STABLE_TARGETS` in `live-api-adapter/live-api-build.ts`.
+- **Safe:** the six `STABLE_TARGETS` in `live-api-adapter/live-api-build.ts`.
   Each names one object for the life of the Live Set.
 - **Needs review:** holding an object across a read-only stretch. Sound unless
   the user edits the Set mid-request, which no request can rule out.
@@ -166,6 +181,13 @@ ENABLE_OBJECT_PROBE=true npm run build:debug
 `goto` cannot substitute: it moves the only object there is, so the original
 target becomes unreachable. Naming the path again builds a _fresh_ object, which
 is the control to compare against, not the held handle under test.
+
+`this_device` works as the top-level `path`, which is how the device rows above
+were measured — hold it, then shift things through `live_set`
+(`create_midi_track`, `delete_track`, `move_device`) and read `path`, `id` and
+`trackIndex` back off the held object. A drum chain needs the park-on-a-free-pad
+move: `set` the chain's `in_note` to an unused note, then `delete_all_chains` on
+that pad.
 
 Two things to keep in mind while measuring. A path-less operation always means
 the default object, wherever it sits in the list. And each operation carrying a
