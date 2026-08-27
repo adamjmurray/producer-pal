@@ -21,9 +21,9 @@ smoothed over. The result is a set of tools designed to be intuitive for **both
 the AI and the human**, and in some cases to offer features the Live API doesn't
 provide at all.
 
-Three examples show the range: one small and tidy, one deep and full of
-arrangement trickery, and one that reaches a feature the API doesn't even admit
-exists.
+Four examples show the range: one small and tidy, one that does a surprising
+amount of work behind every knob you turn, one deep and full of arrangement
+trickery, and one that reaches a feature the API doesn't even admit exists.
 
 ## A small example: colors as `#RRGGBB`
 
@@ -64,6 +64,79 @@ quantized it, it tells the model so in plain language
 > uses a fixed color palette.
 
 Now the AI understands _why_ the color shifted, instead of treating it as a bug.
+
+## A harder example: device knobs in real units
+
+Colors are a clean translation: one integer in, one hex string out. Device
+parameters look like the same problem and turn out not to be.
+
+Ask the Live API for a Saturator's **Drive** and you get `0.5`. Not decibels — a
+raw number between 0 and 1, mapped onto the displayed range of −36 to +36 dB by
+a curve Live never describes anywhere. There's no `set_display_value` to write
+the number you actually want. Live _will_ render a raw value for you
+(`str_for_value`), but that's read-only: it answers _"what would `0.53` look
+like?"_, never _"what raw value shows `2.3 dB`?"_
+
+So Producer Pal asks the first question over and over until it has answered the
+second. A binary search walks the raw range, calling Live's own renderer at each
+step, until it brackets the display value that was asked for
+([`param-display-search.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/device/update/helpers/param-display-search.ts)).
+
+That gets you close. Landing exactly takes three more details, each of which was
+a real bug first:
+
+**Aim at the middle of a step, not its edge.** A displayed value isn't a point
+in raw space, it's a window. On that Saturator, `2.3 dB` covers raw
+`0.5312505`–`0.5326385` — about one part in seven hundred of the knob's travel.
+The search converges on the _edge_ of that window, and Live then snaps whatever
+you write to its own resolution (32-bit float at best). Either nudge is enough
+to tip you into the neighboring window, and the knob reads back `2.2`. So a
+second search finds the window's far edge, and Producer Pal writes the midpoint
+— `0.5319450`, as far from either edge as it can get.
+
+**Round to the nearest reachable step.** Live's display resolution isn't
+uniform. That same Drive knob moves in 0.1 dB steps up to 10 dB and 1 dB steps
+above it, so `10.5 dB` is a value Live will never print, whatever you write.
+Asking for it gets you 10 or 11 — whichever is nearer, rather than always down.
+
+**Check the write landed at all.** Hand Live a value outside a parameter's range
+and it doesn't clamp it — it silently _ignores_ you and leaves the knob where it
+was. So every parameter write is read back afterward, and one that didn't take
+says so
+([`param-write-helpers.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-write-helpers.ts)):
+
+> param "Drive" was not changed — it still reads "0.0 dB". Live ignores a value
+> outside the parameter's range.
+
+### And what "the range" even is
+
+Reading a parameter back has its own version of the problem. The API's `min` and
+`max` are raw — `0` and `1` — which tells the AI nothing about what it's allowed
+to ask for. There's no unit property either: dB, Hz, ms, semitones, `%` are all
+inferred from the text of the rendered label.
+
+Then there are the knobs that stop being a number line at one end. Glue
+Compressor's **Release** runs from `0.1` up to `1.2` and then reads **`A`** —
+Auto. Compressor's **Ratio** starts at **`inf : 1`** before it becomes `1`, `2`,
+`4`. Take those labels as the ends of the range and the numbers vanish; ignore
+them and a real setting becomes unreachable.
+
+So Producer Pal finds where the numbers actually stop, reports that as the
+range, and names the odd one out separately
+([`param-numeric-range.ts`](https://github.com/adamjmurray/producer-pal/blob/main/src/tools/shared/device/helpers/param-numeric-range.ts)):
+
+```json
+{
+  "name": "Release",
+  "value": 0.6,
+  "min": 0.1,
+  "max": 1.2,
+  "alsoAccepts": "A"
+}
+```
+
+The AI can now see the whole knob: the numbers it can interpolate over, and the
+one word it has to ask for by name.
 
 ## A big example: splitting clips in the Arrangement
 
