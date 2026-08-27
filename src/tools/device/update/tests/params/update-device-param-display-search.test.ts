@@ -92,12 +92,26 @@ describe("updateDevice - display-value search", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "99" }] });
 
     expect(expectValueSet(param)).toBe(1);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateDevice: param "Drive" only goes from -36.0 dB to 36.0 dB, so 99 was set to the closest end.',
+    );
   });
 
   it("stays inside the bottom step when the target is below the display range", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "-99" }] });
 
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
+    );
+  });
+
+  it("says nothing about the range when the target is inside it", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Drive", value: "12" }] });
+
+    expect(outlet).not.toHaveBeenCalled();
   });
 });
 
@@ -158,5 +172,120 @@ describe("updateDevice - display-value search on a discrete ladder", () => {
     for (const rung of RUNGS) {
       expect(displayAfterWrite(String(rung))).toBe(rung);
     }
+  });
+});
+
+function registerLinearParam(): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children("linear-param") },
+  });
+
+  return registerMockObject("linear-param", {
+    properties: {
+      name: "Threshold",
+      original_name: "Threshold",
+      is_quantized: 0,
+      value: 0,
+      min: -40,
+      max: 0,
+    },
+    methods: {
+      str_for_value: (v: unknown) => `${Number(v).toFixed(2)} dB`,
+    },
+  });
+}
+
+// A param whose display range matches its raw range skips the search and writes
+// the target straight through, so it's the one path that could hand Live a
+// value outside the range — which Live drops without a word.
+describe("updateDevice - display-value search on a linear param", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerLinearParam();
+  });
+
+  it("writes the target straight through when it's in range", () => {
+    updateDevice({
+      id: "dev1",
+      params: [{ name: "Threshold", value: "-12.5" }],
+    });
+
+    expect(expectValueSet(param)).toBe(-12.5);
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
+  it("clamps a target past the range instead of letting Live drop it", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Threshold", value: "-99" }] });
+
+    expect(expectValueSet(param)).toBe(-40);
+
+    param.set.mockClear();
+    updateDevice({ id: "dev1", params: [{ name: "Threshold", value: "5" }] });
+
+    expect(expectValueSet(param)).toBe(0);
+  });
+});
+
+// Some params can't be converted at all: Glue Compressor's Release tops out at
+// the label "A" (Auto), so there's no display range to search and the request
+// goes to Live as a raw value. Live drops one outside the raw range without a
+// word, which is what the readback check is for.
+describe("updateDevice - a request Live silently drops", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { parameters: children("auto-param") },
+    });
+
+    param = registerMockObject("auto-param", {
+      properties: {
+        name: "Release",
+        original_name: "Release",
+        is_quantized: 0,
+        value: 3,
+        min: 0,
+        max: 6,
+      },
+      methods: {
+        str_for_value: (v: unknown) => {
+          const raw = Number(v);
+
+          if (raw < 0 || raw > 6) return "";
+
+          return raw >= 6 ? "A" : `${raw.toFixed(1)} s`;
+        },
+      },
+    });
+
+    param.set.mockImplementation((property: string, value: unknown) => {
+      const raw = Number(value);
+
+      if (property === "value" && raw >= 0 && raw <= 6) {
+        param.properties.value = Math.fround(raw);
+      }
+    });
+  });
+
+  it("warns when the value never changed", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: "10" }] });
+
+    expect(param.properties.value).toBe(3);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateDevice: param "Release" was not changed — it still reads "3.0 s". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  it("says nothing when the value does change", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Release", value: "2" }] });
+
+    expect(param.properties.value).toBe(2);
+    expect(outlet).not.toHaveBeenCalled();
   });
 });

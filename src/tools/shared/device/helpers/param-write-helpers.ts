@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { strForValue } from "./device-display-helpers.ts";
 
 /**
  * Whether a parameter accepts writes. Live disables a parameter when something
@@ -41,6 +42,39 @@ export function setParamIfEnabled(
   param.set(property, value);
 
   return true;
+}
+
+/**
+ * Write a raw value and check it landed. Live silently ignores a write it
+ * doesn't like — most often one outside the parameter's raw range — leaving the
+ * old value in place and reporting success, so without this the tool claims an
+ * update that never happened.
+ *
+ * Compares display labels, not raw numbers. Live stores the raw value as a
+ * 32-bit float (Math.fround models that), and some parameters reporting a
+ * continuous range really hold only a few steps — Glue Compressor's Attack
+ * snaps a raw 2.5 down to 2 — so a raw readback differs from what we wrote even
+ * when the write worked. The label absorbs both.
+ * @param param - DeviceParameter LiveAPI object
+ * @param rawValue - Raw value to write
+ * @param label - How to name the parameter in the warning
+ */
+export function setParamValueAndVerify(
+  param: LiveAPI,
+  rawValue: number,
+  label: string,
+): void {
+  const expected = strForValue(param, Math.fround(rawValue));
+
+  param.set("value", rawValue);
+
+  const actual = strForValue(param, param.getProperty("value") as number);
+
+  if (actual === expected) return;
+
+  console.warn(
+    `${label} was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`,
+  );
 }
 
 /**

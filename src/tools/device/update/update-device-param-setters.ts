@@ -17,6 +17,7 @@ import {
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import {
   isParamEnabled,
+  setParamValueAndVerify,
   warnParamDisabled,
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
@@ -215,10 +216,11 @@ function setParamValue(
   inputValue: string | number,
   toolName: string,
 ): void {
+  const paramName = param.getProperty("name") as string;
+  const label = `${toolName}: param "${paramName}"`;
+
   if (!isParamEnabled(param)) {
-    warnParamDisabled(
-      `${toolName}: param "${param.getProperty("name") as string}"`,
-    );
+    warnParamDisabled(label);
 
     return;
   }
@@ -244,7 +246,7 @@ function setParamValue(
       return;
     }
 
-    param.set("value", index);
+    setParamValueAndVerify(param, index, label);
 
     return;
   }
@@ -259,7 +261,7 @@ function setParamValue(
       return;
     }
 
-    param.set("value", midi);
+    setParamValueAndVerify(param, midi, label);
 
     return;
   }
@@ -306,7 +308,7 @@ function setParamValue(
     // Convert -1 to 1 → internal range
     const internalValue = ((numValue + 1) / 2) * (max - min) + min;
 
-    param.set("value", internalValue);
+    setParamValueAndVerify(param, internalValue, label);
 
     return;
   }
@@ -319,7 +321,7 @@ function setParamValue(
     const rawValue = findDivisionRawValue(param, inputValue);
 
     if (rawValue != null) {
-      param.set("value", rawValue);
+      setParamValueAndVerify(param, rawValue, label);
     } else {
       console.warn(
         `${toolName}: "${inputValue}" is not a valid division option`,
@@ -338,16 +340,16 @@ function setParamValue(
       rawMin,
       rawMax,
       minLabel,
+      label,
     );
 
-    param.set("value", rawValue ?? inputValue);
+    setParamValueAndVerify(param, rawValue ?? inputValue, label);
 
     return;
   }
 
   // 6. Uninterpretable string — Live silently rejects string writes to numeric
   // params, so warn rather than pretending the update succeeded.
-  const paramName = param.getProperty("name") as string;
   const inputStr = String(inputValue);
 
   console.warn(

@@ -12,6 +12,7 @@ import {
 import {
   isParamEnabled,
   setParamIfEnabled,
+  setParamValueAndVerify,
   warnParamDisabled,
 } from "../param-write-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -83,6 +84,56 @@ describe("setParamIfEnabled", () => {
       1,
       expect.stringContaining('chain "Kick" pan is disabled'),
     );
+  });
+});
+
+describe("setParamValueAndVerify", () => {
+  /**
+   * Register a parameter whose label is the raw value rounded to two decimals,
+   * so a write that lands and one that doesn't produce different labels.
+   * @returns The registered parameter
+   */
+  function registerLabeledParam(): RegisteredMockObject {
+    return registerMockObject("param-1", {
+      path: paramPath,
+      type: "DeviceParameter",
+      properties: { name: "Drive", value: 0.5 },
+      methods: { str_for_value: (v: unknown) => Number(v).toFixed(2) },
+    });
+  }
+
+  it("stays silent when the value lands", () => {
+    const param = registerLabeledParam();
+
+    setParamValueAndVerify(paramApi(), 0.8, 'updateDevice: param "Drive"');
+
+    expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    expect(outlet).not.toHaveBeenCalled();
+  });
+
+  it("warns when Live ignores the write", () => {
+    // Live drops a value outside the parameter's range without saying so.
+    const param = registerLabeledParam();
+
+    param.set.mockImplementation(() => undefined);
+
+    setParamValueAndVerify(paramApi(), 99, 'updateDevice: param "Drive"');
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'updateDevice: param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
+    );
+  });
+
+  it("compares against what Live stores, not what we wrote", () => {
+    // Live keeps a 32-bit float, so 0.1 reads back as 0.10000000149011612. A
+    // check against the unrounded write would warn on every fractional value.
+    const param = registerLabeledParam();
+
+    setParamValueAndVerify(paramApi(), 0.1, 'updateDevice: param "Drive"');
+
+    expect(param.properties.value).toBe(Math.fround(0.1));
+    expect(outlet).not.toHaveBeenCalled();
   });
 });
 

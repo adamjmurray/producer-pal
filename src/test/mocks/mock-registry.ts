@@ -119,6 +119,29 @@ function createCallMock(
 }
 
 /**
+ * Create a set() mock. Writes to `value` land in `properties` so a later get()
+ * sees them: code that reads a parameter back to check the write took would
+ * otherwise see every write as rejected. Every other property stays a pure spy.
+ *
+ * `value` is snapped to a 32-bit float, which is how Live stores a
+ * DeviceParameter — a raw 0.8 reads back as 0.800000011920929, and the display
+ * label rounds from there.
+ * @param properties - The mock's property bag to write into
+ * @returns Configured vi.fn() mock
+ */
+function createSetMock(properties: Record<string, unknown>): Mock {
+  return vi.fn().mockImplementation((property: string, ...args: unknown[]) => {
+    if (
+      property === "value" &&
+      args.length === 1 &&
+      typeof args[0] === "number"
+    ) {
+      properties.value = Math.fround(args[0]);
+    }
+  }) as Mock;
+}
+
+/**
  * Register a mock Live API object with instance-level mocks.
  * @param idOrPath - Object ID (bare or "id X" format) or path
  * @param options - Mock configuration
@@ -143,7 +166,7 @@ export function registerMockObject(
 
   const mock: RegisteredMockObject = {
     get: createGetMock(properties, type, path),
-    set: vi.fn() as Mock,
+    set: createSetMock(properties),
     call: createCallMock(methods, path),
     id,
     path,

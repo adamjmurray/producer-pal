@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   parseLabel,
   strForValue,
@@ -22,6 +23,7 @@ const BINARY_SEARCH_ITERATIONS = 30;
  * @param rawMin - Raw minimum value
  * @param rawMax - Raw maximum value
  * @param minLabel - Already-computed str_for_value(rawMin)
+ * @param label - How to name the parameter in a warning
  * @returns Raw value to set, or null if labels aren't parseable
  */
 export function findRawValueForDisplay(
@@ -30,6 +32,7 @@ export function findRawValueForDisplay(
   rawMin: number,
   rawMax: number,
   minLabel: string,
+  label: string,
 ): number | null {
   const minValue = parseLabel(minLabel).value;
 
@@ -43,6 +46,18 @@ export function findRawValueForDisplay(
     return null;
   }
 
+  // Live drops a value outside the parameter's range instead of clamping it,
+  // so both paths below keep to the range. Landing 14 dB from what was asked
+  // for otherwise reads as success, so say so in the user's own units.
+  if (
+    targetDisplay < Math.min(minValue, maxValue) ||
+    targetDisplay > Math.max(minValue, maxValue)
+  ) {
+    console.warn(
+      `${label} only goes from ${minLabel} to ${strForValue(param, rawMax)}, so ${targetDisplay} was set to the closest end.`,
+    );
+  }
+
   // Linear mapping: display values match raw values — set directly
   const range = Math.abs(rawMax - rawMin);
   const tolerance = range > 0 ? 0.01 * range : 0.01;
@@ -51,10 +66,21 @@ export function findRawValueForDisplay(
     Math.abs(minValue - rawMin) < tolerance &&
     Math.abs(maxValue - rawMax) < tolerance
   ) {
-    return targetDisplay;
+    return clamp(targetDisplay, rawMin, rawMax);
   }
 
   return searchRawValueForDisplay(param, targetDisplay, rawMin, rawMax);
+}
+
+/**
+ * Clamp a value between two bounds given in either order.
+ * @param value - Value to clamp
+ * @param a - One bound
+ * @param b - The other bound
+ * @returns The clamped value
+ */
+function clamp(value: number, a: number, b: number): number {
+  return Math.min(Math.max(value, Math.min(a, b)), Math.max(a, b));
 }
 
 /**
