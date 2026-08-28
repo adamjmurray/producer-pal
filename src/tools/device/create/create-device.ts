@@ -200,9 +200,10 @@ function createDeviceAtPath(
           string | number,
         ]);
 
-  // A positioned insert shifts every later device down a slot, so paths cached
-  // before it no longer name what they named. An append moves nothing.
-  if (effectivePosition != null) invalidateDevicePathCache();
+  // A positioned insert shifts every later device down a slot; an append can
+  // too, when Live re-sorts the chain around it.
+  if (effectivePosition != null || appendMovesSiblings(deviceName, deviceCount))
+    invalidateDevicePathCache();
 
   const rawId = result[1];
   const id = rawId ? String(rawId) : null;
@@ -221,4 +222,22 @@ function createDeviceAtPath(
     deviceIndex: device.deviceIndex,
     device,
   };
+}
+
+/**
+ * Whether appending this device can renumber the ones already there.
+ *
+ * Live keeps a chain sorted by device type, so an instrument lands ahead of the
+ * audio effects and a MIDI effect ahead of everything: both push siblings down
+ * a slot, and paths cached before the insert stop naming what they named. Only
+ * an audio effect is guaranteed to land at the end.
+ * @param deviceName - Device being inserted
+ * @param deviceCount - Devices in the chain before the insert
+ * @returns True when the append can move a sibling
+ */
+function appendMovesSiblings(deviceName: string, deviceCount: number): boolean {
+  return (
+    deviceCount > 0 &&
+    !(VALID_DEVICES.audioEffects as readonly string[]).includes(deviceName)
+  );
 }

@@ -11,6 +11,7 @@ import {
 } from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 
 const SAMPLE_PARAM = "sample";
@@ -276,6 +277,10 @@ function createSimplerInChain(
   const result = chain.call("insert_device", DEVICE_CLASS.SIMPLER) as
     | [string, string | number]
     | undefined;
+
+  // The re-sort pushes the chain's audio effects down a slot, so createDevice's
+  // path cache can no longer be trusted for anything below this chain.
+  invalidateDevicePathCache();
   const rawId = result?.[1];
   const id = rawId ? String(rawId) : null;
 

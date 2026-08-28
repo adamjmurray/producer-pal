@@ -11,13 +11,13 @@
  * repeat is another object off the pool. Inside the scope, a path resolves once
  * and the rest of the call reuses it.
  *
- * WHAT THE SCOPE ASSUMES: the only thing that runs inside it is appending. An
- * append never moves a sibling, so a cached path still names what it named. A
- * *positioned* insert does move them, so the caller must call
- * invalidateDevicePathCache() right after one. Deleting anything inside the
- * scope is not supported at all — a held object follows its own target through
- * an index shift, which is exactly wrong for a path cache. See
- * dev/LiveAPI-Object-Reuse.md.
+ * WHAT THE SCOPE ASSUMES: the caller calls invalidateDevicePathCache() right
+ * after anything that renumbers devices. That is a positioned insert, and also
+ * an append Live re-sorts the chain around: it keeps a chain ordered by device
+ * type, so an instrument or a MIDI effect pushes siblings down a slot even
+ * though it was appended. Deleting anything inside the scope is not supported
+ * at all — a held object follows its own target through an index shift, which
+ * is exactly wrong for a path cache. See dev/LiveAPI-Object-Reuse.md.
  *
  * Ids are never cached: at mode 0 an id resolves to a path once and follows
  * that path afterward, so a second lookup of the same id is not the same
