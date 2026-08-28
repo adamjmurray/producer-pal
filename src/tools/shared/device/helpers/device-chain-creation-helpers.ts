@@ -263,6 +263,14 @@ export function resolveOrCreateDrumPadChain(
     return null;
   }
 
+  // Auto-create only when the pad's chain is the whole of what's missing. A
+  // brand-new chain is empty, so anything after it in the path can never
+  // resolve: returning the new chain for `pC1/c1/d0/c0` would insert into
+  // `pC1/c1` instead. A deeper miss also comes back without a chain count.
+  if (chainSegments.length > 1) {
+    return null;
+  }
+
   // The catch-all pad is in_note -1, and Live 12.4.3 clamps a drum chain's
   // in_note to 0-127, so there is no way to create one: insert_chain would
   // strand an empty chain on note 36. An existing catch-all chain still
@@ -284,9 +292,9 @@ export function resolveOrCreateDrumPadChain(
   }
 
   // The miss above already counted the pad's chains; counting them again would
-  // build every one of them a second time. Every earlier return from
-  // resolveDrumPadFromPath is one this function has already bailed on, so a
-  // chain miss that reaches here always carries the count.
+  // build every one of them a second time. Only the pad's own chain lookup sets
+  // the count, and the guards above have bailed on every other way a chain miss
+  // can arrive here, so it is always there.
   const existingCount = assertDefined(existing.chainCount, "pad chain count");
 
   // The chain the miss was looking for is the one just created, so there is

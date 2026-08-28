@@ -309,6 +309,36 @@ describe("resolveOrCreateDrumPadChain", () => {
     expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
   });
 
+  it("refuses to create a pad chain the path continues past", () => {
+    // The created chain is empty, so `d0/c0` can never resolve in it. Returning
+    // it would insert the device into pC1/c1 instead of failing.
+    const rack = registerDrumRack([["drum-chain-36", 36]]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c1",
+        "d0",
+        "c0",
+      ]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a chain miss inside a rack nested in the pad", () => {
+    // The miss comes back from the nested walk, which carries no chain count.
+    const { inner, outer } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+        "c0",
+        "d0",
+        "c5",
+      ]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
   it("refuses a chain segment with an unparseable index", () => {
     const rack = registerDrumRack([["drum-chain-36", 36]]);
 
