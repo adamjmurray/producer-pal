@@ -16,13 +16,14 @@ const AUTO_DISMISS_MS = 4000;
  * Hook managing the notification banner for conversation persistence events
  * (limit enforcement and save failures).
  * @returns Notification state, dismiss handler, and functions to show
- *   limit-enforcement results or save errors
+ *   limit-enforcement results, save errors, and refused saves
  */
 export function useLimitNotification(): {
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
   showLimitNotification: (result: EnforceLimitResult) => void;
   showSaveError: (error: unknown) => void;
+  showSaveRefused: () => void;
 } {
   const [notification, setNotification] =
     useState<TransferNotificationData | null>(null);
@@ -33,24 +34,42 @@ export function useLimitNotification(): {
     setNotification(null);
   }, []);
 
-  const show = useCallback((result: EnforceLimitResult) => {
-    if (result.deletedCount === 0 && !result.limitReached) return;
-
+  const showTimed = useCallback((data: TransferNotificationData) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-
-    const message = result.limitReached
-      ? `Conversation limit (${MAX_CONVERSATIONS}) reached — unbookmark or delete conversations to free space`
-      : `Removed ${result.deletedCount} old conversation${result.deletedCount === 1 ? "" : "s"} (${MAX_CONVERSATIONS} limit)`;
-
-    setNotification({ message, type: "warning" });
+    setNotification(data);
     timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
   }, []);
 
-  const showError = useCallback((error: unknown) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setNotification({ message: formatSaveErrorMessage(error), type: "error" });
-    timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
-  }, []);
+  const show = useCallback(
+    (result: EnforceLimitResult) => {
+      if (result.deletedCount === 0 && !result.limitReached) return;
+
+      const message = result.limitReached
+        ? `Conversation limit (${MAX_CONVERSATIONS}) reached — unbookmark or delete conversations to free space`
+        : `Removed ${result.deletedCount} old conversation${result.deletedCount === 1 ? "" : "s"} (${MAX_CONVERSATIONS} limit)`;
+
+      showTimed({ message, type: "warning" });
+    },
+    [showTimed],
+  );
+
+  const showError = useCallback(
+    (error: unknown) => {
+      showTimed({ message: formatSaveErrorMessage(error), type: "error" });
+    },
+    [showTimed],
+  );
+
+  // The write was refused, not failed: the row this conversation belongs to is
+  // gone, and writing it back would resurrect something a delete took away.
+  // Nothing more will be saved to it, so say so rather than going quiet.
+  const showRefused = useCallback(() => {
+    showTimed({
+      message:
+        "This conversation is no longer in storage — it was deleted, so nothing more will be saved to it.",
+      type: "error",
+    });
+  }, [showTimed]);
 
   useEffect(() => {
     return () => {
@@ -63,6 +82,7 @@ export function useLimitNotification(): {
     dismissLimitNotification: dismiss,
     showLimitNotification: show,
     showSaveError: showError,
+    showSaveRefused: showRefused,
   };
 }
 

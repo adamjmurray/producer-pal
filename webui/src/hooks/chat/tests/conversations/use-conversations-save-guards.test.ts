@@ -27,7 +27,7 @@ import {
 describe("useConversations save guards", () => {
   beforeEach(resetConversationsTestState);
 
-  it("drops a save whose record was deleted from another tab", async () => {
+  it("drops a save whose record was deleted from another tab, and says so", async () => {
     // A second tab has its own hook, its own store, and no way to hear about
     // this one's saves — so nothing in memory can answer whether the record is
     // still there. The write transaction reads the store and finds out.
@@ -55,6 +55,12 @@ describe("useConversations save guards", () => {
     restore();
 
     expect(await loadConversation(id)).toBeUndefined();
+
+    // Refusing quietly would leave the user typing into a conversation that
+    // stopped being saved several turns ago.
+    expect(handle.result.current.notification?.message).toContain(
+      "no longer in storage",
+    );
   });
 
   it("does not adopt metadata from a save for a conversation the user has left", async () => {

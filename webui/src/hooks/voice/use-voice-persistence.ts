@@ -229,7 +229,16 @@ export function useVoicePersistence(
             expectPersisted: snapshot.expectPersisted,
           });
 
-          if (!result.saved) return;
+          // Refused, not failed: the row is gone and the transaction won't
+          // write a deleted conversation back. Voice has no banner for it, so
+          // the console is where the silence gets broken.
+          if (!result.saved) {
+            console.warn(
+              "This voice conversation is no longer in storage, so nothing more will be saved to it",
+            );
+
+            return;
+          }
 
           store.markPersisted(snapshot, record);
           await refreshList();

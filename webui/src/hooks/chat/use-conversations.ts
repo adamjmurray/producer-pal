@@ -260,7 +260,15 @@ export function useConversations({
             expectPersisted: snapshot.expectPersisted,
           });
 
-          if (!result.saved) return;
+          // Refused, not failed: the row is gone — another tab deleted it, or
+          // an import's limit trim evicted it — and the transaction won't write
+          // a deleted conversation back. The slot stays as it was, so an undo
+          // that restores the row lets the next save land again.
+          if (!result.saved) {
+            limit.showSaveRefused();
+
+            return;
+          }
 
           store.markPersisted(snapshot, record);
           limit.showLimitNotification(result);
