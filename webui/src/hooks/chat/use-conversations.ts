@@ -351,7 +351,11 @@ export function useConversations({
         throw error;
       }
 
-      if (isLive) {
+      // Ask again rather than trusting isLive: the user can switch conversations
+      // while the delete runs, and tearing the view down then would throw away
+      // the one they just opened. liveId, not activeId — a marked slot reports
+      // no active id, so the untouched case has to be recognized by id.
+      if (store.liveId() === id) {
         clearConversation();
         store.reset();
       }

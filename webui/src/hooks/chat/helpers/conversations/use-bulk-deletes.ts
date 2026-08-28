@@ -56,7 +56,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
 
   const sweep = useCallback(
     async (
-      clearsLive: boolean,
+      clearsLive: () => boolean,
       survivesSweep: (record: ConversationRecord) => boolean,
       removeRows: () => Promise<void>,
     ): Promise<void> => {
@@ -64,7 +64,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
 
       dropUndoable((record) => !survivesSweep(record));
 
-      if (clearsLive) {
+      if (clearsLive()) {
         dropPendingFork();
         undoMark = store.markDeleted();
       }
@@ -78,7 +78,10 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
         throw error;
       }
 
-      if (clearsLive) {
+      // Asked again, not reused: the user can switch conversations while the
+      // sweep runs, and whether the view goes with it is a question about the
+      // conversation that is live now.
+      if (clearsLive()) {
         clearConversation();
         store.reset();
       }
@@ -89,7 +92,12 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
   );
 
   const deleteAllConversations = useCallback(
-    () => sweep(true, () => false, dbDeleteAllConversations),
+    () =>
+      sweep(
+        () => true,
+        () => false,
+        dbDeleteAllConversations,
+      ),
     [sweep],
   );
 
@@ -98,7 +106,7 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     // chat is implicitly unbookmarked so it's swept too. A bookmarked one
     // survives, so its save must still land — hence the conditional mark but
     // the unconditional drain.
-    const clearsLive =
+    const clearsLive = (): boolean =>
       store.activeId() == null || !store.metaRef.current?.bookmarked;
 
     // Bookmarked records survive this sweep, so their undos stay offerable.

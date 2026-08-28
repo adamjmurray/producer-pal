@@ -18,6 +18,8 @@ import {
 } from "#webui/lib/conversation-db";
 import { importConversations } from "#webui/lib/conversation-transfer";
 import {
+  type ConversationsResult,
+  type ConversationsState,
   createConversationsProps,
   resetConversationsTestState,
   saveWithMessage,
@@ -175,6 +177,46 @@ async function expectForkDroppedOnDelete(
     // No sibling branched off the row that just went away.
     async () => expect(await listAllConversationSummaries()).toHaveLength(0),
   );
+}
+
+/**
+ * Hold the next row removal open until the returned release is called.
+ * @param method - The conversation-db delete the sweep under test runs
+ * @returns release (let the removal finish) and restore (undo the spy)
+ */
+function gateNextDelete(
+  method: "deleteConversation" | "deleteUnbookmarkedConversations",
+): { release: () => void; restore: () => void } {
+  const original = conversationDb[method] as (id?: string) => Promise<void>;
+  const [gate, release] = openGate();
+  const spy = vi
+    .spyOn(conversationDb, method)
+    .mockImplementationOnce(async (id?: string) => {
+      await gate;
+
+      await original(id);
+    });
+
+  return { release, restore: () => spy.mockRestore() };
+}
+
+/**
+ * Save one conversation, start another and save that too.
+ * @param state - Mock chat-history state
+ * @param result - Hook result ref
+ * @returns The two conversation ids, in the order they were saved
+ */
+async function saveTwo(
+  state: ConversationsState,
+  result: ConversationsResult,
+): Promise<[string, string]> {
+  await saveWithMessage(state, result, "first");
+  const first = result.current.activeConversationId!;
+
+  await act(() => Promise.resolve(result.current.startNewConversation()));
+  await saveWithMessage(state, result, "second");
+
+  return [first, result.current.activeConversationId!];
 }
 
 describe("useConversations delete/save races", () => {
@@ -487,5 +529,57 @@ describe("useConversations delete/save races", () => {
     await waitFor(async () =>
       expect(await loadConversation(keptId)).toBeDefined(),
     );
+  });
+});
+
+// A delete decides whether to tear the view down after its awaits, so the
+// answer has to come from the conversation that is live by then: the user can
+// open another one while the delete runs, and clearing the view then throws
+// away what they just opened.
+describe("useConversations delete vs. switch", () => {
+  beforeEach(resetConversationsTestState);
+
+  it("keeps the conversation opened while the delete was running", async () => {
+    const { state, result } = await setupHook();
+    const [doomed, opened] = await saveTwo(state, result);
+
+    await act(() => result.current.switchConversation(doomed));
+
+    const { release, restore } = gateNextDelete("deleteConversation");
+    let deleting!: Promise<void>;
+
+    await act(async () => {
+      deleting = result.current.deleteConversation(doomed);
+      await result.current.switchConversation(opened);
+      release();
+      await deleting;
+    });
+
+    expect(result.current.activeConversationId).toBe(opened);
+    expect(await conversationDb.loadConversation(doomed)).toBeUndefined();
+    restore();
+  });
+
+  it("keeps a bookmarked conversation opened while a sweep was running", async () => {
+    const { state, result } = await setupHook();
+    const [doomed, opened] = await saveTwo(state, result);
+
+    await act(() => result.current.toggleBookmark(opened));
+    await act(() => result.current.switchConversation(doomed));
+
+    const { release, restore } = gateNextDelete(
+      "deleteUnbookmarkedConversations",
+    );
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.switchConversation(opened);
+      release();
+      await sweeping;
+    });
+
+    expect(result.current.activeConversationId).toBe(opened);
+    restore();
   });
 });

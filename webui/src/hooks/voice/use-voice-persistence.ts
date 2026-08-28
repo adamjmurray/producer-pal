@@ -297,7 +297,11 @@ export function useVoicePersistence(
         throw error;
       }
 
-      if (isLive) startNewConversation();
+      // Ask again rather than trusting isLive: the user can switch conversations
+      // while the delete runs, and starting a new one then would throw away the
+      // one they just opened. liveId, not activeId — a marked slot reports no
+      // active id, so the untouched case has to be recognized by id.
+      if (store.liveId() === id) startNewConversation();
       await refreshList();
     },
     [store, refreshList, startNewConversation],
@@ -306,13 +310,15 @@ export function useVoicePersistence(
   /**
    * Wipe conversations, taking the live one with them unless it is spared.
    * @param removeRows - Clears the matching rows from the DB
-   * @param sparesLive - True when the live conversation survives this wipe
+   * @param sparesLive - Whether the live conversation survives this wipe. Asked
+   * again after the wipe, because the user can switch conversations while it
+   * runs and the answer belongs to whichever one is live at the end.
    */
   const sweep = useCallback(
-    async (removeRows: () => Promise<void>, sparesLive: boolean) => {
+    async (removeRows: () => Promise<void>, sparesLive: () => boolean) => {
       let undoMark: (() => void) | null = null;
 
-      if (!sparesLive) {
+      if (!sparesLive()) {
         // Fire only for a conversation that reached the DB — a session with
         // nothing saved yet has no record to lose. Ask before marking: a marked
         // slot reports no active id.
@@ -331,14 +337,14 @@ export function useVoicePersistence(
         throw error;
       }
 
-      if (!sparesLive) startNewConversation();
+      if (!sparesLive()) startNewConversation();
       await refreshList();
     },
     [store, refreshList, startNewConversation, onLiveRecordDeleted],
   );
 
   const deleteAllConversations = useCallback(
-    () => sweep(dbDeleteAllConversations, false),
+    () => sweep(dbDeleteAllConversations, () => false),
     [sweep],
   );
 
@@ -346,7 +352,7 @@ export function useVoicePersistence(
     () =>
       sweep(
         dbDeleteUnbookmarkedConversations,
-        store.metaRef.current?.bookmarked ?? false,
+        () => store.metaRef.current?.bookmarked ?? false,
       ),
     [sweep, store],
   );
