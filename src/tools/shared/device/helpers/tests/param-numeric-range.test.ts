@@ -49,6 +49,13 @@ describe("numericLabel", () => {
   it("rejects a note name, which parses to a string", () => {
     expect(numericLabel("C4")).toBeNull();
   });
+
+  it.each(["---", "-", ".."])(
+    "rejects %j, which the no-unit fallback parses to NaN",
+    (label) => {
+      expect(numericLabel(label)).toBeNull();
+    },
+  );
 });
 
 describe("displayAt", () => {

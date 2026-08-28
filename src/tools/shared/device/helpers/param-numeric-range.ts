@@ -122,13 +122,20 @@ export function sentinelRawValue(
 /**
  * Parse a display label to a number, rejecting the non-numeric forms
  * (note names, words) parseLabel also returns.
+ *
+ * NaN has to be rejected here: parseLabel's no-unit fallback matches a run of
+ * digits, dots and hyphens, so a punctuation-only label like "---" parses to
+ * NaN. Every downstream comparison against NaN is false, which would send the
+ * display search walking to full scale instead of stopping.
  * @param label - Display label from str_for_value()
  * @returns The number, or null if the label isn't one
  */
 export function numericLabel(label: string): number | null {
   const value = parseLabel(label).value;
 
-  return value == null || typeof value === "string" ? null : value;
+  if (value == null || typeof value === "string") return null;
+
+  return Number.isFinite(value) ? value : null;
 }
 
 /**
