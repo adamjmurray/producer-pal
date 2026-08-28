@@ -16,6 +16,7 @@ import { useChatModeReporting } from "#webui/hooks/chat/helpers/use-chat-mode-re
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/conversations/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/conversations/use-conversation-lock";
 import { useConversationPanelState } from "#webui/hooks/chat/helpers/conversations/use-conversation-panel-state";
+import { useStreamEndAutosave } from "#webui/hooks/chat/helpers/conversations/use-stream-end-autosave";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
@@ -233,10 +234,18 @@ export function useChatModeState(params: UseChatModeStateParams) {
     remoteConfig.postSmallModelMode,
   );
 
+  // Every switch/new/delete/back-forward tears the conversation down through
+  // this, so it is also where a stream cut short by the user gets saved.
+  const clearConversation = useStreamEndAutosave({
+    isAssistantResponding: chat.isAssistantResponding,
+    autoSaveRef,
+    clearConversation: wrappedClearConversation,
+  });
+
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
-    clearConversation: wrappedClearConversation,
+    clearConversation,
     activeMeta: {
       activeModel: chat.activeModel,
       activeProvider: chat.activeProvider,
@@ -281,16 +290,6 @@ export function useChatModeState(params: UseChatModeStateParams) {
     setViewState,
     handlers: conversationHandlers,
   });
-
-  const prevRespondingRef = useRef(false);
-
-  useEffect(() => {
-    if (!chat.isAssistantResponding && prevRespondingRef.current) {
-      void conversationManager.saveCurrentConversation(Date.now());
-    }
-
-    prevRespondingRef.current = chat.isAssistantResponding;
-  }, [chat.isAssistantResponding, conversationManager]);
 
   const headerInfo = useChatModeReporting({
     chat,
