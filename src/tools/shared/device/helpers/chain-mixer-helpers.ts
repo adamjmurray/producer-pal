@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
@@ -422,9 +423,7 @@ function readActiveSends(
     return [];
   }
 
-  const names = returnChains(chain).map(
-    (rc) => rc.getProperty("name") as string,
-  );
+  const names = returnChainNames(chain);
 
   return active.map(({ send, index }) => ({
     return: names[index] ?? `Return ${index + 1}`,
@@ -439,4 +438,21 @@ function readActiveSends(
  */
 function returnChains(chain: LiveAPI): LiveAPI[] {
   return LiveAPI.from(rackPath(chain)).getChildren("return_chains");
+}
+
+/**
+ * Names of the return chains of the rack that owns a chain, in send order.
+ * Memoized per request because every chain of a rack asks for the same list,
+ * and a 64-pad kit resolving it per pad doubled the cost of reading the kit.
+ * @param chain - Chain or DrumChain LiveAPI object
+ * @returns The return chain names, index-aligned with the chain's sends
+ */
+function returnChainNames(chain: LiveAPI): string[] {
+  const path = rackPath(chain);
+
+  return requestMemo(`return-chain-names ${path}`, () =>
+    LiveAPI.from(path)
+      .getChildren("return_chains")
+      .map((rc) => rc.getProperty("name") as string),
+  );
 }

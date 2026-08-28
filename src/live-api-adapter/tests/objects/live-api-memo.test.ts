@@ -11,6 +11,7 @@ import {
   beginLiveApiScope,
   endLiveApiScope,
   memoizedObject,
+  requestMemo,
 } from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
@@ -71,5 +72,23 @@ describe("live-api memo", () => {
     mockNonExistentObjects();
 
     expect(LiveAPI.from(livePath.liveSet)).not.toBe(first);
+  });
+
+  // A rack's return chain names, and anything else a request reads once and
+  // reuses. Same lifetime as a memoized object: settled within a request,
+  // stale after it.
+  it("computes a derived value once per request and forgets it after", () => {
+    let computed = 0;
+    const compute = (): number => ++computed;
+
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(1);
+    expect(requestMemo("count", compute)).toBe(1);
+    expect(requestMemo("other", compute)).toBe(2);
+
+    endLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(3);
   });
 });

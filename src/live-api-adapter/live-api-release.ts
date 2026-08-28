@@ -141,9 +141,35 @@ export function memoizeObject(target: string, api: LiveAPI): void {
   memoizedObjects.set(target, api);
 }
 
-/** Forget every memoized object, so the next lookup of each resolves afresh. */
+/**
+ * Values a request read out of the Live Set once and may reuse, keyed by what
+ * they describe. Same lifetime as the object memo above: a rack's return chain
+ * names are settled for one request and stale for the next.
+ */
+const memoizedValues = new Map<string, unknown>();
+
+/**
+ * Read a derived value once per request, computing it the first time.
+ * @param key - Names the value, including whatever it was derived from
+ * @param compute - Produces the value when this request hasn't asked yet
+ * @returns The value, computed now or on an earlier ask in this request
+ */
+export function requestMemo<T>(key: string, compute: () => T): T {
+  if (memoizedValues.has(key)) {
+    return memoizedValues.get(key) as T;
+  }
+
+  const value = compute();
+
+  memoizedValues.set(key, value);
+
+  return value;
+}
+
+/** Forget everything memoized, so the next lookup of each resolves afresh. */
 export function clearLiveApiMemo(): void {
   memoizedObjects.clear();
+  memoizedValues.clear();
 }
 
 /**

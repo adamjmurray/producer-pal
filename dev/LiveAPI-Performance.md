@@ -76,6 +76,19 @@ A warm pool builds nothing, which is the whole claim. The deep kit read holds
 flat at about 1.2 s per call; at the old ceiling the same call was past 5.9 s by
 its twelfth run and still climbing.
 
+## Return chain names are read once per rack
+
+A chain with a send turned up has to name the returns it feeds, and those names
+live on the rack. Reading them per chain cost `1 + returnCount` objects a pad:
+on the counter Set's 64-pad kit, `read-device` with chains resolved 1,154
+objects for 712 targets and took 1.0 s a call. Naming them once per rack
+(`requestMemo` in `live-api-adapter/live-api-release.ts`) took it to 713
+resolutions and 0.52 s, with identical output. It scales with pads, so a 128-pad
+kit saves twice that.
+
+`read-track` never reaches this — it does not descend into rack chains at any
+depth. Only `read-device` on the rack does.
+
 ## What still costs
 
 **Repeats inside one request.** `read-track` on the four-level instrument rack
