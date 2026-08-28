@@ -15,6 +15,10 @@
 
 import { describe, expect, it } from "vitest";
 import { liveApiBuildStats } from "#src/live-api-adapter/live-api-build-stats.ts";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -218,11 +222,19 @@ describe("readDevice drum rack build budget", () => {
   it("names a chain's returns once per rack, not once per chain", () => {
     setupKit(true);
 
-    readDevice({
-      path: "t1/d0",
-      include: ["drum-pads", "chains"],
-      maxDepth: 0,
-    });
+    // Inside a request scope: the names are remembered for one request only, so
+    // without one every chain names the returns again.
+    beginLiveApiScope();
+
+    try {
+      readDevice({
+        path: "t1/d0",
+        include: ["drum-pads", "chains"],
+        maxDepth: 0,
+      });
+    } finally {
+      endLiveApiScope();
+    }
 
     // A chain with a send up has to name the returns it feeds, and the names
     // live on the rack — the same rack for every chain. Reading them per chain

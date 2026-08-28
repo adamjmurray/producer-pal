@@ -91,4 +91,28 @@ describe("live-api memo", () => {
 
     expect(requestMemo("count", compute)).toBe(3);
   });
+
+  // Requests overlap whenever a tool awaits, and the second one can rename the
+  // very thing the first derived its value from.
+  it("stops reusing a derived value once a second request is in flight", () => {
+    let computed = 0;
+    const compute = (): number => ++computed;
+
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(1);
+
+    // A second request starts while the first is suspended on an await.
+    beginLiveApiScope();
+
+    expect(requestMemo("count", compute)).toBe(2);
+    expect(requestMemo("count", compute)).toBe(3);
+
+    endLiveApiScope();
+
+    // The first request resumes: its value predates the other request's writes.
+    expect(requestMemo("count", compute)).toBe(4);
+
+    endLiveApiScope();
+  });
 });
