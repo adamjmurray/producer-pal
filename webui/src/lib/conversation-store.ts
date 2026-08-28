@@ -126,7 +126,8 @@ export interface ConversationStore {
   reset: () => void;
   /** Run work after any save already queued, so reads and writes stay ordered. */
   enqueue: (work: () => Promise<void>) => Promise<void>;
-  /** Wait for the queued saves — the ones a delete must not race. */
+  /** Wait for the queued saves — the ones a delete must not race. Never
+   * rejects, however those saves ended. */
   drain: () => Promise<void>;
   /** Called whenever {@link activeId} changes. */
   onActiveIdChange: (listener: (id: string | null) => void) => void;
@@ -235,7 +236,11 @@ export function createConversationStore(
     enqueue: (work) => {
       const next = queue.then(work);
 
-      queue = next;
+      // The tail has to stay resolved. A rejected one would make every later
+      // enqueue skip its work — autosaving would just stop — and would reject
+      // drain() in the delete paths that await it outside their try. The
+      // caller still sees the failure, through the promise returned here.
+      queue = next.catch(() => undefined);
 
       return next;
     },

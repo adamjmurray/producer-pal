@@ -200,4 +200,22 @@ describe("createConversationStore", () => {
 
     expect(order).toStrictEqual(["first", "second"]);
   });
+
+  it("keeps running queued work after one fails, and drain stays resolved", async () => {
+    const store = createConversationStore();
+    const order: string[] = [];
+
+    const failed = store.enqueue(() => Promise.reject(new Error("db full")));
+
+    await expect(failed).rejects.toThrow("db full");
+
+    await store.enqueue(() => {
+      order.push("after");
+
+      return Promise.resolve();
+    });
+
+    await expect(store.drain()).resolves.toBeUndefined();
+    expect(order).toStrictEqual(["after"]);
+  });
 });

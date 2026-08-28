@@ -217,21 +217,27 @@ export function useVoicePersistence(
 
       if (!snapshot) return;
 
+      // Copy the metadata now, not inside the queued body: switching or
+      // starting a conversation replaces metaRef before the body runs, and this
+      // write would then take the incoming conversation's title and createdAt.
+      const meta = store.metaRef.current;
+
       void store.enqueue(async () => {
-        const record = await buildVoiceRecord(
-          snapshot,
-          merged,
-          model,
-          store.metaRef.current,
-        );
-        const result = await saveConversation(record, {
-          expectPersisted: snapshot.expectPersisted,
-        });
+        try {
+          const record = await buildVoiceRecord(snapshot, merged, model, meta);
+          const result = await saveConversation(record, {
+            expectPersisted: snapshot.expectPersisted,
+          });
 
-        if (!result.saved) return;
+          if (!result.saved) return;
 
-        store.markPersisted(snapshot, record);
-        await refreshList();
+          store.markPersisted(snapshot, record);
+          await refreshList();
+        } catch (error) {
+          // Nothing awaits this save, so report the failure here rather than
+          // leaving it an unhandled rejection.
+          console.error("Failed to save voice conversation", error);
+        }
       });
     }, VOICE_AUTOSAVE_DEBOUNCE_MS);
 

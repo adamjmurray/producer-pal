@@ -164,6 +164,38 @@ describe("useConversations", () => {
     });
   });
 
+  describe("settings captured at save time", () => {
+    it("keeps the model a save started with when a new chat replaces it", async () => {
+      const { props, state } = createProps();
+
+      props.activeMeta.activeModel = "claude-opus-5";
+      props.activeMeta.activeProvider = "anthropic";
+
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+      await saveWithMessage(state, result, "first turn");
+
+      const id = result.current.activeConversationId!;
+
+      // Starting a new chat clears the settings ref synchronously, before the
+      // queued write runs. The write still belongs to the conversation it was
+      // started for, so it has to carry that conversation's model.
+      state.chatHistory = [{ role: "user", content: "second turn" }];
+      await act(async () => {
+        const saving = result.current.saveCurrentConversation();
+
+        result.current.startNewConversation();
+        await saving;
+      });
+
+      expect(await loadConversation(id)).toMatchObject({
+        model: "claude-opus-5",
+        provider: "anthropic",
+      });
+    });
+  });
+
   describe("bookmark toggling", () => {
     it("toggles bookmark on a conversation", async () => {
       const { state, result } = await setupHook();

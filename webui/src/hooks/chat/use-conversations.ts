@@ -222,6 +222,15 @@ export function useConversations({
 
       if (!snapshot) return Promise.resolve();
 
+      // Copy the settings now, not inside the queued body. Switching or
+      // starting a conversation mid-stream replaces metaRef before the body
+      // runs, and this write would then stamp the incoming conversation's
+      // model and provider onto the outgoing one's row.
+      const refs = {
+        id: snapshot.id,
+        ...(store.metaRef.current ?? DEFAULT_META),
+      };
+
       // Queue behind any save already in flight. A fork's first save persists
       // the branch linkage; later saves of that id recover it by reading the
       // record back. Run concurrently, a later save's read could resolve before
@@ -233,10 +242,7 @@ export function useConversations({
             id: snapshot.id,
             reuseId: snapshot.reuseId,
             fork,
-            refs: {
-              id: snapshot.id,
-              ...(store.metaRef.current ?? DEFAULT_META),
-            },
+            refs,
             chatHistory,
             updatedAt,
           });
@@ -332,8 +338,8 @@ export function useConversations({
       }
 
       // Drain the saves already queued before removing the row, so one can't
-      // land afterward. The queue never rejects (the save body swallows its own
-      // errors), so awaiting it directly is safe.
+      // land afterward. drain() never rejects, so awaiting it here — outside
+      // the try below — can't strand the mark.
       await store.drain();
 
       try {
