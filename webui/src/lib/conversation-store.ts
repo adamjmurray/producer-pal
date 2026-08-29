@@ -107,6 +107,12 @@ export interface ConversationStore {
   /** The active conversation's metadata. Written in place by useSyncActiveMeta. */
   metaRef: { current: ActiveMeta | null };
   /**
+   * Patch the live conversation's metadata, so a rename or a bookmark toggle
+   * that targeted the conversation on screen is reflected without a reload.
+   * A no-op for any other id, or before the meta exists.
+   */
+  patchActiveMeta: (id: string, patch: Partial<ActiveMeta>) => void;
+  /**
    * Claim the live conversation's id and stamp a snapshot to validate later.
    * Null when a delete is taking that conversation away — no save may start
    * for it, and one that starts on a fresh id would just write the deleted
@@ -174,6 +180,12 @@ export function createConversationStore(
     activeId,
     liveId: () => slot.id,
     metaRef,
+
+    patchActiveMeta: (id, patch) => {
+      if (id !== activeId() || metaRef.current == null) return;
+
+      Object.assign(metaRef.current, patch);
+    },
 
     beginSave: (branch) => {
       if (slot.state === "deleted") return null;

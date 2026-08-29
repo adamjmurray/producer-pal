@@ -369,10 +369,7 @@ export function useVoicePersistence(
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
       await dbRenameConversation(id, title);
-
-      if (id === store.activeId() && store.metaRef.current) {
-        store.metaRef.current.title = title;
-      }
+      store.patchActiveMeta(id, { title });
 
       await refreshList();
     },
@@ -387,10 +384,7 @@ export function useVoicePersistence(
       const next = !conv.bookmarked;
 
       await setBookmark(id, next);
-
-      if (id === store.activeId() && store.metaRef.current) {
-        store.metaRef.current.bookmarked = next;
-      }
+      store.patchActiveMeta(id, { bookmarked: next });
 
       await refreshList();
     },

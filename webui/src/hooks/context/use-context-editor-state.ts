@@ -92,8 +92,8 @@ interface ReplaceContext {
   retryTimerRef: TimerRef;
   /** How many Clear/Import writes are on the wire (see the hook's ref). */
   replacingRef: { current: number };
-  /** The live set of in-flight write promises. */
-  saves: Set<Promise<boolean>>;
+  /** Ref holding the live set of in-flight write promises. */
+  savesRef: { current: Set<Promise<boolean>> };
   setCharCount: (count: number) => void;
   setDirty: (dirty: boolean) => void;
   setEditorKey: (update: (key: number) => number) => void;
@@ -133,7 +133,7 @@ async function replaceDocument(
   let ok = false;
 
   try {
-    ok = await dispatchOrderedWrite(ctx.saves, write);
+    ok = await dispatchOrderedWrite(ctx.savesRef.current, write);
   } finally {
     ctx.replacingRef.current -= 1;
   }
@@ -495,7 +495,7 @@ export function useContextEditorState(
     debounceTimerRef,
     retryTimerRef,
     replacingRef,
-    saves: inFlightSavesRef.current,
+    savesRef: inFlightSavesRef,
     setCharCount,
     setDirty,
     setEditorKey,

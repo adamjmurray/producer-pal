@@ -385,10 +385,7 @@ export function useConversations({
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
       await dbRenameConversation(id, title);
-
-      if (id === store.activeId() && store.metaRef.current) {
-        store.metaRef.current.title = title;
-      }
+      store.patchActiveMeta(id, { title });
 
       await refreshList();
     },
@@ -404,10 +401,7 @@ export function useConversations({
       const newValue = !conv.bookmarked;
 
       await setBookmark(id, newValue);
-
-      if (id === store.activeId() && store.metaRef.current) {
-        store.metaRef.current.bookmarked = newValue;
-      }
+      store.patchActiveMeta(id, { bookmarked: newValue });
 
       await refreshList();
     },
