@@ -71,7 +71,7 @@ function warnOutOfRange(
   const also = sentinel == null ? "" : ` (or "${sentinel.label}")`;
 
   console.warn(
-    `${label} only goes from ${minLabel} to ${maxLabel}${also}, so ${targetDisplay} was set to the closest end.`,
+    `${label} only goes from ${minLabel} to ${maxLabel}${also}, so ${targetDisplay} was set to the nearest valid value.`,
   );
 }
 

@@ -51,13 +51,13 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
       // Simpler and Drum Rack pads, so the how has to ship with the promise.
       smallModel:
-        "array of {name, value}. name = param name or id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
+        "array of {name, value}. name = a param name or param id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
     }),
     // The escape hatch for the drum-pad instrument-swap guard
     // (nested-param-target.ts), and deliberately NOT taught in the skills: the

@@ -94,7 +94,7 @@ describe("updateDevice - display-value search", () => {
     expect(expectValueSet(param)).toBe(1);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'updateDevice: param "Drive" only goes from -36.0 dB to 36.0 dB, so 99 was set to the closest end.',
+      'updateDevice: param "Drive" only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
     );
   });
 
@@ -362,7 +362,7 @@ describe("updateDevice - a word at the max end of the range", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      'updateDevice: param "Release" only goes from 0.1 to 1.2 (or "A"), so 3 was set to the closest end.',
+      'updateDevice: param "Release" only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
     );
   });
 });

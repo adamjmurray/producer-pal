@@ -33,11 +33,11 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     }),
     params: param(paramsInputSchema, {
       default:
-        "applied after creation — array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
+        "applied after creation — array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). For a Drum Rack, prefix the name with a pad path to address a pad's device, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} loads a sample into pad C1 (auto-creates the pad's Simpler) — build a full kit in one call",
       // See update-device: small mode has no devices fragment, so the value
       // format and the sample write both have to survive the trim.
       smallModel:
-        "applied after creation — array of {name, value}. name = param name or id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
+        "applied after creation — array of {name, value}. name = a param name or param id; value in display units (enum string, note name, number). Load a sample with {name:'sample', value:'<abs path>'} (there is no top-level sample arg); for a Drum Rack pad prefix it, e.g. {name:'pC1/d0/sample'}",
     }),
   },
 });
