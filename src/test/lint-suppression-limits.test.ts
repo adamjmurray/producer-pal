@@ -51,7 +51,9 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   srcTests: 16, // 15 real + 1 self
   scripts: 0,
   scriptsTests: 0,
-  webui: 4,
+  // 1 react/immutability: the latest-callback ref in use-preset-draft, written
+  // in render on purpose
+  webui: 5,
   // 4 any (SDK mock-call records), 5 require-yield (streams that throw before
   // yielding), 5 only-throw-error (non-Error throw branches), 2 no-deprecated
   // (need the undoctored DOM factory), 1 no-unnecessary-condition
