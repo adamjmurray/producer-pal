@@ -105,8 +105,13 @@ describe("setParamValueAndVerify", () => {
   it("stays silent when the value lands", () => {
     const param = registerLabeledParam();
 
-    setParamValueAndVerify(paramApi(), 0.8, 'updateDevice: param "Drive"');
+    const landed = setParamValueAndVerify(
+      paramApi(),
+      0.8,
+      'updateDevice: param "Drive"',
+    );
 
+    expect(landed).toBe(true);
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
     expect(outlet).not.toHaveBeenCalled();
   });
@@ -117,8 +122,13 @@ describe("setParamValueAndVerify", () => {
 
     param.set.mockImplementation(() => undefined);
 
-    setParamValueAndVerify(paramApi(), 99, 'updateDevice: param "Drive"');
+    const landed = setParamValueAndVerify(
+      paramApi(),
+      99,
+      'updateDevice: param "Drive"',
+    );
 
+    expect(landed).toBe(false);
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateDevice: param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',

@@ -274,3 +274,39 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
 
   return result;
 }
+
+/** A param a write landed on. Its value is read once, at the end of the call. */
+export interface WrittenParam {
+  id: string;
+  name: string;
+}
+
+/** What create-device and update-device report for each param they wrote. */
+export interface ParamValueResult extends WrittenParam {
+  value: unknown;
+}
+
+/**
+ * Read the values of the params a call wrote, once everything else in that call
+ * has run. An A/B compare swap or a macro-variation recall rewrites the values a
+ * `params` write just landed, so reading at write time would report what the
+ * same call went on to overwrite. This is the only place a written param's value
+ * comes from, and it reads the same as read-device's, so a write and a read can
+ * never disagree.
+ *
+ * Assumes the params are still there: nothing that runs after a `params` write
+ * removes a device.
+ *
+ * The name stays as reported — a path-prefixed write is named by the path the
+ * caller used, not by the param's own name.
+ * @param written - The params the writes landed on
+ * @returns Those params with their current values
+ */
+export function refreshParamValues(
+  written: WrittenParam[],
+): ParamValueResult[] {
+  return written.map((entry) => ({
+    ...entry,
+    value: readParameter(LiveAPI.from(entry.id)).value,
+  }));
+}

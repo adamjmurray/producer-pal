@@ -58,6 +58,44 @@ describe("createDevice params", () => {
       );
     });
 
+    it("reports what each written param reads as after creation", () => {
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "comp-new"] },
+      });
+      registerMockObject("comp-new", {
+        path: livePath.track(0).device(2),
+        type: "Device",
+        properties: { parameters: children("threshold") },
+      });
+      registerMockObject("threshold", {
+        properties: {
+          name: "Threshold",
+          original_name: "Threshold",
+          is_quantized: 0,
+          value: 0,
+          min: 0,
+          max: 1,
+        },
+        methods: {
+          str_for_value: (v: unknown) =>
+            `${Math.round(Number(v) * 60) - 60} dB`,
+        },
+      });
+
+      const result = createDevice({
+        deviceName: "Compressor",
+        path: "t0",
+        params: [{ name: "Threshold", value: "-20 dB" }],
+      });
+
+      expect(result).toStrictEqual({
+        id: "comp-new",
+        deviceIndex: 2,
+        params: [{ id: "threshold", name: "Threshold", value: -20 }],
+      });
+    });
+
     it("prefixes param warnings with createDevice, not updateDevice", async () => {
       const mockConsole = await import("#src/shared/max/v8-max-console.ts");
 

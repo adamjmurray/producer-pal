@@ -6,6 +6,10 @@
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import {
+  type ParamValueResult,
+  refreshParamValues,
+} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
@@ -49,12 +53,13 @@ export interface UpdateTargetOptions extends UpdatePropertyOptions {
  * @param target - Device to update
  * @param type - Device type
  * @param options - Update options
+ * @returns What each written param reads as after the write
  */
 export function updateDeviceProperties(
   target: LiveAPI,
   type: string,
   options: UpdatePropertyOptions,
-): void {
+): ParamValueResult[] {
   const {
     params,
     actions,
@@ -74,9 +79,11 @@ export function updateDeviceProperties(
     force,
   } = options;
 
-  if (params != null) {
-    setParamValues(target, params, "updateDevice", force);
-  }
+  // Written first so a macroVariation "create" stores what was just set. The
+  // values are read at the end instead: an A/B swap, a variation recall or a
+  // specialized action below rewrites them.
+  const paramResults =
+    params != null ? setParamValues(target, params, "updateDevice", force) : [];
 
   if (actions != null) {
     applySpecializedActions(target, actions, "updateDevice");
@@ -109,6 +116,8 @@ export function updateDeviceProperties(
   warnIfSet("sendReturn", sendReturn, type);
   warnIfSet("chokeGroup", chokeGroup, type);
   warnIfSet("mappedPitch", mappedPitch, type);
+
+  return refreshParamValues(paramResults);
 }
 
 /**

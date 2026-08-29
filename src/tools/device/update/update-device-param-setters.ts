@@ -8,10 +8,12 @@ import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
+  type WrittenParam,
   extractMaxPanValue,
   isDivisionLabel,
   isPanLabel,
   normalizePan,
+  readParameterBasic,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { strForValue } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
@@ -37,13 +39,16 @@ import { normalizeParamValue } from "./update-device-param-parser.ts";
  * @param params - Array of {name, value} param entries
  * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @returns The params the writes landed on
  */
 export function setParamValues(
   device: LiveAPI,
   params: ParamEntry[],
   toolName: string = "updateDevice",
   force = false,
-): void {
+): WrittenParam[] {
+  const results: WrittenParam[] = [];
+
   for (const entry of params) {
     const key = entry.name.trim();
     const rawValue = entry.value.trim();
@@ -63,13 +68,15 @@ export function setParamValues(
     // multi-param update. Warn and move on, consistent with update tools'
     // warn-and-skip contract.
     try {
-      setOneParam(device, key, rawValue, toolName, force);
+      results.push(...setOneParam(device, key, rawValue, toolName, force));
     } catch (e) {
       console.warn(
         `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
       );
     }
   }
+
+  return results;
 }
 
 /**
@@ -81,6 +88,7 @@ export function setParamValues(
  * @param rawValue - Trimmed value
  * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @returns The params the writes landed on
  */
 function setOneParam(
   device: LiveAPI,
@@ -88,7 +96,7 @@ function setOneParam(
   rawValue: string,
   toolName: string,
   force: boolean,
-): void {
+): WrittenParam[] {
   // A name containing "/" is normally a path-prefixed pseudo-param
   // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
   // write the trailing param to the target. But some real DeviceParameters
@@ -100,18 +108,20 @@ function setOneParam(
     const namedParam = resolveParamByName(device, key);
 
     if (namedParam?.exists()) {
-      setParamValue(namedParam, normalizeParamValue(rawValue), toolName);
-    } else {
-      applyNestedParam(device, key, rawValue, toolName, force);
+      return toEntries(
+        setParamValue(namedParam, normalizeParamValue(rawValue), toolName),
+      );
     }
 
-    return;
+    return applyNestedParam(device, key, rawValue, toolName, force);
   }
 
   const inputValue = normalizeParamValue(rawValue);
 
+  // A specialized pseudo-param (e.g. Simpler's `sample`) is not a
+  // DeviceParameter, so there is no value to read back.
   if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
-    return;
+    return [];
   }
 
   // A purely numeric key is an absolute Live API param id.
@@ -122,10 +132,19 @@ function setOneParam(
   if (!param?.exists()) {
     console.warn(`${toolName}: param "${key}" not found on device`);
 
-    return;
+    return [];
   }
 
-  setParamValue(param, inputValue, toolName);
+  return toEntries(setParamValue(param, inputValue, toolName));
+}
+
+/**
+ * A write lands on one param or none; the callers above collect several.
+ * @param result - The param one write landed on, if any
+ * @returns The result as a list
+ */
+function toEntries(result: WrittenParam | null): WrittenParam[] {
+  return result ? [result] : [];
 }
 
 /**
@@ -139,6 +158,7 @@ function setOneParam(
  * @param rawValue - Trimmed value to write
  * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @returns The params the writes landed on
  */
 function applyNestedParam(
   device: LiveAPI,
@@ -146,7 +166,7 @@ function applyNestedParam(
   rawValue: string,
   toolName: string,
   force: boolean,
-): void {
+): WrittenParam[] {
   const slashIndex = key.lastIndexOf("/");
   const prefix = key.slice(0, slashIndex);
   const paramName = key.slice(slashIndex + 1).trim();
@@ -156,7 +176,7 @@ function applyNestedParam(
       `${toolName}: skipping param "${key}" with empty name after "/"`,
     );
 
-    return;
+    return [];
   }
 
   const target = resolveNestedParamTarget(
@@ -167,14 +187,16 @@ function applyNestedParam(
     force,
   );
 
-  if (target) {
-    setParamValues(
-      target,
-      [{ name: paramName, value: rawValue }],
-      toolName,
-      force,
-    );
-  }
+  if (!target) return [];
+
+  // Report the param under the path the caller addressed it by: sixteen pads'
+  // worth of bare "Volume" entries would name nothing.
+  return setParamValues(
+    target,
+    [{ name: paramName, value: rawValue }],
+    toolName,
+    force,
+  ).map((result) => ({ ...result, name: `${prefix}/${result.name}` }));
 }
 
 /**
@@ -214,19 +236,20 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * @param param - Parameter to set
  * @param inputValue - Value to set
  * @param toolName - Calling tool name for warning prefix
+ * @returns The param the write landed on, or null if it did not land
  */
 function setParamValue(
   param: LiveAPI,
   inputValue: string | number,
   toolName: string,
-): void {
+): WrittenParam | null {
   const paramName = param.getProperty("name") as string;
   const label = `${toolName}: param "${paramName}"`;
 
   if (!isParamEnabled(param)) {
     warnParamDisabled(label);
 
-    return;
+    return null;
   }
 
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
@@ -247,12 +270,10 @@ function setParamValue(
         `${toolName}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
-      return;
+      return null;
     }
 
-    setParamValueAndVerify(param, index, label);
-
-    return;
+    return writeParam(param, index, label);
   }
 
   // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
@@ -262,12 +283,10 @@ function setParamValue(
     if (midi == null) {
       console.warn(`${toolName}: invalid note name "${inputValue}"`);
 
-      return;
+      return null;
     }
 
-    setParamValueAndVerify(param, midi, label);
-
-    return;
+    return writeParam(param, midi, label);
   }
 
   // 3. Pan - detect via current label, convert -1/1 to internal range
@@ -275,9 +294,7 @@ function setParamValue(
   const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
-    setPanParamValue(param, inputValue, label, toolName);
-
-    return;
+    return setPanParamValue(param, inputValue, label, toolName);
   }
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
@@ -287,15 +304,15 @@ function setParamValue(
   if (isDivisionLabel(currentLabel) || isDivisionLabel(minLabel)) {
     const rawValue = findDivisionRawValue(param, inputValue);
 
-    if (rawValue != null) {
-      setParamValueAndVerify(param, rawValue, label);
-    } else {
+    if (rawValue == null) {
       console.warn(
         `${toolName}: "${inputValue}" is not a valid division option`,
       );
+
+      return null;
     }
 
-    return;
+    return writeParam(param, rawValue, label);
   }
 
   // 5. Numeric - convert display value to raw value. A param with no numeric
@@ -316,9 +333,7 @@ function setParamValue(
         ? inputValue
         : findRawValueForDisplay(param, inputValue, range, label);
 
-    setParamValueAndVerify(param, rawValue, label);
-
-    return;
+    return writeParam(param, rawValue, label);
   }
 
   // 6. The word at one end of a numeric range — Glue Compressor's Release
@@ -327,9 +342,7 @@ function setParamValue(
   const sentinelRaw = range && sentinelRawValue(range, inputValue);
 
   if (sentinelRaw != null) {
-    setParamValueAndVerify(param, sentinelRaw, label);
-
-    return;
+    return writeParam(param, sentinelRaw, label);
   }
 
   // 7. Uninterpretable string — Live silently rejects string writes to numeric
@@ -339,6 +352,28 @@ function setParamValue(
   console.warn(
     `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
   );
+
+  return null;
+}
+
+/**
+ * Write a raw value and name the param for the caller. The value is not read
+ * here — `refreshParamValues` reads it after everything else in the call has
+ * run. A write Live ignored names nothing, the way a disabled param does: an
+ * entry is only ever a value that landed.
+ * @param param - Parameter to write
+ * @param rawValue - Raw value to write
+ * @param label - How to name the parameter in a warning
+ * @returns The param the write landed on, or null if it did not land
+ */
+function writeParam(
+  param: LiveAPI,
+  rawValue: number,
+  label: string,
+): WrittenParam | null {
+  if (!setParamValueAndVerify(param, rawValue, label)) return null;
+
+  return readParameterBasic(param);
 }
 
 /**
@@ -348,13 +383,14 @@ function setParamValue(
  * @param inputValue - Value to set
  * @param label - How to name the parameter in a warning
  * @param toolName - Calling tool name for warning prefix
+ * @returns The param the write landed on, or null if it did not land
  */
 function setPanParamValue(
   param: LiveAPI,
   inputValue: string | number,
   label: string,
   toolName: string,
-): void {
+): WrittenParam | null {
   const min = param.getProperty("min") as number;
   const max = param.getProperty("max") as number;
 
@@ -370,7 +406,7 @@ function setPanParamValue(
         `${toolName}: "${inputValue}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
       );
 
-      return;
+      return null;
     }
 
     const maxPanValue =
@@ -384,11 +420,7 @@ function setPanParamValue(
   }
 
   // Convert -1 to 1 → internal range
-  setParamValueAndVerify(
-    param,
-    ((numValue + 1) / 2) * (max - min) + min,
-    label,
-  );
+  return writeParam(param, ((numValue + 1) / 2) * (max - min) + min, label);
 }
 
 /**

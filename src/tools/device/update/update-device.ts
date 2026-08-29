@@ -37,6 +37,7 @@ import {
   stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
+import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import {
   type UpdateTargetOptions,
   updateDeviceProperties,
@@ -356,12 +357,12 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
  * Update a single target (device, chain, or drum pad)
  * @param target - Live API object to update
  * @param options - Update options
- * @returns Result with ID or null if update failed
+ * @returns Result with ID and any params written, or null if update failed
  */
 function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
-): { id: string } | null {
+): { id: string; params?: ParamValueResult[] } | null {
   const type = target.type;
 
   // Validate type is updatable
@@ -399,11 +400,18 @@ function updateTarget(
     }
   }
 
-  if (isDeviceType(type)) {
-    updateDeviceProperties(target, type, options);
-  } else {
+  if (!isDeviceType(type)) {
     updateNonDeviceProperties(target, type, options);
+
+    return { id: target.id };
   }
 
-  return { id: target.id };
+  const params = updateDeviceProperties(target, type, options);
+  const result: { id: string; params?: ParamValueResult[] } = {
+    id: target.id,
+  };
+
+  if (params.length > 0) result.params = params;
+
+  return result;
 }

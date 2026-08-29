@@ -58,23 +58,26 @@ export function setParamIfEnabled(
  * @param param - DeviceParameter LiveAPI object
  * @param rawValue - Raw value to write
  * @param label - How to name the parameter in the warning
+ * @returns True when the value landed
  */
 export function setParamValueAndVerify(
   param: LiveAPI,
   rawValue: number,
   label: string,
-): void {
+): boolean {
   const expected = strForValue(param, Math.fround(rawValue));
 
   param.set("value", rawValue);
 
   const actual = strForValue(param, param.getProperty("value") as number);
 
-  if (actual === expected) return;
+  if (actual === expected) return true;
 
   console.warn(
     `${label} was not changed — it still reads "${actual}". Live ignores a value outside the parameter's range.`,
   );
+
+  return false;
 }
 
 /**

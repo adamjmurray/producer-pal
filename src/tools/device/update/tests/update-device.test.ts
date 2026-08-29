@@ -119,7 +119,12 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
-      expect(result).toStrictEqual({ id: "123" });
+      // The value comes back read from the param, so it carries Live's 32-bit
+      // float storage — and would show a snap to a different step.
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [{ id: "789", name: "Param 789", value: 0.800000011920929 }],
+      });
     });
 
     it("should set multiple param values", () => {
@@ -133,7 +138,13 @@ describe("updateDevice", () => {
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.3);
       expect(param790.set).toHaveBeenCalledWith("value", 0.7);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [
+          { id: "789", name: "Param 789", value: 0.30000001192092896 },
+          { id: "790", name: "Param 790", value: 0.699999988079071 },
+        ],
+      });
     });
 
     it("should log error for invalid param ID but continue", () => {
@@ -184,6 +195,8 @@ describe("updateDevice", () => {
     beforeEach(() => {
       param791 = registerMockObject("791", {
         properties: {
+          name: "Warp Mode",
+          original_name: "Warp Mode",
           is_quantized: 1,
           value_items: ["Repitch", "Fade", "Jump"],
         },
@@ -197,7 +210,10 @@ describe("updateDevice", () => {
       });
 
       expect(param791.set).toHaveBeenCalledWith("value", 1);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [{ id: "791", name: "Warp Mode", value: "Fade" }],
+      });
     });
 
     it("should log error for invalid enum value", () => {
@@ -222,6 +238,8 @@ describe("updateDevice", () => {
       // index of the "4" label.
       const numericLabelParam = registerMockObject("793", {
         properties: {
+          name: "Retrigger",
+          original_name: "Retrigger",
           is_quantized: 1,
           value_items: ["1", "2", "4", "8"],
         },
@@ -233,7 +251,10 @@ describe("updateDevice", () => {
       });
 
       expect(numericLabelParam.set).toHaveBeenCalledWith("value", 2);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [{ id: "793", name: "Retrigger", value: "4" }],
+      });
     });
 
     it("warns when a numeric input matches no quantized label", () => {
@@ -267,7 +288,10 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 60);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [{ id: "789", name: "Param 789", value: 60 }],
+      });
     });
 
     it("should handle sharps and flats", () => {
@@ -285,7 +309,14 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param792 = registerMockObject("792", {
-        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+        properties: {
+          name: "Pan",
+          original_name: "Pan",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
         methods: { str_for_value: () => "C" },
       });
     });
@@ -298,7 +329,11 @@ describe("updateDevice", () => {
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
       expect(param792.set).toHaveBeenCalledWith("value", 0.25);
-      expect(result).toStrictEqual({ id: "123" });
+      // The mock always reads back "C", so the reported value is center.
+      expect(result).toStrictEqual({
+        id: "123",
+        params: [{ id: "792", name: "Pan", value: 0 }],
+      });
     });
 
     it("should handle full left pan", () => {

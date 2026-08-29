@@ -266,7 +266,7 @@ export const SKILL_SLOTS: Record<SkillSlotName, SkillSlotDef> = {
   "devices-write": {
     title: "Devices: building instruments",
     description:
-      "Loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
+      "How a param write behaves — values snap to the steps Live allows, and the response reports where they landed — plus loading samples into a Simpler and building a whole Drum Rack in one call. Only create-device and update-device can act on it, so a read-only caller never gets it. Needs the devices guide it sits under.",
     builtIn: devicesWrite,
   },
 

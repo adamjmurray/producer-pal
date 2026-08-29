@@ -614,8 +614,14 @@ describe("updateDevice with path parameter", () => {
       expect(param100.set).toHaveBeenCalledWith("value", 1000);
       expect(param200.set).toHaveBeenCalledWith("value", 1000);
       expect(result).toStrictEqual([
-        { id: "device-100" },
-        { id: "device-200" },
+        {
+          id: "device-100",
+          params: [{ id: "param-100-5", name: "Filter Freq", value: 1000 }],
+        },
+        {
+          id: "device-200",
+          params: [{ id: "param-200-5", name: "Filter Freq", value: 1000 }],
+        },
       ]);
     });
   });

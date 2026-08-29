@@ -67,8 +67,17 @@ function bareId(arg: unknown): string {
  * @returns The registered mock object
  */
 export function registerParamMock(id: string): RegisteredMockObject {
+  const name = `Param ${id}`;
+
   return registerMockObject(id, {
-    properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
+    properties: {
+      name,
+      original_name: name,
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
     methods: { str_for_value: (_value: unknown) => String(_value) },
   });
 }

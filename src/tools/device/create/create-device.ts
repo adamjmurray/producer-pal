@@ -9,6 +9,10 @@ import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
+import {
+  type ParamValueResult,
+  refreshParamValues,
+} from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   invalidateDevicePathCache,
@@ -35,6 +39,7 @@ interface CreateDeviceArgs {
 interface CreateDeviceResult {
   id: string;
   deviceIndex: number | null;
+  params?: ParamValueResult[];
 }
 
 /**
@@ -135,7 +140,9 @@ function createDevicesAtPaths(
       }
 
       if (params != null) {
-        setParamValues(device, params, "createDevice");
+        const written = setParamValues(device, params, "createDevice");
+
+        if (written.length > 0) result.params = refreshParamValues(written);
       }
 
       results.push(result);

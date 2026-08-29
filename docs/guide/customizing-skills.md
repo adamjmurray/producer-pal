@@ -63,7 +63,7 @@ a whole area you never use:
 | `transforms-basic`                               | Merging into a clip and clearing notes with `preTransforms`; the whole transforms guide in small model mode                      |
 | `library`                                        | Using library search results: sanity-checking a tag hit against the file's folder, and loading a result into a clip or a Simpler |
 | `devices`                                        | Device paths and VST/AU limits                                                                                                   |
-| `devices-write`                                  | Building Simpler and Drum Rack instruments, loading samples                                                                      |
+| `devices-write`                                  | How parameter values snap on a write, building Simpler and Drum Rack instruments, loading samples                                |
 | `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                                  |
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                    |
 | `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                           |

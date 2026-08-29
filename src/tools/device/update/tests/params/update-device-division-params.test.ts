@@ -33,7 +33,14 @@ describe("updateDevice - division params", () => {
 
     // Division param setup: raw values -6 to 0 map to "1/64" to "1"
     param = registerMockObject("793", {
-      properties: { is_quantized: 0, value: -3, min: -6, max: 0 },
+      properties: {
+        name: "Rate",
+        original_name: "Rate",
+        is_quantized: 0,
+        value: -3,
+        min: -6,
+        max: 0,
+      },
       methods: {
         str_for_value: (value: unknown) =>
           divisionMap[String(value)] ?? String(value),
@@ -49,7 +56,10 @@ describe("updateDevice - division params", () => {
 
     // "1/16" maps to raw value -4
     expect(param.set).toHaveBeenCalledWith("value", -4);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({
+      id: "123",
+      params: [{ id: "793", name: "Rate", value: "1/16" }],
+    });
   });
 
   it("should handle setting division to max value (1)", () => {
@@ -60,7 +70,10 @@ describe("updateDevice - division params", () => {
 
     // "1" maps to raw value 0
     expect(param.set).toHaveBeenCalledWith("value", 0);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({
+      id: "123",
+      params: [{ id: "793", name: "Rate", value: "1" }],
+    });
   });
 
   it("should log error for invalid division value", () => {

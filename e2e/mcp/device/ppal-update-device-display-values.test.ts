@@ -77,7 +77,9 @@ async function createSaturator(): Promise<string> {
 }
 
 /**
- * Write a display value to a parameter and read back what Live shows.
+ * Write a display value to a parameter and read back what Live shows. The write
+ * reports what it landed on too, so this also holds the two in step — a caller
+ * trusting the write response must never need a read to correct it.
  * @param deviceId - Device holding the parameter
  * @param paramName - Parameter to write
  * @param value - Display value to request
@@ -88,13 +90,16 @@ async function writeThenRead(
   paramName: string,
   value: number,
 ): Promise<number | string | undefined> {
-  await ctx.client!.callTool({
-    name: "ppal-update-device",
-    arguments: {
-      id: deviceId,
-      params: [{ name: paramName, value: `${value}` }],
-    },
-  });
+  const written = parseToolResult<UpdateDeviceResult>(
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: {
+        id: deviceId,
+        params: [{ name: paramName, value: `${value}` }],
+      },
+    }),
+  );
+
   await sleep(100);
 
   const result = parseToolResult<ReadDeviceResult>(
@@ -108,9 +113,19 @@ async function writeThenRead(
     }),
   );
 
-  return result.parameters?.find((p) => p.name === paramName)?.value;
+  const readValue = result.parameters?.find((p) => p.name === paramName)?.value;
+
+  expect(written.params).toStrictEqual([
+    { id: expect.any(String), name: paramName, value: readValue },
+  ]);
+
+  return readValue;
 }
 
 interface ReadDeviceResult {
   parameters?: Array<{ name: string; value?: number | string }>;
+}
+
+interface UpdateDeviceResult {
+  params?: Array<{ id: string; name: string; value?: number | string }>;
 }
