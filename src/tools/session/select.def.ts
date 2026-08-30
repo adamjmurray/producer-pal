@@ -34,9 +34,10 @@ export const toolDefSelect = defineTool("ppal-select", {
       ),
 
     // select is the one tool that takes every object type by id, so all four
-    // prefixed spellings are names a model reaches for here. Each folds onto
-    // `id`, which detects the type anyway — a guess costs a warning, not a
-    // dropped argument and a selection that never happened.
+    // prefixed spellings are names a model reaches for here. Each is read as a
+    // target of its own and type-detected the way `id` is, so a guess costs
+    // nothing — and sending two at once selects both, the way trackIndex and
+    // sceneIndex already do.
     trackId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
 
     sceneId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),

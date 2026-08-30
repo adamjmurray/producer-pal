@@ -66,6 +66,18 @@ export function resolveRackTarget(
 }
 
 /**
+ * The rack a pad or chain sits in. Selecting either one selects this device, so
+ * it's also what a `deviceId` sent alongside has to name.
+ * @param target - A DrumPad or Chain
+ * @returns The rack device holding it
+ */
+export function rackOfTarget(target: LiveAPI): LiveAPI {
+  const tail = target.type === "DrumPad" ? PAD_TAIL : CHAIN_TAIL;
+
+  return LiveAPI.from(target.path.replace(tail, ""));
+}
+
+/**
  * Select a drum pad or rack chain and make it visible.
  * @param songView - LiveAPI instance for live_set view
  * @param target - The DrumPad or Chain to select
@@ -76,9 +88,7 @@ export function selectRackTarget(
   target: LiveAPI,
 ): RackSelection {
   const isPad = target.type === "DrumPad";
-  const rack = LiveAPI.from(
-    target.path.replace(isPad ? PAD_TAIL : CHAIN_TAIL, ""),
-  );
+  const rack = rackOfTarget(target);
 
   // Selecting the rack also selects its track, and puts the pad grid on screen.
   songView.call("select_device", toLiveApiId(rack.id));

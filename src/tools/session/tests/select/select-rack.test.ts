@@ -204,6 +204,33 @@ describe("select inside a rack", () => {
     });
   });
 
+  // A pad and a deviceId both write select_device, and the pad's rack goes
+  // last, so the pair is only allowed when they name the same device.
+  it("takes a deviceId naming the pad's own rack", () => {
+    const { rackView, pad } = registerDrumRack();
+
+    setupSongViewMock();
+
+    const result = select({ id: pad.id, deviceId: "id rack-id" });
+
+    expect(rackView.set).toHaveBeenCalledWith("selected_drum_pad", "id pad-0");
+    expect(result.selectedDrumPad?.id).toBe(pad.id);
+  });
+
+  it("refuses a deviceId naming a device other than the pad's rack", () => {
+    const { pad } = registerDrumRack();
+
+    registerMockObject("other-device", {
+      path: livePath.track(0).device(1),
+      type: "Device",
+    });
+    setupSongViewMock();
+
+    expect(() => select({ id: pad.id, deviceId: "id other-device" })).toThrow(
+      "select failed: deviceId and id name different devices",
+    );
+  });
+
   it("falls back to the chain on a rack with no DrumPad objects", () => {
     const { rackView, chain } = registerDrumRack(36, false);
 
