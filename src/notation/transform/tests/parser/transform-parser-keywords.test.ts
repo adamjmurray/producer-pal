@@ -15,6 +15,10 @@ const GRAMMAR_PATH = "src/notation/transform/parser/transform-grammar.peggy";
 /** The grammar rules that enumerate expression-function names. */
 const NAME_RULES = ["cyclicalFunctionName", "otherFunctionName"];
 
+// Aliases the grammar accepts but the unknown-function error must not
+// advertise, so it keeps teaching one canonical name per function.
+const ALIASES = new Set(["random"]);
+
 /**
  * Read the quoted alternatives out of one grammar rule.
  *
@@ -78,9 +82,37 @@ describe("Transform Parser - Function Keywords", () => {
       // so it appears in neither name rule.
       declared.add("swing");
 
+      for (const alias of ALIASES) declared.delete(alias);
+
       expect(advertisedNames().toSorted()).toStrictEqual(
         [...declared].toSorted(),
       );
+    });
+
+    it("does not advertise the random alias", () => {
+      expect(advertisedNames()).not.toContain("random");
+    });
+  });
+
+  describe("aliases", () => {
+    it("parses random() as rand()", () => {
+      const result = parseAssignments("velocity += random(1, 10)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "rand",
+        args: [1, 10],
+        sync: false,
+        raw: false,
+      });
+    });
+
+    it("parses random() with no args", () => {
+      const node = parseAssignments("velocity += random()")[0]!
+        .expression as FunctionNode;
+
+      expect(node.name).toBe("rand");
+      expect(node.args).toStrictEqual([]);
     });
   });
 

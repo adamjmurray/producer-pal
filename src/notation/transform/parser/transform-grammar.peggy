@@ -862,6 +862,12 @@ otherFunctionName
   / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
+  // Alias, deliberately absent from FUNCTION_NAMES: the unknown-function error
+  // should keep teaching the one canonical name. Must precede the rand
+  // alternative, or that one matches the prefix and the call fails on the
+  // leftover om. Keep quotes out of this comment: the parity test reads the
+  // rule body for quoted names.
+  / "random" { return "rand"; }
   / "rand" { return "rand"; }
   / "clipseq" { return "clipseq"; }
   / "seq" { return "seq"; }

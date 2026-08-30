@@ -166,7 +166,8 @@ velocity += 20 * square(n/2, 0, 0.75, sync);
 - **square(n/4, 0)**: starts high (1.0) for first half, low (-1.0) for second
   half
 - **rand()**: random value between -1.0 and 1.0 per note (or rand(max) for 0 to
-  max, or rand(min, max) for min to max)
+  max, or rand(min, max) for min to max). `random()` is accepted as an alias —
+  models guess it often — but `rand` is the name we teach.
 - **choose(a, b, ...)**: randomly selects one of the provided values per note
 
 **Time range-based waveforms** ramp over the clip/time range duration:
