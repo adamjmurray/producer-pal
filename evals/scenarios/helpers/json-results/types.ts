@@ -41,8 +41,15 @@ export interface JsonEvalResult {
   skipReason?: string;
   /** Conversation turns */
   turns: JsonTurnRecord[];
-  /** Deterministic check results */
+  /** Gating deterministic check results */
   checks: JsonChecks;
+  /** Non-gating checks: run and reported, but excluded from pass/fail and from
+   *  the score. Prose `response_contains` patterns live here — they grade the
+   *  words a model chose, not what it did. */
+  signals?: JsonCheckResult[];
+  /** Failed tool calls (present when the run made any tool call). Never gates —
+   *  it discounts the score instead. */
+  toolErrors?: JsonToolErrors;
   /** Token usage efficiency (present when token_usage assertion exists) */
   efficiency?: JsonEfficiency;
   /** LLM judge review (present when llm_judge assertion exists) */
@@ -61,6 +68,16 @@ export interface JsonChecks {
   pass: boolean;
   /** Individual check results */
   results: JsonCheckResult[];
+}
+
+/** Failed tool calls in a run, and how many calls there were in total. */
+export interface JsonToolErrors {
+  /** How many tool calls came back as an error */
+  count: number;
+  /** How many tool calls were made */
+  total: number;
+  /** One entry per failed call, with the error text truncated */
+  errors: Array<{ turnIndex: number; name: string; message: string }>;
 }
 
 /** Token usage efficiency relative to target */

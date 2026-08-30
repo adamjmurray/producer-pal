@@ -214,7 +214,14 @@ export interface LlmJudgeAssertion {
 }
 
 /**
- * Simple text/regex matching on response
+ * Simple text/regex matching on response.
+ *
+ * NON-GATING. These patterns grade the words a model chose, not what it did, so
+ * the list of acceptable synonyms is unbounded and drifts with every model — a
+ * model that makes exactly the right edit and calls it "turned those up" instead
+ * of "boosted" is not a regression. They still run and still report (as
+ * "Signals"), but a state or custom assertion has to pin the outcome.
+ * See `isSignalAssertion`.
  */
 export interface ResponseContainsAssertion {
   type: "response_contains";

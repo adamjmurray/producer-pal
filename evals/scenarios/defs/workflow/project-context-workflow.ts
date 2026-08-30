@@ -41,6 +41,22 @@ export const projectContextWorkflow: EvalScenario = {
     // Turn 2: Read project context
     { type: "tool_called", tool: TOOL_CONTEXT, turn: 2 },
 
+    // The outcome, not the prose: the note is really in the project context.
+    {
+      type: "state",
+      tool: TOOL_CONTEXT,
+      args: { action: "read", scope: "project" },
+      expect: (result) => {
+        const content = (result as { content?: string }).content ?? "";
+
+        return /c minor/i.test(content) && /7th chord/i.test(content);
+      },
+      explain: (result) =>
+        `saved context should mention C minor and 7th chords, got: ${
+          (result as { content?: string }).content ?? "(empty)"
+        }`,
+    },
+
     // Response should contain the saved content
     { type: "response_contains", pattern: /c minor/i, turn: 2 },
     { type: "response_contains", pattern: /7th chords/i, turn: 2 },

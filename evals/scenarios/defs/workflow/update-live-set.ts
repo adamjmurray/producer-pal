@@ -31,6 +31,23 @@ export const updateLiveSet: EvalScenario = {
 
     // Turn 1: Live set property updates
     { type: "tool_called", tool: "ppal-update-live-set", turn: 1 },
+
+    // The outcome, not the prose: both properties actually landed in the Set.
+    {
+      type: "state",
+      tool: "ppal-read-live-set",
+      args: {},
+      expect: (result) => {
+        const set = result as { tempo?: number; timeSignature?: string };
+
+        return set.tempo === 128 && set.timeSignature === "6/8";
+      },
+      explain: (result) => {
+        const set = result as { tempo?: number; timeSignature?: string };
+
+        return `expected tempo 128 in 6/8, got ${set.tempo} in ${set.timeSignature}`;
+      },
+    },
     { type: "response_contains", pattern: /128/, turn: 1 },
     { type: "response_contains", pattern: /6\/8/, turn: 1 },
 

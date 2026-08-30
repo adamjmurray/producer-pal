@@ -15,11 +15,12 @@ import { styleText } from "node:util";
 import {
   WAVEFORM_UNIT,
   efficiencyColor,
+  pctColor,
 } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type JsonEvalResult } from "../json-results/types.ts";
 import { printResultsTable, type ResultsByScenario } from "./report-table.ts";
-import { checkTally, judgeVerdict } from "./result-format.ts";
+import { checkTally, judgeVerdict, scorePercentage } from "./result-format.ts";
 import { buildMultiTrialParts, formatParts } from "../trials/trial-helpers.ts";
 
 /**
@@ -133,6 +134,25 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
   const { passed, total } = checkTally(checks.results);
   const checksColor = checks.pass ? "green" : "red";
   const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
+
+  if (result.signals && result.signals.length > 0) {
+    const tally = checkTally(result.signals);
+    const color = tally.passed === tally.total ? "green" : "yellow";
+
+    parts.push("signals " + styleText(color, `${tally.passed}/${tally.total}`));
+  }
+
+  if (result.toolErrors && result.toolErrors.count > 0) {
+    parts.push(
+      "tool errors " + styleText("yellow", String(result.toolErrors.count)),
+    );
+  }
+
+  const score = scorePercentage([result]);
+
+  if (score != null) {
+    parts.push("score " + styleText(pctColor(score), `${score}%`));
+  }
 
   if (result.efficiency) {
     const effColor = efficiencyColor(result.efficiency.percentage);

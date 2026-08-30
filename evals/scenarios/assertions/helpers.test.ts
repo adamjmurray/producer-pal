@@ -1,11 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
 import {
+  getAllToolCalls,
   getTargetTurns,
+  getToolCalls,
+  isSignalAssertion,
   lastSuccessfulToolCall,
+  toolCallFailed,
   parsedToolResult,
   partialMatch,
   exactMatch,
@@ -527,5 +532,54 @@ describe("lastSuccessfulToolCall", () => {
     expect(
       lastSuccessfulToolCall([turn()], 0, "ppal-create-clip"),
     ).toBeUndefined();
+  });
+});
+
+describe("tool call filtering", () => {
+  const ok: ToolCall = {
+    name: "ppal-create-clip",
+    args: {},
+    result: '{"id":1}',
+  };
+  const failed: ToolCall = {
+    name: "ppal-create-clip",
+    args: {},
+    result: "Error executing tool 'ppal-create-clip': bad notes",
+  };
+  const turns: EvalTurnResult[] = [
+    {
+      turnIndex: 0,
+      userMessage: "make a clip",
+      assistantResponse: "done",
+      toolCalls: [failed, ok],
+      durationMs: 1,
+    },
+  ];
+
+  it("flags a call whose result is an error", () => {
+    expect(toolCallFailed(failed)).toBe(true);
+    expect(toolCallFailed(ok)).toBe(false);
+  });
+
+  it("getToolCalls drops the failed attempt", () => {
+    expect(getToolCalls(turns)).toStrictEqual([ok]);
+  });
+
+  it("getAllToolCalls keeps every attempt", () => {
+    expect(getAllToolCalls(turns)).toStrictEqual([failed, ok]);
+  });
+});
+
+describe("isSignalAssertion", () => {
+  it("treats response_contains as a non-gating signal", () => {
+    expect(isSignalAssertion({ type: "response_contains", pattern: /x/ })).toBe(
+      true,
+    );
+  });
+
+  it("treats every other assertion as gating", () => {
+    expect(
+      isSignalAssertion({ type: "tool_called", tool: "ppal-connect" }),
+    ).toBe(false);
   });
 });

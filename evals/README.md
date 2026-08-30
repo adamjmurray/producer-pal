@@ -241,11 +241,10 @@ turn.
 
 ### Scoring
 
-Each scenario has assertions that contribute to pass/fail:
+These assertions decide pass/fail:
 
 - **`tool_called`** - Verifies the right tool was called (with optional arg
-  matching)
-- **`response_contains`** - Checks for text/regex patterns in responses
+  matching). Failed calls don't count — see below.
 - **`state`** - Verifies Live Set state via MCP tool calls
 - **`custom`** - Arbitrary callback assertions on turn data
 
@@ -254,14 +253,32 @@ Plus:
 - **`llm_judge`** - LLM evaluates response quality with pass/fail + issues. It
   gates the result unless the scenario sets `judgeAdvisory: true`, which keeps
   the commentary but stops it flipping a run to fail.
+- **`response_contains`** - Text/regex patterns in the assistant's prose.
+  Reported as **Signals**, never gating: the list of acceptable synonyms is
+  unbounded and drifts with every model, so a run that made the right edit and
+  called it "turned those up" instead of "boosted" is not a regression. Pin the
+  outcome with `state` or `custom`; keep the pattern for drift signal.
 - **`token_usage`** - Tracks token efficiency against a target budget
   (informational only)
+
+**Failed tool calls.** A model that hits a tool error, fixes its arguments and
+calls again still lands the outcome, so it still passes — but the run reports
+**Tool errors** and each failed call takes 10% off its score (capped at half). A
+flat cost, not a share of the calls made: rating the share would pay a model for
+padding a run with extra successful calls. Grading reads successful calls only:
+`tool_called` counts them, and `getToolCalls` returns them. Use
+`getAllToolCalls` when the attempt itself is what's graded ("did it reach for a
+tool it shouldn't have").
+
+The **Score** shown per scenario and in the comparison table is the check pass
+rate (or the trial pass rate under `-r N`), discounted by that penalty. A clean
+run outranks a recovered one without either being marked a failure.
 
 The judge defaults to Gemini 3 Flash. Override with `-j`, or skip it entirely
 with `--skip-judge`.
 
 When using `-r N`, the summary aggregates across trials: checks are totaled,
-efficiency is averaged, and judge shows a pass rate.
+tool errors are summed, efficiency is averaged, and judge shows a pass rate.
 
 Every trial reopens the Live Set, so trial 2 is never graded on trial 1's
 leftovers. Scenarios that declare `reuseLiveSet` — they reset whatever they
@@ -367,6 +384,7 @@ export const myScenario: EvalScenario = {
   messages: ["Connect to Ableton Live", "Do something specific"],
   assertions: [
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    // Non-gating drift signal — the state check below is what grades the run.
     { type: "response_contains", pattern: /expected/i },
     {
       type: "state",
@@ -393,15 +411,16 @@ Register new scenarios in `evals/scenarios/defs/index.ts` and
   scenario, and often reads better. Keep it separate when the new case must be
   measured UNPRIMED — a reach-for probe (which API/idiom does the model pick
   unprompted?) is worthless once an earlier turn has shown it the answer.
-- **Default to no judge.** `tool_called`, `state`, and `response_contains` are
-  fast, cheap, and reproducible; a judge costs an LLM call per scenario and
-  miscounts anything musical. Add `llm_judge` only when the thing being graded
-  is the assistant's PROSE and no state check can see it — did it offer, did it
-  re-ask, did it accept a no. If deterministic checks already pin the outcome
-  and you only want the commentary, mark it `judgeAdvisory: true`.
+- **Default to no judge.** `tool_called`, `state`, and `custom` are fast, cheap,
+  and reproducible; a judge costs an LLM call per scenario and miscounts
+  anything musical. Add `llm_judge` only when the thing being graded is the
+  assistant's PROSE and no state check can see it — did it offer, did it re-ask,
+  did it accept a no. If deterministic checks already pin the outcome and you
+  only want the commentary, mark it `judgeAdvisory: true`.
 - **Grade outcomes, not paths.** Assert on the final state (e.g., "clip has
   these notes") rather than the exact sequence of tool calls. This avoids
-  penalizing models that find valid alternative approaches.
+  penalizing models that find valid alternative approaches. Grading words is the
+  same mistake one level down, which is why `response_contains` never gates.
 - **Keep messages unambiguous.** Vague prompts create flaky evals. If a scenario
   fails at 0%, suspect the prompt before the model.
 - **Regression vs capability:** Tag scenarios as `kind: "regression"` when they

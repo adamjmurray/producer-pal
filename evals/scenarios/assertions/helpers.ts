@@ -8,7 +8,26 @@
  */
 
 import { parseToolResult } from "#evals/chat/mcp.ts";
-import { type EvalTurnResult, type ToolCall } from "../types.ts";
+import {
+  type EvalAssertion,
+  type EvalTurnResult,
+  type ToolCall,
+} from "../types.ts";
+
+/**
+ * Whether an assertion is a non-gating signal rather than a check.
+ *
+ * `response_contains` matches the words a model chose, not what it did, so a
+ * model that does exactly the right thing and describes it in unlisted synonyms
+ * must not be marked a regression. The patterns still run and still report —
+ * they just don't decide the run.
+ *
+ * @param assertion - The assertion to classify
+ * @returns True when the assertion reports but doesn't gate
+ */
+export function isSignalAssertion(assertion: EvalAssertion): boolean {
+  return assertion.type === "response_contains";
+}
 
 /**
  * Get target turns based on assertion's turn specification
@@ -29,17 +48,47 @@ export function getTargetTurns(
 }
 
 /**
- * Get all tool calls from turns, optionally filtered by turn
+ * The tool calls that SUCCEEDED, optionally filtered by turn.
+ *
+ * Grading reads outcomes, not attempts. A model that hits a tool error is told
+ * to fix its arguments and call again, so a failed call is a discarded draft —
+ * counting it, or reading its args, fails a model for recovering correctly.
+ * Use `getAllToolCalls` when the attempt itself is what's being graded (e.g.
+ * "did it reach for a tool it shouldn't have").
  *
  * @param turns - All conversation turns
  * @param turn - Optional turn filter (number index, "any"/undefined for all)
- * @returns Flat array of tool calls
+ * @returns Flat array of successful tool calls
  */
 export function getToolCalls(
   turns: EvalTurnResult[],
   turn?: number | "any",
 ): ToolCall[] {
+  return getAllToolCalls(turns, turn).filter((c) => !toolCallFailed(c));
+}
+
+/**
+ * Every tool call from turns, failed attempts included.
+ *
+ * @param turns - All conversation turns
+ * @param turn - Optional turn filter (number index, "any"/undefined for all)
+ * @returns Flat array of tool calls
+ */
+export function getAllToolCalls(
+  turns: EvalTurnResult[],
+  turn?: number | "any",
+): ToolCall[] {
   return getTargetTurns(turns, turn).flatMap((t) => t.toolCalls);
+}
+
+/**
+ * Whether a tool call came back as an error rather than a payload.
+ *
+ * @param call - The tool call to check
+ * @returns True when the call errored
+ */
+export function toolCallFailed(call: ToolCall): boolean {
+  return parsedToolResult(call) == null;
 }
 
 /**
@@ -91,11 +140,9 @@ export function lastSuccessfulToolCall(
   turn: number | "any" | undefined,
   toolName: string,
 ): ToolCall | undefined {
-  const calls = getToolCalls(turns, turn).filter((c) => c.name === toolName);
+  const calls = getAllToolCalls(turns, turn).filter((c) => c.name === toolName);
 
-  return (
-    calls.toReversed().find((c) => parsedToolResult(c) != null) ?? calls.at(-1)
-  );
+  return calls.toReversed().find((c) => !toolCallFailed(c)) ?? calls.at(-1);
 }
 
 /**
