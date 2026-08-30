@@ -246,6 +246,33 @@ function assertIdsAgree(filled: FilledSlots): void {
       throw idConflict(deviceId, rackTargetId, "devices");
     }
   }
+
+  assertChildrenShareATrack(filled);
+}
+
+/**
+ * Refuse two children — clip, device, rack target — that sit on different
+ * tracks. Each moves the track selection to whatever it names, so both report
+ * success while Live's visible track is whichever was written last. The
+ * `trackId` check above catches this only when the caller named a track too.
+ * @param filled - The id filling each slot
+ */
+function assertChildrenShareATrack(filled: FilledSlots): void {
+  const children = SLOTS_ON_A_TRACK.map((slot) => filled[slot]).filter(
+    (named): named is NamedId => named != null,
+  );
+  const first = children[0];
+  const firstTrack = first == null ? null : ownerTrackPath(first.id);
+
+  if (first == null || firstTrack == null) return;
+
+  const trackId = LiveAPI.from(firstTrack).id;
+
+  for (const other of children.slice(1)) {
+    assertSameObject(trackId, ownerTrackPath(other.id), () =>
+      idConflict(first, other, "tracks"),
+    );
+  }
 }
 
 /**

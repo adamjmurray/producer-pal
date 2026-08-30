@@ -187,6 +187,46 @@ describe("select id aliases", () => {
     ).toThrow("select failed: trackId and clipId name different tracks");
   });
 
+  // No trackId to disagree with, so nothing caught this: both wrote a selection
+  // and Live's visible track was whichever went last.
+  it("refuses a clip and a device on different tracks", () => {
+    registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    registerMockObject("device_123", {
+      path: livePath.track(5).device(0),
+      type: "Device",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(() =>
+      select({ clipId: "id clip_123", deviceId: "id device_123" }),
+    ).toThrow("select failed: clipId and deviceId name different tracks");
+  });
+
+  it("takes a clip and a device on the same track", () => {
+    registerMockObject("track_0", { path: livePath.track(0), type: "Track" });
+    registerMockObject("clip_123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      type: "Clip",
+    });
+    registerMockObject("device_123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+    });
+    setupSongViewMock();
+    setupAppViewMock();
+
+    expect(
+      select({ clipId: "id clip_123", deviceId: "id device_123" })
+        .selectedDevice,
+    ).toBeDefined();
+  });
+
   it("refuses a clip alias in a different scene than sceneId", () => {
     registerMockObject("scene_123", {
       path: livePath.scene(2),
