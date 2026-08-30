@@ -252,6 +252,25 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
 
+  it("should warn and skip when trying to move the Producer Pal device", () => {
+    registerMockObject("this_device", { path: livePath.track(0).device(1) });
+
+    const device = registerMockObject("123", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+
+    // The rest of the update still lands — only the move is refused.
+    const result = updateDevice({ id: "123", toPath: "t1/d0", name: "X" });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("cannot move the Producer Pal device"),
+    );
+    expect(device.set).toHaveBeenCalledWith("name", "X");
+    expect(result).toStrictEqual({ id: "123" });
+  });
+
   it("should warn and skip when trying to move a regular Chain to a drum pad", () => {
     const chain = registerMockObject("123", { type: "Chain" });
 

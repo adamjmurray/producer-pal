@@ -612,6 +612,19 @@ describe("updateDevice - wrapInRack", () => {
     expect(result).toBeNull();
   });
 
+  it("should warn and skip the Producer Pal device", () => {
+    registerMockObject("this_device", { path: livePath.track(0).device(0) });
+
+    const result = updateDevice({ id: "device-0", wrapInRack: true });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "wrapInRack: cannot wrap the Producer Pal device, skipping",
+    );
+    expect(outlet).toHaveBeenCalledWith(1, "wrapInRack: no devices found");
+    expect(result).toBeNull();
+  });
+
   it("should warn and return null when an id resolves to a non-device object", () => {
     // The object exists but its type doesn't end in "Device" (e.g. a Chain),
     // so resolveDevices warns "is not a device" and skips it -> no devices.

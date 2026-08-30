@@ -38,6 +38,7 @@ import {
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
 import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   type UpdateTargetOptions,
   updateDeviceProperties,
@@ -374,7 +375,11 @@ function updateTarget(
 
   // Handle move operation first (before other updates)
   if (options.toPath != null) {
-    if (isDeviceType(type)) {
+    if (isProducerPalDevice(target)) {
+      console.warn(
+        "updateDevice: cannot move the Producer Pal device, skipping the move",
+      );
+    } else if (isDeviceType(type)) {
       const outcome = moveDeviceToPath(target, options.toPath);
 
       // "unresolvable" said why itself. Either way the move is skipped and the

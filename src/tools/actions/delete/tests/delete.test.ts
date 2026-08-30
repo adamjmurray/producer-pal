@@ -336,6 +336,32 @@ describe("deleteObject", () => {
     warnSpy.mockRestore();
   });
 
+  it("should warn and skip when trying to delete the Producer Pal device", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    registerMockObject("this_device", {
+      path: livePath.track(1).device(0),
+    });
+
+    const device = registerMockObject("device_1", {
+      path: livePath.track(1).device(0),
+      type: "PluginDevice",
+    });
+
+    const result = deleteObject({ id: "device_1", type: "device" });
+
+    expect(result).toStrictEqual({
+      id: "device_1",
+      type: "device",
+      deleted: false,
+    });
+    expect(device.call).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("cannot delete the Producer Pal device"),
+    );
+    warnSpy.mockRestore();
+  });
+
   it("should handle whitespace in comma-separated IDs", () => {
     const ids = " track_0 , track_1 ";
 

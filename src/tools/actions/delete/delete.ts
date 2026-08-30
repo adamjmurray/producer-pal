@@ -7,6 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
 import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
@@ -503,6 +504,16 @@ function deleteObjectByType(
   object: LiveAPI,
   tracks: Map<number, LiveAPI>,
 ): boolean {
+  // Tracks have their own check below, by index — it names the track, which is
+  // what the user asked for. Everything else routes through here.
+  if (type !== "track" && isProducerPalDevice(object)) {
+    console.warn(
+      `delete: cannot delete the Producer Pal device (it is running this tool), skipping`,
+    );
+
+    return false;
+  }
+
   if (type === "track") return deleteTrackObject(id, object);
   if (type === "scene") return deleteSceneObject(id, object);
   if (type === "clip") return deleteClipObject(id, object, tracks);

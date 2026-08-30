@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   getNameForIndex,
   parseCommaSeparatedNames,
@@ -90,6 +91,17 @@ function duplicateDevice(
     console.warn(
       "count parameter ignored for device duplication (only single copy supported)",
     );
+  }
+
+  // A copy would be a second Producer Pal device fighting the first for the
+  // same connection — and the track-duplication workaround below spawns one
+  // before it ever reaches the destination.
+  if (isProducerPalDevice(device)) {
+    console.warn(
+      "duplicate: cannot duplicate the Producer Pal device, skipping",
+    );
+
+    return null;
   }
 
   // 1. Validate device is on a regular track (not return/master)

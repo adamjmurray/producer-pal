@@ -15,6 +15,7 @@ import {
   type InsertionPathResolution,
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
   parseCommaSeparatedIds,
   toLiveApiId,
@@ -158,6 +159,12 @@ function resolveDevices(items: string[], isIdBased: boolean): LiveAPI[] {
 
       if (!device?.exists()) {
         console.warn(`wrapInRack: device not found at "${item}"`);
+      } else if (isProducerPalDevice(device)) {
+        // Wrapping moves the device into a chain, which is a move like any
+        // other — and this one would take the connection with it.
+        console.warn(
+          "wrapInRack: cannot wrap the Producer Pal device, skipping",
+        );
       } else if (device.type.endsWith("Device")) {
         devices.push(device);
       } else {

@@ -40,6 +40,28 @@ describe("duplicate - device duplication", () => {
     vi.clearAllMocks();
   });
 
+  it("refuses to duplicate the Producer Pal device", async () => {
+    registerMockObject("this_device", {
+      path: livePath.track(0).device(2),
+    });
+
+    const device = registerMockObject("device1", {
+      path: livePath.track(0).device(2),
+      type: "PluginDevice",
+    });
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    expect(await duplicate({ type: "device", id: "device1" })).toStrictEqual(
+      [],
+    );
+    // The temp-track workaround never ran, so no second device was spawned.
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+    expect(device.call).not.toHaveBeenCalled();
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("cannot duplicate the Producer Pal device"),
+    );
+  });
+
   it("should duplicate a device to position after original (no toPath)", async () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(2),
