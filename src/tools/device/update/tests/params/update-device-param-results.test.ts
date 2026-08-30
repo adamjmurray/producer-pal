@@ -62,6 +62,7 @@ describe("updateDevice - written param values", () => {
     // 12 ms is not reachable — the response says where it landed instead.
     expect(result).toStrictEqual({
       id: "dev1",
+      path: "t0/d0",
       params: [{ id: "attack", name: "Attack", value: 10 }],
     });
   });
@@ -101,6 +102,7 @@ describe("updateDevice - written param values", () => {
 
     expect(result).toStrictEqual({
       id: "drum-rack",
+      path: "t0/d0",
       params: [{ id: "pad-vol", name: "pC1/d0/Volume", value: 50 }],
     });
   });
@@ -113,7 +115,7 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "Nonexistent", value: "1" }],
     });
 
-    expect(result).toStrictEqual({ id: "dev1" });
+    expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
   });
 
   it("reports nothing for a write Live ignored", () => {
@@ -128,7 +130,7 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "Attack", value: "12 ms" }],
     });
 
-    expect(result).toStrictEqual({ id: "dev1" });
+    expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
   });
 
   it("reads params back after a macro variation recall overwrites them", () => {
@@ -173,6 +175,7 @@ describe("updateDevice - written param values", () => {
     // 50 is what the write landed; 90 is what the same call left behind.
     expect(result).toStrictEqual({
       id: "rack",
+      path: "t0/d0",
       params: [{ id: "macro-1", name: "Macro 1", value: 90 }],
     });
   });
@@ -186,6 +189,6 @@ describe("updateDevice - written param values", () => {
       params: [{ name: "sample", value: "/snare.wav" }],
     });
 
-    expect(result).toStrictEqual({ id: "simpler-1" });
+    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
   });
 });

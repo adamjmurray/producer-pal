@@ -22,6 +22,7 @@ import {
   pathNamesSomething,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   formatObjectPath,
   parseObjectPath,
@@ -384,7 +385,9 @@ export function handleSessionSlotMove({
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
     console.warn(`could not determine slot position for clip ${clip.id}`);
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
+    updatedClips.push(
+      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+    );
 
     return;
   }
@@ -394,7 +397,9 @@ export function handleSessionSlotMove({
     srcTrackIndex === toSlot.trackIndex &&
     srcSceneIndex === toSlot.sceneIndex
   ) {
-    updatedClips.push(buildClipResultObject(clip.id, noteResult, toSlot));
+    updatedClips.push(
+      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+    );
 
     return;
   }
@@ -407,7 +412,9 @@ export function handleSessionSlotMove({
     console.warn(
       `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
     );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
+    updatedClips.push(
+      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+    );
 
     return;
   }
@@ -422,7 +429,9 @@ export function handleSessionSlotMove({
     console.warn(
       `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: ${blocker}`,
     );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
+    updatedClips.push(
+      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+    );
 
     return;
   }
@@ -445,7 +454,9 @@ export function handleSessionSlotMove({
     console.warn(
       `clip ${clip.id} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
     );
-    updatedClips.push(buildClipResultObject(clip.id, noteResult));
+    updatedClips.push(
+      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+    );
 
     return;
   }
@@ -457,5 +468,7 @@ export function handleSessionSlotMove({
   }
 
   sourceClipSlot.call("delete_clip");
-  updatedClips.push(buildClipResultObject(newClip.id, noteResult, toSlot));
+  updatedClips.push(
+    buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
+  );
 }

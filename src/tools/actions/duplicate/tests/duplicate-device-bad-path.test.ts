@@ -58,7 +58,9 @@ describe("duplicate device - a toPath entry that names nowhere", () => {
     });
 
     // The good destination still reports its copy...
-    expect(result).toStrictEqual([{ id: "live_set/tracks/1/devices/0" }]);
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/1/devices/0", path: "t1/d0" },
+    ]);
     // ...and the bad one names the path the caller sent, not the shifted t100.
     expect(outlet).toHaveBeenCalledWith(
       1,

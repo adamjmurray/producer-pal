@@ -80,6 +80,7 @@ describe("duplicate - device duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/devices/2",
+      path: "t1/d2",
     });
 
     // Default count (1) and no name → neither the count warn nor the name set fire.
@@ -116,6 +117,7 @@ describe("duplicate - device duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/devices/1",
+      path: "t1/d1",
     });
 
     // Should move device to t3/d0 (adjusted because temp track inserted before t2)
@@ -147,6 +149,7 @@ describe("duplicate - device duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/2/devices/0/chains/0/devices/1",
+      path: "t2/d0/c0/d1",
     });
 
     // Should duplicate track 1
@@ -357,8 +360,8 @@ describe("duplicate - device duplication", () => {
     // The bad destination in the middle keeps neither the copy before it nor
     // the one after it from being reported.
     expect(result).toStrictEqual([
-      { id: "live_set/tracks/1/devices/1" },
-      { id: "live_set/tracks/1/devices/1" },
+      { id: "live_set/tracks/1/devices/1", path: "t1/d1" },
+      { id: "live_set/tracks/1/devices/1", path: "t1/d1" },
     ]);
     expect(moveDeviceToPathMock).toHaveBeenCalledTimes(3);
   });
@@ -372,7 +375,10 @@ describe("duplicate - device duplication", () => {
       toPath: "",
     });
 
-    expect(result).toStrictEqual({ id: "live_set/tracks/1/devices/1" });
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/1/devices/1",
+      path: "t1/d1",
+    });
     // Omitted means "after the original on the source track".
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),
@@ -465,7 +471,10 @@ describe("duplicate - device duplication", () => {
 
     const result = await duplicate({ type: "device", id: "device1" });
 
-    expect(result).toStrictEqual({ id: "live_set/tracks/13/devices/0" });
+    expect(result).toStrictEqual({
+      id: "live_set/tracks/13/devices/0",
+      path: "t13/d0",
+    });
     // Default destination places the copy after the original on the source track.
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
       expect.anything(),

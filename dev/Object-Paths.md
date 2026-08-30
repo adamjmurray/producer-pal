@@ -143,13 +143,19 @@ Four tiers, in order of preference.
 
 ## Results
 
-Clip results report `path`, and nothing else positional — no `slot`, no
-`trackIndex`.
+Every write result — create, update, duplicate — reports `path` beside `id`, so
+the next call can address what was just written without rebuilding the path from
+indices. Clip results report nothing else positional: no `slot`, no
+`trackIndex`. `delete` is the exception: after deleting `t2`, that path names a
+different track, so a deleted object reports none.
 
-| Clip                   | Result                                      |
+| Object                 | Result                                      |
 | ---------------------- | ------------------------------------------- |
-| session                | `path: "t0/s3"`                             |
-| arrangement            | `path: "t0"`, `arrangementStart: "5\|1"`    |
+| track                  | `path: "t0"` (or `rt0`, `mt`)               |
+| scene                  | `path: "s2"`                                |
+| device or chain        | `path: "t0/d0/c1/d0"`                       |
+| session clip           | `path: "t0/s3"`                             |
+| arrangement clip       | `path: "t0"`, `arrangementStart: "5\|1"`    |
 | arrangement, take lane | `path: "t0/l1"`, `arrangementStart: "5\|1"` |
 
 A clip slot pastes straight back into any `path`/`toPath` param. An arrangement
@@ -157,6 +163,11 @@ one doesn't address that clip — it names the track the clip is on, which is wh
 a destination needs and not what a source needs. So it works as a destination
 (`create-clip`, `duplicate`), and a tool that wants one specific clip wants its
 id. `select` takes it and selects the track.
+
+Two objects report no path, because the grammar can't spell them without going
+looking: a chain reached through a pad segment (`… drum_pads 36 chains 0 …`,
+whose rack-relative chain index isn't in the path), and anything that resolved
+to nothing.
 
 Error messages follow: name the path and show the fix, never restate a
 requirement in index terms.

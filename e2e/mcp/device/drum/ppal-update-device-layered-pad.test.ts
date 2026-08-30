@@ -30,6 +30,7 @@ const ctx = setupMcpTestContext();
 
 interface PadUpdateResult {
   id?: string;
+  path?: string;
   chainIds?: string[];
 }
 
@@ -93,7 +94,7 @@ describe("ppal-update-device layered drum pad", () => {
     );
 
     // Only the pad was written to, so no chains are reported.
-    expect(result).toStrictEqual({ id: padId });
+    expect(result).toStrictEqual({ id: padId, path: `${rackPath}/pD1` });
 
     await sleep(200);
 

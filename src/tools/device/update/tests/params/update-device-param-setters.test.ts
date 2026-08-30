@@ -534,7 +534,7 @@ describe("updateDevice - sample pseudo-param", () => {
       "replace_sample",
       "/tmp/kick.wav",
     );
-    expect(result).toStrictEqual({ id: "simpler-1" });
+    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
   });
 
   it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
@@ -588,7 +588,7 @@ describe("updateDevice - actions arg", () => {
     const result = updateDevice({ id: "simpler-1", actions: ["reverse"] });
 
     expect(simpler.call).toHaveBeenCalledWith("reverse");
-    expect(result).toStrictEqual({ id: "simpler-1" });
+    expect(result).toStrictEqual({ id: "simpler-1", path: "t0/d0" });
   });
 
   it("applies actions alongside params in one call", () => {

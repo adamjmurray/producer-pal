@@ -35,7 +35,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // loop_start (4) + length (8) = 12
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set firstStart for looping clips", async () => {
@@ -65,7 +65,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should warn when firstStart provided for non-looping clips", async () => {
@@ -86,7 +86,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       "firstStart parameter ignored for non-looping clips",
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set end_marker for non-looping clips", async () => {
@@ -111,7 +111,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       16, // start (0) + length (16) = 16
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should set loop_start and loop_end for looping clips", async () => {
@@ -142,7 +142,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
       12, // start (4) + length (8) = 12
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 });
 

@@ -27,6 +27,7 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;
@@ -38,6 +39,7 @@ interface CreateDeviceArgs {
 
 interface CreateDeviceResult {
   id: string;
+  path?: string;
   deviceIndex: number | null;
   params?: ParamValueResult[];
 }
@@ -226,6 +228,7 @@ function createDeviceAtPath(
 
   return {
     id,
+    ...pathField(device),
     deviceIndex: device.deviceIndex,
     device,
   };

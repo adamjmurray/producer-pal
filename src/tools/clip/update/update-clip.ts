@@ -80,6 +80,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
 
 interface ClipResult {
   id: string;
+  path?: string;
   noteCount?: number;
 }
 

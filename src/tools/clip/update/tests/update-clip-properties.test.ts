@@ -39,7 +39,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Prefixed ID Clip");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should not update properties when not provided", async () => {
@@ -62,7 +62,7 @@ describe("updateClip - Properties and ID handling", () => {
       expect.anything(),
     );
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should handle boolean false values correctly", async () => {
@@ -74,7 +74,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", false);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should skip invalid clip IDs in comma-separated list and update valid ones", async () => {
@@ -89,7 +89,7 @@ describe("updateClip - Properties and ID handling", () => {
       name: "Test",
     });
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateClip: id "nonexistent" does not exist',
@@ -104,8 +104,11 @@ describe("updateClip - Properties and ID handling", () => {
     const singleResult = await updateClip({ id: "123", name: "Single" });
     const arrayResult = await updateClip({ id: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toStrictEqual({ id: "123" });
-    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123", path: "t0/s0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   it("should handle whitespace in comma-separated IDs", async () => {
@@ -121,7 +124,11 @@ describe("updateClip - Properties and ID handling", () => {
       color: "#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+      { id: "789", path: "t2" },
+    ]);
   });
 
   it("should filter out empty IDs from comma-separated list", async () => {
@@ -137,7 +144,10 @@ describe("updateClip - Properties and ID handling", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Filtered");
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Filtered");
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   describe("color quantization verification", () => {

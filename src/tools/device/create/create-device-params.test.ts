@@ -91,6 +91,7 @@ describe("createDevice params", () => {
 
       expect(result).toStrictEqual({
         id: "comp-new",
+        path: "t0/d2",
         deviceIndex: 2,
         params: [{ id: "threshold", name: "Threshold", value: -20 }],
       });

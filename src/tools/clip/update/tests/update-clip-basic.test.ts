@@ -88,7 +88,7 @@ describe("updateClip - Basic operations", () => {
       expect.any(Number),
     );
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 }); // Existing C3 + new D3
   });
 
   it("should log warning when clip ID doesn't exist", async () => {
@@ -115,7 +115,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ path: "t1/s1", name: "By Path" });
 
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
-    expect(result).toStrictEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
   });
 
   it("should warn and skip a path with no clip, keeping the rest", async () => {
@@ -128,7 +128,7 @@ describe("updateClip - Basic operations", () => {
       1,
       'updateClip: no clip at path "t9/s9"',
     );
-    expect(result).toStrictEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
   });
 
   it("should update a single session clip by ID", async () => {
@@ -145,7 +145,7 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("color", 16711680);
     expect(mocks.clip123.set).toHaveBeenCalledWith("looping", true);
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should update a single arrangement clip by ID", async () => {
@@ -166,7 +166,7 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip789.set).toHaveBeenCalledWith("loop_end", 6); // start (2) + length (4) = 6 Ableton beats
     expect(mocks.clip789.set).toHaveBeenCalledWith("end_marker", 6); // start (2) + length (4) = 6 Ableton beats
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t2" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", async () => {
@@ -181,7 +181,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Verify result is returned (view switching is a side effect)
-    expect(result).toStrictEqual({ id: "999" });
+    expect(result).toStrictEqual({ id: "999", path: "t3" });
   });
 
   it("should update multiple clips by comma-separated IDs", async () => {
@@ -202,7 +202,10 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip456.set).toHaveBeenCalledWith("looping", false);
     expect(mocks.clip456.set).toHaveBeenCalledTimes(2);
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0" },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   it("should update time signature when provided", async () => {
@@ -215,7 +218,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should write notes with real bar|beat parsing in 4/4 time", async () => {
@@ -241,7 +244,7 @@ describe("updateClip - Basic operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", async () => {
@@ -264,7 +267,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_numerator", 6);
     expect(mocks.clip123.set).toHaveBeenCalledWith("signature_denominator", 8);
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", async () => {
@@ -285,7 +288,7 @@ describe("updateClip - Basic operations", () => {
       ],
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", async () => {
@@ -301,7 +304,7 @@ describe("updateClip - Basic operations", () => {
       notes: expectedDrumPatternNotes(),
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 5 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 5 });
   });
 
   it("should throw error for invalid time signature format", async () => {
@@ -567,7 +570,7 @@ describe("updateClip - Basic operations", () => {
       1,
       "notes parameter ignored for audio clip",
     );
-    expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
   });
 
   it("should warn that audio-only parameters were ignored on a MIDI clip", async () => {
@@ -594,7 +597,7 @@ describe("updateClip - Basic operations", () => {
       1,
       expect.stringContaining("Failed to update clip"),
     );
-    expect(result).toStrictEqual({ id: "123", noteCount: 3 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
   });
 
   it("should omit noteCount when code exec returns null", async () => {
@@ -604,7 +607,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ id: "123", code: "return notes" });
 
     // noteCount != null guard: a null result must not set the field.
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(result).not.toHaveProperty("noteCount");
   });
 
@@ -651,7 +654,7 @@ describe("updateClip - splitting mutation coverage", () => {
       1,
       "arrangementSplit requires arrangement clips",
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("should split an arrangement clip and return the fresh clips only", async () => {

@@ -18,6 +18,7 @@ import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /**
@@ -41,7 +42,7 @@ export function duplicateDeviceWithPaths(
 
   if (paths.length <= 1) {
     // A lone copy that was skipped has nothing to report but its warning.
-    return duplicateDevice(object, paths[0], name, count) ?? [];
+    return withDevicePath(duplicateDevice(object, paths[0], name, count)) ?? [];
   }
 
   const parsedNames = parseCommaSeparatedNames(name, paths.length);
@@ -58,14 +59,31 @@ export function duplicateDeviceWithPaths(
   // read as a one-destination call that worked.
   return paths
     .map((path, i) =>
-      duplicateDevice(
-        LiveAPI.from(sourceId),
-        path,
-        getNameForIndex(name, i, parsedNames),
-        1,
+      withDevicePath(
+        duplicateDevice(
+          LiveAPI.from(sourceId),
+          path,
+          getNameForIndex(name, i, parsedNames),
+          1,
+        ),
       ),
     )
     .filter((result) => result != null);
+}
+
+/**
+ * Name the copy by where it ended up. Read after duplicateDevice returns, not
+ * inside it: the temp track it works through shifts every later track index,
+ * so a path read before the cleanup is one track off.
+ * @param result - The copy's id, or null when the copy was skipped
+ * @returns The result with its path, or null
+ */
+function withDevicePath(
+  result: { id: string } | null,
+): { id: string; path?: string } | null {
+  if (result == null) return null;
+
+  return { id: result.id, ...pathField(LiveAPI.from(result.id)) };
 }
 
 /**

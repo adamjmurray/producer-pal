@@ -27,6 +27,7 @@ import {
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -363,7 +364,7 @@ function resolveTargetFromPath(liveApiPath: string): LiveAPI | null {
 function updateTarget(
   target: LiveAPI,
   options: UpdateTargetOptions,
-): { id: string; params?: ParamValueResult[] } | null {
+): { id: string; path?: string; params?: ParamValueResult[] } | null {
   const type = target.type;
 
   // Validate type is updatable
@@ -408,12 +409,13 @@ function updateTarget(
   if (!isDeviceType(type)) {
     updateNonDeviceProperties(target, type, options);
 
-    return { id: target.id };
+    return { id: target.id, ...pathField(target) };
   }
 
   const params = updateDeviceProperties(target, type, options);
-  const result: { id: string; params?: ParamValueResult[] } = {
+  const result: { id: string; path?: string; params?: ParamValueResult[] } = {
     id: target.id,
+    ...pathField(target),
   };
 
   if (params.length > 0) result.params = params;

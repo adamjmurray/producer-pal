@@ -9,6 +9,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   getMinimalClipInfo,
   createClipsForLength,
@@ -216,7 +217,7 @@ export function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
   sourceTrackIndex?: number,
-): { id: string; trackIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; trackIndex: number; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
@@ -244,6 +245,7 @@ export function duplicateTrack(
 
   return {
     id: newTrack.id,
+    path: formatObjectPath({ kind: "track", trackIndex: newTrackIndex }),
     trackIndex: newTrackIndex,
     clips: duplicatedClips,
   };
@@ -262,7 +264,7 @@ export function duplicateScene(
   name?: string,
   color?: string,
   withoutClips?: boolean,
-): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; sceneIndex: number; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_scene", sceneIndex);
@@ -297,6 +299,7 @@ export function duplicateScene(
   // Return optimistic metadata
   return {
     id: newScene.id,
+    path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
     sceneIndex: newSceneIndex,
     clips: duplicatedClips,
   };

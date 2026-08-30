@@ -17,6 +17,7 @@ import {
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -28,6 +29,7 @@ import {
 
 interface UpdateSceneResult {
   id: string;
+  path?: string;
 }
 
 interface UpdateSceneArgs {
@@ -118,6 +120,7 @@ export function updateScene(
     // Build optimistic result object
     updatedScenes.push({
       id: scene.id,
+      ...pathField(scene),
     });
   }
 

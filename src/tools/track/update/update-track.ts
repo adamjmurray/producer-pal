@@ -27,6 +27,7 @@ import {
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -64,6 +65,7 @@ interface UpdateTrackArgs {
 
 interface UpdateTrackResult {
   id: string;
+  path?: string;
 }
 
 /**
@@ -365,6 +367,7 @@ export function updateTrack(
     // Build optimistic result object
     updatedTracks.push({
       id: track.id,
+      ...pathField(track),
     });
   }
 

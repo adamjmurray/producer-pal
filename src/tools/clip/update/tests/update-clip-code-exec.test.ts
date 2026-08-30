@@ -70,7 +70,7 @@ describe("updateClip - code execution", () => {
       notes: notes.map(toLiveApiNote),
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 2 });
   });
 
   it("should execute code on multiple clips, threading clip.index/clip.count", async () => {
@@ -111,8 +111,8 @@ describe("updateClip - code execution", () => {
       undefined,
     );
     expect(result).toStrictEqual([
-      { id: "123", noteCount: 1 },
-      { id: "456", noteCount: 1 },
+      { id: "123", path: "t0/s0", noteCount: 1 },
+      { id: "456", path: "t1/s1", noteCount: 1 },
     ]);
   });
 
@@ -141,7 +141,7 @@ describe("updateClip - code execution", () => {
     );
 
     // Should still return a result with current note count
-    expect(result).toStrictEqual({ id: "123", noteCount: 0 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 0 });
   });
 
   it("should handle mixed success/failure across multiple clips", async () => {
@@ -159,8 +159,8 @@ describe("updateClip - code execution", () => {
 
     // First clip succeeds, second clip fails
     expect(result).toStrictEqual([
-      { id: "123", noteCount: 1 },
-      { id: "456", noteCount: 0 },
+      { id: "123", path: "t0/s0", noteCount: 1 },
+      { id: "456", path: "t1/s1", noteCount: 0 },
     ]);
 
     expect(outlet).toHaveBeenCalledWith(

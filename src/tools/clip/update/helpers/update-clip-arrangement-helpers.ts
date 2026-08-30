@@ -17,6 +17,7 @@ import {
   duplicateSelfOverlappingClip,
 } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {
@@ -231,12 +232,15 @@ export function handleArrangementOperations({
     if (results.length > 0) {
       // The length helpers return ids only, and their first entry is always the
       // clip the notes were written to (any tiles follow it), so the note stats
-      // go there.
+      // go there. Tiles share the clip's lane — take-lane clips never reach the
+      // length path — so one lane path covers the whole batch.
+      const lanePath = objectPathForApi(currentClip);
+
       updatedClips.push(
         ...results.map((result, index) =>
           index === 0
-            ? buildClipResultObject(result.id, finalNoteResult)
-            : result,
+            ? buildClipResultObject(result.id, finalNoteResult, lanePath)
+            : { ...result, path: lanePath },
         ),
       );
       hasArrangementLengthResults = true;
@@ -244,7 +248,13 @@ export function handleArrangementOperations({
   }
 
   if (!hasArrangementLengthResults) {
-    updatedClips.push(buildClipResultObject(finalClipId, finalNoteResult));
+    updatedClips.push(
+      buildClipResultObject(
+        finalClipId,
+        finalNoteResult,
+        objectPathForApi(currentClip),
+      ),
+    );
   }
 }
 

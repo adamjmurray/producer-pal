@@ -128,9 +128,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     );
 
     expect(result).toStrictEqual([
-      { id: "789" },
-      { id: "1000" },
-      { id: "1000" },
+      { id: "789", path: "t0" },
+      { id: "1000", path: "t0" },
+      { id: "1000", path: "t0" },
     ]); // Original + tiled clips
   });
 
@@ -187,7 +187,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       4.0,
     );
 
-    expect(result).toStrictEqual([{ id: "789" }, { id: "1000" }]);
+    expect(result).toStrictEqual([
+      { id: "789", path: "t0" },
+      { id: "1000", path: "t0" },
+    ]);
   });
 
   it("should work with no remainder (single tile)", async () => {
@@ -209,7 +212,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       expect.anything(),
     );
 
-    expect(result).toStrictEqual({ id: "789" });
+    expect(result).toStrictEqual({ id: "789", path: "t0" });
   });
 
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", async () => {
@@ -294,10 +297,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 3.0);
 
     expect(result).toStrictEqual([
-      { id: "789" },
-      { id: "1000" },
-      { id: "1001" },
-      { id: "1002" },
+      { id: "789", path: "t0" },
+      { id: "1000", path: "t0" },
+      { id: "1001", path: "t0" },
+      { id: "1002", path: "t0" },
     ]);
   });
 
@@ -392,9 +395,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     // Should return original + 2 full tiles (4 beats each)
     expect(result).toStrictEqual([
-      { id: "789" },
-      { id: "1000" },
-      { id: "1001" },
+      { id: "789", path: "t0" },
+      { id: "1000", path: "t0" },
+      { id: "1001", path: "t0" },
     ]);
   });
 });

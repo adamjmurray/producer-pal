@@ -75,6 +75,7 @@ function runSessionMove(opts: {
     id: "123",
     trackIndex,
     sceneIndex,
+    path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
     getProperty: vi.fn((prop: string) =>
       prop === "is_midi_clip" ? clipIsMidi : undefined,
     ),

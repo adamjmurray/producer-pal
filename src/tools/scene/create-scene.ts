@@ -15,6 +15,7 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene } from "./capture-scene.ts";
 import {
   applyTempoProperty,
@@ -23,6 +24,7 @@ import {
 
 interface SceneResult {
   id: string;
+  path: string;
   sceneIndex: number;
 }
 
@@ -236,6 +238,7 @@ function createSingleScene(
 
   return {
     id: scene.id,
+    path: formatObjectPath({ kind: "scene", sceneIndex }),
     sceneIndex,
   };
 }

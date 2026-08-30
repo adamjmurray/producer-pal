@@ -156,6 +156,20 @@ addressed by id. That is the rule, not a hole to apologize for.
 
 Neither depends on path syntax.
 
+### Phase 6 — `path` in every write result ✅
+
+Create, update and duplicate results report `path` beside `id`, for tracks,
+scenes, devices, chains and clips — not just clips. One helper reads it off the
+object (`objectPathForApi`), so a moved object reports where it landed rather
+than where the caller aimed.
+
+`delete` is deliberately excluded: after deleting `t2` that path names a
+different track, and a deleted object has no next call to spend it on.
+
+Two shapes report nothing: a chain reached through a pad segment, whose
+rack-relative index isn't in the Live API path, and an object that resolved to
+nothing.
+
 ## Docs to update as the phases land
 
 Skills fragments (`arrangement.ts`, `devices/devices.ts`,

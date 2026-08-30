@@ -314,5 +314,5 @@ function expectSendUpdateSkipped(
     1,
     expect.stringContaining(expectedWarning),
   );
-  expect(result).toStrictEqual({ id: "123" });
+  expect(result).toStrictEqual({ id: "123", path: "t0" });
 }

@@ -184,6 +184,7 @@ describe("duplicate - return format", () => {
 
     expect(result).toStrictEqual({
       id: expect.any(String),
+      path: expect.any(String),
       trackIndex: expect.any(Number),
       clips: [],
     });

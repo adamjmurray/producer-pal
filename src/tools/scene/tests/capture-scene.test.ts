@@ -28,6 +28,7 @@ describe("captureScene", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/2",
+      path: "s2",
       sceneIndex: 2,
       clips: [],
     });
@@ -56,6 +57,7 @@ describe("captureScene", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/3",
+      path: "s3",
       sceneIndex: 3,
       clips: [],
     });
@@ -89,6 +91,7 @@ describe("captureScene", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/2",
+      path: "s2",
       sceneIndex: 2,
       clips: [],
     });
@@ -177,6 +180,7 @@ describe("captureScene", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
+      path: "s1",
       sceneIndex: 1,
       clips: [
         { id: "live_set/tracks/0/clip_slots/1/clip", trackIndex: 0 },

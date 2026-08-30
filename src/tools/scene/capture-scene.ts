@@ -4,6 +4,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 interface CapturedClip {
   id: string;
@@ -12,6 +13,7 @@ interface CapturedClip {
 
 interface CaptureSceneResult {
   id: string;
+  path: string;
   sceneIndex: number;
   clips: CapturedClip[];
 }
@@ -81,6 +83,7 @@ export function captureScene({
   // Build optimistic result object
   return {
     id: newScene.id,
+    path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
     sceneIndex: newSceneIndex,
     clips,
   };

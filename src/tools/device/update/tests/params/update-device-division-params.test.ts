@@ -58,6 +58,7 @@ describe("updateDevice - division params", () => {
     expect(param.set).toHaveBeenCalledWith("value", -4);
     expect(result).toStrictEqual({
       id: "123",
+      path: "t0/d0",
       params: [{ id: "793", name: "Rate", value: "1/16" }],
     });
   });
@@ -72,6 +73,7 @@ describe("updateDevice - division params", () => {
     expect(param.set).toHaveBeenCalledWith("value", 0);
     expect(result).toStrictEqual({
       id: "123",
+      path: "t0/d0",
       params: [{ id: "793", name: "Rate", value: "1" }],
     });
   });
@@ -87,6 +89,6 @@ describe("updateDevice - division params", () => {
       'updateDevice: "1/128" is not a valid division option',
     );
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 });

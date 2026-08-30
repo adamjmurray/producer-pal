@@ -124,7 +124,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     });
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
-    expect(result).toStrictEqual({ id: "456", noteCount: 0 });
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1", noteCount: 0 });
     expect(outlet).toHaveBeenCalledWith(
       1,
       "id/path named 1 clip(s) more than once; each clip was updated once",
@@ -146,7 +146,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = await updateClip({ id: "123,123", name: "Once" });
 
     expect(callsNamed(mocks.clip123.set, "name")).toBe(1);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("gives a repeated clip the destination named the first time", async () => {
@@ -235,7 +235,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     })) as Array<{ id: string; path?: string }>;
 
     expect(result[0]).toMatchObject({ path: "t1/s2" });
-    expect(result[1]).not.toHaveProperty("path");
+    // The second clip stayed put, so its path is still its own slot.
+    expect(result[1]).toMatchObject({ path: "t1/s1" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       "clip 456 was not moved: clip 123 is already moving to t1/s2; " +

@@ -58,7 +58,7 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
   it("should update multiple scenes by comma-separated IDs", () => {
@@ -77,7 +77,10 @@ describe("updateScene", () => {
     expect(scene2.set).toHaveBeenCalledWith("tempo", 120);
     expect(scene2.set).toHaveBeenCalledWith("tempo_enabled", true);
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
   });
 
   it("should handle 'id ' prefixed scene IDs", () => {
@@ -87,7 +90,7 @@ describe("updateScene", () => {
     });
 
     expect(scene1.set).toHaveBeenCalledWith("name", "Prefixed ID Scene");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
   it("should not update properties when not provided", () => {
@@ -98,7 +101,7 @@ describe("updateScene", () => {
 
     expect(scene1.set).toHaveBeenCalledWith("name", "Only Name Update");
     expect(scene1.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
   it("should disable tempo when -1 is passed", () => {
@@ -109,7 +112,7 @@ describe("updateScene", () => {
 
     expect(scene1.set).toHaveBeenCalledWith("tempo_enabled", false);
     expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
   it("should warn and skip an out-of-range tempo (e.g. 0) instead of writing it", async () => {
@@ -121,7 +124,7 @@ describe("updateScene", () => {
       );
       expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
       expect(scene1.set).not.toHaveBeenCalledWith("tempo_enabled", true);
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "s0" });
     });
   });
 
@@ -169,7 +172,7 @@ describe("updateScene", () => {
       "time_signature_denominator",
       expect.any(Number),
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
   it("should warn and return empty when id is missing", () => {
@@ -186,6 +189,7 @@ describe("updateScene", () => {
   it("still updates by the ids alias", () => {
     expect(updateScene({ id: "123", name: "Renamed" })).toStrictEqual({
       id: "123",
+      path: "s0",
     });
     expect(scene1.set).toHaveBeenCalledWith("name", "Renamed");
   });
@@ -207,7 +211,7 @@ describe("updateScene", () => {
 
     const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "s0" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateScene: id "nonexistent" does not exist',
@@ -227,7 +231,10 @@ describe("updateScene", () => {
       color: "#FF0000,#00FF00,#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
     expect(scene1.set).toHaveBeenCalledWith("name", "B");
     expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
@@ -262,8 +269,11 @@ describe("updateScene", () => {
     const singleResult = updateScene({ id: "123", name: "Single" });
     const arrayResult = updateScene({ id: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toStrictEqual({ id: "123" });
-    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123", path: "s0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+    ]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -272,7 +282,11 @@ describe("updateScene", () => {
       color: "#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+      { id: "789", path: "s2" },
+    ]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -284,7 +298,11 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledTimes(1);
     expect(scene2.set).toHaveBeenCalledTimes(1);
     expect(scene3.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "s0" },
+      { id: "456", path: "s1" },
+      { id: "789", path: "s2" },
+    ]);
   });
 
   describe("color quantization verification", () => {

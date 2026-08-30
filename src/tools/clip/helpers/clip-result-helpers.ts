@@ -97,18 +97,18 @@ export function validateAndParseArrangementParams(
 }
 
 /**
- * Build clip result object with optional note stats
+ * Build clip result object with optional note stats. The caller passes the
+ * path, read off a clip it already holds — resolving the id here would cost a
+ * LiveAPI build per clip returned.
  * @param clipId - The clip ID
  * @param noteResult - Optional note update result with count and transformed
- * @param slot - Optional slot position to include in result
- * @param slot.trackIndex - Track index
- * @param slot.sceneIndex - Scene index
- * @returns Result object with id and optionally noteCount/transformed
+ * @param path - Where the clip is, from objectPathForApi
+ * @returns Result object with id, path, and optionally noteCount/transformed
  */
 export function buildClipResultObject(
   clipId: string,
   noteResult: NoteUpdateResult | null,
-  slot?: { trackIndex: number; sceneIndex: number },
+  path?: string,
 ): ClipResult {
   const result: ClipResult = { id: clipId };
 
@@ -120,9 +120,7 @@ export function buildClipResultObject(
     }
   }
 
-  if (slot != null) {
-    result.path = slotPath(slot.trackIndex, slot.sceneIndex);
-  }
+  if (path != null) result.path = path;
 
   return result;
 }

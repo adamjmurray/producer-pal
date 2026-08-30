@@ -16,6 +16,7 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 interface CreateTrackArgs {
   trackIndex?: number;
@@ -30,6 +31,7 @@ interface CreateTrackArgs {
 
 interface CreatedTrackResult {
   id: string;
+  path: string;
   trackIndex?: number;
   returnTrackIndex?: number;
 }
@@ -215,8 +217,19 @@ export function createTrack(
 
     createdTracks.push(
       type === "return"
-        ? { id: trackId, returnTrackIndex: resultIndex }
-        : { id: trackId, trackIndex: resultIndex },
+        ? {
+            id: trackId,
+            path: formatObjectPath({
+              kind: "return-track",
+              returnIndex: resultIndex,
+            }),
+            returnTrackIndex: resultIndex,
+          }
+        : {
+            id: trackId,
+            path: formatObjectPath({ kind: "track", trackIndex: resultIndex }),
+            trackIndex: resultIndex,
+          },
     );
 
     // For subsequent midi/audio tracks with explicit index, increment since tracks shift right

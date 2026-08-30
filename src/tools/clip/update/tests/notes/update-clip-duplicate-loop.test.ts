@@ -67,7 +67,7 @@ describe("updateClip - duplicateLoop", () => {
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(result).toStrictEqual({ id: "123", noteCount: 8 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 8 });
   });
 
   it("doubles an arrangement MIDI clip", async () => {
@@ -77,7 +77,7 @@ describe("updateClip - duplicateLoop", () => {
     const result = await updateClip({ id: "789", duplicateLoop: true });
 
     expect(mocks.clip789.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(result).toStrictEqual({ id: "789", noteCount: 4 });
+    expect(result).toStrictEqual({ id: "789", path: "t2", noteCount: 4 });
   });
 
   it("warns and skips audio clips without calling duplicate_loop", async () => {
@@ -90,7 +90,7 @@ describe("updateClip - duplicateLoop", () => {
       1,
       "duplicateLoop parameter ignored for audio clip (id 123)",
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });
 
   it("processes MIDI clips while skipping audio in a mixed batch", async () => {
@@ -102,7 +102,10 @@ describe("updateClip - duplicateLoop", () => {
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(mocks.clip456.call).not.toHaveBeenCalledWith("duplicate_loop");
-    expect(result).toStrictEqual([{ id: "123", noteCount: 6 }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0/s0", noteCount: 6 },
+      { id: "456", path: "t1/s1" },
+    ]);
   });
 
   it("applies length to select the region before doubling (no warning)", async () => {
@@ -128,7 +131,7 @@ describe("updateClip - duplicateLoop", () => {
       1,
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
-    expect(result).toStrictEqual({ id: "123", noteCount: 8 });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 8 });
   });
 
   it("applies length on both MIDI and audio clips in a mixed batch", async () => {

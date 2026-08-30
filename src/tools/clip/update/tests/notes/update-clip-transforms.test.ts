@@ -54,7 +54,12 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
       transforms: "velocity = 50",
     });
 
-    expect(result).toStrictEqual({ id: "123", noteCount: 1, transformed: 1 });
+    expect(result).toStrictEqual({
+      id: "123",
+      path: "t0/s0",
+      noteCount: 1,
+      transformed: 1,
+    });
     expect(addedVelocity(mocks.clip123)).toBe(50);
   });
 

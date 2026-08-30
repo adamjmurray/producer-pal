@@ -199,11 +199,13 @@ export function setupRouteToSourceMock(
  */
 export function createTrackResult(trackIndex: number): {
   id: string;
+  path: string;
   trackIndex: number;
   clips: unknown[];
 } {
   return {
     id: `live_set/tracks/${trackIndex}`,
+    path: `t${trackIndex}`,
     trackIndex,
     clips: [],
   };
@@ -218,7 +220,7 @@ export function createTrackResult(trackIndex: number): {
 export function createTrackResultArray(
   startIndex: number,
   count: number,
-): Array<{ id: string; trackIndex: number; clips: unknown[] }> {
+): Array<{ id: string; path: string; trackIndex: number; clips: unknown[] }> {
   return Array.from({ length: count }, (_, i) =>
     createTrackResult(startIndex + i),
   );

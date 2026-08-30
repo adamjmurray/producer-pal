@@ -103,7 +103,7 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t1/d0", name: "My Device" });
 
       expect(device456.set).toHaveBeenCalledWith("name", "My Device");
-      expect(result).toStrictEqual({ id: "device-456" });
+      expect(result).toStrictEqual({ id: "device-456", path: "t1/d0" });
     });
 
     // collapsed — kept for potential future use (test removed)
@@ -120,14 +120,14 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "rt0/d0", name: "Return Device" });
 
       expect(returnDevice.set).toHaveBeenCalledWith("name", "Return Device");
-      expect(result).toStrictEqual({ id: "return-device-123" });
+      expect(result).toStrictEqual({ id: "return-device-123", path: "rt0/d0" });
     });
 
     it("should update device by path on master track", () => {
       const result = updateDevice({ path: "mt/d0", name: "Master Device" });
 
       expect(masterDevice.set).toHaveBeenCalledWith("name", "Master Device");
-      expect(result).toStrictEqual({ id: "master-device-789" });
+      expect(result).toStrictEqual({ id: "master-device-789", path: "mt/d0" });
     });
   });
 
@@ -150,28 +150,28 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t1/d0/c0", name: "My Chain" });
 
       expect(chain123.set).toHaveBeenCalledWith("name", "My Chain");
-      expect(result).toStrictEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
     it("should update chain mute state by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", mute: true });
 
       expect(chain123.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
     it("should update chain solo state by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", solo: true });
 
       expect(chain123.set).toHaveBeenCalledWith("solo", 1);
-      expect(result).toStrictEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
     it("should update chain color by path", () => {
       const result = updateDevice({ path: "t1/d0/c0", color: "#FF0000" });
 
       expect(chain123.set).toHaveBeenCalledWith("color", 16711680);
-      expect(result).toStrictEqual({ id: "chain-123" });
+      expect(result).toStrictEqual({ id: "chain-123", path: "t1/d0/c0" });
     });
 
     it("should return empty array for non-existent chain by path", () => {
@@ -186,7 +186,10 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t1/d0/rc0", name: "Return Chain" });
 
       expect(returnChain456.set).toHaveBeenCalledWith("name", "Return Chain");
-      expect(result).toStrictEqual({ id: "return-chain-456" });
+      expect(result).toStrictEqual({
+        id: "return-chain-456",
+        path: "t1/d0/rc0",
+      });
     });
 
     it("should drop the send letter when renaming a return chain", () => {
@@ -359,7 +362,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "New Layer",
       );
-      expect(result).toStrictEqual({ id: "chain-36" });
+      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/c0" });
     });
 
     it("should update drum chain mute state by path (pNOTE/index)", () => {
@@ -371,7 +374,7 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t1/d0/pC1/c0", mute: true });
 
       expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "chain-36" });
+      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/c0" });
     });
 
     it("should return empty array for invalid chain index", () => {
@@ -478,9 +481,9 @@ describe("updateDevice with path parameter", () => {
       expect(device101.set).toHaveBeenCalledWith("name", "Updated");
       expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
-        { id: "device-100" },
-        { id: "device-101" },
-        { id: "device-200" },
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-101", path: "t0/d1" },
+        { id: "device-200", path: "t1/d0" },
       ]);
     });
 
@@ -493,8 +496,8 @@ describe("updateDevice with path parameter", () => {
       expect(device100.set).toHaveBeenCalledWith("name", "Updated");
       expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
-        { id: "device-100" },
-        { id: "device-200" },
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-200", path: "t1/d0" },
       ]);
     });
 
@@ -507,7 +510,7 @@ describe("updateDevice with path parameter", () => {
     it("should return single object when only one path provided", () => {
       const result = updateDevice({ path: "t0/d0", name: "Single" });
 
-      expect(result).toStrictEqual({ id: "device-100" });
+      expect(result).toStrictEqual({ id: "device-100", path: "t0/d0" });
     });
 
     it("should return single object when only one path valid out of many", () => {
@@ -516,7 +519,7 @@ describe("updateDevice with path parameter", () => {
         name: "Updated",
       });
 
-      expect(result).toStrictEqual({ id: "device-100" });
+      expect(result).toStrictEqual({ id: "device-100", path: "t0/d0" });
     });
 
     it("should handle whitespace in comma-separated paths", () => {
@@ -528,8 +531,8 @@ describe("updateDevice with path parameter", () => {
       expect(device100.set).toHaveBeenCalledWith("name", "Trimmed");
       expect(device200.set).toHaveBeenCalledWith("name", "Trimmed");
       expect(result).toStrictEqual([
-        { id: "device-100" },
-        { id: "device-200" },
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-200", path: "t1/d0" },
       ]);
     });
 
@@ -543,8 +546,8 @@ describe("updateDevice with path parameter", () => {
       expect(device100.set).toHaveBeenCalledWith("name", "Updated");
       expect(device200.set).toHaveBeenCalledWith("name", "Updated");
       expect(result).toStrictEqual([
-        { id: "device-100" },
-        { id: "device-200" },
+        { id: "device-100", path: "t0/d0" },
+        { id: "device-200", path: "t1/d0" },
       ]);
     });
   });
@@ -564,7 +567,10 @@ describe("updateDevice with path parameter", () => {
 
       expect(device100.set).toHaveBeenCalledWith("name", "Mixed");
       expect(chain200.set).toHaveBeenCalledWith("name", "Mixed");
-      expect(result).toStrictEqual([{ id: "device-100" }, { id: "chain-200" }]);
+      expect(result).toStrictEqual([
+        { id: "device-100", path: "t0/d0" },
+        { id: "chain-200", path: "t1/d0/c0" },
+      ]);
     });
   });
 
@@ -616,10 +622,12 @@ describe("updateDevice with path parameter", () => {
       expect(result).toStrictEqual([
         {
           id: "device-100",
+          path: "t0/d0",
           params: [{ id: "param-100-5", name: "Filter Freq", value: 1000 }],
         },
         {
           id: "device-200",
+          path: "t1/d0",
           params: [{ id: "param-200-5", name: "Filter Freq", value: 1000 }],
         },
       ]);

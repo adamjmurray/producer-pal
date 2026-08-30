@@ -67,7 +67,11 @@ describe("createScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("time_signature_numerator", 3);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_denominator", 4);
     expect(scene1.set).toHaveBeenCalledWith("time_signature_enabled", true);
-    expect(result).toStrictEqual({ id: "live_set/scenes/1", sceneIndex: 1 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/1",
+      path: "s1",
+      sceneIndex: 1,
+    });
   });
 
   it("should create multiple scenes with auto-incrementing names", () => {
@@ -87,9 +91,9 @@ describe("createScene", () => {
     expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
 
     expect(result).toStrictEqual([
-      { id: "live_set/scenes/0", sceneIndex: 0 },
-      { id: "live_set/scenes/1", sceneIndex: 1 },
-      { id: "live_set/scenes/2", sceneIndex: 2 },
+      { id: "live_set/scenes/0", path: "s0", sceneIndex: 0 },
+      { id: "live_set/scenes/1", path: "s1", sceneIndex: 1 },
+      { id: "live_set/scenes/2", path: "s2", sceneIndex: 2 },
     ]);
   });
 
@@ -98,7 +102,11 @@ describe("createScene", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 0);
     expect(scene0.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+      sceneIndex: 0,
+    });
   });
 
   it("should pad with empty scenes when sceneIndex exceeds current count", () => {
@@ -197,6 +205,7 @@ describe("createScene", () => {
 
     expect(singleResult).toStrictEqual({
       id: "live_set/scenes/0",
+      path: "s0",
       sceneIndex: 0,
     });
 
@@ -209,10 +218,12 @@ describe("createScene", () => {
 
     expect(arrayResultArr[0]).toStrictEqual({
       id: "live_set/scenes/1",
+      path: "s1",
       sceneIndex: 1,
     });
     expect(arrayResultArr[1]).toStrictEqual({
       id: "live_set/scenes/2",
+      path: "s2",
       sceneIndex: 2,
     });
   });
@@ -225,7 +236,11 @@ describe("createScene", () => {
     });
 
     expect(scene0.set).toHaveBeenCalledWith("name", "Solo Scene");
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+      sceneIndex: 0,
+    });
   });
 
   it("should include disabled tempo and timeSignature in result", () => {
@@ -235,7 +250,11 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+    expect(result).toStrictEqual({
+      id: "live_set/scenes/0",
+      path: "s0",
+      sceneIndex: 0,
+    });
   });
 
   describe("comma-separated names", () => {
@@ -397,6 +416,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [],
       });
@@ -418,6 +438,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [],
       });
@@ -438,6 +459,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [],
       });
@@ -476,6 +498,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [],
       });
@@ -498,6 +521,7 @@ describe("createScene", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [
           { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
@@ -522,6 +546,7 @@ describe("createScene", () => {
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
+        path: "s0",
         sceneIndex: 0,
       });
     });
@@ -546,6 +571,7 @@ describe("createScene", () => {
       });
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [],
       });

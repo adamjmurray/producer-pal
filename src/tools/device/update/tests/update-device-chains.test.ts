@@ -438,7 +438,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
 
     expect(volume.set).toHaveBeenCalledWith("display_value", -15);
     expect(panning.set).toHaveBeenCalledWith("value", -0.3);
-    expect(result).toStrictEqual({ id: "chain-0" });
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
   });
 
   it("sets a chain's send to a rack return chain", () => {

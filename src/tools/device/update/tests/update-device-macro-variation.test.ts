@@ -47,7 +47,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macro variations only available on rack devices",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "456" });
+    expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
   });
 
   it("should reject out-of-range variation index", () => {
@@ -67,7 +67,7 @@ describe("updateDevice - macroVariation", () => {
     );
     // Out of range must also abort the action, not just skip the index-set.
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should reject an index equal to variation_count (boundary)", () => {
@@ -88,7 +88,7 @@ describe("updateDevice - macroVariation", () => {
       expect.anything(),
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should call store_variation for 'create'", () => {
@@ -108,7 +108,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       expect.stringContaining("ignored"),
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should call recall_selected_variation for 'load'", () => {
@@ -126,7 +126,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       expect.stringContaining("ignored"),
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should call recall_last_used_variation for 'revert'", () => {
@@ -136,7 +136,7 @@ describe("updateDevice - macroVariation", () => {
     });
 
     expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should call delete_selected_variation for 'delete'", () => {
@@ -149,7 +149,7 @@ describe("updateDevice - macroVariation", () => {
     // 'delete' also selects the index before deleting it.
     expect(rackDevice.set).toHaveBeenCalledWith("selected_variation_index", 1);
     expect(rackDevice.call).toHaveBeenCalledWith("delete_selected_variation");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should call randomize_macros for 'randomize'", () => {
@@ -159,7 +159,7 @@ describe("updateDevice - macroVariation", () => {
     });
 
     expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should set index before executing action for 'load'", () => {
@@ -197,7 +197,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should warn and skip when 'load' provided without index", () => {
@@ -211,7 +211,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should warn and skip when 'delete' provided without index", () => {
@@ -225,7 +225,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should warn but still create when 'create' provided with index", () => {
@@ -245,7 +245,7 @@ describe("updateDevice - macroVariation", () => {
       expect.anything(),
     );
     expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should warn but still revert when 'revert' provided with index", () => {
@@ -260,7 +260,7 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariationIndex ignored for 'revert'",
     );
     expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 
   it("should warn but still randomize when 'randomize' provided with index", () => {
@@ -275,6 +275,6 @@ describe("updateDevice - macroVariation", () => {
       "updateDevice: macroVariationIndex ignored for 'randomize'",
     );
     expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
   });
 });

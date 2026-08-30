@@ -62,6 +62,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
+      path: "s1",
       sceneIndex: 1,
       clips: [
         {
@@ -103,6 +104,7 @@ describe("duplicate - scene duplication", () => {
     expect(result).toStrictEqual([
       {
         id: "live_set/scenes/1",
+        path: "s1",
         sceneIndex: 1,
         clips: [
           {
@@ -117,6 +119,7 @@ describe("duplicate - scene duplication", () => {
       },
       {
         id: "live_set/scenes/2",
+        path: "s2",
         sceneIndex: 2,
         clips: [
           {
@@ -156,6 +159,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
+      path: "s1",
       sceneIndex: 1,
       clips: [],
     });

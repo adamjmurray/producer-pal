@@ -40,7 +40,7 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("mute", true);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", true);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should update multiple tracks by comma-separated IDs", () => {
@@ -55,7 +55,10 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledTimes(2);
     expect(track456.set).toHaveBeenCalledTimes(2);
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
   });
 
   it("should handle 'id ' prefixed track IDs", () => {
@@ -65,7 +68,7 @@ describe("updateTrack", () => {
     });
 
     expect(track123.set).toHaveBeenCalledWith("name", "Prefixed ID Track");
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should not update properties when not provided", () => {
@@ -76,7 +79,7 @@ describe("updateTrack", () => {
 
     expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
     expect(track123.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -90,7 +93,7 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("mute", false);
     expect(track123.set).toHaveBeenCalledWith("solo", false);
     expect(track123.set).toHaveBeenCalledWith("arm", false);
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
   it("should warn and return empty when id is missing", () => {
@@ -107,6 +110,7 @@ describe("updateTrack", () => {
   it("still updates by the ids alias", () => {
     expect(updateTrack({ id: "123", name: "Renamed" })).toStrictEqual({
       id: "123",
+      path: "t0",
     });
     expect(track123.set).toHaveBeenCalledWith("name", "Renamed");
   });
@@ -128,7 +132,7 @@ describe("updateTrack", () => {
 
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       'updateTrack: id "nonexistent" does not exist',
@@ -148,7 +152,10 @@ describe("updateTrack", () => {
       color: "#FF0000,#00FF00,#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
     expect(track123.set).toHaveBeenCalledWith("name", "B");
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
@@ -163,8 +170,11 @@ describe("updateTrack", () => {
     const singleResult = updateTrack({ id: "123", name: "Single" });
     const arrayResult = updateTrack({ id: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toStrictEqual({ id: "123" });
-    expect(arrayResult).toStrictEqual([{ id: "123" }, { id: "456" }]);
+    expect(singleResult).toStrictEqual({ id: "123", path: "t0" });
+    expect(arrayResult).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+    ]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -173,7 +183,11 @@ describe("updateTrack", () => {
       color: "#0000FF",
     });
 
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+      { id: "789", path: "t2" },
+    ]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -185,7 +199,11 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledTimes(1);
     expect(track456.set).toHaveBeenCalledTimes(1);
     expect(track789.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+    expect(result).toStrictEqual([
+      { id: "123", path: "t0" },
+      { id: "456", path: "t1" },
+      { id: "789", path: "t2" },
+    ]);
   });
 
   describe("routing properties", () => {
@@ -215,7 +233,7 @@ describe("updateTrack", () => {
         '{"output_routing_channel":{"identifier":26}}',
       );
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should update monitoring state when provided", () => {
@@ -226,7 +244,7 @@ describe("updateTrack", () => {
 
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should update monitoring state for all valid values", () => {
@@ -261,7 +279,7 @@ describe("updateTrack", () => {
         1,
         expect.stringContaining("invalid monitoring state"),
       );
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should handle mixed routing and basic properties", () => {
@@ -283,7 +301,7 @@ describe("updateTrack", () => {
       );
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 0);
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     it("should handle routing properties in bulk operations", () => {
@@ -304,7 +322,10 @@ describe("updateTrack", () => {
       expect(track123.set).toHaveBeenCalledWith("current_monitoring_state", 1);
       expect(track456.set).toHaveBeenCalledWith("current_monitoring_state", 1);
 
-      expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);
+      expect(result).toStrictEqual([
+        { id: "123", path: "t0" },
+        { id: "456", path: "t1" },
+      ]);
     });
 
     it("should not update routing properties when not provided", () => {
@@ -317,7 +338,7 @@ describe("updateTrack", () => {
       expect(track123.set).toHaveBeenCalledTimes(1);
       expect(track123.set).toHaveBeenCalledWith("name", "Only Name Update");
 
-      expect(result).toStrictEqual({ id: "123" });
+      expect(result).toStrictEqual({ id: "123", path: "t0" });
     });
 
     describe("type-guarded routing and monitoring", () => {

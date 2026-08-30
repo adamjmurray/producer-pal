@@ -116,7 +116,7 @@ describe("updateClip - deadline exceeded", () => {
     );
 
     // Only first clip should be updated (unwrapSingleResult returns single object)
-    expect(result).toStrictEqual({ id: "123" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("Ran out of time after updating 1 of 2 clips"),
