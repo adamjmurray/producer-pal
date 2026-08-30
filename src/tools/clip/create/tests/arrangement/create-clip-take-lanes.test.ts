@@ -36,7 +36,7 @@ function registerLiveSet(): void {
 }
 
 /** Register the live set plus an empty session clip slot at track 0, scene 0. */
-function registerEmptySessionSlot(): void {
+function registerEmptyClipSlot(): void {
   registerLiveSet();
   registerMockObject("clip-slot-0-0", {
     path: livePath.track(0).clipSlot(0),
@@ -204,7 +204,7 @@ describe("createClip take lanes", () => {
   );
 
   it("warns and ignores takeLane for session-only requests", async () => {
-    registerEmptySessionSlot();
+    registerEmptyClipSlot();
 
     await createClip({ slot: "0/0", notes: "C3", takeLane: "new" });
 
@@ -214,7 +214,7 @@ describe("createClip take lanes", () => {
   });
 
   it("warns-and-ignores an invalid takeLane for session-only requests (does not throw)", async () => {
-    registerEmptySessionSlot();
+    registerEmptyClipSlot();
 
     // "garbage" would throw if normalized; for session-only it must be dropped
     // (this await would reject if the value were still validated).
@@ -234,7 +234,7 @@ describe("createClip take lanes", () => {
     // A request targeting BOTH an arrangement position and a clip slot: the
     // takeLane applies to the arrangement clip but must be flagged as ignored
     // for the accompanying clip slot.
-    registerEmptySessionSlot();
+    registerEmptyClipSlot();
     registerTakeLaneTrack({ initialLanes: 0 });
 
     await createClip({

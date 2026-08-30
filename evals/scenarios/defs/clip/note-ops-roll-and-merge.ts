@@ -45,7 +45,7 @@ import {
 } from "../../types.ts";
 import {
   assertNotesRead,
-  clearSessionSlots,
+  clearClipSlots,
   getTransforms,
   MSG_CONNECT,
   readClipNotesFromTurn,
@@ -325,7 +325,7 @@ export const noteOpsRepeat: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["3/0"]),
 
   messages: [
     MSG_CONNECT,
@@ -350,7 +350,7 @@ export const noteOpsSplit: EvalScenario = {
   kind: "capability",
   requires: { transforms: true },
   liveSet: SPLIT_LIVE_SET,
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["3/0"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["3/0"]),
 
   messages: [
     MSG_CONNECT,

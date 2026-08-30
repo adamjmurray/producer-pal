@@ -13,7 +13,7 @@ import {
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
   handlePositionOperations,
-  handleSessionSlotMove,
+  handleClipSlotMove,
   resolveMoveDestinations,
 } from "../../helpers/update-clip-session-helpers.ts";
 
@@ -27,7 +27,7 @@ const COPY_ID = "456";
 const OCCUPANT_ID = "789";
 
 /**
- * Create a mock clip and register destination slot mocks, then call handleSessionSlotMove.
+ * Create a mock clip and register destination slot mocks, then call handleClipSlotMove.
  * Unregistered objects are non-existent here, so a slot only holds a clip when
  * this helper puts one there — the destination's clip appears when (and only
  * when) duplicate_clip_to actually copies.
@@ -119,7 +119,7 @@ function runSessionMove(opts: {
 
   const updatedClips: ClipResult[] = [];
 
-  handleSessionSlotMove({
+  handleClipSlotMove({
     clip: mockClip as unknown as LiveAPI,
     toSlot: { trackIndex: toTrackIndex, sceneIndex: toSceneIndex },
     updatedClips,
@@ -133,7 +133,7 @@ function runSessionMove(opts: {
   };
 }
 
-describe("handleSessionSlotMove", () => {
+describe("handleClipSlotMove", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -168,7 +168,7 @@ describe("handleSessionSlotMove", () => {
 
     const updatedClips: ClipResult[] = [];
 
-    handleSessionSlotMove({
+    handleClipSlotMove({
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       updatedClips,
@@ -193,7 +193,7 @@ describe("handleSessionSlotMove", () => {
     trackIndex: number | null,
     sceneIndex: number | null,
   ): void {
-    handleSessionSlotMove({
+    handleClipSlotMove({
       clip: {
         id: "123",
         trackIndex,
@@ -286,7 +286,7 @@ describe("handleSessionSlotMove", () => {
 
     const updatedClips: ClipResult[] = [];
 
-    handleSessionSlotMove({
+    handleClipSlotMove({
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 99, sceneIndex: 99 },
       updatedClips,

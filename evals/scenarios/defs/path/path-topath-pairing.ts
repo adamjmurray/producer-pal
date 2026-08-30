@@ -15,7 +15,7 @@
 
 import { type EvalScenario } from "../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
@@ -37,8 +37,7 @@ export const pathToPathPairing: EvalScenario = {
   liveSet: "basic-midi-4-track",
   // Resets every slot it touches, so trials and extra models share the Set.
   reuseLiveSet: true,
-  setup: (mcpClient) =>
-    clearSessionSlots(mcpClient, ["0/0", "0/1", "2/0", "2/1"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["0/0", "0/1", "2/0", "2/1"]),
 
   messages: [
     MSG_CONNECT,

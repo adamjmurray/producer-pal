@@ -217,7 +217,7 @@ describe("createClip - arrangement view", () => {
 
   it("distributes comma-separated names and colors across arrangement positions", async () => {
     // Two positions with two names and two colors. The count is
-    // sessionSlots.length + arrangementStarts.length (0 + 2 = 2). The `+` → `-`,
+    // clipSlots.length + arrangementStarts.length (0 + 2 = 2). The `+` → `-`,
     // the `name ?? undefined` / `color ?? undefined` → `&&`, and the returned
     // `{ parsedNames, parsedColors }` → `{}` mutants all collapse the per-position
     // distribution so the second name/color never lands.

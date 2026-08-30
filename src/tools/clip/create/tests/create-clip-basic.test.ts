@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { createClip } from "../create-clip.ts";
 import { convertTimingParameters } from "../helpers/create-clip-helpers.ts";
 import {
@@ -377,7 +377,7 @@ describe("calculateClipLength (unit)", () => {
 });
 
 describe("handleAutoPlayback (unit)", () => {
-  const slot = (): SlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
+  const slot = (): ClipSlotPosition => ({ trackIndex: 0, sceneIndex: 0 });
 
   it("no-ops (does not reach the switch) when view is not session", () => {
     // auto is truthy + view arrangement → the guard returns early. The
@@ -389,7 +389,7 @@ describe("handleAutoPlayback (unit)", () => {
   });
 
   it("no-ops (does not reach the switch) when there are no clip slots", () => {
-    // Empty slots → guard returns early. The `sessionSlots.length === 0` → false
+    // Empty slots → guard returns early. The `clipSlots.length === 0` → false
     // mutant would fall through to the switch and throw on the unknown auto value.
     expect(() =>
       handleAutoPlayback("unknown-mode", "session", []),

@@ -14,7 +14,7 @@
 
 import { type EvalScenario } from "../../types.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
 } from "../clip/helpers/clip-scenario-helpers.ts";
 import {
@@ -38,7 +38,7 @@ export const pathSessionSlot: EvalScenario = {
   // Writes one slot and clears both it and the transposed one, so repeat trials
   // and extra models can share the open Set.
   reuseLiveSet: true,
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["2/1", "1/2"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["2/1", "1/2"]),
 
   messages: [
     MSG_CONNECT,

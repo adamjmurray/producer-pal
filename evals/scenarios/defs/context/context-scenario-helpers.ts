@@ -30,7 +30,7 @@ import {
   type EvalTurnResult,
   type ScenarioRequirements,
 } from "../../types.ts";
-import { clearSessionSlots } from "../clip/helpers/clip-scenario-helpers.ts";
+import { clearClipSlots } from "../clip/helpers/clip-scenario-helpers.ts";
 
 /** Connect tool name (turn-0 connect assertion). */
 export const TOOL_CONNECT = "ppal-connect";
@@ -107,7 +107,7 @@ export function seedContext(seed: {
   return {
     setup: async (mcpClient) => {
       if (seed.clearSlots?.length) {
-        await clearSessionSlots(mcpClient, seed.clearSlots);
+        await clearClipSlots(mcpClient, seed.clearSlots);
       }
 
       // Snapshot BOTH layers before touching either, so teardown can restore

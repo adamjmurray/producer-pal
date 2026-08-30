@@ -19,7 +19,7 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
@@ -162,7 +162,7 @@ export function duplicateClipSlot(
  * @returns Array of result objects
  */
 export function duplicateClipToSlots(
-  slots: SlotPosition[],
+  slots: ClipSlotPosition[],
   object: LiveAPI,
   id: string,
   name: string | undefined,

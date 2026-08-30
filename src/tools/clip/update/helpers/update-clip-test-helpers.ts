@@ -417,32 +417,32 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
       return null;
     }),
   };
-  const sessionSlot = {
+  const clipSlot = {
     call: vi.fn(),
   };
   const mockCreate = vi
     .spyOn(tilingHelpers, "createAudioClipInSession")
     .mockReturnValue({
       clip: sessionClip as unknown as LiveAPI,
-      slot: sessionSlot as unknown as LiveAPI,
+      slot: clipSlot as unknown as LiveAPI,
     });
 
-  return { mockCreate, sessionClip, sessionSlot };
+  return { mockCreate, sessionClip, clipSlot };
 }
 
 /**
  * Assert that session-based file boundary detection ran correctly.
  * Verifies the session clip was created for boundary detection and cleaned up.
  * @param mockCreate - Spy on createAudioClipInSession
- * @param sessionSlot - Mock clip slot with a call method
- * @param sessionSlot.call - Mock function for clip slot calls
+ * @param clipSlot - Mock clip slot with a call method
+ * @param clipSlot.call - Mock function for clip slot calls
  * @param filePath - Expected audio file path
  */
 export function assertBoundaryDetection(
   mockCreate: ReturnType<typeof vi.spyOn>,
-  sessionSlot: { call: ReturnType<typeof vi.fn> },
+  clipSlot: { call: ReturnType<typeof vi.fn> },
   filePath = "/audio/test.wav",
 ): void {
   expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
-  expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+  expect(clipSlot.call).toHaveBeenCalledWith("delete_clip");
 }

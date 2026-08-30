@@ -17,7 +17,7 @@ import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
 import { assertAddressedById } from "../path/path-scenario-helpers.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   clipStateAssertion,
   MSG_CONNECT,
   TOOL_CONNECT,
@@ -243,7 +243,7 @@ export const duplicateLoop: EvalScenario = {
     "Double a MIDI clip with duplicateLoop (native Clip.duplicate_loop)",
   kind: "capability",
   liveSet: "basic-midi-4-track",
-  setup: (mcpClient) => clearSessionSlots(mcpClient, [LOOP_SLOT]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, [LOOP_SLOT]),
 
   messages: [
     MSG_CONNECT,

@@ -9,12 +9,12 @@ import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
   parseObjectPathList,
-  parseSessionSlotList,
+  parseClipSlotPathList,
   pathNamesSomething,
   requireClipPath,
   requireDeviceContainer,
   requireDevicePath,
-  requireSessionSlot,
+  requireClipSlotPath,
   trackSegmentPath,
 } from "../object-path-helpers.ts";
 
@@ -149,16 +149,16 @@ describe("requireClipPath", () => {
   });
 });
 
-describe("requireSessionSlot", () => {
+describe("requireClipSlotPath", () => {
   it("returns the track and scene a slot names", () => {
-    expect(requireSessionSlot(parseObjectPath("t7/s2"))).toStrictEqual({
+    expect(requireClipSlotPath(parseObjectPath("t7/s2"))).toStrictEqual({
       trackIndex: 7,
       sceneIndex: 2,
     });
   });
 
   it("rejects a bare track, which names no one clip", () => {
-    expect(() => requireSessionSlot(parseObjectPath("t7"))).toThrow(
+    expect(() => requireClipSlotPath(parseObjectPath("t7"))).toThrow(
       /a track has no one clip; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
     );
   });
@@ -166,29 +166,29 @@ describe("requireSessionSlot", () => {
   // Both take-lane spellings, since l+ reaches the message by a different arm.
   it("rejects a take lane, which is an arrangement position", () => {
     for (const path of ["t7/l1", "t7/l+"]) {
-      expect(() => requireSessionSlot(parseObjectPath(path))).toThrow(
+      expect(() => requireClipSlotPath(parseObjectPath(path))).toThrow(
         /take lanes hold arrangement clips; name a clip slot as "t<track>\/s<scene>" \(e\.g\., "t7\/s0"\)/,
       );
     }
   });
 
   it("rejects a non-clip path in clip terms", () => {
-    expect(() => requireSessionSlot(parseObjectPath("t1/d0"))).toThrow(
+    expect(() => requireClipSlotPath(parseObjectPath("t1/d0"))).toThrow(
       /device paths hold no clips/,
     );
   });
 });
 
-describe("parseSessionSlotList", () => {
+describe("parseClipSlotPathList", () => {
   it("parses a comma-separated list of slots", () => {
-    expect(parseSessionSlotList("t0/s1,t2/s3")).toStrictEqual([
+    expect(parseClipSlotPathList("t0/s1,t2/s3")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
       { trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
   it("throws on the first entry that isn't a slot", () => {
-    expect(() => parseSessionSlotList("t0/s1,t2")).toThrow(
+    expect(() => parseClipSlotPathList("t0/s1,t2")).toThrow(
       /a track has no one clip/,
     );
   });

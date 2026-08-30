@@ -104,7 +104,7 @@ export interface EvalScenario {
    *
    *  Opt in only when the scenario starts from a clean slate on its own: either
    *  it touches no Live Set state, or its `setup` resets everything it writes
-   *  (e.g. `clearSessionSlots` on the slots it fills). The flag also lets
+   *  (e.g. `clearClipSlots` on the slots it fills). The flag also lets
    *  repeat trials (`-r N`) and extra `-m` models reuse the open Set; without
    *  it each of those reopens, which is the default fresh-Set isolation most
    *  clip/track/device scenarios depend on. */

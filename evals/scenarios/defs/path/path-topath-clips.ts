@@ -20,7 +20,7 @@ import {
   takeLanes,
 } from "../arrangement-helpers.ts";
 import {
-  clearSessionSlots,
+  clearClipSlots,
   MSG_CONNECT,
 } from "../clip/helpers/clip-scenario-helpers.ts";
 import {
@@ -106,7 +106,7 @@ export const pathToPathClipDestinations: EvalScenario = {
   liveSet: "basic-midi-4-track",
   // No reuseLiveSet: nothing removes a take lane, so a repeat trial would
   // inherit the first one's and the lane count check would be meaningless.
-  setup: (mcpClient) => clearSessionSlots(mcpClient, ["0/0", "2/1"]),
+  setup: (mcpClient) => clearClipSlots(mcpClient, ["0/0", "2/1"]),
 
   messages: [
     MSG_CONNECT,

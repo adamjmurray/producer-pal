@@ -21,8 +21,8 @@ import {
 import {
   resolveClipSlotPositions,
   resolvePlaybackTarget,
-  type SlotPosition,
 } from "./helpers/playback-target-helpers.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { select } from "./select.ts";
 
 interface PlaybackActionParams {
@@ -31,7 +31,7 @@ interface PlaybackActionParams {
   useLocatorStart: boolean;
   sceneIndex?: number;
   ids?: string;
-  slotPositions: SlotPosition[] | null;
+  slotPositions: ClipSlotPosition[] | null;
 }
 
 interface PlaybackArgs {
@@ -304,7 +304,7 @@ function handlePlaySessionClips(
   action: string,
   liveSet: LiveAPI,
   ids: string | undefined,
-  slotPositions: SlotPosition[] | null,
+  slotPositions: ClipSlotPosition[] | null,
   state: PlaybackState,
 ): PlaybackState {
   const resolvedSlots = resolveClipSlotPositions(ids, slotPositions, action);
@@ -348,7 +348,7 @@ function handlePlaySessionClips(
 function handleStopSessionClips(
   action: string,
   ids: string | undefined,
-  slotPositions: SlotPosition[] | null,
+  slotPositions: ClipSlotPosition[] | null,
   state: PlaybackState,
 ): PlaybackState {
   const resolvedSlots = resolveClipSlotPositions(ids, slotPositions, action);

@@ -7,7 +7,7 @@ import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { type ClipDestinations } from "./create-clip-destination-helpers.ts";
 
 /**
@@ -16,7 +16,7 @@ import { type ClipDestinations } from "./create-clip-destination-helpers.ts";
  */
 export function validatePositions(destinations: ClipDestinations): void {
   if (
-    destinations.sessionSlots.length === 0 &&
+    destinations.clipSlots.length === 0 &&
     destinations.arrangementPositions.length === 0
   ) {
     throw new Error(
@@ -36,7 +36,7 @@ export function validateDestinationTracks(
   destinations: ClipDestinations,
 ): Map<number, LiveAPI> {
   const trackIndices = [
-    ...destinations.sessionSlots.map((slot) => slot.trackIndex),
+    ...destinations.clipSlots.map((slot) => slot.trackIndex),
     ...destinations.arrangementPositions.map((position) => position.trackIndex),
   ];
   const tracks = new Map<number, LiveAPI>();
@@ -146,22 +146,22 @@ export function calculateClipLength(
  * Handles automatic playback for session clips
  * @param auto - Auto playback mode (play-scene or play-clip)
  * @param view - View type
- * @param sessionSlots - Array of clip slot positions
+ * @param clipSlots - Array of clip slot positions
  */
 export function handleAutoPlayback(
   auto: string | null,
   view: string,
-  sessionSlots: SlotPosition[],
+  clipSlots: ClipSlotPosition[],
 ): void {
-  if (!auto || view !== "session" || sessionSlots.length === 0) {
+  if (!auto || view !== "session" || clipSlots.length === 0) {
     return;
   }
 
   switch (auto) {
     case "play-scene": {
       // Launch the first scene for synchronization
-      // Length checked above: sessionSlots.length > 0
-      const firstSlot = sessionSlots[0] as SlotPosition;
+      // Length checked above: clipSlots.length > 0
+      const firstSlot = clipSlots[0] as ClipSlotPosition;
       const scene = LiveAPI.from(livePath.scene(firstSlot.sceneIndex));
 
       if (!scene.exists()) {
@@ -176,7 +176,7 @@ export function handleAutoPlayback(
 
     case "play-clip":
       // Fire individual clips at each slot position
-      for (const slot of sessionSlots) {
+      for (const slot of clipSlots) {
         const clipSlot = LiveAPI.from(
           livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex),
         );

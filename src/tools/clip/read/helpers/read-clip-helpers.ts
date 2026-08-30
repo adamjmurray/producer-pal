@@ -21,7 +21,7 @@ import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   namedHiddenPath,
-  requireSessionSlot,
+  requireClipSlotPath,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
@@ -306,7 +306,7 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
       );
     }
 
-    const position = requireSessionSlot(parseObjectPath(path, "path"));
+    const position = requireClipSlotPath(parseObjectPath(path, "path"));
 
     assertClipIdAtSlot(clipId, position, "path");
 

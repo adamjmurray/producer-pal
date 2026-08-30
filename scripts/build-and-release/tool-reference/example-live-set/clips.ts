@@ -55,7 +55,7 @@ const BASS_NOTES: LiveNote[] = [
  * @returns Nothing; the clips land in the mock registry
  */
 export function registerExampleClips(): void {
-  registerSessionSlots();
+  registerClipSlots();
   registerDrumSessionClip();
   registerBassSessionClip();
   registerVocalSessionClip();
@@ -64,7 +64,7 @@ export function registerExampleClips(): void {
 
 // The Intro scene holds only drums; the Verse scene holds all three. Live
 // reports an empty slot too, so the fixture carries both states.
-function registerSessionSlots(): void {
+function registerClipSlots(): void {
   const slots: [string, number, number, string | null][] = [
     ["drum_slot_0", 0, 0, ID.drumSessionClip],
     ["drum_slot_1", 0, 1, null],

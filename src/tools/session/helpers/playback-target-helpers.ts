@@ -19,20 +19,18 @@ import {
 import {
   namedHiddenPath,
   parseObjectPathList,
-  requireSessionSlot,
+  requireClipSlotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
-
-export interface SlotPosition {
-  trackIndex: number;
-  sceneIndex: number;
-}
+import {
+  type ClipSlotPosition,
+  parseSlotList,
+} from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
   sceneIndex: number | null;
   /** Clip slots named by `path` or the deprecated `slots` */
-  slotPositions: SlotPosition[] | null;
+  slotPositions: ClipSlotPosition[] | null;
   /** `id` as the caller named it, or undefined when it names no clip */
   ids: string | undefined;
 }
@@ -158,9 +156,9 @@ export function resolvePlaybackTarget(
  */
 export function resolveClipSlotPositions(
   ids: string | undefined,
-  slotPositions: SlotPosition[] | null,
+  slotPositions: ClipSlotPosition[] | null,
   action: string,
-): SlotPosition[] {
+): ClipSlotPosition[] {
   if (slotPositions != null) {
     return slotPositions;
   }
@@ -302,13 +300,13 @@ function slotPositionsFrom(
   action: string,
   entries: ObjectPath[],
   source: PathSource | null,
-): SlotPosition[] | null {
+): ClipSlotPosition[] | null {
   if (source == null) return null;
 
   return entries.map((entry) => {
     assertClipPath(action, entry, source);
 
-    return requireSessionSlot(entry, source.label);
+    return requireClipSlotPath(entry, source.label);
   });
 }
 

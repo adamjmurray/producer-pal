@@ -28,7 +28,7 @@ import {
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   parseSlotList,
-  type SlotPosition,
+  type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
 /** One arrangement clip: which track and lane, and where on it. */
@@ -38,7 +38,7 @@ export interface ArrangementPosition extends ArrangementTrack {
 
 export interface ClipDestinations {
   /** Clip slots, in order. */
-  sessionSlots: SlotPosition[];
+  clipSlots: ClipSlotPosition[];
   /** Arrangement clips, one per track/position pair. */
   arrangementPositions: ArrangementPosition[];
 }
@@ -57,7 +57,7 @@ export interface ClipDestinationParams {
 }
 
 interface SplitDestinations {
-  sessionSlots: SlotPosition[];
+  clipSlots: ClipSlotPosition[];
   tracks: ArrangementTrack[];
 }
 
@@ -84,15 +84,15 @@ export function resolveCreateClipDestinations(
     );
   }
 
-  const { sessionSlots, tracks } =
+  const { clipSlots, tracks } =
     path != null
       ? splitPathDestinations(path, params)
       : legacyDestinations(slot, params, arrangementStarts.length > 0);
 
   return {
-    sessionSlots,
+    clipSlots,
     arrangementPositions: pairTracksWithStarts(
-      applyTakeLaneAlias(tracks, params.takeLane, sessionSlots.length),
+      applyTakeLaneAlias(tracks, params.takeLane, clipSlots.length),
       arrangementStarts,
     ),
   };
@@ -121,14 +121,14 @@ function splitPathDestinations(
     );
   }
 
-  const sessionSlots: SlotPosition[] = [];
+  const clipSlots: ClipSlotPosition[] = [];
   const tracks: ArrangementTrack[] = [];
 
   for (const destination of parseObjectPathList(path, "path")) {
     const clipPath = requireClipPath(destination, "path");
 
     if (clipPath.kind === "slot") {
-      sessionSlots.push({
+      clipSlots.push({
         trackIndex: clipPath.trackIndex,
         sceneIndex: clipPath.sceneIndex,
       });
@@ -142,7 +142,7 @@ function splitPathDestinations(
 
   // Number the lanes here, off the list the caller wrote: pairTracksWithStarts
   // cycles this list, and a cycled repeat must reuse its lane, not append one.
-  return { sessionSlots, tracks: withNewLaneOrdinals(tracks) };
+  return { clipSlots, tracks: withNewLaneOrdinals(tracks) };
 }
 
 /**
@@ -151,13 +151,13 @@ function splitPathDestinations(
  * fallback for a caller that didn't use the segment.
  * @param tracks - Arrangement destinations, in order
  * @param takeLane - The raw takeLane param
- * @param sessionSlotCount - Number of clip slots in this request
+ * @param clipSlotCount - Number of clip slots in this request
  * @returns The destinations, with the alias applied where a lane was unnamed
  */
 function applyTakeLaneAlias(
   tracks: ArrangementTrack[],
   takeLane: number | string | null | undefined,
-  sessionSlotCount: number,
+  clipSlotCount: number,
 ): ArrangementTrack[] {
   if (!isTakeLaneRequested(takeLane)) return tracks;
 
@@ -171,7 +171,7 @@ function applyTakeLaneAlias(
     return tracks;
   }
 
-  if (sessionSlotCount > 0) {
+  if (clipSlotCount > 0) {
     console.warn(
       "createClip: takeLane ignored for session clips (arrangement-only)",
     );
@@ -206,10 +206,10 @@ function legacyDestinations(
   hasArrangementStarts: boolean,
 ): SplitDestinations {
   const { trackIndex, sceneIndex } = params;
-  const sessionSlots = slot == null ? [] : parseSlotList(slot, "slot");
+  const clipSlots = slot == null ? [] : parseSlotList(slot, "slot");
 
   if (trackIndex == null && sceneIndex == null) {
-    return { sessionSlots, tracks: [] };
+    return { clipSlots, tracks: [] };
   }
 
   if (trackIndex == null) {
@@ -226,23 +226,23 @@ function legacyDestinations(
         'createClip: trackIndex/sceneIndex ignored — "slot" already names the session destination',
       );
 
-      return { sessionSlots, tracks: [] };
+      return { clipSlots, tracks: [] };
     }
 
-    return { sessionSlots: [{ trackIndex, sceneIndex }], tracks: [] };
+    return { clipSlots: [{ trackIndex, sceneIndex }], tracks: [] };
   }
 
   // trackIndex alone means the arrangement, but only arrangementStart says
   // where on it. Without one it named nothing the clip slots didn't already.
-  if (!hasArrangementStarts && sessionSlots.length > 0) {
+  if (!hasArrangementStarts && clipSlots.length > 0) {
     console.warn(
       "createClip: trackIndex ignored — an arrangement clip also needs arrangementStart",
     );
 
-    return { sessionSlots, tracks: [] };
+    return { clipSlots, tracks: [] };
   }
 
-  return { sessionSlots, tracks: [{ trackIndex, takeLane: null }] };
+  return { clipSlots, tracks: [{ trackIndex, takeLane: null }] };
 }
 
 /**

@@ -13,7 +13,7 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import {
   parseArrangementStartList,
-  type SlotPosition,
+  type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
@@ -160,7 +160,7 @@ export async function createClip(
     { path, slot, trackIndex, sceneIndex, takeLane },
     arrangementStarts,
   );
-  const { sessionSlots, arrangementPositions } = destinations;
+  const { clipSlots, arrangementPositions } = destinations;
 
   validatePositions(destinations);
 
@@ -196,7 +196,7 @@ export async function createClip(
   const { parsedNames, parsedColors } = parseMultiClipParams(
     name,
     color,
-    sessionSlots.length + arrangementPositions.length,
+    clipSlots.length + arrangementPositions.length,
   );
 
   // Before any clip or take lane exists: a position that won't parse has to
@@ -223,7 +223,7 @@ export async function createClip(
       view,
       takeLanes,
       tracks,
-      sessionSlots,
+      clipSlots,
       arrangementPositions,
       baseName: name,
       parsedNames,
@@ -253,10 +253,10 @@ export async function createClip(
 
   const createdClips = [
     ...(await clipsForView("session", 0)),
-    ...(await clipsForView("arrangement", sessionSlots.length)),
+    ...(await clipsForView("arrangement", clipSlots.length)),
   ];
 
-  return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
+  return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
 }
 
 /**
@@ -276,18 +276,18 @@ function normalizeTransforms(transformString: string | null): string | null {
  * Handle auto-playback and focus for the created clips, then unwrap the result.
  * @param createdClips - All created clip result objects
  * @param auto - Automatic playback action
- * @param sessionSlots - Parsed clip slot positions
+ * @param clipSlots - Parsed clip slot positions
  * @param focus - Whether to select the last created clip
  * @returns Single clip object when one, array when multiple
  */
 function finalizeCreatedClips(
   createdClips: object[],
   auto: string | null,
-  sessionSlots: SlotPosition[],
+  clipSlots: ClipSlotPosition[],
   focus: boolean | undefined,
 ): object | object[] {
   // Handle automatic playback (session clips only, guard inside handles no-op)
-  handleAutoPlayback(auto, "session", sessionSlots);
+  handleAutoPlayback(auto, "session", clipSlots);
 
   // Focus last created clip: arrangement clips are after session clips, so
   // arrangement gets priority (the arrangement is where the final song lives)

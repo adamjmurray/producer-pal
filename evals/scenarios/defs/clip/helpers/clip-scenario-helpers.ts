@@ -542,7 +542,7 @@ export function slotToPath(slot: string): string {
  * @param mcpClient - MCP client for tool calls
  * @param slots - Session clip slots to clear (e.g. ["0/0", "0/1", "0/2"])
  */
-export async function clearSessionSlots(
+export async function clearClipSlots(
   mcpClient: Client,
   slots: string[],
 ): Promise<void> {

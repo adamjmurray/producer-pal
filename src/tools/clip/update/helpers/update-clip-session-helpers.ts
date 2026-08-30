@@ -31,7 +31,7 @@ import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts"
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 
-interface SlotPosition {
+interface ClipSlotPosition {
   trackIndex: number;
   sceneIndex: number;
 }
@@ -70,7 +70,7 @@ export function resolveMoveDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   clipCount: number,
-): Array<SlotPosition | null> {
+): Array<ClipSlotPosition | null> {
   const none = Array.from({ length: clipCount }, () => null);
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
@@ -109,7 +109,7 @@ export function resolveMoveDestinations(
 
 interface RequestedClips {
   clips: LiveAPI[];
-  destinationById: Map<string, SlotPosition>;
+  destinationById: Map<string, ClipSlotPosition>;
 }
 
 /**
@@ -126,10 +126,10 @@ interface RequestedClips {
  */
 export function resolveRequestedClips(
   requestedIds: Array<string | null>,
-  destinations: Array<SlotPosition | null>,
+  destinations: Array<ClipSlotPosition | null>,
 ): RequestedClips {
   const clips: LiveAPI[] = [];
-  const destinationById = new Map<string, SlotPosition>();
+  const destinationById = new Map<string, ClipSlotPosition>();
   const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
   let repeats = 0;
@@ -181,9 +181,9 @@ export function resolveRequestedClips(
  */
 function claimDestination(
   clipId: string,
-  destination: SlotPosition | null | undefined,
+  destination: ClipSlotPosition | null | undefined,
   batch: {
-    destinationById: Map<string, SlotPosition>;
+    destinationById: Map<string, ClipSlotPosition>;
     claimedBy: Map<string, string>;
   },
 ): void {
@@ -212,7 +212,7 @@ function claimDestination(
  * @param batchIds - Ids of every clip this call updates
  */
 function dropDestinationsHoldingBatchClips(
-  destinationById: Map<string, SlotPosition>,
+  destinationById: Map<string, ClipSlotPosition>,
   batchIds: Set<string>,
 ): void {
   for (const [clipId, { trackIndex, sceneIndex }] of destinationById) {
@@ -236,7 +236,7 @@ function dropDestinationsHoldingBatchClips(
 interface HandlePositionOperationsArgs {
   clip: LiveAPI;
   isAudioClip: boolean;
-  toSlot?: SlotPosition | null;
+  toSlot?: ClipSlotPosition | null;
   destinationParam: "toPath" | "toSlot";
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
@@ -265,7 +265,7 @@ export function handlePositionOperations(
         `${destinationParam} ignored when arrangement parameters are specified`,
       );
     } else {
-      handleSessionSlotMove({
+      handleClipSlotMove({
         clip,
         toSlot,
         updatedClips: args.updatedClips,
@@ -299,7 +299,7 @@ export function handlePositionOperations(
  * @param toPath - Destination path(s), comma-separated
  * @returns One destination per entry, null where the entry names no slot
  */
-function pathDestinations(toPath: string): Array<SlotPosition | null> {
+function pathDestinations(toPath: string): Array<ClipSlotPosition | null> {
   // pathEntries refuses a toPath that names nothing, so every entry here is real.
   const entries = pathEntries(toPath, "toPath");
 
@@ -336,10 +336,10 @@ function pathDestinations(toPath: string): Array<SlotPosition | null> {
  * @returns Exactly clipCount destinations, padded with null
  */
 function pairWithClips(
-  destinations: Array<SlotPosition | null>,
+  destinations: Array<ClipSlotPosition | null>,
   clipCount: number,
   isPath: boolean,
-): Array<SlotPosition | null> {
+): Array<ClipSlotPosition | null> {
   const label = isPath ? "toPath" : "toSlot";
 
   if (destinations.length !== clipCount) {
@@ -359,9 +359,9 @@ function pairWithClips(
   );
 }
 
-interface HandleSessionSlotMoveArgs {
+interface HandleClipSlotMoveArgs {
   clip: LiveAPI;
-  toSlot: SlotPosition;
+  toSlot: ClipSlotPosition;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
 }
@@ -374,12 +374,12 @@ interface HandleSessionSlotMoveArgs {
  * @param args.updatedClips - Array to collect results
  * @param args.noteResult - Note update result for result
  */
-export function handleSessionSlotMove({
+export function handleClipSlotMove({
   clip,
   toSlot,
   updatedClips,
   noteResult,
-}: HandleSessionSlotMoveArgs): void {
+}: HandleClipSlotMoveArgs): void {
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 

@@ -56,14 +56,14 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
         file_path: "/audio/test.wav",
       });
 
-      const { mockCreate, sessionSlot } = setupSessionTilingMock(20.0);
+      const { mockCreate, clipSlot } = setupSessionTilingMock(20.0);
 
       const result = await updateClip(
         { id: clipId, arrangementLength: "3bar+n/2" },
         mockContext,
       );
 
-      assertBoundaryDetection(mockCreate, sessionSlot);
+      assertBoundaryDetection(mockCreate, clipSlot);
 
       // Source clip loop_end set: loopStart(1) + target(14) = 15.0
       expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
@@ -191,7 +191,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     const track = lookupMockObject(`track-${trackIndex}`);
 
-    const { mockCreate, sessionSlot } = setupSessionTilingMock(20.0);
+    const { mockCreate, clipSlot } = setupSessionTilingMock(20.0);
 
     const result = await updateClip(
       {
@@ -211,7 +211,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     expect(track!.call).toHaveBeenCalledWith("delete_clip", `id ${clipId}`);
 
-    assertBoundaryDetection(mockCreate, sessionSlot);
+    assertBoundaryDetection(mockCreate, clipSlot);
 
     // Moved clip loop_end set: loopStart(0) + target(8) = 8.0
     expect(movedClip!.set).toHaveBeenCalledWith("loop_end", 8.0);

@@ -9,7 +9,7 @@ import {
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.ts";
 
-export interface SlotPosition {
+export interface ClipSlotPosition {
   trackIndex: number;
   sceneIndex: number;
 }
@@ -19,7 +19,7 @@ export interface SlotPosition {
  * @param input - Slot string (e.g., "0/3")
  * @returns Parsed slot position
  */
-export function parseSlot(input: string): SlotPosition {
+export function parseSlot(input: string): ClipSlotPosition {
   const parts = input.split("/");
 
   if (parts.length !== 2) {
@@ -40,7 +40,7 @@ export function parseSlot(input: string): SlotPosition {
 export function parseSlotList(
   input: string | null | undefined,
   label: string,
-): SlotPosition[] {
+): ClipSlotPosition[] {
   const entries = parseCommaSeparatedIds(input);
   const trimmed = input?.trim();
 
@@ -100,7 +100,7 @@ export function parseArrangementStartList(input?: string | null): string[] {
 // --- Helpers below main exports ---
 
 /**
- * Validate and parse two string parts into a SlotPosition.
+ * Validate and parse two string parts into a ClipSlotPosition.
  * @param trackPart - String to parse as trackIndex
  * @param scenePart - String to parse as sceneIndex
  * @param label - The param the caller sent, for messages
@@ -112,7 +112,7 @@ function parseSlotParts(
   scenePart: string,
   label: string,
   input: string,
-): SlotPosition {
+): ClipSlotPosition {
   const trackIndex = Number.parseInt(trackPart);
   const sceneIndex = Number.parseInt(scenePart);
 

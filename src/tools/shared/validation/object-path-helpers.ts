@@ -193,7 +193,7 @@ export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
  * @param label - Param name for error messages
  * @returns The track and scene the path names
  */
-export function requireSessionSlot(
+export function requireClipSlotPath(
   path: ObjectPath,
   label = "path",
 ): { trackIndex: number; sceneIndex: number } {
@@ -222,12 +222,12 @@ export function requireSessionSlot(
  * @param label - Param name for error messages
  * @returns One track/scene pair per path, in order
  */
-export function parseSessionSlotList(
+export function parseClipSlotPathList(
   input: string | null | undefined,
   label = "path",
 ): Array<{ trackIndex: number; sceneIndex: number }> {
   return parseObjectPathList(input, label).map((path) =>
-    requireSessionSlot(path, label),
+    requireClipSlotPath(path, label),
   );
 }
 

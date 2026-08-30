@@ -62,7 +62,7 @@ function registerEmptyReturnTrack(): void {
   });
 }
 
-function registerTrackWithSessionSlots(name: string): void {
+function registerTrackWithClipSlots(name: string): void {
   registerMockObject("track3", {
     path: livePath.track(2),
     type: "Track",
@@ -262,7 +262,7 @@ describe("readTrack", () => {
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
-    registerTrackWithSessionSlots("Track with Clips");
+    registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
     const result = readTrack({ trackIndex: 2, include: ["session-clips"] });
@@ -371,7 +371,7 @@ describe("readTrack", () => {
   });
 
   it("returns sessionClipCount when session-clips is not included", () => {
-    registerTrackWithSessionSlots("Track with Clips");
+    registerTrackWithClipSlots("Track with Clips");
     registerSessionClipMocksForTrack2();
 
     const result = readTrack({

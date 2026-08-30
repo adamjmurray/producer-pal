@@ -23,7 +23,7 @@ import {
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   parseSlotList,
-  type SlotPosition,
+  type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
 type ClipPath = ReturnType<typeof requireClipPath>;
@@ -31,7 +31,7 @@ type ClipPath = ReturnType<typeof requireClipPath>;
 export interface ClipDestinations {
   destination: "session" | "arrangement";
   /** Clip slots, in order. Empty for arrangement destinations. */
-  slots: SlotPosition[];
+  slots: ClipSlotPosition[];
   /**
    * Arrangement destinations, in order, null where the path named something
    * this call can't use. Empty means the source's own track.
@@ -82,7 +82,7 @@ export function resolveClipDestinations(
     );
   }
 
-  return sessionDestinations(paths);
+  return clipSlotDestinations(paths);
 }
 
 /**
@@ -173,7 +173,7 @@ export function warnUnusedDestination(
  * Resolves the deprecated toSlot param, which only ever named clip slots.
  * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
  * @param hasArrangementParams - Whether arrangementStart or locator was given
- * @returns Session destinations
+ * @returns Clip slot destinations
  */
 function legacySlotDestinations(
   toSlot: string,
@@ -211,7 +211,7 @@ function legacySlotDestinations(
  * @returns Arrangement destinations, or session ones when only slots were named
  */
 function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: SlotPosition[] = [];
+  const slots: ClipSlotPosition[] = [];
   const targets = paths.map((path) => {
     if (path.kind !== "slot") {
       return { trackIndex: path.trackIndex, takeLane: takeLaneFromPath(path) };
@@ -258,10 +258,10 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
 /**
  * Reads clip slots off the parsed paths.
  * @param paths - Parsed clip destination paths
- * @returns Session destinations
+ * @returns Clip slot destinations
  */
-function sessionDestinations(paths: ClipPath[]): ClipDestinations {
-  const slots: SlotPosition[] = [];
+function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
+  const slots: ClipSlotPosition[] = [];
 
   for (const path of paths) {
     // A bare track names two places at once, and guessing between them is how a

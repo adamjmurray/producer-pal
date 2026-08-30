@@ -14,7 +14,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   pathEntries,
-  requireSessionSlot,
+  requireClipSlotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
@@ -54,7 +54,7 @@ export function clipIdPerPath(
 
   for (const entry of entriesOrNone(paths, tool, label)) {
     try {
-      const slot = requireSessionSlot(parseObjectPath(entry, label), label);
+      const slot = requireClipSlotPath(parseObjectPath(entry, label), label);
       const clip = LiveAPI.from(
         livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex).clip(),
       );

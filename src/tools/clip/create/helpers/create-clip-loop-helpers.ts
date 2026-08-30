@@ -27,7 +27,7 @@ import {
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
-import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 import { type ArrangementPosition } from "./create-clip-destination-helpers.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
@@ -39,7 +39,7 @@ import { calculateClipLength } from "./create-clip-validation-helpers.ts";
 
 export interface CreateClipsParams {
   view: string;
-  sessionSlots: SlotPosition[];
+  clipSlots: ClipSlotPosition[];
   arrangementPositions: ArrangementPosition[];
   baseName: string | null;
   parsedNames: string[] | null;
@@ -87,10 +87,10 @@ export interface CreateClipsParams {
 export async function createClips(
   params: CreateClipsParams,
 ): Promise<object[]> {
-  const { view, sessionSlots, arrangementPositions, deadline } = params;
+  const { view, clipSlots, arrangementPositions, deadline } = params;
   const createdClips: object[] = [];
   const count =
-    view === "session" ? sessionSlots.length : arrangementPositions.length;
+    view === "session" ? clipSlots.length : arrangementPositions.length;
 
   // Constant transform inputs for this view; read the scale mask once (it is a
   // Live Set global). Per-clip context (index/count/position) is applied below.
@@ -152,11 +152,11 @@ async function createClipAtIndex(
   // batch, not just this view: a single call mixing clip slots and
   // arrangement positions runs createClips once per view, so the global index
   // is nameStartIndex + i (session view starts at 0, arrangement at
-  // sessionSlots.length) and the count is the combined total. This mirrors the
+  // clipSlots.length) and the count is the combined total. This mirrors the
   // continuous indexing already used for names/colors below.
   const globalIndex = nameStartIndex + i;
   const totalCount =
-    params.sessionSlots.length + params.arrangementPositions.length;
+    params.clipSlots.length + params.arrangementPositions.length;
 
   const clipName = getNameForIndex(
     baseName ?? undefined,
@@ -257,7 +257,7 @@ function resolveIterationPosition(
   i: number,
 ): IterationPosition {
   if (params.view === "session") {
-    const slot = params.sessionSlots[i] as SlotPosition;
+    const slot = params.clipSlots[i] as ClipSlotPosition;
 
     return {
       trackIndex: slot.trackIndex,

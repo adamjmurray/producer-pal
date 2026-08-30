@@ -54,7 +54,7 @@ function warpedAudioOpts(
  * @param name - Clip name
  * @param fileBoundary - File content boundary for session tiling mock
  * @param arrangementLength - Target arrangement length ([Nbar+]n<fraction> notation)
- * @returns clip mock, updateClip result, mockCreate spy, and sessionSlot mock
+ * @returns clip mock, updateClip result, mockCreate spy, and clipSlot mock
  */
 async function runWarpedAudioLengthening(
   clipId: string,
@@ -69,16 +69,16 @@ async function runWarpedAudioLengthening(
     warpedAudioOpts(sourceEndTime, name),
   );
 
-  const { mockCreate, sessionSlot } = setupSessionTilingMock(fileBoundary);
+  const { mockCreate, clipSlot } = setupSessionTilingMock(fileBoundary);
 
   const result = await updateClip(
     { id: clipId, arrangementLength },
     mockContext,
   );
 
-  assertBoundaryDetection(mockCreate, sessionSlot);
+  assertBoundaryDetection(mockCreate, clipSlot);
 
-  return { clip, result, mockCreate, sessionSlot };
+  return { clip, result, mockCreate, clipSlot };
 }
 
 /**
@@ -88,7 +88,7 @@ async function runWarpedAudioLengthening(
  * @param clipId - Clip ID (row value)
  * @param sourceEndTime - End time for the source clip (row value)
  * @param name - Clip name (row value)
- * @returns clip mock, updateClip result, mockCreate spy, and sessionSlot mock
+ * @returns clip mock, updateClip result, mockCreate spy, and clipSlot mock
  */
 async function runBoundary8Case(
   clipId: unknown,
