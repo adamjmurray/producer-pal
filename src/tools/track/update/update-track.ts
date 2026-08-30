@@ -12,6 +12,8 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
+import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
+import { applyMixerProperties } from "./update-track-mixer-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
@@ -35,14 +37,6 @@ interface RoutingParams {
   inputRoutingChannelId?: string;
   outputRoutingTypeId?: string;
   outputRoutingChannelId?: string;
-}
-
-interface MixerParams {
-  gainDb?: number;
-  pan?: number;
-  panningMode?: string;
-  leftPan?: number;
-  rightPan?: number;
 }
 
 interface UpdateTrackArgs {
@@ -237,117 +231,6 @@ function applySendProperties(
 }
 
 /**
- * Apply stereo panning and warn about invalid params
- * @param mixer - Mixer device object
- * @param pan - Pan value
- * @param leftPan - Left pan value
- * @param rightPan - Right pan value
- */
-function applyStereoPan(
-  mixer: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
-): void {
-  if (pan != null) {
-    const panning = mixer.child("panning");
-
-    if (panning.exists()) {
-      setParamIfEnabled(panning, "value", pan, "updateTrack: pan");
-    }
-  }
-
-  if (leftPan != null || rightPan != null) {
-    console.warn(
-      "updateTrack: leftPan and rightPan have no effect in stereo panning mode. " +
-        "Set panningMode to 'split' or use 'pan' instead.",
-    );
-  }
-}
-
-/**
- * Apply split panning and warn about invalid params
- * @param mixer - Mixer device object
- * @param pan - Pan value
- * @param leftPan - Left pan value
- * @param rightPan - Right pan value
- */
-function applySplitPan(
-  mixer: LiveAPI,
-  pan: number | undefined,
-  leftPan: number | undefined,
-  rightPan: number | undefined,
-): void {
-  if (leftPan != null) {
-    const leftSplit = mixer.child("left_split_stereo");
-
-    if (leftSplit.exists()) {
-      setParamIfEnabled(leftSplit, "value", leftPan, "updateTrack: leftPan");
-    }
-  }
-
-  if (rightPan != null) {
-    const rightSplit = mixer.child("right_split_stereo");
-
-    if (rightSplit.exists()) {
-      setParamIfEnabled(rightSplit, "value", rightPan, "updateTrack: rightPan");
-    }
-  }
-
-  if (pan != null) {
-    console.warn(
-      "updateTrack: pan has no effect in split panning mode. " +
-        "Set panningMode to 'stereo' or use leftPan/rightPan instead.",
-    );
-  }
-}
-
-/**
- * Apply mixer properties (gain and panning) to a track
- * @param track - Track object
- * @param params - Mixer properties
- */
-function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
-  const { gainDb, pan, panningMode, leftPan, rightPan } = params;
-
-  const mixer = track.child("mixer_device");
-
-  if (!mixer.exists()) {
-    return;
-  }
-
-  // Handle gain (independent of panning mode)
-  if (gainDb != null) {
-    const volume = mixer.child("volume");
-
-    if (volume.exists()) {
-      setParamIfEnabled(volume, "display_value", gainDb, "updateTrack: gainDb");
-    }
-  }
-
-  // Get current panning mode
-  const currentMode = mixer.getProperty("panning_mode");
-  const currentIsSplit = currentMode === 1;
-
-  // Set new panning mode if provided
-  if (panningMode != null) {
-    const newMode = panningMode === "split" ? 1 : 0;
-
-    mixer.set("panning_mode", newMode);
-  }
-
-  // Determine effective mode for validation
-  const effectiveMode = panningMode ?? (currentIsSplit ? "split" : "stereo");
-
-  // Handle panning based on effective mode
-  if (effectiveMode === "stereo") {
-    applyStereoPan(mixer, pan, leftPan, rightPan);
-  } else {
-    applySplitPan(mixer, pan, leftPan, rightPan);
-  }
-}
-
-/**
  * Updates properties of existing tracks
  * @param args - The track parameters
  * @param args.id - Track ID or comma-separated list of track IDs to update
@@ -430,8 +313,13 @@ export function updateTrack(
 
     const trackColor = getColorForIndex(color, i, parsedColors);
 
+    const trackName = getNameForIndex(name, i, parsedNames);
+
     track.setAll({
-      name: getNameForIndex(name, i, parsedNames),
+      name:
+        trackName == null
+          ? undefined
+          : stripReturnTrackLetter(track.path, trackName),
       color: trackColor,
       mute,
       solo,

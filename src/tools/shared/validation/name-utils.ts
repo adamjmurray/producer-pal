@@ -100,3 +100,39 @@ export function warnFewerNames(
     );
   }
 }
+
+/**
+ * Live prepends a return slot's send letter to its name, so writing back the
+ * name a read tool reported ("A-Delay", "F Pedal") would double it. Strip a
+ * leading letter when it matches the slot's own index.
+ * @param path - The slot's Live API path
+ * @param name - Requested name
+ * @param slotPattern - Regex capturing the slot index at the end of the path
+ * @param separator - What Live puts between the letter and the name
+ * @returns Name to write
+ */
+export function stripReturnSlotLetter(
+  path: string,
+  name: string,
+  slotPattern: RegExp,
+  separator: string,
+): string {
+  const match = slotPattern.exec(path);
+
+  if (match == null) {
+    return name;
+  }
+
+  const index = Number(match[1]);
+
+  // Past Z we don't know what Live labels the slot, so leave the name alone.
+  if (index > 25) {
+    return name;
+  }
+
+  const prefix = `${String.fromCharCode(65 + index)}${separator}`;
+
+  return name.toUpperCase().startsWith(prefix)
+    ? name.slice(prefix.length)
+    : name;
+}
