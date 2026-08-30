@@ -20,7 +20,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
-import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -36,16 +36,32 @@ async function createSessionClip(
   sceneIndex: number,
   note: string,
 ): Promise<string> {
+  return createClipOnTrack(EMPTY_MIDI_TRACK, sceneIndex, note);
+}
+
+async function createClipOnTrack(
+  trackIndex: number,
+  sceneIndex: number,
+  note: string,
+): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
+      path: `t${trackIndex}/s${sceneIndex}`,
       notes: `${note} 1|1`,
       length: "1bar",
     },
   });
 
   return parseToolResult<{ id: string }>(result).id;
+}
+
+async function readClip(
+  path: string,
+): Promise<{ playing?: boolean; triggered?: boolean }> {
+  return parseToolResult<{ playing?: boolean; triggered?: boolean }>(
+    await ctx.client!.callTool({ name: "ppal-read-clip", arguments: { path } }),
+  );
 }
 
 describe("ppal-playback", () => {
@@ -116,6 +132,35 @@ describe("ppal-playback", () => {
     const final = await playback({ action: "stop" });
 
     expect(final.playing).toBe(false);
+  });
+
+  // The clip actions act on a set, so id and path both name members of it.
+  // The two clips have to sit on different tracks: a track plays one clip at a
+  // time, so same-track targets would just replace each other.
+  it("plays the clips named by id and by path together", async () => {
+    const byId = await createSessionClip(0, "C3");
+
+    await createClipOnTrack(CHILD_TRACK, 0, "D3");
+    await sleep(100);
+
+    await playback({
+      action: "play-session-clips",
+      id: byId,
+      path: `t${CHILD_TRACK}/s0`,
+    });
+
+    await sleep(300);
+
+    const [first, second] = await Promise.all([
+      readClip(`t${EMPTY_MIDI_TRACK}/s0`),
+      readClip(`t${CHILD_TRACK}/s0`),
+    ]);
+
+    expect(first.playing ?? first.triggered).toBe(true);
+    expect(second.playing ?? second.triggered).toBe(true);
+
+    await playback({ action: "stop-all-session-clips" });
+    await playback({ action: "stop" });
   });
 
   it("plays a scene by index", async () => {
