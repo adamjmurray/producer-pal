@@ -40,7 +40,11 @@ describe("liveApi per-operation path", () => {
   });
 
   afterEach(() => {
-    process.env.ENABLE_OBJECT_PROBE = originalFlag;
+    // Assigning undefined to a process.env property stores the STRING
+    // "undefined", which leaves the flag set for every later test in this
+    // worker. Deleting is the only way to unset it.
+    if (originalFlag == null) delete process.env.ENABLE_OBJECT_PROBE;
+    else process.env.ENABLE_OBJECT_PROBE = originalFlag;
   });
 
   it("routes an operation with a path to its own object", () => {
@@ -86,7 +90,10 @@ describe("liveApi per-operation path", () => {
   });
 
   it("ignores the path without the probe flag, so a release build cannot use it", () => {
-    process.env.ENABLE_OBJECT_PROBE = undefined;
+    // A release build has the define substitute a real undefined here, so the
+    // flag has to be deleted, not assigned — assigning undefined leaves the
+    // string "undefined" behind and tests a shape no build ever has.
+    delete process.env.ENABLE_OBJECT_PROBE;
 
     liveApi({
       operations: [
