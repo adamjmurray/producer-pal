@@ -9,8 +9,9 @@
  * Creating an arrangement clip returns `path: "t3"` alongside its id. That path
  * names the TRACK the clip sits on, not the clip — pasting it back into
  * update-clip warns and skips, leaving the clip untouched. This measures how
- * often a model does exactly that, which is the direct input to the open
- * question of whether paths should gain a time coordinate.
+ * often a model does exactly that. The time-coordinate question it once fed is
+ * settled: a path names a location, and an arrangement lane holds many clips,
+ * so this guards the rule rather than informing a decision.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";

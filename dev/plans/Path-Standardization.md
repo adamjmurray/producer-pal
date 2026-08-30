@@ -11,19 +11,19 @@ built and what is left.
 Location params only. **bold** = published, _italic_ = hidden (alias or
 deprecated).
 
-| Tool                                                                           | Today                                                                                 | Target                                                    |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                                      |
-| read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                                                 |
-| update-clip                                                                    | **ids**, **path**, **toPath**, _toSlot_                                               | done                                                      |
-| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                                      |
-| delete                                                                         | **ids**, **path** (clips and devices)                                                 | done                                                      |
-| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` is slots only                           |
-| select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3`                      |
-| create-device                                                                  | **path**                                                                              | unchanged                                                 |
-| read-device                                                                    | **deviceId**, **path**                                                                | unchanged                                                 |
-| update-device                                                                  | **ids**, **path**, **toPath**                                                         | unchanged                                                 |
-| read-track, read-scene, update-track, update-scene, create-track, create-scene | index params                                                                          | read/update → **path** (Phase 5); create stays on indices |
+| Tool                                                                           | Today                                                                                 | Target                               |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                 |
+| read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                            |
+| update-clip                                                                    | **ids**, **path**, **toPath**, _toSlot_                                               | done                                 |
+| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                 |
+| delete                                                                         | **ids**, **path** (clips and devices)                                                 | done                                 |
+| playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` is slots only      |
+| select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3` |
+| create-device                                                                  | **path**                                                                              | unchanged                            |
+| read-device                                                                    | **deviceId**, **path**                                                                | unchanged                            |
+| update-device                                                                  | **ids**, **path**, **toPath**                                                         | unchanged                            |
+| read-track, read-scene, update-track, update-scene, create-track, create-scene | index params                                                                          | unchanged; indices stay              |
 
 ## Phases
 
@@ -113,65 +113,48 @@ Two rules about what these may assert, both learned the hard way:
   invariant per call — `update-clip` names one destination per clip, `duplicate`
   never names more destinations than starts — not the list length.
 
-### Phase 5 — `path` everywhere
+### Phase 5 — `path` everywhere: rejected
 
-Decided: `path` is the general way to address an object, not an alternative that
-stops at clips and devices. That reverses the scope limit in
-[ADR-0025](../decisions/0025-object-path-grammar.md).
+Considered and dropped. `path` addresses clips and devices;
+[ADR-0025](../decisions/0025-object-path-grammar.md)'s scope stands.
 
-Not an ADR yet — it's gated on evals, and on one unsolved design problem.
+The idea was to make `path` the general way to address any object. That needed
+one thing first: a way to name an arrangement clip, since a lane path names the
+lane and a lane holds many clips. The candidate was a time coordinate, `t0@5|1`.
 
-**Why id-only lost.** Requiring an id makes a stale reference fail loudly, while
-a stale path silently hits whatever moved into that position. But the safety
-line isn't drawable: `delete t0/d0` can destroy a drum rack full of nested
-racks, and `p{pitch}` isn't positional at all — the 128 pad slots have fixed
-ids, so the pad at C1 is permanently the pad at C1. Meanwhile id-only costs a
-read per object, and reads are among the most expensive calls. Users describe
-locations, not ids.
+**Why it lost.** An arrangement destination is a `path` list and an
+`arrangementStart` list that cycle against each other, and that is strictly more
+expressive than folding time into the path:
 
-**Design this first: arrangement clips have no path spelling.** ADR-0025
-rejected an `a<n>` segment (unstable index, meaningless to a user) and a locator
-segment (song-timeline objects, not track/scene coordinates). Neither rejection
-covers a _time_ coordinate — something like `t0@5|1`. A bar|beat position is
-stable and is how users actually refer to arrangement clips. Unexplored rather
-than foreclosed, and it decides whether "path everywhere" is reachable or
-permanently holed where clips are most numerous.
+- `toPath:"t2/l+"` × three starts — one destination, three times, one new lane.
+- `toPath:"t2,t3"` × one start — two destinations, one time.
 
-2.2.0 made the gap visible: `read-clip` reports `path` for arrangement clips, so
-session and arrangement locations now arrive in one syntax with nothing in the
-shape saying which is pasteable. The param description has to say it outright
-("that path names the location, not the clip"). A time coordinate removes the
-caveat instead of documenting it.
+Neither compresses into a path list: you would write `t2@1|1,t2@5|1,t2@9|1` and
+lose the pairing. And `arrangementStart` could not go away, so `@` would add a
+second spelling of one concept — the thing this grammar exists to prevent — plus
+a new tier-4 conflict between the two.
 
-**Then measure, don't argue.** Extend the Phase 4 eval to count how often a
-model picks a wrong path versus how many extra calls id-only costs. Small models
-are the risk — they handle `trackIndex` well today, and the win here is
-uniformity rather than a bug being fixed. Run it on the 2.3.0 small-model
-targets (Qwen 3.8 among them) before committing.
+**Also against it**, if it is ever revisited: a bar|beat position can contain a
+`/` (the `5|1-n/4` pickup), so `parseObjectPath`'s `input.split("/")` would have
+to peel the time tail off before splitting segments; `@` already means step
+interval and bar copy in bar|beat; and bar|beat → beats depends on song meter,
+so a stored path would change meaning when the meter does.
 
-Baseline to beat, from the 2.2.0-rc1 run (codex-code/luna, 15 trials, 90 tool
-calls): 24 path-addressed calls, 0 deprecated params, 0 errors, and every scene
-call used `sceneIndex` and succeeded first try. So there is no measured cost to
-the current split yet — only a design smell. That's the bar.
+**The framing that replaces it.** A path names a **location**. A location
+holding exactly one object thereby names that object — `t0/s3` one clip, `t0/d1`
+one device. An arrangement lane holds many, so it names the lane and the clip is
+addressed by id. That is the rule, not a hole to apologize for.
 
-**If it holds, the work is:**
+**What was real underneath**, split into its own tickets and kept:
 
-- Extend `path` to every type the action tools reach, published consistently.
-- Move `read-track`, `read-scene`, `update-track`, `update-scene` off
-  `trackIndex` / `sceneIndex`. `create-track` and `create-scene` stay on indices
-  — they create a location rather than address one, and
-  `create-track type:"return"` collides with an `rt` root.
-- Settle one rule for `id` + `path` on the same call. There are five behaviors
-  today (throw, dedupe-union, ids-then-paths, path-silently-wins,
-  id-silently-wins), and [Object-Paths.md](../Object-Paths.md) tier 3 says
-  conflicts throw — the two silent-winner cases contradict it. Union is a third
-  answer, fine where a call names a set and unavailable where it names one
-  source.
-- Decide `path` on a device read's `drumPads` array — the only object in a
-  device read without one. Really a token-cost question on drill-down reads, so
-  possibly an opt-in `"path"` include rather than an unconditional field.
+- `update-clip`'s `arrangementStart` is one value for the whole call, while its
+  `toPath` fans out per clip. Moving three clips to three positions takes three
+  calls.
+- `id` + `path` on one call has five behaviors (throw, dedupe-union,
+  ids-then-paths, path-silently-wins, id-silently-wins). The two silent winners
+  contradict [Object-Paths.md](../Object-Paths.md) tier 4.
 
-Log the reversal as a new ADR and mark ADR-0025's scope superseded.
+Neither depends on path syntax.
 
 ## Docs to update as the phases land
 
