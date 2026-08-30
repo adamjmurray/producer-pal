@@ -9,7 +9,10 @@
 // a warning raised with no request at all rode along on the next one.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import {
+  END_OF_CHUNKS,
+  reassembleChunks,
+} from "#src/shared/mcp-response-utils.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-sleep.ts";
 import { installCapturingTask } from "./v8-protocol-test-helpers.ts";
@@ -47,8 +50,8 @@ const { mcp_request, node_response } =
   await import("#src/live-api-adapter/live-api-adapter.ts");
 
 /**
- * The warnings a request's `mcp_response` carried — everything the patch would
- * hand Node after the delimiter.
+ * The warnings a request's `mcp_response` carried — the `warnings` sidecar in
+ * its JSON payload.
  *
  * @param requestId - The request whose response to read
  * @returns The warning strings, or null if that request never responded
@@ -62,9 +65,9 @@ function warningsSentFor(requestId: string): string[] | null {
 
   if (call == null) return null;
 
-  const delimiter = call.indexOf(MAX_ERROR_DELIMITER);
+  const json = reassembleChunks(call.slice(3));
 
-  return call.slice(delimiter + 1) as string[];
+  return (JSON.parse(json) as { warnings?: string[] }).warnings ?? [];
 }
 
 /**
@@ -87,7 +90,7 @@ function answerNodeRequest(): void {
   node_response(
     pendingNodeRequestId(),
     JSON.stringify({ success: true }),
-    MAX_ERROR_DELIMITER,
+    END_OF_CHUNKS,
   );
 }
 

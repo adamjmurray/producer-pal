@@ -11,7 +11,7 @@
 export const WARNING_PREFIX = "WARNING: ";
 
 // Message chunking constants
-export const MAX_ERROR_DELIMITER = "$$___MAX_ERRORS___$$";
+export const END_OF_CHUNKS = "$$___END_OF_CHUNKS___$$";
 export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit
 export const MAX_CHUNKS = 100; // Allows for ~3MB responses
 
@@ -48,12 +48,12 @@ export function planChunks(jsonString: string): ChunkPlan {
 }
 
 /**
- * Reassemble a chunked Max IPC payload by joining chunks before the
- * MAX_ERROR_DELIMITER. Both production senders (V8 and Node) always
- * terminate their chunk list with the delimiter, so its absence means the
- * payload is malformed — throw so the receiver fails loudly instead of
- * trying to parse a corrupt blob. This matches the explicit delimiter check
- * on the Node-side receive path in `max-api-adapter.ts`.
+ * Reassemble a chunked Max IPC payload by joining the chunks before
+ * END_OF_CHUNKS. Both production senders (V8 and Node) always terminate their
+ * chunk list with it, so its absence means the payload is malformed — throw so
+ * the receiver fails loudly instead of parsing a corrupt blob. It also
+ * separates "sent an empty payload" from "sent nothing at all", which a bare
+ * `join("")` would collapse into the same vague JSON.parse failure.
  *
  * Chunk-order assumption: Max delivers the arguments of a single message
  * (the array passed to outlet/Max.outlet) in the order they were emitted,
@@ -66,15 +66,13 @@ export function planChunks(jsonString: string): ChunkPlan {
  * @returns The reassembled JSON string
  */
 export function reassembleChunks(rest: unknown[]): string {
-  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
+  const endIndex = rest.indexOf(END_OF_CHUNKS);
 
-  if (delimiterIndex === -1) {
-    throw new Error("Missing MAX_ERROR_DELIMITER in response");
+  if (endIndex === -1) {
+    throw new Error("Missing END_OF_CHUNKS in response");
   }
 
-  const chunks = rest.slice(0, delimiterIndex);
-
-  return chunks.map(String).join("");
+  return rest.slice(0, endIndex).map(String).join("");
 }
 
 /**

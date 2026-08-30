@@ -20,7 +20,7 @@ import { afterEach, beforeEach, expect, vi } from "vitest";
 import { type CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
 import { type McpResponse } from "#src/mcp-server/max-api-adapter.ts";
 import { handleNodeRequest } from "#src/mcp-server/rpc/node-request-protocol.ts";
-import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { END_OF_CHUNKS } from "#src/shared/mcp-response-utils.ts";
 
 /**
  * Build a fake inner callLiveApi that resolves to the given response. Shared by
@@ -145,7 +145,7 @@ export function parseSentNodeResponse(): ParsedNodeResponse {
 
   expect(name).toBe("node_response");
 
-  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
+  const delimiterIndex = rest.indexOf(END_OF_CHUNKS);
   const chunks = rest.slice(0, delimiterIndex) as string[];
 
   return JSON.parse(chunks.join("")) as ParsedNodeResponse;

@@ -96,3 +96,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0029](0029-an-empty-param-is-dropped-from-the-args.md)  | An empty param is dropped from the args                               |
 | [0030](0030-leaving-a-conversation-stops-the-turn.md)    | Leaving a conversation stops the turn, with a warning                 |
 | [0031](0031-list-params-broadcast-or-pair-exactly.md)    | A comma-separated param broadcasts one value or pairs exactly         |
+| [0032](0032-warnings-ride-inside-the-response-json.md)   | Warnings ride inside the response JSON, not as trailing Max atoms     |

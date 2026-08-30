@@ -9,7 +9,7 @@ import {
   formatSuccessResponse,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
-  MAX_ERROR_DELIMITER,
+  END_OF_CHUNKS,
   oversizedSingleMessageError,
   planChunks,
   reassembleChunks,
@@ -17,8 +17,8 @@ import {
 
 describe("mcp-response-utils", () => {
   describe("constants", () => {
-    it("exports MAX_ERROR_DELIMITER constant", () => {
-      expect(MAX_ERROR_DELIMITER).toBe("$$___MAX_ERRORS___$$");
+    it("exports END_OF_CHUNKS constant", () => {
+      expect(END_OF_CHUNKS).toBe("$$___END_OF_CHUNKS___$$");
     });
 
     it("exports MAX_CHUNK_SIZE constant", () => {
@@ -190,22 +190,22 @@ describe("mcp-response-utils", () => {
   describe("reassembleChunks", () => {
     it("throws when no delimiter is present", () => {
       expect(() => reassembleChunks(["foo", "bar"])).toThrow(
-        /Missing MAX_ERROR_DELIMITER/,
+        /Missing END_OF_CHUNKS/,
       );
     });
 
     it("ignores everything after the delimiter", () => {
-      expect(
-        reassembleChunks(["foo", "bar", MAX_ERROR_DELIMITER, "trailing"]),
-      ).toBe("foobar");
+      expect(reassembleChunks(["foo", "bar", END_OF_CHUNKS, "trailing"])).toBe(
+        "foobar",
+      );
     });
 
     it("returns empty string when delimiter is the only arg", () => {
-      expect(reassembleChunks([MAX_ERROR_DELIMITER])).toBe("");
+      expect(reassembleChunks([END_OF_CHUNKS])).toBe("");
     });
 
     it("coerces non-string chunks via String()", () => {
-      expect(reassembleChunks([1, "x", MAX_ERROR_DELIMITER])).toBe("1x");
+      expect(reassembleChunks([1, "x", END_OF_CHUNKS])).toBe("1x");
     });
 
     it("rejoins MAX_CHUNKS-sized payloads losslessly", () => {
@@ -216,9 +216,7 @@ describe("mcp-response-utils", () => {
 
       expect(plan.tooLargeError).toBeNull();
       expect(plan.chunks).toHaveLength(MAX_CHUNKS);
-      expect(reassembleChunks([...plan.chunks, MAX_ERROR_DELIMITER])).toBe(
-        original,
-      );
+      expect(reassembleChunks([...plan.chunks, END_OF_CHUNKS])).toBe(original);
     });
   });
 

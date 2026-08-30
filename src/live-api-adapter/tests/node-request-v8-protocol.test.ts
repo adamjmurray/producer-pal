@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_CHUNK_SIZE,
-  MAX_ERROR_DELIMITER,
+  END_OF_CHUNKS,
   reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
 import {
@@ -157,7 +157,7 @@ describe("node-request-v8-protocol", () => {
 
     expect(chunks.length).toBeGreaterThan(1);
 
-    const reassembled = reassembleChunks([...chunks, MAX_ERROR_DELIMITER]);
+    const reassembled = reassembleChunks([...chunks, END_OF_CHUNKS]);
 
     handleNodeResponse(requestId, reassembled);
 
