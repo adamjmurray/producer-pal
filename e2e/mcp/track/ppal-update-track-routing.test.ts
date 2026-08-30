@@ -18,10 +18,9 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-const EMPTY_MIDI_TRACK = 8; // t8 "9-MIDI": no clips, no devices, No Output
 
 interface RoutingOption {
   name: string;

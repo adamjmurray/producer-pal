@@ -23,11 +23,9 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// t8 (9-MIDI) is empty, so clips made here can't collide with the Set's own
-const EMPTY_MIDI_TRACK = 8;
 
 async function select(args: Record<string, unknown>): Promise<SelectResult> {
   return parseToolResult<SelectResult>(

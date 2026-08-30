@@ -28,7 +28,6 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import {
-  AUDIO_WARP_TRACK,
   createAndRead,
   expectedSampleLength,
   readClipFully,
@@ -36,10 +35,11 @@ import {
   sampleBeats,
   type SongTiming,
 } from "../helpers/audio-warp-test-helpers.ts";
+import { AUDIO_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
-const SLOT_PATH = `t${AUDIO_WARP_TRACK}/s1`;
+const SLOT_PATH = `t${AUDIO_TRACK}/s1`;
 
 /**
  * Update a clip and read it back with every include.
@@ -127,7 +127,7 @@ describe("ppal-update-clip audio warping", () => {
     // markers start out in seconds and the first switch is the one into beats.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_WARP_TRACK}`,
+      path: `t${AUDIO_TRACK}`,
       arrangementStart: "49|1",
       name: "warp round trip",
       warping: false,

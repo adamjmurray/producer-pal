@@ -30,9 +30,6 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 
-/** t5 "Audio 2": an audio track with free slots and an empty arrangement. */
-export const AUDIO_WARP_TRACK = 5;
-
 export interface SongTiming {
   tempo: number;
   numerator: number;

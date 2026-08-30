@@ -19,11 +19,9 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// Use t8 "9-MIDI" which is empty in e2e-test-set
-const emptyMidiTrack = 8;
 
 /**
  * Create a MIDI clip on the empty track and wait for Live to settle.
@@ -39,7 +37,7 @@ async function createClip(
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
-    arguments: { path: `t${emptyMidiTrack}/s${sceneIndex}`, notes, length },
+    arguments: { path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`, notes, length },
   });
   const clip = parseToolResult<{ id: string }>(result);
 

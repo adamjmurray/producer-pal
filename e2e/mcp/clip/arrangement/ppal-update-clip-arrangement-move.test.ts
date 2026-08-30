@@ -30,31 +30,32 @@ import {
   readClipDeep,
   updateClip,
 } from "./arrangement-move-test-helpers.ts";
+import {
+  AUDIO_TRACK,
+  CHILD_TRACK,
+  EMPTY_MIDI_TRACK,
+  RACKS_TRACK,
+} from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const SOURCE_TRACK = 8;
-const DEST_TRACK = 7;
-const LANE_TRACK = 10;
-const AUDIO_TRACK = 5;
 
 describe("arrangement clip moved to another lane", () => {
   it("moves the clip to another track and clears the source", async () => {
     const source = await createClip("5|1", "Crosser");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${DEST_TRACK}`,
+      toPath: `t${RACKS_TRACK}`,
       arrangementStart: "9|1",
     });
 
-    expect(moved.path).toBe(`t${DEST_TRACK}`);
+    expect(moved.path).toBe(`t${RACKS_TRACK}`);
 
-    const placed = await arrangementClipAt(ctx.client!, DEST_TRACK, "9|1");
+    const placed = await arrangementClipAt(ctx.client!, RACKS_TRACK, "9|1");
 
     expect(placed?.id).toBe(moved.id);
     expect(placed?.name).toBe("Crosser");
     expect(
-      await arrangementClipAt(ctx.client!, SOURCE_TRACK, "5|1"),
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "5|1"),
     ).toBeUndefined();
   });
 
@@ -63,14 +64,14 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createClip("13|1", "Stays At 13");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${DEST_TRACK}`,
+      toPath: `t${RACKS_TRACK}`,
     });
 
-    expect((await arrangementClipAt(ctx.client!, DEST_TRACK, "13|1"))?.id).toBe(
-      moved.id,
-    );
     expect(
-      await arrangementClipAt(ctx.client!, SOURCE_TRACK, "13|1"),
+      (await arrangementClipAt(ctx.client!, RACKS_TRACK, "13|1"))?.id,
+    ).toBe(moved.id);
+    expect(
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "13|1"),
     ).toBeUndefined();
   });
 
@@ -79,20 +80,20 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createClip("17|1", "On A Lane");
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${LANE_TRACK}/l+`,
+      toPath: `t${CHILD_TRACK}/l+`,
     });
 
     expect(warnings.join(" ")).toContain(
-      `clip ${source.id} was re-created on t${LANE_TRACK}/l`,
+      `clip ${source.id} was re-created on t${CHILD_TRACK}/l`,
     );
-    expect(moved.path).toMatch(new RegExp(`^t${LANE_TRACK}/l\\d+$`));
+    expect(moved.path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+$`));
 
     const placed = await readClipDeep(ctx.client!, { id: moved.id });
 
     expect(placed.name).toBe("On A Lane");
     expect(placed.notes).toContain("C3");
     expect(
-      await arrangementClipAt(ctx.client!, SOURCE_TRACK, "17|1"),
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "17|1"),
     ).toBeUndefined();
   });
 
@@ -109,7 +110,7 @@ describe("arrangement clip moved to another lane", () => {
     );
     expect(kept.id).toBe(source.id);
     expect(
-      (await arrangementClipAt(ctx.client!, SOURCE_TRACK, "21|1"))?.id,
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "21|1"))?.id,
     ).toBe(source.id);
   });
 
@@ -119,7 +120,7 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 
     const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${DEST_TRACK}`,
+      toPath: `t${RACKS_TRACK}`,
     });
 
     expect(warnings.join(" ")).toContain(
@@ -147,7 +148,7 @@ async function createClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${SOURCE_TRACK}${laneSuffix}`,
+      path: `t${EMPTY_MIDI_TRACK}${laneSuffix}`,
       arrangementStart,
       name,
       notes: "C3 D3 E3 F3 1|1",

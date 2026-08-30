@@ -31,16 +31,14 @@ import {
   readClipDeep,
   updateClip,
 } from "./arrangement-move-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const MIDI_TRACK = 8;
-const AUDIO_TRACK = 5;
 
 describe("arrangement clip moved into a session slot", () => {
   it("re-creates the clip in the slot and clears the arrangement", async () => {
     const source = await createClip({
-      path: `t${MIDI_TRACK}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "5|1",
       name: "Move Home",
       color: "#FF0000",
@@ -53,15 +51,17 @@ describe("arrangement clip moved into a session slot", () => {
     const before = await readClipDeep(ctx.client!, { id: source.id });
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${MIDI_TRACK}/s1`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s1`,
     });
 
-    expect(moved.path).toBe(`t${MIDI_TRACK}/s1`);
+    expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
     expect(warnings.join(" ")).toContain(
-      `arrangement clip ${source.id} was re-created at t${MIDI_TRACK}/s1`,
+      `arrangement clip ${source.id} was re-created at t${EMPTY_MIDI_TRACK}/s1`,
     );
 
-    const clip = await readClipDeep(ctx.client!, { path: `t${MIDI_TRACK}/s1` });
+    const clip = await readClipDeep(ctx.client!, {
+      path: `t${EMPTY_MIDI_TRACK}/s1`,
+    });
 
     expect(clip.id).toBe(moved.id);
     expect(clip.view).toBe("session");
@@ -73,7 +73,7 @@ describe("arrangement clip moved into a session slot", () => {
 
     // The original is gone, not left behind as a copy.
     expect(
-      await arrangementClipAt(ctx.client!, MIDI_TRACK, "5|1"),
+      await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "5|1"),
     ).toBeUndefined();
   });
 
@@ -82,7 +82,7 @@ describe("arrangement clip moved into a session slot", () => {
   // in is the case that catches a wrong order.
   it("carries a non-looping clip's start marker and length", async () => {
     const source = await createClip({
-      path: `t${MIDI_TRACK}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "9|1",
       name: "Region",
       notes: "C3 1|1 D3 1|3 E3 2|1",
@@ -98,7 +98,7 @@ describe("arrangement clip moved into a session slot", () => {
     const before = await readClipDeep(ctx.client!, { id: source.id });
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${MIDI_TRACK}/s2`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s2`,
     });
     const after = await readClipDeep(ctx.client!, { id: moved.id });
 
@@ -109,7 +109,7 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("keeps a clip's time signature", async () => {
     const source = await createClip({
-      path: `t${MIDI_TRACK}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "13|1",
       name: "Waltz",
       timeSignature: "3/4",
@@ -118,7 +118,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${MIDI_TRACK}/s3`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s3`,
     });
 
     expect(
@@ -157,12 +157,12 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("warns before overwriting the clip already in the slot", async () => {
     const occupant = await createClip({
-      path: `t${MIDI_TRACK}/s4`,
+      path: `t${EMPTY_MIDI_TRACK}/s4`,
       name: "In The Way",
       notes: "G3 1|1",
     });
     const source = await createClip({
-      path: `t${MIDI_TRACK}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "17|1",
       name: "Takes Over",
       notes: "C3 1|1",
@@ -170,15 +170,16 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${MIDI_TRACK}/s4`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s4`,
     });
 
     expect(warnings.join(" ")).toContain(
-      `overwrote the existing clip at t${MIDI_TRACK}/s4`,
+      `overwrote the existing clip at t${EMPTY_MIDI_TRACK}/s4`,
     );
     expect(moved.id).not.toBe(occupant.id);
     expect(
-      (await readClipDeep(ctx.client!, { path: `t${MIDI_TRACK}/s4` })).name,
+      (await readClipDeep(ctx.client!, { path: `t${EMPTY_MIDI_TRACK}/s4` }))
+        .name,
     ).toBe("Takes Over");
   });
 
@@ -186,7 +187,7 @@ describe("arrangement clip moved into a session slot", () => {
   // delete_clip no-ops on one — so it's refused rather than turned into a copy.
   it("refuses a take-lane source and leaves it where it is", async () => {
     const source = await createClip({
-      path: `t${MIDI_TRACK}/l+`,
+      path: `t${EMPTY_MIDI_TRACK}/l+`,
       arrangementStart: "21|1",
       name: "On A Lane",
       notes: "C3 1|1",
@@ -194,7 +195,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${MIDI_TRACK}/s5`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
     });
 
     expect(warnings.join(" ")).toContain(
@@ -204,12 +205,12 @@ describe("arrangement clip moved into a session slot", () => {
     expect((await readClipDeep(ctx.client!, { id: source.id })).view).toBe(
       "arrangement",
     );
-    expect(await slotIsEmpty(`t${MIDI_TRACK}/s5`)).toBe(true);
+    expect(await slotIsEmpty(`t${EMPTY_MIDI_TRACK}/s5`)).toBe(true);
   });
 
   it("refuses a MIDI clip aimed at an audio track", async () => {
     const source = await createClip({
-      path: `t${MIDI_TRACK}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "25|1",
       name: "Wrong Track",
       notes: "C3 1|1",
@@ -224,9 +225,9 @@ describe("arrangement clip moved into a session slot", () => {
       `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
     );
     expect(kept.id).toBe(source.id);
-    expect((await arrangementClipAt(ctx.client!, MIDI_TRACK, "25|1"))?.id).toBe(
-      source.id,
-    );
+    expect(
+      (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "25|1"))?.id,
+    ).toBe(source.id);
   });
 });
 

@@ -32,10 +32,9 @@ import {
   lengthBeats,
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const MIDI_TRACK = 8;
 
 /** Four bars of notes, one per bar — proves the pattern spans the whole span. */
 const FOUR_BARS_OF_NOTES = "C3 1|1 D3 2|1 E3 3|1 F3 4|1";
@@ -135,7 +134,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
  */
 async function createLoopingArrClip(arrangementStart: string): Promise<string> {
   const result = await callTool(ctx.client!, "ppal-create-clip", {
-    path: `t${MIDI_TRACK}`,
+    path: `t${EMPTY_MIDI_TRACK}`,
     arrangementStart,
     notes: "C3 1|1",
     length: "1bar",
@@ -175,7 +174,7 @@ async function lengthenTo4Bars(
  * @returns Array of arrangement clip data
  */
 async function readArrClips(): Promise<ReadClipResult[]> {
-  return readArrangementClips(ctx.client!, MIDI_TRACK);
+  return readArrangementClips(ctx.client!, EMPTY_MIDI_TRACK);
 }
 
 /**

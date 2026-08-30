@@ -28,12 +28,9 @@ import {
   parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-// Both empty of clips, so every case can own a slot outright
-const SCRATCH = 8;
-const SCRATCH2 = 7;
 
 interface AnyResult {
   id?: string;
@@ -148,60 +145,64 @@ const CASES: Case[] = [
   {
     tool: "ppal-read-clip",
     param: "slot",
-    args: () => ({ slot: `${SCRATCH}/0` }),
+    args: () => ({ slot: `${EMPTY_MIDI_TRACK}/0` }),
     verify: (d) => expect(d.id).toBe(state.clipId),
   },
   {
     tool: "ppal-read-clip",
     param: "trackIndex",
-    args: () => ({ trackIndex: SCRATCH, sceneIndex: 0 }),
+    args: () => ({ trackIndex: EMPTY_MIDI_TRACK, sceneIndex: 0 }),
     verify: (d) => expect(d.id).toBe(state.clipId),
   },
   {
     tool: "ppal-read-clip",
     param: "sceneIndex",
-    args: () => ({ trackIndex: SCRATCH, sceneIndex: 0 }),
+    args: () => ({ trackIndex: EMPTY_MIDI_TRACK, sceneIndex: 0 }),
     verify: (d) => expect(d.id).toBe(state.clipId),
   },
   {
     tool: "ppal-create-clip",
     param: "slot",
-    args: () => ({ slot: `${SCRATCH}/2`, notes: "C3 1|1", length: "1bar" }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH}/s2`),
+    args: () => ({
+      slot: `${EMPTY_MIDI_TRACK}/2`,
+      notes: "C3 1|1",
+      length: "1bar",
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/s2`),
   },
   {
     tool: "ppal-create-clip",
     param: "trackIndex",
     args: () => ({
-      trackIndex: SCRATCH,
+      trackIndex: EMPTY_MIDI_TRACK,
       sceneIndex: 3,
       notes: "C3 1|1",
       length: "1bar",
     }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH}/s3`),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/s3`),
   },
   {
     tool: "ppal-create-clip",
     param: "sceneIndex",
     args: () => ({
-      trackIndex: SCRATCH,
+      trackIndex: EMPTY_MIDI_TRACK,
       sceneIndex: 4,
       notes: "C3 1|1",
       length: "1bar",
     }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH}/s4`),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/s4`),
   },
   {
     tool: "ppal-create-clip",
     param: "takeLane",
     args: () => ({
-      path: `t${SCRATCH}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "65|1",
       takeLane: 2,
       notes: "C3 1|1",
       length: "1bar",
     }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH}/l1`),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`),
   },
   {
     tool: "ppal-update-clip",
@@ -212,7 +213,7 @@ const CASES: Case[] = [
   {
     tool: "ppal-update-clip",
     param: "paths",
-    args: () => ({ paths: `t${SCRATCH}/s0`, name: "Path Aliased" }),
+    args: () => ({ paths: `t${EMPTY_MIDI_TRACK}/s0`, name: "Path Aliased" }),
     verify: (d) => expect(d.id).toBe(state.clipId),
   },
   {
@@ -220,10 +221,10 @@ const CASES: Case[] = [
     param: "toSlot",
     // A move gets its own clip: Live hands the destination a new id, and the
     // source slot is left empty for every later case that reads t8/s0.
-    args: () => ({ id: state.moveClipId, toSlot: `${SCRATCH2}/5` }),
+    args: () => ({ id: state.moveClipId, toSlot: `${RACKS_TRACK}/5` }),
     verify: async () => {
       const moved = await call("ppal-read-clip", {
-        path: `t${SCRATCH2}/s5`,
+        path: `t${RACKS_TRACK}/s5`,
       });
 
       expect(moved.data.name).toBe("Moved By toSlot");
@@ -232,7 +233,7 @@ const CASES: Case[] = [
   {
     tool: "ppal-update-clip",
     param: "split",
-    args: () => ({ path: `t${SCRATCH}/s2`, split: "1bar" }),
+    args: () => ({ path: `t${EMPTY_MIDI_TRACK}/s2`, split: "1bar" }),
   },
   {
     tool: "ppal-read-device",
@@ -260,7 +261,7 @@ const CASES: Case[] = [
   {
     tool: "ppal-delete",
     param: "paths",
-    args: () => ({ type: "clip", paths: `t${SCRATCH2}/s1` }),
+    args: () => ({ type: "clip", paths: `t${RACKS_TRACK}/s1` }),
   },
   {
     tool: "ppal-duplicate",
@@ -268,9 +269,9 @@ const CASES: Case[] = [
     args: () => ({
       type: "clip",
       ids: state.clipId,
-      toPath: `t${SCRATCH2}/s6`,
+      toPath: `t${RACKS_TRACK}/s6`,
     }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH2}/s6`),
+    verify: (d) => expect(d.path).toBe(`t${RACKS_TRACK}/s6`),
   },
   {
     tool: "ppal-duplicate",
@@ -278,9 +279,9 @@ const CASES: Case[] = [
     args: () => ({
       type: "clip",
       id: state.clipId,
-      toSlot: `${SCRATCH2}/7`,
+      toSlot: `${RACKS_TRACK}/7`,
     }),
-    verify: (d) => expect(d.path).toBe(`t${SCRATCH2}/s7`),
+    verify: (d) => expect(d.path).toBe(`t${RACKS_TRACK}/s7`),
   },
   {
     tool: "ppal-duplicate",
@@ -319,8 +320,8 @@ const CASES: Case[] = [
   {
     tool: "ppal-select",
     param: "slot",
-    args: () => ({ slot: `${SCRATCH}/0` }),
-    verify: (d) => expect(d.selectedClip?.path).toBe(`t${SCRATCH}/s0`),
+    args: () => ({ slot: `${EMPTY_MIDI_TRACK}/0` }),
+    verify: (d) => expect(d.selectedClip?.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`),
   },
   {
     tool: "ppal-select",
@@ -339,13 +340,16 @@ const CASES: Case[] = [
     param: "paths",
     args: () => ({
       action: "stop-session-clips",
-      paths: `t${SCRATCH}/s0`,
+      paths: `t${EMPTY_MIDI_TRACK}/s0`,
     }),
   },
   {
     tool: "ppal-playback",
     param: "slots",
-    args: () => ({ action: "play-session-clips", slots: `${SCRATCH}/0` }),
+    args: () => ({
+      action: "play-session-clips",
+      slots: `${EMPTY_MIDI_TRACK}/0`,
+    }),
     verify: (d) => expect(d.playing).toBe(true),
   },
 ];
@@ -361,19 +365,19 @@ describe("hidden params at runtime", () => {
 
     state.trackId = liveSet.tracks[0]!.id;
     state.sceneId = liveSet.scenes[0]!.id;
-    state.clipId = await seedClip(`t${SCRATCH}/s0`);
-    state.deleteById = await seedClip(`t${SCRATCH2}/s0`);
-    state.moveClipId = await seedClip(`t${SCRATCH}/s6`);
+    state.clipId = await seedClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    state.deleteById = await seedClip(`t${RACKS_TRACK}/s0`);
+    state.moveClipId = await seedClip(`t${EMPTY_MIDI_TRACK}/s6`);
     await call("ppal-update-clip", {
       id: state.moveClipId,
       name: "Moved By toSlot",
     });
-    await seedClip(`t${SCRATCH2}/s1`);
+    await seedClip(`t${RACKS_TRACK}/s1`);
     state.deviceId = (await call("ppal-read-device", { path: "t0/d0" })).data
       .id as string;
 
     const arrangement = await call("ppal-create-clip", {
-      path: `t${SCRATCH}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart: "69|1",
       notes: "C3 1|1",
       length: "1bar",

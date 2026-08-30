@@ -27,11 +27,9 @@ import {
   createClipInSlot,
   readClipNotes,
 } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// Use t8 "9-MIDI" which is empty in e2e-test-set
-const emptyMidiTrack = 8;
 
 // Two off-grid notes used by the quantization tests.
 const OFF_GRID_NOTES = "C3 1|1.25\nD3 1|2.75";
@@ -47,7 +45,7 @@ const readNotes = (clipId: string): Promise<string> =>
  * @returns The new clip's id
  */
 function createOffGridClip(sceneIndex: number, notes: string): Promise<string> {
-  return createClipInSlot(ctx, `t${emptyMidiTrack}/s${sceneIndex}`, {
+  return createClipInSlot(ctx, `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`, {
     notes,
     length: "1bar",
   });
@@ -94,7 +92,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
         notes: "C3 D3 1|1",
         looping: true,
         length: "2bar",
@@ -171,7 +169,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "C3 D3 1|1",
         length: "2bar",
       },
@@ -294,7 +292,7 @@ describe("ppal-update-clip", () => {
     const arrCreateResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
+        path: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "41|1",
         notes: "C3 1|1",
         length: "2bar",
@@ -353,7 +351,7 @@ describe("ppal-update-clip", () => {
     const createResult1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s2`,
+        path: `t${EMPTY_MIDI_TRACK}/s2`,
         notes: "C3 1|1",
       },
     });
@@ -362,7 +360,7 @@ describe("ppal-update-clip", () => {
     const createResult2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s3`,
+        path: `t${EMPTY_MIDI_TRACK}/s3`,
         notes: "E3 1|1",
       },
     });
@@ -397,7 +395,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s4`,
+        path: `t${EMPTY_MIDI_TRACK}/s4`,
         notes: "C3 D3 1|1",
         name: "Move Me",
       },
@@ -409,7 +407,7 @@ describe("ppal-update-clip", () => {
     // Move clip from scene 4 to scene 5 on the same track
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: clip.id, toPath: `t${emptyMidiTrack}/s5` },
+      arguments: { id: clip.id, toPath: `t${EMPTY_MIDI_TRACK}/s5` },
     });
     const movedClip = parseToolResult<{
       id: string;
@@ -417,7 +415,7 @@ describe("ppal-update-clip", () => {
     }>(moveResult);
 
     // Update result should include the destination path
-    expect(movedClip.path).toBe(`t${emptyMidiTrack}/s5`);
+    expect(movedClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s5`);
     expect(movedClip.id).not.toBe(clip.id); // new clip ID after move
 
     await sleep(100);
@@ -430,12 +428,12 @@ describe("ppal-update-clip", () => {
     const newClip = parseToolResult<ReadClipResult>(verifyNew);
 
     expect(newClip.name).toBe("Move Me");
-    expect(newClip.path).toBe(`t${emptyMidiTrack}/s5`);
+    expect(newClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s5`);
 
     // Verify the original slot is now empty
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { path: `t${emptyMidiTrack}/s4` },
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s4` },
     });
     const { data: oldSlot } =
       parseToolResultWithWarnings<ReadClipResult>(verifyOld);
@@ -447,7 +445,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s6`,
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
         notes: "C3 1|1",
         name: "Stay Put",
       },
@@ -480,14 +478,14 @@ describe("ppal-update-clip", () => {
     });
     const stayed = parseToolResult<ReadClipResult>(verify);
 
-    expect(stayed.path).toBe(`t${emptyMidiTrack}/s6`);
+    expect(stayed.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
     expect(stayed.name).toBe("Renamed Anyway");
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { path: `t${emptyMidiTrack}/s6`, notes: "C3 1|1" },
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s6`, notes: "C3 1|1" },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
 
@@ -495,12 +493,12 @@ describe("ppal-update-clip", () => {
 
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: clip.id, toSlot: `${emptyMidiTrack}/7` },
+      arguments: { id: clip.id, toSlot: `${EMPTY_MIDI_TRACK}/7` },
     });
 
     expect(
       parseToolResultWithWarnings<{ path: string }>(result).data.path,
-    ).toBe(`t${emptyMidiTrack}/s7`);
+    ).toBe(`t${EMPTY_MIDI_TRACK}/s7`);
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "toSlot" is deprecated'),
     );

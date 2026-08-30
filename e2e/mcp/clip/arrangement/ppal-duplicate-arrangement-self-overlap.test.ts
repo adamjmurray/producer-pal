@@ -36,11 +36,9 @@ import {
   lengthBeats,
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
-
-const MIDI_TRACK = 8;
-const AUDIO_TRACK = 5;
 
 describe("self-overlapping arrangement clip duplicate/move", () => {
   let midi4barId: string; // 4-bar MIDI session clip
@@ -48,7 +46,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
   beforeAll(async () => {
     const midi = await callTool(ctx.client!, "ppal-create-clip", {
-      path: `t${MIDI_TRACK}/s0`,
+      path: `t${EMPTY_MIDI_TRACK}/s0`,
       notes: "C3 1|1 E3 2|1 G3 3|1 B3 4|1",
       length: "4bar",
     });
@@ -71,7 +69,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     expect(copy.id).toBeDefined();
     expect(copy.arrangementStart).toBe("6|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 5, 10);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 5, 10);
 
     // Exactly two clips: the trimmed original at 5|1 and the full copy at 6|1.
     expect(clips).toHaveLength(2);
@@ -92,7 +90,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     await moveArrClip(base.id, "16|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 15, 20);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 15, 20);
 
     // A move leaves exactly one clip — the full copy at the new position.
     expect(clips).toHaveLength(1);
@@ -113,7 +111,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const base = await dupToArr(midi4barId, "25|1");
     const copy = await dupToArr(base.id, "30|1");
 
-    const clips = clipsInBarRange(await readArrClips(MIDI_TRACK), 25, 34);
+    const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 25, 34);
 
     expect(clips).toHaveLength(2);
     expect(lengthBeats(clipAt(clips, "25|1"))).toBeCloseTo(beats("4bar"), 5);

@@ -22,6 +22,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -207,16 +208,12 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates clips", async () => {
-    // Use empty tracks for clip tests
-    const emptyMidiTrack = 8;
-    const emptyMidiTrack2 = 7;
-
     // Test 1: Session clip to session
     // First create a clip to duplicate on empty track
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
         notes: "C3 D3 E3 F3 1|1",
         length: "1bar",
       },
@@ -231,14 +228,14 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        toPath: `t${emptyMidiTrack2}/s0`,
+        toPath: `t${RACKS_TRACK}/s0`,
       },
     });
     const dupClipSession =
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.path).toBe(`t${emptyMidiTrack2}/s0`);
+    expect(dupClipSession.path).toBe(`t${RACKS_TRACK}/s0`);
 
     await sleep(100);
 
@@ -282,7 +279,7 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
+        path: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",
         length: "2bar",
@@ -388,11 +385,10 @@ describe("ppal-duplicate", () => {
     // The bar-58 copy lands on the source and trims it to one bar. The bar-51
     // copy stops well short of the source, so it must come out full length —
     // it used to be made from that leftover just for being listed second.
-    const track = 8;
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${track}`,
+        path: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "57|1",
         notes: "C3 D3 E3 F3 1|1",
         length: "2bar",
@@ -426,12 +422,10 @@ describe("ppal-duplicate", () => {
   });
 
   it("still honors the deprecated toSlot, and says so", async () => {
-    const emptyMidiTrack = 8;
-
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s6`,
+        path: `t${EMPTY_MIDI_TRACK}/s6`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -445,7 +439,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        toSlot: `${emptyMidiTrack}/7`,
+        toSlot: `${EMPTY_MIDI_TRACK}/7`,
       },
     });
 
@@ -453,7 +447,7 @@ describe("ppal-duplicate", () => {
     // reports it in the spelling that replaced the param...
     expect(
       parseToolResultWithWarnings<DuplicateClipResult>(result).data.path,
-    ).toBe(`t${emptyMidiTrack}/s7`);
+    ).toBe(`t${EMPTY_MIDI_TRACK}/s7`);
 
     // ...and the model is told to stop using the param.
     expect(getToolWarnings(result)).toContainEqual(
@@ -462,15 +456,12 @@ describe("ppal-duplicate", () => {
   });
 
   it("duplicates devices", async () => {
-    // Use t7 (Racks track) which has an Instrument Rack but proper routing
-    const testTrack = 7;
-
     // Test 1: Duplicate device within same track
     // First create a device to duplicate
     const deviceId = await createTestDevice(
       ctx.client!,
       "Auto Filter",
-      `t${testTrack}`,
+      `t${RACKS_TRACK}`,
     );
 
     const dupDeviceResult = await ctx.client!.callTool({
@@ -500,7 +491,7 @@ describe("ppal-duplicate", () => {
     const device2Id = await createTestDevice(
       ctx.client!,
       "Compressor",
-      `t${testTrack}`,
+      `t${RACKS_TRACK}`,
     );
 
     const dupDeviceToTrackResult = await ctx.client!.callTool({

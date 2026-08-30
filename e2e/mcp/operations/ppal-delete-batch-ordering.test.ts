@@ -32,9 +32,9 @@ import {
   type DrumPadInfo,
   readDrumPad,
 } from "../device/drum/drum-pad-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-const emptyMidiTrack = 8;
 
 interface DeleteResult {
   id: string;
@@ -57,7 +57,7 @@ describe("ppal-delete batch ordering", () => {
         await ctx.client!.callTool({
           name: "ppal-create-clip",
           arguments: {
-            path: `t${emptyMidiTrack}`,
+            path: `t${EMPTY_MIDI_TRACK}`,
             arrangementStart,
             notes: "C3 1|1",
             length: "4bar",
@@ -173,7 +173,7 @@ async function readArrangementClips(): Promise<
     await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: {
-        trackIndex: emptyMidiTrack,
+        trackIndex: EMPTY_MIDI_TRACK,
         include: ["arrangement-clips"],
       },
     }),

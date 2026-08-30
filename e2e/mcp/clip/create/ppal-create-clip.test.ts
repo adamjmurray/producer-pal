@@ -24,16 +24,13 @@ import {
   sleep,
 } from "../../mcp-test-helpers";
 import {
-  AUDIO_WARP_TRACK,
   createAndRead,
   expectedSampleLength,
   readSongTiming,
 } from "../helpers/audio-warp-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// Use t8 "9-MIDI" which is empty in e2e-test-set
-const emptyMidiTrack = 8;
 
 describe("ppal-create-clip", () => {
   it("creates session MIDI clips with various properties", async () => {
@@ -41,7 +38,7 @@ describe("ppal-create-clip", () => {
     const minimalResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
       },
     });
     const minimal = parseToolResult<CreateClipResult>(minimalResult);
@@ -59,13 +56,13 @@ describe("ppal-create-clip", () => {
 
     expect(minimalClip.type).toBe("midi");
     expect(minimalClip.view).toBe("session");
-    expect(minimalClip.path).toBe(`t${emptyMidiTrack}/s0`);
+    expect(minimalClip.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`);
 
     // Test 2: Create session clip with notes
     const notesResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "C3 D3 E3 1|1",
       },
     });
@@ -86,7 +83,7 @@ describe("ppal-create-clip", () => {
     const namedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s2`,
+        path: `t${EMPTY_MIDI_TRACK}/s2`,
         name: "Test Clip",
       },
     });
@@ -105,7 +102,7 @@ describe("ppal-create-clip", () => {
     const colorResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s3`,
+        path: `t${EMPTY_MIDI_TRACK}/s3`,
         color: "#FF0000",
       },
     });
@@ -125,7 +122,7 @@ describe("ppal-create-clip", () => {
     const lengthResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s4`,
+        path: `t${EMPTY_MIDI_TRACK}/s4`,
         length: "2bar",
       },
     });
@@ -144,7 +141,7 @@ describe("ppal-create-clip", () => {
     const loopingResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s5`,
+        path: `t${EMPTY_MIDI_TRACK}/s5`,
         looping: true,
       },
     });
@@ -185,13 +182,17 @@ describe("ppal-create-clip", () => {
   it("still creates a clip from the trackIndex/sceneIndex fallback", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { trackIndex: emptyMidiTrack, sceneIndex: 8, notes: "C3 1|1" },
+      arguments: {
+        trackIndex: EMPTY_MIDI_TRACK,
+        sceneIndex: 8,
+        notes: "C3 1|1",
+      },
     });
     const { data: clip } =
       parseToolResultWithWarnings<CreateClipResult>(result);
 
     expect(clip.id).toBeDefined();
-    expect(clip.path).toBe(`t${emptyMidiTrack}/s8`);
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/s8`);
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('the parameter is "path"'),
     );
@@ -202,7 +203,7 @@ describe("ppal-create-clip", () => {
     const arrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
+        path: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "41|1",
       },
     });
@@ -256,7 +257,7 @@ describe("ppal-create-clip", () => {
     const multiArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}`,
+        path: `t${EMPTY_MIDI_TRACK}`,
         arrangementStart: "45|1,49|1,53|1",
       },
     });
@@ -375,7 +376,7 @@ describe("ppal-create-clip audio warping", () => {
   it("lands an unwarped clip whose region is the sample, not the raw seconds", async () => {
     const song = await readSongTiming(ctx.client!);
     const { created, clip } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_WARP_TRACK}/s6`,
+      path: `t${AUDIO_TRACK}/s6`,
       name: "unwarped one shot",
       warping: false,
     });
@@ -395,7 +396,7 @@ describe("ppal-create-clip audio warping", () => {
     // arrangementLength comes from Live's end_time - start_time, computed
     // without reference to the marker properties. The two must match.
     const { clip } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_WARP_TRACK}`,
+      path: `t${AUDIO_TRACK}`,
       arrangementStart: "33|1",
       name: "unwarped arrangement",
       warping: false,
@@ -409,7 +410,7 @@ describe("ppal-create-clip audio warping", () => {
   it("lands a warped clip when warping is requested", async () => {
     const song = await readSongTiming(ctx.client!);
     const { created, clip } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_WARP_TRACK}/s7`,
+      path: `t${AUDIO_TRACK}/s7`,
       name: "warped",
       warping: true,
     });

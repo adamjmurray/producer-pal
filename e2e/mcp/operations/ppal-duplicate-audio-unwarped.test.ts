@@ -24,17 +24,16 @@ import {
   sleep,
 } from "../mcp-test-helpers.ts";
 import {
-  AUDIO_WARP_TRACK,
   createUnwarpedDrumLoop,
   halveDrumLoopRegion,
 } from "../clip/helpers/audio-warp-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
 /** s7 is the empty scene, so the scene's length is only what these tests put in it. */
 const SCENE = 7;
 /** t8 "9-MIDI" is empty in e2e-test-set. */
-const MIDI_TRACK = 8;
 
 /**
  * Call a tool and parse its result.
@@ -63,11 +62,11 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     // it tiles the MIDI clip twice. Measure the loop by Clip.length instead and
     // the scene comes out one bar, fitting the MIDI clip once.
     await call("ppal-create-clip", {
-      path: `t${MIDI_TRACK}/s${SCENE}`,
+      path: `t${EMPTY_MIDI_TRACK}/s${SCENE}`,
       notes: "C3 1|1",
       length: "1bar",
     });
-    await createUnwarpedDrumLoop(ctx.client!, `t${AUDIO_WARP_TRACK}/s${SCENE}`);
+    await createUnwarpedDrumLoop(ctx.client!, `t${AUDIO_TRACK}/s${SCENE}`);
     await call("ppal-update-live-set", { tempo: 216 });
 
     const liveSet = await call<{ scenes: Array<{ id: string }> }>(
@@ -83,7 +82,9 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     });
     // An arrangement clip's path is its track, so the MIDI copies are the ones
     // whose path is the MIDI track itself.
-    const midiCopies = dup.clips.filter((c) => c.path === `t${MIDI_TRACK}`);
+    const midiCopies = dup.clips.filter(
+      (c) => c.path === `t${EMPTY_MIDI_TRACK}`,
+    );
     const starts = [];
 
     for (const copy of midiCopies) {
@@ -106,7 +107,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     // length, and the audio timing rewrite runs underneath all of it.
     const clipId = await createUnwarpedDrumLoop(
       ctx.client!,
-      `t${AUDIO_WARP_TRACK}/s1`,
+      `t${AUDIO_TRACK}/s1`,
     );
 
     await halveDrumLoopRegion(ctx.client!, clipId);

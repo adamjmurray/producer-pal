@@ -29,9 +29,9 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-const emptyMidiTrack = 8;
 
 /** Read a clip's notes back from Live and return the parsed result. */
 function readClipNotes(clipId: string): Promise<ReadClipResult> {
@@ -47,7 +47,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${emptyMidiTrack}/s0`,
+          path: `t${EMPTY_MIDI_TRACK}/s0`,
           code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
         },
       });
@@ -71,7 +71,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${emptyMidiTrack}/s1`,
+          path: `t${EMPTY_MIDI_TRACK}/s1`,
           notes: "C3 D3 E3 1|1",
           length: "2bar",
         },
@@ -141,32 +141,32 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
         {
           label: "syntax error",
           code: "return [{pitch: 60, start: 0}",
-          path: `t${emptyMidiTrack}/s2`,
+          path: `t${EMPTY_MIDI_TRACK}/s2`,
         },
         {
           label: "thrown exception",
           code: 'throw new Error("test error")',
-          path: `t${emptyMidiTrack}/s3`,
+          path: `t${EMPTY_MIDI_TRACK}/s3`,
         },
         {
           label: "no return (undefined)",
           code: "const x = 1;",
-          path: `t${emptyMidiTrack}/s4`,
+          path: `t${EMPTY_MIDI_TRACK}/s4`,
         },
         {
           label: "return null",
           code: "return null",
-          path: `t${emptyMidiTrack}/s5`,
+          path: `t${EMPTY_MIDI_TRACK}/s5`,
         },
         {
           label: "return primitive",
           code: "return 42",
-          path: `t${emptyMidiTrack}/s6`,
+          path: `t${EMPTY_MIDI_TRACK}/s6`,
         },
         {
           label: "return object (not array)",
           code: "return {pitch: 60, start: 0}",
-          path: `t${emptyMidiTrack}/s7`,
+          path: `t${EMPTY_MIDI_TRACK}/s7`,
         },
       ];
 
@@ -207,7 +207,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${emptyMidiTrack}/s10`,
+          path: `t${EMPTY_MIDI_TRACK}/s10`,
           code: tooLongCode,
         },
       });
@@ -236,7 +236,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const mixedResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${emptyMidiTrack}/s8`,
+          path: `t${EMPTY_MIDI_TRACK}/s8`,
           code: [
             "return [",
             "  {pitch: 60, start: 0, duration: 1, velocity: 100},",
@@ -267,7 +267,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
       const clampResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${emptyMidiTrack}/s9`,
+          path: `t${EMPTY_MIDI_TRACK}/s9`,
           code: [
             "return [",
             "  {pitch: -10, start: 0, duration: 1, velocity: 100},",

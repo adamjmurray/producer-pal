@@ -20,8 +20,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-
-export const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 /** One triplet subdivision in beats — the round-trip suites' unit of spacing. */
 export const THIRD = 1 / 3;
@@ -43,7 +42,7 @@ export async function createMidiClip(
   const result = await ctx.client!.callTool({
     name: TOOL_CREATE_CLIP,
     arguments: {
-      path: `t${emptyMidiTrack}/s${sceneIndex}`,
+      path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
       notes,
       length: "2bar",
     },
@@ -98,7 +97,7 @@ export async function createArrangementClip(
   const result = await ctx.client!.callTool({
     name: TOOL_CREATE_CLIP,
     arguments: {
-      path: `t${emptyMidiTrack}`,
+      path: `t${EMPTY_MIDI_TRACK}`,
       arrangementStart,
       notes,
       length,

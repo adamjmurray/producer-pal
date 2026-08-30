@@ -25,9 +25,9 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   createClipTransformHelpers,
-  emptyMidiTrack,
   parseNotationDuration,
 } from "../helpers/ppal-clip-transforms-test-helpers.ts";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes, applyTransform } =
@@ -653,7 +653,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s15`,
+        path: `t${EMPTY_MIDI_TRACK}/s15`,
         notes: "v100 C3 1|1",
         length: "2bar",
         transforms: "velocity = 64",
@@ -671,7 +671,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s16`,
+        path: `t${EMPTY_MIDI_TRACK}/s16`,
         notes: "C3 E3 G3 1|1", // C major triad
         length: "2bar",
         transforms: "pitch += 2", // Transpose to D major
@@ -692,7 +692,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result3 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s17`,
+        path: `t${EMPTY_MIDI_TRACK}/s17`,
         notes: "v100 C3 1|1",
         length: "2bar",
         transforms: "velocity = 80\npitch += 12",
@@ -712,7 +712,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s18`,
+        path: `t${EMPTY_MIDI_TRACK}/s18`,
         notes: "C3 1|1\nE3 1|2",
         length: "2bar",
         transforms: "C3: pitch += 12",
@@ -731,7 +731,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${emptyMidiTrack}/s19`,
+        path: `t${EMPTY_MIDI_TRACK}/s19`,
         notes: "C3 1|1\nC3 1|3",
         length: "2bar",
         transforms: "1|1-1|2: velocity = 64",

@@ -21,12 +21,9 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
-
-// t8 has no clips (and "No Output" routing); t7 has proper routing for devices
-const EMPTY_MIDI_TRACK = 8;
-const DEVICE_TEST_TRACK = 7;
 
 describe("ppal-delete", () => {
   /**
@@ -265,7 +262,7 @@ describe("ppal-delete", () => {
     const deviceId = await createTestDevice(
       ctx.client!,
       "Compressor",
-      `t${DEVICE_TEST_TRACK}`,
+      `t${RACKS_TRACK}`,
     );
     const deleted = parseToolResult<DeleteResult>(
       await del({ id: deviceId, type: "device" }),
@@ -281,7 +278,7 @@ describe("ppal-delete", () => {
     const created = parseToolResult<{ deviceIndex: number }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
-        arguments: { deviceName: "EQ Eight", path: `t${DEVICE_TEST_TRACK}` },
+        arguments: { deviceName: "EQ Eight", path: `t${RACKS_TRACK}` },
       }),
     );
 
@@ -289,7 +286,7 @@ describe("ppal-delete", () => {
 
     const deleted = parseToolResult<DeleteResult>(
       await del({
-        path: `t${DEVICE_TEST_TRACK}/d${created.deviceIndex}`,
+        path: `t${RACKS_TRACK}/d${created.deviceIndex}`,
         type: "device",
       }),
     );
@@ -302,7 +299,7 @@ describe("ppal-delete", () => {
     const device2Id = await createTestDevice(
       ctx.client!,
       "Chorus-Ensemble",
-      `t${DEVICE_TEST_TRACK}`,
+      `t${RACKS_TRACK}`,
     );
     const deleted = parseToolResult<DeleteResult[]>(
       await del({ id: `${device1Id},${device2Id}`, type: "device" }),
@@ -331,7 +328,7 @@ describe("ppal-delete", () => {
     const deviceId = await createTestDevice(
       ctx.client!,
       "Compressor",
-      `t${DEVICE_TEST_TRACK}`,
+      `t${RACKS_TRACK}`,
     );
     const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
       await del({ id: `${deviceId},99999`, type: "device" }),

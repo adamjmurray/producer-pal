@@ -32,13 +32,12 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
 /** t8 "9-MIDI": an empty MIDI track. */
-const MIDI_TRACK = 8;
 /** t5 "Audio 2": an audio track with free slots and an empty arrangement. */
-const AUDIO_TRACK = 5;
 
 /**
  * Half of the one-bar drum loop, and of the one-bar MIDI clips here. Short
@@ -110,7 +109,7 @@ async function halvedClip(
   sceneIndex: number,
 ): Promise<string> {
   const clipId = await create(client, {
-    path: `t${kind === "midi" ? MIDI_TRACK : AUDIO_TRACK}/s${sceneIndex}`,
+    path: `t${kind === "midi" ? EMPTY_MIDI_TRACK : AUDIO_TRACK}/s${sceneIndex}`,
     name: `loop toggle ${kind}`,
     ...(kind === "midi"
       ? { length: WHOLE, notes: "C3 1|1 E3 1|3" }
@@ -211,7 +210,7 @@ describe("ppal-update-clip loop toggle", () => {
     // region that survives — and it is what read-clip was already reporting as
     // `start`/`length`.
     const clipId = await create(ctx.client!, {
-      path: `t${MIDI_TRACK}/s6`,
+      path: `t${EMPTY_MIDI_TRACK}/s6`,
       name: "offset loop",
       length: "2bar",
       notes: "C3 1|1 E3 2|1",

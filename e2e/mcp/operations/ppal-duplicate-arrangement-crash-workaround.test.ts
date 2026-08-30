@@ -23,6 +23,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -34,9 +35,6 @@ interface DuplicateClipResult {
 interface TrackResult {
   arrangementClips?: ReadClipResult[];
 }
-
-const MIDI_TRACK = 8;
-const AUDIO_TRACK = 5;
 
 /**
  * Duplicate a clip to arrangement at a given position.
@@ -168,7 +166,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}/s0`,
+        path: `t${EMPTY_MIDI_TRACK}/s0`,
         notes: "C3 1|1",
         length: "4bar",
       },
@@ -180,7 +178,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiShort = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${MIDI_TRACK}/s1`,
+        path: `t${EMPTY_MIDI_TRACK}/s1`,
         notes: "C3 1|1",
         length: "1bar",
       },
@@ -223,7 +221,7 @@ describe("arrangement clip duplication crash workaround", () => {
       expect(result.arrangementStart).toBe("42|3");
 
       // 3 clips: dup at 42|3, trimmed 4-bar (after portion), source at 49|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 42, 50);
 
       expect(relevant).toHaveLength(3);
@@ -241,7 +239,7 @@ describe("arrangement clip duplication crash workaround", () => {
       expect(result.arrangementStart).toBe("61|1");
 
       // 3 clips: 1-bar at 61|1, truncated 3-bar, original 1-bar at 69|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 61, 70);
 
       expect(relevant).toHaveLength(3);
@@ -259,7 +257,7 @@ describe("arrangement clip duplication crash workaround", () => {
       expect(result.arrangementStart).toBe("83|1");
 
       // 4 clips: before (81-83), duplicated (83-84), after (84-85), original (89)
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 81, 90);
 
       expect(relevant).toHaveLength(4);
@@ -277,7 +275,7 @@ describe("arrangement clip duplication crash workaround", () => {
       expect(result.arrangementStart).toBe("76|3");
 
       // 3 clips: trimmed 4-bar (before portion), dup at 76|3, source at 79|1
-      const clips = await readArrClips(MIDI_TRACK);
+      const clips = await readArrClips(EMPTY_MIDI_TRACK);
       const relevant = clipsInBarRange(clips, 73, 80);
 
       expect(relevant).toHaveLength(3);
