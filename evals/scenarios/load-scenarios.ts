@@ -55,6 +55,7 @@ import {
   legatoTransforms,
   librarySearchFanout,
   liveApiEscapeHatch,
+  locatorNavigation,
   melodyPitchMatrix,
   melodyTransforms,
   middleCScaleMatrix,
@@ -143,6 +144,7 @@ const allScenarios: EvalScenario[] = [
   deleteTargets,
   liveApiEscapeHatch,
   librarySearchFanout,
+  locatorNavigation,
   // Object-path addressing (2.2.0). Contiguous and on one Live Set:
   // path-session-slot resets the slots it writes, so it can reuse the open one.
   pathSessionSlot,
