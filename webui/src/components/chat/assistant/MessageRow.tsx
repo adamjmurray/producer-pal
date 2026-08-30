@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
+import { formatUserContent } from "#webui/chat/helpers/formatter-helpers";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { CompactButton } from "#webui/components/chat/controls/CompactButton";
@@ -348,17 +349,6 @@ function findPreviousUserMessageIndex(
   }
 
   return -1;
-}
-
-/**
- * Formats user message content as string.
- * @param {UIMessage} message - User message to format
- * @returns {string} Concatenated text content
- */
-function formatUserContent(message: UIMessage): string {
-  return message.parts
-    .map((part) => ("content" in part ? part.content : ""))
-    .join("");
 }
 
 /**
