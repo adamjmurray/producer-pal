@@ -285,6 +285,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     conversationManager,
     chat.stopResponse,
     clearViewingMode,
+    chat.isAssistantResponding,
   );
 
   const conversationPanelState = useConversationPanelState({

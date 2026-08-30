@@ -93,3 +93,5 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0025](0025-object-path-grammar.md)                      | One object-path grammar, scoped to clips and devices                  |
 | [0026](0026-small-model-read-output-trims-by-include.md) | Small-model read output trims by `include`, not by a second shape     |
 | [0027](0027-setproperty-stays-out-of-ppal-live-api.md)   | `setProperty` stays out of ppal-live-api                              |
+| [0029](0029-an-empty-param-is-dropped-from-the-args.md)  | An empty param is dropped from the args                               |
+| [0030](0030-leaving-a-conversation-stops-the-turn.md)    | Leaving a conversation stops the turn, with a warning                 |

@@ -6,30 +6,50 @@
 import { useCallback } from "preact/hooks";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
 
+/** Shown before a navigation action cuts a response off mid-turn. */
+const LEAVE_WHILE_STREAMING =
+  "This will stop the response in progress. Continue?";
+
 /**
  * Creates stable callback wrappers for conversation manager methods.
  * @param manager - Conversation manager from useConversations
  * @param stopResponse - Stops the current AI response stream
  * @param clearViewingMode - Clears any foreign-mode view override so the next
  *   fresh session honors the user's saved mode
+ * @param isAssistantResponding - Whether a response is streaming right now
  * @returns Stable callback handlers for conversation operations
  */
 export function useConversationHandlers(
   manager: UseConversationsReturn,
   stopResponse: () => void,
   clearViewingMode: () => void,
+  isAssistantResponding: boolean,
 ) {
+  // Leaving the conversation aborts the turn. The partial answer is saved to
+  // the conversation it belongs to, so nothing is lost, but the turn is cut off
+  // — and a click in the sidebar is an easy way to do that by accident. Only
+  // the two navigation actions ask: a delete (single or bulk) is deliberate
+  // destruction, and a second dialog on top of it is noise.
+  const confirmLeavingStream = useCallback(
+    () => !isAssistantResponding || confirm(LEAVE_WHILE_STREAMING),
+    [isAssistantResponding],
+  );
+
   const handleNew = useCallback(() => {
+    if (!confirmLeavingStream()) return;
+
     stopResponse();
     manager.startNewConversation();
     clearViewingMode();
-  }, [manager, stopResponse, clearViewingMode]);
+  }, [manager, stopResponse, clearViewingMode, confirmLeavingStream]);
   const handleSelect = useCallback(
     (id: string) => {
+      if (!confirmLeavingStream()) return;
+
       stopResponse();
       manager.switchConversation(id).catch(console.error);
     },
-    [manager, stopResponse],
+    [manager, stopResponse, confirmLeavingStream],
   );
   const handleDelete = useCallback(
     (id: string) => {

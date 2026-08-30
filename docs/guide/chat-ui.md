@@ -75,6 +75,10 @@ Each conversation in the list has action buttons that appear on hover:
   and stays until dismissed, so a delete you didn't mean can be put back (the
   last ten are kept, newest first).
 
+Switching conversations or starting a new one while a response is still
+streaming stops that response, so Producer Pal asks first. The partial answer is
+kept on the conversation it belongs to either way.
+
 Conversations are stored in your browser's built-in database (IndexedDB), and
 settings are stored in local storage, with API keys [encrypted](#settings). This
 means all your data lives in that specific browser and user profile, so it won't
