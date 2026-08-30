@@ -12,6 +12,7 @@
 // quietly landing clips somewhere else.
 
 import { namedParam } from "#src/tools/shared/utils.ts";
+import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
@@ -141,7 +142,8 @@ function splitPathDestinations(
   }
 
   // Number the lanes here, off the list the caller wrote: pairTracksWithStarts
-  // cycles this list, and a cycled repeat must reuse its lane, not append one.
+  // may broadcast one entry to every position, and a repeat of one "l+" must
+  // reuse its lane, not append one per position.
   return { clipSlots, tracks: withNewLaneOrdinals(tracks) };
 }
 
@@ -246,8 +248,11 @@ function legacyDestinations(
 }
 
 /**
- * Pairs arrangement tracks with arrangement positions. Each param sets a clip
- * count; the longer list wins and the shorter one cycles, matching duplicate.
+ * Pairs arrangement tracks with arrangement positions.
+ *
+ * Either list may hold the single value that covers the other; two lists pair
+ * 1:1. A mismatch warns and makes only the clips both lists name — see
+ * `list-pairing.ts`.
  * @param tracks - Arrangement destination tracks, in order
  * @param arrangementStarts - Parsed arrangement bar|beat positions
  * @returns One entry per arrangement clip
@@ -282,9 +287,24 @@ function pairTracksWithStarts(
   }
 
   const count = Math.max(tracks.length, arrangementStarts.length);
+  const pairedTracks = pairValues(tracks, count, {
+    param: "path",
+    noun: "track",
+    item: "position",
+    shortfall: "got no clip",
+  });
+  const pairedStarts = pairValues(arrangementStarts, count, {
+    param: "arrangementStart",
+    noun: "position",
+    item: "track",
+    shortfall: "got no clip",
+  });
 
-  return Array.from({ length: count }, (_unused, i) => ({
-    ...(tracks[i % tracks.length] as ArrangementTrack),
-    arrangementStart: arrangementStarts[i % arrangementStarts.length] as string,
-  }));
+  return pairedTracks.flatMap((track, i) => {
+    const arrangementStart = pairedStarts[i];
+
+    return track == null || arrangementStart == null
+      ? []
+      : [{ ...track, arrangementStart }];
+  });
 }

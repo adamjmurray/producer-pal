@@ -79,7 +79,7 @@ export interface ArrangementTrack {
  * Numbers the `l+` entries in a destination list, so each one appends its own
  * lane.
  *
- * Call this on the list as the caller wrote it, before it's cycled against
+ * Call this on the list as the caller wrote it, before it's paired against
  * arrangementStart. One written `l+` then stays one lane however many clips
  * land on it, while `l+,l+` gets two. A null is a destination that keeps its
  * turn without being one, and passes straight through.
@@ -112,8 +112,8 @@ export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
 /**
  * Keys a resolved take lane by the destination that asked for it, so several
  * destinations naming one lane share it. An `l+` is keyed by its ordinal, so
- * two written `l+` get two lanes while a cycled repeat of one gets a single
- * lane.
+ * two written `l+` get two lanes while one broadcast to several positions gets
+ * a single lane.
  * @param target - The destination
  * @returns The key, an internal spelling — use {@link takeLaneLabel} in messages
  */

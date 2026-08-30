@@ -7,22 +7,23 @@
  * Reach-for probes: does a model lean on a SHORT comma-separated list and
  * expect it to cycle?
  *
- * `color` cycles today and every schema description says so, as does
- * create-clip's pairing of `path` against `arrangementStart`. Everything else
- * broadcasts one value or pairs exactly (ADR-0031). Folding those two in would
- * be safe only if models spell every value out; these scenarios measure that
- * instead of guessing.
+ * `color`, create-clip's `path` against `arrangementStart`, and duplicate's
+ * `toPath` against it all used to cycle. These probes are what settled folding
+ * them into the one rule (ADR-0031): asked to alternate colors, two of three
+ * models wrote the short form, and one said outright it did so because the
+ * schema advertised cycling. Rewording that line stopped it. The two
+ * destination sites were never leaned on at all.
  *
- * Both prompts say "alternating", the phrasing most likely to invite a short
- * list, so a pass here is real evidence and not an easy prompt. They stay
- * separate conversations because a reach-for probe is worthless once an earlier
+ * They stay as regression guards now — nothing cycles, so a model that writes a
+ * short list gets fewer items than it asked for, and these say so before a user
+ * finds out. Every prompt says "alternating", the phrasing most likely to
+ * invite a short list.
+ *
+ * Each is its own conversation: a reach-for probe is worthless once an earlier
  * turn has shown the model which form to write.
  *
- * A PASS means the model wrote one value per item — cycling is dead weight and
- * can go. A FAIL means the short form is load-bearing and cycling stays.
- *
- * `path-topath-pairing` grades the other half: that a model does NOT carry the
- * cycling habit into update-clip's `toPath`, where it would destroy a clip.
+ * `path-topath-pairing` grades the other half — that a model does not carry the
+ * habit into update-clip's `toPath`, where it would destroy a clip.
  */
 
 import { argText } from "../arg-text.ts";
@@ -42,9 +43,14 @@ import {
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 const TOOL_READ_TRACK = "ppal-read-track";
+const TOOL_DUPLICATE = "ppal-duplicate";
 
 /** The tools that can carry a per-item list into a clip. */
-const WRITE_TOOLS = new Set([TOOL_CREATE_CLIP, TOOL_UPDATE_CLIP]);
+const WRITE_TOOLS = new Set([
+  TOOL_CREATE_CLIP,
+  TOOL_UPDATE_CLIP,
+  TOOL_DUPLICATE,
+]);
 
 /**
  * Whether a "#RRGGBB" reads as red or as blue. Live's palette holds several of
@@ -168,7 +174,7 @@ function assertArrangementBars(
 export const colorListPairing: EvalScenario = {
   id: "color-list-pairing",
   description: "Six clips alternating two colors, without relying on cycling",
-  kind: "capability",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
   // No reuseLiveSet: the clips persist, so a second trial would start with the
   // colors already set and could pass without writing anything.
@@ -192,7 +198,7 @@ export const arrangementDestinationPairing: EvalScenario = {
   id: "arrangement-destination-pairing",
   description:
     "Clips alternating across two arrangement tracks, without relying on cycling",
-  kind: "capability",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [
@@ -207,6 +213,28 @@ export const arrangementDestinationPairing: EvalScenario = {
     assertArrangementBars(0, ["1|1", "9|1"]),
     assertArrangementBars(1, ["5|1", "13|1"]),
     assertNoShortList("path", "arrangementStart"),
+    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+  ],
+};
+
+export const duplicateDestinationPairing: EvalScenario = {
+  id: "duplicate-destination-pairing",
+  description:
+    "Copies alternating across two arrangement tracks, without relying on cycling",
+  kind: "regression",
+  liveSet: "basic-with-drum-and-lead-clips",
+
+  messages: [
+    MSG_CONNECT,
+    "Copy the drum clip into the arrangement at bars 1, 5, 9 and 13, " +
+      "alternating between the Drums and Bass tracks — bar 1 on Drums.",
+  ],
+
+  assertions: [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    assertArrangementBars(0, ["1|1", "9|1"]),
+    assertArrangementBars(1, ["5|1", "13|1"]),
+    assertNoShortList("toPath", "arrangementStart"),
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],
 };

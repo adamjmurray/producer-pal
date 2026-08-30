@@ -24,7 +24,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -145,7 +145,7 @@ export function updateDevice(
   } else {
     const items = parseCommaSeparatedIds(path ?? ids);
     const parsedNames = parseNames(name, items.length, "device");
-    const parsedColors = parseCommaSeparatedColors(color, items.length);
+    const parsedColors = parseColors(color, items.length, "device");
 
     const updateOptions: UpdateTargetOptions = {
       toPath,

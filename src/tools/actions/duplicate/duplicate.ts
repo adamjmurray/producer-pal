@@ -60,7 +60,7 @@ interface DuplicateArgs {
  * @param args.locator - Arrangement locator ID(s) or name(s)
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
- * @param args.color - Color for duplicates (cycles if comma-separated)
+ * @param args.color - Color for all the copies, or comma-separated one per copy
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source

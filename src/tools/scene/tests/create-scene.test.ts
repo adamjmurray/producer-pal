@@ -329,7 +329,7 @@ describe("createScene", () => {
   });
 
   describe("comma-separated colors", () => {
-    it("should cycle through colors with modular arithmetic", () => {
+    it("should leave the scenes past the last color alone, not cycle", () => {
       const scene3 = registerMockObject("live_set/scenes/3", {
         path: livePath.scene(3),
       });
@@ -342,8 +342,12 @@ describe("createScene", () => {
 
       expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
       expect(scene1.set).toHaveBeenCalledWith("color", 65280);
-      expect(scene2.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene3.set).toHaveBeenCalledWith("color", 65280);
+      expect(scene2.set).not.toHaveBeenCalledWith("color", expect.anything());
+      expect(scene3.set).not.toHaveBeenCalledWith("color", expect.anything());
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("color: 2 colors for 4 scenes"),
+      );
       expect(result).toHaveLength(4);
     });
 

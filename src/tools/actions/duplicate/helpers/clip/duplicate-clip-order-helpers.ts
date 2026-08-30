@@ -7,6 +7,7 @@ import {
   isTakeLaneClip,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
 import { parseArrangementLength } from "../duplicate-helpers.ts";
 
 /**
@@ -136,34 +137,29 @@ export function planCopies(
   positionsInBeats: number[],
 ): CopyPlan {
   // toPath and arrangementStart each set a copy count; the longer list wins and
-  // the shorter one cycles, the way comma-separated colors do.
+  // the shorter one covers it, but only when it holds a single value. Nothing
+  // cycles — see `list-pairing.ts`.
   const copies = Math.max(requested.length, positionsInBeats.length);
-  const cycledTargets = cycle(requested, copies);
-  const cycledPositions = cycle(positionsInBeats, copies);
-  const requestIndices = cycledTargets.flatMap((target, i) =>
-    target == null ? [] : [i],
+  const targets = pairValues(requested, copies, {
+    param: "toPath",
+    noun: "destination",
+    item: "copy",
+    shortfall: "were not made",
+  });
+  const positions = pairValues(positionsInBeats, copies, {
+    param: "arrangementStart",
+    noun: "position",
+    item: "copy",
+    shortfall: "were not made",
+  });
+  const requestIndices = targets.flatMap((target, i) =>
+    target == null || positions[i] == null ? [] : [i],
   );
 
   return {
     copies,
-    targets: requestIndices.map((i) => cycledTargets[i] as ArrangementTrack),
-    positions: requestIndices.map((i) => cycledPositions[i] as number),
+    targets: requestIndices.map((i) => targets[i] as ArrangementTrack),
+    positions: requestIndices.map((i) => positions[i] as number),
     requestIndices,
   };
-}
-
-/**
- * Repeats a list until it reaches the given length. Built by repeating the
- * whole list and trimming, so nothing has to promise the list is non-empty: an
- * empty one gives an empty result, which is what `length` would be anyway.
- * @param values - Values to cycle
- * @param length - Wanted length
- * @returns A list of that length
- */
-function cycle<T>(values: T[], length: number): T[] {
-  const repeats = Math.ceil(length / Math.max(values.length, 1));
-
-  return Array.from({ length: repeats }, () => values)
-    .flat()
-    .slice(0, length);
 }

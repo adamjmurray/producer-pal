@@ -8,7 +8,7 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
@@ -102,7 +102,7 @@ export function createScene(
   let currentIndex = validatedSceneIndex;
 
   const parsedNames = parseNames(name, count, "scene");
-  const parsedColors = parseCommaSeparatedColors(color, count);
+  const parsedColors = parseColors(color, count, "scene");
 
   for (let i = 0; i < count; i++) {
     const sceneName = getNameForIndex(name, i, parsedNames);

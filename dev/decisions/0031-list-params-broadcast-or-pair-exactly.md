@@ -15,8 +15,8 @@ decided per param, and the answers disagreed:
   blue.
 - `toPath` on update-clip paired 1:1 and refused to broadcast.
 - `arrangementStart` was one value for the whole call, with no list form.
-- create-clip pairs `path` against `arrangementStart` by cycling the shorter of
-  the two; duplicate cycles `toPath` and `arrangementStart` against `count`.
+- create-clip paired `path` against `arrangementStart` by cycling the shorter of
+  the two; duplicate did the same with `toPath` and `arrangementStart`.
 
 A caller can't tell which rule a param uses by looking at it, and the rules
 disagree exactly where a wrong guess costs something.
@@ -48,26 +48,41 @@ position holds any number of clips and a name is a property, not a place.
 
 ## Consequences
 
-- `color` still cycles, and every schema description says so.
-
-  **What the evals found.** `color-list-pairing` and
-  `arrangement-destination-pairing` ask for six clips alternating two colors,
-  and for clips alternating across two arrangement tracks. Asked to alternate
-  colors, Gemini 3 Flash and Sonnet 4.5 both wrote the two-color short form and
-  leaned on cycling; Codex/luna spelled all six out. Gemini's own reflection
-  named the cause: the schema says "cycles if fewer than positions", so it wrote
-  fewer. Rewording that one line to "one per position, in order (does not
-  cycle)" flipped both models to spelling every color out, first try.
-
-  So the dependency is our own description, not a model habit — `color` can join
-  the rule as long as the wording changes with it. create-clip's cycling of
-  `path` against `arrangementStart` never got used: both models wrote
-  `path: "t0,t0,t1,t1"` against four positions unprompted.
-
-  duplicate's cycling is untested and has a stronger case for staying, since a
-  cycled destination there makes an extra copy rather than an overwrite.
-
 - Pairing warnings name the param and the item (`name: 3 names for 2 clips`)
   instead of the tool. The tool is already obvious from the response the warning
   is attached to.
 - The create tools now warn when a list is short, not only when it's long.
+- A mismatch on the two params that between them decide how many clips to make —
+  create-clip's `path` against `arrangementStart`, duplicate's `toPath` against
+  it — makes only the clips both lists name, and warns. Refusing the whole call
+  was considered: a create tool building the wrong NUMBER of things is worse
+  than building none. It lost because it would be a third rule, which is the
+  thing this ADR exists to remove; the warning says exactly which positions got
+  nothing.
+
+## What the evals found
+
+`color` cycling was published behavior — every schema description said so — so
+changing it needed evidence, not reasoning. Three probes now live in
+`evals/scenarios/defs/pairing/`, each asking for something "alternating", the
+phrasing most likely to invite a short list.
+
+**Baseline, with the cycling wording still in the schemas:**
+
+| Probe                         | Gemini 3 Flash | Sonnet 4.5  | Codex/luna  |
+| ----------------------------- | -------------- | ----------- | ----------- |
+| `color` over 6 clips          | short form     | short form  | spelled out |
+| create-clip `path` × 4 starts | spelled out    | —           | —           |
+| duplicate `toPath` × 4 starts | spelled out    | spelled out | —           |
+
+Gemini's own reflection named the cause: the schema said "cycles if fewer than
+positions", so it wrote fewer. Rewording that one line to "one per position, in
+order (does not cycle)" flipped both models to spelling every color out, first
+try.
+
+So the dependency was our own description, not a model habit — and the two
+destination sites were never leaned on at all, even though duplicate's schema
+advertised the cycling explicitly. All three fold into the rule.
+
+Re-run the probes with
+`scripts/eval -t color-list-pairing -t arrangement-destination-pairing -t duplicate-destination-pairing`.

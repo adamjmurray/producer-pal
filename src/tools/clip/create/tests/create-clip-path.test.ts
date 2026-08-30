@@ -110,8 +110,10 @@ describe("createClip path param", () => {
     expect(result).toHaveLength(2);
   });
 
-  // Matches duplicate: the longer list sets the count, the shorter cycles.
-  it("cycles the shorter of tracks and positions", async () => {
+  // A short track list used to cycle, so two tracks against four positions
+  // silently made four clips. It pairs now: the positions with no track of
+  // their own get nothing, and the caller is told which.
+  it("does not cycle the shorter of tracks and positions", async () => {
     setupArrangementClipMocks();
     registerArrangementTrack(1);
 
@@ -121,7 +123,10 @@ describe("createClip path param", () => {
       notes: "C3 1|1",
     })) as object[];
 
-    expect(result).toHaveLength(4);
+    expect(result).toHaveLength(2);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("path: 2 tracks for 4 positions"),
+    );
   });
 
   it("rejects a destination no clip can occupy", async () => {

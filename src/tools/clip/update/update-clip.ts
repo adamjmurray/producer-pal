@@ -17,7 +17,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
@@ -184,7 +184,7 @@ export async function updateClip(
   });
 
   const parsedNames = parseNames(name, mutableClips.length, "clip");
-  const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
+  const parsedColors = parseColors(color, mutableClips.length, "clip");
 
   const updatedClips: ClipResult[] = [];
   const movedClipGroups = new Map<string, MoveGroup>();

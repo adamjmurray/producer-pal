@@ -222,8 +222,9 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
     return null;
   });
 
-  // Number the lanes here, off the list the caller wrote: the copy loop cycles
-  // this list, and a cycled repeat must reuse its lane, not append one. Both
+  // Number the lanes here, off the list the caller wrote: one entry may cover
+  // every copy, and a repeat of one "l+" must reuse its lane, not append one
+  // per copy. Both
   // arrangement returns below need it — leaving it off one path collapses two
   // "l+" into one lane.
   const arrangementTargets = withNewLaneOrdinals(targets);

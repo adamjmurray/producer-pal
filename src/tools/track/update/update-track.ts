@@ -24,7 +24,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -296,7 +296,7 @@ export function updateTrack(
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
   // mid-list — otherwise every later name/color shifts onto the wrong track.
   const parsedNames = parseNames(name, trackIds.length, "track");
-  const parsedColors = parseCommaSeparatedColors(color, trackIds.length);
+  const parsedColors = parseColors(color, trackIds.length, "track");
 
   const updatedTracks: UpdateTrackResult[] = [];
 

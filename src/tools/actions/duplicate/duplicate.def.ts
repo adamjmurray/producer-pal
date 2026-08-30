@@ -54,7 +54,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: "name",
     }),
     color: param(z.string().optional(), {
-      default: "#RRGGBB (comma-separated when duplicating multiple, cycles)",
+      default:
+        "#RRGGBB for all, or comma-separated one per copy, in order (does not cycle)",
       smallModel: "#RRGGBB",
     }),
 
@@ -100,7 +101,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
         "omit for the source clip's own track. Devices: 't1/d0'. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "Cycles against arrangementStart when the lists differ in length. " +
+        "One destination covers every arrangementStart, or name one per position, in order; the lists do not cycle. " +
         "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",

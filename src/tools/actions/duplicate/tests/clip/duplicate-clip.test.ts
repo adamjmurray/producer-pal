@@ -304,9 +304,10 @@ describe("duplicate - clip duplication", () => {
       expect(result).toHaveLength(2);
     });
 
-    // 3 positions over 2 tracks doesn't divide, and the shorter list has to
-    // cycle PAST its end (t2, t3, t2) rather than run out at two copies.
-    it("cycles tracks past the end when the two counts don't divide", async () => {
+    // 3 positions over 2 tracks used to cycle (t2, t3, t2), making a copy at a
+    // destination the caller never paired with bar 7. It pairs now: the third
+    // position has no track of its own, so no third copy is made.
+    it("does not cycle tracks past the end of the list", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -330,7 +331,6 @@ describe("duplicate - clip duplication", () => {
       ).toStrictEqual([
         ["t2", "3|1"],
         ["t3", "5|1"],
-        ["t2", "7|1"],
       ]);
     });
 

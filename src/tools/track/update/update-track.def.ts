@@ -34,7 +34,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the tracks)",
+        "#RRGGBB for all, or comma-separated one per track, in order (does not cycle)",
       smallModel: "#RRGGBB",
     }),
     gainDb: z.coerce

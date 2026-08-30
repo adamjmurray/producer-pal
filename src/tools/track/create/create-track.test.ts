@@ -537,7 +537,7 @@ describe("createTrack", () => {
   });
 
   describe("comma-separated colors", () => {
-    it("should cycle through colors with modular arithmetic", () => {
+    it("should leave the tracks past the last color alone, not cycle", () => {
       const tracks = registerTrackMocks(4);
 
       createTrack({
@@ -547,13 +547,14 @@ describe("createTrack", () => {
         color: "#FF0000,#00FF00",
       });
 
-      // Colors cycle: red, green, red, green
       expectTrackColors(tracks, [
         16711680, // #FF0000
         65280, // #00FF00
-        16711680, // #FF0000
-        65280, // #00FF00
       ]);
+
+      for (const track of tracks.slice(2)) {
+        expect(track.set).not.toHaveBeenCalledWith("color", expect.anything());
+      }
     });
 
     it("should use colors in order when count matches", () => {

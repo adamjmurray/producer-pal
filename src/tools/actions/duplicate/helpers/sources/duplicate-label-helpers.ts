@@ -9,7 +9,7 @@
 
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
@@ -72,7 +72,7 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
 
   labels.total = labels.sources * copies;
   labels.names = parseNames(labels.name, labels.total, "copy");
-  labels.colors = parseCommaSeparatedColors(labels.color, labels.total);
+  labels.colors = parseColors(labels.color, labels.total, "copy");
 }
 
 /**

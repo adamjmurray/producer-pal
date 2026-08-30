@@ -10,7 +10,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
@@ -192,7 +192,7 @@ export function createTrack(
   let currentIndex = effectiveTrackIndex;
 
   const parsedNames = parseNames(name, count, "track");
-  const parsedColors = parseCommaSeparatedColors(color, count);
+  const parsedColors = parseColors(color, count, "track");
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);

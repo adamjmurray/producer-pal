@@ -31,7 +31,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the scenes)",
+        "#RRGGBB for all, or comma-separated one per scene, in order (does not cycle)",
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),

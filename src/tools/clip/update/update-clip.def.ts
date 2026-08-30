@@ -49,7 +49,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the clips)",
+        "#RRGGBB for all, or comma-separated one per clip, in order (does not cycle)",
       smallModel: "#RRGGBB",
     }),
     timeSignature: z.string().optional().describe("N/D (4/4)"),

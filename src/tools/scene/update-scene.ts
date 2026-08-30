@@ -14,7 +14,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
-  parseCommaSeparatedColors,
+  parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -75,7 +75,7 @@ export function updateScene(
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
   // mid-list — otherwise every later name/color shifts onto the wrong scene.
   const parsedNames = parseNames(name, sceneIds.length, "scene");
-  const parsedColors = parseCommaSeparatedColors(color, sceneIds.length);
+  const parsedColors = parseColors(color, sceneIds.length, "scene");
 
   // Validate timeSignature format up front so a malformed value fails before
   // any scene is mutated, instead of throwing mid-loop after partial updates.

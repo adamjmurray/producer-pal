@@ -109,7 +109,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated for each (cycles if fewer than the chains; chains only)",
+        "#RRGGBB for all, or comma-separated one per chain, in order (does not cycle; chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {

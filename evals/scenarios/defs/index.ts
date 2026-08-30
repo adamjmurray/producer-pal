@@ -105,6 +105,7 @@ export { pathToPathPairing } from "./pairing/topath-pairing.ts";
 export {
   arrangementDestinationPairing,
   colorListPairing,
+  duplicateDestinationPairing,
 } from "./pairing/list-pairing.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";

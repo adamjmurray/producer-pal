@@ -80,9 +80,9 @@ export function pathEntries(input?: string | null, label = "path"): string[] {
     throw new Error(`invalid ${label} "${input}" - it names nothing`);
   }
 
-  // Entries are positional — a clip's are cycled against its positions, a
-  // device's against its names — so a dropped one shifts every later one
-  // instead of just making one fewer.
+  // Entries are positional — a clip's pair with its positions, a device's with
+  // its names — so a dropped one shifts every later one instead of just making
+  // one fewer.
   if (entries.length < named.split(",").length) {
     console.warn(
       `${label} "${input}" has empty entries, which were dropped; later entries shift up`,
