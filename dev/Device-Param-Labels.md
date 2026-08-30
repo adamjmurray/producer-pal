@@ -64,8 +64,11 @@ gives no unit. The range is part of the key so a Live version that moves a range
 drops the entry rather than reporting a stale unit.
 
 **A param name is not unique within a device.** Corpus exposes two called
-`Width`: a filter bandwidth on 0.5–9 and a stereo width on 0–100 %. Matching a
-write by name takes the first one.
+`Width`: a filter bandwidth on 0.5–9 and a stereo width on 0–100 %. A write by
+that name matches both, so it warns with each param's id and writes neither —
+picking the first lands a value on a control the caller may not have meant and
+reports success. Corpus is the only stock device with a repeated name, but a
+rack with two macros renamed the same is easy to build.
 
 ## Checking a param for real
 

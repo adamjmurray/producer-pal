@@ -34,6 +34,10 @@ import {
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
+import {
+  resolveParamsByName,
+  warnIfAmbiguousName,
+} from "./helpers/param-name-resolution.ts";
 import { displayValueForWrite } from "./helpers/param-unit-check.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -121,7 +125,11 @@ function setOneParam(
   // path-routing when no such param exists — keeping slash-named params
   // settable by name.
   if (key.includes("/")) {
-    const namedParam = resolveParamByName(device, key);
+    const matches = resolveParamsByName(device, key);
+
+    if (warnIfAmbiguousName(matches, key, toolName)) return [];
+
+    const namedParam = matches[0];
 
     if (namedParam?.exists()) {
       return toEntries(
@@ -146,10 +154,12 @@ function setOneParam(
     return [];
   }
 
+  const matches = resolveParamsByName(device, key);
+
+  if (warnIfAmbiguousName(matches, key, toolName)) return [];
+
   // A purely numeric key is an absolute Live API param id.
-  const param =
-    resolveParamByName(device, key) ??
-    (/^\d+$/.test(key) ? LiveAPI.from(key) : null);
+  const param = matches[0] ?? (/^\d+$/.test(key) ? LiveAPI.from(key) : null);
 
   if (!param?.exists()) {
     console.warn(`${toolName}: param "${key}" not found on device`);
@@ -221,38 +231,6 @@ function applyNestedParam(
     toolName,
     force,
   ).map((result) => ({ ...result, name: `${prefix}/${result.name}` }));
-}
-
-/**
- * Resolve a parameter by name on a device (case-insensitive)
- * @param device - LiveAPI device object
- * @param name - Parameter name to find
- * @returns LiveAPI param object or null
- */
-function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
-  const nameLower = name.toLowerCase();
-  const parameters = device.getChildren("parameters");
-
-  for (const param of parameters) {
-    const paramName = param.getProperty("name") as string;
-
-    if (paramName.toLowerCase() === nameLower) {
-      return param;
-    }
-
-    // Also match formatted name "name (original_name)" for rack macros
-    const originalName = param.getProperty("original_name") as string;
-
-    if (originalName !== paramName) {
-      const formatted = `${paramName} (${originalName})`;
-
-      if (formatted.toLowerCase() === nameLower) {
-        return param;
-      }
-    }
-  }
-
-  return null;
 }
 
 /**

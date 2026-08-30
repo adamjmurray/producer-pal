@@ -108,3 +108,95 @@ describe("updateDevice - params by name", () => {
     );
   });
 });
+
+describe("updateDevice - a name that matches more than one param", () => {
+  let bandwidth: RegisteredMockObject;
+  let stereoWidth: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { parameters: children("94", "95") },
+    });
+
+    // Corpus really does expose two params called "Width": a filter bandwidth
+    // and a stereo width.
+    bandwidth = registerMockObject("94", {
+      properties: {
+        name: "Width",
+        original_name: "Width",
+        is_quantized: 0,
+        value: 5,
+        min: 0.5,
+        max: 9,
+      },
+      methods: { str_for_value: (v: unknown) => String(v) },
+    });
+
+    stereoWidth = registerMockObject("95", {
+      properties: {
+        name: "Width",
+        original_name: "Width",
+        is_quantized: 0,
+        value: 50,
+        min: 0,
+        max: 100,
+      },
+      methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+    });
+  });
+
+  it("writes neither of them", () => {
+    updateDevice({ id: "123", params: [{ name: "Width", value: "5" }] });
+
+    expect(bandwidth.set).not.toHaveBeenCalled();
+    expect(stereoWidth.set).not.toHaveBeenCalled();
+  });
+
+  it("names the ids and ranges so the caller can pick one", () => {
+    updateDevice({ id: "123", params: [{ name: "Width", value: "5" }] });
+
+    expect(capturedWarnings()).toContain(
+      'updateDevice: param "Width" names 2 params on this device — ' +
+        "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
+        "nothing was written. Write by id to pick one.",
+    );
+  });
+
+  it("still writes a param addressed by its id", () => {
+    updateDevice({ id: "123", params: [{ name: "95", value: "80" }] });
+
+    expect(stereoWidth.set).toHaveBeenCalledWith("value", 80);
+  });
+
+  it("keeps writing the other params in the same call", () => {
+    registerMockObject("456", {
+      path: livePath.track(0).device(1),
+      type: "Device",
+      properties: { parameters: children("94", "95", "p-dry") },
+    });
+
+    const dryWet = registerMockObject("p-dry", {
+      properties: {
+        name: "Dry/Wet",
+        original_name: "Dry/Wet",
+        is_quantized: 0,
+        value: 50,
+        min: 0,
+        max: 100,
+      },
+      methods: { str_for_value: (v: unknown) => `${String(v)} %` },
+    });
+
+    updateDevice({
+      id: "456",
+      params: [
+        { name: "Width", value: "5" },
+        { name: "Dry/Wet", value: "80" },
+      ],
+    });
+
+    expect(dryWet.set).toHaveBeenCalledWith("value", 80);
+  });
+});
