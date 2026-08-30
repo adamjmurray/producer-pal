@@ -86,6 +86,8 @@ import {
   trackAndDeviceWorkflow,
   updateLiveSet,
 } from "./defs/index.ts";
+import { shouldSkipScenario } from "./helpers/json-results/skip-scenario.ts";
+import { envLabel, type RunEnv } from "./run-env/run-env.ts";
 import { type EvalScenario } from "./types.ts";
 
 /**
@@ -226,17 +228,21 @@ export function listScenarioIds(): string[] {
 /**
  * List all scenarios with their kind and capability requirements for display
  *
- * @returns Array of {id, kind, requires} objects
+ * @param env - Optional run environment; when given, each scenario carries the
+ *   reason that environment would skip it (null when it would run)
+ * @returns Array of {id, kind, requires, skipReason} objects
  */
-export function listScenarioSummaries(): Array<{
+export function listScenarioSummaries(env?: RunEnv): Array<{
   id: string;
   kind: "regression" | "capability";
   requires: string[];
+  skipReason: string | null;
 }> {
   return allScenarios.map((s) => ({
     id: s.id,
     kind: s.kind ?? "regression",
     requires: requirementLabels(s),
+    skipReason: env == null ? null : shouldSkipScenario(s, env),
   }));
 }
 
@@ -263,18 +269,53 @@ function requirementLabels(scenario: EvalScenario): string[] {
 }
 
 /**
- * Print available scenarios.
+ * Print available scenarios. With a run environment, each scenario the
+ * environment can't satisfy is marked SKIP with its reason, and a footer counts
+ * what would actually be graded — the answer to "what does a `--small-model`
+ * run really score?" without paying for the run.
+ *
+ * @param env - The run environment the list is for (omit for the plain list)
  */
-export function printList(): void {
+export function printList(env?: RunEnv): void {
   console.log("Available scenarios:");
 
-  for (const { id, kind, requires } of listScenarioSummaries()) {
+  const summaries = listScenarioSummaries(env);
+
+  for (const { id, kind, requires, skipReason } of summaries) {
     const kindLabel = styleText("gray", `[${kind}]`);
     const requiresLabel =
       requires.length > 0
         ? " " + styleText("yellow", `(requires: ${requires.join(", ")})`)
         : "";
+    const skipLabel =
+      skipReason == null ? "" : " " + styleText("red", `SKIP: ${skipReason}`);
 
-    console.log(`  - ${id} ${kindLabel}${requiresLabel}`);
+    console.log(`  - ${id} ${kindLabel}${requiresLabel}${skipLabel}`);
   }
+
+  if (env == null) return;
+
+  printGradedCounts(summaries, env);
+}
+
+/**
+ * Print how many scenarios a run environment actually grades, by kind.
+ *
+ * @param summaries - The listed scenarios, each with its skip reason
+ * @param env - The run environment being summarized
+ */
+function printGradedCounts(
+  summaries: Array<{ kind: string; skipReason: string | null }>,
+  env: RunEnv,
+): void {
+  const graded = summaries.filter((s) => s.skipReason == null);
+  const byKind = (kind: string) =>
+    `${graded.filter((s) => s.kind === kind).length}/${
+      summaries.filter((s) => s.kind === kind).length
+    }`;
+
+  console.log(
+    `\n${envLabel(env)}: grades ${graded.length} of ${summaries.length} ` +
+      `(regression ${byKind("regression")}, capability ${byKind("capability")})`,
+  );
 }

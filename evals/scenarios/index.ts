@@ -161,7 +161,7 @@ program
     }
 
     if (options.list) {
-      printList();
+      printList(buildRunEnv(options));
 
       return;
     }

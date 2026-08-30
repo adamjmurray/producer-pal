@@ -195,6 +195,18 @@ scripts/eval -a -m local/qwen3-8b --small-model
 scripts/eval -a -m gemini-3-flash-preview --tools connect,read-track,create-clip
 ```
 
+**Know what an environment grades before you pay for the run.** `--list` takes
+the same environment flags, marks every scenario that environment would skip,
+and counts what's left:
+
+```bash
+scripts/eval --list --small-model
+# … small-model: grades 52 of 84 (regression 15/25, capability 37/59)
+```
+
+A small-model score is over a much smaller surface than the default run — read
+it as "of what a small model was given", never as comparable to a default score.
+
 ### Scenarios
 
 List available scenarios:
