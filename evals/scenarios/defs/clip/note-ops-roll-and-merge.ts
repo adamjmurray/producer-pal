@@ -61,20 +61,31 @@ const TOOL_CREATE_CLIP = "ppal-create-clip";
 
 /**
  * Read the resulting noteCount from a ppal-update-clip call's result.
+ *
+ * Scans BACKWARD for the last call that actually reported a count. A model that
+ * gets a transform wrong is told to fix it and call again — and these scenarios
+ * provoke exactly that, since the parser's targeted errors are what teach the
+ * op's spelling. Reading the first call grades the discarded attempt, whose
+ * warn-and-skip result carries no `noteCount` at all.
+ *
  * @param turns - All turn results
  * @param turn - Turn index containing the update-clip call
- * @returns The post-update note count, or null when unavailable
+ * @returns The post-update note count, or null when no call reported one
  */
 function updateNoteCount(turns: EvalTurnResult[], turn: number): number | null {
-  const call = getToolCalls(turns, turn).find(
+  const calls = getToolCalls(turns, turn).filter(
     (c) => c.name === TOOL_UPDATE_CLIP,
   );
 
-  if (call?.result == null) return null;
+  for (const call of calls.toReversed()) {
+    if (call.result == null) continue;
 
-  const parsed = parseToolResult(call.result) as { noteCount?: number };
+    const parsed = parseToolResult(call.result) as { noteCount?: number };
 
-  return parsed.noteCount ?? null;
+    if (parsed.noteCount != null) return parsed.noteCount;
+  }
+
+  return null;
 }
 
 /**
