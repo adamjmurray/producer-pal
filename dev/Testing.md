@@ -38,6 +38,20 @@ step.
 - **Layering**: test files are exempt from the `src/` layering contract, which
   only governs the shipped dependency graph.
 
+## Assertions
+
+Assert the whole result with `toStrictEqual`. Both `toEqual` and `toMatchObject`
+are lint errors: the first treats a missing key as `undefined`, the second
+ignores every field the expectation leaves out, so a result that grows a field
+keeps passing.
+
+Where a partial match is genuinely what you mean — a hook's whole return when
+the test is about two of its keys, a big nested tree with its own tests — say so
+with `expect.objectContaining()`. For a value that can't be a literal (a
+generated uuid, wall-clock time, an encrypted blob) use a matcher for that field
+and keep the rest exact. When the defaults get repetitive, build the expected
+shape in a helper.
+
 ## Live API tests
 
 Use the mock registry (`src/test/mocks/mock-registry.ts`):
