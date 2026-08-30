@@ -16,12 +16,18 @@
  *   Neither audio call takes a length; the sample decides it.
  * - Take lanes are append-only: there is no `delete_take_lane`, `TakeLane` has
  *   no delete of its own, and `Track.delete_clip` silently no-ops on a
- *   take-lane clip. Clean up in Live's UI.
+ *   take-lane clip. Clean up in Live's UI. A move off a lane empties the
+ *   original instead (see take-lane-placeholder.ts).
  * - `Track.duplicate_clip_to_arrangement` silently no-ops when the SOURCE is a
  *   take-lane clip — it creates nothing anywhere. Re-create the clip instead
  *   (see recreate-clip.ts).
  * - Both no-ops return `id 0`, which a successful `delete_clip` returns too, so
  *   the return value can't be tested — check whether the clip is still there.
+ * - An arrangement clip's extent (`end_time`) can't be set from the LOM.
+ *   `end_marker` and `loop_end` accept the write and read back changed, but
+ *   `end_time` doesn't follow, so a short sample can't be stretched to cover a
+ *   longer clip. That's why an audio take is muted rather than overwritten with
+ *   silence (see take-lane-placeholder.ts).
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -35,7 +41,7 @@ export const MAX_TAKE_LANES = 8;
 /** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
  * keeps the match anchored to the segment so future paths that happen to
  * contain the substring "take_lanes" elsewhere don't false-positive. */
-const TAKE_LANE_PATH_RE = / take_lanes \d+\b/;
+const TAKE_LANE_PATH_RE = / take_lanes (\d+)\b/;
 
 /**
  * Whether a clip lives on a take lane rather than the main arrangement lane.
@@ -44,14 +50,26 @@ const TAKE_LANE_PATH_RE = / take_lanes \d+\b/;
  *
  * Use this whenever a tool is about to invoke a `Track`-scoped arrangement API
  * (`duplicate_clip_to_arrangement`, `delete_clip`) — those APIs silently no-op
- * on take-lane clips, so the caller must re-create the clip instead (duplicate)
- * or warn-and-skip (everything that needs the original gone).
+ * on take-lane clips, so the caller must re-create the clip instead (duplicate,
+ * move), empty it in place (the delete half of a move), or warn-and-skip
+ * (everything else that needs the original gone).
  *
  * @param clip - The clip LiveAPI
  * @returns true when the clip's path includes a `take_lanes N` segment
  */
 export function isTakeLaneClip(clip: LiveAPI): boolean {
   return TAKE_LANE_PATH_RE.test(clip.path);
+}
+
+/**
+ * Which take lane a clip sits on.
+ * @param clip - The clip LiveAPI
+ * @returns The 0-based lane index, or null for a main-lane clip
+ */
+export function takeLaneIndexOfClip(clip: LiveAPI): number | null {
+  const match = TAKE_LANE_PATH_RE.exec(clip.path);
+
+  return match ? Number(match[1]) : null;
 }
 
 /**

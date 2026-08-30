@@ -11,6 +11,7 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
+import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   type ArrangementTrack,
@@ -77,18 +78,6 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // A move is copy-then-delete, and Live's API cannot delete a take-lane clip
-  // (delete_clip silently no-ops on one, and TakeLane has no delete at all), so
-  // any move we made would leave the original behind — a copy, not a move.
-  // Warn and preserve the clip unchanged.
-  if (isTakeLaneClip(clip)) {
-    console.warn(
-      `${destination == null ? "arrangementStart" : "toPath"} ignored for take-lane clip (id ${clip.id}): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere`,
-    );
-
-    return clip.id;
-  }
-
   const sourceTrackIndex = clip.trackIndex;
 
   if (sourceTrackIndex == null) {
@@ -108,10 +97,10 @@ export function handleArrangementStartOperation({
   // the "same position" warning names, and what actually overwrites.
   tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
 
-  // Non-survivor: just delete, don't bother moving (it would be overwritten)
+  // Non-survivor: just clear it, don't bother moving (it would be overwritten)
   if (isNonSurvivor) {
     if (clip.exists()) {
-      sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+      removeMovedSource(clip, sourceTrack);
     } else {
       console.warn(`non-survivor clip ${clip.id} already deleted, skipping`);
     }
@@ -137,15 +126,30 @@ export function handleArrangementStartOperation({
     return clip.id;
   }
 
-  // Delete the original to complete the move. For a self-overlapping move the
+  // Clear the original to complete the move. For a self-overlapping move the
   // holding placement already trimmed it (or fully replaced it on a zero-offset
   // move), so guard with exists() — leaving a single clip at the new position.
   if (clip.exists()) {
-    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+    removeMovedSource(clip, sourceTrack);
   }
 
   // Return the new clip ID
   return newClip.id;
+}
+
+/**
+ * Get the source out of the way once its copy has landed. Live can delete a
+ * main-lane clip outright; a take-lane one can only be cleared in place, which
+ * leaves a placeholder the user has to delete by hand.
+ * @param clip - The source clip
+ * @param sourceTrack - The track it sits on
+ */
+function removeMovedSource(clip: LiveAPI, sourceTrack: LiveAPI): void {
+  if (isTakeLaneClip(clip)) {
+    emptyTakeLaneClip(clip);
+  } else {
+    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
+  }
 }
 
 interface HandleArrangementOperationsArgs {

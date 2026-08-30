@@ -22,7 +22,6 @@ import {
   type CreateClipResult,
   DRUM_LOOP_FILE,
   parseToolResultWithWarnings,
-  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -184,9 +183,9 @@ describe("arrangement clip moved into a session slot", () => {
     ).toBe("Takes Over");
   });
 
-  // A "move" off a take lane would leave the original behind — Live's
-  // delete_clip no-ops on one — so it's refused rather than turned into a copy.
-  it("refuses a take-lane source and leaves it where it is", async () => {
+  // Live's delete_clip no-ops on a take-lane clip, so the take is emptied in
+  // place rather than deleted.
+  it("moves a take-lane source into a slot, leaving an emptied clip behind", async () => {
     const source = await createClip({
       path: `t${EMPTY_MIDI_TRACK}/l+`,
       arrangementStart: "21|1",
@@ -195,17 +194,26 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    await expectRefusedUpdate(
-      ctx.client!,
-      source.id,
-      { toPath: `t${EMPTY_MIDI_TRACK}/s5` },
-      `clip ${source.id} was not moved: Live's API can't move a clip off a take lane`,
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
+    });
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${source.id} was emptied instead of deleted`,
     );
 
-    expect((await readClipFully(ctx.client!, { id: source.id })).view).toBe(
-      "arrangement",
-    );
-    expect(await slotIsEmpty(`t${EMPTY_MIDI_TRACK}/s5`)).toBe(true);
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
+
+    expect(placed.view).toBe("session");
+    expect(placed.name).toBe("On A Lane");
+    expect(placed.notes).toContain("C3");
+
+    const leftover = await readClipFully(ctx.client!, { id: source.id });
+
+    expect(leftover.view).toBe("arrangement");
+    expect(leftover.name).toBe("(moved) On A Lane");
+    expect(leftover.notes).toBeUndefined();
+    expect(leftover.muted).toBe(true);
   });
 
   it("refuses a MIDI clip aimed at an audio track", async () => {
@@ -248,19 +256,4 @@ async function createClip(
   // Warnings are tolerated: creating on a take lane always warns that the lane
   // is hidden until the track's arrow is expanded.
   return parseToolResultWithWarnings<CreateClipResult>(result).data;
-}
-
-/**
- * Whether a clip slot is empty. Reading an empty slot warns rather than
- * failing, so this asks past the warning.
- * @param path - Clip slot path (e.g. "t8/s5")
- * @returns True when nothing is in the slot
- */
-async function slotIsEmpty(path: string): Promise<boolean> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { path },
-  });
-
-  return parseToolResultWithWarnings<ReadClipResult>(result).data.id == null;
 }

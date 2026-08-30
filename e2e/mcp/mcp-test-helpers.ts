@@ -582,6 +582,7 @@ export interface ReadClipResult {
   color?: string | null;
   timeSignature?: string | null;
   looping?: boolean;
+  muted?: boolean;
   start?: string;
   end?: string;
   length?: string;

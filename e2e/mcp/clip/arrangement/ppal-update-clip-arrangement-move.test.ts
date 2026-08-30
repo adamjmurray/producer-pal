@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   parseToolResultWithWarnings,
+  SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
@@ -113,23 +114,86 @@ describe("arrangement clip moved to another lane", () => {
     ).toBe(source.id);
   });
 
-  // Live's delete_clip no-ops on a take-lane clip, so a "move" off one would
-  // leave the original behind — refused rather than turned into a copy.
-  it("refuses a take-lane source", async () => {
+  // Live's delete_clip no-ops on a take-lane clip, so the move copies the
+  // content and empties the original where it stands.
+  it("moves a MIDI take off its lane, leaving an emptied clip behind", async () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 
-    await expectRefusedUpdate(
-      ctx.client!,
-      source.id,
-      { toPath: `t${RACKS_TRACK}` },
-      `toPath ignored for take-lane clip (id ${source.id})`,
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${RACKS_TRACK}`,
+      arrangementStart: "33|1",
+    });
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${source.id} was emptied instead of deleted`,
     );
 
-    expect((await readClipFully(ctx.client!, { id: source.id })).name).toBe(
-      "Lane Bound",
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
+
+    expect(placed.path).toBe(`t${RACKS_TRACK}`);
+    expect(placed.name).toBe("Lane Bound");
+    expect(placed.notes).toContain("C3");
+
+    // The take stays on its lane, emptied, muted, and marked for cleanup.
+    const leftover = await readClipFully(ctx.client!, { id: source.id });
+
+    expect(leftover.name).toBe("(moved) Lane Bound");
+    // read-clip omits both when a clip holds no notes.
+    expect(leftover.noteCount).toBeUndefined();
+    expect(leftover.notes).toBeUndefined();
+    expect(leftover.muted).toBe(true);
+  });
+
+  // An audio take can't be emptied — its sample can't be cleared, and a silent
+  // clip can't be stretched over it — so it is muted and marked instead.
+  it("moves an audio take off its lane, leaving the take muted", async () => {
+    const source = await createAudioClip("5|1", "Audio Take");
+
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
+      toPath: `t${AUDIO_TRACK}`,
+      arrangementStart: "9|1",
+    });
+
+    expect(warnings.join(" ")).toContain(
+      `clip ${source.id} was muted instead of deleted`,
     );
+
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
+
+    expect(placed.path).toBe(`t${AUDIO_TRACK}`);
+    expect(placed.sampleFile).toBe(SAMPLE_FILE);
+
+    const leftover = await readClipFully(ctx.client!, { id: source.id });
+
+    expect(leftover.name).toBe("(moved) Audio Take");
+    expect(leftover.muted).toBe(true);
   });
 });
+
+/**
+ * Create an audio clip on a fresh take lane of the audio track.
+ * @param arrangementStart - Position in bar|beat format
+ * @param name - Clip name
+ * @returns The created clip
+ */
+async function createAudioClip(
+  arrangementStart: string,
+  name: string,
+): Promise<CreateClipResult> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      path: `t${AUDIO_TRACK}/l+`,
+      arrangementStart,
+      name,
+      sampleFile: SAMPLE_FILE,
+    },
+  });
+
+  await sleep(100);
+
+  return parseToolResultWithWarnings<CreateClipResult>(result).data;
+}
 
 /**
  * Create a MIDI clip in the source track's arrangement.

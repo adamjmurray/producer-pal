@@ -123,9 +123,9 @@ function moveGroup(clip: LiveAPI, moves: ClipMoves): string | null {
  * The track a clip lands on, or null when it doesn't take part in the grouping.
  *
  * Skipped: session clips (they aren't moved via arrangement APIs), take-lane
- * SOURCES (`duplicate_clip_to_arrangement` is Track-only, so they're
- * warned-and-skipped downstream — including one would let a long take-lane clip
- * wrongly mark a shorter main-lane clip a non-survivor), clips moving to a slot
+ * SOURCES (the group key is track + position, which can't tell a take lane from
+ * the main one, so a take-lane clip staying on its lane would wrongly mark a
+ * main-lane clip below it a non-survivor), clips moving to a slot
  * (off the arrangement timeline entirely), clips moving ONTO a take lane
  * (re-created there one at a time, so the optimization has nothing to save),
  * and clips the destination won't take (wrong type, frozen), for the same

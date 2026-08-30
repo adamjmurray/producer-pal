@@ -351,32 +351,6 @@ describe("update-clip-arrangement-helpers", () => {
       expect(groupCount(movedClipGroups, 0, 16)).toBe(1);
     });
 
-    it("warns and returns original ID for take-lane clips without calling Track APIs", () => {
-      const trackIndex = 4;
-      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
-        path: `live_set tracks ${trackIndex}`,
-        methods: {
-          duplicate_clip_to_arrangement: () => ["id", 0],
-        },
-      });
-
-      const { result, movedClipGroups } = callArrangementStart({
-        clipId: "777",
-        trackIndex,
-        path: `live_set tracks ${trackIndex} take_lanes 0 arrangement_clips 0`,
-      });
-
-      expect(result).toBe("777");
-      expect(capturedWarnings()).toContain(
-        "arrangementStart ignored for take-lane clip (id 777): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere",
-      );
-      // Neither duplicate_clip_to_arrangement nor delete_clip should fire —
-      // both are Track-scoped APIs that silently misroute on take-lane clips.
-      expect(trackMock.call).not.toHaveBeenCalled();
-      // Also: do not increment the move count for a skipped take-lane clip.
-      expect(movedClipGroups.size).toBe(0);
-    });
-
     it("does not re-delete the original when the move was unsafe and the clip is already gone", () => {
       const trackIndex = 0;
       const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {

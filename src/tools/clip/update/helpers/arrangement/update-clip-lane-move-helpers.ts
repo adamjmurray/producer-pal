@@ -10,6 +10,7 @@ import { duplicateToArrangementTarget } from "#src/tools/shared/arrangement/arra
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import {
   type ArrangementTrack,
+  isTakeLaneClip,
   resolveTakeLane,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -33,8 +34,10 @@ interface PlaceMovedClipArgs {
 
 /**
  * Put the moved clip at its destination, leaving the original for the caller to
- * delete. Two ways in: Live's own arrangement duplicate for a main lane, and a
- * re-create for a take lane, which has no duplicate API of its own.
+ * delete or empty. Two ways in: Live's own arrangement duplicate, and a
+ * re-create for everything the duplicate can't reach — a take-lane destination,
+ * which has no duplicate API of its own, and a take-lane source, which
+ * `duplicate_clip_to_arrangement` silently no-ops on.
  * @param args - Operation arguments
  * @param args.clip - The arrangement clip being moved
  * @param args.destination - Destination track and lane, or null for the clip's own lane
@@ -65,13 +68,29 @@ export function placeMovedClip({
     }
   }
 
-  if (destination?.takeLane != null) {
-    return recreateOnTakeLane(
-      clip,
-      destTrackIndex,
-      destination.takeLane,
-      targetBeats,
-    );
+  const sourceIsOnTakeLane = isTakeLaneClip(clip);
+
+  if (destination?.takeLane != null || sourceIsOnTakeLane) {
+    // Audio is rebuilt from its sample, so a clip that has none can't be
+    // re-created. Checked before resolveTakeLane, which creates permanent lanes.
+    if (!canRecreateClip(clip)) {
+      console.warn(
+        `clip ${clip.id} was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
+      );
+
+      return null;
+    }
+
+    if (destination?.takeLane != null) {
+      return recreateOnTakeLane(
+        clip,
+        destTrackIndex,
+        destination.takeLane,
+        targetBeats,
+      );
+    }
+
+    return promoteToMainLane(clip, destTrackIndex, targetBeats);
   }
 
   return duplicateToArrangementTarget(
@@ -103,15 +122,6 @@ function recreateOnTakeLane(
   takeLane: TakeLaneTarget,
   targetBeats: number,
 ): LiveAPI | null {
-  // Audio is rebuilt from its sample, so a clip that has none can't be moved.
-  if (!canRecreateClip(clip)) {
-    console.warn(
-      `clip ${clip.id} was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
-    );
-
-    return null;
-  }
-
   // Lanes are permanent — Live has no delete — but resolveTakeLane checks the
   // cap before creating any, so a refusal strands nothing.
   let laneIndex: number;
@@ -130,9 +140,56 @@ function recreateOnTakeLane(
     return null;
   }
 
+  return recreateForMove(clip, lane, targetBeats, destTrackIndex, laneIndex);
+}
+
+/**
+ * Re-create a take-lane clip on the main lane. Live's duplicate silently
+ * no-ops on a take-lane source, so a promote rebuilds the clip too.
+ * @param clip - The take-lane clip being moved
+ * @param destTrackIndex - The track whose main lane the clip lands on
+ * @param targetBeats - Arrangement position to land at, in Ableton beats
+ * @returns The re-created clip
+ */
+function promoteToMainLane(
+  clip: LiveAPI,
+  destTrackIndex: number,
+  targetBeats: number,
+): LiveAPI {
+  return recreateForMove(
+    clip,
+    LiveAPI.from(livePath.track(destTrackIndex)),
+    targetBeats,
+    destTrackIndex,
+    null,
+  );
+}
+
+/**
+ * Build the copy and report what re-creating it cost.
+ * @param clip - The arrangement clip being moved
+ * @param destination - The TakeLane, or the Track for the main lane
+ * @param targetBeats - Arrangement position to land at, in Ableton beats
+ * @param destTrackIndex - The track the clip lands on, for the message
+ * @param laneIndex - The lane it lands on, or null for the main lane
+ * @returns The re-created clip
+ */
+function recreateForMove(
+  clip: LiveAPI,
+  destination: LiveAPI,
+  targetBeats: number,
+  destTrackIndex: number,
+  laneIndex: number | null,
+): LiveAPI {
   // Read before the clip is touched: the re-create is what changes it.
   const losses = recreatedClipLosses(clip);
-  const newClip = recreateClip(clip, lane, targetBeats, undefined, undefined);
+  const newClip = recreateClip(
+    clip,
+    destination,
+    targetBeats,
+    undefined,
+    undefined,
+  );
 
   console.warn(
     `clip ${clip.id} was re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +

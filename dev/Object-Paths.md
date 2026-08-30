@@ -106,11 +106,17 @@ take-lane clip. So `duplicate` copies main→lane, lane→lane, and lane→main
 (promote) by reading the notes and building a new clip — MIDI only, and envelope
 automation is dropped.
 
-**A lane is one-way**: nothing removes a take lane or a clip on one, so anything
-needing the original gone is impossible, not unimplemented. `update-clip`'s
-`arrangementStart` is the case to remember — a move is copy-then-delete, and the
-delete can't happen, so it warns and leaves the clip alone rather than silently
-copying. Deleting and comping stay in Live's UI.
+**A lane is one-way**: nothing removes a take lane or a clip on one. A move off
+a lane gets as close as Live allows — `update-clip` copies the content to the
+destination (another lane, another track, or a session slot) and then empties
+the original in place, leaving a muted `(moved) ...` placeholder it warns the
+user to delete. MIDI really empties — the notes go. Audio can't: a clip's sample
+can't be swapped, and writing a silent clip over it fails too, because an
+arrangement clip's extent can't be stretched from the LOM (`end_marker` and
+`loop_end` accept the write, `end_time` doesn't follow). So an audio take is
+only muted. Everything else that needs the original gone (`arrangementSplit`,
+`arrangementLength`, `ppal-delete`) still warns and skips. Deleting and comping
+stay in Live's UI.
 
 ## Tolerance
 

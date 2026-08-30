@@ -11,6 +11,7 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { emptyTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-placeholder.ts";
 import {
   clipCopyBlocker,
   copyClipToSlot,
@@ -127,6 +128,8 @@ export function handleClipSlotMove({
  * is re-created there — MIDI from its notes, audio from its sample — and the
  * original deleted. That drops automation envelopes, which nothing can read
  * back out, so the move warns whenever the source has any.
+ *
+ * A take-lane source can't be deleted, so it is cleared in place instead.
  * @param args - Operation arguments
  * @param args.clip - The arrangement clip to move
  * @param args.toSlot - Destination slot position
@@ -173,7 +176,12 @@ export function handleArrangementToSlotMove({
       (losses ? ` (${losses})` : ""),
   );
 
-  track.call("delete_clip", toLiveApiId(clip.id));
+  if (isTakeLaneClip(clip)) {
+    emptyTakeLaneClip(clip);
+  } else {
+    track.call("delete_clip", toLiveApiId(clip.id));
+  }
+
   updatedClips.push(
     buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
   );
@@ -191,16 +199,6 @@ function arrangementToSlotBlocker(
   clip: LiveAPI,
   toSlot: ClipSlotPosition,
 ): string | null {
-  // A move is copy-then-delete, and Live's API can't delete a take-lane clip
-  // (delete_clip silently no-ops on one), so the "move" would leave the
-  // original behind.
-  if (isTakeLaneClip(clip)) {
-    return (
-      "Live's API can't move a clip off a take lane. Drag it in Live's UI, " +
-      "or use ppal-duplicate to copy it elsewhere"
-    );
-  }
-
   if (clip.trackIndex == null) {
     return "could not determine its track";
   }

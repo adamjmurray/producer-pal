@@ -20,6 +20,10 @@ const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
 const SOURCE_ID = "123";
 const DUPLICATED_ID = "456";
+const TAKE_LANE_SOURCE = livePath
+  .track(SOURCE_TRACK)
+  .takeLane(0)
+  .arrangementClip(0);
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
 
@@ -225,18 +229,73 @@ describe("moving an arrangement clip to another lane", () => {
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(result).toBe(SOURCE_ID);
   });
+});
 
-  // The take-lane guard names whichever param asked for the move.
-  it("names toPath when a take-lane clip is sent somewhere else", () => {
-    const result = runMove({
-      sourcePath: livePath.track(SOURCE_TRACK).takeLane(0).arrangementClip(0),
-    });
+// Live can't delete a take-lane clip, so a move off one copies the content and
+// leaves the original emptied and marked, rather than skipping the move.
+describe("moving a clip off a take lane", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
+  it("re-creates the clip on the main lane instead of duplicating it", () => {
+    const result = runMove({ sourcePath: TAKE_LANE_SOURCE });
+
+    // duplicate_clip_to_arrangement silently no-ops on a take-lane source.
+    const destTrack = lookupMockObject(undefined, livePath.track(DEST_TRACK));
+
+    expect(destTrack?.call).toHaveBeenCalledWith("create_midi_clip", 32, 8);
+    expect(destTrack?.call).not.toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(capturedWarnings()).toContain(
+      `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}`,
+    );
+    expect(result).not.toBe(SOURCE_ID);
+  });
+
+  it("empties and marks the MIDI original instead of deleting it", () => {
+    runMove({ sourcePath: TAKE_LANE_SOURCE });
+
+    const source = lookupMockObject(SOURCE_ID);
+
+    // The remove window mirrors readAllClipNotes: [-length, 3 * length].
+    expect(source?.call).toHaveBeenCalledWith(
+      "remove_notes_extended",
+      0,
+      128,
+      -8,
+      24,
+    );
+    expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
+    expect(source?.set).toHaveBeenCalledWith("muted", 1);
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `toPath ignored for take-lane clip (id ${SOURCE_ID})`,
+        `clip ${SOURCE_ID} was emptied instead of deleted`,
       ),
     );
-    expect(result).toBe(SOURCE_ID);
+  });
+
+  // An audio take can't be emptied at all, so it is only muted and marked.
+  it("mutes an audio original rather than emptying it", () => {
+    runMove({
+      sourcePath: TAKE_LANE_SOURCE,
+      isMidi: 0,
+      filePath: "/samples/take.wav",
+      destHasMidiInput: 0,
+    });
+
+    const source = lookupMockObject(SOURCE_ID);
+
+    expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
+    expect(source?.set).toHaveBeenCalledWith("muted", 1);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(`clip ${SOURCE_ID} was muted instead of deleted`),
+    );
   });
 });
