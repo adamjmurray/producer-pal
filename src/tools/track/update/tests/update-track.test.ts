@@ -410,6 +410,29 @@ describe("updateTrack", () => {
     });
   });
 
+  // The helper is unit-tested on its own, but nothing checked updateTrack
+  // actually routes a return track's name through it — the read tool reports
+  // "A-Delay", and writing that back unstripped gives "A-A-Delay".
+  describe("return track names", () => {
+    it("strips the send letter read-track reported", () => {
+      const returnTrack = registerMockObject("ret1", {
+        path: livePath.returnTrack(0),
+      });
+
+      updateTrack({ id: "ret1", name: "A-Delay" });
+
+      expect(returnTrack.set).toHaveBeenCalledWith("name", "Delay");
+    });
+
+    it("leaves a regular track's name alone", () => {
+      const track = registerMockObject("trk1", { path: livePath.track(0) });
+
+      updateTrack({ id: "trk1", name: "A-Delay" });
+
+      expect(track.set).toHaveBeenCalledWith("name", "A-Delay");
+    });
+  });
+
   describe("color quantization verification", () => {
     it("should emit warning when color is quantized by Live", async () => {
       const consoleModule = await import("#src/shared/max/v8-max-console.ts");
