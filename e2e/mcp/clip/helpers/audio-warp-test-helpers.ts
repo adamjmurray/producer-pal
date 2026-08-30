@@ -29,6 +29,7 @@ import {
   SAMPLE_FILE,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { readClipFully } from "./clip-io-test-helpers.ts";
 
 export interface SongTiming {
   tempo: number;
@@ -84,24 +85,6 @@ export function expectedSampleLength(
     song.numerator,
     song.denominator,
   );
-}
-
-/**
- * Read a clip back with every include.
- * @param client - The MCP client
- * @param clipId - The clip to read
- * @returns The clip as read back
- */
-export async function readClipFully(
-  client: Client,
-  clipId: string,
-): Promise<ReadClipResult> {
-  const result = await client.callTool({
-    name: "ppal-read-clip",
-    arguments: { id: clipId, include: ["*"] },
-  });
-
-  return parseToolResult<ReadClipResult>(result);
 }
 
 /**
@@ -180,5 +163,5 @@ export async function createAndRead(
 
   await sleep(100);
 
-  return { created, clip: await readClipFully(client, created.id) };
+  return { created, clip: await readClipFully(client, { id: created.id }) };
 }

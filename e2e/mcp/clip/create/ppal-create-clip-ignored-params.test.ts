@@ -29,7 +29,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
-import { readClipFully } from "../helpers/audio-warp-test-helpers.ts";
+import { readClipFully } from "../helpers/clip-io-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
@@ -54,7 +54,7 @@ async function createPlainDrumLoop(scene: number): Promise<ReadClipResult> {
 
   await sleep(100);
 
-  return readClipFully(ctx.client!, created.id);
+  return readClipFully(ctx.client!, { id: created.id });
 }
 
 describe("ppal-create-clip with params for the other clip type", () => {
@@ -78,7 +78,7 @@ describe("ppal-create-clip with params for the other clip type", () => {
 
     await sleep(100);
 
-    const clip = await readClipFully(ctx.client!, created.data.id);
+    const clip = await readClipFully(ctx.client!, { id: created.data.id });
     const control = await createPlainDrumLoop(2);
 
     // Same region as a clip created with none of those params: the whole

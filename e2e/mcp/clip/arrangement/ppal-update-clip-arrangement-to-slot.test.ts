@@ -28,9 +28,9 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   arrangementClipAt,
-  readClipDeep,
+  readClipFully,
   updateClip,
-} from "./arrangement-move-test-helpers.ts";
+} from "../helpers/clip-io-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -48,7 +48,7 @@ describe("arrangement clip moved into a session slot", () => {
 
     // Live snaps a written color to its nearest palette entry, so the source's
     // own color is what the copy has to match, not the one asked for.
-    const before = await readClipDeep(ctx.client!, { id: source.id });
+    const before = await readClipFully(ctx.client!, { id: source.id });
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
       toPath: `t${EMPTY_MIDI_TRACK}/s1`,
@@ -59,7 +59,7 @@ describe("arrangement clip moved into a session slot", () => {
       `arrangement clip ${source.id} was re-created at t${EMPTY_MIDI_TRACK}/s1`,
     );
 
-    const clip = await readClipDeep(ctx.client!, {
+    const clip = await readClipFully(ctx.client!, {
       path: `t${EMPTY_MIDI_TRACK}/s1`,
     });
 
@@ -95,12 +95,12 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const before = await readClipDeep(ctx.client!, { id: source.id });
+    const before = await readClipFully(ctx.client!, { id: source.id });
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${EMPTY_MIDI_TRACK}/s2`,
     });
-    const after = await readClipDeep(ctx.client!, { id: moved.id });
+    const after = await readClipFully(ctx.client!, { id: moved.id });
 
     expect(after.looping).toBe(false);
     expect(after.start).toBe(before.start);
@@ -122,7 +122,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     expect(
-      (await readClipDeep(ctx.client!, { id: moved.id })).timeSignature,
+      (await readClipFully(ctx.client!, { id: moved.id })).timeSignature,
     ).toBe("3/4");
   });
 
@@ -137,12 +137,12 @@ describe("arrangement clip moved into a session slot", () => {
       pitchShift: 3,
     });
 
-    const before = await readClipDeep(ctx.client!, { id: source.id });
+    const before = await readClipFully(ctx.client!, { id: source.id });
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}/s2`,
     });
-    const after = await readClipDeep(ctx.client!, { id: moved.id });
+    const after = await readClipFully(ctx.client!, { id: moved.id });
 
     expect(after.type).toBe("audio");
     expect(after.sampleFile).toBe(before.sampleFile);
@@ -178,7 +178,7 @@ describe("arrangement clip moved into a session slot", () => {
     );
     expect(moved.id).not.toBe(occupant.id);
     expect(
-      (await readClipDeep(ctx.client!, { path: `t${EMPTY_MIDI_TRACK}/s4` }))
+      (await readClipFully(ctx.client!, { path: `t${EMPTY_MIDI_TRACK}/s4` }))
         .name,
     ).toBe("Takes Over");
   });
@@ -202,7 +202,7 @@ describe("arrangement clip moved into a session slot", () => {
       `clip ${source.id} was not moved: Live's API can't move a clip off a take lane`,
     );
     expect(kept.id).toBe(source.id);
-    expect((await readClipDeep(ctx.client!, { id: source.id })).view).toBe(
+    expect((await readClipFully(ctx.client!, { id: source.id })).view).toBe(
       "arrangement",
     );
     expect(await slotIsEmpty(`t${EMPTY_MIDI_TRACK}/s5`)).toBe(true);

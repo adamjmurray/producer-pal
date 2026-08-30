@@ -27,9 +27,9 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   arrangementClipAt,
-  readClipDeep,
+  readClipFully,
   updateClip,
-} from "./arrangement-move-test-helpers.ts";
+} from "../helpers/clip-io-test-helpers.ts";
 import {
   AUDIO_TRACK,
   CHILD_TRACK,
@@ -88,7 +88,7 @@ describe("arrangement clip moved to another lane", () => {
     );
     expect(moved.path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+$`));
 
-    const placed = await readClipDeep(ctx.client!, { id: moved.id });
+    const placed = await readClipFully(ctx.client!, { id: moved.id });
 
     expect(placed.name).toBe("On A Lane");
     expect(placed.notes).toContain("C3");
@@ -127,7 +127,7 @@ describe("arrangement clip moved to another lane", () => {
       `toPath ignored for take-lane clip (id ${source.id})`,
     );
     expect(kept.id).toBe(source.id);
-    expect((await readClipDeep(ctx.client!, { id: source.id })).name).toBe(
+    expect((await readClipFully(ctx.client!, { id: source.id })).name).toBe(
       "Lane Bound",
     );
   });

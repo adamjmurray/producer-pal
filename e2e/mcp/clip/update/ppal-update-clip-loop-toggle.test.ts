@@ -27,17 +27,13 @@ import {
   type CreateClipResult,
   DRUM_LOOP_FILE,
   parseToolResult,
-  parseToolResultWithWarnings,
-  type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { updateAndRead } from "../helpers/clip-io-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-/** t8 "9-MIDI": an empty MIDI track. */
-/** t5 "Audio 2": an audio track with free slots and an empty arrangement. */
 
 /**
  * Half of the one-bar drum loop, and of the one-bar MIDI clips here. Short
@@ -65,34 +61,6 @@ async function create(
   await sleep(100);
 
   return created.id;
-}
-
-/**
- * Update a clip and read it back.
- * @param client - The MCP client
- * @param clipId - The clip to update
- * @param args - ppal-update-clip arguments, merged over the clip id
- * @returns The clip as read back, and any warnings the update reported
- */
-async function updateAndRead(
-  client: Client,
-  clipId: string,
-  args: Record<string, unknown>,
-): Promise<{ clip: ReadClipResult; warnings: string[] }> {
-  const result = await client.callTool({
-    name: "ppal-update-clip",
-    arguments: { id: clipId, ...args },
-  });
-  const { warnings } = parseToolResultWithWarnings<unknown>(result);
-
-  await sleep(100);
-
-  const read = await client.callTool({
-    name: "ppal-read-clip",
-    arguments: { id: clipId, include: ["*"] },
-  });
-
-  return { clip: parseToolResult<ReadClipResult>(read), warnings };
 }
 
 /**

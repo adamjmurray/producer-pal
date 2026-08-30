@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/** Shared by the two e2e suites that move an arrangement clip somewhere else. */
+/** Reading and updating a clip, for any e2e suite that has to do both. */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
@@ -12,6 +12,24 @@ import {
   type ReadClipResult,
   sleep,
 } from "../../mcp-test-helpers.ts";
+
+/**
+ * Read a clip by id or path, with every include.
+ * @param client - The connected MCP client
+ * @param target - Either `{ id }` or `{ path }`
+ * @returns The clip
+ */
+export async function readClipFully(
+  client: Client,
+  target: { id: string | null } | { path: string },
+): Promise<ReadClipResult> {
+  const result = await client.callTool({
+    name: "ppal-read-clip",
+    arguments: { ...target, include: ["*"] },
+  });
+
+  return parseToolResult<ReadClipResult>(result);
+}
 
 /**
  * Update a clip, keeping any warnings so a refusal can be asserted.
@@ -36,21 +54,20 @@ export async function updateClip(
 }
 
 /**
- * Read a clip by id or path, with everything the round trips compare.
+ * Update a clip and read it back with every include.
  * @param client - The connected MCP client
- * @param target - Either `{ id }` or `{ path }`
- * @returns The clip
+ * @param id - Clip id
+ * @param args - The rest of the ppal-update-clip arguments
+ * @returns The clip as read back, and any warnings the update reported
  */
-export async function readClipDeep(
+export async function updateAndRead(
   client: Client,
-  target: { id: string | null } | { path: string },
-): Promise<ReadClipResult> {
-  const result = await client.callTool({
-    name: "ppal-read-clip",
-    arguments: { ...target, include: ["*"] },
-  });
+  id: string,
+  args: Record<string, unknown>,
+): Promise<{ clip: ReadClipResult; warnings: string[] }> {
+  const { warnings } = await updateClip(client, id, args);
 
-  return parseToolResult<ReadClipResult>(result);
+  return { clip: await readClipFully(client, { id }), warnings };
 }
 
 /**
