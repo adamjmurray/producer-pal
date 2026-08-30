@@ -10,7 +10,7 @@
  * for renders as the display value the user asked for, and only Live's own
  * str_for_value knows that. Mocks can model a curve, not the one Live uses.
  *
- * Run with: npm run e2e:mcp -- device/ppal-update-device-display-values
+ * Run with: npm run e2e:mcp -- device/update/ppal-update-device-display-values
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -18,7 +18,7 @@ import {
   parseToolResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
 

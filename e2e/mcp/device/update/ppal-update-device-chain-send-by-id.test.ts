@@ -15,7 +15,7 @@
  * Run with: npm run e2e:mcp -- ppal-update-device-chain-send-by-id
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
 import {
   callWithWarnings,
   KIT,
@@ -23,7 +23,7 @@ import {
   RACKS_TEST_PATH,
   readKitPads,
   readReturnChains,
-} from "./helpers/racks-test-helpers.ts";
+} from "../helpers/racks-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true, liveSetPath: RACKS_TEST_PATH });
 
