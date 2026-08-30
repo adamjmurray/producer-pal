@@ -18,6 +18,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import { CHILD_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -36,11 +37,19 @@ describe("ppal-duplicate with a source list", () => {
   async function createSources(): Promise<[string, string]> {
     const first = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { path: "t8/s5", notes: "C3 1|1", length: "1bar" },
+      arguments: {
+        path: `t${EMPTY_MIDI_TRACK}/s5`,
+        notes: "C3 1|1",
+        length: "1bar",
+      },
     });
     const second = await ctx.client!.callTool({
       name: "ppal-create-clip",
-      arguments: { path: "t10/s5", notes: "D3 1|1", length: "1bar" },
+      arguments: {
+        path: `t${CHILD_TRACK}/s5`,
+        notes: "D3 1|1",
+        length: "1bar",
+      },
     });
 
     await sleep(100);
@@ -51,59 +60,73 @@ describe("ppal-duplicate with a source list", () => {
     ];
   }
 
+  /**
+   * Duplicate clips.
+   * @param args - ppal-duplicate arguments beyond the clip type
+   * @returns The raw tool result, so a caller can read its warnings
+   */
+  function duplicateClips(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: { type: "clip", ...args },
+    });
+  }
+
+  /**
+   * Read a clip back by id.
+   * @param id - The clip to read
+   * @returns The clip
+   */
+  async function readClip(id: string): Promise<ReadClipResult> {
+    return parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id },
+      }),
+    );
+  }
+
   it("gives each source its own clip slot", async () => {
     const [firstId, secondId] = await createSources();
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "clip",
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
         id: `${firstId},${secondId}`,
-        toPath: "t8/s6,t10/s6",
+        toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6`,
         name: "One,Two",
-      },
-    });
-    const copies = parseToolResult<DuplicateClipResult[]>(result);
+      }),
+    );
 
     expect(copies).toHaveLength(2);
-    expect(copies[0]!.path).toBe("t8/s6");
-    expect(copies[1]!.path).toBe("t10/s6");
+    expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
+    expect(copies[1]!.path).toBe(`t${CHILD_TRACK}/s6`);
 
     await sleep(100);
 
     // The notes say which source landed where, and the names are counted
     // across the whole call rather than restarting per source.
-    const first = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { id: copies[0]!.id },
-    });
-    const second = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { id: copies[1]!.id },
-    });
+    const first = await readClip(copies[0]!.id);
+    const second = await readClip(copies[1]!.id);
 
-    expect(parseToolResult<ReadClipResult>(first).name).toBe("One");
-    expect(parseToolResult<ReadClipResult>(first).notes).toContain("C3");
-    expect(parseToolResult<ReadClipResult>(second).name).toBe("Two");
-    expect(parseToolResult<ReadClipResult>(second).notes).toContain("D3");
+    expect(first.name).toBe("One");
+    expect(first.notes).toContain("C3");
+    expect(second.name).toBe("Two");
+    expect(second.notes).toContain("D3");
   });
 
   it("drops every source at one arrangementStart, on its own track", async () => {
     const [firstId, secondId] = await createSources();
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "clip",
+    const copies = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
         id: `${firstId},${secondId}`,
         arrangementStart: "97|1",
-      },
-    });
-    const copies = parseToolResult<DuplicateClipResult[]>(result);
+      }),
+    );
 
     expect(copies).toHaveLength(2);
-    expect(copies[0]!.path).toBe("t8");
-    expect(copies[1]!.path).toBe("t10");
+    expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    expect(copies[1]!.path).toBe(`t${CHILD_TRACK}`);
     expect(copies[0]!.arrangementStart).toBe("97|1");
     expect(copies[1]!.arrangementStart).toBe("97|1");
   });
@@ -113,30 +136,21 @@ describe("ppal-duplicate with a source list", () => {
   it("warns and skips the sources a short toPath doesn't reach", async () => {
     const [firstId, secondId] = await createSources();
 
-    const result = await ctx.client!.callTool({
-      name: "ppal-duplicate",
-      arguments: {
-        type: "clip",
+    const { data, warnings } = parseToolResultWithWarnings<DuplicateClipResult>(
+      await duplicateClips({
         id: `${firstId},${secondId}`,
-        toPath: "t8/s6",
-      },
-    });
-    const { data, warnings } =
-      parseToolResultWithWarnings<DuplicateClipResult>(result);
+        toPath: `t${EMPTY_MIDI_TRACK}/s6`,
+      }),
+    );
 
-    expect(data.path).toBe("t8/s6");
+    expect(data.path).toBe(`t${EMPTY_MIDI_TRACK}/s6`);
     expect(warnings.join("\n")).toContain(
       "toPath names 1 destination(s) for 2 sources",
     );
 
     await sleep(100);
 
-    const copy = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { id: data.id },
-    });
-
     // The first source landed; the second was skipped rather than pasted over it.
-    expect(parseToolResult<ReadClipResult>(copy).notes).toContain("C3");
+    expect((await readClip(data.id)).notes).toContain("C3");
   });
 });

@@ -17,6 +17,7 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers";
+import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -50,6 +51,35 @@ async function readClip(id: string): Promise<ReadClipResult> {
   );
 }
 
+/**
+ * s1 also holds a clip on t3, so the neighbor says whether the transport fired
+ * just the new clip or the whole scene.
+ * @returns t3's session clips
+ */
+async function readNeighborClips(): Promise<ReadClipResult[]> {
+  const track = parseToolResult<{ sessionClips?: ReadClipResult[] }>(
+    await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackIndex: 3, include: ["session-clips"] },
+    }),
+  );
+
+  return track.sessionClips!;
+}
+
+/**
+ * Create a clip with an `auto` action and read it back once Live has acted.
+ * @param auto - The ppal-create-clip auto action
+ * @returns The created clip, as read back
+ */
+async function createAndFire(auto: string): Promise<ReadClipResult> {
+  const created = await createClip(`t${EMPTY_MIDI_TRACK}/s1`, auto);
+
+  await sleep(300);
+
+  return readClip(created.id);
+}
+
 describe("ppal-create-clip auto", () => {
   afterEach(async () => {
     await ctx.client!.callTool({
@@ -59,50 +89,30 @@ describe("ppal-create-clip auto", () => {
   });
 
   it("fires just the new clip with play-clip", async () => {
-    const created = await createClip("t8/s1", "play-clip");
-
-    await sleep(300);
-
-    const clip = await readClip(created.id);
+    const clip = await createAndFire("play-clip");
 
     expect(clip.playing || clip.triggered).toBe(true);
 
-    // s1 also holds t3's clip, which a scene launch would have caught
-    const neighbor = parseToolResult<{ sessionClips?: ReadClipResult[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { trackIndex: 3, include: ["session-clips"] },
-      }),
-    );
-    const t3Clip = neighbor.sessionClips!.find((c) => c.id !== created.id);
+    // A scene launch would have caught the neighbor too
+    const t3Clip = (await readNeighborClips()).find((c) => c.id !== clip.id);
 
     expect(t3Clip?.playing).toBeUndefined();
     expect(t3Clip?.triggered).toBeUndefined();
   });
 
   it("fires the whole scene with play-scene", async () => {
-    const created = await createClip("t8/s1", "play-scene");
-
-    await sleep(300);
-
-    const clip = await readClip(created.id);
+    const clip = await createAndFire("play-scene");
 
     expect(clip.playing || clip.triggered).toBe(true);
 
     // The point of play-scene is that the neighbors start too
-    const neighbor = parseToolResult<{ sessionClips?: ReadClipResult[] }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { trackIndex: 3, include: ["session-clips"] },
-      }),
-    );
-    const t3Clip = neighbor.sessionClips![0]!;
+    const t3Clip = (await readNeighborClips())[0]!;
 
     expect(t3Clip.playing || t3Clip.triggered).toBe(true);
   });
 
   it("leaves the transport alone without auto", async () => {
-    const created = await createClip("t8/s1");
+    const created = await createClip(`t${EMPTY_MIDI_TRACK}/s1`);
 
     await sleep(300);
 
