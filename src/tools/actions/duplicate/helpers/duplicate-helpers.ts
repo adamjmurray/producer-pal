@@ -337,7 +337,13 @@ export async function duplicateClipToArrangement(
   sourceClip: LiveAPI | null = null,
   tracks: Map<number, LiveAPI> = new Map(),
 ): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
-  // Support "id {id}" (such as returned by childIds()) and id values directly
+  // Support "id {id}" (such as returned by childIds()) and id values directly.
+  // A source hoisted across the copies of one call stays good: Live's
+  // arrangement duplicate never destroys its own source — measured on 12.4.3,
+  // an exact self-cover no-ops and hands back the source's own id — and
+  // clearClipAtDuplicateTarget refuses to clear it. That matters because
+  // exists() could not tell us otherwise: a dead handle keeps its id
+  // (dev/LiveAPI-Object-Reuse.md).
   const clip = sourceClip ?? LiveAPI.from(clipId);
 
   if (!clip.exists()) {

@@ -23,6 +23,9 @@ export function copyClipToSlot(
 ): LiveAPI | null {
   const idBefore = clipIdInSlot(destClipSlot);
 
+  // A slot copied onto itself is a no-op in Live (measured on 12.4.3: returns
+  // id 0, clip untouched), so it reads back as the same id and reports no copy
+  // — and a caller's hoisted source clip survives the call.
   sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
 
   const newClip = destClipSlot.child("clip");
