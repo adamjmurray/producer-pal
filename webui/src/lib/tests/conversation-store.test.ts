@@ -57,7 +57,6 @@ describe("createConversationStore", () => {
     const fork = store.beginSave(true)!;
 
     expect(fork.id).not.toBe(first.id);
-    expect(fork.sourceId).toBe(first.id);
     expect(fork.reuseId).toBe(first.id);
     expect(store.activeId()).toBe(fork.id);
   });
@@ -66,7 +65,6 @@ describe("createConversationStore", () => {
     const store = createConversationStore();
     const fork = store.beginSave(true)!;
 
-    expect(fork.sourceId).toBeNull();
     expect(fork.reuseId).toBeNull();
   });
 

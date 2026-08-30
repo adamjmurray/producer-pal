@@ -67,8 +67,6 @@ export interface SaveSnapshot {
    * write first — but has no row to check yet.
    */
   reuseId: string | null;
-  /** For a branching save, the conversation it branches off; else null. */
-  sourceId: string | null;
 }
 
 /**
@@ -203,7 +201,6 @@ export function createConversationStore(
         id: slot.id,
         expectPersisted: slot.state === "persisted",
         reuseId: sourceId ?? (slot.state === "fresh" ? null : slot.id),
-        sourceId,
       };
 
       // Publish the id now rather than when the write lands: the sidebar

@@ -6,7 +6,10 @@
 import { type IDBPDatabase } from "idb";
 import { type Notation } from "#src/shared/notation";
 import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
-import { collapseBranchFamilies } from "#webui/lib/conversation-branch-helpers";
+import {
+  branchFamilyIds,
+  collapseBranchFamilies,
+} from "#webui/lib/conversation-branch-helpers";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -78,9 +81,10 @@ export interface EnforceLimitResult {
 
 /** Options for {@link saveConversation}. */
 export interface SaveConversationOptions {
-  /** Ids the limit must NOT trim (e.g. the whole batch during an import, so
-   * saving one imported record can't delete another just-imported record that
-   * happens to carry an older timestamp). */
+  /** Extra ids the limit must NOT trim (e.g. the whole batch during an import,
+   * so saving one imported record can't delete another just-imported record
+   * that happens to carry an older timestamp). The saved record's own branch
+   * family is always protected — this is for ids beyond it. */
   protectedIds?: ReadonlySet<string>;
   /**
    * True when this record has been written before, which makes a missing row
@@ -141,7 +145,7 @@ export async function saveConversation(
     return { deletedCount: 0, limitReached: false, saved: false };
   }
 
-  const trim = selectLimitTrim(all, record.id, exists, protectedIds);
+  const trim = selectLimitTrim(all, record, exists, protectedIds);
 
   for (const id of trim.ids) void tx.store.delete(id);
 
@@ -451,14 +455,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Pick the conversations the limit must evict to make room for a save: the
  * oldest unbookmarked, unprotected ones.
  * @param all - Every record currently in the store
- * @param excludeId - Id of the conversation being saved (never evicted)
+ * @param record - The conversation being saved (never evicted, nor its family)
  * @param exists - Whether that conversation is already among `all`
  * @param protectedIds - Additional ids excluded from eviction (e.g. an import batch)
- * @returns Ids to delete, and whether bookmarks consumed the slots we needed
+ * @returns Ids to delete, and whether protection consumed the slots we needed
  */
 function selectLimitTrim(
   all: ConversationRecord[],
-  excludeId: string,
+  record: ConversationRecord,
   exists: boolean,
   protectedIds?: ReadonlySet<string>,
 ): { ids: string[]; limitReached: boolean } {
@@ -470,13 +474,37 @@ function selectLimitTrim(
   }
 
   const excess = totalAfterSave - MAX_CONVERSATIONS;
+  // Never evict a member of the branch family this record belongs to: losing
+  // the trunk or a sibling orphans the family's ‹ n/m › navigation. Derived
+  // from the record itself so every write path is covered, rather than each
+  // caller having to remember to pass the family in.
+  const family = branchFamilyIds([record.id], withSavedRecord(all, record));
   const ids = all
     .filter(
-      (r) => !r.bookmarked && r.id !== excludeId && !protectedIds?.has(r.id),
+      (r) =>
+        !r.bookmarked &&
+        r.id !== record.id &&
+        !family.has(r.id) &&
+        !protectedIds?.has(r.id),
     )
     .toSorted((a, b) => a.updatedAt - b.updatedAt)
     .slice(0, excess)
     .map((r) => r.id);
 
   return { ids, limitReached: ids.length < excess };
+}
+
+/**
+ * The stored records with the incoming version of the one being saved swapped
+ * in (appended when it is a first save), so the family walk follows the fork
+ * links this write carries rather than a stale or missing row.
+ * @param all - Every record currently in the store
+ * @param record - The conversation being saved
+ * @returns Records to walk for branch relationships
+ */
+function withSavedRecord(
+  all: ConversationRecord[],
+  record: ConversationRecord,
+): ConversationRecord[] {
+  return [...all.filter((r) => r.id !== record.id), record];
 }

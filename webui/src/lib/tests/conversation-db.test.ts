@@ -7,7 +7,6 @@
 
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   MAX_CONVERSATIONS,
@@ -673,9 +672,10 @@ describe("conversation limit enforcement", () => {
   });
 
   it("shields a whole branch family so saving a new sibling can't evict an old one", async () => {
-    // A fork save protects its family via branchFamilyIds. Make the family's
-    // siblings the OLDEST records so they'd be trimmed first, then save a new
-    // sibling at the cap: the family survives and an unrelated record is trimmed.
+    // Family protection is derived from the record's own fork links inside
+    // saveConversation, so no caller has to pass it. Make the family's siblings
+    // the OLDEST records so they'd be trimmed first, then save a new sibling at
+    // the cap: the family survives and an unrelated record is trimmed.
     const trunk = createRecord({ updatedAt: 100 });
     const oldSibling = createRecord({
       updatedAt: 101,
@@ -687,18 +687,12 @@ describe("conversation limit enforcement", () => {
     await saveConversation(oldSibling);
 
     const filler = await fillToLimit(2);
-
-    // New sibling forked off the same trunk — protect the family it joins.
     const newSibling = createRecord({
       updatedAt: 99999,
       forkParentId: trunk.id,
       forkedAtIndex: 1,
     });
-    const protectedIds = branchFamilyIds(
-      [trunk.id],
-      [trunk, oldSibling, newSibling, ...filler],
-    );
-    const result = await saveConversation(newSibling, { protectedIds });
+    const result = await saveConversation(newSibling);
 
     expect(result.deletedCount).toBe(1);
     // The family's old members survived despite being the oldest records...
@@ -706,6 +700,35 @@ describe("conversation limit enforcement", () => {
     expect(await loadConversation(oldSibling.id)).toBeDefined();
     // ...and an unrelated filler record was trimmed instead.
     expect(await loadConversation(filler[0]!.id)).toBeUndefined();
+  });
+
+  it("shields a trunk's forks when the trunk itself is re-saved over the cap", async () => {
+    // Protection runs off the record being saved, so it covers the direction a
+    // caller couldn't: a trunk carries no forkParentId, yet its forks must
+    // survive its own saves. Seed the store over the cap directly (a re-save
+    // only trims when the store is already too big) with the forks oldest.
+    const trunk = createRecord({ updatedAt: 500 });
+    const fork = createRecord({
+      updatedAt: 100,
+      forkParentId: trunk.id,
+      forkedAtIndex: 1,
+    });
+    const filler = Array.from({ length: MAX_CONVERSATIONS }, (_, i) =>
+      createRecord({ updatedAt: 1000 + i }),
+    );
+    const db = await getConversationDb();
+
+    for (const record of [trunk, fork, ...filler]) {
+      await db.put("conversations", record);
+    }
+
+    const result = await saveConversation({ ...trunk, updatedAt: 99999 });
+
+    // Two over the cap, so two are trimmed — neither of them the fork.
+    expect(result.deletedCount).toBe(2);
+    expect(await loadConversation(fork.id)).toBeDefined();
+    expect(await loadConversation(filler[0]!.id)).toBeUndefined();
+    expect(await loadConversation(filler[1]!.id)).toBeUndefined();
   });
 
   it("skips bookmarked conversations during deletion", async () => {

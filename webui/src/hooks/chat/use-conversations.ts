@@ -37,11 +37,9 @@ import {
   type ConversationLockedSettings,
   type PendingForkRef,
 } from "#webui/hooks/chat/use-chat-types";
-import { branchFamilyIds } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
   type ConversationSummary,
-  listAllConversationSummaries,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -247,16 +245,7 @@ export function useConversations({
             updatedAt,
           });
 
-          // When saving a fork, protect the whole branch family it joins so the
-          // conversation-cap LRU can't evict the trunk this branch points back to
-          // — or any sibling, which would orphan the family's ‹ n/m › navigation.
-          const protectedIds =
-            fork != null
-              ? await forkProtectedIds(record, snapshot.sourceId)
-              : undefined;
-
           const result = await saveConversation(record, {
-            protectedIds,
             expectPersisted: snapshot.expectPersisted,
           });
 
@@ -430,26 +419,4 @@ export function useConversations({
     toggleBookmark,
     refreshList,
   };
-}
-
-// --- Helpers below main export ---
-
-/**
- * Ids a fork save must shield from the conversation-cap LRU: the entire branch
- * family the new fork joins (its trunk, the sibling it was forked from, and
- * every other sibling), so trimming to make room can't evict a member and orphan
- * the family's ‹ n/m › navigation.
- * @param record - The fork record being saved
- * @param sourceId - The conversation the fork branched off, if any
- * @returns Ids to protect from limit-based deletion
- */
-async function forkProtectedIds(
-  record: ConversationRecord,
-  sourceId: string | null,
-): Promise<ReadonlySet<string>> {
-  const seeds = [record.forkParentId, sourceId].filter(
-    (id): id is string => id != null,
-  );
-
-  return branchFamilyIds(seeds, await listAllConversationSummaries());
 }
