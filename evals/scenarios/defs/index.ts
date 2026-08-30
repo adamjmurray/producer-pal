@@ -101,7 +101,11 @@ export { pathSessionSlot } from "./path/path-session-slot.ts";
 export { pathTakeLaneFirst } from "./path/path-take-lane.ts";
 export { pathToPathClipDestinations } from "./path/path-topath-clips.ts";
 export { pathToPathDeviceAndPad } from "./path/path-topath-devices.ts";
-export { pathToPathPairing } from "./path/path-topath-pairing.ts";
+export { pathToPathPairing } from "./pairing/topath-pairing.ts";
+export {
+  arrangementDestinationPairing,
+  colorListPairing,
+} from "./pairing/list-pairing.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";

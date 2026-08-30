@@ -24,7 +24,7 @@ import {
 import {
   assertDestinationCounts,
   assertSlotOccupancy,
-} from "./path-scenario-helpers.ts";
+} from "../path/path-scenario-helpers.ts";
 
 /** Two clips move from Drums to Chords, staying in their scenes. */
 const SOURCE_SLOTS = ["t0/s0", "t0/s1"];

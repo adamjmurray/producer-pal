@@ -298,7 +298,7 @@ export function assertSlotOccupancy(
  * @param value - The raw arg
  * @returns Trimmed, non-empty entries
  */
-function listEntries(value: unknown): string[] {
+export function listEntries(value: unknown): string[] {
   return argText(value)
     .split(",")
     .map((entry) => entry.trim())

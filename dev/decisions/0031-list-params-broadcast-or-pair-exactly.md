@@ -48,11 +48,25 @@ position holds any number of clips and a name is a property, not a place.
 
 ## Consequences
 
-- `color` still cycles, and every schema description says so. It's published
-  behavior models write calls against, so folding it in needs evidence from an
-  eval run that they don't depend on it — not this reasoning alone. The same
-  goes for the cycling in create-clip and duplicate, where a cycled destination
-  makes an extra copy rather than an overwrite.
+- `color` still cycles, and every schema description says so.
+
+  **What the evals found.** `color-list-pairing` and
+  `arrangement-destination-pairing` ask for six clips alternating two colors,
+  and for clips alternating across two arrangement tracks. Asked to alternate
+  colors, Gemini 3 Flash and Sonnet 4.5 both wrote the two-color short form and
+  leaned on cycling; Codex/luna spelled all six out. Gemini's own reflection
+  named the cause: the schema says "cycles if fewer than positions", so it wrote
+  fewer. Rewording that one line to "one per position, in order (does not
+  cycle)" flipped both models to spelling every color out, first try.
+
+  So the dependency is our own description, not a model habit — `color` can join
+  the rule as long as the wording changes with it. create-clip's cycling of
+  `path` against `arrangementStart` never got used: both models wrote
+  `path: "t0,t0,t1,t1"` against four positions unprompted.
+
+  duplicate's cycling is untested and has a stronger case for staying, since a
+  cycled destination there makes an extra copy rather than an overwrite.
+
 - Pairing warnings name the param and the item (`name: 3 names for 2 clips`)
   instead of the tool. The tool is already obvious from the response the warning
   is attached to.
