@@ -51,7 +51,7 @@ describe("numericLabel", () => {
   });
 
   it.each(["---", "-", ".."])(
-    "rejects %j, which the no-unit fallback parses to NaN",
+    "rejects %j, which has no number in it",
     (label) => {
       expect(numericLabel(label)).toBeNull();
     },

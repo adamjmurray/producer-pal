@@ -257,6 +257,18 @@ describe("updateDevice - param value conversion", () => {
         expect.stringContaining('could not interpret "custom-value"'),
       );
     });
+
+    it("should warn and not write a unit with no number in front of it", () => {
+      // "-dB" once parsed to NaN, which fails every range check silently and
+      // writes NaN (or walks a searched param to an end) reporting success.
+      updateDevice({ id: "dev1", params: [{ name: "Mode", value: "-dB" }] });
+
+      expect(param.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('could not interpret "-dB"'),
+      );
+    });
   });
 
   describe("binary search with mid-iteration unparseable label", () => {

@@ -82,6 +82,18 @@ describe("parseLabel optional sign and multi-digit tokens", () => {
   });
 });
 
+describe("parseLabel rejects labels with no number in them", () => {
+  it.each(["-dB", ".Hz", "-%", ".kHz", "-degrees", "---", "-", ".."])(
+    "returns nothing for '%s' rather than a NaN value",
+    (label) => {
+      // The numeric groups accept a bare "-" or ".", which parseFloat turns
+      // into NaN. Every comparison against NaN is false, so a NaN escaping here
+      // would walk a param to full scale and report success.
+      expect(parseLabel(label)).toStrictEqual({ value: null, unit: null });
+    },
+  );
+});
+
 describe("isPanLabel anchoring", () => {
   it.each(["x50L", "50Lx", "xC", "Cx"])(
     "returns false for the unanchored label '%s'",

@@ -25,6 +25,16 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("NaN")).toBe("NaN");
   });
 
+  it.each(["-dB", ".Hz", "-%", ".kHz", "-ms"])(
+    "keeps '%s' a string instead of coercing it to NaN",
+    (value) => {
+      // A unit with no number in front of it is not a number. It has to stay a
+      // string so the setter warns it could not interpret the value; as a NaN
+      // it silently slams the param to one end of its range.
+      expect(normalizeParamValue(value)).toBe(value);
+    },
+  );
+
   it("keeps an empty string as a string (does not coerce to 0)", () => {
     expect(normalizeParamValue("")).toBe("");
   });

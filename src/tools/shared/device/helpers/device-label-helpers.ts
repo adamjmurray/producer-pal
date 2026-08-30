@@ -95,21 +95,32 @@ export function parseLabel(label: string): ParsedLabel {
       return { value: num, unit: "pan", direction: dir };
     }
 
-    return {
-      value: Number.parseFloat(match[1] as string) * (pattern.multiplier ?? 1),
-      unit: pattern.unit,
-    };
+    return numberOrNothing(
+      Number.parseFloat(match[1] as string) * (pattern.multiplier ?? 1),
+      pattern.unit,
+    );
   }
 
   // No unit detected - try to extract just a number
   const numMatch = trimmed.match(/^([\d.-]+)/);
 
   if (numMatch) {
-    return {
-      value: Number.parseFloat(numMatch[1] as string),
-      unit: null,
-    };
+    return numberOrNothing(Number.parseFloat(numMatch[1] as string), null);
   }
 
   return { value: null, unit: null };
+}
+
+/**
+ * Never let a NaN out of parseLabel. Several patterns accept a bare "-" or "."
+ * where a number belongs ("-dB", ".Hz"), and the no-unit fallback matches any
+ * run of digits, dots and hyphens ("---"). Every comparison against NaN is
+ * false, so a NaN reaching the display search walks a param to full scale and
+ * reports success. An unparseable label is no label at all.
+ * @param value - The parsed number, possibly NaN
+ * @param unit - The unit the pattern matched, if any
+ * @returns The parsed label, or an empty one if the number isn't finite
+ */
+function numberOrNothing(value: number, unit: string | null): ParsedLabel {
+  return Number.isFinite(value) ? { value, unit } : { value: null, unit: null };
 }
