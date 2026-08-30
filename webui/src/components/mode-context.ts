@@ -5,6 +5,7 @@
 
 import { type ConversationLock } from "#webui/components/settings/LockedSettingsNotice";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -36,6 +37,9 @@ export interface ModeAppProps {
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
+  /** App-owned undo-delete stack, shared by both modes so a pending undo
+   *  survives a chat/voice switch. */
+  undoDelete: UndoDeleteReturn;
 }
 
 /** Per-mode context that App needs to render its shared SettingsScreen. The

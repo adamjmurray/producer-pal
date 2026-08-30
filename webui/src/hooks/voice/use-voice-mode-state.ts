@@ -13,6 +13,7 @@ import {
 } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
@@ -46,6 +47,7 @@ export interface UseVoiceModeStateParams {
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
+  undoDelete: UndoDeleteReturn;
 }
 
 /**
@@ -68,6 +70,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     onForeignRecord,
     clearViewingMode,
     setModeContext,
+    undoDelete,
   } = params;
 
   const mcpUrl = useMemo(() => getMcpUrl(), []);
@@ -130,6 +133,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     model: settingsRealtimeModel,
     onForeignRecord,
     onLiveRecordDeleted,
+    undoDelete,
   });
 
   // Record-aware routing: when a saved record is loaded, route on the record's

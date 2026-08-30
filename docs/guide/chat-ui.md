@@ -71,7 +71,9 @@ Each conversation in the list has action buttons that appear on hover:
 - **Rename** - Click the pencil icon to edit the title inline (Enter to save,
   Escape to cancel)
 - **Export** - Download a single conversation as a JSON file
-- **Delete** - Remove the conversation from history
+- **Delete** - Remove the conversation from history. An "Undo" banner appears
+  and stays until dismissed, so a delete you didn't mean can be put back (the
+  last ten are kept, newest first).
 
 Conversations are stored in your browser's built-in database (IndexedDB), and
 settings are stored in local storage, with API keys [encrypted](#settings). This

@@ -10,7 +10,6 @@ import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadConversation } from "#webui/lib/conversation-db";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
   waitForEffects,
@@ -18,6 +17,7 @@ import {
   saveWithMessage,
   saveAndRename,
   resetConversationsTestState,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 describe("useConversations", () => {
@@ -135,7 +135,7 @@ describe("useConversations", () => {
 
       props.activeMeta.activeThinking = "enabled";
 
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
       await saveWithMessage(state, result, "ref sync");
@@ -171,7 +171,7 @@ describe("useConversations", () => {
       props.activeMeta.activeModel = "claude-opus-5";
       props.activeMeta.activeProvider = "anthropic";
 
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
       await saveWithMessage(state, result, "first turn");
@@ -232,7 +232,7 @@ describe("useConversations", () => {
   describe("bulk deletion", () => {
     it("deleteAllConversations clears all and resets active", async () => {
       const { state, props } = createProps();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -254,7 +254,7 @@ describe("useConversations", () => {
 
     it("deleteUnbookmarkedConversations keeps bookmarked and clears unbookmarked active", async () => {
       const { state, props } = createProps();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 

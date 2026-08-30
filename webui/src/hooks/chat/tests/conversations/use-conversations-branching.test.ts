@@ -10,7 +10,6 @@ import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   listConversations,
   loadConversation,
@@ -21,6 +20,7 @@ import {
   createConversationsProps,
   resetConversationsTestState,
   waitForEffects,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 /** The injectable pending-fork signal the hook consumes on save. */
@@ -34,7 +34,7 @@ async function setupForkHook() {
   const { props, state } = createConversationsProps();
   const pendingForkRef = { current: null as PendingFork | null };
   const { result } = renderHook(() =>
-    useConversations({ ...props, pendingForkRef }),
+    useConversationsWithUndo({ ...props, pendingForkRef }),
   );
 
   await waitForEffects();

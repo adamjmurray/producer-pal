@@ -11,7 +11,6 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import { lockedSettings } from "#webui/hooks/chat/tests/helpers/use-chat-test-helpers";
 import {
@@ -22,6 +21,7 @@ import {
   saveWithMessage,
   saveAndRename,
   resetConversationsTestState,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -107,7 +107,7 @@ describe("useConversations", () => {
 
     const { props, state } = createProps();
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -128,7 +128,7 @@ describe("useConversations", () => {
     props.activeMeta.activeModel = "gemini-2.5-pro";
     props.activeMeta.activeProvider = "gemini";
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -199,7 +199,7 @@ describe("useConversations", () => {
       }),
     );
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -243,7 +243,7 @@ describe("useConversations", () => {
 
     props.activeMeta.activeSmallModelMode = true;
 
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -291,7 +291,7 @@ describe("useConversations", () => {
     window.location.hash = existingId;
 
     const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -309,7 +309,7 @@ describe("useConversations", () => {
     window.location.hash = "nonexistent-id";
 
     const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -432,7 +432,7 @@ describe("useConversations", () => {
     });
 
     const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
+    const { result } = renderHook(() => useConversationsWithUndo(props));
 
     await waitForEffects();
 
@@ -520,7 +520,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       props.onForeignRecord = onForeignRecord;
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -546,7 +546,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       props.onForeignRecord = onForeignRecord;
-      renderHook(() => useConversations(props));
+      renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 
@@ -564,7 +564,7 @@ describe("useConversations", () => {
       const { props } = createProps();
 
       expect(props.onForeignRecord).toBeUndefined();
-      const { result } = renderHook(() => useConversations(props));
+      const { result } = renderHook(() => useConversationsWithUndo(props));
 
       await waitForEffects();
 

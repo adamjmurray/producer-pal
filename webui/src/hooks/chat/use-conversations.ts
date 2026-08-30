@@ -14,11 +14,10 @@ import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
-import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   buildConversationSaveRecord,
   buildLockedSettings,
-  deleteConversationWithSnapshot,
   getHashConversationId,
   resolvePanelNotification,
   setLocationHash,
@@ -67,6 +66,8 @@ interface UseConversationsProps {
   /** Shared signal set by an edit/retry fork; consumed on the next save to
    * branch the conversation into a new record instead of overwriting it. */
   pendingForkRef?: PendingForkRef;
+  /** App-owned undo stack, so a delete made here survives a switch to voice. */
+  undoDelete: UndoDeleteReturn;
 }
 
 export interface UseConversationsReturn {
@@ -104,6 +105,7 @@ export interface UseConversationsReturn {
  * @param props.activeMeta - Locked conversation metadata (model/provider/etc. + system instruction)
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
+ * @param props.undoDelete - App-owned undo-delete stack shared with voice mode
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -113,6 +115,7 @@ export function useConversations({
   activeMeta,
   onForeignRecord,
   pendingForkRef,
+  undoDelete,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -153,7 +156,11 @@ export function useConversations({
     setConversations(list);
   }, [store]);
 
-  const undoDelete = useUndoDelete(refreshList);
+  // Undo restores into whichever mode is mounted, so hand it this one's list
+  // refresher for as long as chat is the mounted mode.
+  useEffect(() => {
+    undoDelete.setRefreshList(refreshList);
+  }, [undoDelete, refreshList]);
 
   const restoreRecord = useCallback(
     (record: ConversationRecord) => {
@@ -340,7 +347,7 @@ export function useConversations({
       await store.drain();
 
       try {
-        await deleteConversationWithSnapshot(id, undoDelete.pushDeleted);
+        await undoDelete.deleteWithUndo(id);
       } catch (error) {
         // The row survived, so the conversation is live again — leaving it
         // marked deleted would make a listed conversation unsaveable.

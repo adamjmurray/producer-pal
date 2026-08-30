@@ -11,12 +11,14 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type ActiveMeta,
   type ConversationStore,
   type SaveSnapshot,
   createConversationStore,
 } from "#webui/lib/conversation-store";
+import { useVoiceBulkDeletes } from "#webui/hooks/voice/helpers/use-voice-bulk-deletes";
 import {
   deriveVoiceTitle,
   mergeVoiceHistory,
@@ -29,9 +31,6 @@ import {
 import {
   type ConversationRecord,
   type ConversationSummary,
-  deleteAllConversations as dbDeleteAllConversations,
-  deleteConversation as dbDeleteConversation,
-  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -56,6 +55,9 @@ interface UseVoicePersistenceParams {
    * a fresh id. Unlike the sidebar delete paths, the Settings bulk deletes have
    * no other route to the session controls. */
   onLiveRecordDeleted?: () => void;
+  /** App-owned undo stack. Voice deletes snapshot through it so the sidebar's
+   * delete control is as recoverable here as it is in chat. */
+  undoDelete: UndoDeleteReturn;
 }
 
 export interface UseVoicePersistenceReturn {
@@ -115,6 +117,7 @@ export function useVoicePersistence(
     model = OPENAI_REALTIME_MODEL,
     onForeignRecord,
     onLiveRecordDeleted,
+    undoDelete,
   } = params;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -151,6 +154,12 @@ export function useVoicePersistence(
     // on the active sibling.
     setConversations(await listConversations(store.activeId()));
   }, [store]);
+
+  // Undo restores into whichever mode is mounted, so hand it this one's list
+  // refresher for as long as voice is the mounted mode.
+  useEffect(() => {
+    undoDelete.setRefreshList(refreshList);
+  }, [undoDelete, refreshList]);
 
   /** Leave the live conversation for a fresh, unsaved one. */
   const startNewConversation = useCallback(() => {
@@ -298,7 +307,7 @@ export function useVoicePersistence(
       await store.drain();
 
       try {
-        await dbDeleteConversation(id);
+        await undoDelete.deleteWithUndo(id);
       } catch (error) {
         // The row is still there, so leaving the slot marked would silently
         // stop autosaving the session the user is still in.
@@ -313,58 +322,17 @@ export function useVoicePersistence(
       if (store.liveId() === id) startNewConversation();
       await refreshList();
     },
-    [store, refreshList, startNewConversation],
+    [store, refreshList, startNewConversation, undoDelete],
   );
 
-  /**
-   * Wipe conversations, taking the live one with them unless it is spared.
-   * @param removeRows - Clears the matching rows from the DB
-   * @param sparesLive - Whether the live conversation survives this wipe. Asked
-   * again after the wipe, because the user can switch conversations while it
-   * runs and the answer belongs to whichever one is live at the end.
-   */
-  const sweep = useCallback(
-    async (removeRows: () => Promise<void>, sparesLive: () => boolean) => {
-      let undoMark: (() => void) | null = null;
-
-      if (!sparesLive()) {
-        // Fire only for a conversation that reached the DB — a session with
-        // nothing saved yet has no record to lose. Ask before marking: a marked
-        // slot reports no active id.
-        if (store.activeId() != null) onLiveRecordDeleted?.();
-        // A bulk delete doesn't stop the live session, so without this the next
-        // autosave would write the wiped conversation straight back.
-        undoMark = store.markDeleted();
-      }
-
-      await store.drain();
-
-      try {
-        await removeRows();
-      } catch (error) {
-        undoMark?.();
-        throw error;
-      }
-
-      if (!sparesLive()) startNewConversation();
-      await refreshList();
-    },
-    [store, refreshList, startNewConversation, onLiveRecordDeleted],
-  );
-
-  const deleteAllConversations = useCallback(
-    () => sweep(dbDeleteAllConversations, () => false),
-    [sweep],
-  );
-
-  const deleteUnbookmarkedConversations = useCallback(
-    () =>
-      sweep(
-        dbDeleteUnbookmarkedConversations,
-        () => store.metaRef.current?.bookmarked ?? false,
-      ),
-    [sweep, store],
-  );
+  const { deleteAllConversations, deleteUnbookmarkedConversations } =
+    useVoiceBulkDeletes({
+      store,
+      refreshList,
+      startNewConversation,
+      onLiveRecordDeleted,
+      undoDelete,
+    });
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {

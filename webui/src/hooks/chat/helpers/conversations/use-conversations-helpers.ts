@@ -15,7 +15,6 @@ import { getModelName } from "#webui/lib/config";
 import { deriveForkParentId } from "#webui/lib/conversation-branch-helpers";
 import {
   type ConversationRecord,
-  deleteConversation,
   loadConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
@@ -362,24 +361,6 @@ export function deriveTitle(
   }
 
   return firstUserLine || null;
-}
-
-/**
- * Delete a conversation, first snapshotting the full record so it can be
- * restored via undo — the DB row is gone the moment deletion resolves.
- * @param id - Conversation id to delete
- * @param onSnapshot - Receives the deleted record for undo (skipped if the id
- *   had no record)
- */
-export async function deleteConversationWithSnapshot(
-  id: string,
-  onSnapshot: (record: ConversationRecord) => void,
-): Promise<void> {
-  const record = await loadConversation(id);
-
-  await deleteConversation(id);
-
-  if (record) onSnapshot(record);
 }
 
 /**

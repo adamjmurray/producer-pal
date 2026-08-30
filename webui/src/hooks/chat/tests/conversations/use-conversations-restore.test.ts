@@ -11,7 +11,6 @@ import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import { FAILED_TOOL_RESULT_TEXT } from "#webui/chat/sdk/build-model-messages";
 import { type ChatMessage } from "#webui/chat/sdk/types";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
@@ -19,6 +18,7 @@ import {
   waitForEffects,
   setupConversationsHook as setupHook,
   resetConversationsTestState,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -70,7 +70,7 @@ describe("useConversations restore", () => {
 
     const { props } = createProps();
 
-    renderHook(() => useConversations(props));
+    renderHook(() => useConversationsWithUndo(props));
     await waitForEffects();
 
     expect(restoredHistory(props)[0]?.toolResults).toStrictEqual([

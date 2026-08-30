@@ -64,13 +64,40 @@ describe("useUndoDelete", () => {
   });
 
   it("has no banner initially", () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
+
+    expect(result.current.undoNotification).toBeNull();
+  });
+
+  it("deleteWithUndo removes the row and offers it back", async () => {
+    const { result } = renderHook(() => useUndoDelete());
+    const record = makeRecord({ title: "Take me" });
+
+    await saveConversation(record);
+    await act(() => result.current.deleteWithUndo(record.id));
+
+    expect(await loadConversation(record.id)).toBeUndefined();
+    expect(result.current.undoNotification?.message).toBe(
+      "Deleted \u201cTake me\u201d",
+    );
+
+    await act(() => result.current.undoNotification!.action!.onClick());
+
+    await waitFor(async () =>
+      expect(await loadConversation(record.id)).toBeDefined(),
+    );
+  });
+
+  it("deleteWithUndo shows no banner for an id with no record", async () => {
+    const { result } = renderHook(() => useUndoDelete());
+
+    await act(() => result.current.deleteWithUndo("never-existed"));
 
     expect(result.current.undoNotification).toBeNull();
   });
 
   it("shows an undo banner naming the deleted conversation", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() =>
       result.current.pushDeleted(makeRecord({ title: "My Chat" })),
@@ -82,7 +109,7 @@ describe("useUndoDelete", () => {
   });
 
   it("falls back to a timestamp label when the record has no title", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: null })));
 
@@ -91,7 +118,7 @@ describe("useUndoDelete", () => {
   });
 
   it("truncates long titles", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const longTitle = "x".repeat(80);
 
     await act(() =>
@@ -106,7 +133,9 @@ describe("useUndoDelete", () => {
 
   it("restores the deleted record and refreshes on undo", async () => {
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
     const record = makeRecord({ title: "Restore me" });
 
     await act(() => result.current.pushDeleted(record));
@@ -122,7 +151,7 @@ describe("useUndoDelete", () => {
   });
 
   it("supports multi-level undo (history > 1) in LIFO order", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const first = makeRecord({ title: "First" });
     const second = makeRecord({ title: "Second" });
 
@@ -162,7 +191,9 @@ describe("useUndoDelete", () => {
       new DOMException("full", "QuotaExceededError"),
     );
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
     const record = makeRecord({ title: "Keep me" });
 
     await act(() => result.current.pushDeleted(record));
@@ -194,7 +225,9 @@ describe("useUndoDelete", () => {
     vi.mocked(saveConversation).mockReturnValueOnce(savePending as never);
 
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "Once" })));
 
@@ -220,7 +253,7 @@ describe("useUndoDelete", () => {
 
   it("clears a prior restore error when a new deletion is pushed", async () => {
     vi.mocked(saveConversation).mockRejectedValueOnce(new Error("boom"));
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "First" })));
     await undoIntoError(result);
@@ -236,7 +269,7 @@ describe("useUndoDelete", () => {
   });
 
   it("dismiss drops all pending undos without restoring", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "A" })));
     await act(() => result.current.pushDeleted(makeRecord({ title: "B" })));
@@ -248,7 +281,9 @@ describe("useUndoDelete", () => {
 
   it("undo is a no-op when the stack was emptied before a stale click fires", async () => {
     const refreshList = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useUndoDelete(refreshList));
+    const { result } = renderHook(() => useUndoDelete());
+
+    result.current.setRefreshList(refreshList);
 
     await act(() => result.current.pushDeleted(makeRecord({ title: "Gone" })));
 
@@ -268,7 +303,7 @@ describe("useUndoDelete", () => {
   });
 
   it("caps retained history at 10 deletions", async () => {
-    const { result } = renderHook(() => useUndoDelete(vi.fn()));
+    const { result } = renderHook(() => useUndoDelete());
     const records = Array.from({ length: 12 }, (_, i) =>
       makeRecord({ title: `conv-${i}` }),
     );

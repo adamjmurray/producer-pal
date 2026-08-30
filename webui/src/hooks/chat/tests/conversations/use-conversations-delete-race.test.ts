@@ -10,7 +10,6 @@ import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listAllConversationSummaries,
@@ -25,6 +24,7 @@ import {
   saveWithMessage,
   setupConversationsHook as setupHook,
   waitForEffects,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 import { openGate } from "#webui/test-utils/async-test-helpers";
 
@@ -156,7 +156,7 @@ async function expectForkDroppedOnDelete(
   const { props, state } = createConversationsProps();
   const pendingForkRef = { current: null as PendingFork | null };
   const { result } = renderHook(() =>
-    useConversations({ ...props, pendingForkRef }),
+    useConversationsWithUndo({ ...props, pendingForkRef }),
   );
 
   await waitForEffects();

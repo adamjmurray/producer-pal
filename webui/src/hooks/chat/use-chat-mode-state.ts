@@ -26,6 +26,7 @@ import {
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useSystemPrompt } from "#webui/hooks/context/use-system-prompt";
 import {
@@ -71,6 +72,7 @@ export interface UseChatModeStateParams {
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
+  undoDelete: UndoDeleteReturn;
 }
 
 /**
@@ -99,6 +101,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     onForeignRecord,
     clearViewingMode,
     setModeContext,
+    undoDelete,
   } = params;
 
   const autoSaveRef = useRef<(() => void) | null>(null);
@@ -262,6 +265,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     },
     onForeignRecord,
     pendingForkRef,
+    undoDelete,
   });
 
   useEffect(() => {

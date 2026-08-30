@@ -8,6 +8,8 @@ import { type TransferNotificationData } from "#webui/components/chat/TransferNo
 import { formatSaveErrorMessage } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import {
   type ConversationRecord,
+  deleteConversation,
+  loadConversation,
   saveConversation,
 } from "#webui/lib/conversation-db";
 import {
@@ -23,12 +25,17 @@ const MAX_TITLE_LENGTH = 40;
 export interface UndoDeleteReturn {
   /** Undo banner for the most recently deleted conversation, or null. */
   undoNotification: TransferNotificationData | null;
+  /** Delete a conversation, snapshotting it first so undo can put it back. */
+  deleteWithUndo: (id: string) => Promise<void>;
   /** Snapshot a just-deleted record so it can be restored, and show the banner. */
   pushDeleted: (record: ConversationRecord) => void;
   /** Drop all pending undos and hide the banner. */
   dismissUndoNotification: () => void;
   /** Drop the pending undos a bulk delete has just made invalid. */
   dropUndoable: (shouldDrop: (record: ConversationRecord) => boolean) => void;
+  /** Point the undo at the mounted mode's list refresher, so a restore updates
+   *  the sidebar of whichever mode the user is in when they click Undo. */
+  setRefreshList: (refresh: () => Promise<void>) => void;
 }
 
 /**
@@ -39,12 +46,20 @@ export interface UndoDeleteReturn {
  * dismissed — the DB row is already gone by the time {@link pushDeleted} runs, so
  * a restore that fails to save keeps the record on the stack and turns the banner
  * into a retryable error rather than losing the conversation.
- * @param refreshList - Refreshes the conversation list after a restore
+ *
+ * Owned by App and shared by both modes, so a delete stays undoable across a
+ * chat/voice switch — the sidebar is one list, and the delete control on a row
+ * has to mean the same thing whichever mode is showing it. Whichever mode is
+ * mounted registers its list refresher via {@link UndoDeleteReturn.setRefreshList}.
  * @returns Undo banner state and handlers
  */
-export function useUndoDelete(
-  refreshList: () => Promise<void>,
-): UndoDeleteReturn {
+export function useUndoDelete(): UndoDeleteReturn {
+  // The mounted mode owns the conversation list, and which mode that is can
+  // change between the delete and the undo.
+  const refreshListRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  const setRefreshList = useCallback((refresh: () => Promise<void>) => {
+    refreshListRef.current = refresh;
+  }, []);
   // stackRef is the source of truth (read synchronously by undo); `stack` state
   // mirrors it only to re-render the banner. Records are small metadata +
   // transcript, capped at MAX_UNDO_HISTORY, so holding them in memory is cheap.
@@ -90,11 +105,11 @@ export function useUndoDelete(
 
       setRestoreError(null);
       sync(stackRef.current.filter((record) => record !== restored));
-      await refreshList();
+      await refreshListRef.current();
     })().finally(() => {
       undoInFlightRef.current = false;
     });
-  }, [refreshList, sync]);
+  }, [sync]);
 
   const pushDeleted = useCallback(
     (record: ConversationRecord) => {
@@ -102,6 +117,20 @@ export function useUndoDelete(
       sync([...stackRef.current, record].slice(-MAX_UNDO_HISTORY));
     },
     [sync],
+  );
+
+  // Load before deleting: the row is the only copy of the transcript, so the
+  // snapshot has to be taken while it still exists. Pushed only once the delete
+  // resolves, so a failed delete doesn't offer to restore a record still there.
+  const deleteWithUndo = useCallback(
+    async (id: string) => {
+      const record = await loadConversation(id);
+
+      await deleteConversation(id);
+
+      if (record) pushDeleted(record);
+    },
+    [pushDeleted],
   );
 
   const dismiss = useCallback(() => {
@@ -135,9 +164,11 @@ export function useUndoDelete(
 
   return {
     undoNotification,
+    deleteWithUndo,
     pushDeleted,
     dismissUndoNotification: dismiss,
     dropUndoable,
+    setRefreshList,
   };
 }
 

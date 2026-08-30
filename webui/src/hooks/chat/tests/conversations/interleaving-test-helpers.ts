@@ -6,7 +6,6 @@
 import { act, renderHook } from "@testing-library/preact";
 import { expect, vi } from "vitest";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listAllConversationSummaries,
@@ -15,6 +14,7 @@ import {
 import {
   createConversationsProps,
   waitForEffects,
+  useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
 
 /** Marks the message the concurrent save is carrying, so the invariants can
@@ -28,7 +28,7 @@ export const TIMINGS: Timing[] = ["write-first", "write-last"];
 
 /** The live hook plus the state the operations manipulate. */
 export interface Handle {
-  result: { current: ReturnType<typeof useConversations> };
+  result: { current: ReturnType<typeof useConversationsWithUndo> };
   state: { chatHistory: unknown[] };
   pendingForkRef: { current: PendingFork | null };
 }
@@ -195,7 +195,7 @@ export async function setupInterleavingHook(): Promise<Handle> {
   };
 
   const { result } = renderHook(() =>
-    useConversations({ ...props, clearConversation, pendingForkRef }),
+    useConversationsWithUndo({ ...props, clearConversation, pendingForkRef }),
   );
 
   await waitForEffects();

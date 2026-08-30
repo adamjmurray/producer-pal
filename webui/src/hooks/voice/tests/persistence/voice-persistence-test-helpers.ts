@@ -6,6 +6,7 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
 import { expect, vi } from "vitest";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
@@ -83,7 +84,7 @@ export async function resetConversationsDb(): Promise<void> {
 
 type VoicePersistenceOptions = Omit<
   Parameters<typeof useVoicePersistence>[0],
-  "liveHistory"
+  "liveHistory" | "undoDelete"
 >;
 
 /**
@@ -95,7 +96,14 @@ type VoicePersistenceOptions = Omit<
 export function renderVoicePersistence(
   options: VoicePersistenceOptions = {},
 ): ReturnType<typeof renderHook<UseVoicePersistenceReturn, unknown>> {
-  return renderHook(() => useVoicePersistence({ liveHistory: [], ...options }));
+  return renderHook(() =>
+    // App owns the undo stack in production; tests driving the hook mint one.
+    useVoicePersistence({
+      liveHistory: [],
+      ...options,
+      undoDelete: useUndoDelete(),
+    }),
+  );
 }
 
 export interface VoicePersistenceHistoryView {
@@ -116,7 +124,11 @@ export function renderVoicePersistenceWithHistory(
 ): VoicePersistenceHistoryView {
   const { result, rerender } = renderHook(
     ({ history }: { history: RealtimeItem[] }) =>
-      useVoicePersistence({ liveHistory: history, ...options }),
+      useVoicePersistence({
+        liveHistory: history,
+        ...options,
+        undoDelete: useUndoDelete(),
+      }),
     { initialProps: { history: [] as RealtimeItem[] } },
   );
 

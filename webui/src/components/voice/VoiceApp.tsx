@@ -8,6 +8,7 @@ import {
   type ConversationPanelState,
 } from "#webui/components/AppShell";
 import { type ModeAppProps } from "#webui/components/mode-context";
+import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
@@ -39,6 +40,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenConnectionSettings,
     onOpenContext,
     clearViewingMode,
+    undoDelete,
   } = props;
 
   const {
@@ -75,6 +77,7 @@ export function VoiceApp(props: VoiceAppProps) {
     resetVoiceHistory: voice.resetHistory,
     clearViewingMode,
     search,
+    undoDelete,
   });
 
   return (
@@ -140,6 +143,7 @@ interface BuildConversationPanelParams {
   resetVoiceHistory: () => void;
   clearViewingMode: () => void;
   search: UseConversationSearchReturn;
+  undoDelete: UndoDeleteReturn;
 }
 
 /**
@@ -159,6 +163,7 @@ function buildConversationPanel(
     transfer,
     isSessionActive,
     search,
+    undoDelete,
   } = params;
 
   // On phones the panel overlays the screen, so collapse it after picking or
@@ -207,7 +212,12 @@ function buildConversationPanel(
     onToggleBookmark: (id) => void persistence.toggleBookmark(id),
     onExport: () => void transfer.handleExport(),
     onImport: () => void transfer.handleImport(),
-    notification: transfer.notification,
-    onDismissNotification: transfer.dismissNotification,
+    // An in-flight import/export report outranks the undo banner (it is the
+    // thing the user just asked for); otherwise the undo banner shows, matching
+    // how chat's panel ranks the two.
+    notification: transfer.notification ?? undoDelete.undoNotification,
+    onDismissNotification: transfer.notification
+      ? transfer.dismissNotification
+      : undoDelete.dismissUndoNotification,
   };
 }

@@ -6,6 +6,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { vi } from "vitest";
 import { type Notation } from "#src/shared/notation";
+import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type UseConversationsReturn,
   useConversations,
@@ -46,6 +47,24 @@ export function createConversationsProps() {
   };
 }
 
+/** useConversations props minus the undo stack the wrapper below supplies. */
+type ConversationsProps = Omit<
+  Parameters<typeof useConversations>[0],
+  "undoDelete"
+>;
+
+/**
+ * Render useConversations with its own undo stack, which App owns in
+ * production. Tests drive the hook directly, so they mint one here.
+ * @param props - useConversations props, minus the undo stack
+ * @returns The conversation manager
+ */
+export function useConversationsWithUndo(
+  props: ConversationsProps,
+): UseConversationsReturn {
+  return useConversations({ ...props, undoDelete: useUndoDelete() });
+}
+
 /** The mutable chat-history state createConversationsProps hands back. */
 export type ConversationsState = { chatHistory: unknown[] };
 
@@ -67,7 +86,7 @@ export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
  */
 export async function setupConversationsHook() {
   const { props, state } = createConversationsProps();
-  const { result } = renderHook(() => useConversations(props));
+  const { result } = renderHook(() => useConversationsWithUndo(props));
 
   await waitForEffects();
 
