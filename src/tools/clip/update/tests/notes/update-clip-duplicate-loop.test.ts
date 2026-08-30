@@ -37,19 +37,54 @@ function mockNoteCount(
   clip: UpdateClipMocks[keyof UpdateClipMocks],
   noteCount: number,
 ): void {
+  clip.call.mockImplementation((method: string) =>
+    method === "get_notes_extended" ? notesJson(noteCount) : {},
+  );
+}
+
+/**
+ * What get_notes_extended returns for a clip holding `noteCount` identical
+ * notes.
+ * @param noteCount - Number of notes to report
+ * @returns The JSON string Live's API hands back
+ */
+function notesJson(noteCount: number): string {
+  return JSON.stringify({
+    notes: Array.from({ length: noteCount }, () => ({
+      pitch: 60,
+      start_time: 0,
+      duration: 1,
+      velocity: 100,
+    })),
+  });
+}
+
+/**
+ * Report a different note count before and after duplicate_loop runs. The whole
+ * point of the preTransform count is that it is the pre-doubling number, and a
+ * fixture that answers the same on both sides cannot tell a correct report from
+ * one that reused the post-doubling count.
+ * @param clip - Registered mock clip
+ * @param before - Notes the clip holds before duplicate_loop
+ * @param after - Notes it holds afterwards
+ */
+function mockNoteCountAroundDuplication(
+  clip: UpdateClipMocks[keyof UpdateClipMocks],
+  before: number,
+  after: number,
+): void {
+  let duplicated = false;
+
   clip.call.mockImplementation((method: string) => {
-    if (method === "get_notes_extended") {
-      return JSON.stringify({
-        notes: Array.from({ length: noteCount }, () => ({
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-        })),
-      });
+    if (method === "duplicate_loop") {
+      duplicated = true;
+
+      return {};
     }
 
-    return {};
+    return method === "get_notes_extended"
+      ? notesJson(duplicated ? after : before)
+      : {};
   });
 }
 
@@ -214,6 +249,27 @@ describe("updateClip - duplicateLoop", () => {
 
     expect(result).toStrictEqual({
       transformed: 8,
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+    });
+  });
+
+  // The count reported has to be Stage 1's own match count, not the doubled
+  // note count the clip ends up with.
+  it("reports the pre-doubling count, not the post-doubling one", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCountAroundDuplication(mocks.clip123, 4, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "pitch += 12",
+      notes: "1|1 C3",
+    });
+
+    expect(result).toStrictEqual({
+      transformed: 4,
       id: "123",
       path: "t0/s0",
       noteCount: 8,
