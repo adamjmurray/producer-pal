@@ -31,9 +31,9 @@ import { openGate } from "#webui/test-utils/async-test-helpers";
 /**
  * Spy on saveConversation so its next call blocks until released, then calls
  * through to the real implementation. Lets a test force a late autosave's DB
- * write to land *after* a delete completes — the resurrection window guarded by
- * canceledIdsRef. With the fix in place the guarded save never calls
- * saveConversation, so the gate simply goes unused.
+ * write to land *after* a delete completes — the resurrection window the store's
+ * markDeleted()/drain() pair guards. With the fix in place the guarded save
+ * never calls saveConversation, so the gate simply goes unused.
  * @returns release (let the gated write proceed) and restore (undo the spy)
  */
 function gateNextSave(): { release: () => void; restore: () => void } {
@@ -41,10 +41,10 @@ function gateNextSave(): { release: () => void; restore: () => void } {
   const [gate, release] = openGate();
   const spy = vi
     .spyOn(conversationDb, "saveConversation")
-    .mockImplementationOnce(async (record, protectedIds) => {
+    .mockImplementationOnce(async (record, options) => {
       await gate;
 
-      return await original(record, protectedIds);
+      return await original(record, options);
     });
 
   return { release, restore: () => spy.mockRestore() };
@@ -145,9 +145,9 @@ async function expectBulkDeleteDropsNeverSavedLateAutosave(
  *
  * Stop deliberately keeps that signal, so the teardown autosave the delete
  * triggers still arrives wanting to branch. Branching mints a fresh id the
- * canceled set can't cover, so the save wrote a sibling of the row being deleted
- * — and moved the active id onto it, which skipped the delete's own clear. The
- * conversation was gone but the view still showed it.
+ * delete's own marking can't cover, so the save wrote a sibling of the row being
+ * deleted — and moved the active id onto it, which skipped the delete's own
+ * clear. The conversation was gone but the view still showed it.
  * @param deleteOp - the delete under test, given the hook result and the saved id
  */
 async function expectForkDroppedOnDelete(
@@ -361,11 +361,11 @@ describe("useConversations delete/save races", () => {
   });
 
   it("re-enables autosave after a deleted conversation is undone", async () => {
-    // F5: deleteConversation marks the id canceled to block a resurrecting late
-    // save, but the flag was add-only. Undo restores the row under the same id
-    // (raw saveConversation, bypassing the guard); without un-canceling, every
-    // later autosave for it bailed at the guard, silently dropping post-undo
-    // messages. Undo must clear the flag so saving works again.
+    // F5: deleteConversation marks the slot deleted to block a resurrecting
+    // late save, and that marking used to be one-way. Undo restores the row
+    // under the same id (raw saveConversation, bypassing the guard); without
+    // clearing the mark, every later autosave for it bailed, silently dropping
+    // post-undo messages. Undo has to make the slot saveable again.
     const { state, result } = await setupHook();
 
     await saveWithMessage(state, result, "original");
@@ -404,9 +404,9 @@ describe("useConversations delete/save races", () => {
     expect(reloaded?.messages).toHaveLength(2);
   });
   it("re-enables autosave after a deleted conversation is re-imported", async () => {
-    // The canceled-id tombstone is add-only, and export/import keeps ids: a
-    // deleted conversation that comes back through import was silently
-    // unsaveable for the rest of the session. Opening it lifts the tombstone.
+    // The deleted marking used to be one-way, and export/import keeps ids: a
+    // deleted conversation that came back through import was silently
+    // unsaveable for the rest of the session. Opening it clears the marking.
     const { state, result } = await setupHook();
 
     await saveWithMessage(state, result, "original");
