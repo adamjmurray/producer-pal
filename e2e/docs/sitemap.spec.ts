@@ -3,13 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 import { expect, test } from "@playwright/test";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const DIST_DIR = join(__dirname, "..", "..", "docs", ".vitepress", "dist");
+import { DIST_DIR, parseSitemap, SITE_URL } from "./docs-test-helpers.ts";
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
@@ -48,37 +44,6 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "www.ableton.com",
   "www.youtube.com",
 ];
-
-/**
- * Parse sitemap.xml and extract all URLs
- */
-function parseSitemap(): string[] {
-  const sitemapPath = join(
-    __dirname,
-    "..",
-    "..",
-    "docs",
-    ".vitepress",
-    "dist",
-    "sitemap.xml",
-  );
-  const sitemapContent = readFileSync(sitemapPath, "utf-8");
-
-  // Extract all <loc> URLs from sitemap
-  const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
-  const urls = Array.from(urlMatches, (match) => match[1]).filter(
-    (url): url is string => url != null,
-  );
-
-  if (urls.length === 0) {
-    throw new Error(
-      `No URLs found in sitemap at ${sitemapPath}. ` +
-        `Ensure docs are built with 'npm run docs:build' before running tests.`,
-    );
-  }
-
-  return urls;
-}
 
 /**
  * Convert absolute URL to relative path for local testing
@@ -221,7 +186,7 @@ function isAllowedExternalDomain(href: string): boolean {
  */
 function normalizeUrlForSitemap(
   href: string,
-  baseUrl = "https://producer-pal.org",
+  baseUrl = SITE_URL,
 ): string | null {
   try {
     // Handle hash-only links (same page)
@@ -239,7 +204,10 @@ function normalizeUrlForSitemap(
     // Handle absolute URLs
     const url = new URL(href);
 
-    if (url.hostname === "producer-pal.org" || url.hostname === "localhost") {
+    if (
+      url.hostname === new URL(SITE_URL).hostname ||
+      url.hostname === "localhost"
+    ) {
       // Strip hash fragment for sitemap comparison
       return baseUrl + url.pathname;
     }

@@ -4,14 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import { DIST_DIR, parseSitemap, SITE_URL } from "./docs-test-helpers.ts";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DIST_DIR = join(__dirname, "..", "..", "docs", ".vitepress", "dist");
-
-const SITE_URL = "https://producer-pal.org";
 const SOCIAL_IMAGE = `${SITE_URL}/producer-pal-social-card.png`;
 
 /**
@@ -51,26 +47,6 @@ function readCanonical(html: string): string | undefined {
   const link = /<link\s[^>]*rel="canonical"[^>]*>/.exec(html)?.[0];
 
   return link == null ? undefined : /href="([^"]+)"/.exec(link)?.[1];
-}
-
-/**
- * List every page URL in the built sitemap.
- * @returns the sitemap's absolute page URLs
- */
-function parseSitemap(): string[] {
-  const xml = readFileSync(join(DIST_DIR, "sitemap.xml"), "utf-8");
-  const urls = Array.from(
-    xml.matchAll(/<loc>(.*?)<\/loc>/g),
-    (match) => match[1],
-  ).filter((url): url is string => url != null);
-
-  if (urls.length === 0) {
-    throw new Error(
-      "No URLs found in sitemap. Build the docs with 'npm run docs:build' first.",
-    );
-  }
-
-  return urls;
 }
 
 /**
