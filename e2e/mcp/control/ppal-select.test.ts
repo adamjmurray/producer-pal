@@ -20,6 +20,7 @@ import {
   getToolWarnings,
   isToolError,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
 
@@ -43,7 +44,7 @@ async function createClip(path: string): Promise<string> {
   return parseToolResult<{ id: string }>(result).id;
 }
 
-async function expectNoTarget(
+async function expectRefusal(
   args: Record<string, unknown>,
   message: string,
 ): Promise<void> {
@@ -117,6 +118,84 @@ describe("ppal-select", () => {
     expect(byId.selectedTrack!.id).toBe(trackId);
   });
 
+  // The aliases are the only way to name two objects by id at once, and reading
+  // just the first used to drop the rest while the migration notice said every
+  // one had been honored. Live is read back: the response naming both is not
+  // proof both landed.
+  it("selects a track and a scene named by separate id aliases", async () => {
+    const trackId = (await select({ trackIndex: 2 })).selectedTrack!.id;
+    const sceneId = (await select({ sceneIndex: 1 })).selectedScene!.id;
+
+    await select({ trackIndex: 0, sceneIndex: 0 });
+
+    const { data, warnings } = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { trackId: `id ${trackId}`, sceneId: `id ${sceneId}` },
+      }),
+    );
+
+    expect(data.selectedTrack!.id).toBe(trackId);
+    expect(data.selectedScene!.id).toBe(sceneId);
+    // Aliases onto one canonical are named in a single steer, and that steer
+    // says the value was honored — which is only true now both are.
+    expect(warnings).toStrictEqual([
+      'WARNING: ppal-select accepts "trackId", "sceneId" as a fallback; the parameter is "id"',
+    ]);
+
+    const state = await select({});
+
+    expect(state.selectedTrack!.id).toBe(trackId);
+    expect(state.selectedScene!.id).toBe(sceneId);
+  });
+
+  // Each of these writes the other's selection as a side effect, so honoring
+  // both would report one object while Live sits on another.
+  it("refuses two ids Live can't hold selected at once", async () => {
+    const trackId = (await select({ trackIndex: 2 })).selectedTrack!.id;
+    const sceneId = (await select({ sceneIndex: 1 })).selectedScene!.id;
+    // t0/s0 "Beat" is on neither of those.
+    const clipId = (await select({ path: "t0/s0" })).selectedClip!.id;
+    const padId = (await select({ path: "t0/d0/pC1" })).selectedDrumPad!.id;
+    const driftId = (await select({ path: "t3/d0" })).selectedDevice!.id;
+
+    await expectRefusal(
+      { trackId: `id ${trackId}`, clipId: `id ${clipId}` },
+      "trackId and clipId name different tracks",
+    );
+    await expectRefusal(
+      { sceneId: `id ${sceneId}`, clipId: `id ${clipId}` },
+      "sceneId and clipId name different scenes",
+    );
+    await expectRefusal(
+      { id: `id ${padId}`, deviceId: `id ${driftId}` },
+      "deviceId and id name different devices",
+    );
+    const otherTrackId = (await select({ trackIndex: 0 })).selectedTrack!.id;
+
+    await expectRefusal(
+      { id: `id ${trackId}`, trackId: `id ${otherTrackId}` },
+      "id and trackId name different tracks",
+    );
+  });
+
+  // A drum pad and the rack it sits in are one selection, not two, so the
+  // deviceId that names that rack is the one pairing select allows. (A pad
+  // *path* beside any deviceId is refused before this: id and path never name
+  // a device together.)
+  it("takes a deviceId naming the rack a pad sits in", async () => {
+    const padId = (await select({ path: "t0/d0/pC1" })).selectedDrumPad!.id;
+    const rackId = (await select({ path: "t0/d0" })).selectedDevice!.id;
+    const { data } = parseToolResultWithWarnings<SelectResult>(
+      await ctx.client!.callTool({
+        name: "ppal-select",
+        arguments: { id: `id ${padId}`, deviceId: `id ${rackId}` },
+      }),
+    );
+
+    expect(data.selectedDrumPad!.path).toBe("t0/d0/pC1");
+  });
+
   it("selects a clip by id and by slot path", async () => {
     const clipId = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
 
@@ -164,24 +243,24 @@ describe("ppal-select", () => {
   });
 
   it("refuses a target that isn't there, in the same words either way", async () => {
-    await expectNoTarget({ id: "id 999999" }, "does not exist");
-    await expectNoTarget({ path: "t99" }, 'no track at "t99"');
-    await expectNoTarget({ trackIndex: 99 }, 'no track at "t99"');
-    await expectNoTarget(
+    await expectRefusal({ id: "id 999999" }, "does not exist");
+    await expectRefusal({ path: "t99" }, 'no track at "t99"');
+    await expectRefusal({ trackIndex: 99 }, 'no track at "t99"');
+    await expectRefusal(
       { trackIndex: 99, trackType: "return" },
       'no track at "rt99"',
     );
-    await expectNoTarget({ path: "s99" }, 'no scene at "s99"');
-    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
-    await expectNoTarget({ path: "t0/s99" }, 'no scene at "s99"');
-    await expectNoTarget({ path: "t0/d99" }, 'no device at "t0/d99"');
+    await expectRefusal({ path: "s99" }, 'no scene at "s99"');
+    await expectRefusal({ sceneIndex: 99 }, 'no scene at "s99"');
+    await expectRefusal({ path: "t0/s99" }, 'no scene at "s99"');
+    await expectRefusal({ path: "t0/d99" }, 'no device at "t0/d99"');
   });
 
   it("changes nothing when the select is refused", async () => {
     // A scene selection would have switched to session view before it ever
     // looked for the scene.
     await select({ view: "arrangement" });
-    await expectNoTarget({ sceneIndex: 99 }, 'no scene at "s99"');
+    await expectRefusal({ sceneIndex: 99 }, 'no scene at "s99"');
 
     expect((await select({})).view).toBe("arrangement");
   });
@@ -227,6 +306,10 @@ interface SelectResult {
     arrangementStart?: string;
   };
   selectedDevice?: {
+    id: string;
+    path: string;
+  };
+  selectedDrumPad?: {
     id: string;
     path: string;
   };
