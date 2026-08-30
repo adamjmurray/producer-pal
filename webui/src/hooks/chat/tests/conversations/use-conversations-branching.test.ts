@@ -8,8 +8,9 @@
  */
 import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
+import * as conversationDb from "#webui/lib/conversation-db";
 import {
   listConversations,
   loadConversation,
@@ -119,6 +120,33 @@ describe("useConversations branching", () => {
     expect(original?.messages).toStrictEqual(ORIGINAL);
     expect(original?.forkParentId).toBeUndefined();
     expect(fork?.messages).toStrictEqual(FORKED);
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+  });
+
+  // The signal is consumed before the write is attempted, so a write that
+  // throws left the branch uncreated and unbranchable: the retry took the plain
+  // first-save path, with no link to the trunk and the trunk's own title and
+  // bookmark copied onto it.
+  it("still branches after the fork's first write fails", async () => {
+    const { result, state, pendingForkRef, originalId } =
+      await setupWithSavedOriginal();
+    const failing = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockRejectedValueOnce(new Error("quota"));
+
+    pendingForkRef.current = { anchorIndex: 0 };
+    await save(result, state, FORKED);
+    failing.mockRestore();
+
+    expect(pendingForkRef.current).toStrictEqual({ anchorIndex: 0 });
+
+    await save(result, state, FORKED);
+
+    const forkId = result.current.activeConversationId!;
+    const fork = await loadConversation(forkId);
+
+    expect(forkId).not.toBe(originalId);
     expect(fork?.forkParentId).toBe(originalId);
     expect(fork?.forkedAtIndex).toBe(0);
   });

@@ -67,6 +67,15 @@ export interface SaveSnapshot {
    * write first — but has no row to check yet.
    */
   reuseId: string | null;
+  /**
+   * Undo what starting this save did to the slot, for a write that never
+   * landed. Only a branching save changes it — it moves the live conversation
+   * onto a new id before writing — and a branch whose write threw was never
+   * created, so leaving the slot on it strands the retry: no source to branch
+   * from, and the trunk's metadata copied onto a record that isn't it.
+   * A no-op for a normal save, or once the slot has moved on.
+   */
+  rollback: () => void;
 }
 
 /**
@@ -194,6 +203,7 @@ export function createConversationStore(
       // racing this one can't mint a second branch. With nothing saved to
       // branch from, there is no source and it degrades to a normal save.
       const sourceId = branch && slot.state !== "fresh" ? slot.id : null;
+      const before = slot;
 
       if (branch) enter(freshSlot());
 
@@ -201,6 +211,16 @@ export function createConversationStore(
         id: slot.id,
         expectPersisted: slot.state === "persisted",
         reuseId: sourceId ?? (slot.state === "fresh" ? null : slot.id),
+        rollback: !branch
+          ? noop
+          : () => {
+              // Only if the slot is still the one this save claimed: the user
+              // may have switched away, and a delete waiting to drain must not
+              // be revived.
+              if (slot.id === snapshot.id && slot.state !== "deleted") {
+                enter(before);
+              }
+            },
       };
 
       // Publish the id now rather than when the write lands: the sidebar

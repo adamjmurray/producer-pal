@@ -276,6 +276,21 @@ export function useConversations({
           limit.showLimitNotification(result);
           await refreshList();
         } catch (error) {
+          // The branch was never written, so undo the claim and put the fork
+          // signal back (unless a newer one has taken its place). Without both,
+          // the next save takes the plain first-save path from the failed
+          // branch's own id: no link to the trunk, and the trunk's title and
+          // bookmark copied onto a record that isn't it.
+          snapshot.rollback();
+
+          if (
+            fork != null &&
+            pendingForkRef &&
+            pendingForkRef.current == null
+          ) {
+            pendingForkRef.current = fork;
+          }
+
           // App.tsx fire-and-forgets this call, so surface the failure here
           // instead of letting it become an unhandled rejection
           console.error("Failed to save conversation", error);
