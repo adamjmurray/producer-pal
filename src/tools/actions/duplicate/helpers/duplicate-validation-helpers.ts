@@ -112,8 +112,9 @@ export function validateBasicInputs(
 /**
  * Checks the call named its source. A drum pad can say so by path instead of
  * id: the 128 pad slots are fixed, so p{pitch} names the same pad every time.
- * Naming it both ways is a conflict, not a preference — a copy has one source,
- * and picking one would be the wrong-source bug in silence.
+ * Naming it both ways throws, even though id takes a list of pads: path is a
+ * call-level param handed to every source, so unioning it in means making the
+ * pad a per-source field first.
  * @param type - Type of object to duplicate
  * @param id - ID of the object to duplicate
  * @param path - Source drum pad path

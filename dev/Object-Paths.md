@@ -143,6 +143,8 @@ Four tiers, in order of preference.
      two params naming different things has no answer, so it errors. Naming the
      same target twice over is not a conflict: `play-scene` with `t0/s1,t2/s1`
      fires scene 1, and `read-clip` takes an `id` that sits at the `path`.
+     `duplicate` is half-way: its `id` takes a list, but `path` names one drum
+     pad for the whole call, so naming both still throws.
    - **A set — union.** Where the call already acts on a list (`delete`,
      `update-clip`, `playback`'s clip actions), `id` and `path` both name
      members of it, so the targets combine. Duplicates collapse — firing a clip
