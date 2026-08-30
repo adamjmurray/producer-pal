@@ -171,7 +171,7 @@ describe("return and master tracks", () => {
     const { warnings } = parseToolResultWithWarnings<unknown>(
       await ctx.client!.callTool({
         name: "ppal-update-track",
-        arguments: { id: rt0.id, inputRoutingTypeId: "17" },
+        arguments: { id: rt0.id, inputRoutingType: "17" },
       }),
     );
 

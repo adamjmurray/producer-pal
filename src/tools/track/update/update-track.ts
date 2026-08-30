@@ -13,7 +13,8 @@ import {
   MONITORING_STATE,
 } from "#src/tools/constants.ts";
 import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
-import { applyMixerProperties } from "./update-track-mixer-helpers.ts";
+import { applyMixerProperties } from "./helpers/update-track-mixer-helpers.ts";
+import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
@@ -33,13 +34,6 @@ import {
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 
-interface RoutingParams {
-  inputRoutingTypeId?: string;
-  inputRoutingChannelId?: string;
-  outputRoutingTypeId?: string;
-  outputRoutingChannelId?: string;
-}
-
 interface UpdateTrackArgs {
   id?: string;
   /** Hidden alias for id */
@@ -54,9 +48,17 @@ interface UpdateTrackArgs {
   mute?: boolean;
   solo?: boolean;
   arm?: boolean;
+  inputRoutingType?: string;
+  inputRoutingChannel?: string;
+  outputRoutingType?: string;
+  outputRoutingChannel?: string;
+  /** Deprecated: use inputRoutingType */
   inputRoutingTypeId?: string;
+  /** Deprecated: use inputRoutingChannel */
   inputRoutingChannelId?: string;
+  /** Deprecated: use outputRoutingType */
   outputRoutingTypeId?: string;
+  /** Deprecated: use outputRoutingChannel */
   outputRoutingChannelId?: string;
   monitoringState?: string;
   sendGainDb?: number;
@@ -66,59 +68,6 @@ interface UpdateTrackArgs {
 interface UpdateTrackResult {
   id: string;
   path?: string;
-}
-
-/**
- * Apply routing properties to a track. Input routing exists only on regular,
- * non-group tracks, so it is warn-and-skipped on group/return/master tracks —
- * mirroring the read-side guard in track-routing-helpers.ts processCurrentRouting
- * (`!isGroup && category === "regular"`). Output routing applies to the tracks
- * that expose it (regular and return).
- * @param track - Track object
- * @param params - Routing properties
- */
-function applyRoutingProperties(track: LiveAPI, params: RoutingParams): void {
-  const {
-    inputRoutingTypeId,
-    inputRoutingChannelId,
-    outputRoutingTypeId,
-    outputRoutingChannelId,
-  } = params;
-
-  if (inputRoutingTypeId != null || inputRoutingChannelId != null) {
-    const category = (track.category as string | undefined) ?? "regular";
-    const isGroup = (track.getProperty("is_foldable") as number) > 0;
-
-    if (isGroup || category !== "regular") {
-      console.warn(
-        `updateTrack: input routing is only available on regular non-group tracks; skipping for track ${track.id}`,
-      );
-    } else {
-      if (inputRoutingTypeId != null) {
-        track.setProperty("input_routing_type", {
-          identifier: Number(inputRoutingTypeId),
-        });
-      }
-
-      if (inputRoutingChannelId != null) {
-        track.setProperty("input_routing_channel", {
-          identifier: Number(inputRoutingChannelId),
-        });
-      }
-    }
-  }
-
-  if (outputRoutingTypeId != null) {
-    track.setProperty("output_routing_type", {
-      identifier: Number(outputRoutingTypeId),
-    });
-  }
-
-  if (outputRoutingChannelId != null) {
-    track.setProperty("output_routing_channel", {
-      identifier: Number(outputRoutingChannelId),
-    });
-  }
 }
 
 /**
@@ -247,10 +196,14 @@ function applySendProperties(
  * @param args.mute - Optional mute state
  * @param args.solo - Optional solo state
  * @param args.arm - Optional arm state
- * @param args.inputRoutingTypeId - Optional input routing type identifier
- * @param args.inputRoutingChannelId - Optional input routing channel identifier
- * @param args.outputRoutingTypeId - Optional output routing type identifier
- * @param args.outputRoutingChannelId - Optional output routing channel identifier
+ * @param args.inputRoutingType - Optional input routing type name or identifier
+ * @param args.inputRoutingChannel - Optional input routing channel name or identifier
+ * @param args.outputRoutingType - Optional output routing type name or identifier
+ * @param args.outputRoutingChannel - Optional output routing channel name or identifier
+ * @param args.inputRoutingTypeId - Deprecated alias for inputRoutingType
+ * @param args.inputRoutingChannelId - Deprecated alias for inputRoutingChannel
+ * @param args.outputRoutingTypeId - Deprecated alias for outputRoutingType
+ * @param args.outputRoutingChannelId - Deprecated alias for outputRoutingChannel
  * @param args.monitoringState - Optional monitoring state ('in', 'auto', 'off')
  * @param args.sendGainDb - Optional send gain in dB (-70 to 0), requires sendReturn
  * @param args.sendReturn - Optional return track id, name, or letter prefix, requires sendGainDb
@@ -271,6 +224,10 @@ export function updateTrack(
     mute,
     solo,
     arm,
+    inputRoutingType,
+    inputRoutingChannel,
+    outputRoutingType,
+    outputRoutingChannel,
     inputRoutingTypeId,
     inputRoutingChannelId,
     outputRoutingTypeId,
@@ -352,10 +309,10 @@ export function updateTrack(
 
     // Handle routing properties
     applyRoutingProperties(track, {
-      inputRoutingTypeId,
-      inputRoutingChannelId,
-      outputRoutingTypeId,
-      outputRoutingChannelId,
+      inputRoutingType: inputRoutingType ?? inputRoutingTypeId,
+      inputRoutingChannel: inputRoutingChannel ?? inputRoutingChannelId,
+      outputRoutingType: outputRoutingType ?? outputRoutingTypeId,
+      outputRoutingChannel: outputRoutingChannel ?? outputRoutingChannelId,
     });
 
     // Handle monitoring state

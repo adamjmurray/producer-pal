@@ -70,14 +70,14 @@ describe("ppal-update-track routing", () => {
 
     expect(target).toBeDefined();
 
-    await updateRouting(before.id, { inputRoutingTypeId: target!.inputId! });
+    await updateRouting(before.id, { inputRoutingType: target!.inputId! });
 
     const after = await readRouting(EMPTY_MIDI_TRACK);
 
     expect(after.inputRoutingType?.inputId).toBe(target!.inputId);
     expect(after.inputRoutingType?.name).toBe(target!.name);
 
-    await updateRouting(before.id, { inputRoutingTypeId: originalId });
+    await updateRouting(before.id, { inputRoutingType: originalId });
   });
 
   it("assigns input routing channel", async () => {
@@ -93,7 +93,7 @@ describe("ppal-update-track routing", () => {
 
     expect(allIns).toBeDefined();
 
-    await updateRouting(before.id, { inputRoutingTypeId: allIns!.inputId! });
+    await updateRouting(before.id, { inputRoutingType: allIns!.inputId! });
 
     const withChannels = await readRouting(EMPTY_MIDI_TRACK);
     const channels = withChannels.availableInputRoutingChannels!;
@@ -104,7 +104,7 @@ describe("ppal-update-track routing", () => {
       (c) => c.inputId !== withChannels.inputRoutingChannel?.inputId,
     );
 
-    await updateRouting(before.id, { inputRoutingChannelId: target!.inputId! });
+    await updateRouting(before.id, { inputRoutingChannel: target!.inputId! });
 
     const after = await readRouting(EMPTY_MIDI_TRACK);
 
@@ -112,8 +112,8 @@ describe("ppal-update-track routing", () => {
     expect(after.inputRoutingChannel?.name).toBe(target!.name);
 
     await updateRouting(before.id, {
-      inputRoutingTypeId: originalTypeId,
-      inputRoutingChannelId: originalChannelId,
+      inputRoutingType: originalTypeId,
+      inputRoutingChannel: originalChannelId,
     });
   });
 
@@ -131,14 +131,37 @@ describe("ppal-update-track routing", () => {
 
     expect(target).toBeDefined();
 
-    await updateRouting(before.id, { outputRoutingTypeId: target!.outputId! });
+    await updateRouting(before.id, { outputRoutingType: target!.outputId! });
 
     const after = await readRouting(EMPTY_MIDI_TRACK);
 
     expect(after.outputRoutingType?.outputId).toBe(target!.outputId);
     expect(after.outputRoutingType?.name).toBe(target!.name);
 
-    await updateRouting(before.id, { outputRoutingTypeId: originalId });
+    await updateRouting(before.id, { outputRoutingType: originalId });
+  });
+
+  it("assigns output routing type by display name", async () => {
+    const before = await readRouting(EMPTY_MIDI_TRACK);
+    const originalId = before.outputRoutingType!.outputId!;
+    // Set by name, so the target's name has to be unambiguous in this Set.
+    const options = before.availableOutputRoutingTypes!;
+    const target = options.find(
+      (t) =>
+        t.outputId !== originalId &&
+        options.filter((o) => o.name === t.name).length === 1,
+    );
+
+    expect(target).toBeDefined();
+
+    await updateRouting(before.id, { outputRoutingType: target!.name });
+
+    const after = await readRouting(EMPTY_MIDI_TRACK);
+
+    expect(after.outputRoutingType?.name).toBe(target!.name);
+    expect(after.outputRoutingType?.outputId).toBe(target!.outputId);
+
+    await updateRouting(before.id, { outputRoutingType: originalId });
   });
 
   it("assigns output routing channel", async () => {
@@ -154,7 +177,7 @@ describe("ppal-update-track routing", () => {
 
     expect(bass).toBeDefined();
 
-    await updateRouting(before.id, { outputRoutingTypeId: bass!.outputId! });
+    await updateRouting(before.id, { outputRoutingType: bass!.outputId! });
 
     const withChannels = await readRouting(EMPTY_MIDI_TRACK);
     const channels = withChannels.availableOutputRoutingChannels!;
@@ -166,7 +189,7 @@ describe("ppal-update-track routing", () => {
     );
 
     await updateRouting(before.id, {
-      outputRoutingChannelId: target!.outputId!,
+      outputRoutingChannel: target!.outputId!,
     });
 
     const after = await readRouting(EMPTY_MIDI_TRACK);
@@ -175,8 +198,8 @@ describe("ppal-update-track routing", () => {
     expect(after.outputRoutingChannel?.name).toBe(target!.name);
 
     await updateRouting(before.id, {
-      outputRoutingTypeId: originalTypeId,
-      outputRoutingChannelId: originalChannelId,
+      outputRoutingType: originalTypeId,
+      outputRoutingChannel: originalChannelId,
     });
   });
 });

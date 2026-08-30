@@ -210,10 +210,10 @@ describe("updateTrack", () => {
     it("should update routing properties when provided", () => {
       const result = updateTrack({
         id: "123",
-        inputRoutingTypeId: "17",
-        inputRoutingChannelId: "1",
-        outputRoutingTypeId: "25",
-        outputRoutingChannelId: "26",
+        inputRoutingType: "17",
+        inputRoutingChannel: "1",
+        outputRoutingType: "25",
+        outputRoutingChannel: "26",
       });
 
       expect(track123.set).toHaveBeenCalledWith(
@@ -288,7 +288,7 @@ describe("updateTrack", () => {
         name: "Test Track",
         color: "#FF0000",
         mute: true,
-        inputRoutingTypeId: "17",
+        inputRoutingType: "17",
         monitoringState: MONITORING_STATE.IN,
       });
 
@@ -307,7 +307,7 @@ describe("updateTrack", () => {
     it("should handle routing properties in bulk operations", () => {
       const result = updateTrack({
         id: "123, 456",
-        outputRoutingTypeId: "25",
+        outputRoutingType: "25",
         monitoringState: MONITORING_STATE.AUTO,
       });
 
@@ -350,8 +350,8 @@ describe("updateTrack", () => {
 
         updateTrack({
           id: "ret1",
-          inputRoutingTypeId: "17",
-          outputRoutingTypeId: "25",
+          inputRoutingType: "17",
+          outputRoutingType: "25",
         });
 
         // Input routing exists only on regular non-group tracks: warn-and-skip.
@@ -376,7 +376,7 @@ describe("updateTrack", () => {
           properties: { is_foldable: 1 },
         });
 
-        updateTrack({ id: "grp1", inputRoutingTypeId: "17" });
+        updateTrack({ id: "grp1", inputRoutingType: "17" });
 
         expect(groupTrack.set).not.toHaveBeenCalledWith(
           "input_routing_type",

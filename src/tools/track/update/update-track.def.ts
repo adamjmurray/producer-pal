@@ -6,7 +6,10 @@
 import { z } from "zod";
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
@@ -65,21 +68,34 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
 
-    inputRoutingTypeId: param(z.coerce.string().optional(), {
-      default: "from availableInputRoutingTypes, set before channel",
+    inputRoutingType: param(z.coerce.string().optional(), {
+      default: "name from availableInputRoutingTypes, set before channel",
       smallModel: null,
     }),
-    inputRoutingChannelId: param(z.coerce.string().optional(), {
-      default: "from availableInputRoutingChannels",
+    inputRoutingChannel: param(z.coerce.string().optional(), {
+      default: "name from availableInputRoutingChannels",
       smallModel: null,
     }),
-    outputRoutingTypeId: param(z.coerce.string().optional(), {
-      default: "from availableOutputRoutingTypes, set before channel",
+    outputRoutingType: param(z.coerce.string().optional(), {
+      default: "name from availableOutputRoutingTypes, set before channel",
       smallModel: null,
     }),
-    outputRoutingChannelId: param(z.coerce.string().optional(), {
-      default: "from availableOutputRoutingChannels",
+    outputRoutingChannel: param(z.coerce.string().optional(), {
+      default: "name from availableOutputRoutingChannels",
       smallModel: null,
+    }),
+
+    inputRoutingTypeId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "inputRoutingType",
+    }),
+    inputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "inputRoutingChannel",
+    }),
+    outputRoutingTypeId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "outputRoutingType",
+    }),
+    outputRoutingChannelId: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "outputRoutingChannel",
     }),
     monitoringState: param(
       z
