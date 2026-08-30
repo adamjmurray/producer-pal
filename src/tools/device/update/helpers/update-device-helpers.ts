@@ -17,6 +17,7 @@ import { stripReturnSlotLetter } from "#src/tools/shared/validation/name-utils.t
 import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   type InsertionPathResolution,
+  resolveDrumPadFromPath,
   resolveInsertionPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -34,6 +35,10 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
  * A chain or device below the pad ("t0/d0/pD1/c0", the spelling read-device
  * prints for a layered pad) still names that pad: the move is an in_note
  * re-map, so the pad is the only destination there is.
+ *
+ * A later pad segment ("t0/d0/pC1/c0/d0/pE1") names a nested rack's pad, and
+ * that's the destination — it's a legal move whenever the nested rack is the
+ * source's own.
  * @param toPath - Target drum pad path
  * @param drumRackPath - Live API path of the rack holding the source chain
  * @returns The pad's note name, "*" for the catch-all pad, or null once the
@@ -48,23 +53,17 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
     return null;
   }
 
-  // Resolution stops at the first pad segment, so a further pad segment belongs
-  // to a rack nested under this one. Which rack that is can't be told from
-  // here, so don't guess — refuse.
-  if (resolved.remainingSegments.some((segment) => segment.startsWith("p"))) {
-    console.warn(
-      `toPath "${toPath}" names a pad of a nested Drum Rack, ` +
-        `and a pad move re-maps one rack's own pads; ` +
-        `name the destination by the outer rack's chain index instead (t0/d0/c0/d0/pE1)`,
-    );
-
-    return null;
-  }
+  const { liveApiPath, drumPadNote, remainingSegments } = resolved;
+  const nested = lastPadIndex(remainingSegments);
+  const pad =
+    nested < 0
+      ? { rackPath: liveApiPath, note: drumPadNote }
+      : nestedPad(liveApiPath, drumPadNote, remainingSegments, nested);
 
   // The move is an in_note re-map within one rack, so a toPath naming a pad
   // elsewhere can't be honored. Without this it lands on that note in the
   // SOURCE rack instead — the wrong pad, reported as a success.
-  if (resolved.liveApiPath !== drumRackPath) {
+  if (pad?.rackPath !== drumRackPath) {
     console.warn(
       `toPath "${toPath}" does not name a pad in this rack, and a pad move stays within one rack; ` +
         `move the pad's device instead (update-device on the device path)`,
@@ -73,7 +72,49 @@ function targetPadNote(toPath: string, drumRackPath: string): string | null {
     return null;
   }
 
-  return resolved.drumPadNote;
+  return pad.note;
+}
+
+/**
+ * Where the last pad segment sits, so a nested rack's pad is read as the
+ * destination rather than the outer pad the path opens with.
+ * @param segments - Segments after the first pad
+ * @returns Its index, or -1 when no pad follows
+ */
+function lastPadIndex(segments: string[]): number {
+  for (let index = segments.length - 1; index >= 0; index--) {
+    if (segments[index]?.startsWith("p")) return index;
+  }
+
+  return -1;
+}
+
+/**
+ * The pad a nested rack's pad segment names. Path resolution stops at the first
+ * pad, so the rack holding a later one is only findable by walking the live
+ * objects between them.
+ * @param liveApiPath - Live API path of the outermost rack
+ * @param drumPadNote - Its pad the path opens with
+ * @param segments - Segments after that pad
+ * @param padIndex - Index of the last pad segment
+ * @returns The nested rack's path and the pad's note, or null when the path
+ *   reaches no rack
+ */
+function nestedPad(
+  liveApiPath: string,
+  drumPadNote: string,
+  segments: string[],
+  padIndex: number,
+): { rackPath: string; note: string } | null {
+  const { target, targetType } = resolveDrumPadFromPath(
+    liveApiPath,
+    drumPadNote,
+    segments.slice(0, padIndex),
+  );
+
+  return target == null || targetType !== "device"
+    ? null
+    : { rackPath: target.path, note: (segments[padIndex] as string).slice(1) };
 }
 
 /**

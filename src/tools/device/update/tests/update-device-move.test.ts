@@ -197,23 +197,21 @@ describe("updateDevice - moving a drum chain", () => {
 
   // A chain of a pad in this rack names that pad — the move is an in_note
   // re-map, and "t0/d0/pD1/c0" is the spelling read-device prints for a layered
-  // pad's chains. 2.2.0 refused it with nested-rack advice that doesn't apply.
+  // pad's chains.
   it("moves to a pad named by one of its chains", () => {
     updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/pD1/c0" });
 
     expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("nested Drum Rack"),
+      expect.stringContaining("does not name a pad in this rack"),
     );
   });
 
-  it("should warn and skip when toPath names a pad in a nested rack", () => {
-    // The path resolves to the OUTER rack, so only the trailing "/d0/pE1" says
-    // the pad the caller meant is somewhere else. Honoring the first pad name
-    // lands C1 on D1 of this rack and reports it as the move they asked for.
-    // Which rack that deeper pad is in is unknown here, so the refusal says
-    // what the path names rather than guessing it's another rack.
+  it("should warn and skip when the nested rack a toPath names is not there", () => {
+    // The trailing "/d0/pE1" says the pad meant is in a rack under D1, and no
+    // such rack exists. Honoring the first pad name instead lands C1 on D1 of
+    // this rack and reports it as the move they asked for.
     const result = updateDevice({
       path: "t0/d0/pC1",
       toPath: "t0/d0/pD1/d0/pE1",
@@ -221,7 +219,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names a pad of a nested Drum Rack"),
+      expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -237,7 +235,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("names a pad of a nested Drum Rack"),
+      expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
   });
@@ -339,6 +337,76 @@ describe("updateDevice - moving a drum chain", () => {
       updateDevice({ id: "pad-38", name: "Snare" });
 
       expect(chain2.set).toHaveBeenCalledWith("name", "Snare");
+    });
+  });
+
+  // Path resolution stops at the first pad, so a nested rack's pad is only
+  // findable by walking the live objects. Until it did, the pad spelling —
+  // which is what read-device prints — was refused while the chain-index
+  // spelling of the identical move went through.
+  describe("within a nested Drum Rack", () => {
+    let subChainD: RegisteredMockObject;
+
+    beforeEach(() => {
+      // Pad C1's first chain holds a Drum Rack of its own, with D1 and E1 pads.
+      registerMockObject("chain-0", {
+        properties: { in_note: 36, devices: children("nested-rack") },
+      });
+      registerMockObject("nested-rack", {
+        path: livePath.track(0).device(0).chain(0).device(0),
+        type: "RackDevice",
+        properties: {
+          can_have_drum_pads: 1,
+          chains: children("sub-chain-d", "sub-chain-e"),
+        },
+      });
+      subChainD = registerMockObject("sub-chain-d", {
+        path: livePath.track(0).device(0).chain(0).device(0).chain(0),
+        type: "DrumChain",
+        properties: { in_note: 38 },
+      });
+      registerMockObject("sub-chain-e", {
+        path: livePath.track(0).device(0).chain(0).device(0).chain(1),
+        type: "DrumChain",
+        properties: { in_note: 40 },
+      });
+    });
+
+    it.each([
+      ["pad", "t0/d0/pC1/c0/d0"],
+      ["chain-index", "t0/d0/c0/d0"],
+    ])("moves a nested pad named by the %s spelling", (_name, rack) => {
+      updateDevice({ path: `${rack}/pD1`, toPath: `${rack}/pE1` });
+
+      expect(subChainD.set).toHaveBeenCalledWith("in_note", 40);
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("does not name a pad in this rack"),
+      );
+    });
+
+    it("refuses a move out of the nested rack into the outer one", () => {
+      updateDevice({ path: "t0/d0/pC1/c0/d0/pD1", toPath: "t0/d0/pE1" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("does not name a pad in this rack"),
+      );
+      expect(subChainD.set).not.toHaveBeenCalledWith(
+        "in_note",
+        expect.anything(),
+      );
+    });
+
+    it("refuses a move from the outer rack into the nested one", () => {
+      updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/c0/d0/pE1" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("does not name a pad in this rack"),
+      );
+      expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
+      expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     });
   });
 });
