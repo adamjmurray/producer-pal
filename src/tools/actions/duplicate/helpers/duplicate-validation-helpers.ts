@@ -14,6 +14,10 @@ import {
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import {
+  type SourceShare,
+  warnSharedArrangementDestination,
+} from "./sources/duplicate-source-helpers.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
@@ -338,6 +342,9 @@ interface DestinationParams {
   takeLaneName: string | undefined;
   transforms: string | undefined;
   code: string | undefined;
+  /** Every source this call copies, so a pile-up on one destination is caught
+   *  here with the rest of the destination warnings. */
+  sources: SourceShare[];
 }
 
 /**
@@ -389,6 +396,11 @@ export function resolveDestinationAndWarn(
   // the destination resolver folded takeLane onto the paths already, and the
   // lane resolver warns if it had no new lane to name.
   warnUnusedTakeLane(type, destination, takeLane, console.warn, takeLaneName);
+  warnSharedArrangementDestination(
+    params.sources,
+    destination,
+    arrangementStart ?? locator,
+  );
 
   return destination;
 }

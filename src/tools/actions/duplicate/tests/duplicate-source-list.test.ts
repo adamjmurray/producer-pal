@@ -248,6 +248,43 @@ describe("duplicate - a list of sources", () => {
 
       expect(result).toHaveLength(4);
       expect(track2.call).toHaveBeenCalledTimes(4);
+      // A position per source is a row, not a pile.
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("later ones will overwrite earlier ones"),
+      );
+    });
+
+    // Each source is placed on its own, with no view of the others, so nothing
+    // downstream can see that they all land on the same span.
+    it("warns when every source lands on one track at one position", async () => {
+      registerMockObject("clipA", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerMockObject("clipB", {
+        path: livePath.track(1).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+      for (const clipIndex of [0, 1]) {
+        registerArrangementClip(2, clipIndex, 16);
+      }
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2",
+        arrangementStart: "5|1",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          '2 clips duplicated to "t2" at the same position',
+        ),
+      );
     });
   });
 

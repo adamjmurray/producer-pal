@@ -151,6 +151,7 @@ export async function duplicate(
 
   const destination = resolveDestinationAndWarn({
     type,
+    sources,
     // Every source's destination is the same kind, and the warnings are about
     // the params rather than the places, so one of them speaks for the call.
     clipDestinations: clipDestinations?.[0] ?? null,

@@ -113,6 +113,42 @@ export function resolveSourceClipDestinations(
 }
 
 /**
+ * Warn when several sources all land on one named arrangement track at one
+ * position. A copy landing on an occupied span truncates what is there, so the
+ * later sources sit on top of the earlier ones. This is the collision
+ * duplicate-clip-order-helpers already reorders around for ONE source's own
+ * copies — no source can see the others coming, so it is said once here.
+ * @param sources - The sources this call is copying
+ * @param destination - Where the copies land, when the type has a destination
+ * @param position - arrangementStart or locator as written, so a list naming a
+ *   position per source reads as a row rather than a pile
+ */
+export function warnSharedArrangementDestination(
+  sources: SourceShare[],
+  destination: "session" | "arrangement" | undefined,
+  position: string | undefined,
+): void {
+  const first = sources[0];
+
+  if (
+    destination !== "arrangement" ||
+    sources.length < 2 ||
+    first?.toPath == null
+  ) {
+    return;
+  }
+
+  // A position per source is a row, not a pile.
+  if ((position ?? "").split(",").length >= sources.length) return;
+
+  if (sources.every((source) => source.toPath === first.toPath)) {
+    console.warn(
+      `${sources.length} clips duplicated to "${first.toPath}" at the same position - later ones will overwrite earlier ones`,
+    );
+  }
+}
+
+/**
  * Runs one source's copies at a time and concatenates them.
  *
  * A lone source keeps whatever shape its own branch chose — one object for one
