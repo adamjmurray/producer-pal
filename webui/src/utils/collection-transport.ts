@@ -10,7 +10,7 @@
 // utilities rather than inside the hook module (see
 // #webui/hooks/context/use-doc-collection).
 
-import { COLLECTION_REQUEST_TIMEOUT_MS } from "#webui/lib/constants/transport";
+import { fetchWithDeadline } from "#webui/utils/fetch-with-deadline";
 
 /**
  * GET the full collection.
@@ -22,7 +22,7 @@ export async function fetchEntries<TView>(
   url: string,
   label: string,
 ): Promise<TView[]> {
-  return await withDeadline(
+  return await fetchWithDeadline(
     url,
     { cache: "no-store" },
     `${label} request timed out`,
@@ -46,14 +46,11 @@ export async function fetchEntries<TView>(
 // drops the last autosave. Collection entries (memory facts, skill fragments)
 // are small, so the browser's ~64KB keepalive body quota is never a concern
 // here — unlike the single-doc context/system-prompt writes (see
-// #webui/hooks/context/use-doc `makeContentTransport`), whose imported
-// bodies can far exceed it, so those deliberately stay a plain fetch.
+// #webui/hooks/context/use-doc `makeContentTransport`), whose imported bodies
+// can far exceed it, so those deliberately go out without keepalive.
 //
 // Every request here — the list read included — also runs under a deadline (see
-// withDeadline). A caller can't tell a hung request from a slow one, so it keeps
-// waiting: the memory editor holds autosave off across a rename until the write
-// settles, and one that never settled used to kill autosave silently for the
-// rest of the editor's mount.
+// #webui/utils/fetch-with-deadline), as does every other ~/.producer-pal request.
 
 /**
  * PUT one entry.
@@ -144,7 +141,7 @@ async function writeRequest<T>(
   label: string,
   readBody: (response: Response) => Promise<T>,
 ): Promise<T> {
-  return await withDeadline(
+  return await fetchWithDeadline(
     url,
     { ...init, keepalive: true },
     `${label} update timed out`,
@@ -155,45 +152,6 @@ async function writeRequest<T>(
       return await readBody(response);
     },
   );
-}
-
-/**
- * Run one request and fail it if the server doesn't answer in time. The deadline
- * covers the body read too, since a response whose stream stalls hangs the
- * caller exactly the way an unanswered request does.
- * @param url - The endpoint to request
- * @param init - Cache, method, headers, and body for the request
- * @param timedOut - Error message for a request that outran the deadline
- * @param handle - Checks the response and reads its body
- * @returns Whatever handle read
- */
-async function withDeadline<T>(
-  url: string,
-  init: RequestInit,
-  timedOut: string,
-  handle: (response: Response) => Promise<T>,
-): Promise<T> {
-  const controller = new AbortController();
-  // Nothing fires it once the page is gone, so a keepalive write dispatched from
-  // the beforeunload/unmount flush still finishes on its own.
-  const timer = setTimeout(
-    controller.abort.bind(controller),
-    COLLECTION_REQUEST_TIMEOUT_MS,
-  );
-
-  try {
-    return await handle(
-      await fetch(url, { ...init, signal: controller.signal }),
-    );
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(timedOut, { cause: error });
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 /**

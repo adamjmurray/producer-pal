@@ -282,6 +282,9 @@ export function useContextEditorState(
   // server happened to finish last. A set rather than one ref: writes can
   // overlap (a debounce flush, then a blur flush before the first echo lands),
   // and keeping only the newest would silently stop awaiting the earlier one.
+  // Nothing sweeps it on unmount, and nothing needs to: an entry can't outlive
+  // its request (the transport deadline settles every write), and the screens
+  // that own this hook are keyed, so a remount always starts from an empty set.
   const inFlightSavesRef = useRef<Set<Promise<boolean>>>(new Set());
   // How many Clear/Import writes are on the wire. Those two REPLACE the whole
   // document and remount the editor from the result, so a draft typed while one

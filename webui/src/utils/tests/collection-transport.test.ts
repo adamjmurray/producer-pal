@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { COLLECTION_REQUEST_TIMEOUT_MS } from "#webui/lib/constants/transport";
+import { DOC_REQUEST_TIMEOUT_MS } from "#webui/lib/constants/transport";
 import {
   deleteEntryRequest,
   fetchEntries,
@@ -96,7 +96,7 @@ describe("collection transport write deadline", () => {
 
       const outcome = settlementOf(channel.dispatch());
 
-      await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
+      await vi.advanceTimersByTimeAsync(DOC_REQUEST_TIMEOUT_MS);
 
       expect(await outcome).toHaveProperty(
         "message",
@@ -114,7 +114,7 @@ describe("collection transport write deadline", () => {
       settled = true;
     });
 
-    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS - 1);
+    await vi.advanceTimersByTimeAsync(DOC_REQUEST_TIMEOUT_MS - 1);
 
     expect(settled).toBe(false);
   });
@@ -134,7 +134,7 @@ describe("collection transport write deadline", () => {
 
     const outcome = settlementOf(putEntry(URL, {}, false, "Memory"));
 
-    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(DOC_REQUEST_TIMEOUT_MS);
 
     expect(await outcome).toHaveProperty("message", "Memory update timed out");
   });
@@ -174,7 +174,7 @@ describe("collection transport write deadline", () => {
 
     const outcome = settlementOf(fetchEntries(LIST_URL, "Memory"));
 
-    await vi.advanceTimersByTimeAsync(COLLECTION_REQUEST_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(DOC_REQUEST_TIMEOUT_MS);
 
     expect(await outcome).toHaveProperty("message", "Memory request timed out");
   });

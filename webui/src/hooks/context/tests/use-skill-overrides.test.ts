@@ -121,7 +121,12 @@ describe("useSkillOverrides", () => {
         forkedFromVersion: "1.4.0",
       },
     ]);
-    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, { cache: "no-store" });
+    expect(fetchMock).toHaveBeenCalledWith(LIST_URL, {
+      cache: "no-store",
+      // The deadline's, so a list read the server never answers gives up
+      // instead of stranding the tab (see doc-request-deadline.test).
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it("carries a slot's split-staleness through, and reads it as absent on an older server", async () => {
