@@ -30,11 +30,15 @@ const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
   "Auto Shift": {
     "Pitch Fine": { unit: "cents", min: -100, max: 100 },
     "Vibrato Amt": { unit: "cents", min: 0, max: 200 },
+    "LFO > Pitch": { unit: "semitones", min: 0, max: 12 },
   },
   Corpus: {
     Fine: { unit: "cents", min: -50, max: 50 },
     "LFO Rate": { unit: "Hz", min: 0.01, max: 10 },
     Tune: { unit: "Hz", min: 16.35, max: 4186 },
+  },
+  Erosion: {
+    "Filter Width": { unit: "octaves", min: 0.1, max: 2.5 },
   },
   "Glue Compressor": {
     Attack: { unit: "ms", min: 0.01, max: 30 },
@@ -42,13 +46,24 @@ const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
     // param works — the value is converted onto the param's own scale.
     Release: { unit: "s", min: 0.1, max: 1.2 },
   },
+  // Hybrid Reverb's Blend is deliberately absent: it reads "57/43", a ratio
+  // between two sections rather than a quantity, and Live's Info View names no
+  // unit for it. Same for Roar's Blend.
   "Hybrid Reverb": {
-    Blend: { unit: "%", min: 100, max: 0 },
     "Sh Pitch Shift": { unit: "semitones", min: -12, max: 12 },
+  },
+  Redux: {
+    "Post-Filter": { unit: "octaves", min: -4, max: 4 },
   },
   Resonators: resonatorTuneEntries(),
   Reverb: {
     "Stereo Image": { unit: "degrees", min: 0, max: 120 },
+  },
+  Shifter: {
+    "Pitch Fine": { unit: "cents", min: -100, max: 100 },
+  },
+  "Spectral Resonator": {
+    "Pitch Mod": { unit: "semitones", min: 0, max: 4 },
   },
 };
 

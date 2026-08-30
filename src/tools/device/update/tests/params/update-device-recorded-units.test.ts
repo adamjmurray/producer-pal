@@ -141,6 +141,21 @@ describe("updateDevice - recorded param units", () => {
     });
   });
 
+  // Live shows this as "57/43" — a ratio between two sections, not a quantity —
+  // and its Info View names no unit. It was briefly recorded as a percentage
+  // from a manual summary, which made read-device report a unit Live disowns.
+  it("leaves a blend ratio unitless", () => {
+    const param = registerBareParam("Hybrid Reverb", "Blend", 100, 0);
+
+    updateDevice({ id: "dev1", params: [{ name: "Blend", value: "50 %" }] });
+
+    expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("never says what it measures"),
+    );
+  });
+
   describe("the range guard", () => {
     // The range is part of the key. A Live version that moves it has changed
     // what the control does, and reporting the old unit would be worse than
