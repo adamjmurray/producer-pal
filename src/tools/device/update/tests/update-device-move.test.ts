@@ -121,6 +121,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain2.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({
       id: "pad-36",
+      path: "t0/d0/pC1",
       chainIds: ["chain-0", "chain-1"],
     });
   });
@@ -191,6 +192,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({
       id: "pad-36",
+      path: "t0/d0/pC1",
       chainIds: ["chain-0", "chain-1"],
     });
   });
@@ -225,6 +227,7 @@ describe("updateDevice - moving a drum chain", () => {
     expect(chain1.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({
       id: "pad-36",
+      path: "t0/d0/pC1",
       chainIds: ["chain-0", "chain-1"],
     });
   });
@@ -295,6 +298,7 @@ describe("updateDevice - moving a drum chain", () => {
       expect(chain1.set).toHaveBeenCalledWith("in_note", 40);
       expect(result).toStrictEqual({
         id: "pad-36",
+        path: "t0/d0/pC1",
         chainIds: ["chain-0", "chain-1"],
       });
     });
@@ -313,6 +317,7 @@ describe("updateDevice - moving a drum chain", () => {
 
       expect(result).toStrictEqual({
         id: "pad-36",
+        path: "t0/d0/pC1",
         chainIds: ["chain-0", "chain-1"],
       });
     });

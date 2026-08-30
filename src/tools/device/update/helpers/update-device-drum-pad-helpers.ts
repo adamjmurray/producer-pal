@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   moveDrumChainToPath,
   stripReturnChainLetter,
@@ -39,6 +40,9 @@ const CHAIN_WRITE_PROPS = [
 export interface DrumPadUpdateResult {
   /** The DrumPad's id, absent on a virtual pad that has no DrumPad object */
   id?: string;
+  /** The pad's path, so a whole-pad write names its target the way every other
+   * write result does. Absent on a virtual pad, which has nothing to name. */
+  path?: string;
   /** The chains written to, absent when only the pad itself was touched */
   chainIds?: string[];
 }
@@ -51,7 +55,7 @@ export interface DrumPadUpdateResult {
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
- * @returns The pad id and the ids of the chains written to
+ * @returns The pad's id and path, and the ids of the chains written to
  */
 export function updateDrumPadGroup(
   group: DrumPadGroup,
@@ -82,7 +86,7 @@ export function updateDrumPadGroup(
 
   const result: DrumPadUpdateResult = {};
 
-  if (pad != null) result.id = pad.id;
+  if (pad != null) Object.assign(result, { id: pad.id }, pathField(pad));
 
   if (CHAIN_WRITE_PROPS.some((key) => chainOptions[key] != null)) {
     result.chainIds = chains.map((chain) => chain.id);
