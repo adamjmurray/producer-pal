@@ -6,6 +6,7 @@
 /** Reading and updating a clip, for any e2e suite that has to do both. */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { expect } from "vitest";
 import {
   parseToolResult,
   parseToolResultWithWarnings,
@@ -93,4 +94,24 @@ export async function arrangementClipAt(
   return data.arrangementClips?.find(
     (clip) => clip.arrangementStart === arrangementStart,
   );
+}
+
+/**
+ * Update a clip that must be refused: the warning says why, and the clip comes
+ * back unchanged, so the caller can go on to check it is still where it was.
+ * @param client - The connected MCP client
+ * @param id - The clip that must stay put
+ * @param args - The rest of the ppal-update-clip arguments
+ * @param warning - Text the refusal warning must contain
+ */
+export async function expectRefusedUpdate(
+  client: Client,
+  id: string,
+  args: Record<string, unknown>,
+  warning: string,
+): Promise<void> {
+  const { data: kept, warnings } = await updateClip(client, id, args);
+
+  expect(warnings.join(" ")).toContain(warning);
+  expect(kept.id).toBe(id);
 }

@@ -28,6 +28,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   arrangementClipAt,
+  expectRefusedUpdate,
   readClipFully,
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
@@ -194,14 +195,13 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
-    });
-
-    expect(warnings.join(" ")).toContain(
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${EMPTY_MIDI_TRACK}/s5` },
       `clip ${source.id} was not moved: Live's API can't move a clip off a take lane`,
     );
-    expect(kept.id).toBe(source.id);
+
     expect((await readClipFully(ctx.client!, { id: source.id })).view).toBe(
       "arrangement",
     );
@@ -217,14 +217,13 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${AUDIO_TRACK}/s3`,
-    });
-
-    expect(warnings.join(" ")).toContain(
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${AUDIO_TRACK}/s3` },
       `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
     );
-    expect(kept.id).toBe(source.id);
+
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "25|1"))?.id,
     ).toBe(source.id);

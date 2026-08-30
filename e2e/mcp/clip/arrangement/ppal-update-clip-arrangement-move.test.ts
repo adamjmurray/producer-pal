@@ -27,6 +27,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 import {
   arrangementClipAt,
+  expectRefusedUpdate,
   readClipFully,
   updateClip,
 } from "../helpers/clip-io-test-helpers.ts";
@@ -100,15 +101,13 @@ describe("arrangement clip moved to another lane", () => {
   it("refuses a MIDI clip aimed at an audio track and keeps it where it is", async () => {
     const source = await createClip("21|1", "Wrong Track");
 
-    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${AUDIO_TRACK}`,
-      arrangementStart: "25|1",
-    });
-
-    expect(warnings.join(" ")).toContain(
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${AUDIO_TRACK}`, arrangementStart: "25|1" },
       `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
     );
-    expect(kept.id).toBe(source.id);
+
     expect(
       (await arrangementClipAt(ctx.client!, EMPTY_MIDI_TRACK, "21|1"))?.id,
     ).toBe(source.id);
@@ -119,14 +118,13 @@ describe("arrangement clip moved to another lane", () => {
   it("refuses a take-lane source", async () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 
-    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${RACKS_TRACK}`,
-    });
-
-    expect(warnings.join(" ")).toContain(
+    await expectRefusedUpdate(
+      ctx.client!,
+      source.id,
+      { toPath: `t${RACKS_TRACK}` },
       `toPath ignored for take-lane clip (id ${source.id})`,
     );
-    expect(kept.id).toBe(source.id);
+
     expect((await readClipFully(ctx.client!, { id: source.id })).name).toBe(
       "Lane Bound",
     );
