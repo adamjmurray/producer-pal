@@ -10,7 +10,7 @@ import {
   LIBRARY_SORT_VALUES,
   LIBRARY_SOURCE_VALUES,
   LIBRARY_TYPE_VALUES,
-  queriesInputSchema,
+  searchesInputSchema,
 } from "#src/tools/session/library-query-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
@@ -36,7 +36,6 @@ export const toolDefLibrary = defineTool("ppal-library", {
           "search",
           "listTags",
           "listCategories",
-          "searchBatch",
           "listPlugins",
           "findSimilar",
           "findDuplicates",
@@ -48,12 +47,11 @@ export const toolDefLibrary = defineTool("ppal-library", {
         .default("search"),
       {
         default:
-          "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind, subcategory) | findSimilar: rank samples by audio similarity to a seed sample (similarTo); combine with the search filters to constrain candidates | findDuplicates: group library samples with identical audio (re-shipped duplicates), scoped by the search filters",
+          "search: filter library items (default); pass searches to run many filtered searches in one call | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind, subcategory) | findSimilar: rank samples by audio similarity to a seed sample (similarTo); combine with the search filters to constrain candidates | findDuplicates: group library samples with identical audio (re-shipped duplicates), scoped by the search filters",
         smallModel: {
           description: "search (default) | listTags",
           excludeEnumValues: [
             "listCategories",
-            "searchBatch",
             "listPlugins",
             "findSimilar",
             "findDuplicates",
@@ -62,16 +60,16 @@ export const toolDefLibrary = defineTool("ppal-library", {
       },
     ),
 
-    queries: param(queriesInputSchema, {
-      default:
-        "searchBatch only: array of query objects, each with the same filters as a single search (query, tags, kind, type, deviceKind, source, inFolder, sort, limit, verifyPaths) plus an optional label; results are returned in order, grouped per query (capped at 20)",
-      smallModel: null,
-    }),
-
     query: param(z.coerce.string().optional(), {
       default:
         "name substring (search: supports * as a multi-character wildcard, e.g. kick*acoustic; listPlugins: plain case-insensitive substring)",
       smallModel: "name substring; use * as wildcard, e.g. kick*acoustic",
+    }),
+
+    searches: param(searchesInputSchema, {
+      default:
+        "search only: run several filtered searches in one call (e.g. build a drum kit) instead of the top-level filters. Array of query objects, each with the same filters as a single search (query, tags, kind, type, deviceKind, source, inFolder, sort, limit, verifyPaths) plus an optional label; results come back in order, grouped per query (capped at 20)",
+      smallModel: null,
     }),
 
     tags: param(z.coerce.string().optional(), {
@@ -105,8 +103,8 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "playback type: loop | oneshot | impulse-response. Prefer oneshot for hits, loop for grooves",
     }),
 
-    // listPlugins is discovery-only (like searchBatch); its vendor/format
-    // filters are excluded since the action itself is hidden from small models.
+    // listPlugins is discovery-only; its vendor/format filters are excluded
+    // since the action itself is hidden from small models.
     category: param(z.coerce.string().optional(), {
       default:
         "listCategories only: a top-level category name (from listCategories with no category) to drill into; returns its tag names, each usable as a tags filter",

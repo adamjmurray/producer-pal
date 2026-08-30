@@ -43,8 +43,8 @@ interface LibraryArgs extends LibrarySearchArgs {
   category?: string;
   /** findSimilar only: absolute path of the seed sample to rank others against. */
   similarTo?: string;
-  /** searchBatch only: per-query filter sets (see runSearchBatch). */
-  queries?: LibraryBatchQuery[];
+  /** search only: per-query filter sets to fan out over (see runSearchBatch). */
+  searches?: LibraryBatchQuery[];
   /** listPlugins only: vendor/manufacturer substring filter. */
   vendor?: string;
   /** listPlugins only: restrict to a single plugin format. */
@@ -82,6 +82,10 @@ export async function library(
 ): Promise<LibraryResult> {
   const action = args.action ?? "search";
 
+  if (args.searches != null && action !== "search") {
+    console.warn(`searches does not apply to action "${action}"; ignoring it`);
+  }
+
   if (action === "listTags") {
     return await callRoute<LibraryListTagsResult>("library.listTags", {
       limit: args.limit,
@@ -93,10 +97,6 @@ export async function library(
       "library.listCategories",
       { category: args.category, limit: args.limit },
     );
-  }
-
-  if (action === "searchBatch") {
-    return await runSearchBatch(args.queries ?? [], toolContext, runSearch);
   }
 
   if (action === "listPlugins") {
@@ -142,12 +142,23 @@ export async function library(
     throw new Error(`Unknown action: ${action}`);
   }
 
+  // searches is the fan-out form of a search: each entry carries its own
+  // filters, so the top-level ones don't apply. An empty array says nothing
+  // about what to search for, so fall through to the single search.
+  if (args.searches != null && args.searches.length > 0) {
+    return await runSearchBatch(args.searches, toolContext, runSearch);
+  }
+
+  if (args.searches != null) {
+    console.warn("searches was empty; running a single search instead");
+  }
+
   return await runSearch(args, toolContext);
 }
 
 /**
  * Run a structured search against the configured folder + Live's DB,
- * merging results. Exported so searchBatch can reuse the exact
+ * merging results. Exported so the searches fan-out can reuse the exact
  * single-search path (filters, folder-scan dedup, limit) per query.
  *
  * @param args - Tool arguments

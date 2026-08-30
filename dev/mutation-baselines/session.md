@@ -63,9 +63,9 @@ result.
 | Folder-scan item shape (`kind: "audio"`, empty `tags`) unasserted    | `library.test.ts`              |
 | `callRoute` success-with-no-result must throw, not resolve undefined | `library.test.ts`              |
 | `deviceKind: "audiofx"` passthrough + valid/absent no-warn controls  | `library-list-plugins.test.ts` |
-| searchBatch cap boundary (exactly 20 no-warn) + dropped-count math   | `library-search-batch.test.ts` |
-| searchBatch keeps the _first_ stalenessRisk, not the last            | `library-search-batch.test.ts` |
-| searchBatch omits the `reason` key on entries with no reason         | `library-search-batch.test.ts` |
+| searches cap boundary (exactly 20 no-warn) + dropped-count math      | `library-search-batch.test.ts` |
+| searches keeps the _first_ stalenessRisk, not the last               | `library-search-batch.test.ts` |
+| searches omits the `reason` key on entries with no reason            | `library-search-batch.test.ts` |
 | Zero-length loop (`loopEnd` exactly at `loopStart`, `<= 0` boundary) | `playback-basic.test.ts`       |
 | `select` conflict-view warn fired on matching / no-view selections   | `select-basic.test.ts`         |
 | Wildcard search regex-escaping (`(` matched literally) + limit guard | `read-samples.test.ts`         |

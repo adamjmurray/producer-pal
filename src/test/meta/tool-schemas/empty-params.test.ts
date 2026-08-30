@@ -63,9 +63,9 @@ describe("params read an empty value as unset", () => {
     });
   }
 
-  // Nested one level down in ppal-library's `queries` array, so unsetEmptyParams
+  // Nested one level down in ppal-library's `searches` array, so unsetEmptyParams
   // never reaches it — library-query-schema.ts wraps that shape itself.
-  it("covers a searchBatch query's own params", () => {
+  it("covers a fanned-out search query's own params", () => {
     const omitted = batchQuerySchema.parse({}) as Record<string, unknown>;
 
     for (const [name, schema] of Object.entries(batchQuerySchema.shape)) {

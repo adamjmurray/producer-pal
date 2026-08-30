@@ -32,7 +32,7 @@ standard tool: `null` has to read exactly as omitting it.
 
 `optionalParams()` in the same file does the equivalent by wrapping a schema's
 shape, for the one place the args scrub can't reach — the per-query fields
-nested inside `ppal-library`'s `queries`.
+nested inside `ppal-library`'s `searches`.
 
 ## Alternatives rejected
 

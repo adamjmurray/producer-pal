@@ -100,8 +100,9 @@ Live, or make sure your standalone Max is up to date. See
 - Enumerate available tags with `action: "listTags"` so the AI can discover the
   tag vocabulary on your machine, or browse Live's category taxonomy (Sounds,
   Drums, Genres, …) with `action: "listCategories"`
-- Run many filtered searches in one call with `action: "searchBatch"`; results
-  grouped per query, so the AI can assemble a whole drum kit in one round trip
+- Run many filtered searches in one call by passing `searches` (an array of
+  query objects, each with its own filters); results grouped per query, so the
+  AI can assemble a whole drum kit in one round trip
 - List the VST/VST3/AU plug-ins Live knows about with `action: "listPlugins"`
   (filter by query, vendor, format, device kind, or subcategory)
 - Rank samples by audio similarity to a seed sample with `action: "findSimilar"`

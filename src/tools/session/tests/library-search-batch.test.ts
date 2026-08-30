@@ -42,21 +42,21 @@ type SearchBatchResult = Extract<
 >;
 
 /**
- * Run a searchBatch library call and narrow the union to the results branch.
- * @param queries - The batch queries (omit for the missing-arg case)
+ * Run a fanned-out library search and narrow the union to the results branch.
+ * @param searches - The per-query filter sets
  * @returns The library result, asserted to contain `results`
  */
 async function runSearchBatch(
-  queries?: NonNullable<Parameters<typeof library>[0]>["queries"],
+  searches: NonNullable<Parameters<typeof library>[0]>["searches"],
 ): Promise<SearchBatchResult> {
-  const result = await library({ action: "searchBatch", queries });
+  const result = await library({ action: "search", searches });
 
   if (!("results" in result)) throw new Error("expected results");
 
   return result;
 }
 
-describe("library tool — searchBatch action", () => {
+describe("library tool — searches fan-out", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -105,8 +105,8 @@ describe("library tool — searchBatch action", () => {
     });
 
     const result = await library({
-      action: "searchBatch",
-      queries: [
+      action: "search",
+      searches: [
         { label: "Kick", tags: "Kick" },
         { label: "Snare", tags: "Snare" },
       ],
@@ -180,8 +180,8 @@ describe("library tool — searchBatch action", () => {
     });
 
     const result = await library({
-      action: "searchBatch",
-      queries: [{ tags: "Kick" }, { query: "808" }],
+      action: "search",
+      searches: [{ tags: "Kick" }, { query: "808" }],
     });
 
     expect(protocolMock.requestNode).toHaveBeenCalledWith(
@@ -205,8 +205,8 @@ describe("library tool — searchBatch action", () => {
     mockSearchByFilter({});
 
     await library({
-      action: "searchBatch",
-      queries: [
+      action: "search",
+      searches: [
         { label: "Kicks", tags: "Kick", inFolder: "/L/Drums/Kicks" },
         { label: "Snares", tags: "Snare" },
       ],
@@ -270,12 +270,51 @@ describe("library tool — searchBatch action", () => {
     warnSpy.mockRestore();
   });
 
-  it("treats a missing queries arg as an empty batch", async () => {
-    const result = await runSearchBatch();
+  // An empty array names no filters at all, so grouping nothing would just
+  // hide the mistake. Fall back to the single search the top-level params
+  // describe, and say so.
+  it("falls back to a single search when searches is empty, and warns", async () => {
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
 
-    expect(result.results).toStrictEqual([]);
-    expect("dbAvailable" in result).toBe(false);
-    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+    mockSearchByFilter({ Kick: [{ path: "/db/kick.wav" }] });
+
+    const result = await library({
+      action: "search",
+      searches: [],
+      tags: "Kick",
+    });
+
+    expect("results" in result).toBe(false);
+    expect(result).toMatchObject({ items: [{ path: "/db/kick.wav" }] });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("searches was empty"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("warns and ignores searches on an action that has no use for it", async () => {
+    const consoleModule = await import("#src/shared/max/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { tags: [] },
+    });
+
+    await library({ action: "listTags", searches: [{ tags: "Kick" }] });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('searches does not apply to action "listTags"'),
+    );
+
+    warnSpy.mockRestore();
   });
 
   it("reports dbAvailable:false when any query finds the DB missing", async () => {
@@ -320,8 +359,8 @@ describe("library tool — searchBatch action", () => {
 
     const result = await library(
       {
-        action: "searchBatch",
-        queries: [{ source: "sampleFolder" }],
+        action: "search",
+        searches: [{ source: "sampleFolder" }],
       },
       { sampleFolder: "/samples/" },
     );
@@ -456,8 +495,8 @@ describe("library tool — searchBatch action", () => {
     mockSearchByFilter({});
 
     await library({
-      action: "searchBatch",
-      queries: [
+      action: "search",
+      searches: [
         { label: "Kicks", tags: "Kick", verifyPaths: true },
         { label: "Snares", tags: "Snare" },
       ],
