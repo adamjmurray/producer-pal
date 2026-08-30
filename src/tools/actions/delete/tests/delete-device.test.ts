@@ -445,18 +445,21 @@ describe("deleteObject device deletion", () => {
 
       const result = deleteObject({ path: "t0/d0, t99/d99", type: "device" });
 
-      expect(result).toStrictEqual({
-        id: "valid_dev",
-        type: "device",
-        deleted: true,
-      });
+      expect(result).toStrictEqual([
+        { id: "valid_dev", type: "device", deleted: true },
+        { path: "t99/d99", type: "device", deleted: false },
+      ]);
     });
 
-    it("should return empty array when all paths are invalid", () => {
+    it("reports every path when none of them name a device", () => {
       mockNonExistentObjects(); // Unregistered paths should not exist
       const result = deleteObject({ path: "t99/d99", type: "device" });
 
-      expect(result).toStrictEqual([]);
+      expect(result).toStrictEqual({
+        path: "t99/d99",
+        type: "device",
+        deleted: false,
+      });
     });
 
     it("should warn when path is used with non-device/drum-pad type", () => {

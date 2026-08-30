@@ -174,7 +174,11 @@ describe("deleteObject", () => {
 
     mockNonExistentObjects();
 
-    expect(deleteObject({ path: "t0/s9", type: "clip" })).toStrictEqual([]);
+    expect(deleteObject({ path: "t0/s9", type: "clip" })).toStrictEqual({
+      path: "t0/s9",
+      type: "clip",
+      deleted: false,
+    });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: no clip at path "t0/s9"',
     );
@@ -241,7 +245,7 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ id: "999", type: "track" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({ id: "999", type: "track", deleted: false });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "999" does not exist',
     );
@@ -257,7 +261,11 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ id: "scene_1", type: "track" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      id: "scene_1",
+      type: "track",
+      deleted: false,
+    });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "scene_1" is not a track (found Scene)',
     );
@@ -284,6 +292,7 @@ describe("deleteObject", () => {
     expect(result).toStrictEqual([
       { id: "track_2", type: "track", deleted: true },
       { id: "track_0", type: "track", deleted: true },
+      { id: "nonexistent", type: "track", deleted: false },
     ]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent" does not exist',
@@ -300,7 +309,10 @@ describe("deleteObject", () => {
       type: "track",
     });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual([
+      { id: "nonexistent1", type: "track", deleted: false },
+      { id: "nonexistent2", type: "track", deleted: false },
+    ]);
     expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'delete: id "nonexistent1" does not exist',

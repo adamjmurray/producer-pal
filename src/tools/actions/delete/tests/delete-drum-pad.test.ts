@@ -102,7 +102,11 @@ describe("deleteObject drum-pad deletion", () => {
 
     const result = deleteObject({ path: "t0/d0/pD1", type: "drum-pad" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pD1",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: drum-pad at path "t0/d0/pD1" does not exist',
     );
@@ -150,11 +154,10 @@ describe("deleteObject drum-pad deletion", () => {
       type: "drum-pad",
     });
 
-    expect(result).toStrictEqual({
-      id: padId,
-      type: "drum-pad",
-      deleted: true,
-    });
+    expect(result).toStrictEqual([
+      { id: padId, type: "drum-pad", deleted: true },
+      { path: "t99/d99/pC1", type: "drum-pad", deleted: false },
+    ]);
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });
 
@@ -164,7 +167,11 @@ describe("deleteObject drum-pad deletion", () => {
     // Path t0/d0 resolves to device, not drum-pad - returns empty results
     const result = deleteObject({ path: "t0/d0", type: "drum-pad" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0" resolves to device, not drum-pad',
     );
@@ -181,7 +188,11 @@ describe("deleteObject drum-pad refusals", () => {
 
     const result = deleteObject({ id: "drum-chain-1", type: "drum-pad" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      id: "drum-chain-1",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(chain.call).not.toHaveBeenCalledWith("delete_all_chains");
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: id "drum-chain-1" is a DrumChain. Use type="chain" for this ' +
@@ -199,7 +210,11 @@ describe("deleteObject drum-pad refusals", () => {
 
     const result = deleteObject({ id: "chain-1", type: "device" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      id: "chain-1",
+      type: "device",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: id "chain-1" is a Chain. Deleting rack chains is not supported.',
     );
@@ -224,11 +239,10 @@ describe("deleteObject drum-pad refusals", () => {
       type: "drum-pad",
     });
 
-    expect(result).toStrictEqual({
-      id: padId,
-      type: "drum-pad",
-      deleted: true,
-    });
+    expect(result).toStrictEqual([
+      { id: padId, type: "drum-pad", deleted: true },
+      { id: "drum-chain-1", type: "drum-pad", deleted: false },
+    ]);
     expect(pad.call).toHaveBeenCalledWith("delete_all_chains");
   });
 
@@ -264,7 +278,11 @@ describe("deleteObject drum-pad refusals", () => {
 
     const result = deleteObject({ path: "t0/d0/pC1/c0", type: "drum-pad" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1/c0",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(pad.call).not.toHaveBeenCalledWith("delete_all_chains");
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/pC1/c0" names something inside a drum pad, not the ' +
@@ -283,7 +301,11 @@ describe("deleteObject drum-pad refusals", () => {
 
     const result = deleteObject({ path: "t0/d0/pC1/c0/d0", type: "drum-pad" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1/c0/d0",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/pC1/c0/d0" names something inside a drum pad, not ' +
         'the pad itself (expected something like "t0/d0/pC1")',
@@ -304,7 +326,11 @@ describe("deleteObject drum-pad refusals", () => {
       type: "drum-pad",
     });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1/c0/d0/pD1",
+      type: "drum-pad",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/pC1/c0/d0/pD1" names a pad of a nested Drum Rack, ' +
         "which can't be deleted",

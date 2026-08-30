@@ -16,14 +16,29 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 
+/** What a batch of paths resolved to, and which of them named nothing. */
+export interface ResolvedPaths {
+  /** Ids of the objects the paths named, in path order. */
+  ids: string[];
+  /** Paths that named nothing deletable. The warning says why. */
+  unresolved: string[];
+}
+
 /**
- * Resolves paths to their IDs for the types a path can name
+ * Resolves paths to their IDs for the types a path can name. Paths that name
+ * nothing come back in `unresolved` so the caller can report them as
+ * `deleted: false` — an empty result reads as "nothing to do" to a model, and
+ * one that skims past the warning then reports the delete as done.
  * @param paths - Array of paths to resolve
  * @param type - The target type ("device", "drum-pad", or "chain")
- * @returns Array of resolved IDs
+ * @returns The resolved ids, plus the paths that named nothing
  */
-export function resolvePathsToIds(paths: string[], type: string): string[] {
+export function resolvePathsToIds(
+  paths: string[],
+  type: string,
+): ResolvedPaths {
   const ids: string[] = [];
+  const unresolved: string[] = [];
 
   for (const targetPath of paths) {
     try {
@@ -32,13 +47,16 @@ export function resolvePathsToIds(paths: string[], type: string): string[] {
 
       if (resolvedId) {
         ids.push(resolvedId);
+      } else {
+        unresolved.push(targetPath);
       }
     } catch (e) {
       console.warn(`delete: ${errorMessage(e)}`);
+      unresolved.push(targetPath);
     }
   }
 
-  return ids;
+  return { ids, unresolved };
 }
 
 /**

@@ -5,12 +5,15 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { clipIdsAtPaths } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
-import { resolvePathsToIds } from "./helpers/delete-path-helpers.ts";
+import {
+  type ResolvedPaths,
+  resolvePathsToIds,
+} from "./helpers/delete-path-helpers.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -39,7 +42,10 @@ const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
 );
 
 interface DeleteResult {
-  id: string;
+  /** The object's id, when the target resolved to one. */
+  id?: string;
+  /** The path instead, when it named nothing. */
+  path?: string;
   type: string;
   deleted: boolean;
 }
@@ -93,21 +99,34 @@ export function deleteObject(
   // Collect IDs from both sources
   const objectIds = targets ? parseCommaSeparatedIds(targets) : [];
 
-  // Resolve paths to IDs for the types that can be addressed by location
+  // Resolve paths to IDs for the types that can be addressed by location.
+  // A path that names nothing is reported, not dropped: an empty result reads
+  // as "nothing to do", and a model that skims past the warning calls the
+  // delete done.
+  const unresolvedPaths: string[] = [];
+
   if (path && PATH_SUPPORTED_TYPES.has(type)) {
-    objectIds.push(
-      ...(type === "clip"
-        ? clipIdsAtPaths(path, "delete")
-        : resolvePathsToIds(parseCommaSeparatedIds(path), type)),
-    );
+    const resolvedPaths =
+      type === "clip"
+        ? resolveClipPaths(path)
+        : resolvePathsToIds(parseCommaSeparatedIds(path), type);
+
+    objectIds.push(...resolvedPaths.ids);
+    unresolvedPaths.push(...resolvedPaths.unresolved);
   }
+
+  const skipped = unresolvedPaths.map((unresolved): DeleteResult => ({
+    path: unresolved,
+    type,
+    deleted: false,
+  }));
 
   if (objectIds.length === 0) {
     if (!targets && !path) {
       throw new Error("delete failed: id or path is required");
     }
 
-    return [];
+    return unwrapSingleResult(skipped);
   }
 
   const deletedObjects: DeleteResult[] = [];
@@ -179,7 +198,40 @@ export function deleteObject(
     deletedObjects.push({ id, type, deleted });
   }
 
-  return unwrapSingleResult(deletedObjects);
+  // Same reasoning as unresolved paths: an id validateObjectTypes rejected —
+  // gone, or the wrong kind of object — is reported rather than dropped.
+  const kept = new Set(objectsToDelete.map(({ object }) => object.id));
+  const rejected = new Set(
+    resolved.filter(({ object }) => !kept.has(object.id)).map(({ id }) => id),
+  );
+
+  for (const id of rejected) {
+    deletedObjects.push({ id, type, deleted: false });
+  }
+
+  return unwrapSingleResult([...deletedObjects, ...skipped]);
+}
+
+/**
+ * The clip lookup in the shape the path resolvers use, so both branches report
+ * their misses the same way.
+ * @param path - Comma-separated clip slot paths
+ * @returns The clip ids found, plus the paths that held no clip
+ */
+function resolveClipPaths(path: string): ResolvedPaths {
+  const entries = parseCommaSeparatedIds(path);
+  const ids: string[] = [];
+  const unresolved: string[] = [];
+
+  for (const [index, clipId] of clipIdPerPath(path, "delete").entries()) {
+    if (clipId == null) {
+      unresolved.push(entries[index] ?? path);
+    } else {
+      ids.push(clipId);
+    }
+  }
+
+  return { ids, unresolved };
 }
 
 /**

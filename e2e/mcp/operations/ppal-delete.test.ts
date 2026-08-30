@@ -312,6 +312,38 @@ describe("ppal-delete", () => {
     expect(deleted.every((d) => d.deleted)).toBe(true);
   });
 
+  it("reports a path that names nothing, rather than an empty result", async () => {
+    // An empty result reads as "nothing to do", and a model that skims past
+    // the warning then reports the delete as done.
+    const { data, warnings } = parseToolResultWithWarnings<DeleteResult>(
+      await del({ path: "t99/d99", type: "device" }),
+    );
+
+    expect(data).toStrictEqual({
+      path: "t99/d99",
+      type: "device",
+      deleted: false,
+    });
+    expect(warnings.join(" ")).toContain("t99/d99");
+  });
+
+  it("reports a miss alongside the deletes in the same call", async () => {
+    const deviceId = await createTestDevice(
+      ctx.client!,
+      "Compressor",
+      `t${DEVICE_TEST_TRACK}`,
+    );
+    const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
+      await del({ id: `${deviceId},99999`, type: "device" }),
+    );
+
+    expect(data).toStrictEqual([
+      { id: deviceId, type: "device", deleted: true },
+      { id: "99999", type: "device", deleted: false },
+    ]);
+    expect(warnings.join(" ")).toContain("99999");
+  });
+
   it("deletes a drum pad by path, spelled the way a model guesses it", async () => {
     // "paths" is a permanent alias, so this checks the delete and the steer.
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
@@ -328,7 +360,10 @@ describe("ppal-delete", () => {
 });
 
 interface DeleteResult {
-  id: string;
+  /** The object's id, when the target resolved to one. */
+  id?: string;
+  /** The path instead, when it named nothing. */
+  path?: string;
   type: string;
   deleted: boolean;
 }

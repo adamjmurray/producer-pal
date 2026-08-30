@@ -38,7 +38,11 @@ describe("deleteObject device path error cases", () => {
     // Path goes to drum pad chain, then asks for device 0 which doesn't exist
     const result = deleteObject({ path: "t0/d0/pC1/c0/d0", type: "device" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1/c0/d0",
+      type: "device",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: device at path "t0/d0/pC1/c0/d0" does not exist',
     );
@@ -61,7 +65,11 @@ describe("deleteObject device path error cases", () => {
     // Path t0/d0/c0 resolves to chain, not device
     const result = deleteObject({ path: "t0/d0/c0", type: "device" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/c0",
+      type: "device",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/c0" resolves to chain, not device',
     );
@@ -74,7 +82,11 @@ describe("deleteObject device path error cases", () => {
     // "t0/p" is invalid because drum pad notation requires a note (like "pC1")
     const result = deleteObject({ path: "t0/d0/p", type: "device" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/p",
+      type: "device",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining(
         'delete: invalid path "t0/d0/p" - "p" is not a device, chain, or drum pad',
@@ -112,7 +124,11 @@ describe("deleteObject device path error cases", () => {
 
     const result = deleteObject({ path: "t0/d0", type: "device" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0",
+      type: "device",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: device at path "t0/d0" does not exist',
     );

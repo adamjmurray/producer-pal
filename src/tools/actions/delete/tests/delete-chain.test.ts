@@ -127,7 +127,11 @@ describe("deleteObject chain deletion", () => {
 
     const result = deleteObject({ path: "t0/d0/pC1", type: "chain" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1",
+      type: "chain",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d0/pC1" names a whole drum pad; use type="drum-pad", ' +
         'or name one layer like "t0/d0/pC1/c0"',
@@ -225,7 +229,11 @@ describe("deleteObject chain deletion", () => {
 
     const result = deleteObject({ path: "t0/d1", type: "chain" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d1",
+      type: "chain",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: path "t0/d1" resolves to device, not chain',
     );
@@ -239,7 +247,11 @@ describe("deleteObject chain deletion", () => {
 
     const result = deleteObject({ path: "t0/d0/c9", type: "chain" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/c9",
+      type: "chain",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: chain at path "t0/d0/c9" does not exist',
     );
@@ -252,7 +264,11 @@ describe("deleteObject chain deletion", () => {
 
     const result = deleteObject({ path: "t0/d0/pC1/c9", type: "chain" });
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({
+      path: "t0/d0/pC1/c9",
+      type: "chain",
+      deleted: false,
+    });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: chain at path "t0/d0/pC1/c9" does not exist',
     );
