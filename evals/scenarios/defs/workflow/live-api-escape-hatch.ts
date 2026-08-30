@@ -22,6 +22,9 @@ import {
 
 const TOOL_LIVE_API = "ppal-live-api";
 
+/** The turn that asks a question the normal read tools already answer. */
+const SEARCH_TEMPO_TURN = 1;
+
 /** Read the metronome back the only way there is to read it. */
 const READ_METRONOME = {
   path: "live_set",
@@ -59,6 +62,22 @@ function assertNoLiveApi(turn: number): EvalAssertion {
   };
 }
 
+/**
+ * The tempo turn actually answered with the Set's tempo.
+ *
+ * @param turns - All conversation turns
+ * @returns True when the reply names the tempo
+ */
+function reportsTempo(turns: EvalTurnResult[]): boolean {
+  const reply = turns[SEARCH_TEMPO_TURN]?.assistantResponse ?? "";
+
+  if (!/\b120\b/.test(reply)) {
+    throw new Error(`turn ${SEARCH_TEMPO_TURN} never reported 120 BPM`);
+  }
+
+  return true;
+}
+
 export const liveApiEscapeHatch: EvalScenario = {
   id: "live-api-escape-hatch",
   description:
@@ -82,10 +101,16 @@ export const liveApiEscapeHatch: EvalScenario = {
   assertions: [
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
-    // Turn 1: a real tool, not the escape hatch
-    { type: "tool_called", tool: "ppal-read-live-set", turn: 1 },
+    // Turn 1: answered without the escape hatch. Deliberately NOT "called
+    // ppal-read-live-set" — ppal-connect already reported the tempo this
+    // conversation, and answering from that is fine. What's graded is that the
+    // model didn't reach past the normal tools for something they cover.
     assertNoLiveApi(1),
-    { type: "response_contains", pattern: /120/, turn: 1 },
+    {
+      type: "custom",
+      description: "turn 1 reports the tempo",
+      assert: reportsTempo,
+    },
 
     // Turn 2: the escape hatch, and the write actually landed
     { type: "tool_called", tool: TOOL_LIVE_API, turn: 2 },
@@ -104,7 +129,7 @@ export const liveApiEscapeHatch: EvalScenario = {
     {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
-1. Reported the tempo (120 BPM) using a normal read tool, not the Direct Live API
+1. Reported the tempo (120 BPM) without reaching for the Direct Live API
 2. Turned the metronome on using the Direct Live API tool
 3. Did not claim the metronome was unsupported or ask the user to do it by hand`,
     },
