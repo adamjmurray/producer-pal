@@ -93,7 +93,10 @@ v100 n/4 C3 E3 G3 1|1
 That's a C major triad, velocity 100, quarter notes, at bar 1 beat 1. The pieces
 are:
 
-- **Pitches** are names: `C3` (middle C, MIDI 60), `F#4`, `Bb2`.
+- **Pitches** are names: `C3` (middle C, MIDI 60), `F#4`, `Bb2`. Enharmonic
+  spellings are accepted wherever a note name is: `Cb3` is B2, `B#3` is C4,
+  `E#3` is F3, `Fb3` is E3. One accidental per note: no double sharps or flats.
+  Reading a clip back always spells with flats (`Bb3`, never `A#3`).
 - **Positions** are `bar|beat`, both 1-indexed: `1|1` is the first beat, `2|3`
   is bar 2 beat 3. Sub-beat positions can be decimals (`2|3.5`) or note-value
   offsets (`1|1+n/12`).

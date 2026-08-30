@@ -52,11 +52,18 @@ device parameters like volume, pan, sends, and knobs can be set to static
 values, but not shaped over time. The same goes for **arrangement automation**,
 the curves drawn on the track's timeline rather than inside a clip.
 
-Envelopes you already have are safe, though. They live in the clip, so they
-travel with it through the edits Producer Pal does make. The one exception is
-take lanes: duplicating a clip onto or off a lane re-creates it (from its notes
-for MIDI, from its sample for audio) and leaves the envelopes behind. Producer
-Pal warns when that happens.
+Envelopes you already have are safe through most edits: they live in the clip,
+so they travel with it. The exception is any move that has to **re-create** the
+clip (from its notes for MIDI, from its sample for audio), which leaves the
+envelopes behind:
+
+- duplicating a clip onto or off a take lane
+- moving an arrangement clip onto a take lane
+- moving an arrangement clip back into a session slot
+
+A move along a track's own arrangement lane is not affected. Producer Pal warns
+whenever a re-create drops something, and a re-created audio clip also loses any
+warp markers you edited by hand.
 
 ## Audio Content Can't Be Analyzed or Generated
 
