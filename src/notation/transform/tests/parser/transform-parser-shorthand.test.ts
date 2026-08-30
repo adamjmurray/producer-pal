@@ -4,18 +4,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { parseAssignments } from "./parse-test-helpers.ts";
+import { assignment, parseAssignments } from "./parse-test-helpers.ts";
 
 // "v-10" desugars to an add of the negation (matching "velocity -= 10"),
 // asserted from two angles: additive shorthand and the no-shadow guard.
 const V_MINUS_10_ADD_OF_NEGATION = [
-  {
-    pitchRange: null,
-    timeRange: null,
+  assignment({
     parameter: "velocity",
     operator: "add",
     expression: { type: "subtract", left: 0, right: 10 },
-  },
+  }),
 ];
 
 describe("Transform Parser - shorthand", () => {
@@ -45,13 +43,7 @@ describe("Transform Parser - shorthand", () => {
   describe("additive operator shorthand (v±N, p±N)", () => {
     it("desugars v+10 to velocity add", () => {
       expect(parseAssignments("v+10")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "velocity",
-          operator: "add",
-          expression: 10,
-        },
+        assignment({ parameter: "velocity", operator: "add", expression: 10 }),
       ]);
     });
 
@@ -63,36 +55,33 @@ describe("Transform Parser - shorthand", () => {
 
     it("desugars p+0.1 to probability add", () => {
       expect(parseAssignments("p+0.1")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
+        assignment({
           parameter: "probability",
           operator: "add",
           expression: 0.1,
-        },
+        }),
       ]);
     });
 
     it("desugars p-0.1 to add-of-negation (matches -=)", () => {
       expect(parseAssignments("p-0.1")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
+        assignment({
           parameter: "probability",
           operator: "add",
           expression: { type: "subtract", left: 0, right: 0.1 },
-        },
+        }),
       ]);
     });
 
     it("applies a selector to additive shorthand (C1: v-10)", () => {
-      expect(parseAssignments("C1: v-10")[0]).toStrictEqual({
-        pitchRange: { startPitch: 36, endPitch: 36 },
-        timeRange: null,
-        parameter: "velocity",
-        operator: "add",
-        expression: { type: "subtract", left: 0, right: 10 },
-      });
+      expect(parseAssignments("C1: v-10")[0]).toStrictEqual(
+        assignment({
+          pitchRange: { startPitch: 36, endPitch: 36 },
+          parameter: "velocity",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 10 },
+        }),
+      );
     });
 
     it("rejects additive shorthand for duration (n/4+1)", () => {
@@ -107,56 +96,47 @@ describe("Transform Parser - shorthand", () => {
   describe("velocity shorthand", () => {
     it("desugars v100 to velocity set", () => {
       expect(parseAssignments("v100")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "velocity",
-          operator: "set",
-          expression: 100,
-        },
+        assignment({ parameter: "velocity", expression: 100 }),
       ]);
     });
 
     it("v0 sets velocity to 0 (delete sentinel)", () => {
-      expect(parseAssignments("v0")[0]).toMatchObject({
-        parameter: "velocity",
-        operator: "set",
-        expression: 0,
-      });
+      expect(parseAssignments("v0")[0]).toStrictEqual(
+        assignment({ parameter: "velocity", expression: 0 }),
+      );
     });
   });
 
   describe("delete shorthand (alias for v0)", () => {
     it("parses to the same velocity-set-0 AST as v0", () => {
-      expect(parseAssignments("delete")[0]).toMatchObject({
-        pitchRange: null,
-        timeRange: null,
-        parameter: "velocity",
-        operator: "set",
-        expression: 0,
-      });
+      expect(parseAssignments("delete")[0]).toStrictEqual(
+        assignment({ parameter: "velocity", expression: 0 }),
+      );
     });
 
     it("accepts a pitch selector (C1: delete)", () => {
-      expect(parseAssignments("C1: delete")[0]).toMatchObject({
-        pitchRange: { startPitch: 36, endPitch: 36 },
-        parameter: "velocity",
-        operator: "set",
-        expression: 0,
-      });
+      expect(parseAssignments("C1: delete")[0]).toStrictEqual(
+        assignment({
+          pitchRange: { startPitch: 36, endPitch: 36 },
+          parameter: "velocity",
+          expression: 0,
+        }),
+      );
     });
 
     it("composes with a where() predicate", () => {
-      const [assignment] = parseAssignments(
-        "where(note.velocity < 40): delete",
-      );
+      const [parsed] = parseAssignments("where(note.velocity < 40): delete");
 
-      expect(assignment).toMatchObject({
-        predicate: { type: "comparison", op: "<" },
-        parameter: "velocity",
-        operator: "set",
-        expression: 0,
-      });
+      expect(parsed).toStrictEqual(
+        assignment({
+          predicate: expect.objectContaining({
+            type: "comparison",
+            op: "<",
+          }),
+          parameter: "velocity",
+          expression: 0,
+        }),
+      );
     });
 
     it("is rejected as an expression value (velocity = delete)", () => {
@@ -175,60 +155,30 @@ describe("Transform Parser - shorthand", () => {
   describe("velocity range shorthand (vA-B)", () => {
     it("desugars v80-120 to velocity set + deviation set", () => {
       expect(parseAssignments("v80-120")).toStrictEqual([
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "velocity",
-          operator: "set",
-          expression: 80,
-        },
-        {
-          pitchRange: null,
-          timeRange: null,
-          parameter: "deviation",
-          operator: "set",
-          expression: 40,
-        },
+        assignment({ parameter: "velocity", expression: 80 }),
+        assignment({ parameter: "deviation", expression: 40 }),
       ]);
     });
 
     it("swaps reversed bounds (v120-80)", () => {
-      const result = parseAssignments("v120-80");
-
-      expect(result[0]).toMatchObject({
-        parameter: "velocity",
-        expression: 80,
-      });
-      expect(result[1]).toMatchObject({
-        parameter: "deviation",
-        expression: 40,
-      });
+      expect(parseAssignments("v120-80")).toStrictEqual([
+        assignment({ parameter: "velocity", expression: 80 }),
+        assignment({ parameter: "deviation", expression: 40 }),
+      ]);
     });
 
     it("clamps each bound to 0-127 before deviation (v200-250 → 127, dev 0)", () => {
-      const result = parseAssignments("v200-250");
-
-      expect(result[0]).toMatchObject({
-        parameter: "velocity",
-        expression: 127,
-      });
-      expect(result[1]).toMatchObject({
-        parameter: "deviation",
-        expression: 0,
-      });
+      expect(parseAssignments("v200-250")).toStrictEqual([
+        assignment({ parameter: "velocity", expression: 127 }),
+        assignment({ parameter: "deviation", expression: 0 }),
+      ]);
     });
 
     it("equal bounds give zero deviation (v100-100)", () => {
-      const result = parseAssignments("v100-100");
-
-      expect(result[0]).toMatchObject({
-        parameter: "velocity",
-        expression: 100,
-      });
-      expect(result[1]).toMatchObject({
-        parameter: "deviation",
-        expression: 0,
-      });
+      expect(parseAssignments("v100-100")).toStrictEqual([
+        assignment({ parameter: "velocity", expression: 100 }),
+        assignment({ parameter: "deviation", expression: 0 }),
+      ]);
     });
 
     it("rejects a 0 lower bound (v0 is the delete sentinel, not a range floor)", () => {
@@ -271,22 +221,15 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("applies a combined pitch + time selector to both (E3 1|1-2|1: v80-120)", () => {
-      const result = parseAssignments("E3 1|1-2|1: v80-120");
+      const selector = {
+        pitchRange: { startPitch: 64, endPitch: 64 },
+        timeRange: { startBar: 1, startBeat: 1, endBar: 2, endBeat: 1 },
+      };
 
-      expect(result).toHaveLength(2);
-
-      for (const assignment of result) {
-        expect(assignment.pitchRange).toStrictEqual({
-          startPitch: 64,
-          endPitch: 64,
-        });
-        expect(assignment.timeRange).toStrictEqual({
-          startBar: 1,
-          startBeat: 1,
-          endBar: 2,
-          endBeat: 1,
-        });
-      }
+      expect(parseAssignments("E3 1|1-2|1: v80-120")).toStrictEqual([
+        assignment({ ...selector, parameter: "velocity", expression: 80 }),
+        assignment({ ...selector, parameter: "deviation", expression: 40 }),
+      ]);
     });
 
     it("flattens correctly alongside other lines (v80-120 then p0.5)", () => {

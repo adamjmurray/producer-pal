@@ -8,6 +8,7 @@ import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts"
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
+  testNote,
   createTestNotes,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
 
@@ -52,22 +53,19 @@ describe("note-count operations (ratchet/merge)", () => {
     });
 
     it("inherits velocity, probability, and deviation from the parent", () => {
-      const notes = createTestNote({
-        duration: 1,
+      const inherited = {
         velocity: 90,
         probability: 0.7,
         velocity_deviation: 12,
-      });
+      };
+      const notes = createTestNote({ duration: 1, ...inherited });
 
       applyTransforms(notes, "ratchet(2)", 4, 4);
 
-      for (const note of notes) {
-        expect(note).toMatchObject({
-          velocity: 90,
-          probability: 0.7,
-          velocity_deviation: 12,
-        });
-      }
+      expect(notes).toStrictEqual([
+        testNote({ start_time: 0, duration: 0.5, ...inherited }),
+        testNote({ start_time: 0.5, duration: 0.5, ...inherited }),
+      ]);
     });
 
     it("only ratchets notes matching a pitch selector", () => {

@@ -13,6 +13,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   createTestNote,
   createTestNotes,
+  testNote,
 } from "./evaluator/transform-evaluator-test-helpers.ts";
 import { expectNotePieces } from "./transform-test-helpers.ts";
 
@@ -70,23 +71,19 @@ describe("note-count operation: split", () => {
   });
 
   it("inherits velocity, probability, and deviation from the parent", () => {
-    const notes = createTestNote({
-      start_time: 0,
-      duration: 2,
+    const inherited = {
       velocity: 90,
       probability: 0.7,
       velocity_deviation: 12,
-    });
+    };
+    const notes = createTestNote({ start_time: 0, duration: 2, ...inherited });
 
     applyTransforms(notes, "split(1|2)", 4, 4);
 
-    for (const note of notes) {
-      expect(note).toMatchObject({
-        velocity: 90,
-        probability: 0.7,
-        velocity_deviation: 12,
-      });
-    }
+    expect(notes).toStrictEqual([
+      testNote({ start_time: 0, duration: 1, ...inherited }),
+      testNote({ start_time: 1, duration: 1, ...inherited }),
+    ]);
   });
 
   it("shares absolute positions across every matched note", () => {
@@ -203,7 +200,7 @@ describe("note-count operation: split", () => {
     applyTransforms(notes, "split(1|1, 1|2)", 4, 4);
 
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatchObject({ start_time: 0, duration: 1 });
+    expect(notes[0]).toStrictEqual(testNote({ start_time: 0, duration: 1 }));
   });
 
   it("re-derives note.index for a transform after the split", () => {
