@@ -152,31 +152,63 @@ describe("ppal-delete", () => {
     expect(deleted.deleted).toBe(true);
   });
 
-  it("refuses to delete the track hosting Producer Pal", async () => {
-    // t11 hosts the Producer Pal device in e2e-test-set
-    const hostTrack = parseToolResult<{ id: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { trackIndex: 11 },
-      }),
+  /**
+   * Read a track by id or index.
+   * @param args - ppal-read-track arguments
+   * @returns The track
+   */
+  async function readTrack(
+    args: Record<string, unknown>,
+  ): Promise<{ id: string }> {
+    return parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({ name: "ppal-read-track", arguments: args }),
     );
+  }
+
+  /** t11 hosts the Producer Pal device in e2e-test-set. */
+  const readHostTrack = () => readTrack({ trackIndex: 11 });
+
+  /**
+   * Assert a delete result refused the host track and left it in place.
+   * @param result - The host's entry in the delete result
+   * @param warnings - Warnings the call raised
+   * @param hostId - The host track's id
+   */
+  async function expectHostSurvived(
+    result: DeleteResult | undefined,
+    warnings: string[],
+    hostId: string,
+  ): Promise<void> {
+    expect(result?.id).toBe(hostId);
+    expect(result?.deleted).toBe(false);
+    expect(warnings.join(" ").toLowerCase()).toContain("producer pal");
+    expect((await readTrack({ id: hostId })).id).toBe(hostId);
+  }
+
+  it("refuses to delete the track hosting Producer Pal", async () => {
+    const hostTrack = await readHostTrack();
     const { data, warnings } = parseToolResultWithWarnings<DeleteResult>(
       await del({ id: hostTrack.id, type: "track" }),
     );
 
-    expect(data.id).toBe(hostTrack.id);
-    expect(data.deleted).toBe(false);
-    expect(warnings.join(" ").toLowerCase()).toContain("producer pal");
+    await expectHostSurvived(data, warnings, hostTrack.id);
+  });
 
-    // Still there
-    const verified = parseToolResult<{ id: string }>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: hostTrack.id },
-      }),
+  // The host guard reads its own track index off a `this_device` object that is
+  // memoized for the whole request. Deleting a track ABOVE the host shifts the
+  // host down a slot mid-call: if that index goes stale, the guard compares
+  // against the wrong track and deletes the user's Producer Pal device.
+  it("still refuses the host track after a track above it is deleted in the same call", async () => {
+    const hostTrack = await readHostTrack();
+    // Above the host, so deleting it renumbers the host.
+    const above = await createTrack({ trackIndex: 0, name: "Above Host" });
+    const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
+      await del({ id: `${above.id},${hostTrack.id}`, type: "track" }),
     );
+    const [deletedAbove, refusedHost] = data;
 
-    expect(verified.id).toBe(hostTrack.id);
+    expect(deletedAbove?.deleted).toBe(true);
+    await expectHostSurvived(refusedHost, warnings, hostTrack.id);
   });
 
   it("deletes a scene, and several scenes in one call", async () => {

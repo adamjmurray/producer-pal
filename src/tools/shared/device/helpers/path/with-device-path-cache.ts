@@ -15,9 +15,10 @@
  * after anything that renumbers devices. That is a positioned insert, and also
  * an append Live re-sorts the chain around: it keeps a chain ordered by device
  * type, so an instrument or a MIDI effect pushes siblings down a slot even
- * though it was appended. Deleting anything inside the scope is not supported
- * at all — a held object follows its own target through an index shift, which
- * is exactly wrong for a path cache. See dev/LiveAPI-Object-Reuse.md.
+ * though it was appended. A delete inside the scope needs the same call, and is
+ * riskier: a held object follows its own target through an index shift, which is
+ * exactly wrong for a path cache, so only invalidate-immediately is safe. See
+ * dev/LiveAPI-Object-Reuse.md.
  *
  * Ids are never cached: at mode 0 an id resolves to a path once and follows
  * that path afterward, so a second lookup of the same id is not the same

@@ -224,6 +224,10 @@ function resolveDrumPadSampleTarget(
   }
 
   chain.call("delete_device", instrument.index);
+  // A delete renumbers the chain's remaining devices, and the path cache's
+  // contract says nothing cached survives that. createSimplerInChain invalidates
+  // again after its insert; this one keeps the invariant true in between.
+  invalidateDevicePathCache();
   console.warn(
     `${toolName}: force:true — replaced ${description} on pad ${padNote} with a Simpler to load the sample. Its settings are gone.`,
   );
