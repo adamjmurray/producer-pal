@@ -77,6 +77,7 @@ Every track is unmuted, unsoloed and centered.
   t3, which both report `groupId: "106"`. It holds no clips — Live's group
   tracks only summarize their children. No other test Set has one, so this is
   the only place `isGroup` / `groupId` and `path-*` against a group are covered.
+  Live reports it as `type: "audio"` — read `isGroup`, not `type`.
 - **t2 and t3 output to `Instruments`**, not Main. t0, t1 and t4 output to Main;
   t5 is No Output.
 - **t4 `Audio`** is an audio track: input `Ext. In`, monitoring `off`.
