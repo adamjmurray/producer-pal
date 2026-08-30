@@ -135,11 +135,18 @@ Four tiers, in order of preference.
    reverse recovery looks symmetric: `play-session-clips` with `s3` is refused,
    since firing clips one at a time is a different Live call than launching the
    scene.
-4. **Conflicts throw.** Two params naming different targets is never resolved by
-   picking one. Honoring one and dropping the other is the silent
-   wrong-destination bug this grammar exists to prevent. A path that names the
-   same target twice over is not a conflict — `play-scene` with `t0/s1,t2/s1`
-   fires scene 1.
+4. **Never pick one.** Honoring one param and dropping the other is the silent
+   wrong-target bug this grammar exists to prevent. What to do instead depends
+   on what the param names:
+   - **A source — throw.** Where the call acts on one target (`read-clip`,
+     `read-device`, `update-device`, `duplicate`, `playback`'s `play-scene`),
+     two params naming different things has no answer, so it errors. Naming the
+     same target twice over is not a conflict: `play-scene` with `t0/s1,t2/s1`
+     fires scene 1, and `read-clip` takes an `id` that sits at the `path`.
+   - **A set — union.** Where the call already acts on a list (`delete`,
+     `update-clip`, `playback`'s clip actions), `id` and `path` both name
+     members of it, so the targets combine. Duplicates collapse — firing a clip
+     twice is a different Live call than firing it once.
 
 ## Results
 

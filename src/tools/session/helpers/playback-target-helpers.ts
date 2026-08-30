@@ -80,8 +80,8 @@ const TARGETING_ACTIONS = new Set([
 /**
  * Resolve what the target params name: one scene for play-scene, or session
  * positions ("t0/s1") for the clip actions. play-scene settles on a single
- * scene every param agrees on; the clip actions take their target from `ids`
- * or a path, and refusing both beats guessing which the caller meant.
+ * scene every param agrees on; the clip actions name a set, so `id` and a path
+ * union.
  * @param action - The playback action, which decides whether a target applies
  * @param params - The raw target params
  * @param params.id - Comma-separated clip IDs, or scene IDs for play-scene
@@ -126,13 +126,6 @@ export function resolvePlaybackTarget(
     };
   }
 
-  // Both name what to act on, so refusing beats guessing which the caller meant.
-  if (namedIds != null && source != null) {
-    throw new Error(
-      `playback failed: id and ${source.label} are mutually exclusive`,
-    );
-  }
-
   // Narrow before warning: a path this action can't use throws, and saying we
   // ignored a param on a call that did nothing is noise the model has to read.
   const slotPositions = slotPositionsFrom(action, entries, source);
@@ -148,41 +141,60 @@ export function resolvePlaybackTarget(
 }
 
 /**
- * Resolve clip slot positions from either ids or the resolved path positions
+ * Union the slots named by ids and by the resolved path positions. Both name a
+ * set of clips to act on, so neither drops the other.
  * @param ids - Comma-separated clip IDs
  * @param slotPositions - Resolved clip slots, or null when none given
  * @param action - Action name for error messages
- * @returns Array of slot positions
+ * @returns The distinct slots to act on
  */
 export function resolveClipSlotPositions(
   ids: string | undefined,
   slotPositions: ClipSlotPosition[] | null,
   action: string,
 ): ClipSlotPosition[] {
-  if (slotPositions != null) {
-    return slotPositions;
-  }
-
-  if (ids == null) {
+  if (ids == null && slotPositions == null) {
     throw new Error(
       `playback failed: id or path is required for action "${action}"`,
     );
   }
 
-  const clipIdList = parseCommaSeparatedIds(ids);
-  const clips = validateIdTypes(clipIdList, "clip", "playback", {
-    skipInvalid: true,
-  });
+  const positions = dedupeSlotPositions([
+    ...(ids == null ? [] : idSlotPositions(ids, action)),
+    ...(slotPositions ?? []),
+  ]);
 
   // Skipping a bad id among good ones still leaves a call to make. Skipping all
   // of them leaves none, and an empty list reads downstream as "act on these
   // zero clips" — so the tool fired nothing and reported playing: true. Each id
   // already warned why it was skipped; this says the call has no target left.
-  if (clips.length === 0) {
+  if (positions.length === 0) {
     throw new Error(
       `playback failed: id "${ids}" named no clip for action "${action}"`,
     );
   }
+
+  return positions;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * The slot each id names. A bad id is warned and skipped, not thrown: the
+ * caller's other ids and paths still have a call to make.
+ * @param ids - The normalized `id` param
+ * @param action - Action name for error messages
+ * @returns One position per id that named a session clip
+ */
+function idSlotPositions(ids: string, action: string): ClipSlotPosition[] {
+  const clips = validateIdTypes(
+    parseCommaSeparatedIds(ids),
+    "clip",
+    "playback",
+    {
+      skipInvalid: true,
+    },
+  );
 
   return clips.map((clip) => {
     const { trackIndex, sceneIndex } = clip;
@@ -197,7 +209,27 @@ export function resolveClipSlotPositions(
   });
 }
 
-// --- Helpers below main exports ---
+/**
+ * Drop slots named twice over. Naming the same clip by id and by path is not a
+ * conflict, but firing it twice is a different Live call than firing it once.
+ * @param positions - The slots every target param named, in order
+ * @returns The distinct slots, first mention winning
+ */
+function dedupeSlotPositions(
+  positions: ClipSlotPosition[],
+): ClipSlotPosition[] {
+  const seen = new Set<string>();
+
+  return positions.filter(({ trackIndex, sceneIndex }) => {
+    const key = `${trackIndex}/${sceneIndex}`;
+
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+
+    return true;
+  });
+}
 
 /**
  * Read `path` or the deprecated `slots` as parsed entries.

@@ -513,14 +513,24 @@ describe("transport", () => {
     expect(result.currentTime).toBe("1|1");
   });
 
-  it("should throw error when both id and slots are provided", () => {
-    expect(() =>
-      playback({
-        action: "play-session-clips",
-        id: "clip1",
-        slots: "0/0",
-      }),
-    ).toThrow("playback failed: id and slots are mutually exclusive");
+  // The clip actions act on a set, so both params name members of it. The
+  // deprecated spelling unions the same way the current one does.
+  it("fires the clips named by id and by slots together", () => {
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+    const byId = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+    const bySlots = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
+
+    playback({ action: "play-session-clips", id: "clip1", slots: "0/0" });
+
+    expect(byId.call).toHaveBeenCalledWith("fire");
+    expect(bySlots.call).toHaveBeenCalledWith("fire");
   });
 
   it("should handle play-session-clips via slots with single slot", () => {

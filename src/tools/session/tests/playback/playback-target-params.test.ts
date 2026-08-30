@@ -144,18 +144,38 @@ describe("playback ids that names no clip", () => {
     ).toThrow("playback failed: id or path is required for action");
   });
 
-  it("still refuses ids and path together when both name clips", () => {
-    expect(() =>
-      playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" }),
-    ).toThrow("playback failed: id and path are mutually exclusive");
-  });
-
-  // A scene path is still a path. Firing the ids and dropping it silently is
-  // the wrong-target bug these params exist to prevent.
-  it("refuses ids alongside a scene path too", () => {
+  // A scene path is still refused, but for its shape rather than for sitting
+  // beside an id: this action fires clips one at a time.
+  it("refuses a scene path alongside ids", () => {
     expect(() =>
       playback({ action: "play-session-clips", path: "s3", id: "clip1" }),
-    ).toThrow("playback failed: id and path are mutually exclusive");
+    ).toThrow('names a scene; action "play-session-clips" takes clip slots');
+  });
+
+  it("fires the clips named by id and by path together", () => {
+    registerMockObject("clip1", {
+      path: livePath.track(2).clipSlot(0).clip(),
+    });
+    const byId = registerMockObject(livePath.track(2).clipSlot(0), {
+      path: livePath.track(2).clipSlot(0),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" });
+
+    expect(byId.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+  });
+
+  // Naming one clip both ways is not a conflict, but firing it twice is a
+  // different Live call than firing it once.
+  it("fires a clip named by both id and path only once", () => {
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(1).clip(),
+    });
+
+    playback({ action: "play-session-clips", path: "t0/s1", id: "clip1" });
+
+    expect(clipSlot.call).toHaveBeenCalledExactlyOnceWith("fire");
   });
 
   // Bad ids are warned and skipped, which is right until every one is skipped:
