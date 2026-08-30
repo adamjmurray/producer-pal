@@ -13,6 +13,7 @@
  */
 
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   arrangementPath,
   type ClipPath,
@@ -117,8 +118,12 @@ export function computeNonSurvivorClipIds(
  * SOURCES (`duplicate_clip_to_arrangement` is Track-only, so they're
  * warned-and-skipped downstream — including one would let a long take-lane clip
  * wrongly mark a shorter main-lane clip a non-survivor), clips moving to a slot
- * (off the arrangement timeline entirely), and clips moving ONTO a take lane
- * (re-created there one at a time, so the optimization has nothing to save).
+ * (off the arrangement timeline entirely), clips moving ONTO a take lane
+ * (re-created there one at a time, so the optimization has nothing to save),
+ * and clips the destination won't take (wrong type, frozen), for the same
+ * reason as take-lane sources: a clip that never lands overwrites nothing, so
+ * counting it would delete a shorter sibling that the "survivor" then fails to
+ * replace.
  * @param clip - Candidate clip
  * @param destination - Where the clip is moving, if the call named anywhere
  * @returns The destination lane's path, or null to skip the clip
@@ -131,7 +136,11 @@ function survivorLane(
   if (isTakeLaneClip(clip)) return null;
 
   if (destination != null) {
-    return destination.kind === "track"
+    if (destination.kind !== "track") return null;
+
+    const isMidiClip = (clip.getProperty("is_midi_clip") as number) > 0;
+
+    return clipCopyBlocker(isMidiClip, destination.trackIndex) == null
       ? arrangementPath(destination.trackIndex)
       : null;
   }

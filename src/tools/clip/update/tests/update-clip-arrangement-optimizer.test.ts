@@ -349,6 +349,53 @@ describe("computeNonSurvivorClipIds", () => {
     ).toBeNull();
   });
 
+  // The clip that overwrites the others has to actually land, or its shorter
+  // siblings are deleted to make room for nothing.
+  it.each([
+    ["is frozen", { is_frozen: 1 }],
+    ["takes the wrong clip type", { has_midi_input: 0 }],
+  ])("skips a clip whose destination track %s", (_label, properties) => {
+    registerMockObject("blocked-track", {
+      path: livePath.track(5),
+      type: "Track",
+      properties,
+    });
+
+    const short = mockArrangementClip("831", 0, 0, 4);
+    const long = mockArrangementClip("832", 0, 8, 24);
+    const destinations = new Map<string, ClipPath>([
+      ["831", { kind: "track", trackIndex: 5 }],
+      ["832", { kind: "track", trackIndex: 5 }],
+    ]);
+
+    expect(
+      computeNonSurvivorClipIds([short, long], 32, null, destinations),
+    ).toBeNull();
+  });
+
+  it("skips only the clip the destination refuses, not its siblings", () => {
+    // Track 5 is MIDI, so the long audio clip can't land there — and the short
+    // MIDI clip it would have overwritten must survive.
+    const short = mockArrangementClip("841", 0, 0, 4);
+    const longAudio = mockClipRaw("842", {
+      path: livePath.track(0).arrangementClip(1),
+      properties: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        start_time: 8,
+        end_time: 24,
+      },
+    });
+    const destinations = new Map<string, ClipPath>([
+      ["841", { kind: "track", trackIndex: 5 }],
+      ["842", { kind: "track", trackIndex: 5 }],
+    ]);
+
+    expect(
+      computeNonSurvivorClipIds([short, longAudio], 32, null, destinations),
+    ).toBeNull();
+  });
+
   it("skips clips with null trackIndex", () => {
     registerMockObject("99", {
       properties: {
