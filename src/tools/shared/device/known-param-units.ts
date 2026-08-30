@@ -7,7 +7,7 @@ import { parseLabel } from "./helpers/device-label-helpers.ts";
 
 /**
  * A unit Live knows but never reports. `DeviceParameter` exposes no unit at
- * all, and about a fifth of Live's stock numeric params display a bare number,
+ * all, and a good number of Live's stock params display a bare number,
  * so the only way to know what they measure is to record it here.
  */
 export interface KnownParamUnit {
@@ -18,22 +18,18 @@ export interface KnownParamUnit {
   max: number;
 }
 
-// Recorded from Ableton's Live 11/12 reference manual, and kept only where the
-// range the manual implies matches the range Live actually reports. Live's own
-// labels always win over this table — it fills in for params that show a bare
-// number and nothing else.
+// Only params whose labels are genuinely bare belong here. A param that prints
+// its unit is parseLabel's job — check `str_for_value` before adding a row.
 //
-// Adding an entry: get the unit from the manual or Live's UI (hovering a
-// control puts the value and unit in the status bar, which the API never
-// returns), then record the range read-device prints for it.
+// Adding an entry: get the unit from Live's UI (hover a control and its Info
+// View names the unit in prose; the API never returns one), then record the
+// range read-device prints for it. A range that no longer matches drops the
+// entry, so the range is part of the key.
+//
+// Deliberately absent: Hybrid Reverb's and Roar's Blend, which read "57/43" —
+// a ratio between two sections, not a quantity. Live names no unit for either.
 const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
-  "Auto Shift": {
-    "Pitch Fine": { unit: "cents", min: -100, max: 100 },
-    "Vibrato Amt": { unit: "cents", min: 0, max: 200 },
-    "LFO > Pitch": { unit: "semitones", min: 0, max: 12 },
-  },
   Corpus: {
-    Fine: { unit: "cents", min: -50, max: 50 },
     "LFO Rate": { unit: "Hz", min: 0.01, max: 10 },
     Tune: { unit: "Hz", min: 16.35, max: 4186 },
   },
@@ -46,24 +42,12 @@ const KNOWN_UNITS: Record<string, Record<string, KnownParamUnit>> = {
     // param works — the value is converted onto the param's own scale.
     Release: { unit: "s", min: 0.1, max: 1.2 },
   },
-  // Hybrid Reverb's Blend is deliberately absent: it reads "57/43", a ratio
-  // between two sections rather than a quantity, and Live's Info View names no
-  // unit for it. Same for Roar's Blend.
-  "Hybrid Reverb": {
-    "Sh Pitch Shift": { unit: "semitones", min: -12, max: 12 },
-  },
   Redux: {
     "Post-Filter": { unit: "octaves", min: -4, max: 4 },
   },
   Resonators: resonatorTuneEntries(),
   Reverb: {
     "Stereo Image": { unit: "degrees", min: 0, max: 120 },
-  },
-  Shifter: {
-    "Pitch Fine": { unit: "cents", min: -100, max: 100 },
-  },
-  "Spectral Resonator": {
-    "Pitch Mod": { unit: "semitones", min: 0, max: 4 },
   },
 };
 
@@ -132,7 +116,7 @@ export function recordedUnitFor(
 /**
  * The unit `parseLabel` folds a spelling into, and how much it scales by.
  * Seconds report `{ canonical: "ms", scale: 1000 }` because parseLabel converts
- * them; a spelling parseLabel doesn't know (cents) stands for itself.
+ * them; a spelling parseLabel doesn't know (octaves) stands for itself.
  *
  * Derived by running parseLabel rather than by listing conversions again, so
  * this can't drift from the parser it has to agree with.

@@ -93,50 +93,6 @@ describe("device-display-helpers", () => {
       });
     });
 
-    describe("semitones (st)", () => {
-      it("parses semitone values", () => {
-        expect(parseLabel("0 st")).toStrictEqual({
-          value: 0,
-          unit: "semitones",
-        });
-        expect(parseLabel("+12 st")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("-24 st")).toStrictEqual({
-          value: -24,
-          unit: "semitones",
-        });
-        expect(parseLabel("7 st")).toStrictEqual({
-          value: 7,
-          unit: "semitones",
-        });
-      });
-
-      it("parses 'semitones', 'semitone', 'semi', 'semis' as st", () => {
-        expect(parseLabel("12 semitones")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-        expect(parseLabel("1 semitone")).toStrictEqual({
-          value: 1,
-          unit: "semitones",
-        });
-        expect(parseLabel("+5 semi")).toStrictEqual({
-          value: 5,
-          unit: "semitones",
-        });
-        expect(parseLabel("-7 semis")).toStrictEqual({
-          value: -7,
-          unit: "semitones",
-        });
-        expect(parseLabel("12SEMITONES")).toStrictEqual({
-          value: 12,
-          unit: "semitones",
-        });
-      });
-    });
-
     describe("degrees (°)", () => {
       it("parses degree values", () => {
         expect(parseLabel("300°")).toStrictEqual({

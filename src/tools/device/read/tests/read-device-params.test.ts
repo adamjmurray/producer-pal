@@ -231,7 +231,7 @@ function readDeviceParamValues(): {
   };
 }
 
-// Live states no unit for about a fifth of its stock numeric params. What those
+// Some of Live's stock params display a bare number and nothing else. What those
 // measure is recorded in known-param-units.ts and reported here, so a model has
 // something to write back.
 describe("readDevice recorded units", () => {
@@ -288,6 +288,36 @@ describe("readDevice recorded units", () => {
     expect(
       readBareParam("Glue Compressor", "Attack", { min: 0.01, max: 60 }),
     ).not.toHaveProperty("unit");
+  });
+
+  // Corpus "Fine" reads "0 ct" and used to need a recorded row, because the
+  // parser dropped the suffix. The label carries the unit now, so the row is
+  // gone and nothing about Corpus is recorded at all.
+  it("reads a unit off the label with no recorded row behind it", () => {
+    setupDeviceParamMocks({
+      device: { class_display_name: "Corpus" },
+      param: {
+        name: "Fine",
+        original_name: "Fine",
+        value: 0,
+        min: -50,
+        max: 50,
+      },
+      strForValue: (value) => `${Number(value)} ct`,
+    });
+
+    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const [param] = (result as { parameters: Record<string, unknown>[] })
+      .parameters;
+
+    expect(param).toStrictEqual({
+      id: "param-1",
+      name: "Fine",
+      value: 0,
+      min: -50,
+      max: 50,
+      unit: "cents",
+    });
   });
 });
 

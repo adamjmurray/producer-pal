@@ -30,9 +30,25 @@ const LABEL_PATTERNS: LabelPattern[] = [
     unit: "degrees",
     multiplier: 1,
   },
+  // Live writes decimals on every one of these: "-1.68 st", "0.00 st".
   {
-    regex: /^([+-]?\d+)\s*(?:st|semis?|semitones?)$/i,
+    regex: /^([+-]?[\d.]+)\s*(?:st|semis?|semitones?)$/i,
     unit: "semitones",
+    multiplier: 1,
+  },
+  // Cents stay cents. They are hundredths of a semitone, but a param displays
+  // one or the other and a write is converted onto the scale the param shows,
+  // so folding them together would rescale every write to a cents param.
+  {
+    regex: /^([+-]?[\d.]+)\s*(?:ct|cents?)$/i,
+    unit: "cents",
+    multiplier: 1,
+  },
+  // Steps of the current scale, not of the chromatic one, so this is neither
+  // semitones nor dimensionless (Auto Shift "Pitch Scale Deg.", Resonators).
+  {
+    regex: /^([+-]?[\d.]+)\s*(?:sd|scale ?degrees?)$/i,
+    unit: "scale degrees",
     multiplier: 1,
   },
   { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
@@ -129,8 +145,8 @@ function numberOrNothing(value: number, unit: string | null): ParsedLabel {
  * The unit a parameter displays in, read from its own labels. Tries each label
  * in turn so a parameter whose current value is a word (Glue Compressor's
  * Release reads "A") still reports the unit its range carries. Returns null
- * when the parameter displays a bare number, which is 22% of Live's stock
- * numeric params — there is nothing to check a written unit against.
+ * when the parameter displays a bare number — there is nothing to check a
+ * written unit against.
  * @param labels - The parameter's labels, most representative first
  * @returns The unit, or null if no label carries one
  */

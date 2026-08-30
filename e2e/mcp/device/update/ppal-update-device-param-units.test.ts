@@ -96,6 +96,44 @@ describe("ppal-update-device param units", () => {
     });
   });
 
+  // These labels were unreadable until the parser learned them, so every param
+  // wearing one looked like a bare number and refused any unit.
+  describe("a pitch unit read off the label", () => {
+    it("reports cents, and writes them", async () => {
+      const deviceId = await createTestDevice(ctx.client!, "Corpus", "t0");
+
+      expect(await readUnit(deviceId, "Fine")).toBe("cents");
+
+      const { data, warnings } = await write(deviceId, "Fine", "20 ct");
+
+      expect(warnings).toStrictEqual([]);
+      expect(data.params).toStrictEqual([
+        { id: expect.any(String), name: "Fine", value: 20 },
+      ]);
+    });
+
+    it("reports semitones on a param whose label carries a decimal", async () => {
+      const deviceId = await createTestDevice(
+        ctx.client!,
+        "Spectral Resonator",
+        "t0",
+      );
+
+      expect(await readUnit(deviceId, "Shift")).toBe("semitones");
+
+      const { data, warnings } = await write(deviceId, "Shift", "2.5 st");
+
+      expect(warnings).toStrictEqual([]);
+      expect(data.params).toStrictEqual([
+        {
+          id: expect.any(String),
+          name: "Shift",
+          value: expect.closeTo(2.5, 1),
+        },
+      ]);
+    });
+  });
+
   describe("a param that measures nothing", () => {
     // S/C EQ Q is a Q factor: a bare number with no unit recorded, because
     // there is no unit to record.

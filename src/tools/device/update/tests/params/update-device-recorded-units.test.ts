@@ -14,7 +14,7 @@ import {
 } from "../update-device-test-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
-// Live states no unit for about a fifth of its stock numeric params, so what
+// Some of Live's stock params display a bare number and nothing else, so what
 // they measure is recorded in known-param-units.ts. Glue Compressor is the
 // awkward pair: Attack displays milliseconds and Release displays seconds, both
 // as bare numbers, so the number alone can't tell them apart.

@@ -268,7 +268,7 @@ export function readParameter(
   // max the param can never display.
   const range = readNumericRange(paramApi, rawMin, rawMax, minLabel, maxLabel);
   const sentinel = range?.sentinel;
-  // Live states no unit for about a fifth of its stock numeric params. Fall
+  // Some of Live's stock params display a bare number and nothing else. Fall
   // back to the recorded one so the model has something to write back.
   const reportedUnit =
     unit ?? recordedUnitFor(unit, range, deviceName, name)?.unit;

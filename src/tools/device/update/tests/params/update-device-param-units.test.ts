@@ -132,4 +132,57 @@ describe("updateDevice - param units", () => {
       expect(expectValueSet(param)).toBe(20);
     });
   });
+
+  // These labels were unreadable until the parser learned them, so the params
+  // wearing them looked like bare numbers and refused every unit.
+  describe("pitch units", () => {
+    it("writes cents to a param displaying cents", () => {
+      const param = registerParam((raw) => `${raw} ct`);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "20 ct" }],
+      });
+
+      expect(expectValueSet(param)).toBe(20);
+    });
+
+    // Cents are hundredths of a semitone, but the two are not interchangeable
+    // here: the number would land on the param's scale unconverted.
+    it("refuses semitones on a param displaying cents", () => {
+      const param = registerParam((raw) => `${raw} ct`);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "20 st" }],
+      });
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('is measured in cents, so "20 st"'),
+      );
+    });
+
+    it("writes a fractional semitone value", () => {
+      const param = registerParam((raw) => `${raw.toFixed(2)} st`);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Amount", value: "2.5 st" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(2.5);
+    });
+
+    it("refuses semitones on a param counting scale degrees", () => {
+      const param = registerParam((raw) => `${raw} sd`);
+
+      updateDevice({ id: "dev1", params: [{ name: "Amount", value: "3 st" }] });
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('is measured in scale degrees, so "3 st"'),
+      );
+    });
+  });
 });
