@@ -237,6 +237,24 @@ the `producer-pal` npm package. For local testing before publishing to npm:
 }
 ```
 
+## Git Hooks (Optional)
+
+`.githooks/pre-push` guards pushes to `dev` so every commit gets its own CI
+build: one commit per push, no push while a build is in flight, and no push on
+top of a red or missing build. The test workflow cancels an in-progress run when
+a new push lands, so batching commits leaves earlier ones with no build at all.
+
+It's off by default. Enable it per clone:
+
+```bash
+git config core.hooksPath .githooks   # enable
+git config --unset core.hooksPath     # disable
+```
+
+Only useful if you push to this repo and have the `gh` CLI authenticated — a
+fork has no builds for its commits, so the hook would block every push. Override
+a single push with `SKIP_DEV_PUSH_GUARD=1 git push ...`.
+
 ## Releasing
 
 See [Releasing](dev/Releasing.md) for the complete release process, including
