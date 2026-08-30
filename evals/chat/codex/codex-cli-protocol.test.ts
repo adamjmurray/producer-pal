@@ -334,6 +334,68 @@ describe("parseCodexStream", () => {
     );
   });
 
+  // Captured from a real `codex exec --json` run against the device: a tool that
+  // throws comes back as `status: "failed"` with the message already in the
+  // result's first text block and `error: null`. So the `ERROR:` fallback below
+  // is for the no-result case (transport-level failure) only, and a failed call
+  // never loses its message.
+  it("keeps the message a failed call carries in its own result", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "item_0",
+        type: "mcp_tool_call",
+        tool: "ppal-read-track",
+        arguments: { trackIndex: 999 },
+        result: {
+          content: [
+            {
+              type: "text",
+              text: "Error executing tool 'ppal-read-track': readTrack: trackIndex 999 does not exist",
+            },
+          ],
+        },
+        error: null,
+        status: "failed",
+      },
+    });
+
+    expect(parseCodexStream(stdout).toolCalls[0]?.result).toBe(
+      "Error executing tool 'ppal-read-track': readTrack: trackIndex 999 does not exist",
+    );
+  });
+
+  // Also captured live. An update tool that warn-and-skips reports `completed`
+  // with an empty payload — the refusal is only in the WARNING block. Nothing is
+  // dropped here, but the payload alone reads as a clean no-op, so anything
+  // grading these calls has to read `warnings`, not just `result`.
+  it("keeps the WARNING when the payload is an empty success", () => {
+    const stdout = JSON.stringify({
+      type: "item.completed",
+      item: {
+        id: "item_0",
+        type: "mcp_tool_call",
+        tool: "ppal-update-clip",
+        arguments: { path: "t0/s0" },
+        result: {
+          content: [
+            { type: "text", text: "[]" },
+            { type: "text", text: "WARNING: Failed to update clip 285" },
+          ],
+        },
+        error: null,
+        status: "completed",
+      },
+    });
+
+    expect(parseCodexStream(stdout).toolCalls[0]).toStrictEqual({
+      name: "ppal-update-clip",
+      args: { path: "t0/s0" },
+      result: "[]",
+      warnings: ["WARNING: Failed to update clip 285"],
+    });
+  });
+
   it("throws on fatal turn errors and ignores stray output", () => {
     const stdout = [
       "warning line",
