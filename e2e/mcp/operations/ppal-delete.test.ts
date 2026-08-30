@@ -194,10 +194,12 @@ describe("ppal-delete", () => {
     await expectHostSurvived(data, warnings, hostTrack.id);
   });
 
-  // The host guard reads its own track index off a `this_device` object that is
-  // memoized for the whole request. Deleting a track ABOVE the host shifts the
-  // host down a slot mid-call: if that index goes stale, the guard compares
-  // against the wrong track and deletes the user's Producer Pal device.
+  // Deleting a track above the host renumbers the host mid-call, so the guard's
+  // two sides could in principle disagree. They don't: `object.path` is Max's
+  // live path, which follows the track down, and the descending sort evaluates
+  // the host before anything above it anyway. Verified by reversing the sort —
+  // the host is still refused. So this pins the guard end-to-end under
+  // renumbering; it is not load-bearing against a stale index.
   it("still refuses the host track after a track above it is deleted in the same call", async () => {
     const hostTrack = await readHostTrack();
     // Above the host, so deleting it renumbers the host.
@@ -205,10 +207,16 @@ describe("ppal-delete", () => {
     const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
       await del({ id: `${above.id},${hostTrack.id}`, type: "track" }),
     );
-    const [deletedAbove, refusedHost] = data;
+    // Deletes run highest-index-first, so the results are not in argument
+    // order. Match by id.
+    const deletedAbove = data.find((result) => result.id === above.id);
 
     expect(deletedAbove?.deleted).toBe(true);
-    await expectHostSurvived(refusedHost, warnings, hostTrack.id);
+    await expectHostSurvived(
+      data.find((result) => result.id === hostTrack.id),
+      warnings,
+      hostTrack.id,
+    );
   });
 
   it("deletes a scene, and several scenes in one call", async () => {
