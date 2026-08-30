@@ -1,0 +1,270 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  lookupMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { handleArrangementToSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
+
+const SOURCE_TRACK = 0;
+const DEST_TRACK = 1;
+const DEST_SCENE = 2;
+const SOURCE_ID = "123";
+const NEW_ID = "456";
+const OCCUPANT_ID = "789";
+
+const NOTES = [
+  {
+    pitch: 60,
+    start_time: 0,
+    duration: 1,
+    velocity: 100,
+    probability: 1,
+    velocity_deviation: 0,
+  },
+];
+
+interface MoveOptions {
+  /** Path of the source clip; a take-lane path makes it an unmovable source */
+  sourcePath?: string;
+  isMidi?: number;
+  filePath?: string;
+  hasEnvelopes?: number;
+  warping?: number;
+  destIsMidi?: number;
+  destSlotExists?: boolean;
+  destHasClip?: number;
+}
+
+/**
+ * Register an arrangement source and a destination slot, then run the move.
+ * @param opts - What this test varies
+ * @returns The results the move collected
+ */
+function runMove(opts: MoveOptions = {}): ClipResult[] {
+  const {
+    sourcePath = livePath.track(SOURCE_TRACK).arrangementClip(0),
+    isMidi = 1,
+    filePath = "",
+    hasEnvelopes = 0,
+    warping = 0,
+    destIsMidi = 1,
+    destSlotExists = true,
+    destHasClip = 0,
+  } = opts;
+
+  mockNonExistentObjects();
+
+  const destSlotPath = livePath.track(DEST_TRACK).clipSlot(DEST_SCENE);
+  const newClipPath = destSlotPath.clip();
+
+  registerMockObject(SOURCE_ID, {
+    path: sourcePath,
+    type: "Clip",
+    properties: {
+      is_arrangement_clip: 1,
+      is_midi_clip: isMidi,
+      file_path: filePath,
+      has_envelopes: hasEnvelopes,
+      warping,
+      length: 16,
+      start_marker: 0,
+      loop_start: 0,
+      loop_end: 16,
+      end_marker: 16,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      name: "Verse",
+      color: 16711680,
+    },
+    methods: { get_notes_extended: () => JSON.stringify({ notes: NOTES }) },
+  });
+
+  registerMockObject(`track_${SOURCE_TRACK}`, {
+    path: livePath.track(SOURCE_TRACK),
+  });
+  registerMockObject(`track_${DEST_TRACK}`, {
+    path: livePath.track(DEST_TRACK),
+    properties: { has_midi_input: destIsMidi, is_frozen: 0 },
+  });
+
+  if (destSlotExists) {
+    registerMockObject("dest_slot", {
+      path: destSlotPath,
+      type: "ClipSlot",
+      properties: { has_clip: destHasClip },
+      methods: {
+        create_clip: () => {
+          registerMockObject(NEW_ID, { path: newClipPath, type: "Clip" });
+
+          return null;
+        },
+        create_audio_clip: () => {
+          registerMockObject(NEW_ID, { path: newClipPath, type: "Clip" });
+
+          return null;
+        },
+        delete_clip: () => null,
+      },
+    });
+  }
+
+  if (destHasClip) {
+    registerMockObject(OCCUPANT_ID, { path: newClipPath, type: "Clip" });
+  }
+
+  const updatedClips: ClipResult[] = [];
+
+  handleArrangementToSlotMove({
+    clip: LiveAPI.from(`id ${SOURCE_ID}`),
+    toSlot: { trackIndex: DEST_TRACK, sceneIndex: DEST_SCENE },
+    updatedClips,
+    noteResult: null,
+  });
+
+  return updatedClips;
+}
+
+describe("handleArrangementToSlotMove", () => {
+  it("re-creates the clip in the slot and deletes the original", () => {
+    const updatedClips = runMove();
+
+    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
+      "create_clip",
+      16,
+    );
+    expect(lookupMockObject(NEW_ID)?.call).toHaveBeenCalledWith(
+      "add_new_notes",
+      { notes: NOTES },
+    );
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
+    expect(updatedClips).toStrictEqual([
+      { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
+    ]);
+  });
+
+  it("carries the source's name and color", () => {
+    runMove();
+
+    expect(lookupMockObject(NEW_ID)?.set).toHaveBeenCalledWith("name", "Verse");
+    expect(lookupMockObject(NEW_ID)?.set).toHaveBeenCalledWith(
+      "color",
+      16711680,
+    );
+  });
+
+  it("re-creates an audio clip from its sample", () => {
+    runMove({ isMidi: 0, filePath: "/samples/loop.wav", destIsMidi: 0 });
+
+    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/samples/loop.wav",
+    );
+  });
+
+  it("says what the re-created clip loses", () => {
+    runMove({ hasEnvelopes: 1 });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
+    );
+  });
+
+  // Most clips have no envelopes, so the parenthetical has to stay off them.
+  it("names no loss when the clip loses nothing", () => {
+    runMove();
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE}`,
+    );
+  });
+
+  it("clears the slot's existing clip first, and says so", () => {
+    runMove({ destHasClip: 1 });
+
+    expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
+      "delete_clip",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+    );
+  });
+
+  // Every refusal keeps the clip where it is and still reports it, so the rest
+  // of a batch update isn't lost with the move.
+  it.each([
+    [
+      "a take-lane source",
+      { sourcePath: livePath.track(0).takeLane(0).arrangementClip(0) },
+      "Live's API can't move a clip off a take lane",
+    ],
+    [
+      "an audio clip with no sample",
+      { isMidi: 0, destIsMidi: 0 },
+      "it's an audio clip with no sample file",
+    ],
+    [
+      "a MIDI clip aimed at an audio track",
+      { destIsMidi: 0 },
+      `track ${DEST_TRACK} is audio`,
+    ],
+  ])("refuses %s", (_label, opts: MoveOptions, expected) => {
+    const updatedClips = runMove(opts);
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(`clip ${SOURCE_ID} was not moved: ${expected}`),
+    );
+    expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalled();
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+
+  it("refuses a destination slot that does not exist", () => {
+    const updatedClips = runMove({ destSlotExists: false });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      `destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
+    );
+    expect(
+      lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
+    ).not.toHaveBeenCalled();
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+
+  it("keeps the clip when its track can't be determined", () => {
+    mockNonExistentObjects();
+    const updatedClips: ClipResult[] = [];
+
+    handleArrangementToSlotMove({
+      clip: {
+        id: SOURCE_ID,
+        path: "",
+        trackIndex: null,
+        getProperty: vi.fn(),
+      } as unknown as LiveAPI,
+      toSlot: { trackIndex: DEST_TRACK, sceneIndex: DEST_SCENE },
+      updatedClips,
+      noteResult: null,
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      `clip ${SOURCE_ID} was not moved: could not determine its track`,
+    );
+    expect(updatedClips[0]?.id).toBe(SOURCE_ID);
+  });
+});

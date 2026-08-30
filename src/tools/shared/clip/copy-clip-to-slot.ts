@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { toLiveApiId } from "./utils.ts";
+import { toLiveApiId } from "../utils.ts";
 
 /**
  * Copies a session clip into another slot, reporting the copy only when Live

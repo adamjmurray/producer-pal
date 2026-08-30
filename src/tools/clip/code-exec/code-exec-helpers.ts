@@ -20,7 +20,7 @@ import {
   readAllClipNotes,
   rawNotesToNoteEvents,
   removeAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
+} from "#src/tools/shared/clip/clip-notes.ts";
 import {
   arrangementPath,
   slotPath,
@@ -124,7 +124,7 @@ export function buildCodeExecutionContext(
 }
 
 /** @see getClipNoteCount - re-exported for code-exec API compatibility */
-export { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
+export { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 
 // The note model, converters, and validators now live in the notation layer
 // (shared with the MIDI JSON notation). Re-exported here so code-exec callers

@@ -11,7 +11,7 @@ import {
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
-import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   clearClipAtDuplicateTarget,
   duplicateSelfOverlappingClip,

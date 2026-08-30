@@ -11,11 +11,12 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { handleArrangementOperations } from "../../helpers/update-clip-arrangement-helpers.ts";
 import {
   handlePositionOperations,
-  handleClipSlotMove,
   resolveMoveDestinations,
 } from "../../helpers/update-clip-session-helpers.ts";
+import { handleClipSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
 
 vi.mock(import("../../helpers/update-clip-arrangement-helpers.ts"), () => ({
   handleArrangementOperations: vi.fn(),
@@ -508,6 +509,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
   handlePositionOperations({
     clip: {
       id: "789",
+      path: "",
       getProperty: vi.fn((prop: string) =>
         prop === "is_arrangement_clip" && isArrangementClip ? 1 : 0,
       ),
@@ -526,15 +528,18 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
 }
 
 describe("handlePositionOperations", () => {
-  it("should warn when toSlot used on arrangement clip", () => {
+  // An arrangement clip with a destination is re-created in the slot, not
+  // refused, so it must not reach the arrangement operations at all.
+  it("sends an arrangement clip with a destination to the slot move", () => {
     runPositionOps({
       isArrangementClip: true,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
     });
 
-    expect(outlet).toHaveBeenCalledWith(
+    expect(handleArrangementOperations).not.toHaveBeenCalled();
+    expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "toPath ignored for arrangement clip (id 789): only session clips move to a slot",
+      expect.stringContaining("only session clips move to a slot"),
     );
   });
 
@@ -542,14 +547,14 @@ describe("handlePositionOperations", () => {
   // pointed at it — and one who sent toSlot is told the name they used.
   it("names the deprecated param when that is what the caller sent", () => {
     runPositionOps({
-      isArrangementClip: true,
       destinationParam: "toSlot",
       toSlot: { trackIndex: 1, sceneIndex: 2 },
+      arrangementStartBeats: 8,
     });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "toSlot ignored for arrangement clip (id 789): only session clips move to a slot",
+      "toSlot ignored when arrangement parameters are specified",
     );
   });
 
@@ -579,15 +584,12 @@ describe("handlePositionOperations", () => {
     );
   });
 
-  it("should not warn about arrangement toSlot when no toSlot is given", () => {
-    // Arrangement clip but no toSlot: the else-if (toSlot != null && isArrangement)
-    // must stay false (kills forced-true and the && -> || mutant).
+  it("runs the arrangement operations when no destination is given", () => {
+    // Arrangement clip but no toSlot: the destination branch must stay false
+    // (kills its forced-true mutant).
     runPositionOps({ isArrangementClip: true, arrangementStartBeats: 8 });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("toPath ignored for arrangement clip"),
-    );
+    expect(handleArrangementOperations).toHaveBeenCalled();
   });
 });
 

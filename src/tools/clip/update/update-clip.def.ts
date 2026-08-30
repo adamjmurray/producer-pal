@@ -104,7 +104,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe(
         "clip slot(s) to move the clip(s) to, 't<track>/s<scene>', comma-separated for multiple " +
-          "(e.g., 't2/s3' or 't2/s3,t2/s4'); session clips only. Paired 1:1 with the clips named by " +
+          "(e.g., 't2/s3' or 't2/s3,t2/s4'). An arrangement clip is re-created in the slot, which " +
+          "drops its automation envelopes. Paired 1:1 with the clips named by " +
           "id/path, in order - destinations don't cycle, so name one slot per clip",
       ),
     // Deprecated because its positions are clip-relative: models reason in song

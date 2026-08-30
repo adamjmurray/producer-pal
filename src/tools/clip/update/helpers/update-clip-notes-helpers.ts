@@ -22,7 +22,7 @@ import {
   rawNotesToNoteEvents,
   readAllClipNotes,
   removeAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
+} from "#src/tools/shared/clip/clip-notes.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,

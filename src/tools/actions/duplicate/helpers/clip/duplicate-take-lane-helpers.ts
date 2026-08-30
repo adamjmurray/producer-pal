@@ -15,7 +15,7 @@ import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,
-} from "./duplicate-clip-recreate-helpers.ts";
+} from "#src/tools/shared/clip/recreate-clip.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
 export interface ResolvedDuplicateLane {

@@ -19,7 +19,7 @@
  *   take-lane clip. Clean up in Live's UI.
  * - `Track.duplicate_clip_to_arrangement` silently no-ops when the SOURCE is a
  *   take-lane clip — it creates nothing anywhere. Re-create the clip instead
- *   (see duplicate-clip-recreate-helpers.ts).
+ *   (see recreate-clip.ts).
  * - Both no-ops return `id 0`, which a successful `delete_clip` returns too, so
  *   the return value can't be tested — check whether the clip is still there.
  */

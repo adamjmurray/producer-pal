@@ -9,10 +9,7 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import {
-  recreateClip,
-  recreateMidiClip,
-} from "./duplicate-clip-recreate-helpers.ts";
+import { recreateClip } from "../recreate-clip.ts";
 
 const SOURCE_PATH = livePath.track(0).takeLane(0).arrangementClip(0);
 const LANE_PATH = livePath.track(0).takeLane(0);
@@ -94,7 +91,7 @@ function registerSelfOverlappingLane(): void {
 // Copying a take onto its own lane makes Live replace the source the instant the
 // new clip is created. Reading the source after that read a wiped clip, so the
 // copy landed empty and the original was gone with it.
-describe("recreateMidiClip onto the source's own lane", () => {
+describe("recreateClip onto the source's own lane", () => {
   beforeEach(registerSelfOverlappingLane);
 
   /**
@@ -102,7 +99,7 @@ describe("recreateMidiClip onto the source's own lane", () => {
    * @param color - Color override, or undefined to keep the source's
    */
   function recreateOverSource(color?: string): void {
-    recreateMidiClip(
+    recreateClip(
       LiveAPI.from(SOURCE_PATH),
       LiveAPI.from(LANE_PATH),
       0,

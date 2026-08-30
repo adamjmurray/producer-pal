@@ -11,8 +11,11 @@ import {
   takeLaneKey,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
-import { recreateClip } from "./duplicate-clip-recreate-helpers.ts";
+import {
+  duplicateClipToArrangement,
+  getMinimalClipInfo,
+} from "../duplicate-helpers.ts";
+import { recreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
 
 /**
@@ -113,12 +116,14 @@ function recreateCopy(
   kind: "take-lane" | "promoted",
 ): object | null {
   try {
-    return recreateClip(
-      options.object,
-      destination,
-      options.startBeats,
-      options.name,
-      options.color,
+    return getMinimalClipInfo(
+      recreateClip(
+        options.object,
+        destination,
+        options.startBeats,
+        options.name,
+        options.color,
+      ),
     );
   } catch (error) {
     console.warn(

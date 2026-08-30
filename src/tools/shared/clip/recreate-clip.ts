@@ -4,14 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import {
-  rawNotesToNoteEvents,
-  readAllClipNotes,
-} from "#src/tools/shared/clip-notes.ts";
-import {
-  getMinimalClipInfo,
-  type MinimalClipInfo,
-} from "../duplicate-helpers.ts";
+import { requireCreatedSessionClip } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { rawNotesToNoteEvents, readAllClipNotes } from "./clip-notes.ts";
 
 /** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
@@ -27,6 +21,79 @@ interface AudioClipSnapshot {
   filePath: string;
   color: unknown;
   properties: Record<string, unknown>;
+}
+
+/** How a destination makes the empty clip the snapshot is poured into. */
+interface RecreateTarget {
+  createMidi: (length: number) => LiveAPI;
+  createAudio: (filePath: string) => LiveAPI;
+}
+
+/**
+ * Re-create a clip in the arrangement, somewhere Live's own duplicate can't
+ * reach: a MIDI clip from its notes, an audio clip from its sample.
+ *
+ * Used for both directions a take lane is involved in, because
+ * `duplicate_clip_to_arrangement` handles neither: a TakeLane has no duplicate
+ * API at all, and the Track-scoped one silently no-ops when the SOURCE is a
+ * take-lane clip. Both destinations answer `create_midi_clip` and
+ * `create_audio_clip`, so one function covers both.
+ * @param sourceClip - The clip being copied
+ * @param destination - Where to create it: a TakeLane, or a Track for the main lane
+ * @param startBeats - Arrangement start position in Ableton beats
+ * @param name - Name for the new clip
+ * @param color - Color for the new clip
+ * @returns The created clip
+ */
+export function recreateClip(
+  sourceClip: LiveAPI,
+  destination: LiveAPI,
+  startBeats: number,
+  name: string | undefined,
+  color: string | undefined,
+): LiveAPI {
+  return recreateInto(sourceClip, name, color, {
+    createMidi: (length) =>
+      createdArrangementClip(
+        destination.call("create_midi_clip", startBeats, length) as string,
+      ),
+    createAudio: (filePath) =>
+      createdArrangementClip(
+        destination.call("create_audio_clip", filePath, startBeats) as string,
+      ),
+  });
+}
+
+/**
+ * Re-create a clip in a session clip slot, the direction Live has no duplicate
+ * API for at all — nothing copies an arrangement clip into a slot.
+ *
+ * The slot must already be empty: Live refuses a create over an existing clip
+ * rather than replacing it, unlike the arrangement lanes.
+ * @param sourceClip - The clip being copied
+ * @param clipSlot - The empty ClipSlot to create in
+ * @param name - Name for the new clip
+ * @param color - Color for the new clip
+ * @returns The created clip
+ */
+export function recreateClipInSlot(
+  sourceClip: LiveAPI,
+  clipSlot: LiveAPI,
+  name: string | undefined,
+  color: string | undefined,
+): LiveAPI {
+  return recreateInto(sourceClip, name, color, {
+    createMidi: (length) => {
+      clipSlot.call("create_clip", length);
+
+      return requireCreatedSessionClip(clipSlot, "MIDI");
+    },
+    createAudio: (filePath) => {
+      clipSlot.call("create_audio_clip", filePath);
+
+      return requireCreatedSessionClip(clipSlot, "audio");
+    },
+  });
 }
 
 /**
@@ -73,112 +140,57 @@ export function recreatedClipLosses(sourceClip: LiveAPI): string {
   return losses.join("; ");
 }
 
-/**
- * Re-create a clip somewhere Live's own arrangement duplicate can't reach: a
- * MIDI clip from its notes, an audio clip from its sample.
- *
- * Used for both directions a take lane is involved in, because
- * `duplicate_clip_to_arrangement` handles neither: a TakeLane has no duplicate
- * API at all, and the Track-scoped one silently no-ops when the SOURCE is a
- * take-lane clip. Both destinations answer `create_midi_clip` and
- * `create_audio_clip`, so one function covers both.
- *
- * Re-creating over an existing clip truncates the one already there and lands
- * intact itself — the same replace behavior as writing to the main lane. That
- * existing clip can be the source (copying a take onto its own lane), which is
- * why everything is read off the source first; reading after would copy the
- * truncation, or nothing at all.
- * @param sourceClip - The clip being copied
- * @param destination - Where to create it: a TakeLane, or a Track for the main lane
- * @param startBeats - Arrangement start position in Ableton beats
- * @param name - Name for the new clip
- * @param color - Color for the new clip
- * @returns Minimal clip info for the created clip
- */
-export function recreateClip(
-  sourceClip: LiveAPI,
-  destination: LiveAPI,
-  startBeats: number,
-  name: string | undefined,
-  color: string | undefined,
-): MinimalClipInfo {
-  return sourceClip.getProperty("is_midi_clip") === 1
-    ? recreateMidiClip(sourceClip, destination, startBeats, name, color)
-    : recreateAudioClip(sourceClip, destination, startBeats, name, color);
-}
-
 // --- Helpers below main exports ---
 
 /**
- * Re-create a MIDI clip, copying the source's notes and loop/marker/signature
- * properties.
+ * Read the source, make the new clip, and pour the source's state into it.
+ *
+ * Re-creating over an existing arrangement clip truncates the one already there
+ * and lands intact itself. That existing clip can be the source (copying a take
+ * onto its own lane), which is why everything is read off the source first;
+ * reading after would copy the truncation, or nothing at all.
  * @param sourceClip - The clip being copied
- * @param destination - The TakeLane or Track to create it on
- * @param startBeats - Arrangement start position in Ableton beats
- * @param name - Name for the new clip
- * @param color - Color for the new clip
- * @returns Minimal clip info for the created clip
+ * @param name - Name override, or undefined to keep the source's
+ * @param color - Color override, or undefined to keep the source's
+ * @param target - How the destination makes the empty clip
+ * @returns The created clip
  */
-export function recreateMidiClip(
+function recreateInto(
   sourceClip: LiveAPI,
-  destination: LiveAPI,
-  startBeats: number,
   name: string | undefined,
   color: string | undefined,
-): MinimalClipInfo {
-  const snapshot = snapshotClip(sourceClip, name, color);
-  const newClip = createdClip(
-    destination.call("create_midi_clip", startBeats, snapshot.length) as string,
-  );
+  target: RecreateTarget,
+): LiveAPI {
+  if (sourceClip.getProperty("is_midi_clip") === 1) {
+    const snapshot = snapshotClip(sourceClip, name, color);
+    const newClip = target.createMidi(snapshot.length);
 
-  if (snapshot.notes.length > 0) {
-    newClip.call("add_new_notes", { notes: snapshot.notes });
+    if (snapshot.notes.length > 0) {
+      newClip.call("add_new_notes", { notes: snapshot.notes });
+    }
+
+    newClip.setAll(snapshot.properties);
+    applyColor(newClip, color, snapshot.color);
+
+    return newClip;
   }
 
-  newClip.setAll(snapshot.properties);
-  applyColor(newClip, color, snapshot.color);
-
-  return getMinimalClipInfo(newClip);
-}
-
-/**
- * Re-create an audio clip from its sample, carrying the source's warp, loop,
- * marker, gain, pitch, and signature settings.
- * @param sourceClip - The clip being copied
- * @param destination - The TakeLane or Track to create it on
- * @param startBeats - Arrangement start position in Ableton beats
- * @param name - Name for the new clip
- * @param color - Color for the new clip
- * @returns Minimal clip info for the created clip
- */
-function recreateAudioClip(
-  sourceClip: LiveAPI,
-  destination: LiveAPI,
-  startBeats: number,
-  name: string | undefined,
-  color: string | undefined,
-): MinimalClipInfo {
   const snapshot = snapshotAudioClip(sourceClip, name, color);
-  const newClip = createdClip(
-    destination.call(
-      "create_audio_clip",
-      snapshot.filePath,
-      startBeats,
-    ) as string,
-  );
+  const newClip = target.createAudio(snapshot.filePath);
 
   newClip.setAll(snapshot.properties);
   applyColor(newClip, color, snapshot.color);
 
-  return getMinimalClipInfo(newClip);
+  return newClip;
 }
 
 /**
- * Wrap what a create call returned, failing loudly when Live made nothing.
+ * Wrap what an arrangement create call returned, failing loudly when Live made
+ * nothing.
  * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
  * @returns The new clip
  */
-function createdClip(createResult: string): LiveAPI {
+function createdArrangementClip(createResult: string): LiveAPI {
   const newClip = LiveAPI.from(createResult);
 
   if (!newClip.exists()) {

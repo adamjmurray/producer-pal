@@ -8,33 +8,29 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  buildClipResultObject,
   type ClipResult,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import {
-  clipCopyBlocker,
-  copyClipToSlot,
-} from "#src/tools/shared/copy-clip-to-slot.ts";
 import {
   namedHiddenPath,
   pathEntries,
   pathNamesSomething,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   formatObjectPath,
   parseObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
-import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  type ClipSlotPosition,
+  parseSlotList,
+} from "#src/tools/shared/validation/position-parsing.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
-
-interface ClipSlotPosition {
-  trackIndex: number;
-  sceneIndex: number;
-}
+import {
+  handleArrangementToSlotMove,
+  handleClipSlotMove,
+} from "./update-clip-slot-move-helpers.ts";
 
 /**
  * The param the caller used to name a destination, so a warning names one they
@@ -256,16 +252,19 @@ export function handlePositionOperations(
 ): void {
   const { clip, toSlot, arrangementStartBeats, arrangementLengthBeats } = args;
   const { destinationParam } = args;
-  const isArrangementClip =
-    (clip.getProperty("is_arrangement_clip") as number) > 0;
 
-  if (toSlot != null && !isArrangementClip) {
+  if (toSlot != null) {
     if (arrangementStartBeats != null || arrangementLengthBeats != null) {
       console.warn(
         `${destinationParam} ignored when arrangement parameters are specified`,
       );
     } else {
-      handleClipSlotMove({
+      const move =
+        (clip.getProperty("is_arrangement_clip") as number) > 0
+          ? handleArrangementToSlotMove
+          : handleClipSlotMove;
+
+      move({
         clip,
         toSlot,
         updatedClips: args.updatedClips,
@@ -274,10 +273,6 @@ export function handlePositionOperations(
 
       return;
     }
-  } else if (toSlot != null && isArrangementClip) {
-    console.warn(
-      `${destinationParam} ignored for arrangement clip (id ${clip.id}): only session clips move to a slot`,
-    );
   }
 
   handleArrangementOperations({
@@ -356,119 +351,5 @@ function pairWithClips(
   return Array.from(
     { length: clipCount },
     (_unused, i) => destinations[i] ?? null,
-  );
-}
-
-interface HandleClipSlotMoveArgs {
-  clip: LiveAPI;
-  toSlot: ClipSlotPosition;
-  updatedClips: ClipResult[];
-  noteResult: NoteUpdateResult | null;
-}
-
-/**
- * Move a session clip to a different clip slot
- * @param args - Operation arguments
- * @param args.clip - The session clip to move
- * @param args.toSlot - Destination slot position
- * @param args.updatedClips - Array to collect results
- * @param args.noteResult - Note update result for result
- */
-export function handleClipSlotMove({
-  clip,
-  toSlot,
-  updatedClips,
-  noteResult,
-}: HandleClipSlotMoveArgs): void {
-  const srcTrackIndex = clip.trackIndex;
-  const srcSceneIndex = clip.sceneIndex;
-
-  if (srcTrackIndex == null || srcSceneIndex == null) {
-    console.warn(`could not determine slot position for clip ${clip.id}`);
-    updatedClips.push(
-      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
-
-  // Same slot — no-op
-  if (
-    srcTrackIndex === toSlot.trackIndex &&
-    srcSceneIndex === toSlot.sceneIndex
-  ) {
-    updatedClips.push(
-      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
-
-  const destClipSlot = LiveAPI.from(
-    livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex),
-  );
-
-  if (!destClipSlot.exists()) {
-    console.warn(
-      `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
-    );
-    updatedClips.push(
-      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
-
-  // Live's duplicate_clip_to no-ops on a track that won't take the clip instead
-  // of failing, and the source is deleted right after — check first rather than
-  // destroying the clip and reporting it moved.
-  const clipIsMidi = (clip.getProperty("is_midi_clip") as number) > 0;
-  const blocker = clipCopyBlocker(clipIsMidi, toSlot.trackIndex);
-
-  if (blocker != null) {
-    console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: ${blocker}`,
-    );
-    updatedClips.push(
-      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
-
-  // Read now, warn after the copy: when copyClipToSlot declines, the occupant
-  // is still there and an up-front warning contradicts the one that follows.
-  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
-
-  const sourceClipSlot = LiveAPI.from(
-    livePath.track(srcTrackIndex).clipSlot(srcSceneIndex),
-  );
-
-  // Look before deleting. duplicate_clip_to reports nothing when it declines a
-  // copy, so anything the checks above didn't catch would destroy the clip and
-  // report a move. copyClipToSlot compares the destination's clip before and
-  // after, so an occupied slot's original clip can't be mistaken for the copy.
-  const newClip = copyClipToSlot(sourceClipSlot, destClipSlot);
-
-  if (newClip == null) {
-    console.warn(
-      `clip ${clip.id} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
-    );
-    updatedClips.push(
-      buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-    );
-
-    return;
-  }
-
-  if (destinationWasOccupied) {
-    console.warn(
-      `overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
-    );
-  }
-
-  sourceClipSlot.call("delete_clip");
-  updatedClips.push(
-    buildClipResultObject(newClip.id, noteResult, objectPathForApi(newClip)),
   );
 }

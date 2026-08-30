@@ -32,7 +32,7 @@ import { type UnreachedDestination } from "../sources/duplicate-position-helpers
 import {
   canRecreateClip,
   recreatedClipLosses,
-} from "./duplicate-clip-recreate-helpers.ts";
+} from "#src/tools/shared/clip/recreate-clip.ts";
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,

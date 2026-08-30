@@ -5,7 +5,7 @@
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
-import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   arrangementPath,
   slotPath,
