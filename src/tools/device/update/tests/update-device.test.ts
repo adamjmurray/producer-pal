@@ -125,12 +125,12 @@ describe("updateDevice", () => {
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
-      // The value comes back read from the param, so it carries Live's 32-bit
-      // float storage — and would show a snap to a different step.
+      // The value comes back read from the param, so a param that snapped to a
+      // different step would report the step, not what was asked for.
       expect(result).toStrictEqual({
         id: "123",
         path: "t0/d0",
-        params: [{ id: "789", name: "Param 789", value: 0.800000011920929 }],
+        params: [{ id: "789", name: "Param 789", value: 0.8 }],
       });
     });
 
@@ -149,8 +149,8 @@ describe("updateDevice", () => {
         id: "123",
         path: "t0/d0",
         params: [
-          { id: "789", name: "Param 789", value: 0.30000001192092896 },
-          { id: "790", name: "Param 790", value: 0.699999988079071 },
+          { id: "789", name: "Param 789", value: 0.3 },
+          { id: "790", name: "Param 790", value: 0.7 },
         ],
       });
     });

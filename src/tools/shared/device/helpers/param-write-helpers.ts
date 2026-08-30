@@ -50,11 +50,16 @@ export function setParamIfEnabled(
  * old value in place and reporting success, so without this the tool claims an
  * update that never happened.
  *
- * Compares display labels, not raw numbers. Live stores the raw value as a
- * 32-bit float (Math.fround models that), and some parameters reporting a
- * continuous range really hold only a few steps — Glue Compressor's Attack
- * snaps a raw 2.5 down to 2 — so a raw readback differs from what we wrote even
- * when the write worked. The label absorbs both.
+ * Compares display labels, not raw numbers. Live does not keep the number we
+ * send: it rounds to six significant digits and stores that as a 32-bit float,
+ * and some parameters reporting a continuous range really hold only a few
+ * steps — Glue Compressor's Attack snaps a raw 2.5 down to 2. The label
+ * absorbs both.
+ *
+ * Ask Live to render the value we asked for, not a guess at what it stored.
+ * Measured on 12.4.3: the label for the requested value matches the stored
+ * one every time, while the label for `Math.fround(rawValue)` disagrees on a
+ * display boundary — warning "was not changed" about a write that landed.
  * @param param - DeviceParameter LiveAPI object
  * @param rawValue - Raw value to write
  * @param label - How to name the parameter in the warning
@@ -65,7 +70,7 @@ export function setParamValueAndVerify(
   rawValue: number,
   label: string,
 ): boolean {
-  const expected = strForValue(param, Math.fround(rawValue));
+  const expected = strForValue(param, rawValue);
 
   param.set("value", rawValue);
 

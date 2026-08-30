@@ -134,14 +134,39 @@ describe("setParamValueAndVerify", () => {
     );
   });
 
-  it("compares against what Live stores, not what we wrote", () => {
-    // Live keeps a 32-bit float, so 0.1 reads back as 0.10000000149011612. A
-    // check against the unrounded write would warn on every fractional value.
+  it("compares labels, because the raw value read back is never the one we wrote", () => {
+    // Live rounds to six significant digits and keeps a 32-bit float, so 0.1
+    // reads back as 0.10000000149011612. Comparing raw values would warn on
+    // every fractional write.
     const param = registerLabeledParam();
 
     setParamValueAndVerify(paramApi(), 0.1, 'updateDevice: param "Drive"');
 
-    expect(param.properties.value).toBe(Math.fround(0.1));
+    expect(param.properties.value).not.toBe(0.1);
+    expect(capturedWarnings()).toHaveLength(0);
+  });
+
+  // Measured on Live 12.4.3 at a real display boundary on a track's volume.
+  // Predicting the stored value with Math.fround lands on the far side of the
+  // boundary and warns about a write that went in exactly as asked.
+  it("stays silent for a write that lands right on a display boundary", () => {
+    registerMockObject("param-1", {
+      path: paramPath,
+      type: "DeviceParameter",
+      properties: { name: "Volume", value: 0.5 },
+      methods: {
+        str_for_value: (v: unknown) =>
+          Number(v) < 0.7000125 ? "-6.0 dB" : "-5.999 dB",
+      },
+    });
+
+    const landed = setParamValueAndVerify(
+      paramApi(),
+      0.7000124999999999,
+      'updateDevice: param "Volume"',
+    );
+
+    expect(landed).toBe(true);
     expect(capturedWarnings()).toHaveLength(0);
   });
 });

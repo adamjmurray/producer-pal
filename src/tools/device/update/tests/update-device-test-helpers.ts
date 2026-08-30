@@ -78,7 +78,11 @@ export function registerParamMock(id: string): RegisteredMockObject {
       min: 0,
       max: 1,
     },
-    methods: { str_for_value: (_value: unknown) => String(_value) },
+    // Two decimals, like a real display: a label carries far less precision
+    // than the raw value, which is what makes a write verifiable at all.
+    methods: {
+      str_for_value: (_value: unknown) => Number(_value).toFixed(2),
+    },
   });
 }
 

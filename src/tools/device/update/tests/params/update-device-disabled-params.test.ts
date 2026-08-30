@@ -35,7 +35,8 @@ function registerParam(isEnabled: number): RegisteredMockObject {
       min: 0,
       max: 1,
     },
-    methods: { str_for_value: (value: unknown) => String(value) },
+    // Two decimals, like a real display — see registerParamMock.
+    methods: { str_for_value: (value: unknown) => Number(value).toFixed(2) },
   });
 }
 

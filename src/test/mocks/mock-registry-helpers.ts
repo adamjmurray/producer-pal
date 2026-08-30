@@ -172,13 +172,25 @@ function createGetMock(mock: RegisteredMockObject): Mock {
 }
 
 /**
+ * What Live keeps when you write a raw value to a DeviceParameter. Measured on
+ * Live 12.4.3: writing 0.123456789012345 reads back as 0.12345699965953827,
+ * which is six significant digits and then a 32-bit float. `Math.fround` alone
+ * is not it, and the difference shows up on a display boundary.
+ * @param raw - The value written
+ * @returns The value Live stores
+ */
+export function storedParamValue(raw: number): number {
+  return Math.fround(Number(raw.toPrecision(6)));
+}
+
+/**
  * Create a set() mock. Writes to `value` land in `properties` so a later get()
  * sees them: code that reads a parameter back to check the write took would
  * otherwise see every write as rejected. Every other property stays a pure spy.
  *
- * `value` is snapped to a 32-bit float, which is how Live stores a
- * DeviceParameter — a raw 0.8 reads back as 0.800000011920929, and the display
- * label rounds from there.
+ * `value` is quantized the way Live quantizes a DeviceParameter write: rounded
+ * to six significant digits, then snapped to a 32-bit float. A raw 0.8 reads
+ * back as 0.800000011920929, and the display label rounds from there.
  * @param mock - The registration to write into
  * @returns Configured vi.fn() mock
  */
@@ -189,7 +201,7 @@ function createSetMock(mock: RegisteredMockObject): Mock {
       args.length === 1 &&
       typeof args[0] === "number"
     ) {
-      mock.properties.value = Math.fround(args[0]);
+      mock.properties.value = storedParamValue(args[0]);
     }
   }) as Mock;
 }
