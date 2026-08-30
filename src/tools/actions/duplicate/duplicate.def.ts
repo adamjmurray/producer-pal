@@ -114,7 +114,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     transforms: param(z.string().optional(), {
       default:
-        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation",
+        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation. Note-count operations (ratchet/repeat/split/merge) change how many notes exist",
       smallModel: null,
     }),
     ...(process.env.ENABLE_CODE_EXEC === "true"

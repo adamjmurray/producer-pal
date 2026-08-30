@@ -118,7 +118,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     }),
 
     transforms: param(z.string().optional(), {
-      default: "transform expressions (parameter: expression per line)",
+      default:
+        "transform expressions (parameter: expression per line). Note-count operations (ratchet/repeat/split/merge) change how many notes exist",
       smallModel: null,
     }),
 
