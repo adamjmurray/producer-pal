@@ -253,6 +253,9 @@ function snapshotClip(
       looping: sourceClip.getProperty("looping"),
       signature_numerator: sourceClip.getProperty("signature_numerator"),
       signature_denominator: sourceClip.getProperty("signature_denominator"),
+      // No tool writes `muted`, so a copy that arrives unmuted can only be
+      // re-muted by hand in Live.
+      muted: sourceClip.getProperty("muted"),
       name: name ?? sourceClip.getProperty("name"),
     },
   };
@@ -300,6 +303,7 @@ function snapshotAudioClip(
       gain: sourceClip.getProperty("gain"),
       pitch_coarse: sourceClip.getProperty("pitch_coarse"),
       pitch_fine: sourceClip.getProperty("pitch_fine"),
+      muted: sourceClip.getProperty("muted"),
       name: name ?? sourceClip.getProperty("name"),
     },
   };

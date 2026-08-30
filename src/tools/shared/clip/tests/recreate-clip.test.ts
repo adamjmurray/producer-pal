@@ -47,6 +47,7 @@ function registerSelfOverlappingLane(): void {
     signature_denominator: 4,
     name: "Take 1",
     color: 16711680,
+    muted: 1,
   };
 
   registerMockObject("live_set", {
@@ -121,6 +122,9 @@ describe("recreateClip onto the source's own lane", () => {
     ["loop_end", 16],
     ["end_marker", 16],
     ["name", "Take 1"],
+    // No tool writes `muted`, so a copy that arrives unmuted can only be
+    // re-muted by hand in Live.
+    ["muted", 1],
   ])("copies the %s the destination wiped", (property, value) => {
     recreateOverSource();
 
@@ -157,6 +161,44 @@ describe("recreateClip onto the source's own lane", () => {
     expect(lookupMockObject("copy_clip")?.set).not.toHaveBeenCalledWith(
       "color",
       0,
+    );
+  });
+});
+
+describe("recreateClip on an audio source", () => {
+  it("copies the source's mute state onto the copy", () => {
+    registerMockObject("audio_src", {
+      path: SOURCE_PATH,
+      type: "Clip",
+      properties: {
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        file_path: "/samples/loop.wav",
+        muted: 1,
+      },
+    });
+    registerMockObject("audio_copy", {
+      path: livePath.track(0).takeLane(0).arrangementClip(1),
+      type: "Clip",
+      properties: { is_arrangement_clip: 1 },
+    });
+    registerMockObject("audio_lane", {
+      path: LANE_PATH,
+      type: "TakeLane",
+      methods: { create_audio_clip: () => ["id", "audio_copy"] },
+    });
+
+    recreateClip(
+      LiveAPI.from(SOURCE_PATH),
+      LiveAPI.from(LANE_PATH),
+      0,
+      undefined,
+      undefined,
+    );
+
+    expect(lookupMockObject("audio_copy")?.set).toHaveBeenCalledWith(
+      "muted",
+      1,
     );
   });
 });
