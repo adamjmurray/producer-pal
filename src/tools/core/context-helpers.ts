@@ -6,6 +6,7 @@
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import { backupProjectContextOnEdit } from "#src/live-api-adapter/project-context-sync.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { detachWarningCapture } from "#src/shared/max/v8-warning-capture.ts";
 
 export interface ContentResult {
   content: string;
@@ -69,7 +70,9 @@ export function handleWriteProjectContext(
   // write that is the last tool call of a session would never reach disk at
   // all. Fire-and-forget, like the setter: the write is Node-side and must not
   // block the tool result, and requestNode never rejects so this can't throw.
-  void backupProjectContextOnEdit(content);
+  // Detached because a void-ed async call is a suspension point in its caller —
+  // see v8-warning-capture.ts rule 3.
+  detachWarningCapture(() => backupProjectContextOnEdit(content));
 
   return { content };
 }

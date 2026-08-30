@@ -5,6 +5,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
+import {
+  beginWarningCapture,
+  endWarningCapture,
+  recordWarning,
+  resetWarningCapture,
+  suspendWarningCapture,
+} from "#src/shared/max/v8-warning-capture.ts";
 import { context } from "../context.ts";
 
 vi.mock(import("#src/live-api-adapter/project-context-sync.ts"), () => ({
@@ -21,7 +28,8 @@ describe("context - project scope (default)", () => {
   let toolContext: Partial<ToolContext>;
 
   beforeEach(() => {
-    mockBackup.mockClear();
+    mockBackup.mockReset();
+    resetWarningCapture();
     toolContext = {
       projectContext: { content: "" },
     };
@@ -162,6 +170,26 @@ describe("context - project scope (default)", () => {
       await context({ action: "write", content: "hi" }, toolContext);
 
       expect(mockBackup).not.toHaveBeenCalled();
+    });
+
+    // Fire-and-forget from inside a tool call, so it starts detached: holding
+    // the request's capture, its first suspend would pocket that capture and
+    // reinstate it whenever the write resumes — over whatever request is
+    // running by then. See v8-warning-capture.ts rule 3.
+    it("starts the backup with the request's warning capture detached", async () => {
+      const request = beginWarningCapture();
+      let takenByTheBackup = true;
+
+      mockBackup.mockImplementation(async () => {
+        takenByTheBackup = recordWarning("from the backup");
+
+        await suspendWarningCapture(Promise.resolve());
+      });
+
+      await context({ action: "write", content: "Genre: jungle" }, toolContext);
+
+      expect(takenByTheBackup).toBe(false);
+      expect(endWarningCapture(request)).toStrictEqual([]);
     });
   });
 
