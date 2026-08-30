@@ -165,8 +165,8 @@ describe("updateClip - duplicateLoop", () => {
   });
 
   it.each([
-    // Only `transforms` reports a `transformed` count; `notes` and
-    // `preTransforms` run before that count is taken.
+    // Either transform string reports how many notes it matched; `notes` alone
+    // transforms nothing, so it reports no count.
     ["notes", "1|1 C3", { id: "123", path: "t0/s0", noteCount: 8 }],
     [
       "transforms",
@@ -176,7 +176,7 @@ describe("updateClip - duplicateLoop", () => {
     [
       "preTransforms",
       "pitch += 12",
-      { id: "123", path: "t0/s0", noteCount: 8 },
+      { transformed: 8, id: "123", path: "t0/s0", noteCount: 8 },
     ],
   ])(
     "doubles and composes %s without warning (no length conflict)",
@@ -198,6 +198,48 @@ describe("updateClip - duplicateLoop", () => {
       expect(result).toStrictEqual(expected);
     },
   );
+
+  it("reports the preTransform count when notes follow but no transforms do", async () => {
+    // The merge stage is handed no preTransform string of its own, so this is
+    // the pairing where the count used to fall through and go unreported.
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "pitch += 12",
+      notes: "1|1 C3",
+    });
+
+    expect(result).toStrictEqual({
+      transformed: 8,
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+    });
+  });
+
+  it("prefers the transforms count over the preTransforms one", async () => {
+    setupMidiClipMock(mocks.clip123);
+    mockNoteCount(mocks.clip123, 8);
+
+    const result = await updateClip({
+      id: "123",
+      duplicateLoop: true,
+      preTransforms: "C3: pitch += 12",
+      transforms: "pitch += 1",
+    });
+
+    // Both ran; the reported count is the later pass's, matching every other
+    // path where transforms wins over preTransforms.
+    expect(result).toStrictEqual({
+      transformed: 8,
+      id: "123",
+      path: "t0/s0",
+      noteCount: 8,
+    });
+  });
 
   it("composes code: doubles the loop, then runs code on the doubled clip", async () => {
     setupMidiClipMock(mocks.clip123);
