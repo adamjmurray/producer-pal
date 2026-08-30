@@ -17,11 +17,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
   description: {
     default:
-      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Duplicate an object, or several — id takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
       "Use count for multiple track/scene copies; arrangementStart or locator for clip placement, " +
       "and toPath for the destination track, clip slot, device chain, or drum pad.",
     smallModel:
-      "Duplicate an object. Supports tracks, scenes, clips, devices, and drum pads. " +
+      "Duplicate an object, or several (id takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
       "Use arrangementStart for clip placement; toPath for the destination track, clip slot, device, or pad.",
   },
 
@@ -31,11 +31,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
-    id: z.coerce.string().optional().describe("id of the object to duplicate"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "id(s) of the object(s) to duplicate, comma-separated for multiple",
+      ),
 
-    // Every other write tool takes `ids`, so a model carries the plural over to
-    // this one. It still copies one source at a time — a list is refused by
-    // name rather than handed to Live as an id.
     ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
     path: z.coerce
       .string()
@@ -58,7 +60,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     count: param(z.coerce.number().int().min(1).default(1), {
       default:
-        "number of copies (tracks/scenes only, ignored for clips/devices)",
+        "copies per source (tracks/scenes only, ignored for clips/devices)",
       smallModel: null,
     }),
 
@@ -98,7 +100,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
         "omit for the source clip's own track. Devices: 't1/d0'. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "Cycles against arrangementStart when the lists differ in length",
+        "Cycles against arrangementStart when the lists differ in length. " +
+        "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
     }),

@@ -11,15 +11,15 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+  claimLabels,
+  labelName,
+  type CopyLabels,
+} from "./duplicate-label-helpers.ts";
 import {
   calculateSceneLength,
   duplicateSceneToArrangement,
-} from "./duplicate-track-scene-helpers.ts";
-import { resolveArrangementPositions } from "./duplicate-validation-helpers.ts";
+} from "../duplicate-track-scene-helpers.ts";
+import { resolveArrangementPositions } from "../duplicate-validation-helpers.ts";
 
 /** The arrangement params a scene duplication reads. */
 interface SceneArrangementParams {
@@ -36,7 +36,7 @@ interface SceneArrangementParams {
  * @param object - Live API scene object
  * @param id - Scene ID
  * @param count - Number of copies (for sequential placement from a single position)
- * @param name - Base name for duplicated objects
+ * @param labels - The call's names and colors
  * @param params - Arrangement parameters (arrangementStart, locator, etc.)
  * @param context - Context object
  * @returns Array of result objects
@@ -45,7 +45,7 @@ export async function duplicateSceneToArrangementAtPositions(
   object: LiveAPI,
   id: string,
   count: number,
-  name: string | undefined,
+  labels: CopyLabels,
   params: SceneArrangementParams,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
@@ -89,9 +89,8 @@ export async function duplicateSceneToArrangementAtPositions(
       : positions;
 
   const createdObjects: object[] = [];
-  const parsedNames = parseCommaSeparatedNames(name, allPositions.length);
 
-  warnExtraNames(parsedNames, allPositions.length, "duplicate");
+  claimLabels(labels, allPositions.length);
 
   for (let i = 0; i < allPositions.length; i++) {
     // A scene copy places a clip per track, so a few can eat the whole budget.
@@ -112,7 +111,7 @@ export async function duplicateSceneToArrangementAtPositions(
     const result = await duplicateSceneToArrangement(
       id,
       allPositions[i] as number, // bounded by loop
-      getNameForIndex(name, i, parsedNames),
+      labelName(labels, i),
       withoutClips,
       arrangementLength,
       songTimeSigNumerator,

@@ -10,16 +10,13 @@ import {
   copyClipToSlot,
 } from "#src/tools/shared/copy-clip-to-slot.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
-import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  claimLabels,
+  labelColor,
+  labelName,
+  type CopyLabels,
+} from "../sources/duplicate-label-helpers.ts";
 import {
   type MinimalClipInfo,
   getMinimalClipInfo,
@@ -157,16 +154,14 @@ export function duplicateClipSlot(
  * @param slots - Destination slots, in order
  * @param object - Live API object to duplicate
  * @param id - ID of the object
- * @param name - Base name for duplicated clips
- * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param labels - The call's names and colors
  * @returns Array of result objects
  */
 export function duplicateClipToSlots(
   slots: ClipSlotPosition[],
   object: LiveAPI,
   id: string,
-  name: string | undefined,
-  color: string | undefined,
+  labels: CopyLabels,
 ): object[] {
   const trackIndex = object.trackIndex;
   const sourceSceneIndex = object.sceneIndex;
@@ -177,10 +172,7 @@ export function duplicateClipToSlots(
     );
   }
 
-  const parsedNames = parseCommaSeparatedNames(name, slots.length);
-  const parsedColors = parseCommaSeparatedColors(color, slots.length);
-
-  warnExtraNames(parsedNames, slots.length, "duplicate");
+  claimLabels(labels, slots.length);
 
   const shared = resolveSlotCopySource(
     trackIndex,
@@ -197,8 +189,8 @@ export function duplicateClipToSlots(
         sourceSceneIndex,
         slot.trackIndex,
         slot.sceneIndex,
-        getNameForIndex(name, i, parsedNames),
-        getColorForIndex(color, i, parsedColors),
+        labelName(labels, i),
+        labelColor(labels, i),
         shared,
       ),
     )

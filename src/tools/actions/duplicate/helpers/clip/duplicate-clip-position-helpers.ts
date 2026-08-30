@@ -12,14 +12,11 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
-  getColorForIndex,
-  parseCommaSeparatedColors,
-} from "#src/tools/shared/validation/color-utils.ts";
-import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+  claimLabels,
+  labelColor,
+  labelName,
+  type CopyLabels,
+} from "../sources/duplicate-label-helpers.ts";
 import { type ClipDestinations } from "./duplicate-destination-helpers.ts";
 import {
   destinationTracks,
@@ -31,7 +28,7 @@ import {
   sourceLastOrder,
 } from "./duplicate-clip-order-helpers.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
-import { type UnreachedDestination } from "../duplicate-position-helpers.ts";
+import { type UnreachedDestination } from "../sources/duplicate-position-helpers.ts";
 import {
   canRecreateClip,
   recreatedClipLosses,
@@ -55,8 +52,7 @@ import {
  * @param destinations - Where the copies go (clip slots or arrangement tracks)
  * @param object - Live API object to duplicate
  * @param id - ID of the object
- * @param name - Base name for duplicated clips
- * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
@@ -69,8 +65,7 @@ export async function duplicateClipWithPositions(
   destinations: ClipDestinations,
   object: LiveAPI,
   id: string,
-  name: string | undefined,
-  color: string | undefined,
+  labels: CopyLabels,
   arrangementStart: string | undefined,
   locator: string | undefined,
   arrangementLength: string | undefined,
@@ -80,15 +75,14 @@ export async function duplicateClipWithPositions(
 ): Promise<object[]> {
   if (destinations.destination === "session") {
     // A clip slot can't name a lane, so nothing here has one to honor.
-    return duplicateClipToSlots(destinations.slots, object, id, name, color);
+    return duplicateClipToSlots(destinations.slots, object, id, labels);
   }
 
   return await duplicateClipToArrangementPositions(
     destinations.arrangementTargets,
     object,
     id,
-    name,
-    color,
+    labels,
     arrangementStart,
     locator,
     arrangementLength,
@@ -107,8 +101,7 @@ export async function duplicateClipWithPositions(
  * @param targets - Destinations, or empty for the source's own track
  * @param object - Live API object to duplicate
  * @param id - ID of the object
- * @param name - Base name for duplicated clips
- * @param color - Color for duplicated clips (cycles if comma-separated)
+ * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
@@ -121,8 +114,7 @@ async function duplicateClipToArrangementPositions(
   targets: (ArrangementTrack | null)[],
   object: LiveAPI,
   id: string,
-  name: string | undefined,
-  color: string | undefined,
+  labels: CopyLabels,
   arrangementStart: string | undefined,
   locator: string | undefined,
   arrangementLength: string | undefined,
@@ -193,10 +185,7 @@ async function duplicateClipToArrangementPositions(
     lanes,
   );
 
-  const parsedNames = parseCommaSeparatedNames(name, copies);
-  const parsedColors = parseCommaSeparatedColors(color, copies);
-
-  warnExtraNames(parsedNames, copies, "duplicate");
+  claimLabels(labels, copies);
 
   // Results keep the order the destinations were asked for, even though the
   // copies are made in another one.
@@ -245,8 +234,8 @@ async function duplicateClipToArrangementPositions(
       canPromote,
       object,
       id,
-      name: getNameForIndex(name, requestIndex, parsedNames),
-      color: getColorForIndex(color, requestIndex, parsedColors),
+      name: labelName(labels, requestIndex),
+      color: labelColor(labels, requestIndex),
       arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,

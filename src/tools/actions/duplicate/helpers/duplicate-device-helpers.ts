@@ -10,10 +10,10 @@ import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+  claimLabels,
+  labelName,
+  type CopyLabels,
+} from "./sources/duplicate-label-helpers.ts";
 import {
   formatObjectPath,
   parseObjectPath,
@@ -26,28 +26,30 @@ import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts
  * Supports comma-separated toPath for multiple destinations.
  * @param object - LiveAPI device object
  * @param toPath - Destination path(s), comma-separated for multiple
- * @param name - Optional name for duplicated device(s)
+ * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
  * @returns Result object, or an array of them for multiple destinations
  */
 export function duplicateDeviceWithPaths(
   object: LiveAPI,
   toPath: string | undefined,
-  name: string | undefined,
+  labels: CopyLabels,
   count: number,
 ): object | object[] {
   // Reads a blank toPath as omitted the way clips do, and refuses one that
   // names nothing rather than quietly falling back to the default destination.
   const paths = pathEntries(toPath, "toPath");
 
+  claimLabels(labels, Math.max(paths.length, 1));
+
   if (paths.length <= 1) {
     // A lone copy that was skipped has nothing to report but its warning.
-    return withDevicePath(duplicateDevice(object, paths[0], name, count)) ?? [];
+    return (
+      withDevicePath(
+        duplicateDevice(object, paths[0], labelName(labels, 0), count),
+      ) ?? []
+    );
   }
-
-  const parsedNames = parseCommaSeparatedNames(name, paths.length);
-
-  warnExtraNames(parsedNames, paths.length, "duplicate");
 
   // Read the source fresh per destination. A LiveAPI object follows its path,
   // and an earlier copy inserted at or before the source's own index shifts it
@@ -60,12 +62,7 @@ export function duplicateDeviceWithPaths(
   return paths
     .map((path, i) =>
       withDevicePath(
-        duplicateDevice(
-          LiveAPI.from(sourceId),
-          path,
-          getNameForIndex(name, i, parsedNames),
-          1,
-        ),
+        duplicateDevice(LiveAPI.from(sourceId), path, labelName(labels, i), 1),
       ),
     )
     .filter((result) => result != null);

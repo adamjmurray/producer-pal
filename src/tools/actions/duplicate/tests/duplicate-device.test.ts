@@ -599,4 +599,40 @@ describe("duplicate - device duplication", () => {
       expect.stringContaining("has no arrangement position"),
     );
   });
+
+  // A device slot holds one device, so the destinations are shared out across
+  // the sources rather than broadcast to all of them.
+  it("gives each source in a list its own share of toPath", async () => {
+    mockNonExistentObjects();
+    registerMockObject("device1", {
+      path: livePath.track(0).device(0),
+      type: "PluginDevice",
+    });
+    registerMockObject("device2", {
+      path: livePath.track(2).device(0),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/0", {
+      path: livePath.track(1).device(0),
+    });
+    registerMockObject("live_set/tracks/3/devices/0", {
+      path: livePath.track(3).device(0),
+    });
+
+    const result = await duplicate({
+      type: "device",
+      id: "device1,device2",
+      toPath: "t4/d0,t5/d0",
+      name: "one,two",
+    });
+
+    expect(result).toStrictEqual([
+      { id: "live_set/tracks/1/devices/0", path: "t1/d0" },
+      { id: "live_set/tracks/3/devices/0", path: "t3/d0" },
+    ]);
+    expect(
+      vi.mocked(moveDeviceToPathMock).mock.calls.map((c) => c[3]),
+    ).toStrictEqual(["t4/d0", "t5/d0"]);
+  });
 });

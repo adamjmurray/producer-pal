@@ -11,6 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
+import { copyLabels } from "../sources/duplicate-label-helpers.ts";
 import { duplicateClipSlot } from "../clip/duplicate-clip-slot-helpers.ts";
 
 /** Source clip, in slot 0/0 */
@@ -224,8 +225,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,
-      undefined,
-      undefined,
+      copyLabels(undefined, undefined, 1),
       undefined,
       undefined,
       undefined,

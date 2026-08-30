@@ -76,20 +76,38 @@ describe("duplicate - the ids alias", () => {
     ).resolves.toBeDefined();
   });
 
-  // duplicate copies one object per call, so the list `ids` implies has to be
-  // refused by name — handing "track1,track2" to Live reads as a missing object.
-  it("refuses a source list rather than looking one up", async () => {
-    await expect(
-      duplicate({ type: "track", ids: "track1,track2" }),
-    ).rejects.toThrow(
-      'duplicate failed: id "track1,track2" names more than one source; duplicate copies one object per call',
-    );
+  it("copies every source a list names", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("track2", { path: livePath.track(3) });
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+    registerMockObject("live_set/tracks/4", {
+      path: livePath.track(4),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = await duplicate({ type: "track", ids: "track1,track2" });
+
+    expect(result).toStrictEqual([
+      expect.objectContaining({ trackIndex: 1 }),
+      expect.objectContaining({ trackIndex: 4 }),
+    ]);
   });
 
-  it("refuses a list sent as id too", async () => {
+  // A source that doesn't exist is caught before the first copy is made, so a
+  // list can't leave half its copies behind.
+  it("refuses the whole list when one source is missing", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    mockNonExistentObjects();
+
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
     await expect(
-      duplicate({ type: "track", id: "track1,track2" }),
-    ).rejects.toThrow("names more than one source");
+      duplicate({ type: "track", id: "track1,nope" }),
+    ).rejects.toThrow('duplicate failed: id "nope" does not exist');
+    expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
 

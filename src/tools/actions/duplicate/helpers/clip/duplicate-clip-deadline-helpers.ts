@@ -13,7 +13,7 @@ import {
 import {
   unreachedPositionsWarning,
   type UnreachedDestination,
-} from "../duplicate-position-helpers.ts";
+} from "../sources/duplicate-position-helpers.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
 
 /**

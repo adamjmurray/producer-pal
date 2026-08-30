@@ -1,0 +1,281 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// `id` naming several sources: the single-source logic runs once per source, in
+// order, and the results are concatenated.
+
+import { describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import "./duplicate-mocks-test-helpers.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  registerArrangementClip,
+  registerTrackWithArrangementDup,
+} from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+
+const SLOT_ID = /tracks\/(\d+)\/clip_slots\/(\d+)/;
+
+/**
+ * A session clip in scene 0 of its own track, whose `duplicate_clip_to` lands a
+ * copy in whichever slot it is handed. The copy's id names both ends, so a test
+ * can say which source reached which destination.
+ * @param clipId - Id for the source clip
+ * @param trackIndex - Track holding it
+ */
+function registerSlotSource(clipId: string, trackIndex: number): void {
+  registerMockObject(clipId, {
+    path: livePath.track(trackIndex).clipSlot(0).clip(),
+    properties: { is_midi_clip: 1 },
+  });
+  registerMockObject(`live_set/tracks/${trackIndex}/clip_slots/0`, {
+    path: livePath.track(trackIndex).clipSlot(0),
+    properties: { has_clip: 1 },
+    methods: {
+      duplicate_clip_to: (destination: unknown) => {
+        const [, track, scene] = SLOT_ID.exec(String(destination)) ?? [];
+
+        registerMockObject(`${clipId}-in-t${track}s${scene}`, {
+          path: livePath.track(Number(track)).clipSlot(Number(scene)).clip(),
+        });
+
+        return null;
+      },
+    },
+  });
+}
+
+/**
+ * An empty MIDI clip slot to copy into, and the track holding it.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ */
+function registerEmptyClipSlot(trackIndex: number, sceneIndex: number): void {
+  registerMockObject(`live_set/tracks/${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    properties: { has_midi_input: 1, is_frozen: 0 },
+  });
+  registerMockObject(`live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`, {
+    path: livePath.track(trackIndex).clipSlot(sceneIndex),
+    properties: { has_clip: 0 },
+  });
+}
+
+/**
+ * Two session clips to copy, on tracks 0 and 1, plus the empty slots named.
+ * @param destinations - Destination slots, as [trackIndex, sceneIndex] pairs
+ */
+function registerTwoSlotSources(destinations: [number, number][]): void {
+  mockNonExistentObjects();
+  registerSlotSource("clipA", 0);
+  registerSlotSource("clipB", 1);
+
+  for (const [trackIndex, sceneIndex] of destinations) {
+    registerEmptyClipSlot(trackIndex, sceneIndex);
+  }
+}
+
+describe("duplicate - a list of sources", () => {
+  describe("clip slots", () => {
+    it("gives each source its own share of the destinations", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t3/s0",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "clipA-in-t2s0", path: "t2/s0" },
+        { id: "clipB-in-t3s0", path: "t3/s0" },
+      ]);
+    });
+
+    it("splits the destinations evenly when there are more than sources", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [2, 1],
+        [3, 0],
+        [3, 1],
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t2/s1,t3/s0,t3/s1",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "clipA-in-t2s0", path: "t2/s0" },
+        { id: "clipA-in-t2s1", path: "t2/s1" },
+        { id: "clipB-in-t3s0", path: "t3/s0" },
+        { id: "clipB-in-t3s1", path: "t3/s1" },
+      ]);
+    });
+
+    // A slot holds one clip, so a source with no slot of its own is dropped
+    // rather than written over the slot another source already claimed.
+    it("skips the sources a short toPath doesn't reach", async () => {
+      registerTwoSlotSources([[2, 0]]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0",
+      });
+
+      expect(result).toStrictEqual({ id: "clipA-in-t2s0", path: "t2/s0" });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "toPath names 1 destination(s) for 2 sources, and each needs its own",
+        ),
+      );
+    });
+
+    it("warns about the destinations left over", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+        [4, 0],
+      ]);
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t3/s0,t4/s0",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "the last 1 toPath destination(s) went unused — 2 sources take 1 each",
+        ),
+      );
+    });
+
+    it("counts names and colors across every copy, not per source", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2/s0,t3/s0",
+        name: "one,two",
+        color: "#FF0000,#00FF00",
+      });
+
+      const copyA = registerMockObject("clipA-in-t2s0", {});
+      const copyB = registerMockObject("clipB-in-t3s0", {});
+
+      expect(copyA.set).toHaveBeenCalledWith("name", "one");
+      expect(copyB.set).toHaveBeenCalledWith("name", "two");
+    });
+  });
+
+  describe("clips to the arrangement", () => {
+    // The headline case: one position, every source landing on its own track.
+    it("drops every source at the same position on its own track", async () => {
+      registerMockObject("clipA", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerMockObject("clipB", {
+        path: livePath.track(1).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerTrackWithArrangementDup(0, { has_midi_input: 1 });
+      registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+      registerArrangementClip(0, 0, 16);
+      registerArrangementClip(1, 0, 16);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        arrangementStart: "5|1",
+      });
+
+      expect(result).toStrictEqual([
+        {
+          id: "live_set tracks 0 arrangement_clips 0",
+          path: "t0",
+          arrangementStart: "5|1",
+        },
+        {
+          id: "live_set tracks 1 arrangement_clips 0",
+          path: "t1",
+          arrangementStart: "5|1",
+        },
+      ]);
+    });
+
+    // A track's arrangement holds many clips, told apart by position, so one
+    // container destination is meaningful for every source at once.
+    it("broadcasts a container toPath to every source", async () => {
+      registerMockObject("clipA", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+      registerMockObject("clipB", {
+        path: livePath.track(1).clipSlot(0).clip(),
+        properties: { is_midi_clip: 1 },
+      });
+
+      const track2 = registerTrackWithArrangementDup(2, { has_midi_input: 1 });
+
+      for (const clipIndex of [0, 1, 2, 3]) {
+        registerArrangementClip(2, clipIndex, 16);
+      }
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA,clipB",
+        toPath: "t2",
+        arrangementStart: "5|1,9|1",
+      });
+
+      expect(result).toHaveLength(4);
+      expect(track2.call).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe("tracks", () => {
+    it("makes count copies of every source", async () => {
+      registerMockObject("track1", { path: livePath.track(0) });
+      registerMockObject("track2", { path: livePath.track(4) });
+
+      for (const trackIndex of [1, 2, 5, 6]) {
+        registerMockObject(`live_set/tracks/${trackIndex}`, {
+          path: livePath.track(trackIndex),
+          properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+        });
+      }
+
+      const result = await duplicate({
+        type: "track",
+        id: "track1,track2",
+        count: 2,
+        name: "a,b,c,d",
+      });
+
+      expect(result).toStrictEqual([
+        expect.objectContaining({ trackIndex: 1 }),
+        expect.objectContaining({ trackIndex: 2 }),
+        expect.objectContaining({ trackIndex: 5 }),
+        expect.objectContaining({ trackIndex: 6 }),
+      ]);
+    });
+  });
+});
