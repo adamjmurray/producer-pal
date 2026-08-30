@@ -627,7 +627,7 @@ describe("updateClip - Basic operations", () => {
       destinationParam: "toPath",
       context: {},
       updatedClips: [],
-      tracksWithMovedClips: new Map(),
+      movedClipGroups: new Map(),
       nonSurvivorClipIds: new Set(["123"]),
     });
 

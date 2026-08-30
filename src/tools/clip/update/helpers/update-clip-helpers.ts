@@ -27,6 +27,7 @@ import {
   handleQuantization,
 } from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
+import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
@@ -78,7 +79,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
 }
 
 /**
@@ -111,7 +112,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.arrangementStartBeats - Arrangement start in beats
  * @param params.context - Context object
  * @param params.updatedClips - Array to collect updated clips
- * @param params.tracksWithMovedClips - Map of tracks with moved clips
+ * @param params.movedClipGroups - Tally of clips landing on each lane and position
  */
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
@@ -137,7 +138,7 @@ export function processSingleClipUpdate(
     quantizePitch,
     context,
     updatedClips,
-    tracksWithMovedClips,
+    movedClipGroups,
   } = params;
 
   const { timeSigNumerator, timeSigDenominator } = getTimeSignature(
@@ -230,7 +231,7 @@ export function processSingleClipUpdate(
     destinationParam: params.destinationParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
-    tracksWithMovedClips,
+    movedClipGroups,
     context,
     updatedClips,
     noteResult,

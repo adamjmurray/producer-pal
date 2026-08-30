@@ -13,7 +13,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
-import { handleArrangementStartOperation } from "../../helpers/update-clip-arrangement-helpers.ts";
+import { handleArrangementStartOperation } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
 
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
@@ -109,7 +109,7 @@ function runMove(opts: MoveOptions = {}): string | null {
     clip: LiveAPI.from(`id ${SOURCE_ID}`),
     arrangementStartBeats,
     destination,
-    tracksWithMovedClips: new Map(),
+    movedClipGroups: new Map(),
     isMidiClip: isMidi === 1,
     context: mockContext,
   });

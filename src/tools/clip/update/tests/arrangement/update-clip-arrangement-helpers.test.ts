@@ -11,7 +11,26 @@ import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/tak
 import {
   handleArrangementOperations,
   handleArrangementStartOperation,
-} from "../helpers/update-clip-arrangement-helpers.ts";
+} from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+import {
+  moveGroupKey,
+  type MoveGroup,
+} from "../../helpers/arrangement/update-clip-move-groups.ts";
+
+/**
+ * How many clips the tally counted on one lane at one position.
+ * @param groups - The tally
+ * @param trackIndex - The lane's track
+ * @param startBeats - The position
+ * @returns The count, or undefined when nothing landed there
+ */
+function groupCount(
+  groups: Map<string, MoveGroup>,
+  trackIndex: number,
+  startBeats: number,
+): number | undefined {
+  return groups.get(moveGroupKey(trackIndex, startBeats))?.count;
+}
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
 
@@ -41,21 +60,21 @@ function clipStub(
  * Run handleArrangementStartOperation with the fixed context every case shares.
  * @param clip - The clip stub under test
  * @param arrangementStartBeats - Requested arrangement start
- * @param tracksWithMovedClips - Move tally, for cases that assert on it
+ * @param movedClipGroups - Move tally, for cases that assert on it
  * @param destination - Where the clip moves, or null for its own lane
  * @returns The clip id the operation resolved to
  */
 function runStartOperation(
   clip: LiveAPI,
   arrangementStartBeats: number | null,
-  tracksWithMovedClips = new Map<number, number>(),
+  movedClipGroups = new Map<string, MoveGroup>(),
   destination: ArrangementTrack | null = null,
 ) {
   return handleArrangementStartOperation({
     clip,
     arrangementStartBeats,
     destination,
-    tracksWithMovedClips,
+    movedClipGroups,
     isMidiClip: true,
     context: mockContext,
   });
@@ -105,12 +124,12 @@ describe("update-clip-arrangement-helpers", () => {
         path: livePath.track(trackIndex).arrangementClip(0),
       });
 
-      const tracksWithMovedClips = new Map<number, number>();
+      const movedClipGroups = new Map<string, MoveGroup>();
       // LiveAPI.id returns just the number
       const result = runStartOperation(
         clipStub("789", 1, trackIndex),
         32,
-        tracksWithMovedClips,
+        movedClipGroups,
       );
 
       // Code now formats ID with "id " prefix for Live API calls
@@ -121,7 +140,7 @@ describe("update-clip-arrangement-helpers", () => {
       );
       expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 789");
       expect(result).toBe(newClipId);
-      expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
+      expect(groupCount(movedClipGroups, trackIndex, 32)).toBe(1);
     });
 
     it("routes a self-overlapping move through the holding area and deletes the original", () => {
@@ -178,13 +197,13 @@ describe("update-clip-arrangement-helpers", () => {
         exists: () => true,
       };
 
-      const tracksWithMovedClips = new Map<number, number>();
+      const movedClipGroups = new Map<string, MoveGroup>();
 
       const result = handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 4,
         destination: null,
-        tracksWithMovedClips,
+        movedClipGroups,
         isMidiClip: true,
         context: mockContext,
       });
@@ -227,13 +246,13 @@ describe("update-clip-arrangement-helpers", () => {
         trackIndex: 0,
       };
 
-      const tracksWithMovedClips = new Map<number, number>();
+      const movedClipGroups = new Map<string, MoveGroup>();
 
       const result = handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 8,
         destination: null,
-        tracksWithMovedClips,
+        movedClipGroups,
         isMidiClip: true,
         context: mockContext,
       });
@@ -281,24 +300,27 @@ describe("update-clip-arrangement-helpers", () => {
         trackIndex,
       };
 
-      // Simulate previous moves on the same track
-      const tracksWithMovedClips = new Map([[trackIndex, 2]]);
+      // Simulate previous moves onto the same lane at the same position
+      const movedClipGroups = new Map([
+        [moveGroupKey(trackIndex, 64), { trackIndex, count: 2 }],
+      ]);
 
       handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 64,
         destination: null,
-        tracksWithMovedClips,
+        movedClipGroups,
         isMidiClip: true,
         context: mockContext,
       });
 
-      expect(tracksWithMovedClips.get(trackIndex)).toBe(3);
+      expect(groupCount(movedClipGroups, trackIndex, 64)).toBe(3);
     });
 
     it("should delete clip and return null for non-survivors", () => {
-      const { trackMock, result, tracksWithMovedClips } =
-        callWithNonSurvivorClip({ clipExists: true });
+      const { trackMock, result, movedClipGroups } = callWithNonSurvivorClip({
+        clipExists: true,
+      });
 
       // Should delete the clip and return null
       expect(result).toBeNull();
@@ -310,12 +332,13 @@ describe("update-clip-arrangement-helpers", () => {
         expect.anything(),
       );
       // Should still increment move count
-      expect(tracksWithMovedClips.get(0)).toBe(1);
+      expect(groupCount(movedClipGroups, 0, 16)).toBe(1);
     });
 
     it("should warn and skip deletion for already-deleted non-survivor clips", () => {
-      const { trackMock, result, tracksWithMovedClips } =
-        callWithNonSurvivorClip({ clipExists: false });
+      const { trackMock, result, movedClipGroups } = callWithNonSurvivorClip({
+        clipExists: false,
+      });
 
       expect(result).toBeNull();
       expect(outlet).toHaveBeenCalledWith(
@@ -328,7 +351,7 @@ describe("update-clip-arrangement-helpers", () => {
         expect.anything(),
       );
       // Should still increment move count
-      expect(tracksWithMovedClips.get(0)).toBe(1);
+      expect(groupCount(movedClipGroups, 0, 16)).toBe(1);
     });
 
     it("warns and returns original ID for take-lane clips without calling Track APIs", () => {
@@ -340,7 +363,7 @@ describe("update-clip-arrangement-helpers", () => {
         },
       });
 
-      const { result, tracksWithMovedClips } = callArrangementStart({
+      const { result, movedClipGroups } = callArrangementStart({
         clipId: "777",
         trackIndex,
         path: `live_set tracks ${trackIndex} take_lanes 0 arrangement_clips 0`,
@@ -355,7 +378,7 @@ describe("update-clip-arrangement-helpers", () => {
       // both are Track-scoped APIs that silently misroute on take-lane clips.
       expect(trackMock.call).not.toHaveBeenCalled();
       // Also: do not increment the move count for a skipped take-lane clip.
-      expect(tracksWithMovedClips.get(trackIndex)).toBeUndefined();
+      expect(movedClipGroups.size).toBe(0);
     });
 
     it("does not re-delete the original when the move was unsafe and the clip is already gone", () => {
@@ -389,7 +412,7 @@ describe("update-clip-arrangement-helpers", () => {
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 16,
         destination: null,
-        tracksWithMovedClips: new Map(),
+        movedClipGroups: new Map(),
         isMidiClip: true,
         context: mockContext,
       });
@@ -440,7 +463,7 @@ describe("update-clip-arrangement-helpers", () => {
         isAudioClip: true,
         arrangementStartBeats: 16,
         arrangementLengthBeats: null,
-        tracksWithMovedClips: new Map(),
+        movedClipGroups: new Map(),
         context: mockContext,
         updatedClips,
         noteResult: null,
@@ -481,7 +504,7 @@ describe("update-clip-arrangement-helpers", () => {
         isAudioClip: false,
         arrangementStartBeats: 16,
         arrangementLengthBeats: null,
-        tracksWithMovedClips: new Map(),
+        movedClipGroups: new Map(),
         context: mockContext,
         updatedClips,
         noteResult: null,
@@ -509,14 +532,14 @@ function callWithNonSurvivorClip({ clipExists }: { clipExists: boolean }) {
     path: `live_set tracks ${trackIndex}`,
   });
 
-  const { result, tracksWithMovedClips } = callArrangementStart({
+  const { result, movedClipGroups } = callArrangementStart({
     clipId: "200",
     trackIndex,
     isNonSurvivor: true,
     exists: () => clipExists,
   });
 
-  return { trackMock, result, tracksWithMovedClips };
+  return { trackMock, result, movedClipGroups };
 }
 
 interface CallArrangementStartOptions {
@@ -532,11 +555,11 @@ interface CallArrangementStartOptions {
  * Shared between the non-survivor and take-lane scenarios.
  *
  * @param opts - Options describing the mock clip and call shape
- * @returns The result and the shared tracksWithMovedClips map
+ * @returns The result and the shared move tally
  */
 function callArrangementStart(opts: CallArrangementStartOptions): {
   result: string | null;
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
 } {
   const mockClip: Record<string, unknown> = {
     id: opts.clipId,
@@ -551,17 +574,17 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
   if (opts.path != null) mockClip.path = opts.path;
   if (opts.exists != null) mockClip.exists = opts.exists;
 
-  const tracksWithMovedClips = new Map<number, number>();
+  const movedClipGroups = new Map<string, MoveGroup>();
 
   const result = handleArrangementStartOperation({
     clip: mockClip as unknown as LiveAPI,
     arrangementStartBeats: 16,
     destination: null,
-    tracksWithMovedClips,
+    movedClipGroups,
     isMidiClip: true,
     context: mockContext,
     isNonSurvivor: opts.isNonSurvivor,
   });
 
-  return { result, tracksWithMovedClips };
+  return { result, movedClipGroups };
 }

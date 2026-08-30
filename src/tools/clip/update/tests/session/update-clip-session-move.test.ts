@@ -12,16 +12,19 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { handleArrangementOperations } from "../../helpers/update-clip-arrangement-helpers.ts";
+import { handleArrangementOperations } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
 import {
   handlePositionOperations,
   resolveMoveDestinations,
 } from "../../helpers/update-clip-session-helpers.ts";
 import { handleClipSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
 
-vi.mock(import("../../helpers/update-clip-arrangement-helpers.ts"), () => ({
-  handleArrangementOperations: vi.fn(),
-}));
+vi.mock(
+  import("../../helpers/arrangement/update-clip-arrangement-helpers.ts"),
+  () => ({
+    handleArrangementOperations: vi.fn(),
+  }),
+);
 
 /** Id of the clip Live creates in the destination slot when the copy lands */
 const COPY_ID = "456";
@@ -524,7 +527,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
       toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
     arrangementStartBeats,
     arrangementLengthBeats,
-    tracksWithMovedClips: new Map(),
+    movedClipGroups: new Map(),
     context: {},
     updatedClips: [],
     noteResult: null,

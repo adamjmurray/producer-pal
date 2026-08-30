@@ -123,16 +123,15 @@ one thing first: a way to name an arrangement clip, since a lane path names the
 lane and a lane holds many clips. The candidate was a time coordinate, `t0@5|1`.
 
 **Why it lost.** An arrangement destination is a `path` list and an
-`arrangementStart` list that cycle against each other, and that is strictly more
-expressive than folding time into the path:
+`arrangementStart` list, each paired 1:1 with the clips and each usable alone:
 
-- `toPath:"t2/l+"` × three starts — one destination, three times, one new lane.
-- `toPath:"t2,t3"` × one start — two destinations, one time.
+- `arrangementStart` alone — new positions, every clip on its own lane.
+- `toPath` alone — new lanes, every clip at its own position.
 
-Neither compresses into a path list: you would write `t2@1|1,t2@5|1,t2@9|1` and
-lose the pairing. And `arrangementStart` could not go away, so `@` would add a
-second spelling of one concept — the thing this grammar exists to prevent — plus
-a new tier-4 conflict between the two.
+Folding time into the path can say neither: `t2@5|1` always names both halves,
+so `arrangementStart` could not go away, and `@` would add a second spelling of
+one concept — the thing this grammar exists to prevent — plus a new tier-4
+conflict between the two.
 
 **Also against it**, if it is ever revisited: a bar|beat position can contain a
 `/` (the `5|1-n/4` pickup), so `parseObjectPath`'s `input.split("/")` would have
@@ -147,9 +146,9 @@ addressed by id. That is the rule, not a hole to apologize for.
 
 **What was real underneath**, split into its own tickets and kept:
 
-- `update-clip`'s `arrangementStart` is one value for the whole call, while its
-  `toPath` fans out per clip. Moving three clips to three positions takes three
-  calls.
+- `update-clip`'s `arrangementStart` was one value for the whole call, while its
+  `toPath` fanned out per clip. ✅ `arrangementStart` and `arrangementLength`
+  now take a list too, paired 1:1 with the ids.
 - `id` + `path` on one call has five behaviors (throw, dedupe-union,
   ids-then-paths, path-silently-wins, id-silently-wins). The two silent winners
   contradict [Object-Paths.md](../Object-Paths.md) tier 4.

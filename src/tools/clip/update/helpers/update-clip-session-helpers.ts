@@ -29,7 +29,9 @@ import {
   takeLaneFromPath,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
+import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
+import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
+import { pairWithClips } from "./update-clip-pairing.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
@@ -101,7 +103,11 @@ export function resolveMoveDestinations(
           }))
         : pathDestinations(toPath as string);
 
-    return pairWithClips(destinations, clipCount, toSlot == null);
+    return pairWithClips(destinations, clipCount, {
+      param: toSlot == null ? "toPath" : "toSlot",
+      noun: "destination",
+      shortfall: "were not moved",
+    });
   } catch (error) {
     console.warn(`clip not moved: ${errorMessage(error)}`);
   }
@@ -112,6 +118,8 @@ export function resolveMoveDestinations(
 interface RequestedClips {
   clips: LiveAPI[];
   destinationById: Map<string, ClipPath>;
+  /** Each clip's position in the call, for the params paired against it. */
+  requestedIndexById: Map<string, number>;
 }
 
 /**
@@ -124,7 +132,7 @@ interface RequestedClips {
  * and a move overwrites whatever it lands on.
  * @param requestedIds - Ids in call order, null where a path named no clip
  * @param destinations - One destination per requested entry
- * @returns The clips to update, and their destinations keyed by clip id
+ * @returns The clips to update, plus their destinations and call positions keyed by clip id
  */
 export function resolveRequestedClips(
   requestedIds: Array<string | null>,
@@ -132,6 +140,7 @@ export function resolveRequestedClips(
 ): RequestedClips {
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, ClipPath>();
+  const requestedIndexById = new Map<string, number>();
   const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
   let repeats = 0;
@@ -156,6 +165,7 @@ export function resolveRequestedClips(
 
     seen.add(clip.id);
     clips.push(clip);
+    requestedIndexById.set(clip.id, index);
     claimDestination(clip.id, destinations[index], {
       destinationById,
       claimedBy,
@@ -170,7 +180,7 @@ export function resolveRequestedClips(
 
   dropDestinationsHoldingBatchClips(destinationById, seen);
 
-  return { clips, destinationById };
+  return { clips, destinationById, requestedIndexById };
 }
 
 /**
@@ -257,7 +267,7 @@ interface HandlePositionOperationsArgs {
   destinationParam: "toPath" | "toSlot";
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -310,7 +320,7 @@ export function handlePositionOperations(
     arrangementStartBeats,
     arrangementLengthBeats,
     destination: arrangementDestination(clip, destination, destinationParam),
-    tracksWithMovedClips: args.tracksWithMovedClips,
+    movedClipGroups: args.movedClipGroups,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,
@@ -373,37 +383,4 @@ function arrangementDestination(
     trackIndex: destination.trackIndex,
     takeLane: takeLaneFromPath(destination),
   };
-}
-
-/**
- * Lines destinations up with the clips they apply to, warning when the counts
- * disagree — a caller that named the wrong number of slots gets told which
- * clips moved rather than watching copies land on top of each other.
- * @param destinations - Destinations, in order
- * @param clipCount - How many clips the call named, before any are dropped
- * @param isPath - Whether the destinations came from toPath (for the warning)
- * @returns Exactly clipCount destinations, padded with null
- */
-function pairWithClips(
-  destinations: Array<ClipPath | null>,
-  clipCount: number,
-  isPath: boolean,
-): Array<ClipPath | null> {
-  const label = isPath ? "toPath" : "toSlot";
-
-  if (destinations.length !== clipCount) {
-    const extra = destinations.length > clipCount;
-
-    console.warn(
-      `${label} names ${destinations.length} destination(s) for ${clipCount} clip(s); ` +
-        (extra
-          ? "the extra destinations went unused"
-          : "the clips past the last destination were not moved"),
-    );
-  }
-
-  return Array.from(
-    { length: clipCount },
-    (_unused, i) => destinations[i] ?? null,
-  );
 }

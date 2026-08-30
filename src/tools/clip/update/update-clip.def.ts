@@ -81,13 +81,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "bar|beat position (song meter) to move arrangement clip (arrangement clips only)",
+        "bar|beat position(s) (song meter) to move arrangement clips to, comma-separated (arrangement clips only). " +
+          "One position moves every clip; a list pairs 1:1 with id/path in order and does not cycle",
       ),
     arrangementLength: z
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+        "duration(s), comma-separated: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Arrangement clips only; song meter. " +
+          "One length applies to every clip; a list pairs 1:1 with id/path in order and does not cycle. " +
           "Lengthening a looping clip tiles copies to fill the span (many clips, not one); for a single clip, set looping false and supply notes for the full length",
       ),
     arrangementSplit: param(z.string().optional(), {

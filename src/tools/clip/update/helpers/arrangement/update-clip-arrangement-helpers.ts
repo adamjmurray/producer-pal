@@ -19,6 +19,7 @@ import {
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { placeMovedClip } from "./update-clip-lane-move-helpers.ts";
+import { tallyMovedClip, type MoveGroup } from "./update-clip-move-groups.ts";
 
 interface ClipResult {
   id: string;
@@ -31,7 +32,7 @@ interface HandleArrangementStartArgs {
   arrangementStartBeats: number | null;
   /** Where to move the clip, or null to keep it on its own lane. */
   destination: ArrangementTrack | null;
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
   isMidiClip: boolean;
   context: TilingContext;
   isNonSurvivor?: boolean;
@@ -49,7 +50,7 @@ interface HandleArrangementStartArgs {
  * @param args.clip - The clip to move
  * @param args.arrangementStartBeats - New position in beats, or null to keep the clip's own
  * @param args.destination - Destination track and lane, or null for the clip's own lane
- * @param args.tracksWithMovedClips - Track of clips moved per track
+ * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
  * @param args.isNonSurvivor - When true, just delete the clip (optimization for
@@ -60,7 +61,7 @@ export function handleArrangementStartOperation({
   clip,
   arrangementStartBeats,
   destination,
-  tracksWithMovedClips,
+  movedClipGroups,
   isMidiClip,
   context,
   isNonSurvivor,
@@ -98,12 +99,14 @@ export function handleArrangementStartOperation({
 
   const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex));
   const destTrackIndex = destination?.trackIndex ?? sourceTrackIndex;
+  // Omitting arrangementStart with a destination means "same place, other
+  // lane", so read the clip's own start before anything moves it.
+  const targetBeats =
+    arrangementStartBeats ?? (clip.getProperty("start_time") as number);
 
-  // Counted against the track the clips land on, which is what the "same
-  // position" warning names.
-  const moveCount = (tracksWithMovedClips.get(destTrackIndex) ?? 0) + 1;
-
-  tracksWithMovedClips.set(destTrackIndex, moveCount);
+  // Counted against the lane AND position the clips land on: that pair is what
+  // the "same position" warning names, and what actually overwrites.
+  tallyMovedClip(movedClipGroups, destTrackIndex, targetBeats);
 
   // Non-survivor: just delete, don't bother moving (it would be overwritten)
   if (isNonSurvivor) {
@@ -116,10 +119,6 @@ export function handleArrangementStartOperation({
     return null;
   }
 
-  // Omitting arrangementStart with a destination means "same place, other
-  // lane", so read the clip's own start before anything moves it.
-  const targetBeats =
-    arrangementStartBeats ?? (clip.getProperty("start_time") as number);
   const newClip = placeMovedClip({
     clip,
     destination,
@@ -156,7 +155,7 @@ interface HandleArrangementOperationsArgs {
   arrangementLengthBeats?: number | null;
   /** Destination track and lane from toPath, or null to stay on its own lane. */
   destination?: ArrangementTrack | null;
-  tracksWithMovedClips: Map<number, number>;
+  movedClipGroups: Map<string, MoveGroup>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -171,7 +170,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.arrangementStartBeats - Target start position in beats
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.destination - Destination track and lane, or null for the clip's own lane
- * @param args.tracksWithMovedClips - Map of tracks with moved clips
+ * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
@@ -183,7 +182,7 @@ export function handleArrangementOperations({
   arrangementStartBeats,
   arrangementLengthBeats,
   destination,
-  tracksWithMovedClips,
+  movedClipGroups,
   context,
   updatedClips,
   noteResult,
@@ -200,7 +199,7 @@ export function handleArrangementOperations({
       clip,
       arrangementStartBeats: arrangementStartBeats ?? null,
       destination: destination ?? null,
-      tracksWithMovedClips,
+      movedClipGroups,
       isMidiClip: !isAudioClip,
       context: context as TilingContext,
       isNonSurvivor,
