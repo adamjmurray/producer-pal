@@ -6,7 +6,7 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   deleteConversation as dbDeleteConversation,
   loadConversation,
@@ -27,8 +27,9 @@ beforeEach(async () => {
 
 describe("useVoicePersistence when the row is gone", () => {
   // The write transaction refuses to put a deleted conversation back, and
-  // refusing quietly would leave a session recording turns nothing keeps.
-  it("says so instead of going quiet when the save is refused", async () => {
+  // refusing quietly would leave a session recording turns nothing keeps. The
+  // user is still talking, so the banner is the only place they'd see it.
+  it("shows a banner instead of going quiet when the save is refused", async () => {
     const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("first turn")],
     });
@@ -44,15 +45,13 @@ describe("useVoicePersistence when the row is gone", () => {
     // session. Nothing in memory here can know.
     await dbDeleteConversation(record.id);
 
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
     rerender([userTextItem("first turn"), userTextItem("second turn")]);
     await waitForAutosave();
 
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("no longer in storage"),
-    );
+    expect(result.current.limitNotification).toStrictEqual({
+      message: expect.stringContaining("no longer in storage"),
+      type: "error",
+    });
     expect(await loadConversation(record.id)).toBeUndefined();
-    warn.mockRestore();
   });
 });

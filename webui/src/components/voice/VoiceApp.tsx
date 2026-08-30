@@ -8,6 +8,8 @@ import {
   type ConversationPanelState,
 } from "#webui/components/AppShell";
 import { type ModeAppProps } from "#webui/components/mode-context";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { resolvePanelNotification } from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
@@ -212,12 +214,32 @@ function buildConversationPanel(
     onToggleBookmark: (id) => void persistence.toggleBookmark(id),
     onExport: () => void transfer.handleExport(),
     onImport: () => void transfer.handleImport(),
-    // An in-flight import/export report outranks the undo banner (it is the
-    // thing the user just asked for); otherwise the undo banner shows, matching
-    // how chat's panel ranks the two.
-    notification: transfer.notification ?? undoDelete.undoNotification,
-    onDismissNotification: transfer.notification
-      ? transfer.dismissNotification
-      : undoDelete.dismissUndoNotification,
+    // An in-flight import/export report outranks everything (it is the thing
+    // the user just asked for); below that, chat's own ranking decides between
+    // the undo banner and a save that was refused or failed.
+    ...(transfer.notification
+      ? {
+          notification: transfer.notification,
+          onDismissNotification: transfer.dismissNotification,
+        }
+      : toPanelNotification(resolvePanelNotification(undoDelete, persistence))),
+  };
+}
+
+/**
+ * Rename resolvePanelNotification's keys to the ones the panel props use.
+ * @param resolved - The winning notification and its dismiss handler
+ * @returns The same pair under the panel's prop names
+ */
+function toPanelNotification(resolved: {
+  notification: TransferNotificationData | null;
+  dismissNotification: () => void;
+}): {
+  notification: TransferNotificationData | null;
+  onDismissNotification: () => void;
+} {
+  return {
+    notification: resolved.notification,
+    onDismissNotification: resolved.dismissNotification,
   };
 }

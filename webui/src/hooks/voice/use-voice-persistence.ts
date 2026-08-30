@@ -11,6 +11,8 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
   type ActiveMeta,
@@ -63,6 +65,11 @@ interface UseVoicePersistenceParams {
 export interface UseVoicePersistenceReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  /** Banner for an autosave that was refused or failed. Named to match
+   * useLimitNotification so the panel can rank it against the undo banner with
+   * chat's resolvePanelNotification. */
+  limitNotification: TransferNotificationData | null;
+  dismissLimitNotification: () => void;
   /** Realtime model of the currently-loaded saved record, or null for a fresh
    * (unsaved) session. Lets the header lock show the model the conversation was
    * recorded with rather than the current-settings model when viewing or
@@ -119,6 +126,11 @@ export function useVoicePersistence(
     onLiveRecordDeleted,
     undoDelete,
   } = params;
+  const limit = useLimitNotification();
+  // Destructured because the hook returns a fresh object every render, and the
+  // autosave effect below depends on these: taking `limit` itself would restart
+  // the debounce on every render.
+  const { showSaveRefused, showSaveError } = limit;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -239,12 +251,11 @@ export function useVoicePersistence(
           });
 
           // Refused, not failed: the row is gone and the transaction won't
-          // write a deleted conversation back. Voice has no banner for it, so
-          // the console is where the silence gets broken.
+          // write a deleted conversation back. Nothing more will ever be saved
+          // to this conversation, and the user is still talking into it, so it
+          // has to say so on screen — a console warning is not user-visible.
           if (!result.saved) {
-            console.warn(
-              "This voice conversation is no longer in storage, so nothing more will be saved to it",
-            );
+            showSaveRefused();
 
             return;
           }
@@ -255,12 +266,13 @@ export function useVoicePersistence(
           // Nothing awaits this save, so report the failure here rather than
           // leaving it an unhandled rejection.
           console.error("Failed to save voice conversation", error);
+          showSaveError(error);
         }
       });
     }, VOICE_AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [liveHistory, model, refreshList, store]);
+  }, [liveHistory, model, refreshList, showSaveError, showSaveRefused, store]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -383,6 +395,8 @@ export function useVoicePersistence(
   return {
     conversations,
     activeConversationId,
+    limitNotification: limit.limitNotification,
+    dismissLimitNotification: limit.dismissLimitNotification,
     activeRecordModel,
     activeRecordProvider,
     savedItems,
