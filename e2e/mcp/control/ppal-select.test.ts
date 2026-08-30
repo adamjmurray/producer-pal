@@ -140,7 +140,7 @@ describe("ppal-select", () => {
     // Aliases onto one canonical are named in a single steer, and that steer
     // says the value was honored — which is only true now both are.
     expect(warnings).toStrictEqual([
-      'WARNING: ppal-select accepts "trackId", "sceneId" as a fallback; the parameter is "id"',
+      'WARNING: ppal-select accepts "trackId", "sceneId" as fallbacks; "id" names one object, so keep them as they are for several',
     ]);
 
     const state = await select({});

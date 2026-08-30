@@ -200,6 +200,34 @@ describe("hiddenParamWarnings", () => {
     ]);
   });
 
+  // ppal-select's trackId/sceneId/clipId/deviceId each select their own object,
+  // so folding them into one `id` — which names one object — breaks the call.
+  it("does not tell independent aliases to collapse into one canonical", () => {
+    const independent = collectHiddenParams({
+      trackId: aliasParam(z.string().optional(), {
+        canonical: "id",
+        independent: true,
+      }),
+      sceneId: aliasParam(z.string().optional(), {
+        canonical: "id",
+        independent: true,
+      }),
+    });
+
+    expect(
+      hiddenParamWarnings("ppal-select", ["trackId", "sceneId"], independent),
+    ).toStrictEqual([
+      'WARNING: ppal-select accepts "trackId", "sceneId" as fallbacks; "id" names one object, so keep them as they are for several',
+    ]);
+
+    // One alias really is collapsible, so that advice still stands.
+    expect(
+      hiddenParamWarnings("ppal-select", ["trackId"], independent),
+    ).toStrictEqual([
+      'WARNING: ppal-select accepts "trackId" as a fallback; the parameter is "id"',
+    ]);
+  });
+
   it("says nothing when no hidden param was sent", () => {
     expect(hiddenParamWarnings("ppal-duplicate", [], hidden)).toStrictEqual([]);
   });

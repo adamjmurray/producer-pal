@@ -38,13 +38,25 @@ export const toolDefSelect = defineTool("ppal-select", {
     // target of its own and type-detected the way `id` is, so a guess costs
     // nothing — and sending two at once selects both, the way trackIndex and
     // sceneIndex already do.
-    trackId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    trackId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    sceneId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    sceneId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    clipId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    clipId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
-    deviceId: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
+    deviceId: aliasParam(z.coerce.string().optional(), {
+      canonical: "id",
+      independent: true,
+    }),
 
     trackIndex: z.coerce
       .number()

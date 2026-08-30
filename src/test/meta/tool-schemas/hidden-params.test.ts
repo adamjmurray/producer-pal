@@ -73,11 +73,13 @@ function aliasShapes(
  * but not published.
  * @param aliases - Tool name and alias param name pairs
  * @param canonical - The param the aliases fold onto
+ * @param extra - Extra alias-info fields these aliases carry
  * @returns The expected shapes, keyed the same way as {@link aliasShapes}
  */
 function foldedShapes(
   aliases: Array<[string, string]>,
   canonical: string,
+  extra: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return Object.fromEntries(
     aliases.map(([toolName, alias]) => [
@@ -86,7 +88,7 @@ function foldedShapes(
         publishesCanonical: true,
         publishesAlias: false,
         validatesAlias: true,
-        alias: { kind: "alias", canonical },
+        alias: { kind: "alias", canonical, ...extra },
       },
     ]),
   );
@@ -166,7 +168,8 @@ describe("hidden params", () => {
   });
 
   // select is the only tool that takes every object type by id, so all four
-  // prefixed spellings are ones a model reaches for here.
+  // prefixed spellings are ones a model reaches for here. They are independent:
+  // each selects its own object, so several of them can't fold into one `id`.
   it("folds every prefixed spelling onto select's id", () => {
     const aliases: Array<[string, string]> = [
       ["ppal-select", "trackId"],
@@ -176,7 +179,7 @@ describe("hidden params", () => {
     ];
 
     expect(aliasShapes(aliases, "id")).toStrictEqual(
-      foldedShapes(aliases, "id"),
+      foldedShapes(aliases, "id", { independent: true }),
     );
   });
 

@@ -40,6 +40,13 @@ export interface AliasParamInfo {
   canonical: string;
   /** Example value for the canonical param, shown in the warning. */
   example?: string;
+  /**
+   * Each alias is a target of its own, so several of them cannot be collapsed
+   * into one canonical value — ppal-select's trackId/sceneId/clipId/deviceId
+   * select all of the objects they name. Without this the warning tells the
+   * model to fold a working combination into a single `id`, which breaks it.
+   */
+  independent?: boolean;
 }
 
 export type HiddenParamInfo = DeprecatedParamInfo | AliasParamInfo;
@@ -130,7 +137,10 @@ export function hiddenParamWarnings(
   hidden: Record<string, HiddenParamInfo>,
 ): string[] {
   const warnings: string[] = [];
-  const aliasGroups = new Map<string, { keys: string[]; example?: string }>();
+  const aliasGroups = new Map<
+    string,
+    { keys: string[]; example?: string; independent?: boolean }
+  >();
 
   for (const key of usedKeys) {
     const info = hidden[key];
@@ -147,15 +157,25 @@ export function hiddenParamWarnings(
     const group = aliasGroups.get(info.canonical) ?? {
       keys: [],
       example: info.example,
+      independent: info.independent,
     };
 
     group.keys.push(key);
     aliasGroups.set(info.canonical, group);
   }
 
-  for (const [canonical, { keys, example }] of aliasGroups) {
+  for (const [canonical, { keys, example, independent }] of aliasGroups) {
     const names = keys.map((key) => `"${key}"`).join(", ");
     const hint = example == null ? "" : ` (e.g. ${canonical}: "${example}")`;
+
+    // Several independent aliases each name their own object, so telling the
+    // model to send them as one canonical value would break the call.
+    if (independent && keys.length > 1) {
+      warnings.push(
+        `${WARNING_PREFIX}${toolName} accepts ${names} as fallbacks; "${canonical}" names one object, so keep them as they are for several`,
+      );
+      continue;
+    }
 
     warnings.push(
       `${WARNING_PREFIX}${toolName} accepts ${names} as a fallback; the parameter is "${canonical}"${hint}`,
