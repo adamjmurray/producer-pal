@@ -62,14 +62,17 @@ export function useLimitNotification(): {
 
   // The write was refused, not failed: the row this conversation belongs to is
   // gone, and writing it back would resurrect something a delete took away.
-  // Nothing more will be saved to it, so say so rather than going quiet.
+  // Nothing more will be saved to it, ever — that is a standing condition, not
+  // an event, so this banner does not auto-dismiss the way a limit warning does.
+  // A four-second flash the user blinks past leaves them typing into nothing.
   const showRefused = useCallback(() => {
-    showTimed({
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setNotification({
       message:
         "This conversation is no longer in storage — it was deleted, so nothing more will be saved to it.",
       type: "error",
     });
-  }, [showTimed]);
+  }, []);
 
   useEffect(() => {
     return () => {

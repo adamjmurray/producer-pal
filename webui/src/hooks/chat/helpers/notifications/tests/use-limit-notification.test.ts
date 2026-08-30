@@ -235,6 +235,51 @@ describe("useLimitNotification", () => {
     });
   });
 
+  describe("showSaveRefused", () => {
+    // "Nothing more will be saved to this conversation" is a standing
+    // condition, not an event: a four-second flash the user blinks past leaves
+    // them typing into a conversation that no longer records anything.
+    it("stays up instead of auto-dismissing", async () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveRefused();
+      });
+
+      await act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(result.current.limitNotification?.message).toContain(
+        "no longer in storage",
+      );
+      vi.useRealTimers();
+    });
+
+    it("cancels a running limit-notification timer", async () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() => useLimitNotification());
+
+      await showWarning(result);
+      await act(() => {
+        result.current.showSaveRefused();
+      });
+
+      await act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      // The warning's timer must not clear the standing refusal.
+      expect(result.current.limitNotification?.message).toContain(
+        "no longer in storage",
+      );
+      vi.useRealTimers();
+    });
+  });
+
   it("clears timer on dismiss when timer is running", async () => {
     vi.useFakeTimers();
 
