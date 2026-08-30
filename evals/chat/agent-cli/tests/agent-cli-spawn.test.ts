@@ -202,7 +202,8 @@ describe("spawnAgentCli", () => {
 
     // The fixture installs a no-op SIGTERM handler and never exits on its own,
     // so only the SIGKILL escalation can end it. If that were dropped, this
-    // promise would never settle.
+    // promise would never settle. The grace period is shortened so the test
+    // doesn't sleep out the real two seconds waiting for the escalation.
     useFixture({ PPAL_FIXTURE_MODE: "ignore-sigterm" });
 
     try {
@@ -210,6 +211,7 @@ describe("spawnAgentCli", () => {
         spawnAgentCli(CODEX_CLI_TRANSPORT, [], "hi", {
           cwd: dir,
           timeoutMs: 50,
+          sigkillGraceMs: 50,
         }),
       ).rejects.toThrow("codex CLI timed out after 0.05s");
     } finally {
