@@ -266,6 +266,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     onForeignRecord,
     pendingForkRef,
     undoDelete,
+    isAssistantResponding: chat.isAssistantResponding,
   });
 
   useEffect(() => {

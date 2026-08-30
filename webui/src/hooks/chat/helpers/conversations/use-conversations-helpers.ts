@@ -55,25 +55,31 @@ export function setLocationHash(id: string | null): void {
  * Route browser back/forward (hashchange) to the matching conversation: switch
  * to the hashed id, or start a new conversation when the hash clears. Ignores
  * the programmatic hash writes the manager makes itself (guarded by a ref flag).
+ *
+ * Back/Forward tears the conversation down exactly as the sidebar does — the
+ * teardown stops a streaming response — so it asks the same question first, and
+ * rewrites the hash back to the active conversation when the answer is no.
  * @param params - Navigation dependencies
  * @param params.programmaticHashRef - Flag set when the manager wrote the hash itself
  * @param params.programmaticHashRef.current - The mutable flag value
- * @param params.activeIdRef - Ref holding the current active conversation id
- * @param params.activeIdRef.current - The mutable active-id value
+ * @param params.activeId - Reads the current active conversation id
  * @param params.switchConversation - Loads and activates a conversation by id
  * @param params.startNewConversation - Clears state for a brand-new conversation
+ * @param params.confirmLeave - Asks before a navigation cuts a streaming turn off
  */
 export function useHashNavigation(params: {
   programmaticHashRef: { current: boolean };
   activeId: () => string | null;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
+  confirmLeave: () => boolean;
 }): void {
   const {
     programmaticHashRef,
     activeId,
     switchConversation,
     startNewConversation,
+    confirmLeave,
   } = params;
 
   useEffect(() => {
@@ -88,6 +94,15 @@ export function useHashNavigation(params: {
 
       if (hashId === activeId()) return;
 
+      if (!confirmLeave()) {
+        // The browser already moved; put the id back on the entry we landed on.
+        // replaceState rather than assigning the hash: no new history entry, and
+        // no second hashchange to re-enter this handler.
+        restoreHash(activeId());
+
+        return;
+      }
+
       if (hashId) {
         void switchConversation(hashId);
       } else {
@@ -98,7 +113,23 @@ export function useHashNavigation(params: {
     window.addEventListener("hashchange", handler);
 
     return () => window.removeEventListener("hashchange", handler);
-  }, [programmaticHashRef, activeId, switchConversation, startNewConversation]);
+  }, [
+    programmaticHashRef,
+    activeId,
+    switchConversation,
+    startNewConversation,
+    confirmLeave,
+  ]);
+}
+
+/**
+ * Rewrite the current history entry's hash without firing a hashchange.
+ * @param id - Conversation id to put back, or null to clear the hash
+ */
+function restoreHash(id: string | null): void {
+  const base = window.location.pathname + window.location.search;
+
+  history.replaceState(null, "", id ? `${base}#${id}` : base);
 }
 
 /**

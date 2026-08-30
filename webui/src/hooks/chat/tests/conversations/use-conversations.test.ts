@@ -624,6 +624,54 @@ describe("useConversations", () => {
       expect(props.clearConversation).toHaveBeenCalled();
     });
 
+    // Back/Forward tears the conversation down the same way the sidebar does,
+    // and the teardown stops the stream — so it has to ask the same question.
+    it("asks before back/forward cuts a streaming turn off, and stays put on no", async () => {
+      const existingId = await saveTestConversation({
+        messages: [{ role: "user", content: "from hash" }],
+      });
+      const { props, state } = createProps();
+      const { result } = renderHook(() =>
+        useConversationsWithUndo({ ...props, isAssistantResponding: true }),
+      );
+
+      await waitForEffects();
+      await saveWithMessage(state, result);
+
+      const activeId = result.current.activeConversationId;
+      const confirmSpy = vi.fn().mockReturnValue(false);
+
+      vi.stubGlobal("confirm", confirmSpy);
+      window.location.hash = existingId;
+      await fireHashChange();
+
+      expect(confirmSpy).toHaveBeenCalled();
+      expect(result.current.activeConversationId).toBe(activeId);
+      expect(props.restoreChatHistory).not.toHaveBeenCalled();
+      // The hash is put back, so the URL still names the conversation on screen.
+      expect(window.location.hash.slice(1)).toBe(activeId);
+      vi.unstubAllGlobals();
+    });
+
+    it("goes through on yes", async () => {
+      const existingId = await saveTestConversation({
+        messages: [{ role: "user", content: "from hash" }],
+      });
+      const { props } = createProps();
+      const { result } = renderHook(() =>
+        useConversationsWithUndo({ ...props, isAssistantResponding: true }),
+      );
+
+      await waitForEffects();
+
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+      window.location.hash = existingId;
+      await fireHashChange();
+
+      expect(result.current.activeConversationId).toBe(existingId);
+      vi.unstubAllGlobals();
+    });
+
     it("does not stall programmatic guard when hash already matches", async () => {
       const existingId = await saveTestConversation({
         messages: [{ role: "user", content: "first" }],

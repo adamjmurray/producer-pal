@@ -4,11 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback } from "preact/hooks";
+import { confirmLeavingStream as askBeforeLeaving } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
-
-/** Shown before a navigation action cuts a response off mid-turn. */
-const LEAVE_WHILE_STREAMING =
-  "This will stop the response in progress. Continue?";
 
 /**
  * Creates stable callback wrappers for conversation manager methods.
@@ -29,9 +26,10 @@ export function useConversationHandlers(
   // the conversation it belongs to, so nothing is lost, but the turn is cut off
   // — and a click in the sidebar is an easy way to do that by accident. Only
   // the two navigation actions ask: a delete (single or bulk) is deliberate
-  // destruction, and a second dialog on top of it is noise.
+  // destruction, and a second dialog on top of it is noise. Back/Forward asks
+  // too, from useHashNavigation.
   const confirmLeavingStream = useCallback(
-    () => !isAssistantResponding || confirm(LEAVE_WHILE_STREAMING),
+    () => askBeforeLeaving(isAssistantResponding),
     [isAssistantResponding],
   );
 

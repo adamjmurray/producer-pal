@@ -13,6 +13,7 @@ import {
 import { reconcileDanglingToolCalls } from "#webui/chat/sdk/build-model-messages";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import { useBulkDeletes } from "#webui/hooks/chat/helpers/conversations/use-bulk-deletes";
+import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/confirm-leaving-stream";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -68,6 +69,9 @@ interface UseConversationsProps {
   pendingForkRef?: PendingForkRef;
   /** App-owned undo stack, so a delete made here survives a switch to voice. */
   undoDelete: UndoDeleteReturn;
+  /** Whether a response is streaming, so browser back/forward can ask before
+   * tearing the conversation down and cutting it off. */
+  isAssistantResponding?: boolean;
 }
 
 export interface UseConversationsReturn {
@@ -106,6 +110,7 @@ export interface UseConversationsReturn {
  * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @param props.pendingForkRef - Shared signal consumed on save to branch the conversation into a new record
  * @param props.undoDelete - App-owned undo-delete stack shared with voice mode
+ * @param props.isAssistantResponding - Whether a response is streaming right now
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -116,6 +121,7 @@ export function useConversations({
   onForeignRecord,
   pendingForkRef,
   undoDelete,
+  isAssistantResponding = false,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -404,12 +410,18 @@ export function useConversations({
     [conversations, refreshList, store],
   );
 
+  const confirmLeave = useCallback(
+    () => confirmLeavingStream(isAssistantResponding),
+    [isAssistantResponding],
+  );
+
   // Route browser back/forward navigation to the matching conversation.
   useHashNavigation({
     programmaticHashRef,
     activeId: store.activeId,
     switchConversation,
     startNewConversation,
+    confirmLeave,
   });
 
   return {
