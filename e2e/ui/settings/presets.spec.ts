@@ -36,15 +36,18 @@ test.describe("Settings — Presets tab (stubbed backend)", () => {
 
     const [stored] = presets;
 
-    expect(stored).toMatchObject({
-      name: "Bulk edit worker",
-      description: "cheap, tools trimmed",
-      provider: "gemini",
-      model: "gemini-3.7-flash",
-    });
     // The whole point of the bundle: a preset carries the toolset too, not just
-    // the connection fields.
-    expect(stored?.enabledTools).toBeDefined();
+    // the connection fields. The exact stored shape is pinned by usePresets'
+    // unit tests; this checks it survived the round trip through the UI.
+    expect(stored).toEqual(
+      expect.objectContaining({
+        name: "Bulk edit worker",
+        description: "cheap, tools trimmed",
+        provider: "gemini",
+        model: "gemini-3.7-flash",
+        enabledTools: expect.anything(),
+      }),
+    );
   });
 
   test("survives a reload and re-selects its bundle", async ({ page }) => {

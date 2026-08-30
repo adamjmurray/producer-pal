@@ -161,14 +161,11 @@ export function assertClipDetails(
   resultClips: ReadClipResult[],
   expectedClips: ExpectedClip[],
 ): void {
-  expect(resultClips).toHaveLength(expectedClips.length);
-
-  for (let i = 0; i < expectedClips.length; i++) {
-    // loop bounds guarantee valid index
-    const expected = expectedClips[i] as ExpectedClip;
-
-    expect(resultClips[i]).toMatchObject(expected);
-  }
+  // ExpectedClip names four timing fields; the rest of a clip read is not what
+  // these table-driven cases are about. Asserting the array pins the count too.
+  expect(resultClips).toStrictEqual(
+    expectedClips.map((expected) => expect.objectContaining(expected)),
+  );
 }
 
 export type LengthenResult = {
