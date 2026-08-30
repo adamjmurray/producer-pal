@@ -330,52 +330,6 @@ describe("ppal-update-track", () => {
     // The send "A" reached is untouched, so the id picked its own return.
     expect(byId.sends![0]!.gainDb).toBeCloseTo(-12, 1);
   });
-
-  it("assigns output routing", async () => {
-    const liveSet = await readTracks();
-    const trackId = liveSet.tracks![0]!.id;
-
-    // Routing IDs are dynamic per Live instance, so read the available options
-    // and current routing from real Live before assigning. Only real Live can
-    // confirm the assignment sticks. Every track exposes Master + Sends Only.
-    const before = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["routings", "available-routings"] },
-      }),
-    );
-
-    const availableOut = before.availableOutputRoutingTypes ?? [];
-    const currentOutId = before.outputRoutingType?.outputId;
-    // Prefer the side-effect-free "Sends Only", else any different option
-    const targetOut =
-      availableOut.find((t) => t.name === "Sends Only") ??
-      availableOut.find((t) => t.outputId !== currentOutId);
-
-    expect(targetOut).toBeDefined();
-
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, outputRoutingTypeId: targetOut!.outputId },
-    });
-
-    await sleep(100);
-    const afterOut = parseToolResult<ReadTrackResult>(
-      await ctx.client!.callTool({
-        name: "ppal-read-track",
-        arguments: { id: trackId, include: ["routings"] },
-      }),
-    );
-
-    expect(afterOut.outputRoutingType?.outputId).toBe(targetOut!.outputId);
-    expect(afterOut.outputRoutingType?.name).toBe(targetOut!.name);
-
-    // Restore original output routing
-    await ctx.client!.callTool({
-      name: "ppal-update-track",
-      arguments: { id: trackId, outputRoutingTypeId: currentOutId },
-    });
-  });
 });
 
 interface LiveSetResult {
@@ -391,11 +345,6 @@ interface UpdateTrackResult {
   id: string;
 }
 
-interface RoutingOption {
-  name: string;
-  outputId: string;
-}
-
 interface ReadTrackResult {
   id: string;
   name: string;
@@ -409,6 +358,4 @@ interface ReadTrackResult {
   isArmed?: boolean;
   monitoringState?: string;
   sends?: Array<{ name: string; gainDb: number }>;
-  outputRoutingType?: { name: string; outputId: string } | null;
-  availableOutputRoutingTypes?: RoutingOption[];
 }

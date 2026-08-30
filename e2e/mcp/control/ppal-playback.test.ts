@@ -1,15 +1,21 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * E2E tests for ppal-playback tool
  * Tests playback control across arrangement and session views.
+ * Uses: e2e-test-set (t8 is empty, s0 is "Intro", s7 is unnamed,
+ * locators Intro 1|1, Verse 9|1, Chorus 17|1, Bridge 33|1)
+ * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp
+ * Run with: npm run e2e:mcp -- control/ppal-playback
  */
 import { describe, expect, it } from "vitest";
 import {
+  isToolError,
+  getToolErrorMessage,
   parseToolResult,
   setupMcpTestContext,
   sleep,
@@ -17,169 +23,185 @@ import {
 
 const ctx = setupMcpTestContext();
 
+// t8 (9-MIDI) is empty, so clips made here can't collide with the Set's own
+const EMPTY_MIDI_TRACK = 8;
+
+async function playback(
+  args: Record<string, unknown>,
+): Promise<PlaybackResult> {
+  return parseToolResult<PlaybackResult>(
+    await ctx.client!.callTool({ name: "ppal-playback", arguments: args }),
+  );
+}
+
+async function createSessionClip(
+  sceneIndex: number,
+  note: string,
+): Promise<string> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      path: `t${EMPTY_MIDI_TRACK}/s${sceneIndex}`,
+      notes: `${note} 1|1`,
+      length: "1bar",
+    },
+  });
+
+  return parseToolResult<{ id: string }>(result).id;
+}
+
 describe("ppal-playback", () => {
-  it("controls playback for arrangement and session views", async () => {
-    // Test 1: Verify initial stopped state with stop action
-    const stopResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "stop" },
-    });
-    const stopped = parseToolResult<PlaybackResult>(stopResult);
+  it("reports the stopped state", async () => {
+    const stopped = await playback({ action: "stop" });
 
     expect(stopped.playing).toBe(false);
     expect(stopped.currentTime).toBe("1|1");
+  });
 
-    // Test 2: Play arrangement from start
-    const playResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "play-arrangement" },
-    });
-    const playing = parseToolResult<PlaybackResult>(playResult);
+  it("plays the arrangement from the start", async () => {
+    const playing = await playback({ action: "play-arrangement" });
 
     expect(playing.playing).toBe(true);
     expect(playing.currentTime).toBe("1|1");
 
-    await sleep(100);
+    await playback({ action: "stop" });
+  });
 
-    // Test 3: Play arrangement from specific position
-    const playFromResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "play-arrangement", startTime: "5|1" },
+  it("plays the arrangement from a bar|beat position", async () => {
+    const playFrom = await playback({
+      action: "play-arrangement",
+      startTime: "5|1",
     });
-    const playFrom = parseToolResult<PlaybackResult>(playFromResult);
 
     expect(playFrom.playing).toBe(true);
     expect(playFrom.currentTime).toBe("5|1");
 
-    // Test 4: Update arrangement with loop settings
-    const loopResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: {
-        action: "update-arrangement",
-        loop: true,
-        loopStart: "3|1",
-        loopEnd: "7|1",
-      },
-    });
-    const looped = parseToolResult<PlaybackResult>(loopResult);
+    await playback({ action: "stop" });
+  });
 
-    expect(looped.arrangementLoop).toBeDefined();
+  it("sets the arrangement loop", async () => {
+    const looped = await playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "3|1",
+      loopEnd: "7|1",
+    });
+
     expect(looped.arrangementLoop?.start).toBe("3|1");
     expect(looped.arrangementLoop?.end).toBe("7|1");
 
-    // Test 5: Stop playback
-    const stop2Result = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "stop" },
-    });
-    const stopped2 = parseToolResult<PlaybackResult>(stop2Result);
+    const stopped = await playback({ action: "stop" });
 
-    expect(stopped2.playing).toBe(false);
-    expect(stopped2.currentTime).toBe("1|1");
+    expect(stopped.playing).toBe(false);
+    expect(stopped.currentTime).toBe("1|1");
+  });
 
-    // Test 6: Create session clips for session view tests
-    // Use empty track t8 (9-MIDI) to avoid conflicts with pre-populated clips
-    const emptyMidiTrack = 8;
-
-    const createClip1 = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s0`,
-        notes: "C3 1|1",
-        length: "1bar",
-      },
-    });
-    const clip1 = parseToolResult<{ id: string }>(createClip1);
-
-    const createClip2 = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s1`,
-        notes: "D3 1|1",
-        length: "1bar",
-      },
-    });
-    const clip2 = parseToolResult<{ id: string }>(createClip2);
+  it("plays and stops session clips", async () => {
+    const clip1 = await createSessionClip(0, "C3");
+    const clip2 = await createSessionClip(1, "D3");
 
     await sleep(100);
 
-    // Test 7: Play session clips
-    const playClipsResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: {
-        action: "play-session-clips",
-        id: `${clip1.id},${clip2.id}`,
-      },
+    const playingClips = await playback({
+      action: "play-session-clips",
+      id: `${clip1},${clip2}`,
     });
-    const playingClips = parseToolResult<PlaybackResult>(playClipsResult);
 
     expect(playingClips.playing).toBe(true);
     // Only play-scene fires a scene, so a clip action names none
     expect(playingClips.sceneName).toBeUndefined();
 
     await sleep(100);
+    await playback({ action: "stop-session-clips", id: clip1 });
+    await playback({ action: "stop-all-session-clips" });
 
-    // Test 8: Stop specific session clips
-    const stopClipsResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: {
-        action: "stop-session-clips",
-        id: clip1.id,
-      },
+    const final = await playback({ action: "stop" });
+
+    expect(final.playing).toBe(false);
+  });
+
+  it("plays a scene by index", async () => {
+    const playingScene = await playback({
+      action: "play-scene",
+      sceneIndex: 0,
     });
-    const stoppedClips = parseToolResult<PlaybackResult>(stopClipsResult);
-
-    expect(stoppedClips).toBeDefined();
-
-    // Test 9: Stop all session clips
-    const stopAllResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "stop-all-session-clips" },
-    });
-    const stoppedAll = parseToolResult<PlaybackResult>(stopAllResult);
-
-    expect(stoppedAll).toBeDefined();
-
-    // Test 10: Play scene, which names the scene it fired
-    const playSceneResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "play-scene", sceneIndex: 0 },
-    });
-    const playingScene = parseToolResult<PlaybackResult>(playSceneResult);
 
     expect(playingScene.playing).toBe(true);
     expect(playingScene.sceneIndex).toBe(0);
     expect(playingScene.sceneName).toBe("Intro");
 
-    // Test 11: A clip id names the scene it sits in — clip1 is in s0, and the
-    // response is the only way the caller learns which scene that was
-    const byClipResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "play-scene", id: clip1.id },
-    });
-    const byClip = parseToolResult<PlaybackResult>(byClipResult);
+    await playback({ action: "stop" });
+  });
+
+  it("plays the scene a clip sits in", async () => {
+    // A clip id names the scene it sits in, and the response is the only way
+    // the caller learns which scene that was
+    const clip = await createSessionClip(0, "C3");
+
+    await sleep(100);
+
+    const byClip = await playback({ action: "play-scene", id: clip });
 
     expect(byClip.sceneIndex).toBe(0);
     expect(byClip.sceneName).toBe("Intro");
 
-    // Test 12: s7 has no name, so it is named by its number, as Live shows it
-    const unnamedResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "play-scene", sceneIndex: 7 },
-    });
-    const unnamed = parseToolResult<PlaybackResult>(unnamedResult);
+    await playback({ action: "stop" });
+  });
+
+  it("names an unnamed scene by its number, as Live shows it", async () => {
+    const unnamed = await playback({ action: "play-scene", sceneIndex: 7 });
 
     expect(unnamed.sceneIndex).toBe(7);
     expect(unnamed.sceneName).toBe("8");
 
-    // Test 13: Final stop to clean up
-    const finalResult = await ctx.client!.callTool({
-      name: "ppal-playback",
-      arguments: { action: "stop" },
-    });
-    const final = parseToolResult<PlaybackResult>(finalResult);
+    await playback({ action: "stop" });
+  });
 
-    expect(final.playing).toBe(false);
+  it("starts the arrangement from a locator named by the user", async () => {
+    const playing = await playback({
+      action: "play-arrangement",
+      startLocator: "Verse",
+    });
+
+    expect(playing.playing).toBe(true);
+    expect(playing.currentTime).toBe("9|1");
+
+    await playback({ action: "stop" });
+  });
+
+  it("starts the arrangement from a locator id", async () => {
+    const playing = await playback({
+      action: "play-arrangement",
+      startLocator: "locator-2",
+    });
+
+    expect(playing.currentTime).toBe("17|1");
+
+    await playback({ action: "stop" });
+  });
+
+  it("sets the arrangement loop from locators", async () => {
+    const looped = await playback({
+      action: "update-arrangement",
+      loop: true,
+      loopStartLocator: "Verse",
+      loopEndLocator: "Chorus",
+    });
+
+    expect(looped.arrangementLoop?.start).toBe("9|1");
+    expect(looped.arrangementLoop?.end).toBe("17|1");
+  });
+
+  it("errors on a locator name nothing matches", async () => {
+    const result = await ctx.client!.callTool({
+      name: "ppal-playback",
+      arguments: { action: "play-arrangement", startLocator: "Nowhere" },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'no locator found with name "Nowhere"',
+    );
   });
 });
 

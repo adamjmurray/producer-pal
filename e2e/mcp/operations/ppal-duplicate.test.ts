@@ -350,6 +350,40 @@ describe("ppal-duplicate", () => {
     expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
   });
 
+  it("places arrangement copies at locators", async () => {
+    // Locators are named positions in the Set, so resolving a name or an id to
+    // a real bar|beat is something only Live's own locator list can prove.
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: { path: "t8/s0", notes: "C3 1|1", length: "1bar" },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    const byName = parseToolResult<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "clip", id: clip.id, locator: "Verse,Chorus" },
+      }),
+    );
+
+    expect(byName).toHaveLength(2);
+    expect(byName[0]!.arrangementStart).toBe("9|1");
+    expect(byName[1]!.arrangementStart).toBe("17|1");
+
+    await sleep(100);
+
+    const byId = parseToolResult<DuplicateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: { type: "clip", id: clip.id, locator: "locator-3" },
+      }),
+    );
+
+    expect(byId.arrangementStart).toBe("33|1");
+  });
+
   it("copies the whole clip whichever order the positions are listed", async () => {
     // The bar-58 copy lands on the source and trims it to one bar. The bar-51
     // copy stops well short of the source, so it must come out full length —
