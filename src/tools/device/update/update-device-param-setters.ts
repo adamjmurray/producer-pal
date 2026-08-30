@@ -28,6 +28,7 @@ import {
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
+import { unitMatches } from "./helpers/param-unit-check.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 /**
@@ -109,7 +110,12 @@ function setOneParam(
 
     if (namedParam?.exists()) {
       return toEntries(
-        setParamValue(namedParam, normalizeParamValue(rawValue), toolName),
+        setParamValue(
+          namedParam,
+          normalizeParamValue(rawValue),
+          toolName,
+          rawValue,
+        ),
       );
     }
 
@@ -135,7 +141,7 @@ function setOneParam(
     return [];
   }
 
-  return toEntries(setParamValue(param, inputValue, toolName));
+  return toEntries(setParamValue(param, inputValue, toolName, rawValue));
 }
 
 /**
@@ -236,12 +242,14 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * @param param - Parameter to set
  * @param inputValue - Value to set
  * @param toolName - Calling tool name for warning prefix
+ * @param writtenText - The value as the caller wrote it, unit and all
  * @returns The param the write landed on, or null if it did not land
  */
 function setParamValue(
   param: LiveAPI,
   inputValue: string | number,
   toolName: string,
+  writtenText: string,
 ): WrittenParam | null {
   const paramName = param.getProperty("name") as string;
   const label = `${toolName}: param "${paramName}"`;
@@ -319,21 +327,33 @@ function setParamValue(
   // range at all (a note-name or word-list display) has nothing to convert, so
   // the input goes to Live as a raw value the way it always has.
   const rawMax = param.getProperty("max") as number;
-  const range = readNumericRange(
-    param,
-    rawMin,
-    rawMax,
-    minLabel,
-    strForValue(param, rawMax),
-  );
+  const maxLabel = strForValue(param, rawMax);
+  const range = readNumericRange(param, rawMin, rawMax, minLabel, maxLabel);
 
   if (typeof inputValue === "number") {
-    const rawValue =
+    // Name the range by its trimmed ends: a param with a word at one end
+    // (Glue Compressor's Release tops out at "A") would otherwise be described
+    // as running "from 0.1 to A".
+    const ends = range ?? { minLabel, maxLabel };
+
+    if (
+      !unitMatches(
+        writtenText,
+        currentLabel,
+        ends.minLabel,
+        ends.maxLabel,
+        label,
+      )
+    ) {
+      return null;
+    }
+
+    const targetRaw =
       range == null
         ? inputValue
         : findRawValueForDisplay(param, inputValue, range, label);
 
-    return writeParam(param, rawValue, label);
+    return writeParam(param, targetRaw, label);
   }
 
   // 6. The word at one end of a numeric range — Glue Compressor's Release

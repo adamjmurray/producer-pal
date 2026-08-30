@@ -6,7 +6,11 @@
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
 // Import from there directly instead of through this file
 
-import { parseLabel, strForValue } from "./device-label-helpers.ts";
+import {
+  parseLabel,
+  strForValue,
+  unitForLabels,
+} from "./device-label-helpers.ts";
 import { readNumericRange } from "./param-numeric-range.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
@@ -236,7 +240,7 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   const valueParsed = parseLabel(valueLabel);
   const minParsed = parseLabel(minLabel);
   const maxParsed = parseLabel(maxLabel);
-  const unit = valueParsed.unit ?? minParsed.unit ?? maxParsed.unit;
+  const unit = unitForLabels(valueLabel, minLabel, maxLabel);
 
   if (unit === "pan") {
     const result = buildPanParamResult(

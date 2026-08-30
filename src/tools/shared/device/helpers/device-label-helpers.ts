@@ -124,3 +124,22 @@ export function parseLabel(label: string): ParsedLabel {
 function numberOrNothing(value: number, unit: string | null): ParsedLabel {
   return Number.isFinite(value) ? { value, unit } : { value: null, unit: null };
 }
+
+/**
+ * The unit a parameter displays in, read from its own labels. Tries each label
+ * in turn so a parameter whose current value is a word (Glue Compressor's
+ * Release reads "A") still reports the unit its range carries. Returns null
+ * when the parameter displays a bare number, which is 22% of Live's stock
+ * numeric params — there is nothing to check a written unit against.
+ * @param labels - The parameter's labels, most representative first
+ * @returns The unit, or null if no label carries one
+ */
+export function unitForLabels(...labels: string[]): string | null {
+  for (const label of labels) {
+    const { unit } = parseLabel(label);
+
+    if (unit != null) return unit;
+  }
+
+  return null;
+}

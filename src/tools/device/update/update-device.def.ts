@@ -51,7 +51,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: param(paramsInputSchema, {
       default:
-        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number). Many params only accept a coarse ladder of values, so a request lands on the nearest one — the response reports what each param reads as afterward. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
+        "array of {name, value}. name = a param name, or a param id from read-device; value in display units (enum string, note name, number) — use the `unit` read-device reports for that param, or no unit at all; a param with no `unit` takes a bare number. Many params only accept a coarse ladder of values, so a request lands on the nearest one — the response reports what each param reads as afterward. For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
       // Small mode ships no devices skills fragment, so this is the only place
       // saying a value is a display value (not a normalized 0-1) AND the only
       // place teaching the sample write. getting-help-basic promises samples on
