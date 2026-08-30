@@ -55,6 +55,17 @@ export const DRUM_LOOP_FILE = resolve(
 );
 
 /**
+ * A generated eight-bar 4/4 drum loop — 441000 frames at 22050 Hz is exactly 32
+ * beats at 96 BPM, the arrangement-sections tempo. DRUM_LOOP_FILE is one bar, so
+ * a clip built from it still cannot cross a bar line; anything that needs a
+ * multi-bar audio region (splitting, cropping) uses this against that Set.
+ */
+export const DRUM_LOOP_8BAR_FILE = resolve(
+  __dirname,
+  "../live-sets/samples/drum-loop-8bar.wav",
+);
+
+/**
  * Parse a tool result as JSON with type casting.
  * Throws if the result contains unexpected warnings.
  * Use parseToolResultWithWarnings() for results where warnings are expected.
