@@ -231,6 +231,66 @@ function readDeviceParamValues(): {
   };
 }
 
+// Live states no unit for about a fifth of its stock numeric params. What those
+// measure is recorded in known-param-units.ts and reported here, so a model has
+// something to write back.
+describe("readDevice recorded units", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearMockRegistry();
+  });
+
+  /**
+   * Read one bare-number param off a named device.
+   * @param className - The device's class_display_name
+   * @param name - The param's name
+   * @param range - The param's display range
+   * @returns The parameter as read-device reports it
+   */
+  function readBareParam(
+    className: string,
+    name: string,
+    range: { min: number; max: number },
+  ): Record<string, unknown> {
+    setupDeviceParamMocks({
+      device: { class_display_name: className },
+      param: { name, original_name: name, value: range.min, ...range },
+      strForValue: (value) => String(Number(value)),
+    });
+
+    const result = readDevice({ id: "device-123", include: ["param-values"] });
+    const [param] = (result as { parameters: Record<string, unknown>[] })
+      .parameters;
+
+    return param as Record<string, unknown>;
+  }
+
+  it("reports the recorded unit for a param that displays none", () => {
+    expect(
+      readBareParam("Glue Compressor", "Attack", { min: 0.01, max: 30 }),
+    ).toStrictEqual({
+      id: "param-1",
+      name: "Attack",
+      value: 0.01,
+      min: 0.01,
+      max: 30,
+      unit: "ms",
+    });
+  });
+
+  it("reports nothing for the same param name on another device", () => {
+    expect(
+      readBareParam("Compressor", "Attack", { min: 0.01, max: 30 }),
+    ).not.toHaveProperty("unit");
+  });
+
+  it("reports nothing when the range no longer matches what was recorded", () => {
+    expect(
+      readBareParam("Glue Compressor", "Attack", { min: 0.01, max: 60 }),
+    ).not.toHaveProperty("unit");
+  });
+});
+
 /**
  * Stubs Live's str_for_value for a dB-scaled parameter.
  * @param value - The normalized parameter value Live is asking about

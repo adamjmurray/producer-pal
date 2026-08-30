@@ -11,6 +11,7 @@ import {
   strForValue,
   unitForLabels,
 } from "./device-label-helpers.ts";
+import { recordedUnitFor } from "../known-param-units.ts";
 import { readNumericRange } from "./param-numeric-range.ts";
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
@@ -191,9 +192,15 @@ export function readParameterBasic(paramApi: LiveAPI): {
 /**
  * Read a single device parameter with full details.
  * @param paramApi - LiveAPI parameter object
+ * @param deviceName - The device's class_display_name, for the recorded-unit
+ *   lookup. Omitted where the device isn't known; the param then reports a unit
+ *   only if its own labels carry one.
  * @returns Parameter info object
  */
-export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
+export function readParameter(
+  paramApi: LiveAPI,
+  deviceName?: string,
+): Record<string, unknown> {
   const name = formatParamName(paramApi);
   const stateIdx = paramApi.getProperty("state") as number;
   const automationIdx = paramApi.getProperty("automation_state") as number;
@@ -261,6 +268,10 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
   // max the param can never display.
   const range = readNumericRange(paramApi, rawMin, rawMax, minLabel, maxLabel);
   const sentinel = range?.sentinel;
+  // Live states no unit for about a fifth of its stock numeric params. Fall
+  // back to the recorded one so the model has something to write back.
+  const reportedUnit =
+    unit ?? recordedUnitFor(unit, range, deviceName, name)?.unit;
   const result: Record<string, unknown> = {
     id: paramApi.id,
     name,
@@ -272,7 +283,7 @@ export function readParameter(paramApi: LiveAPI): Record<string, unknown> {
     max: range?.maxValue ?? maxParsed.value ?? rawMax,
   };
 
-  if (unit) result.unit = unit;
+  if (reportedUnit) result.unit = reportedUnit;
   if (sentinel) result.alsoAccepts = sentinel.label;
   addStateFlags(result, paramApi, state, automationState);
 

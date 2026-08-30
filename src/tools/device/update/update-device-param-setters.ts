@@ -15,8 +15,12 @@ import {
   normalizePan,
   readParameterBasic,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { strForValue } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import {
+  strForValue,
+  unitForLabels,
+} from "#src/tools/shared/device/helpers/device-label-helpers.ts";
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
+import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import {
   readNumericRange,
   sentinelRawValue,
@@ -28,7 +32,7 @@ import {
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
-import { unitMatches } from "./helpers/param-unit-check.ts";
+import { displayValueForWrite } from "./helpers/param-unit-check.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 /**
@@ -49,6 +53,11 @@ export function setParamValues(
   force = false,
 ): WrittenParam[] {
   const results: WrittenParam[] = [];
+  // Read once per device, not per param: it only names the device for the
+  // recorded-unit lookup.
+  const deviceName = device.getProperty("class_display_name") as
+    | string
+    | undefined;
 
   for (const entry of params) {
     const key = entry.name.trim();
@@ -69,7 +78,9 @@ export function setParamValues(
     // multi-param update. Warn and move on, consistent with update tools'
     // warn-and-skip contract.
     try {
-      results.push(...setOneParam(device, key, rawValue, toolName, force));
+      results.push(
+        ...setOneParam(device, key, rawValue, toolName, force, deviceName),
+      );
     } catch (e) {
       console.warn(
         `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
@@ -89,6 +100,7 @@ export function setParamValues(
  * @param rawValue - Trimmed value
  * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs
+ * @param deviceName - The device's class_display_name
  * @returns The params the writes landed on
  */
 function setOneParam(
@@ -97,6 +109,7 @@ function setOneParam(
   rawValue: string,
   toolName: string,
   force: boolean,
+  deviceName: string | undefined,
 ): WrittenParam[] {
   // A name containing "/" is normally a path-prefixed pseudo-param
   // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
@@ -115,6 +128,7 @@ function setOneParam(
           normalizeParamValue(rawValue),
           toolName,
           rawValue,
+          deviceName,
         ),
       );
     }
@@ -141,7 +155,9 @@ function setOneParam(
     return [];
   }
 
-  return toEntries(setParamValue(param, inputValue, toolName, rawValue));
+  return toEntries(
+    setParamValue(param, inputValue, toolName, rawValue, deviceName),
+  );
 }
 
 /**
@@ -243,6 +259,7 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * @param inputValue - Value to set
  * @param toolName - Calling tool name for warning prefix
  * @param writtenText - The value as the caller wrote it, unit and all
+ * @param deviceName - The device's class_display_name
  * @returns The param the write landed on, or null if it did not land
  */
 function setParamValue(
@@ -250,6 +267,7 @@ function setParamValue(
   inputValue: string | number,
   toolName: string,
   writtenText: string,
+  deviceName: string | undefined,
 ): WrittenParam | null {
   const paramName = param.getProperty("name") as string;
   const label = `${toolName}: param "${paramName}"`;
@@ -335,23 +353,23 @@ function setParamValue(
     // (Glue Compressor's Release tops out at "A") would otherwise be described
     // as running "from 0.1 to A".
     const ends = range ?? { minLabel, maxLabel };
+    const labelUnit = unitForLabels(currentLabel, ends.minLabel, ends.maxLabel);
+    const displayValue = displayValueForWrite({
+      writtenText,
+      inputValue,
+      labelUnit,
+      known: recordedUnitFor(labelUnit, range, deviceName, paramName),
+      minLabel: ends.minLabel,
+      maxLabel: ends.maxLabel,
+      label,
+    });
 
-    if (
-      !unitMatches(
-        writtenText,
-        currentLabel,
-        ends.minLabel,
-        ends.maxLabel,
-        label,
-      )
-    ) {
-      return null;
-    }
+    if (displayValue == null) return null;
 
     const targetRaw =
       range == null
-        ? inputValue
-        : findRawValueForDisplay(param, inputValue, range, label);
+        ? displayValue
+        : findRawValueForDisplay(param, displayValue, range, label);
 
     return writeParam(param, targetRaw, label);
   }

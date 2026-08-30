@@ -4,53 +4,82 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
 import {
-  parseLabel,
-  unitForLabels,
-} from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+  type KnownParamUnit,
+  canonicalUnit,
+} from "#src/tools/shared/device/known-param-units.ts";
+
+/** What a numeric write needs to know about the param's units. */
+export interface WriteUnitContext {
+  /** The value as the caller wrote it, unit and all. */
+  writtenText: string;
+  /** That value as a number, already canonical (seconds folded into ms). */
+  inputValue: number;
+  /** The unit the param's own labels carry, if any. */
+  labelUnit: string | null;
+  /** The recorded unit for a param whose labels carry none. */
+  known: KnownParamUnit | null;
+  /** The param's display range, named by its trimmed ends. */
+  minLabel: string;
+  maxLabel: string;
+  /** How to name the parameter in a warning. */
+  label: string;
+}
 
 /**
- * Whether a written value's unit is the one the parameter actually uses.
+ * The display value to write, or null to refuse the write.
  *
- * The unit was being parsed off the value and then dropped, so only the number
+ * The unit used to be parsed off a value and then dropped, so only the number
  * survived: "50 dB" on a 0-100% param wrote 50% and reported success. Worse,
- * parseLabel folds s into ms, so "0.5 s" reached a unitless parameter whose
- * range is 0.1-1.2 (Glue Compressor's Release) as 500 — out of range, clamped
- * to the maximum, and warned about as if 0.5 had been invalid.
+ * parseLabel folds s into ms, so "0.5 s" reached a param displaying a bare
+ * 0.1-1.2 (Glue Compressor's Release) as 500 — out of range, clamped to the
+ * maximum, and warned about as if 0.5 had been the invalid part.
  *
  * Matching is by quantity, not spelling: s and ms are one unit here, as are Hz
- * and kHz, so either spelling still lands. A parameter Live displays without a
- * unit can't be checked at all — nothing reports what it measures — so a value
- * carrying one is refused rather than guessed at. A value with no unit is always
- * allowed — it's the documented way to write one, and the only way to write a
- * parameter that displays a bare number.
- * @param rawValue - The value as the caller wrote it, unit and all
- * @param currentLabel - The parameter's current display label
- * @param minLabel - The parameter's minimum display label
- * @param maxLabel - The parameter's maximum display label
- * @param label - How to name the parameter in a warning
- * @returns True when the write should go ahead
+ * and kHz, so either lands on either. A value with no unit is always allowed —
+ * it's the documented way to write one, and the only way to reach a param whose
+ * unit nobody has recorded.
+ * @param ctx - The written value and what is known about the param's units
+ * @returns The value in the param's own display scale, or null to refuse
  */
-export function unitMatches(
-  rawValue: string,
-  currentLabel: string,
-  minLabel: string,
-  maxLabel: string,
-  label: string,
-): boolean {
-  const requested = parseLabel(rawValue).unit;
+export function displayValueForWrite(ctx: WriteUnitContext): number | null {
+  const requested = parseLabel(ctx.writtenText).unit;
 
-  if (requested == null) return true;
+  if (requested == null) return ctx.inputValue;
 
-  const actual = unitForLabels(currentLabel, minLabel, maxLabel);
+  // A param whose own labels carry a unit is already canonical on both sides:
+  // its display range was parsed through the same conversion the input was.
+  if (ctx.labelUnit != null) {
+    return requested === ctx.labelUnit ? ctx.inputValue : refuse(ctx);
+  }
 
-  if (requested === actual) return true;
+  if (ctx.known == null) return refuse(ctx);
+
+  // A recorded unit describes what the param *displays*, which is not always
+  // canonical: Glue Compressor's Release shows seconds. Put the value back on
+  // that scale so it can be searched against the param's own range.
+  const { canonical, scale } = canonicalUnit(ctx.known.unit);
+
+  if (requested !== canonical) return refuse(ctx);
+
+  return ctx.inputValue / scale;
+}
+
+/**
+ * Warn that the written unit isn't the param's, and refuse the write. Says what
+ * the param does measure whenever that is known, so the retry can be right.
+ * @param ctx - The written value and what is known about the param's units
+ * @returns null, always — the caller returns this as the refusal
+ */
+function refuse(ctx: WriteUnitContext): null {
+  const actual = ctx.labelUnit ?? ctx.known?.unit;
 
   console.warn(
     actual == null
-      ? `${label} displays a plain number from ${minLabel} to ${maxLabel} and never says what it measures, so "${rawValue}" was not written — send the number on its own.`
-      : `${label} is measured in ${actual}, so "${rawValue}" was not written — send the value in ${actual}.`,
+      ? `${ctx.label} displays a plain number from ${ctx.minLabel} to ${ctx.maxLabel} and never says what it measures, so "${ctx.writtenText}" was not written — send the number on its own.`
+      : `${ctx.label} is measured in ${actual}, so "${ctx.writtenText}" was not written — send the value in ${actual}.`,
   );
 
-  return false;
+  return null;
 }
