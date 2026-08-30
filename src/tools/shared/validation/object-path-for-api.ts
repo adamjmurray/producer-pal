@@ -25,8 +25,8 @@ const DRUM_PAD_TAIL = / drum_pads \d+$/;
  * @returns The path, or undefined for an object the grammar can't spell
  */
 export function objectPathForApi(api: LiveAPI): string | undefined {
-  // An object that resolved to nothing has no path to report.
-  const path = api.path as string | undefined;
+  // An object that resolved to nothing reports an empty path.
+  const path = api.path;
 
   if (!path) return undefined;
 
@@ -80,7 +80,10 @@ function devicePathForApi(api: LiveAPI, path: string): string | undefined {
     const note = midiToNoteName(api.getProperty("note") as number);
     const rack = extractDevicePath(path.slice(0, padTail.index));
 
-    return rack == null ? undefined : `${rack}/p${note}`;
+    // A real DrumPad.note is 0-127, so midiToNoteName should never come back
+    // null here — but the invariant lives three files away, and unguarded this
+    // spells "…/pnull", which a model can paste back into a `path` param.
+    return rack == null || note == null ? undefined : `${rack}/p${note}`;
   }
 
   // A pad segment above the object (".. drum_pads 36 chains 0 ..") names a

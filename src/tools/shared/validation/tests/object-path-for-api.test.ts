@@ -45,6 +45,14 @@ describe("objectPathForApi", () => {
     expect(objectPathForApi(pad)).toBe("t0/d0/pD1");
   });
 
+  it("says nothing for a pad whose note is out of MIDI range", () => {
+    // Unguarded this spelled "t0/d0/pnull", which a model can paste back into a
+    // `path` param and get a confusing parse failure instead of an omission.
+    const pad = api(`${livePath.track(0).device(0)} drum_pads 36`, 200);
+
+    expect(objectPathForApi(pad)).toBeUndefined();
+  });
+
   it("says nothing for a pad segment above the object", () => {
     const chain = api(
       `${livePath.track(0).device(0)} drum_pads 36 chains 0 devices 0`,
