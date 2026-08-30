@@ -5,7 +5,8 @@
 
 interface LabelPattern {
   regex: RegExp;
-  unit: string;
+  /** null for a shape that is a number but carries no unit, like a ratio. */
+  unit: string | null;
   multiplier?: number;
   fixedValue?: number;
   isNoteName?: boolean;
@@ -51,6 +52,11 @@ const LABEL_PATTERNS: LabelPattern[] = [
     unit: "scale degrees",
     multiplier: 1,
   },
+  // Ratios. Live writes compression as "4.00 : 1" and expansion as "1 : 1.15",
+  // so the number that means anything is whichever side isn't the 1. An end
+  // like "inf : 1" matches neither and is left to the sentinel trim.
+  { regex: /^([\d.]+)\s*:\s*1(?:\.0+)?$/, unit: null, multiplier: 1 },
+  { regex: /^1(?:\.0+)?\s*:\s*([\d.]+)$/, unit: null, multiplier: 1 },
   { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
   { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },
   { regex: /^(c)$/i, unit: "pan", fixedValue: 0 },
@@ -117,8 +123,10 @@ export function parseLabel(label: string): ParsedLabel {
     );
   }
 
-  // No unit detected - try to extract just a number
-  const numMatch = trimmed.match(/^([\d.-]+)/);
+  // No unit detected - try to extract just a number. A colon means a ratio the
+  // patterns above didn't recognize ("inf : 1"), and taking its leading number
+  // would report the wrong side of the ratio as the value.
+  const numMatch = trimmed.includes(":") ? null : trimmed.match(/^([\d.-]+)/);
 
   if (numMatch) {
     return numberOrNothing(Number.parseFloat(numMatch[1] as string), null);

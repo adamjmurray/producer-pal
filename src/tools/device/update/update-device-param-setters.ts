@@ -10,7 +10,8 @@ import { type ParamEntry } from "#src/tools/device/update/device-params-schema.t
 import {
   type WrittenParam,
   extractMaxPanValue,
-  isDivisionLabel,
+  isDivisionParam,
+  normalizeDivisionLabel,
   isPanLabel,
   normalizePan,
   readParameterBasic,
@@ -22,6 +23,7 @@ import {
 import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { recordedUnitFor } from "#src/tools/shared/device/known-param-units.ts";
 import {
+  type ParamNumericRange,
   readNumericRange,
   sentinelRawValue,
 } from "#src/tools/shared/device/helpers/param-numeric-range.ts";
@@ -325,9 +327,11 @@ function setParamValue(
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
   const rawMin = param.getProperty("min") as number;
+  const rawMax = param.getProperty("max") as number;
   const minLabel = strForValue(param, rawMin);
+  const maxLabel = strForValue(param, rawMax);
 
-  if (isDivisionLabel(currentLabel) || isDivisionLabel(minLabel)) {
+  if (isDivisionParam(currentLabel, minLabel, maxLabel)) {
     const rawValue = findDivisionRawValue(param, inputValue);
 
     if (rawValue == null) {
@@ -344,34 +348,21 @@ function setParamValue(
   // 5. Numeric - convert display value to raw value. A param with no numeric
   // range at all (a note-name or word-list display) has nothing to convert, so
   // the input goes to Live as a raw value the way it always has.
-  const rawMax = param.getProperty("max") as number;
-  const maxLabel = strForValue(param, rawMax);
   const range = readNumericRange(param, rawMin, rawMax, minLabel, maxLabel);
 
   if (typeof inputValue === "number") {
-    // Name the range by its trimmed ends: a param with a word at one end
-    // (Glue Compressor's Release tops out at "A") would otherwise be described
-    // as running "from 0.1 to A".
-    const ends = range ?? { minLabel, maxLabel };
-    const labelUnit = unitForLabels(currentLabel, ends.minLabel, ends.maxLabel);
-    const displayValue = displayValueForWrite({
-      writtenText,
+    return setNumericParamValue({
+      param,
       inputValue,
-      labelUnit,
-      known: recordedUnitFor(labelUnit, range, deviceName, paramName),
-      minLabel: ends.minLabel,
-      maxLabel: ends.maxLabel,
+      range,
+      currentLabel,
+      minLabel,
+      maxLabel,
+      writtenText,
+      deviceName,
+      paramName,
       label,
     });
-
-    if (displayValue == null) return null;
-
-    const targetRaw =
-      range == null
-        ? displayValue
-        : findRawValueForDisplay(param, displayValue, range, label);
-
-    return writeParam(param, targetRaw, label);
   }
 
   // 6. The word at one end of a numeric range — Glue Compressor's Release
@@ -392,6 +383,61 @@ function setParamValue(
   );
 
   return null;
+}
+
+/** Everything the numeric write path needs about the param and the request. */
+interface NumericWrite {
+  param: LiveAPI;
+  inputValue: number;
+  range: ParamNumericRange | null;
+  currentLabel: string;
+  minLabel: string;
+  maxLabel: string;
+  writtenText: string;
+  deviceName: string | undefined;
+  paramName: string;
+  label: string;
+}
+
+/**
+ * Write a number to a param that displays a number line, converting from the
+ * param's own display units. A param with no numeric range at all (a note-name
+ * or word-list display) has nothing to convert, so the input goes to Live as a
+ * raw value the way it always has.
+ * @param write - The param, the requested value and the param's labels
+ * @returns The param the write landed on, or null if it did not land
+ */
+function setNumericParamValue(write: NumericWrite): WrittenParam | null {
+  const { param, range, label } = write;
+  // Name the range by its trimmed ends: a param with a word at one end
+  // (Glue Compressor's Release tops out at "A") would otherwise be described
+  // as running "from 0.1 to A".
+  const ends = range ?? { minLabel: write.minLabel, maxLabel: write.maxLabel };
+  const labelUnit = unitForLabels(
+    write.currentLabel,
+    ends.minLabel,
+    ends.maxLabel,
+  );
+  const displayValue = displayValueForWrite({
+    writtenText: write.writtenText,
+    inputValue: write.inputValue,
+    labelUnit,
+    known: recordedUnitFor(labelUnit, range, write.deviceName, write.paramName),
+    minLabel: ends.minLabel,
+    maxLabel: ends.maxLabel,
+    label,
+  });
+
+  if (displayValue == null) return null;
+
+  const targetRaw =
+    range == null
+      ? displayValue
+      : findRawValueForDisplay(param, displayValue, range, label);
+
+  if (targetRaw == null) return null;
+
+  return writeParam(param, targetRaw, label);
 }
 
 /**
@@ -478,8 +524,10 @@ function findDivisionRawValue(
   const targetLabel =
     typeof inputValue === "number" ? String(inputValue) : inputValue;
 
+  const target = normalizeDivisionLabel(targetLabel);
+
   for (let i = minInt; i <= maxInt; i++) {
-    if (strForValue(param, i) === targetLabel) {
+    if (normalizeDivisionLabel(strForValue(param, i)) === target) {
       return i;
     }
   }

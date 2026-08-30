@@ -11,7 +11,9 @@ import { describe, expect, it } from "vitest";
 import {
   extractMaxPanValue,
   isDivisionLabel,
+  isDivisionParam,
   isPanLabel,
+  normalizeDivisionLabel,
   normalizePan,
 } from "../device-display-helpers.ts";
 import { parseLabel } from "../device-label-helpers.ts";
@@ -132,4 +134,55 @@ describe("extractMaxPanValue anchoring", () => {
       expect(extractMaxPanValue(label)).toBe(50);
     },
   );
+});
+
+describe("parseLabel ratios", () => {
+  // Live writes compression as "N : 1" and expansion as "1 : N". Reading the
+  // leading number off both would report 1 for every expansion ratio, which
+  // collapses the range to a point and leaves a write nothing to aim at.
+  it.each([
+    ["4.00 : 1", 4],
+    ["1.00 : 1", 1],
+    ["1 : 2.00", 2],
+    ["1 : 0.50", 0.5],
+    ["1.0 : 0.25", 0.25],
+  ])("reads the meaningful side of '%s'", (label, value) => {
+    expect(parseLabel(label)).toStrictEqual({ value, unit: null });
+  });
+
+  it.each(["inf : 1", "1 : Inf", "1 : ", " : 1"])(
+    "reads no number from '%s', leaving it to the sentinel trim",
+    (label) => {
+      expect(parseLabel(label)).toStrictEqual({ value: null, unit: null });
+    },
+  );
+});
+
+describe("isDivisionLabel spacing", () => {
+  it.each(["1/16", "1 / 16", "1/ 16", "1 /16"])(
+    "accepts '%s', which Live spaces differently per param",
+    (label) => {
+      expect(isDivisionLabel(label)).toBe(true);
+    },
+  );
+});
+
+describe("isDivisionParam", () => {
+  it("sees a fraction at the max end", () => {
+    // Sync ladders run from bar counts to fractions ("8".."1/64"), so the
+    // current value and the minimum are both bare numbers.
+    expect(isDivisionParam("2", "8", "1/64")).toBe(true);
+  });
+
+  it("stays false when no end names a fraction", () => {
+    expect(isDivisionParam("0.0 dB", "-70 dB", "6 dB")).toBe(false);
+  });
+});
+
+describe("normalizeDivisionLabel", () => {
+  it("makes a written '1/16' match a label Live spaced as '1 / 16'", () => {
+    expect(normalizeDivisionLabel("1 / 16")).toBe(
+      normalizeDivisionLabel("1/16"),
+    );
+  });
 });

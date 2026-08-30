@@ -363,3 +363,80 @@ describe("updateDevice - a word at the max end of the range", () => {
     );
   });
 });
+
+// A display that falls as the raw value rises, like Multiband Dynamics' ratios:
+// raw -1..1 reads "1 : Inf" down to "1 : 0.50". Steps of 0.1, as Live rounds.
+function descendingDisplayFor(raw: number): number {
+  return Math.round((5 - 2 * raw) * 10) / 10;
+}
+
+function registerRatioParam(
+  strForValue: (v: unknown) => string,
+): RegisteredMockObject {
+  registerMockObject("dev1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: { parameters: children("ratio-param") },
+  });
+
+  return registerMockObject("ratio-param", {
+    properties: {
+      name: "Above Ratio",
+      original_name: "Above Ratio",
+      is_quantized: 0,
+      value: 0,
+      min: -1,
+      max: 1,
+    },
+    methods: { str_for_value: strForValue },
+  });
+}
+
+describe("updateDevice - display-value search on a descending range", () => {
+  let param: RegisteredMockObject;
+
+  beforeEach(() => {
+    param = registerRatioParam(
+      (v) => `1 : ${descendingDisplayFor(Number(v)).toFixed(2)}`,
+    );
+  });
+
+  it("finds the raw value for a target the display counts down to", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "4" }] });
+
+    expect(descendingDisplayFor(expectValueSet(param))).toBe(4);
+  });
+
+  it("hits every step across the range", () => {
+    for (let tenths = 30; tenths <= 70; tenths++) {
+      const target = (tenths / 10).toFixed(1);
+
+      param.set.mockClear();
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Above Ratio", value: target }],
+      });
+
+      expect(descendingDisplayFor(expectValueSet(param))).toBe(Number(target));
+    }
+  });
+
+  it("warns in the param's own units when the target is off the end", () => {
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "9" }] });
+
+    expect(capturedWarnings().join("\n")).toContain("1 : 7.00");
+  });
+});
+
+describe("updateDevice - a display range collapsed to a point", () => {
+  it("skips the write instead of walking to the middle of the raw range", () => {
+    // Every raw value reads the same, so no display value maps back to a raw
+    // one. Searching would land in the middle and report success from there.
+    const param = registerRatioParam(() => "1 : 1.00");
+
+    updateDevice({ id: "dev1", params: [{ name: "Above Ratio", value: "1" }] });
+
+    expect(param.set).not.toHaveBeenCalled();
+    expect(capturedWarnings().join("\n")).toContain("1 : 1.00");
+  });
+});

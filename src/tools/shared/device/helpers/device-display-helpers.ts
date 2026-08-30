@@ -53,11 +53,34 @@ export function isPanLabel(label: string): boolean {
 
 /**
  * Check if a label is a division fraction format (e.g., "1/8", "1/16").
+ * Live spaces the slash on some params ("1 / 16") and not on others.
  * @param label - Display label
  * @returns True if label is a division fraction
  */
 export function isDivisionLabel(label: string): boolean {
-  return typeof label === "string" && /^1\/\d+$/.test(label);
+  return typeof label === "string" && /^1\s*\/\s*\d+$/.test(label);
+}
+
+/**
+ * Whether a param's display is a ladder of divisions. Any end is enough: a
+ * sync ladder that runs from bar counts up to fractions ("8".."1/64") shows a
+ * bare number at both its current value and its minimum, and only names a
+ * fraction at the far end.
+ * @param labels - The param's value, min and max labels
+ * @returns True if any label is a division fraction
+ */
+export function isDivisionParam(...labels: string[]): boolean {
+  return labels.some(isDivisionLabel);
+}
+
+/**
+ * A division label with its spacing removed, so "1 / 16" and "1/16" compare
+ * equal. Whatever a caller writes has to match a label Live produced.
+ * @param label - Display label
+ * @returns The label with all whitespace stripped
+ */
+export function normalizeDivisionLabel(label: string): string {
+  return label.replaceAll(/\s+/g, "");
 }
 
 /**
@@ -230,7 +253,7 @@ export function readParameter(
   const maxLabel = strForValue(paramApi, rawMax);
 
   // Check for division-type params (fraction format like "1/8")
-  if (isDivisionLabel(valueLabel) || isDivisionLabel(minLabel)) {
+  if (isDivisionParam(valueLabel, minLabel, maxLabel)) {
     const result = buildDivisionParamResult(
       paramApi,
       name,

@@ -22,15 +22,29 @@ const BINARY_SEARCH_ITERATIONS = 30;
  * @param targetDisplay - Target value in display units
  * @param range - The parameter's numeric display range
  * @param label - How to name the parameter in a warning
- * @returns Raw value to set
+ * @returns Raw value to set, or null if the range gives nothing to aim at
  */
 export function findRawValueForDisplay(
   param: LiveAPI,
   targetDisplay: number,
   range: ParamNumericRange,
   label: string,
-): number {
+): number | null {
   const { rawMin, rawMax, minValue, maxValue } = range;
+
+  // The raw range has room but every value in it displays the same number, so
+  // there is no way back from a display value to a raw one. Searching walks to
+  // the middle of the raw range and reports success from a value nobody asked
+  // for, so skip the write instead. A param whose raw range is itself a single
+  // point is not this case — it has exactly one value, and the linear branch
+  // below lands on it.
+  if (minValue === maxValue && rawMin !== rawMax) {
+    console.warn(
+      `${label} reads "${range.minLabel}" across its whole range, so there is no value to aim at and it was left alone.`,
+    );
+
+    return null;
+  }
 
   // Live drops a value outside the parameter's range instead of clamping it,
   // so both paths below keep to the range. Landing 14 dB from what was asked
@@ -53,7 +67,18 @@ export function findRawValueForDisplay(
     return clamp(targetDisplay, rawMin, rawMax);
   }
 
-  return searchRawValueForDisplay(param, targetDisplay, rawMin, rawMax);
+  // Some params count down as the raw value rises (Multiband Dynamics' ratios
+  // run from Inf to 0.50). Negating the display makes those rise again, so one
+  // search handles both directions.
+  const sign = maxValue < minValue ? -1 : 1;
+
+  return searchRawValueForDisplay(
+    param,
+    targetDisplay * sign,
+    rawMin,
+    rawMax,
+    sign,
+  );
 }
 
 /**
@@ -100,6 +125,7 @@ function clamp(value: number, a: number, b: number): number {
  * @param targetDisplay - Target display value
  * @param rawMin - Raw minimum
  * @param rawMax - Raw maximum
+ * @param sign - 1 for a rising display, -1 for a falling one
  * @returns Raw value inside the nearest reachable display step
  */
 function searchRawValueForDisplay(
@@ -107,14 +133,16 @@ function searchRawValueForDisplay(
   targetDisplay: number,
   rawMin: number,
   rawMax: number,
+  sign: number,
 ): number {
   const { lo, hi } = searchBoundary(
     param,
     rawMin,
     rawMax,
+    sign,
     (display) => display >= targetDisplay,
   );
-  const above = displayAt(param, hi);
+  const above = orientedDisplayAt(param, hi, sign);
 
   if (above == null) {
     return hi;
@@ -123,7 +151,7 @@ function searchRawValueForDisplay(
   // `hi` is a shared edge: the bottom of the step at or above the target, and
   // the top of the step below it. So rounding either way costs one more search,
   // never two. Ties round up, matching Live's own display rounding.
-  const below = displayAt(param, lo);
+  const below = orientedDisplayAt(param, lo, sign);
 
   if (
     below != null &&
@@ -134,6 +162,7 @@ function searchRawValueForDisplay(
       param,
       rawMin,
       lo,
+      sign,
       (display) => display >= below,
     ).hi;
 
@@ -144,6 +173,7 @@ function searchRawValueForDisplay(
     param,
     hi,
     rawMax,
+    sign,
     (display) => display > above,
   ).hi;
 
@@ -159,13 +189,15 @@ function searchRawValueForDisplay(
  * @param param - LiveAPI parameter object
  * @param rawMin - Raw minimum
  * @param rawMax - Raw maximum
- * @param reached - Predicate on the display value
+ * @param sign - 1 for a rising display, -1 for a falling one
+ * @param reached - Predicate on the oriented display value
  * @returns The bracketing interval around the boundary
  */
 function searchBoundary(
   param: LiveAPI,
   rawMin: number,
   rawMax: number,
+  sign: number,
   reached: (display: number) => boolean,
 ): { lo: number; hi: number } {
   let lo = rawMin;
@@ -173,7 +205,7 @@ function searchBoundary(
 
   for (let i = 0; i < BINARY_SEARCH_ITERATIONS; i++) {
     const mid = (lo + hi) / 2;
-    const display = displayAt(param, mid);
+    const display = orientedDisplayAt(param, mid, sign);
 
     if (display == null) {
       return { lo: mid, hi: mid };
@@ -187,4 +219,23 @@ function searchBoundary(
   }
 
   return { lo, hi };
+}
+
+/**
+ * The display at a raw value, flipped so it always rises with the raw value.
+ * A descending param passes sign -1; every comparison in the search then reads
+ * the same way for both directions.
+ * @param param - LiveAPI parameter object
+ * @param raw - Raw value to read
+ * @param sign - 1 for a rising display, -1 for a falling one
+ * @returns The oriented display value, or null if the label isn't a number
+ */
+function orientedDisplayAt(
+  param: LiveAPI,
+  raw: number,
+  sign: number,
+): number | null {
+  const display = displayAt(param, raw);
+
+  return display == null ? null : display * sign;
 }
