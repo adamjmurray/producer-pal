@@ -28,8 +28,11 @@
 #   git config --unset-all push-guard.ref     # done with it
 #
 # Escape hatch: SKIP_DEV_PUSH_GUARD=1 git push ...   (or --no-verify)
-
-[ "$SKIP_DEV_PUSH_GUARD" = "1" ] && exit 0
+#
+# Signing is checked on EVERY ref, guarded or not, and SKIP_DEV_PUSH_GUARD does
+# not lift it — that hatch is about CI sequencing, and an unsigned commit is
+# never what anyone meant. pre-commit blocks the usual way in; this catches the
+# ways it can't see, and anything committed before the hooks were switched on.
 
 ZERO=0000000000000000000000000000000000000000
 WORKFLOW="Run Test Suite"
@@ -58,10 +61,33 @@ guarded() {
 }
 
 while read -r _local_ref local_sha remote_ref remote_sha; do
-	guarded "$remote_ref" || continue
 	branch=${remote_ref#refs/heads/}
 	# Deleting the branch — nothing to build.
 	[ "$local_sha" = "$ZERO" ] && continue
+
+	# --- 0. every commit being sent is signed ----------------------------
+	# "not on any origin ref" is the set this push introduces, which covers a
+	# brand-new branch as well as one with a remote head.
+	unsigned=$(git rev-list "$local_sha" --not --remotes=origin \
+		--format='%h %G?' --no-commit-header |
+		awk '$2 != "G" && $2 != "U" { print $1 }')
+
+	if [ -n "$unsigned" ]; then
+		echo "pre-push: refusing to push to $branch — unsigned commits:" >&2
+		echo "" >&2
+		echo "$unsigned" | sed 's/^/    /' >&2
+		echo "" >&2
+		echo "  Re-sign them, keeping their content and messages:" >&2
+		echo "" >&2
+		echo "    git rebase --force-rebase --gpg-sign <last-good-commit>" >&2
+		echo "" >&2
+		echo "  Override: git push --no-verify ..." >&2
+		exit 1
+	fi
+
+	[ "$SKIP_DEV_PUSH_GUARD" = "1" ] && continue
+
+	guarded "$remote_ref" || continue
 
 	# --- 1. one commit per push -----------------------------------------
 	# A force-push that rewinds counts 0 here, so recovering from a batched

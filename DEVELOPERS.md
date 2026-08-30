@@ -255,6 +255,11 @@ Only useful if you push to this repo and have the `gh` CLI authenticated — a
 fork has no builds for its commits, so the hook would block every push. Override
 a single push with `SKIP_DEV_PUSH_GUARD=1 git push ...`.
 
+The same switch turns on `.githooks/pre-commit`, which refuses a commit made
+with signing turned off, and a check in `pre-push` that refuses to send an
+unsigned commit on any branch. `SKIP_DEV_PUSH_GUARD` does not lift that one —
+it's about CI sequencing, and an unsigned commit is never what anyone meant.
+
 ## Releasing
 
 See [Releasing](dev/Releasing.md) for the complete release process, including
