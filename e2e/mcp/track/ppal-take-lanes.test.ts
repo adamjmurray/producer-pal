@@ -354,7 +354,7 @@ describe("take lanes", () => {
     expect(detail.takeLanes![0]!.clips).toHaveLength(1);
   });
 
-  it("duplicates MIDI clips to take lanes (copying notes/name), ignoring arrangementLength and skipping audio", async () => {
+  it("duplicates clips to take lanes (copying notes/name/sample), ignoring arrangementLength", async () => {
     // A main-lane MIDI source to duplicate from
     const source = parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
@@ -418,7 +418,8 @@ describe("take lanes", () => {
     );
     expect(lengthDup.data.path).toBe(`t${MIDI_TRACK}/l1`);
 
-    // An audio source is MIDI-only for v1: warn + skip (nothing created)
+    // An audio source is re-created from its sample. Warped on purpose, so the
+    // warp-marker warning doesn't depend on the sample's own analysis file.
     const audioTrack = parseToolResult<CreateTrackResult>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
@@ -434,12 +435,14 @@ describe("take lanes", () => {
           path: `t${audioTrack.trackIndex}`,
           arrangementStart: "1|1",
           sampleFile: SAMPLE_FILE,
+          warping: true,
+          name: "Original Sample",
         },
       }),
     );
 
     await sleep(100);
-    const audioDup = parseToolResultWithWarnings<unknown[]>(
+    const audioDup = parseToolResultWithWarnings<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
         arguments: {
@@ -451,10 +454,23 @@ describe("take lanes", () => {
       }),
     );
 
+    expect(audioDup.data.path).toBe(`t${audioTrack.trackIndex}/l0`);
     expect(audioDup.warnings.join(" ")).toContain(
-      "take lanes hold MIDI clips only",
+      "warp markers reset to the sample's defaults",
     );
-    expect(audioDup.data).toStrictEqual([]);
+
+    await sleep(100);
+    const audioCopy = parseToolResult<ReadClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { id: audioDup.data.id, include: ["sample", "warp"] },
+      }),
+    );
+
+    expect(audioCopy.type).toBe("audio");
+    expect(audioCopy.name).toBe("Original Sample");
+    expect(audioCopy.sampleFile).toBe(SAMPLE_FILE);
+    expect(audioCopy.warping).toBe(true);
   });
 
   // Live's duplicate_clip_to_arrangement no-ops on a take-lane SOURCE, so this
@@ -486,8 +502,12 @@ describe("take lanes", () => {
 
     // Main lane has no `l` segment, so the path is the bare track
     expect(promoted.data.path).toBe(`t${MIDI_TRACK}`);
-    // Re-creating carries notes, not automation, and the response says so
+    // Re-creating carries notes, and the response says so. This clip has no
+    // envelopes, so nothing was lost and the warning names no cost.
     expect(promoted.warnings.join(" ")).toContain(
+      "promoted to the main lane by re-creating the clip",
+    );
+    expect(promoted.warnings.join(" ")).not.toContain(
       "automation envelopes aren't copied",
     );
 

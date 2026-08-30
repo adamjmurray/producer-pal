@@ -32,7 +32,10 @@ import {
 } from "./duplicate-clip-order-helpers.ts";
 import { duplicateClipToSlots } from "./duplicate-clip-slot-helpers.ts";
 import { type UnreachedDestination } from "../duplicate-position-helpers.ts";
-import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
+import {
+  canRecreateClip,
+  recreatedClipLosses,
+} from "./duplicate-clip-recreate-helpers.ts";
 import {
   labelDuplicateDestinations,
   noBudgetForCopies,
@@ -308,7 +311,7 @@ function resolveSongPositions(
  * @param targetTracks - Destination per copy
  * @param arrangementLength - The raw arrangementLength param
  * @param lanes - Take lanes resolved for this call
- * @returns Whether the source can be promoted to the main lane (MIDI only)
+ * @returns Whether the source can be promoted to the main lane
  */
 function warnRecreatedCopyLimits(
   object: LiveAPI,
@@ -321,7 +324,7 @@ function warnRecreatedCopyLimits(
   // same reason a lane destination is: Live's arrangement duplicate can't do it.
   const promotes =
     isTakeLaneClip(object) && targetTracks.some((t) => t.takeLane == null);
-  const canPromote = promotes && object.getProperty("is_midi_clip") === 1;
+  const canPromote = promotes && canRecreateClip(object);
 
   if ((lanes.size > 0 || canPromote) && arrangementLength != null) {
     console.warn(
@@ -330,12 +333,15 @@ function warnRecreatedCopyLimits(
   }
 
   if (canPromote) {
+    const losses = recreatedClipLosses(object);
+
     console.warn(
-      `duplicate: promoted to the main lane by re-creating the clip (${NO_ENVELOPES_NOTE})`,
+      "duplicate: promoted to the main lane by re-creating the clip" +
+        (losses ? ` (${losses})` : ""),
     );
   } else if (promotes) {
     console.warn(
-      `duplicate: promoting to the main lane re-creates the clip from its notes, so audio clip "${id}" can't be promoted off its take lane; drag it in Live's UI`,
+      `duplicate: promoting to the main lane re-creates the clip, so audio clip "${id}" with no sample file can't be promoted off its take lane; drag it in Live's UI`,
     );
   }
 

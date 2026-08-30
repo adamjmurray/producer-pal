@@ -9,7 +9,10 @@ import {
   lookupMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { recreateMidiClip } from "./duplicate-clip-recreate-helpers.ts";
+import {
+  recreateClip,
+  recreateMidiClip,
+} from "./duplicate-clip-recreate-helpers.ts";
 
 const SOURCE_PATH = livePath.track(0).takeLane(0).arrangementClip(0);
 const LANE_PATH = livePath.track(0).takeLane(0);
@@ -158,5 +161,34 @@ describe("recreateMidiClip onto the source's own lane", () => {
       "color",
       0,
     );
+  });
+});
+
+// canRecreateClip screens an audio source before any lane is made, so this is
+// the narrow window where Live drops the sample in between. Throwing lets the
+// caller warn and skip that one copy instead of creating an empty clip.
+describe("recreateClip on an audio source with no sample", () => {
+  it("throws rather than creating a clip", () => {
+    registerMockObject("audio_src", {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+      properties: { is_midi_clip: 0, is_audio_clip: 1, file_path: "" },
+    });
+    registerMockObject("audio_lane", {
+      path: LANE_PATH,
+      type: "TakeLane",
+      methods: { create_audio_clip: () => ["id", "0"] },
+    });
+
+    expect(() =>
+      recreateClip(
+        LiveAPI.from(SOURCE_PATH),
+        LiveAPI.from(LANE_PATH),
+        0,
+        undefined,
+        undefined,
+      ),
+    ).toThrow("audio clip has no sample file");
+    expect(lookupMockObject("audio_lane")?.call).not.toHaveBeenCalled();
   });
 });

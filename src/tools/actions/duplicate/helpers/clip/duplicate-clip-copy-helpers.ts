@@ -12,7 +12,7 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { duplicateClipToArrangement } from "../duplicate-helpers.ts";
-import { recreateMidiClip } from "./duplicate-clip-recreate-helpers.ts";
+import { recreateClip } from "./duplicate-clip-recreate-helpers.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
 
 /**
@@ -36,7 +36,7 @@ export interface CopyOptions {
   target: ArrangementTrack;
   startBeats: number;
   lanes: Map<string, ResolvedDuplicateLane>;
-  /** Whether a take-lane source may be re-created on the main lane (MIDI only). */
+  /** Whether a take-lane source may be re-created on the main lane. */
   canPromote: boolean;
   object: LiveAPI;
   id: string;
@@ -63,7 +63,7 @@ export async function duplicateOneCopy(
   if (target.takeLane != null) {
     const resolved = lanes.get(takeLaneKey(target));
 
-    // A rejected source (audio, for now) warned once during lane resolution.
+    // A rejected source (audio with no sample) warned once during lane resolution.
     if (resolved == null) return null;
 
     return recreateCopy(options, resolved.lane, "take-lane");
@@ -71,7 +71,8 @@ export async function duplicateOneCopy(
 
   // Main-lane destination with a take-lane source: duplicate_clip_to_arrangement
   // silently no-ops on a take-lane source id (see take-lane-helpers.ts header),
-  // so re-create it here instead. An audio source warned once in the caller.
+  // so re-create it here instead. A source with nothing to rebuild from warned
+  // once in the caller.
   if (isTakeLaneClip(object)) {
     if (!options.canPromote) return null;
 
@@ -112,7 +113,7 @@ function recreateCopy(
   kind: "take-lane" | "promoted",
 ): object | null {
   try {
-    return recreateMidiClip(
+    return recreateClip(
       options.object,
       destination,
       options.startBeats,

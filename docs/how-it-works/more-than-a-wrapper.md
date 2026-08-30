@@ -131,7 +131,8 @@ reach for to fake it are walled off:
 - You can't shorten a clip by writing its `end_time`. For warped, looped clips
   the arrangement length is effectively **immutable** once the clip exists.
 - You can't create an audio clip _in the arrangement_ with a specific length.
-  `create_audio_clip` only exists in Session view.
+  `Track.create_audio_clip` takes a position but no length; only Session view's
+  `ClipSlot.create_audio_clip` can be sized after the fact.
 - The one lever that does move clips around, dropping a new clip so it
   **overlaps** an existing one, only trims from the **edges**. If a new clip
   overlaps the _middle_ of an existing one, Live truncates at the overlap and

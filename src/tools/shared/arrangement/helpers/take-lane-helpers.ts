@@ -11,7 +11,9 @@
  *   and returns its ref. New lane index = prior `take_lanes.length`.
  * - `TakeLane` has one property (`name`) and two functions, `create_midi_clip(
  *   start, length)` and `create_audio_clip(file, start)`. They create
- *   arrangement clips on the lane and return the new clip ref directly.
+ *   arrangement clips on the lane and return the new clip ref directly. `Track`
+ *   answers both too, landing on the main lane — that's what a promote uses.
+ *   Neither audio call takes a length; the sample decides it.
  * - Take lanes are append-only: there is no `delete_take_lane`, `TakeLane` has
  *   no delete of its own, and `Track.delete_clip` silently no-ops on a
  *   take-lane clip. Clean up in Live's UI.

@@ -54,8 +54,9 @@ the curves drawn on the track's timeline rather than inside a clip.
 
 Envelopes you already have are safe, though. They live in the clip, so they
 travel with it through the edits Producer Pal does make. The one exception is
-take lanes: duplicating a clip onto or off a lane re-creates it from its notes
-and leaves the envelopes behind. Producer Pal warns when that happens.
+take lanes: duplicating a clip onto or off a lane re-creates it (from its notes
+for MIDI, from its sample for audio) and leaves the envelopes behind. Producer
+Pal warns when that happens.
 
 ## Audio Content Can't Be Analyzed or Generated
 

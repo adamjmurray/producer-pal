@@ -13,15 +13,7 @@ import {
   type MinimalClipInfo,
 } from "../duplicate-helpers.ts";
 
-/**
- * Goes in every warning about a copy this file re-created, since re-creating
- * copies notes and not automation. Unconditional: reading a clip's envelopes
- * needs a specific DeviceParameter, so there is no way to ask whether one has
- * any.
- */
-export const NO_ENVELOPES_NOTE = "automation envelopes aren't copied";
-
-/** Everything read off the source before the new clip exists. */
+/** Everything read off a MIDI source before the new clip exists. */
 interface ClipSnapshot {
   length: number;
   notes: NoteEvent[];
@@ -30,15 +22,66 @@ interface ClipSnapshot {
   properties: Record<string, unknown>;
 }
 
+/** Everything read off an audio source before the new clip exists. */
+interface AudioClipSnapshot {
+  filePath: string;
+  color: unknown;
+  properties: Record<string, unknown>;
+}
+
 /**
- * Re-create a MIDI clip somewhere Live's own arrangement duplicate can't reach,
- * copying the source's notes and loop/marker/signature properties.
+ * Whether a clip can be re-created at all. A MIDI clip always can; an audio clip
+ * is rebuilt from its sample, so it needs a `file_path`.
+ * @param clip - The clip being copied
+ * @returns True when {@link recreateClip} can rebuild it
+ */
+export function canRecreateClip(clip: LiveAPI): boolean {
+  return (
+    clip.getProperty("is_midi_clip") === 1 ||
+    Boolean(clip.getProperty("file_path"))
+  );
+}
+
+/**
+ * What re-creating this clip loses, as a warning parenthetical, or "" when it
+ * loses nothing.
+ *
+ * Envelopes: `has_envelopes` covers clip envelopes and automation alike, and
+ * neither can be read back out without naming a specific DeviceParameter.
+ *
+ * Warp markers: an audio copy is built from the sample, so it gets the sample's
+ * default markers. Live reports success for `add_warp_marker` and
+ * `move_warp_marker` and then does nothing, so hand-edited markers can't be put
+ * back. Defaults do come across unchanged, hence "reset", not "lost".
+ * @param sourceClip - The clip being copied
+ * @returns The losses, joined, or "" when there are none
+ */
+export function recreatedClipLosses(sourceClip: LiveAPI): string {
+  const losses: string[] = [];
+
+  if (sourceClip.getProperty("has_envelopes") === 1) {
+    losses.push("automation envelopes aren't copied");
+  }
+
+  if (
+    sourceClip.getProperty("is_midi_clip") !== 1 &&
+    sourceClip.getProperty("warping") === 1
+  ) {
+    losses.push("warp markers reset to the sample's defaults");
+  }
+
+  return losses.join("; ");
+}
+
+/**
+ * Re-create a clip somewhere Live's own arrangement duplicate can't reach: a
+ * MIDI clip from its notes, an audio clip from its sample.
  *
  * Used for both directions a take lane is involved in, because
  * `duplicate_clip_to_arrangement` handles neither: a TakeLane has no duplicate
  * API at all, and the Track-scoped one silently no-ops when the SOURCE is a
- * take-lane clip. Both destinations answer `create_midi_clip`, so one function
- * covers both.
+ * take-lane clip. Both destinations answer `create_midi_clip` and
+ * `create_audio_clip`, so one function covers both.
  *
  * Re-creating over an existing clip truncates the one already there and lands
  * intact itself — the same replace behavior as writing to the main lane. That
@@ -52,6 +95,30 @@ interface ClipSnapshot {
  * @param color - Color for the new clip
  * @returns Minimal clip info for the created clip
  */
+export function recreateClip(
+  sourceClip: LiveAPI,
+  destination: LiveAPI,
+  startBeats: number,
+  name: string | undefined,
+  color: string | undefined,
+): MinimalClipInfo {
+  return sourceClip.getProperty("is_midi_clip") === 1
+    ? recreateMidiClip(sourceClip, destination, startBeats, name, color)
+    : recreateAudioClip(sourceClip, destination, startBeats, name, color);
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Re-create a MIDI clip, copying the source's notes and loop/marker/signature
+ * properties.
+ * @param sourceClip - The clip being copied
+ * @param destination - The TakeLane or Track to create it on
+ * @param startBeats - Arrangement start position in Ableton beats
+ * @param name - Name for the new clip
+ * @param color - Color for the new clip
+ * @returns Minimal clip info for the created clip
+ */
 export function recreateMidiClip(
   sourceClip: LiveAPI,
   destination: LiveAPI,
@@ -60,30 +127,83 @@ export function recreateMidiClip(
   color: string | undefined,
 ): MinimalClipInfo {
   const snapshot = snapshotClip(sourceClip, name, color);
-  const newClipResult = destination.call(
-    "create_midi_clip",
-    startBeats,
-    snapshot.length,
-  ) as string;
-  const newClip = LiveAPI.from(newClipResult);
-
-  if (!newClip.exists()) {
-    throw new Error("failed to create Arrangement clip");
-  }
+  const newClip = createdClip(
+    destination.call("create_midi_clip", startBeats, snapshot.length) as string,
+  );
 
   if (snapshot.notes.length > 0) {
     newClip.call("add_new_notes", { notes: snapshot.notes });
   }
 
   newClip.setAll(snapshot.properties);
+  applyColor(newClip, color, snapshot.color);
 
+  return getMinimalClipInfo(newClip);
+}
+
+/**
+ * Re-create an audio clip from its sample, carrying the source's warp, loop,
+ * marker, gain, pitch, and signature settings.
+ * @param sourceClip - The clip being copied
+ * @param destination - The TakeLane or Track to create it on
+ * @param startBeats - Arrangement start position in Ableton beats
+ * @param name - Name for the new clip
+ * @param color - Color for the new clip
+ * @returns Minimal clip info for the created clip
+ */
+function recreateAudioClip(
+  sourceClip: LiveAPI,
+  destination: LiveAPI,
+  startBeats: number,
+  name: string | undefined,
+  color: string | undefined,
+): MinimalClipInfo {
+  const snapshot = snapshotAudioClip(sourceClip, name, color);
+  const newClip = createdClip(
+    destination.call(
+      "create_audio_clip",
+      snapshot.filePath,
+      startBeats,
+    ) as string,
+  );
+
+  newClip.setAll(snapshot.properties);
+  applyColor(newClip, color, snapshot.color);
+
+  return getMinimalClipInfo(newClip);
+}
+
+/**
+ * Wrap what a create call returned, failing loudly when Live made nothing.
+ * @param createResult - What `create_midi_clip`/`create_audio_clip` returned
+ * @returns The new clip
+ */
+function createdClip(createResult: string): LiveAPI {
+  const newClip = LiveAPI.from(createResult);
+
+  if (!newClip.exists()) {
+    throw new Error("failed to create Arrangement clip");
+  }
+
+  return newClip;
+}
+
+/**
+ * Apply the copy's color: the override when there is one, else the source's.
+ * @param newClip - The clip just created
+ * @param color - Color override, or undefined to keep the source's
+ * @param sourceColor - The source's color, from the snapshot
+ */
+function applyColor(
+  newClip: LiveAPI,
+  color: string | undefined,
+  sourceColor: unknown,
+): void {
   if (color != null) {
     newClip.setColor(color);
   } else {
-    newClip.set("color", snapshot.color);
+    newClip.set("color", sourceColor);
   }
-
-  return getMinimalClipInfo(newClip);
 }
 
 /**
@@ -121,6 +241,53 @@ function snapshotClip(
       looping: sourceClip.getProperty("looping"),
       signature_numerator: sourceClip.getProperty("signature_numerator"),
       signature_denominator: sourceClip.getProperty("signature_denominator"),
+      name: name ?? sourceClip.getProperty("name"),
+    },
+  };
+}
+
+/**
+ * Read everything an audio copy needs off the source, before anything can
+ * change it.
+ * @param sourceClip - The clip being copied
+ * @param name - Name override, or undefined to keep the source's
+ * @param color - Color override, or undefined to keep the source's
+ * @returns The source's sample path, color, and clip properties
+ */
+function snapshotAudioClip(
+  sourceClip: LiveAPI,
+  name: string | undefined,
+  color: string | undefined,
+): AudioClipSnapshot {
+  const filePath = sourceClip.getProperty("file_path") as string | null;
+
+  // Guarded by canRecreateClip in the caller, so reaching this means the clip
+  // lost its sample between the check and here.
+  if (!filePath) {
+    throw new Error("audio clip has no sample file");
+  }
+
+  return {
+    filePath,
+    color: color == null ? sourceClip.getProperty("color") : null,
+    properties: {
+      // Warping decides whether the marker properties below are in beats or in
+      // seconds, so it goes on first — the values were read in the source's
+      // unit, and only match once the copy warps the same way.
+      warping: sourceClip.getProperty("warping"),
+      warp_mode: sourceClip.getProperty("warp_mode"),
+      // Loop points only stick once looping is set. Written before it, Live
+      // silently snaps them back to the whole sample.
+      looping: sourceClip.getProperty("looping"),
+      loop_start: sourceClip.getProperty("loop_start"),
+      loop_end: sourceClip.getProperty("loop_end"),
+      start_marker: sourceClip.getProperty("start_marker"),
+      end_marker: sourceClip.getProperty("end_marker"),
+      signature_numerator: sourceClip.getProperty("signature_numerator"),
+      signature_denominator: sourceClip.getProperty("signature_denominator"),
+      gain: sourceClip.getProperty("gain"),
+      pitch_coarse: sourceClip.getProperty("pitch_coarse"),
+      pitch_fine: sourceClip.getProperty("pitch_fine"),
       name: name ?? sourceClip.getProperty("name"),
     },
   };

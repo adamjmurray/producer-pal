@@ -12,7 +12,10 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
-import { NO_ENVELOPES_NOTE } from "./duplicate-clip-recreate-helpers.ts";
+import {
+  canRecreateClip,
+  recreatedClipLosses,
+} from "./duplicate-clip-recreate-helpers.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
 export interface ResolvedDuplicateLane {
@@ -26,8 +29,8 @@ export interface ResolvedDuplicateLane {
  *
  * Lanes are permanent (Live has no delete), so every destination's capacity is
  * checked before any lane is created — a cap error partway through would strand
- * the lanes already made. A destination that doesn't fit is warned and dropped,
- * like an audio source, so the copies around it still run.
+ * the lanes already made. A destination that doesn't fit is warned and dropped
+ * so the copies around it still run.
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
  * @param targets - Destinations, in copy order
@@ -54,15 +57,18 @@ export function resolveDuplicateTakeLanes(
     return new Map();
   }
 
-  if (sourceClip.getProperty("is_midi_clip") !== 1) {
+  // An audio clip is rebuilt from its sample, so one that has lost its file (or
+  // never had one) can't go on a lane at all.
+  if (!canRecreateClip(sourceClip)) {
     console.warn(
-      `duplicate: take lanes hold MIDI clips only; audio clip "${id}" was not duplicated to a take lane`,
+      `duplicate: audio clip "${id}" has no sample file to rebuild it from, so it was not duplicated to a take lane`,
     );
 
     return new Map();
   }
 
   const lanes = new Map<string, ResolvedDuplicateLane>();
+  const losses = recreatedClipLosses(sourceClip);
 
   // Resolve once per destination rather than once per copy — otherwise a single
   // "l+" cycled over three arrangementStarts gets three fresh lanes.
@@ -80,9 +86,9 @@ export function resolveDuplicateTakeLanes(
 
     lanes.set(key, { lane, laneIndex });
     console.warn(
-      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}" ` +
-        `(${NO_ENVELOPES_NOTE}). ` +
-        "Expand the take-lanes arrow on the track header in Live to see it.",
+      `duplicate: created on take lane "t${trackIndex}/l${laneIndex}"` +
+        (losses ? ` (${losses})` : "") +
+        ". Expand the take-lanes arrow on the track header in Live to see it.",
     );
   }
 

@@ -190,13 +190,10 @@ describe("duplicate take lane", () => {
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
     expect(newClip?.set).toHaveBeenCalledWith("signature_numerator", 4);
     expect(newClip?.set).toHaveBeenCalledWith("signature_denominator", 4);
-    // The lane's path is reported so the user can find the new clip, along with
-    // what re-creating cost: notes come across, automation doesn't. Live can't
-    // say whether a clip has envelopes, so the note is unconditional.
+    // The lane's path is reported so the user can find the new clip. This source
+    // has no envelopes, so nothing was lost and the warning names no cost.
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `created on take lane "t0/l0" (automation envelopes aren't copied)`,
-      ),
+      expect.stringContaining(`created on take lane "t0/l0". Expand`),
     );
     expect(result).toMatchObject({
       path: "t0/l0",
@@ -279,7 +276,9 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("skips an audio source with a warning (MIDI-only)", async () => {
+  // An audio clip is rebuilt from its sample, so one without a file_path has
+  // nothing to rebuild from.
+  it("skips an audio source with no sample file, with a warning", async () => {
     registerLiveSet();
     registerArrangementSource(false);
     const track = registerTakeLaneTrack({ initialLanes: 0 });
@@ -292,14 +291,14 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("take lanes hold MIDI clips only"),
+      expect.stringContaining("has no sample file to rebuild it from"),
     );
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(result).toStrictEqual([]);
   });
 
   // Warn-and-skip: the lane destination is the only one that can't be served.
-  it("still makes an audio source's main-lane copies", async () => {
+  it("still makes a sampleless audio source's main-lane copies", async () => {
     registerLiveSet();
     registerArrangementSource(false);
     const laneTrack = registerTakeLaneTrack({
@@ -319,7 +318,7 @@ describe("duplicate take lane", () => {
     });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("take lanes hold MIDI clips only"),
+      expect.stringContaining("has no sample file to rebuild it from"),
     );
     expect(mainTrack.call).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
@@ -807,7 +806,7 @@ describe("duplicate take lane", () => {
   it("warns once that a promoted copy loses automation envelopes", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
-    registerTakeLaneSource();
+    registerTakeLaneSource({ has_envelopes: 1 });
 
     await duplicate({
       type: "clip",
@@ -825,9 +824,10 @@ describe("duplicate take lane", () => {
     expect(warnings[0]?.[0]).toContain("promoted to the main lane");
   });
 
-  // Promoting re-creates from notes, which an audio clip has none of.
-  // The reason doesn't change per copy, so neither should the warning.
-  it("warns once that an audio take can't be promoted, not once per position", async () => {
+  // Promoting re-creates the clip, which an audio clip with no sample file has
+  // nothing to do from. The reason doesn't change per copy, so neither should
+  // the warning.
+  it("warns once that a sampleless audio take can't be promoted, not once per position", async () => {
     registerLiveSet();
     registerTakeLaneTrack({ initialLanes: 1 });
     registerTakeLaneSource({ is_midi_clip: 0, is_audio_clip: 1 });
