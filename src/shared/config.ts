@@ -145,6 +145,21 @@ export function resolveSmallModelMode(
   headerValue: string | undefined,
   fallback: boolean,
 ): boolean {
+  return resolveBooleanHeader(headerValue, fallback);
+}
+
+/**
+ * Parse a "true"/"false" header value, falling back to the global default when
+ * absent or unrecognized so a stray value can't force a setting.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param fallback - The device global to use when no usable header
+ * @returns The resolved boolean
+ */
+function resolveBooleanHeader(
+  headerValue: string | undefined,
+  fallback: boolean,
+): boolean {
   if (headerValue === "true") return true;
   if (headerValue === "false") return false;
 
@@ -208,6 +223,67 @@ export function resolveEnabledTools(
   if (disabled.size === 0) return [...configuredTools];
 
   return configuredTools.filter((name) => !disabled.has(name));
+}
+
+// --- Per-request Direct Live API opt-in (MCP transport) ---
+
+/**
+ * HTTP header that turns the opt-in `ppal-live-api` tool on or off for ONE
+ * caller.
+ *
+ * The device toggle is all-or-nothing: enabling it for one integration exposes
+ * a tool that can drive arbitrary Live Object Model calls to every other
+ * connected client, including agents under evaluation that are meant to see
+ * only the curated toolset. This header keeps that grant to the requests that
+ * ask for it.
+ *
+ * Absent => the device's `config.liveApiEnabled`. Combined with
+ * {@link DISABLED_TOOLS_HEADER}, which still wins: a request that enables the
+ * tool here and withholds it there does not get it.
+ */
+export const LIVE_API_HEADER = "x-producer-pal-live-api";
+
+/**
+ * Resolve whether `ppal-live-api` is available to one request, falling back to
+ * the device global when the header is absent or unrecognized.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @param fallback - The device's `config.liveApiEnabled`
+ * @returns Whether to offer the Direct Live API tool for this request
+ */
+export function resolveLiveApiEnabled(
+  headerValue: string | undefined,
+  fallback: boolean,
+): boolean {
+  return resolveBooleanHeader(headerValue, fallback);
+}
+
+// --- Per-request output format (MCP transport) ---
+
+/**
+ * HTTP header that picks one request's tool-result format: `compact` or `json`.
+ *
+ * The header form of the REST endpoints' `?format=`, for POST /mcp — query
+ * params are not something MCP clients do. Unlike REST, which defaults to
+ * `json`, an absent header leaves the device's own format setting alone, so
+ * external MCP clients are unaffected.
+ */
+export const FORMAT_HEADER = "x-producer-pal-format";
+
+/**
+ * Resolve the per-request output format.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @returns true for compact, false for JSON, or undefined when the header is
+ *   absent or unrecognized (leave the device's setting alone)
+ */
+export function resolveCompactOutput(
+  headerValue: string | undefined,
+): boolean | undefined {
+  if (headerValue === "compact") return true;
+  if (headerValue === "json") return false;
+
+  return undefined;
 }
 
 // --- Subagent briefing ---

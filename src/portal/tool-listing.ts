@@ -5,7 +5,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { DISABLED_TOOLS_HEADER, VERSION } from "#src/shared/config.ts";
+import { VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   CONNECT_TOOL_ID,
@@ -15,7 +15,10 @@ import {
   TOOL_GROUPS,
 } from "#src/shared/tool-groups.ts";
 import { buildFallbackTools } from "./fallback-tools.ts";
-import { type BridgeOptions } from "./stdio-http-bridge.ts";
+import {
+  type BridgeOptions,
+  requestHeaderTransportOptions,
+} from "./portal-settings.ts";
 
 /**
  * Build the `--list-tools` output: the group aliases this portal understands,
@@ -37,7 +40,7 @@ export async function formatToolListing(
   mcpUrl: string,
   options: BridgeOptions,
 ): Promise<string> {
-  const live = await fetchDeviceToolNames(mcpUrl, options.disabledTools);
+  const live = await fetchDeviceToolNames(mcpUrl, options);
   const toolLines =
     live == null
       ? [
@@ -83,30 +86,28 @@ function formatGroups(): string[] {
 /**
  * Ask the device what it offers this client, or null when it can't be reached.
  *
+ * Sends the same headers a real session would, so the answer reflects THIS
+ * client's settings — `--live-api --list-tools` shows `ppal-live-api` even on a
+ * device whose Setup-tab toggle is off.
+ *
  * Deliberately does NOT go through `StdioHttpBridge`: that owns a stdio server
  * this one-shot query has no use for, and any failure here is an expected outcome
  * (Ableton isn't running) rather than something to log and retry.
  *
  * @param mcpUrl - The device's MCP endpoint
- * @param disabledTools - Tools this client withholds, if any
+ * @param options - The portal's resolved options
  * @returns The tool names, or null when the device is unreachable
  */
 async function fetchDeviceToolNames(
   mcpUrl: string,
-  disabledTools?: string[],
+  options: BridgeOptions,
 ): Promise<string[] | null> {
   const client = new Client({ name: "producer-pal-portal", version: "1.0.0" });
 
   try {
     const transport = new StreamableHTTPClientTransport(
       new URL(mcpUrl),
-      disabledTools?.length
-        ? {
-            requestInit: {
-              headers: { [DISABLED_TOOLS_HEADER]: disabledTools.join(",") },
-            },
-          }
-        : undefined,
+      requestHeaderTransportOptions(options),
     );
 
     await client.connect(transport);

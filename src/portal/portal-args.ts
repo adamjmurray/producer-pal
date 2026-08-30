@@ -11,7 +11,7 @@ import {
   toToolName,
 } from "#src/shared/tool-groups.ts";
 import { logger } from "./file-logger.ts";
-import { type BridgeOptions } from "./stdio-http-bridge.ts";
+import { type BridgeOptions } from "./portal-settings.ts";
 
 type Env = Record<string, string | undefined>;
 
@@ -67,10 +67,11 @@ export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
       : parseBoolEnv(envValue("SMALL_MODEL_MODE"));
 
   // Direct Live API opt-in: `-l` / `--live-api` flag (ungated) or LIVE_API env
-  // (gated). Enables the low-level `ppal-live-api` tool at the device level
-  // (global — MCP clients, REST API, and the chat UI all see it). Advanced escape
-  // hatch for custom integrations, scripting, and debugging directly against the
-  // Live Object Model; not recommended as a default.
+  // (gated). Enables the low-level `ppal-live-api` tool for THIS client only —
+  // it rides as a request header, so an agent under evaluation on the same
+  // device still doesn't see it. Advanced escape hatch for custom integrations,
+  // scripting, and debugging directly against the Live Object Model; not
+  // recommended as a default.
   const liveApiEnabled =
     flags.has("-l") || flags.has("--live-api")
       ? true

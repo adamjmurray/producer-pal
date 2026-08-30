@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import {
   callToolRequestContext,
   connectSkillsBlock,

@@ -3,18 +3,22 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// The REST endpoints honoring the notation and small-model-mode headers, the two
-// POST /mcp had to itself for a release. The toolset header's REST coverage lives
-// in create-express-app-tool-gating.test.ts alongside its /mcp half.
+// The REST endpoints honoring the notation, small-model-mode, and Direct Live
+// API headers. The toolset header's REST coverage lives in
+// create-express-app-tool-gating.test.ts alongside its /mcp half.
 //
 // The point of each test is the same: the header moves this request only. A REST
 // caller that wants stark must not drag the chat UI along, which is exactly what
 // the POST /config it used to need would have done.
 
 import { describe, expect, it } from "vitest";
-import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
+import {
+  LIVE_API_HEADER,
+  SMALL_MODEL_MODE_HEADER,
+} from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
+import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
 import { SKILLS_HEADER } from "./mcp-header-test-helpers.ts";
 
@@ -240,6 +244,47 @@ describe("REST API per-request small-model-mode header", () => {
       expect(basic.startsWith(SKILLS_HEADER)).toBe(true);
       expect(standard.startsWith(SKILLS_HEADER)).toBe(true);
       expect(basic).not.toBe(standard);
+    });
+  });
+
+  describe("Direct Live API header", () => {
+    it("serves ppal-live-api to the request that asks, and only that one", async () => {
+      const asked = await catalog({ [LIVE_API_HEADER]: "true" });
+      const other = await catalog({});
+
+      expect(asked.has(LIVE_API_TOOL_ID)).toBe(true);
+      expect(other.has(LIVE_API_TOOL_ID)).toBe(false);
+    });
+
+    it("404s the tool call for a request that did not ask", async () => {
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/${LIVE_API_TOOL_ID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: "live_set" }),
+        },
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it("lets the tool call past the gate for a request that did", async () => {
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/${LIVE_API_TOOL_ID}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            [LIVE_API_HEADER]: "true",
+          },
+          body: JSON.stringify({ path: "live_set" }),
+        },
+      );
+
+      // Past the gate is the claim; whatever the tool then makes of these args
+      // is its own business.
+      expect(response.status).not.toBe(404);
     });
   });
 });

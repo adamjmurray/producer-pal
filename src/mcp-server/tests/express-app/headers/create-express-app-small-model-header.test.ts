@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { SMALL_MODEL_MODE_HEADER } from "#src/shared/config.ts";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
   connectWithHeaders,

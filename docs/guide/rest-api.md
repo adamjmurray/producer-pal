@@ -175,16 +175,17 @@ POST /api/tools/{name}?format=json&timeoutMs=10000
 
 ### Per-request settings {#per-request-settings}
 
-Three headers let one client run its own profile. They work on both REST
-endpoints and on the MCP endpoint, so a script, an agent, and the
+These headers let one client run its own profile, so a script, an agent, and the
 [Chat UI](/guide/chat-ui) can each use a different notation at the same time
 without a `POST /config` changing everyone else's:
 
-| Header                            | Value                           | Overrides                                      |
-| --------------------------------- | ------------------------------- | ---------------------------------------------- |
-| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)               |
-| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode) |
-| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)        |
+| Header                            | Value                           | Overrides                                                 | Endpoints |
+| --------------------------------- | ------------------------------- | --------------------------------------------------------- | --------- |
+| `x-producer-pal-disabled-tools`   | comma-separated tool names      | [the toolset](/features#toolset)                          | REST, MCP |
+| `x-producer-pal-small-model-mode` | `true` / `false`                | [small model mode](/features#small-model-mode)            | REST, MCP |
+| `x-producer-pal-notation`         | `barbeat`, `midi-json`, `stark` | [the notation](/features/midi-notation)                   | REST, MCP |
+| `x-producer-pal-live-api`         | `true` / `false`                | [the Direct Live API tool](/features/tools#ppal-live-api) | REST, MCP |
+| `x-producer-pal-format`           | `compact`, `json`               | the response format                                       | MCP only  |
 
 Absent or unrecognized values fall back to the device's global setting, so
 clients that send nothing are unaffected. Nothing is remembered between requests
@@ -240,12 +241,30 @@ is reserved here, unlike the `npx producer-pal` flags.
 aimed at local and lightweight models; see
 [Small Model Mode](/features#small-model-mode).
 
-::: tip Output format and timeout are REST-only
+#### Direct Live API {#per-request-live-api}
 
-`?format=` and `?timeoutMs=` above have no MCP equivalent, on purpose. Query
-params aren't something MCP clients send, `/mcp` is built to return the one
-MCP-shaped response, and the timeout exists for slow machines, a fact about the
-device, not about one call. Set it on the device's **Setup** tab.
+`x-producer-pal-live-api: true` adds
+[`ppal-live-api`](/features/tools#ppal-live-api) to one request, even when the
+device's **Setup** tab toggle is off, and `false` withholds it when the toggle
+is on. It is a grant for that request only: another client on the same device
+sees the toolset it asked for, which is what you want when one agent needs raw
+Live Object Model access and another is being evaluated against the curated
+tools.
+
+`x-producer-pal-disabled-tools` still wins. A request that enables the tool here
+and names it there does not get it.
+
+#### Output format {#per-request-format}
+
+`x-producer-pal-format` is the MCP endpoint's equivalent of `?format=`, since
+query params aren't something MCP clients send. REST callers use the query
+param; it is already per-request there.
+
+::: tip The timeout is REST-only
+
+`?timeoutMs=` above has no MCP equivalent, on purpose: it exists for slow
+machines, a fact about the device, not about one call. Set it on the device's
+**Setup** tab.
 
 :::
 

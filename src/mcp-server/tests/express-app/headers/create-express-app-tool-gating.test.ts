@@ -8,7 +8,7 @@ import {
   BRIEFING_REQUEST_HEADER,
   DISABLED_TOOLS_HEADER,
 } from "#src/shared/config.ts";
-import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import {
   connectSkillsBlock,
   listToolNames,

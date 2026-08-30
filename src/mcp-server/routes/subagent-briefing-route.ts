@@ -42,6 +42,7 @@ export interface SubagentBriefingConfig {
   tools: string[];
   notation: Notation;
   smallModelMode: boolean;
+  liveApiEnabled: boolean;
   /** This Live Set's context blob, held by the Max device (config, not fs). */
   projectContext: string;
 }
@@ -49,7 +50,7 @@ export interface SubagentBriefingConfig {
 /**
  * Register the GET /subagent-briefing endpoint on the Express app.
  *
- * The caller's profile arrives on the SAME three per-request headers its MCP
+ * The caller's profile arrives on the SAME per-request headers its MCP
  * requests carry — notation, small-model mode, and the withheld tools — so the
  * briefing is assembled for exactly the toolset and notation the worker will run
  * under, with no second vocabulary to keep in sync. Absent headers fall back to

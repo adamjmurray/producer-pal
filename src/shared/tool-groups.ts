@@ -16,6 +16,29 @@
 /** The Direct Live API tool's id, in the toolset map and the MCP catalog. */
 export const LIVE_API_TOOL_ID = "ppal-live-api";
 
+/**
+ * Add or remove {@link LIVE_API_TOOL_ID} in a toolset so the list stays
+ * symmetric with the Direct Live API flag. Used both for the device global and
+ * for one request's per-request opt-in — leaving the name in the list while the
+ * flag is off would silently drop it at the next validation.
+ *
+ * @param tools - The toolset to adjust
+ * @param enabled - Whether the Direct Live API tool is on
+ * @returns The toolset with the tool present or absent to match
+ */
+export function withLiveApiTool(
+  tools: readonly string[],
+  enabled: boolean,
+): string[] {
+  const has = tools.includes(LIVE_API_TOOL_ID);
+
+  if (enabled === has) return [...tools];
+
+  return enabled
+    ? [...tools, LIVE_API_TOOL_ID]
+    : tools.filter((name) => name !== LIVE_API_TOOL_ID);
+}
+
 /** The entry-point tool. Withholding it costs a client the whole Skills blob. */
 export const CONNECT_TOOL_ID = "ppal-connect";
 

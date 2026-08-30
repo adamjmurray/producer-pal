@@ -40,28 +40,23 @@ fetching, which is how the bridge ends up older than the device. See
 
 ## Flags
 
-| Flag                     | Alias | Value                           | Effect                                                               |
-| ------------------------ | ----- | ------------------------------- | -------------------------------------------------------------------- |
-| `--tools <list>`         |       | tool/group names                | Keep only these tools in this client                                 |
-| `--disable-tools <list>` |       | tool/group names                | Drop these tools from this client                                    |
-| `--list-tools`           |       |                                 | Print the groups and available tools, then exit                      |
-| `--notation <name>`      | `-n`  | `barbeat`, `midi-json`, `stark` | Set the [MIDI notation](/features/midi-notation) (default `barbeat`) |
-| `--format <name>`        | `-f`  | `compact`, `json`               | Set the tool response format (default `compact`)                     |
-| `--small-model-mode`     | `-s`  |                                 | Turn on [small model mode](/features#small-model-mode)               |
-| `--live-api`             | `-l`  |                                 | Turn on the [Direct Live API](/features/tools#ppal-live-api) tool    |
+| Flag                     | Alias | Value                           | Effect                                                                            |
+| ------------------------ | ----- | ------------------------------- | --------------------------------------------------------------------------------- |
+| `--tools <list>`         |       | tool/group names                | Keep only these tools in this client                                              |
+| `--disable-tools <list>` |       | tool/group names                | Drop these tools from this client                                                 |
+| `--list-tools`           |       |                                 | Print the groups and available tools, then exit                                   |
+| `--notation <name>`      | `-n`  | `barbeat`, `midi-json`, `stark` | Set the [MIDI notation](/features/midi-notation) (default `barbeat`)              |
+| `--format <name>`        | `-f`  | `compact`, `json`               | Set the tool response format (default `compact`)                                  |
+| `--small-model-mode`     | `-s`  |                                 | Turn on [small model mode](/features#small-model-mode)                            |
+| `--live-api`             | `-l`  |                                 | Turn on the [Direct Live API](/features/tools#ppal-live-api) tool for this client |
 
 Values take either form: `--notation stark` or `--notation=stark`.
 
-::: warning Four of these are global device settings
+::: tip Every flag applies to this client only
 
-`--notation`, `--format`, `--small-model-mode`, and `--live-api` are pushed to
-the device on connect, exactly as if you had set them on its
-[Setup tab](/guide/device), so they also change the [Chat UI](/guide/chat-ui)
-and every other connected client. The bridge re-asserts them, so a device
-restart doesn't lose them. The two boolean flags only ever turn a setting _on_;
-neither can switch off something you enabled on the device.
-
-The toolset flags are the exception. See [Choosing tools](#toolset) below.
+The bridge sends its settings with each request, so nothing here changes the
+device's [Setup tab](/guide/device), the [Chat UI](/guide/chat-ui), or any other
+connected client. A flag you don't pass falls back to the device's own setting.
 
 :::
 

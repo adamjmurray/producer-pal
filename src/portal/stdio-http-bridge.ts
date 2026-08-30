@@ -12,16 +12,15 @@ import {
   ErrorCode,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CLIENT_TOOL_TIMEOUT_MS,
-  DISABLED_TOOLS_HEADER,
-  VERSION,
-} from "#src/shared/config.ts";
+import { CLIENT_TOOL_TIMEOUT_MS, VERSION } from "#src/shared/config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
-import { type Notation } from "#src/shared/notation.ts";
 import { buildFallbackTools, type FallbackTool } from "./fallback-tools.ts";
 import { logger } from "./file-logger.ts";
+import {
+  type BridgeOptions,
+  requestHeaderTransportOptions,
+} from "./portal-settings.ts";
 
 const SETUP_URL = "https://producer-pal.org/installation";
 
@@ -31,21 +30,6 @@ const SETUP_URL = "https://producer-pal.org/installation";
 // local `as number` does not survive --fix (no-unnecessary-type-assertion
 // deletes it), so the widening lives here instead.
 const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
-
-export interface BridgeOptions {
-  smallModelMode?: boolean;
-  notation?: Notation;
-  jsonOutput?: boolean;
-  liveApiEnabled?: boolean;
-  /**
-   * Tools to withhold from THIS client. Unlike every other option here it is
-   * sent as a per-request header, never pushed via POST /config: `config.tools`
-   * is a global device setting, so pushing it would strip the tools from the chat
-   * UI and any other connected client, and nothing would restore them when this
-   * process exits.
-   */
-  disabledTools?: string[];
-}
 
 interface CallToolRequest {
   params: {
@@ -69,19 +53,11 @@ export class StdioHttpBridge {
   // Whether the client may be holding a cached offline fallback list. Set when
   // we serve the fallback, cleared once we've told the client to re-list.
   private servedFallbackTools = false;
-  private smallModelMode?: boolean;
-  private notation?: Notation;
-  private jsonOutput?: boolean;
-  private liveApiEnabled?: boolean;
-  private disabledTools?: string[];
+  private options: BridgeOptions;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
-    this.smallModelMode = options.smallModelMode;
-    this.notation = options.notation;
-    this.jsonOutput = options.jsonOutput;
-    this.liveApiEnabled = options.liveApiEnabled;
-    this.disabledTools = options.disabledTools;
+    this.options = options;
     this.fallbackTools = buildFallbackTools(options);
   }
 
@@ -104,17 +80,11 @@ Tell the user to check ${SETUP_URL} for configuration help.
   }
 
   private async _ensureHttpConnection(): Promise<void> {
-    // If we have a client and think we're connected, reuse it — but still
-    // re-assert the config overrides first. The transport is stateless HTTP, so
-    // we never observe the device's server restarting (e.g. a fresh device
-    // dragged in with default settings, or a connector toggle). Re-pushing on
-    // every request keeps the server's config in sync; it no-ops when no
-    // overrides are set, so non-override users pay nothing.
-    if (this.httpClient && this.isConnected) {
-      await this._pushConfigOverrides();
-
-      return;
-    }
+    // Reuse a live client as-is. The settings ride on every request as headers,
+    // so there is no device-side state to re-assert here — a device that
+    // restarts under us (a fresh one dragged in with default settings, a
+    // connector toggle) still sees this client's settings on its next call.
+    if (this.httpClient && this.isConnected) return;
 
     // If a connection is already in flight, wait for it instead of starting
     // a second one. Prevents duplicate Client instantiations when concurrent
@@ -148,20 +118,13 @@ Tell the user to check ${SETUP_URL} for configuration help.
     const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
 
     try {
-      // The withheld toolset rides on every request as a header, so it narrows
-      // this client's tools/list AND the skills fragments its ppal-connect blob
-      // carries, without touching the device's global config.
+      // Every setting rides on every request as a header, so they narrow (or
+      // widen) this client's tools/list, its tool schemas, and the skills
+      // fragments its ppal-connect blob carries, without touching the device's
+      // global config.
       const httpTransport = new StreamableHTTPClientTransport(
         url,
-        this.disabledTools?.length
-          ? {
-              requestInit: {
-                headers: {
-                  [DISABLED_TOOLS_HEADER]: this.disabledTools.join(","),
-                },
-              },
-            }
-          : undefined,
+        requestHeaderTransportOptions(this.options),
       );
 
       this.httpClient = new Client({
@@ -173,7 +136,6 @@ Tell the user to check ${SETUP_URL} for configuration help.
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
 
-      await this._pushConfigOverrides();
       this._notifyToolListChanged();
     } catch (error) {
       logger.error(`HTTP connection failed: ${errorMessage(error)}`);
@@ -235,57 +197,6 @@ Tell the user to check ${SETUP_URL} for configuration help.
         );
       }
     })();
-  }
-
-  /**
-   * Push the CLI/env config overrides (small-model mode, notation, response
-   * format, Direct Live API) to the device via POST /config. Only the
-   * explicitly-requested settings are sent, so an unset option leaves the
-   * device's own setting alone, and it no-ops (no request) when nothing was
-   * requested. Runs before every tools/list and tools/call (via
-   * `_ensureHttpConnection`), not just on connect: the server is stateless and
-   * global config can reset out from under us (a fresh device with default
-   * settings), so we re-assert the overrides each request. This also guarantees
-   * the tool list/descriptions reflect the override (e.g. enabling Direct Live
-   * API makes `ppal-live-api` appear). The settings are global to the device.
-   *
-   * `disabledTools` deliberately does NOT come through here — it is the one
-   * per-client setting, and it travels as a request header instead.
-   */
-  private async _pushConfigOverrides(): Promise<void> {
-    const overrides: {
-      smallModelMode?: boolean;
-      notation?: Notation;
-      jsonOutput?: boolean;
-      liveApiEnabled?: boolean;
-    } = {};
-
-    // Each override is tri-state: push the value only when set (true OR false),
-    // so an unset option leaves the device's own setting alone but an explicit
-    // false can turn a setting off.
-    if (this.smallModelMode != null)
-      overrides.smallModelMode = this.smallModelMode;
-    if (this.notation) overrides.notation = this.notation;
-    if (this.jsonOutput != null) overrides.jsonOutput = this.jsonOutput;
-    if (this.liveApiEnabled != null)
-      overrides.liveApiEnabled = this.liveApiEnabled;
-
-    if (Object.keys(overrides).length === 0) return;
-
-    const configUrl = this.httpUrl.replace(/\/mcp$/, "/config");
-
-    try {
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(overrides),
-      });
-      logger.info(
-        `Pushed config overrides to server: ${JSON.stringify(overrides)}`,
-      );
-    } catch (error) {
-      logger.error(`Failed to push config overrides: ${errorMessage(error)}`);
-    }
   }
 
   async start(): Promise<void> {

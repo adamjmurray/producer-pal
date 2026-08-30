@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { withNotationOverride } from "#src/mcp-server/helpers/request-overrides/notation-override.ts";
+import { withDefaultOverrides } from "#src/mcp-server/helpers/request-overrides/default-overrides.ts";
 import { type Notation } from "#src/shared/notation.ts";
 
-describe("withNotationOverride", () => {
+describe("withDefaultOverrides", () => {
   it("carries the current notation on every call", async () => {
     const inner = vi.fn().mockResolvedValue({ content: [] });
-    const wrapped = withNotationOverride(inner, () => "stark");
+    const wrapped = withDefaultOverrides(inner, () => ({ notation: "stark" }));
 
     await wrapped("ppal-read-clip", { clipId: "1" });
 
@@ -26,7 +26,7 @@ describe("withNotationOverride", () => {
     // wrapper over the live global — neither may be pinned at build time.
     const inner = vi.fn().mockResolvedValue({ content: [] });
     let notation: Notation = "barbeat";
-    const wrapped = withNotationOverride(inner, () => notation);
+    const wrapped = withDefaultOverrides(inner, () => ({ notation }));
 
     await wrapped("ppal-read-clip", {});
     notation = "midi-json";
@@ -39,7 +39,7 @@ describe("withNotationOverride", () => {
   it("preserves the caller's other overrides", async () => {
     // REST's ?format= / ?timeoutMs= params ride the same blob.
     const inner = vi.fn().mockResolvedValue({ content: [] });
-    const wrapped = withNotationOverride(inner, () => "stark");
+    const wrapped = withDefaultOverrides(inner, () => ({ notation: "stark" }));
 
     await wrapped("ppal-read-clip", {}, { compactOutput: false, timeoutMs: 5 });
 
@@ -52,7 +52,7 @@ describe("withNotationOverride", () => {
 
   it("lets an explicit caller notation win", async () => {
     const inner = vi.fn().mockResolvedValue({ content: [] });
-    const wrapped = withNotationOverride(inner, () => "stark");
+    const wrapped = withDefaultOverrides(inner, () => ({ notation: "stark" }));
 
     await wrapped("ppal-read-clip", {}, { notation: "midi-json" });
 
@@ -63,11 +63,27 @@ describe("withNotationOverride", () => {
     );
   });
 
+  it("carries a compact-output default alongside notation", async () => {
+    // POST /mcp's x-producer-pal-format header lands here, not on a query param.
+    const inner = vi.fn().mockResolvedValue({ content: [] });
+    const wrapped = withDefaultOverrides(inner, () => ({
+      notation: "stark",
+      compactOutput: true,
+    }));
+
+    await wrapped("ppal-read-clip", {});
+
+    expect(inner.mock.calls[0]?.[2]).toStrictEqual({
+      notation: "stark",
+      compactOutput: true,
+    });
+  });
+
   it("returns the inner result untouched", async () => {
     const result = { content: [{ type: "text", text: "ok" }] };
-    const wrapped = withNotationOverride(
+    const wrapped = withDefaultOverrides(
       vi.fn().mockResolvedValue(result),
-      () => "barbeat",
+      () => ({ notation: "barbeat" }),
     );
 
     expect(await wrapped("ppal-read-clip", {})).toBe(result);
