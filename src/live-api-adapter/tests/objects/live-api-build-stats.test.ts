@@ -18,9 +18,11 @@ describe("live-api build stats", () => {
     LiveAPI.from(livePath.track(0));
     LiveAPI.from(livePath.track(1));
 
-    expect(stats.liveApiBuildStats()).toMatchObject({
+    expect(stats.liveApiBuildStats()).toStrictEqual({
       resolved: 3,
       distinct: 2,
+      constructed: 3,
+      byShape: [["live_set tracks *", 3]],
     });
   });
 
@@ -30,9 +32,11 @@ describe("live-api build stats", () => {
     LiveAPI.from(livePath.liveSet);
     LiveAPI.from(livePath.liveSet);
 
-    expect(stats.liveApiBuildStats()).toMatchObject({
+    expect(stats.liveApiBuildStats()).toStrictEqual({
       resolved: 2,
       constructed: 1,
+      distinct: 1,
+      byShape: [["live_set", 2]],
     });
   });
 

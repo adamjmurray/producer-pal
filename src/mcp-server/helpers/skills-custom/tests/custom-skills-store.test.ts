@@ -108,7 +108,8 @@ describe("rememberCustomSkill", () => {
     // A body edit with no `enabled` must not silently re-enable the skill.
     rememberCustomSkill({ name: "s", description: "d2", body: "second" });
 
-    expect(readCustomSkill("s")).toMatchObject({
+    expect(readCustomSkill("s")).toStrictEqual({
+      name: "s",
       enabled: false,
       body: "second",
       description: "d2",

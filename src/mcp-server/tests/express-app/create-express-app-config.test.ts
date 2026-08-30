@@ -34,7 +34,9 @@ describe("MCP Express App - Config", () => {
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config).toMatchObject({
+      expect(config).toStrictEqual({
+        liveApiEnabled: true,
+        liveApiForcedOn: false,
         projectContext: expect.any(String),
         smallModelMode: expect.any(Boolean),
         notation: expect.any(String),
@@ -328,7 +330,16 @@ describe("MCP Express App - Config", () => {
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config).toMatchObject({ tools: expect.any(Array) });
+      expect(config).toStrictEqual({
+        jsonOutput: false,
+        liveApiEnabled: true,
+        liveApiForcedOn: false,
+        notation: "barbeat",
+        projectContext: "",
+        sampleFolder: "",
+        smallModelMode: false,
+        tools: expect.any(Array),
+      });
     });
 
     it("should reject POST /config from a cross-origin browser request", async () => {

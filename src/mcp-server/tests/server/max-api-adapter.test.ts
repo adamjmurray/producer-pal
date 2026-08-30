@@ -7,12 +7,17 @@ import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
   type RequestOverrides,
   setTimeoutForTesting,
 } from "../../max-api-adapter.ts";
+
+// The adapter puts this in every contextJSON. Asked for rather than spelled
+// out: it sits under the OS temp dir, which differs per machine.
+const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
 vi.mock(import("../../code-exec-protocol.ts"), () => ({
@@ -231,7 +236,11 @@ describe("Max API Adapter", () => {
     it("should merge compactOutput override into contextJSON", async () => {
       const context = captureContextJSON({ compactOutput: false });
 
-      expect(context).toMatchObject({ compactOutput: false });
+      expect(context).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 2,
+        compactOutput: false,
+      });
       expect(context).toHaveProperty("silenceWavPath");
       expect(context).toHaveProperty("timeoutMs");
     });
@@ -239,7 +248,10 @@ describe("Max API Adapter", () => {
     it("should override timeoutMs in contextJSON when provided", async () => {
       const context = captureContextJSON({ timeoutMs: 1234 });
 
-      expect(context).toMatchObject({ timeoutMs: 1234 });
+      expect(context).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 1234,
+      });
     });
 
     it("should use timeoutMs override for the actual timeout deadline", async () => {
@@ -302,7 +314,8 @@ describe("Max API Adapter", () => {
         ),
         "warn",
       );
-      expect(captureContextJSON()).toMatchObject({
+      expect(captureContextJSON()).toStrictEqual({
+        silenceWavPath: SILENCE_WAV_PATH,
         timeoutMs: MAX_TIMEOUT_MS,
       });
     });

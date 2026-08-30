@@ -5,6 +5,7 @@
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_TIMEOUT_MS } from "#src/shared/config.ts";
+import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import {
   lastMcpContext,
   mcpRequests,
@@ -13,6 +14,9 @@ import {
 } from "#src/test/mocks/mock-max.ts";
 import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../express-app-test-helpers.ts";
+
+// Sits under the OS temp dir, which differs per machine, so ask for it.
+const SILENCE_WAV_PATH = ensureSilenceWav();
 
 // Parsed body of a REST tool-call response. Every field is optional because
 // which ones appear depends on the route outcome and the ?format mode.
@@ -300,7 +304,12 @@ describe("REST API Routes", () => {
       });
       const body = (await response.json()) as ToolCallBody;
 
-      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toMatchObject({
+      expect(JSON.parse(mcpRequests.at(-1)!.argsJSON)).toStrictEqual({
+        count: 1,
+        id: "1",
+        type: "clip",
+        withoutClips: false,
+        withoutDevices: false,
         toSlot: "2/0",
       });
       expect(body.warnings?.join("\n")).toContain(
@@ -382,7 +391,12 @@ describe("REST API Routes", () => {
       await callTool("ppal-connect");
 
       expect(lastMcpContext()).not.toBeNull();
-      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: false,
+      });
     });
 
     it("should parse the result as JSON when format is omitted (json default)", async () => {
@@ -408,7 +422,12 @@ describe("REST API Routes", () => {
       const response = await callToolWithFormat("ppal-connect", "json");
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ compactOutput: false });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: false,
+      });
     });
 
     it("should return parsed object as result when format=json", async () => {
@@ -553,7 +572,12 @@ describe("REST API Routes", () => {
       const response = await callToolWithFormat("ppal-connect", "compact");
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ compactOutput: true });
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 45000,
+        compactOutput: true,
+      });
     });
 
     it("should return 400 for invalid format value", async () => {
@@ -579,7 +603,12 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ timeoutMs: 5000 });
+      expect(lastMcpContext()).toStrictEqual({
+        compactOutput: false,
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: 5000,
+      });
     });
 
     it("should combine ?format and ?timeoutMs in the same call", async () => {
@@ -593,7 +622,9 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({
+      expect(lastMcpContext()).toStrictEqual({
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
         compactOutput: false,
         timeoutMs: 2500,
       });
@@ -622,7 +653,12 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(lastMcpContext()).toMatchObject({ timeoutMs: MAX_TIMEOUT_MS });
+      expect(lastMcpContext()).toStrictEqual({
+        compactOutput: false,
+        notation: "barbeat",
+        silenceWavPath: SILENCE_WAV_PATH,
+        timeoutMs: MAX_TIMEOUT_MS,
+      });
     });
 
     it("should return 400 for timeoutMs one over the cap", async () => {
