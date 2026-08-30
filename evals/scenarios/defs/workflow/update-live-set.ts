@@ -10,6 +10,18 @@
 import { type EvalScenario } from "../../types.ts";
 import { assertAddressedById } from "../path/path-scenario-helpers.ts";
 
+/**
+ * Track names from a read-live-set result.
+ *
+ * @param result - The parsed read-live-set result
+ * @returns The names, in track order
+ */
+function trackNames(result: unknown): string[] {
+  const tracks = (result as { tracks?: Array<{ name?: string }> }).tracks ?? [];
+
+  return tracks.map((track) => track.name ?? "");
+}
+
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
   description: "Update Live Set global properties and delete a track",
@@ -22,7 +34,9 @@ export const updateLiveSet: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Set the tempo to 128 BPM and the time signature to 6/8",
-    "Delete the last track",
+    // Not "the last track": that one hosts Producer Pal in every eval Live Set,
+    // and deleting it is refused. Name a track the model can actually remove.
+    "Delete the Lead track",
   ],
 
   assertions: [
@@ -54,6 +68,16 @@ export const updateLiveSet: EvalScenario = {
     // Turn 2: Delete track
     { type: "tool_called", tool: "ppal-delete", turn: 2 },
 
+    // The outcome, not the prose: the track is really gone.
+    {
+      type: "state",
+      tool: "ppal-read-live-set",
+      args: { include: ["tracks"] },
+      expect: (result) => !trackNames(result).includes("Lead"),
+      explain: (result) =>
+        `expected the Lead track to be gone, tracks are: ${trackNames(result).join(", ")}`,
+    },
+
     // The only place delete's target arg is graded. 2.2.0 renamed it to `id`.
     assertAddressedById({ turn: 2, tool: "ppal-delete" }),
     { type: "response_contains", pattern: /delet/i, turn: 2 },
@@ -69,7 +93,7 @@ export const updateLiveSet: EvalScenario = {
       prompt: `Evaluate if the assistant:
 1. Set the tempo to 128 BPM
 2. Set the time signature to 6/8
-3. Deleted the last track
+3. Deleted the Lead track
 4. Confirmed each step was completed`,
     },
   ],
