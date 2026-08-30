@@ -263,7 +263,8 @@ describe("runSubagentWithRetry", () => {
 
     const backoff = statuses.find((s) => s != null);
 
-    expect(backoff).toMatchObject({
+    expect(backoff).toStrictEqual({
+      retryAtMs: expect.any(Number),
       attempt: 0,
       maxAttempts: MAX_RETRY_ATTEMPTS,
     });

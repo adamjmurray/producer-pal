@@ -229,7 +229,11 @@ describe("useMemoryCollection", () => {
       saved = await result.current.saveEntry("prefers-c-minor", SAMPLE_INPUT);
     });
 
-    expect(saved).toMatchObject({ name: "prefers-c-minor" });
+    expect(saved).toStrictEqual({
+      body: "Composes in C minor.",
+      description: "default key & genre",
+      name: "prefers-c-minor",
+    });
     expect(readyEntries(result)).toHaveLength(1);
     expect(fetchMock).toHaveBeenLastCalledWith(
       ENTRY_URL,
@@ -323,7 +327,14 @@ describe("useMemoryCollection", () => {
       );
     });
 
-    expect(renamed).toMatchObject({ entry: { name: "renamed" }, error: null });
+    expect(renamed).toStrictEqual({
+      entry: {
+        name: "renamed",
+        description: "default key & genre",
+        body: "Composes in C minor.",
+      },
+      error: null,
+    });
     expect(readyEntries(result).map((e) => e.name)).toStrictEqual(["renamed"]);
     expect(fetchMock).toHaveBeenLastCalledWith(
       `${ENTRY_URL}/rename`,

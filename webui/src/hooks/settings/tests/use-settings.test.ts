@@ -41,18 +41,24 @@ describe("useSettings", () => {
 
     expect(stored.apiKey).not.toBe(expectedApiKey);
     expect(await decryptApiKey(stored.apiKey)).toBe(expectedApiKey);
-    expect(stored).toMatchObject(rest);
+    expect(stored).toStrictEqual({
+      thinking: "Default",
+      ...rest,
+      apiKey: expect.stringMatching(/^enc:v1:/),
+    });
   }
 
   it("loads default values when localStorage is empty", () => {
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current).toMatchObject({
-      apiKey: "",
-      model: "gemini-3.7-flash",
-      thinking: "Default",
-      hasApiKey: false,
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        apiKey: "",
+        model: "gemini-3.7-flash",
+        thinking: "Default",
+        hasApiKey: false,
+      }),
+    );
   });
 
   it("migrates Gemini settings from old localStorage format", async () => {
@@ -65,10 +71,12 @@ describe("useSettings", () => {
     // Non-apiKey fields are available synchronously; the apiKey (here a legacy
     // cleartext passthrough) and the derived hasApiKey settle after the
     // post-mount decrypt effect.
-    expect(result.current).toMatchObject({
-      model: "gemini-2.5-pro",
-      thinking: "High",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        model: "gemini-2.5-pro",
+        thinking: "High",
+      }),
+    );
     await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
     expect(result.current.hasApiKey).toBe(true);
   });
@@ -85,10 +93,12 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current).toMatchObject({
-      model: "gemini-3.7-flash",
-      thinking: "Max",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        model: "gemini-3.7-flash",
+        thinking: "Max",
+      }),
+    );
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
     expect(result.current.hasApiKey).toBe(true);
   });
@@ -474,21 +484,25 @@ describe("useSettings", () => {
       result.current.setThinking("Max");
     });
 
-    expect(result.current).toMatchObject({
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        model: "gemini-2.5-pro",
+        thinking: "Max",
+      }),
+    );
 
     // Switch to OpenAI - should use defaults
     await act(() => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current).toMatchObject({
-      apiKey: "",
-      model: "gpt-5.6-terra",
-      thinking: "Default",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        apiKey: "",
+        model: "gpt-5.6-terra",
+        thinking: "Default",
+      }),
+    );
 
     // Configure OpenAI with different settings
     await act(() => {
@@ -502,22 +516,26 @@ describe("useSettings", () => {
       result.current.setProvider("gemini");
     });
 
-    expect(result.current).toMatchObject({
-      apiKey: "gemini-key",
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        apiKey: "gemini-key",
+        model: "gemini-2.5-pro",
+        thinking: "Max",
+      }),
+    );
 
     // Switch back to OpenAI - should restore OpenAI settings
     await act(() => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current).toMatchObject({
-      apiKey: "openai-key",
-      model: "gpt-5.4-mini",
-      thinking: "Off",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        apiKey: "openai-key",
+        model: "gpt-5.4-mini",
+        thinking: "Off",
+      }),
+    );
   });
 
   it("saves and loads all provider settings separately", async () => {
@@ -592,19 +610,23 @@ describe("useSettings", () => {
     // Reload (fresh hook) and verify the last selected provider is loaded.
     const { result: result2 } = renderHook(() => useSettings());
 
-    expect(result2.current).toMatchObject({
-      provider: last.provider,
-      model: last.model,
-    });
+    expect(result2.current).toStrictEqual(
+      expect.objectContaining({
+        provider: last.provider,
+        model: last.model,
+      }),
+    );
     await waitFor(() => expect(result2.current.apiKey).toBe(last.apiKey));
 
     // Switch through the remaining providers and verify each loads correctly.
     for (const s of setups.slice(0, -1)) {
       await act(() => result2.current.setProvider(s.provider));
-      expect(result2.current).toMatchObject({
-        model: s.model,
-        ...(s.thinking != null ? { thinking: s.thinking } : {}),
-      });
+      expect(result2.current).toStrictEqual(
+        expect.objectContaining({
+          model: s.model,
+          ...(s.thinking != null ? { thinking: s.thinking } : {}),
+        }),
+      );
       await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
     }
   });
@@ -677,18 +699,22 @@ describe("useSettings", () => {
       result.current.setThinking("Off");
     });
 
-    expect(result.current).toMatchObject({
-      thinking: "Off",
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        thinking: "Off",
+      }),
+    );
 
     // Reset to defaults
     await act(() => {
       result.current.resetBehaviorToDefaults();
     });
 
-    expect(result.current).toMatchObject({
-      thinking: "Default", // Default for gemini
-    });
+    expect(result.current).toStrictEqual(
+      expect.objectContaining({
+        thinking: "Default", // Default for gemini
+      }),
+    );
   });
 
   it("setEnabledTools records a disabled tool", async () => {

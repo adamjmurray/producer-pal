@@ -182,7 +182,9 @@ describe("createRealtimeMcpTools", () => {
     });
     const { tools } = await createRealtimeMcpTools(MCP_URL);
 
-    expect(tools[0]).toMatchObject({ name: "ppal_no_desc", description: "" });
+    expect(tools[0]).toStrictEqual(
+      expect.objectContaining({ name: "ppal_no_desc", description: "" }),
+    );
   });
 
   it("normalizes a missing inputSchema to an empty object schema", async () => {

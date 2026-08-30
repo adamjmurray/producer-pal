@@ -143,9 +143,11 @@ describe("useConversations", () => {
         result.current.activeConversationId!,
       );
 
-      expect(record).toMatchObject({
-        thinking: "enabled",
-      });
+      expect(record).toStrictEqual(
+        expect.objectContaining({
+          thinking: "enabled",
+        }),
+      );
 
       // Change props, wait for effect to sync refs, then save and verify
       props.activeMeta.activeThinking = "disabled";
@@ -158,9 +160,11 @@ describe("useConversations", () => {
         result.current.activeConversationId!,
       );
 
-      expect(updated).toMatchObject({
-        thinking: "disabled",
-      });
+      expect(updated).toStrictEqual(
+        expect.objectContaining({
+          thinking: "disabled",
+        }),
+      );
     });
   });
 
@@ -189,10 +193,12 @@ describe("useConversations", () => {
         await saving;
       });
 
-      expect(await loadConversation(id)).toMatchObject({
-        model: "claude-opus-5",
-        provider: "anthropic",
-      });
+      expect(await loadConversation(id)).toStrictEqual(
+        expect.objectContaining({
+          model: "claude-opus-5",
+          provider: "anthropic",
+        }),
+      );
     });
   });
 

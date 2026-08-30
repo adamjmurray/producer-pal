@@ -8,6 +8,7 @@
  */
 import { act, renderHook } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
+import { UUID } from "#webui/test-utils/matcher-test-helpers";
 import { loadPresets } from "#webui/hooks/settings/presets/preset-storage";
 import {
   type CreatePresetResult,
@@ -67,7 +68,8 @@ describe("usePresets", () => {
 
     expect(created?.ok).toBe(true);
     expect(result.current.presets).toHaveLength(1);
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
       name: "My Preset",
       ...fields,
     });
@@ -119,7 +121,13 @@ describe("usePresets", () => {
       );
     });
 
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
+      model: "claude",
+      name: "Worker",
+      provider: "anthropic",
+      smallModelMode: false,
+      thinking: "Default",
       description: "cheap bulk editor",
       enabledTools: { "ppal-delete": false },
     });
@@ -148,7 +156,9 @@ describe("usePresets", () => {
       result.current.updatePresetDescription(id, "  new note  ");
     });
 
-    expect(result.current.presets[0]).toMatchObject({
+    expect(result.current.presets[0]).toStrictEqual({
+      id: UUID,
+      name: "P",
       ...fields,
       description: "new note",
     });

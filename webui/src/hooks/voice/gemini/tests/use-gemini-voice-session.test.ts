@@ -8,6 +8,7 @@
  */
 import { act, renderHook, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GEM_ITEM_ID } from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 
 // --- hoisted doubles (vi.mock factories can only see vi.hoisted values) ---
 const h = vi.hoisted(() => {
@@ -399,9 +400,12 @@ describe("useGeminiVoiceSession", () => {
 
     await emit(transcriptMsg("hello there"));
 
-    expect(result.current.history[0]).toMatchObject({
+    expect(result.current.history[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      status: "completed",
       role: "user",
-      content: [{ transcript: "hello there" }],
+      content: [{ type: "input_audio", transcript: "hello there" }],
     });
   });
 
@@ -537,8 +541,12 @@ describe("useGeminiVoiceSession", () => {
 
     await emit(transcriptMsg("world"));
     expect(result.current.history).toHaveLength(1);
-    expect(result.current.history[0]).toMatchObject({
-      content: [{ transcript: "world" }],
+    expect(result.current.history[0]).toStrictEqual({
+      itemId: GEM_ITEM_ID,
+      type: "message",
+      status: "completed",
+      role: "user",
+      content: [{ type: "input_audio", transcript: "world" }],
     });
   });
 

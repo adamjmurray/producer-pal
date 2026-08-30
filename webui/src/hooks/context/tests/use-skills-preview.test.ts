@@ -150,7 +150,9 @@ describe("useSkillsPreview", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.preview).toMatchObject({
+    expect(status.kind === "ready" && status.preview).toStrictEqual({
+      dropped: [],
+      warnings: [],
       notation: "stark",
       smallModelMode: true,
       head: "stark",
@@ -261,7 +263,11 @@ describe("useSkillsPreview", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.preview).toMatchObject({
+    expect(status.kind === "ready" && status.preview).toStrictEqual({
+      dropped: [],
+      notation: "barbeat",
+      smallModelMode: false,
+      warnings: [],
       head: "",
       driver: "",
       skills: "",

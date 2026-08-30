@@ -65,11 +65,15 @@ describe("processCliStream — tool-result matching", () => {
     );
 
     expect(result.toolCalls).toHaveLength(2);
-    expect(result.toolCalls[0]).toMatchObject({
+    expect(result.toolCalls[0]).toStrictEqual({
+      name: "ppal-create-clip",
+      toolCallId: "call_a",
       args: { slot: "0/0" },
       result: "result-for-A",
     });
-    expect(result.toolCalls[1]).toMatchObject({
+    expect(result.toolCalls[1]).toStrictEqual({
+      name: "ppal-create-clip",
+      toolCallId: "call_b",
       args: { slot: "1/0" },
       result: "result-for-B",
     });
@@ -111,11 +115,15 @@ describe("processCliStream — tool-result matching", () => {
       ]),
     );
 
-    expect(result.toolCalls[0]).toMatchObject({
+    expect(result.toolCalls[0]).toStrictEqual({
+      name: "ppal-create-clip",
+      toolCallId: "",
       args: { slot: "0/0" },
       result: "result-for-create",
     });
-    expect(result.toolCalls[1]).toMatchObject({
+    expect(result.toolCalls[1]).toStrictEqual({
+      name: "ppal-update-clip",
+      toolCallId: "",
       args: { ids: "1" },
       result: "result-for-update",
     });

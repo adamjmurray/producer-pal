@@ -38,7 +38,8 @@ describe("voice-language", () => {
 
   describe("getVoiceLanguage", () => {
     it("resolves a known code to its record", () => {
-      expect(getVoiceLanguage("es")).toMatchObject({
+      expect(getVoiceLanguage("es")).toStrictEqual({
+        label: "Spanish (Español)",
         code: "es",
         name: "Spanish",
       });

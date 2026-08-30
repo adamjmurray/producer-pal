@@ -177,7 +177,8 @@ describe("realtimeItemsToUIMessages", () => {
 
     const tool = result[1]?.parts[0];
 
-    expect(tool).toMatchObject({
+    expect(tool).toStrictEqual({
+      args: {},
       type: "tool",
       name: "ppal-do",
       result: null,

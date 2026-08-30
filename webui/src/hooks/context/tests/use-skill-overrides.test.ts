@@ -221,13 +221,30 @@ describe("useSkillOverrides", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+    expect(status.kind === "ready" && status.slots[0]).toStrictEqual({
+      builtIn: "BUILT-IN",
+      canDisable: true,
+      description: "Slot description.",
+      drifted: false,
+      enabled: true,
+      gate: null,
+      splitStale: null,
+      title: "Core (standard)",
       name: "barbeat-standard",
       override: "MINE\n",
       forkedFromVersion: "1.5.0",
     });
     // The other slot is left untouched by the merge.
-    expect(status.kind === "ready" && status.slots[1]).toMatchObject({
+    expect(status.kind === "ready" && status.slots[1]).toStrictEqual({
+      builtIn: "BUILT-IN",
+      canDisable: true,
+      description: "Slot description.",
+      drifted: false,
+      enabled: true,
+      forkedFromVersion: null,
+      gate: null,
+      splitStale: null,
+      title: "stark notation",
       name: "stark",
       override: "",
     });
@@ -253,7 +270,16 @@ describe("useSkillOverrides", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+    expect(status.kind === "ready" && status.slots[0]).toStrictEqual({
+      builtIn: "BUILT-IN",
+      canDisable: true,
+      description: "Slot description.",
+      drifted: false,
+      forkedFromVersion: null,
+      gate: null,
+      name: "barbeat-standard",
+      splitStale: null,
+      title: "Core (standard)",
       enabled: false,
       override: "MINE\n",
     });
@@ -275,7 +301,16 @@ describe("useSkillOverrides", () => {
 
     const status = result.current.status;
 
-    expect(status.kind === "ready" && status.slots[0]).toMatchObject({
+    expect(status.kind === "ready" && status.slots[0]).toStrictEqual({
+      builtIn: "BUILT-IN",
+      description: "Slot description.",
+      drifted: false,
+      forkedFromVersion: null,
+      gate: null,
+      name: "barbeat-standard",
+      override: "",
+      splitStale: null,
+      title: "Core (standard)",
       enabled: true,
       canDisable: true,
     });

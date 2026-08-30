@@ -9,6 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { useState } from "preact/hooks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UUID } from "#webui/test-utils/matcher-test-helpers";
 import {
   PresetControls,
   type PresetControlsProps,
@@ -175,7 +176,10 @@ describe("PresetControls", () => {
     const stored = loadPresets();
 
     expect(stored).toHaveLength(1);
-    expect(stored[0]).toMatchObject({
+    expect(stored[0]).toStrictEqual({
+      enabledTools: {},
+      id: UUID,
+      thinking: "Default",
       name: "My Preset",
       provider: "anthropic",
       model: "claude",
@@ -331,7 +335,12 @@ describe("PresetControls", () => {
     });
     fireEvent.click(screen.getByTestId("preset-create-confirm"));
 
-    expect(loadPresets()[0]).toMatchObject({
+    expect(loadPresets()[0]).toStrictEqual({
+      id: UUID,
+      model: "claude",
+      provider: "anthropic",
+      smallModelMode: false,
+      thinking: "Default",
       name: "Worker",
       description: "cheap bulk editor",
       enabledTools: { "ppal-delete": false },
@@ -354,7 +363,12 @@ describe("PresetControls", () => {
     // No blur: Esc can close the dialog straight from the focused field.
     fireEvent.input(editor, { target: { value: "updated note" } });
 
-    expect(loadPresets()[0]).toMatchObject({
+    expect(loadPresets()[0]).toStrictEqual({
+      id: "seed",
+      name: "Seeded",
+      provider: "ollama",
+      smallModelMode: true,
+      thinking: "Off",
       description: "updated note",
       model: "llama3",
     });

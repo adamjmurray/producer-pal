@@ -54,7 +54,10 @@ describe("useProjectContext", () => {
     const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
     });
 
     return result;
@@ -207,7 +210,7 @@ describe("useProjectContext", () => {
       await result.current.clear();
     });
 
-    expect(result.current.status).toMatchObject({ content: "" });
+    expect(result.current.status).toStrictEqual({ kind: "ready", content: "" });
     expect(fetchMock).toHaveBeenLastCalledWith(
       CONFIG_URL,
       expect.objectContaining({
@@ -226,7 +229,10 @@ describe("useProjectContext", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "new" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "new",
+      });
     });
   });
 
@@ -236,14 +242,20 @@ describe("useProjectContext", () => {
     const { result } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "v1" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "v1",
+      });
     });
 
     await act(async () => {
       await result.current.refresh();
     });
 
-    expect(result.current.status).toMatchObject({ content: "v2" });
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "v2",
+    });
   });
 
   it("keeps loaded content when a later refresh fails", async () => {
@@ -261,7 +273,7 @@ describe("useProjectContext", () => {
       await result.current.refresh();
     });
 
-    expect(result.current.status).toMatchObject({
+    expect(result.current.status).toStrictEqual({
       kind: "ready",
       content: "old",
     });
@@ -342,7 +354,10 @@ describe("useProjectContext", () => {
     const { result, unmount } = renderHook(() => useProjectContext());
 
     await waitFor(() => {
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
     });
 
     const lateGet = deferred<Response>();
@@ -360,7 +375,10 @@ describe("useProjectContext", () => {
     });
 
     // The last-rendered status stays "old"; the post-unmount GET was discarded.
-    expect(result.current.status).toMatchObject({ content: "old" });
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "old",
+    });
   });
 
   // While the editor is open AND the window is focused, poll so
@@ -383,13 +401,19 @@ describe("useProjectContext", () => {
       const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(POLL_MS);
       });
 
-      expect(result.current.status).toMatchObject({ content: "external" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "external",
+      });
     });
 
     it("does not poll while the window is unfocused", async () => {
@@ -399,7 +423,10 @@ describe("useProjectContext", () => {
       const { result } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       // The mount load (not focus-gated) already fired; nothing should fetch
       // again while blurred.
@@ -418,7 +445,10 @@ describe("useProjectContext", () => {
       const { result, unmount } = renderHook(() => useProjectContext());
 
       await flushInitialLoad();
-      expect(result.current.status).toMatchObject({ content: "old" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "old",
+      });
 
       unmount();
       fetchMock.mockClear();
