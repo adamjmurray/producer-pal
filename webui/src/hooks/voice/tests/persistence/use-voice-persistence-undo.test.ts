@@ -10,7 +10,7 @@
 
 import "fake-indexeddb/auto";
 import { act, renderHook } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type UndoDeleteReturn,
   useUndoDelete,
@@ -19,6 +19,7 @@ import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
 } from "#webui/hooks/voice/use-voice-persistence";
+import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation } from "#webui/lib/conversation-db";
 import {
   resetConversationsDb,
@@ -96,6 +97,31 @@ describe("useVoicePersistence undo", () => {
     await act(() => result.current.persistence.deleteAllConversations());
 
     expect(result.current.undoDelete.undoNotification).toBeNull();
+  });
+
+  // An undo record is the only copy left of a deleted conversation, so a wipe
+  // that never happened must not be what destroys it.
+  it("keeps a pending undo when the wipe itself fails", async () => {
+    const record = await saveVoiceRecord({ title: "Doomed" });
+    const result = renderWithUndo();
+
+    await waitForEffects();
+    await act(() => result.current.persistence.deleteConversation(record.id));
+
+    const wipe = vi
+      .spyOn(conversationDb, "deleteAllConversations")
+      .mockRejectedValue(new Error("quota"));
+
+    await act(async () => {
+      await expect(
+        result.current.persistence.deleteAllConversations(),
+      ).rejects.toThrow("quota");
+    });
+
+    expect(result.current.undoDelete.undoNotification?.message).toBe(
+      "Deleted “Doomed”",
+    );
+    wipe.mockRestore();
   });
 
   it("keeps a bookmarked record's undo through a delete-unbookmarked sweep", async () => {

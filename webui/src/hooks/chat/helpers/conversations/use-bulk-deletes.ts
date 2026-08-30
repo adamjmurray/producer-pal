@@ -62,8 +62,6 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
     ): Promise<void> => {
       let undoMark: (() => void) | null = null;
 
-      dropUndoable((record) => !survivesSweep(record));
-
       if (clearsLive()) {
         dropPendingFork();
         undoMark = store.markDeleted();
@@ -77,6 +75,11 @@ export function useBulkDeletes(params: BulkDeleteParams): BulkDeletes {
         undoMark?.();
         throw error;
       }
+
+      // Dropped only once the rows are really gone. An undo record is the only
+      // copy left of a conversation the user deleted, and dropping it is
+      // irreversible, so a sweep that threw must not take it down with it.
+      dropUndoable((record) => !survivesSweep(record));
 
       // Asked again, not reused: the user can switch conversations while the
       // sweep runs, and whether the view goes with it is a question about the
