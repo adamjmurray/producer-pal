@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -8,7 +9,7 @@
  * Uses: e2e-test-set (Producer Pal is on t11)
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp
+ * Run with: npm run e2e:mcp -- operations/ppal-delete
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -23,308 +24,266 @@ import {
 
 const ctx = setupMcpTestContext();
 
+// t8 has no clips (and "No Output" routing); t7 has proper routing for devices
+const EMPTY_MIDI_TRACK = 8;
+const DEVICE_TEST_TRACK = 7;
+
 describe("ppal-delete", () => {
-  it("deletes tracks, scenes, clips, devices, and drum pads", async () => {
-    // Test 1: Delete single track by ID
-    const createTrack = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { name: "Track to Delete" },
-    });
-    const track = parseToolResult<CreateTrackResult>(createTrack);
+  /**
+   * Delete one or more objects.
+   * @param args - ppal-delete arguments
+   * @returns The raw tool result
+   */
+  async function del(args: Record<string, unknown>): Promise<unknown> {
+    return ctx.client!.callTool({ name: "ppal-delete", arguments: args });
+  }
+
+  /**
+   * Assert an object is gone by reading it back.
+   * @param tool - Read tool to try
+   * @param args - Read arguments
+   */
+  async function expectGone(
+    tool: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
+    const text = extractToolResultText(
+      await ctx.client!.callTool({ name: tool, arguments: args }),
+    );
+
+    expect(text.toLowerCase()).toMatch(/error|not found|invalid/);
+  }
+
+  /**
+   * Create a track and let Live settle.
+   * @param args - ppal-create-track arguments
+   * @returns The new track
+   */
+  async function createTrack(
+    args: Record<string, unknown>,
+  ): Promise<CreateTrackResult> {
+    const track = parseToolResult<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: args,
+      }),
+    );
 
     await sleep(100);
 
-    // Deleted by id, spelled the way a model guesses it. "ids" is a permanent
-    // alias, so this checks the delete and the steer.
-    const deleteTrack = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { ids: track.id, type: "track" },
-    });
-    const deletedTrack = parseAliasedToolResult<DeleteResult>(
-      deleteTrack,
+    return track;
+  }
+
+  /**
+   * Create a scene and let Live settle.
+   * @param args - ppal-create-scene arguments
+   * @returns The new scene
+   */
+  async function createScene(
+    args: Record<string, unknown>,
+  ): Promise<CreateSceneResult> {
+    const scene = parseToolResult<CreateSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: args,
+      }),
+    );
+
+    await sleep(100);
+
+    return scene;
+  }
+
+  /**
+   * Create an empty session clip and let Live settle.
+   * @param path - Clip slot path
+   * @returns The new clip
+   */
+  async function createClip(path: string): Promise<CreateClipResult> {
+    const clip = parseToolResult<CreateClipResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: { path },
+      }),
+    );
+
+    await sleep(100);
+
+    return clip;
+  }
+
+  it("deletes a track by id, spelled the way a model guesses it", async () => {
+    // "ids" is a permanent alias, so this checks the delete and the steer.
+    const track = await createTrack({ name: "Track to Delete" });
+    const deleted = parseAliasedToolResult<DeleteResult>(
+      await del({ ids: track.id, type: "track" }),
       "ppal-delete",
       "ids",
       "id",
     );
 
-    expect(deletedTrack.id).toBe(track.id);
-    expect(deletedTrack.type).toBe("track");
-    expect(deletedTrack.deleted).toBe(true);
+    expect(deleted.id).toBe(track.id);
+    expect(deleted.type).toBe("track");
+    expect(deleted.deleted).toBe(true);
 
-    // Verify track no longer exists
-    const verifyTrack = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: track.id },
-    });
-    const verifyTrackText = extractToolResultText(verifyTrack);
+    await expectGone("ppal-read-track", { id: track.id });
+  });
 
-    expect(verifyTrackText.toLowerCase()).toMatch(/error|not found|invalid/);
-
-    // Test 2: Delete multiple tracks
-    const createTrack1 = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { name: "Multi Delete 1" },
-    });
-    const track1 = parseToolResult<CreateTrackResult>(createTrack1);
-
-    const createTrack2 = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { name: "Multi Delete 2" },
-    });
-    const track2 = parseToolResult<CreateTrackResult>(createTrack2);
-
-    await sleep(100);
-
-    const deleteMultipleTracks = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: `${track1.id},${track2.id}`, type: "track" },
-    });
-    const deletedMultiple =
-      parseToolResult<DeleteResult[]>(deleteMultipleTracks);
-
-    expect(deletedMultiple).toHaveLength(2);
-    expect(deletedMultiple[0]!.deleted).toBe(true);
-    expect(deletedMultiple[1]!.deleted).toBe(true);
-
-    // Test 3: Delete return track
-    const createReturn = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { type: "return", name: "Return to Delete" },
-    });
-    const returnTrack = parseToolResult<CreateTrackResult>(createReturn);
-
-    await sleep(100);
-
-    const deleteReturn = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: returnTrack.id, type: "track" },
-    });
-    const deletedReturn = parseToolResult<DeleteResult>(deleteReturn);
-
-    expect(deletedReturn.deleted).toBe(true);
-
-    // Test 4: Skip with deleted:false when trying to delete Producer Pal host track
-    // Track index 11 hosts the Producer Pal device in e2e-test-set
-    const readHostTrack = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { trackIndex: 11 },
-    });
-    const hostTrack = parseToolResult<{ id: string }>(readHostTrack);
-
-    const deleteHost = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: hostTrack.id, type: "track" },
-    });
-    const { data: deletedHost, warnings: deleteHostWarnings } =
-      parseToolResultWithWarnings<DeleteResult>(deleteHost);
-
-    expect(deletedHost.id).toBe(hostTrack.id);
-    expect(deletedHost.type).toBe("track");
-    expect(deletedHost.deleted).toBe(false);
-    expect(deleteHostWarnings.join(" ").toLowerCase()).toContain(
-      "producer pal",
+  it("deletes several tracks in one call", async () => {
+    const track1 = await createTrack({ name: "Multi Delete 1" });
+    const track2 = await createTrack({ name: "Multi Delete 2" });
+    const deleted = parseToolResult<DeleteResult[]>(
+      await del({ id: `${track1.id},${track2.id}`, type: "track" }),
     );
 
-    // Verify host track still exists
-    const verifyHost = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: hostTrack.id },
+    expect(deleted).toHaveLength(2);
+    expect(deleted.every((d) => d.deleted)).toBe(true);
+  });
+
+  it("deletes a return track", async () => {
+    const returnTrack = await createTrack({
+      type: "return",
+      name: "Return to Delete",
     });
-    const verifiedHost = parseToolResult<{ id: string }>(verifyHost);
+    const deleted = parseToolResult<DeleteResult>(
+      await del({ id: returnTrack.id, type: "track" }),
+    );
 
-    expect(verifiedHost.id).toBe(hostTrack.id);
+    expect(deleted.deleted).toBe(true);
+  });
 
-    // Test 5: Delete single scene by ID
-    const createScene = await ctx.client!.callTool({
-      name: "ppal-create-scene",
-      arguments: { sceneIndex: 0, name: "Scene to Delete" },
-    });
-    const scene = parseToolResult<CreateSceneResult>(createScene);
+  it("refuses to delete the track hosting Producer Pal", async () => {
+    // t11 hosts the Producer Pal device in e2e-test-set
+    const hostTrack = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { trackIndex: 11 },
+      }),
+    );
+    const { data, warnings } = parseToolResultWithWarnings<DeleteResult>(
+      await del({ id: hostTrack.id, type: "track" }),
+    );
 
-    await sleep(100);
+    expect(data.id).toBe(hostTrack.id);
+    expect(data.deleted).toBe(false);
+    expect(warnings.join(" ").toLowerCase()).toContain("producer pal");
 
-    const deleteScene = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: scene.id, type: "scene" },
-    });
-    const deletedScene = parseToolResult<DeleteResult>(deleteScene);
+    // Still there
+    const verified = parseToolResult<{ id: string }>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: hostTrack.id },
+      }),
+    );
 
-    expect(deletedScene.id).toBe(scene.id);
-    expect(deletedScene.type).toBe("scene");
-    expect(deletedScene.deleted).toBe(true);
+    expect(verified.id).toBe(hostTrack.id);
+  });
 
-    // Test 6: Delete multiple scenes
-    const createScene1 = await ctx.client!.callTool({
-      name: "ppal-create-scene",
-      arguments: { sceneIndex: 0, name: "Multi Scene 1" },
-    });
-    const scene1 = parseToolResult<CreateSceneResult>(createScene1);
+  it("deletes a scene, and several scenes in one call", async () => {
+    const scene = await createScene({ sceneIndex: 0, name: "Scene to Delete" });
+    const deleted = parseToolResult<DeleteResult>(
+      await del({ id: scene.id, type: "scene" }),
+    );
 
-    const createScene2 = await ctx.client!.callTool({
-      name: "ppal-create-scene",
-      arguments: { sceneIndex: 1, name: "Multi Scene 2" },
-    });
-    const scene2 = parseToolResult<CreateSceneResult>(createScene2);
+    expect(deleted.type).toBe("scene");
+    expect(deleted.deleted).toBe(true);
 
-    await sleep(100);
-
-    const deleteMultipleScenes = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: `${scene1.id},${scene2.id}`, type: "scene" },
-    });
-    const deletedScenes = parseToolResult<DeleteResult[]>(deleteMultipleScenes);
+    const scene1 = await createScene({ sceneIndex: 0, name: "Multi Scene 1" });
+    const scene2 = await createScene({ sceneIndex: 1, name: "Multi Scene 2" });
+    const deletedScenes = parseToolResult<DeleteResult[]>(
+      await del({ id: `${scene1.id},${scene2.id}`, type: "scene" }),
+    );
 
     expect(deletedScenes).toHaveLength(2);
-    expect(deletedScenes[0]!.deleted).toBe(true);
-    expect(deletedScenes[1]!.deleted).toBe(true);
+    expect(deletedScenes.every((d) => d.deleted)).toBe(true);
+  });
 
-    // Use empty MIDI track for clip tests (t8 has no clips but has "No Output" routing)
-    // For devices, use t7 (Racks track) which has proper routing
-    const emptyMidiTrack = 8;
-    const deviceTestTrack = 7;
+  it("deletes a clip by id", async () => {
+    const clip = await createClip(`t${EMPTY_MIDI_TRACK}/s0`);
+    const deleted = parseToolResult<DeleteResult>(
+      await del({ id: clip.id, type: "clip" }),
+    );
 
-    // Test 7: Delete single clip by ID
-    const createClip = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s0`,
-      },
-    });
-    const clip = parseToolResult<CreateClipResult>(createClip);
+    expect(deleted.type).toBe("clip");
+    expect(deleted.deleted).toBe(true);
 
-    await sleep(100);
+    await expectGone("ppal-read-clip", { id: clip.id });
+  });
 
-    const deleteClip = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: clip.id, type: "clip" },
-    });
-    const deletedClip = parseToolResult<DeleteResult>(deleteClip);
+  it("deletes several clips in one call", async () => {
+    const clip1 = await createClip(`t${EMPTY_MIDI_TRACK}/s1`);
+    const clip2 = await createClip(`t${EMPTY_MIDI_TRACK}/s2`);
+    const deleted = parseToolResult<DeleteResult[]>(
+      await del({ id: `${clip1.id},${clip2.id}`, type: "clip" }),
+    );
 
-    expect(deletedClip.id).toBe(clip.id);
-    expect(deletedClip.type).toBe("clip");
-    expect(deletedClip.deleted).toBe(true);
+    expect(deleted).toHaveLength(2);
+    expect(deleted.every((d) => d.deleted)).toBe(true);
+  });
 
-    // Verify clip no longer exists
-    const verifyClip = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { id: clip.id },
-    });
-    const verifyClipText = extractToolResultText(verifyClip);
-
-    expect(verifyClipText.toLowerCase()).toMatch(/error|not found|invalid/);
-
-    // Test 8: Delete multiple clips
-    const createClip1 = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s1`,
-      },
-    });
-    const clip1 = parseToolResult<CreateClipResult>(createClip1);
-
-    const createClip2 = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        path: `t${emptyMidiTrack}/s2`,
-      },
-    });
-    const clip2 = parseToolResult<CreateClipResult>(createClip2);
-
-    await sleep(100);
-
-    const deleteMultipleClips = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: `${clip1.id},${clip2.id}`, type: "clip" },
-    });
-    const deletedClips = parseToolResult<DeleteResult[]>(deleteMultipleClips);
-
-    expect(deletedClips).toHaveLength(2);
-    expect(deletedClips[0]!.deleted).toBe(true);
-    expect(deletedClips[1]!.deleted).toBe(true);
-
-    // Test 9: Delete device by ID (use device test track with proper routing)
+  it("deletes a device by id", async () => {
     const deviceId = await createTestDevice(
       ctx.client!,
       "Compressor",
-      `t${deviceTestTrack}`,
+      `t${DEVICE_TEST_TRACK}`,
+    );
+    const deleted = parseToolResult<DeleteResult>(
+      await del({ id: deviceId, type: "device" }),
     );
 
-    const deleteDevice = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: deviceId, type: "device" },
-    });
-    const deletedDevice = parseToolResult<DeleteResult>(deleteDevice);
+    expect(deleted.type).toBe("device");
+    expect(deleted.deleted).toBe(true);
 
-    expect(deletedDevice.deleted).toBe(true);
-    expect(deletedDevice.type).toBe("device");
+    await expectGone("ppal-read-device", { id: deviceId });
+  });
 
-    // Verify device no longer exists
-    const verifyDevice = await ctx.client!.callTool({
-      name: "ppal-read-device",
-      arguments: { id: deviceId },
-    });
-    const verifyDeviceText = extractToolResultText(verifyDevice);
-
-    expect(verifyDeviceText.toLowerCase()).toMatch(/error|not found|invalid/);
-
-    // Test 10: Delete device by path (use device test track)
-    const pathDeviceResult = await ctx.client!.callTool({
-      name: "ppal-create-device",
-      arguments: { deviceName: "EQ Eight", path: `t${deviceTestTrack}` },
-    });
-    const pathDevice = parseToolResult<{ deviceIndex: number }>(
-      pathDeviceResult,
+  it("deletes a device by path", async () => {
+    const created = parseToolResult<{ deviceIndex: number }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: { deviceName: "EQ Eight", path: `t${DEVICE_TEST_TRACK}` },
+      }),
     );
 
     await sleep(100);
 
-    const deleteByPath = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: {
-        path: `t${deviceTestTrack}/d${pathDevice.deviceIndex}`,
+    const deleted = parseToolResult<DeleteResult>(
+      await del({
+        path: `t${DEVICE_TEST_TRACK}/d${created.deviceIndex}`,
         type: "device",
-      },
-    });
-    const deletedByPath = parseToolResult<DeleteResult>(deleteByPath);
+      }),
+    );
 
-    expect(deletedByPath.deleted).toBe(true);
+    expect(deleted.deleted).toBe(true);
+  });
 
-    // Test 11: Delete multiple devices (use available tracks)
+  it("deletes several devices in one call", async () => {
     const device1Id = await createTestDevice(ctx.client!, "Auto Filter", "t10");
     const device2Id = await createTestDevice(
       ctx.client!,
       "Chorus-Ensemble",
-      `t${deviceTestTrack}`,
+      `t${DEVICE_TEST_TRACK}`,
+    );
+    const deleted = parseToolResult<DeleteResult[]>(
+      await del({ id: `${device1Id},${device2Id}`, type: "device" }),
     );
 
-    const deleteMultipleDevices = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { id: `${device1Id},${device2Id}`, type: "device" },
-    });
-    const deletedDevices = parseToolResult<DeleteResult[]>(
-      deleteMultipleDevices,
-    );
+    expect(deleted).toHaveLength(2);
+    expect(deleted.every((d) => d.deleted)).toBe(true);
+  });
 
-    expect(deletedDevices).toHaveLength(2);
-    expect(deletedDevices[0]!.deleted).toBe(true);
-    expect(deletedDevices[1]!.deleted).toBe(true);
-
-    // Test 12: Delete drum pad by path, spelled the way a model guesses it.
+  it("deletes a drum pad by path, spelled the way a model guesses it", async () => {
     // "paths" is a permanent alias, so this checks the delete and the steer.
     // t0/d0 is the Drum Rack "505 Classic Kit" with pads pC1, pD1, pEb1, pGb1
-    const deleteDrumPad = await ctx.client!.callTool({
-      name: "ppal-delete",
-      arguments: { paths: "t0/d0/pC1", type: "drum-pad" },
-    });
-    const deletedDrumPad = parseAliasedToolResult<DeleteResult>(
-      deleteDrumPad,
+    const deleted = parseAliasedToolResult<DeleteResult>(
+      await del({ paths: "t0/d0/pC1", type: "drum-pad" }),
       "ppal-delete",
       "paths",
       "path",
     );
 
-    expect(deletedDrumPad.deleted).toBe(true);
-    expect(deletedDrumPad.type).toBe("drum-pad");
+    expect(deleted.type).toBe("drum-pad");
+    expect(deleted.deleted).toBe(true);
   });
 });
 

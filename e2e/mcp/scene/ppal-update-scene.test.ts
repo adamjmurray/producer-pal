@@ -1,12 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * E2E tests for ppal-update-scene tool
  * Updates scene properties - these modifications persist within the session.
  *
- * Run with: npm run e2e:mcp
+ * Uses: e2e-test-set
+ * See: e2e/live-sets/e2e-test-set-spec.md
+ *
+ * Run with: npm run e2e:mcp -- scene/ppal-update-scene
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -19,135 +23,109 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-update-scene", () => {
-  it("updates scene properties and verifies changes", async () => {
-    // First create some scenes to update (don't rely on existing scenes)
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-scene",
-      arguments: { sceneIndex: 0, count: 2, name: "UpdateTest" },
-    });
-    const created = parseToolResult<CreateSceneResult[]>(createResult);
-    const sceneId = created[0]!.id;
-    const secondSceneId = created[1]!.id;
+  /**
+   * Two fresh scenes to work on, so the Set's own scenes stay intact.
+   * @returns The new scenes' ids
+   */
+  async function createScenes(): Promise<string[]> {
+    const created = parseToolResult<CreateSceneResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-create-scene",
+        arguments: { sceneIndex: 0, count: 2, name: "UpdateTest" },
+      }),
+    );
 
     await sleep(100);
 
-    // Test 1: Update scene name
+    return created.map((scene) => scene.id);
+  }
+
+  /**
+   * Apply a scene update and read the scene back.
+   * @param id - Scene to update
+   * @param args - ppal-update-scene arguments beyond the id
+   * @param include - Optional include list for the read-back
+   * @returns The scene after the update
+   */
+  async function updateAndRead(
+    id: string,
+    args: Record<string, unknown>,
+    include?: string[],
+  ): Promise<ReadSceneResult> {
     await ctx.client!.callTool({
       name: "ppal-update-scene",
-      arguments: { id: sceneId, name: "Renamed Scene" },
+      arguments: { id, ...args },
     });
-
     await sleep(100);
-    const afterName = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const namedScene = parseToolResult<ReadSceneResult>(afterName);
 
-    expect(namedScene.name).toBe("Renamed Scene");
+    return parseToolResult<ReadSceneResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-scene",
+        arguments: { id, ...(include && { include }) },
+      }),
+    );
+  }
 
-    // Test 2: Update scene color
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: sceneId, color: "#00FF00" },
-    });
+  it("renames a scene", async () => {
+    const [sceneId] = await createScenes();
+    const scene = await updateAndRead(sceneId!, { name: "Renamed Scene" });
 
-    await sleep(100);
-    const afterColor = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId, include: ["color"] },
-    });
-    const coloredScene = parseToolResult<ReadSceneResult>(afterColor);
+    expect(scene.name).toBe("Renamed Scene");
+  });
 
-    // Color may be quantized to Live's palette
-    expect(coloredScene.color).toBeDefined();
+  it("recolors a scene", async () => {
+    const [sceneId] = await createScenes();
+    const scene = await updateAndRead(sceneId!, { color: "#00FF00" }, [
+      "color",
+    ]);
 
-    // Test 3: Update scene tempo
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: sceneId, tempo: 140 },
-    });
+    // Live snaps to its own palette, so only that a color came back is pinned
+    expect(scene.color).toBeDefined();
+  });
 
-    await sleep(100);
-    const afterTempo = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const tempoScene = parseToolResult<ReadSceneResult>(afterTempo);
+  it("sets and disables the tempo override", async () => {
+    const [sceneId] = await createScenes();
 
-    expect(tempoScene.tempo).toBe(140);
+    expect((await updateAndRead(sceneId!, { tempo: 140 })).tempo).toBe(140);
+    // A disabled override is left out of the result rather than reported as -1
+    expect(
+      (await updateAndRead(sceneId!, { tempo: -1 })).tempo,
+    ).toBeUndefined();
+  });
 
-    // Test 4: Update scene time signature
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: sceneId, timeSignature: "6/8" },
-    });
+  it("sets and disables the time signature override", async () => {
+    const [sceneId] = await createScenes();
 
-    await sleep(100);
-    const afterTimeSig = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const timeSigScene = parseToolResult<ReadSceneResult>(afterTimeSig);
+    expect(
+      (await updateAndRead(sceneId!, { timeSignature: "6/8" })).timeSignature,
+    ).toBe("6/8");
+    expect(
+      (await updateAndRead(sceneId!, { timeSignature: "disabled" }))
+        .timeSignature,
+    ).toBeUndefined();
+  });
 
-    expect(timeSigScene.timeSignature).toBe("6/8");
-
-    // Test 5: Disable tempo with -1
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: sceneId, tempo: -1 },
-    });
-
-    await sleep(100);
-    const afterDisableTempo = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const disabledTempoScene =
-      parseToolResult<ReadSceneResult>(afterDisableTempo);
-
-    // Tempo should not be in result when disabled
-    expect(disabledTempoScene.tempo).toBeUndefined();
-
-    // Test 6: Disable time signature with "disabled"
-    await ctx.client!.callTool({
-      name: "ppal-update-scene",
-      arguments: { id: sceneId, timeSignature: "disabled" },
-    });
-
-    await sleep(100);
-    const afterDisableTimeSig = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const disabledTimeSigScene =
-      parseToolResult<ReadSceneResult>(afterDisableTimeSig);
-
-    // Time signature should not be in result when disabled
-    expect(disabledTimeSigScene.timeSignature).toBeUndefined();
-
-    // Test 7: Batch update multiple scenes
-    const batchResult = await ctx.client!.callTool({
+  it("updates several scenes in one call", async () => {
+    const [sceneId, secondSceneId] = await createScenes();
+    const result = await ctx.client!.callTool({
       name: "ppal-update-scene",
       arguments: { id: `${sceneId}, ${secondSceneId}`, name: "BatchUpdated" },
     });
 
-    parseBatchResult<UpdateSceneResult>(batchResult, 2);
+    parseBatchResult<UpdateSceneResult>(result, 2);
 
     await sleep(100);
-    const verifyFirst = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: sceneId },
-    });
-    const verifySecond = await ctx.client!.callTool({
-      name: "ppal-read-scene",
-      arguments: { id: secondSceneId },
-    });
-    const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
-    const secondScene = parseToolResult<ReadSceneResult>(verifySecond);
 
-    expect(firstScene.name).toBe("BatchUpdated");
-    expect(secondScene.name).toBe("BatchUpdated");
+    for (const id of [sceneId!, secondSceneId!]) {
+      const scene = parseToolResult<ReadSceneResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-scene",
+          arguments: { id },
+        }),
+      );
+
+      expect(scene.name).toBe("BatchUpdated");
+    }
   });
 });
 
