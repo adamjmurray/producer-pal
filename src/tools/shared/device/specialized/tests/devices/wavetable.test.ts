@@ -26,6 +26,7 @@ import {
   registerStandardParamMocks,
   registerWavetable,
 } from "./wavetable-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Wavetable pseudo-params — read", () => {
   it("reads all three filterRouting values by index", () => {
@@ -129,8 +130,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a valid filterRouting"),
     );
   });
@@ -149,8 +149,7 @@ describe("Wavetable pseudo-params — write", () => {
     applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a valid monoPoly"),
     );
   });
@@ -176,8 +175,7 @@ describe("Wavetable pseudo-params — write", () => {
     applySpecializedParamWrite(device, "polyVoices", 10, "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("polyVoices"),
     );
   });
@@ -201,8 +199,7 @@ describe("Wavetable pseudo-params — write", () => {
     applySpecializedParamWrite(device, "unisonMode", "unknown", "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a valid unisonMode"),
     );
   });
@@ -226,8 +223,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unisonVoiceCount"),
     );
   });
@@ -251,8 +247,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("osc1Engine"),
     );
   });
@@ -277,8 +272,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("osc1Category"),
     );
   });
@@ -303,8 +297,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("osc2Category"),
     );
   });
@@ -331,8 +324,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("osc1Wavetable"),
     );
   });
@@ -359,8 +351,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("osc2Wavetable"),
     );
   });
@@ -403,14 +394,12 @@ describe("Wavetable pseudo-params — write", () => {
     applySpecializedParamWrite(device, "osc1Category", "Nope", "updateDevice");
     applySpecializedParamWrite(device, "osc1Wavetable", "Nope", "updateDevice");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `not a valid osc1Category. Available: ${OSC_CATEGORIES.join(", ")}`,
       ),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `not a valid osc1Wavetable. Available: ${OSC1_WAVETABLES.join(", ")}`,
       ),
@@ -580,7 +569,7 @@ describe("Wavetable actions — addModulationTarget", () => {
         "add_parameter_to_modulation_matrix",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(msg));
+      expect(capturedWarnings()).toContainEqual(expect.stringContaining(msg));
     },
   );
 });
@@ -595,7 +584,7 @@ describe("Wavetable actions — argument validation", () => {
 
     applySpecializedActions(device, [action], "updateDevice");
 
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(message));
+    expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
   });
 
   it("warns when a found target still cannot be added to the matrix", () => {
@@ -619,8 +608,7 @@ describe("Wavetable actions — argument validation", () => {
       expect.anything(),
       expect.anything(),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("could not add to matrix"),
     );
   });

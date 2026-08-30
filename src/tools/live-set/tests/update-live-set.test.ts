@@ -10,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
@@ -55,7 +56,7 @@ describe("updateLiveSet", () => {
     });
     // scale was not provided → applyScale must not run (it would warn on the
     // undefined scale via its parse-error path).
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("throws for an unknown locator operation", async () => {

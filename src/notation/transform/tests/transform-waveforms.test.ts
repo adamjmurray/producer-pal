@@ -14,6 +14,7 @@ import {
   square,
   tri,
 } from "#src/notation/transform/transform-waveforms.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Transform Waveforms", () => {
   describe("cos()", () => {
@@ -439,8 +440,7 @@ describe("Transform Waveforms", () => {
       const result = curve(0.5, 0, 1, -2);
 
       expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "curve() exponent must be > 0, got -2, clamping to 0.001",
       );
     });
@@ -449,8 +449,7 @@ describe("Transform Waveforms", () => {
       const result = curve(0.5, 0, 1, 0);
 
       expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "curve() exponent must be > 0, got 0, clamping to 0.001",
       );
     });

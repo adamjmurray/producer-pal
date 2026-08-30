@@ -11,6 +11,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const C3 = {
   pitch: 60,
@@ -102,8 +103,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
       transforms: "!!!bad!!!",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Failed to update clip 123"),
     );
   });

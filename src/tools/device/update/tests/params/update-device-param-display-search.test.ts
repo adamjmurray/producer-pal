@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // A non-linear dB param, like Saturator's Drive: raw 0–1 maps to -36..+36 dB
 // and the display rounds to 0.1 dB steps, so each step is 1/720 of the raw
@@ -92,8 +93,7 @@ describe("updateDevice - display-value search", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "99" }] });
 
     expect(expectValueSet(param)).toBe(1);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: param "Drive" only goes from -36.0 dB to 36.0 dB, so 99 was set to the nearest valid value.',
     );
   });
@@ -102,8 +102,7 @@ describe("updateDevice - display-value search", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "-99" }] });
 
     expect(displayFor(Math.fround(expectValueSet(param)))).toBe(-36);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("only goes from -36.0 dB to 36.0 dB"),
     );
   });
@@ -111,7 +110,7 @@ describe("updateDevice - display-value search", () => {
   it("says nothing about the range when the target is inside it", () => {
     updateDevice({ id: "dev1", params: [{ name: "Drive", value: "12" }] });
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -214,7 +213,7 @@ describe("updateDevice - display-value search on a linear param", () => {
     });
 
     expect(expectValueSet(param)).toBe(-12.5);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("clamps a target past the range instead of letting Live drop it", () => {
@@ -278,8 +277,7 @@ describe("updateDevice - a request Live silently drops", () => {
     updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "10" }] });
 
     expect(param.properties.value).toBe(1);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: param "Vintage" was not changed — it still reads "Subtle". Live ignores a value outside the parameter\'s range.',
     );
   });
@@ -288,7 +286,7 @@ describe("updateDevice - a request Live silently drops", () => {
     updateDevice({ id: "dev1", params: [{ name: "Vintage", value: "2" }] });
 
     expect(param.properties.value).toBe(2);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -350,7 +348,7 @@ describe("updateDevice - a word at the max end of the range", () => {
 
   it("reaches the word by naming it", () => {
     expect(displayAfterWrite("A")).toBe("A");
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("matches the word case-insensitively", () => {
@@ -360,8 +358,7 @@ describe("updateDevice - a word at the max end of the range", () => {
   it("names the word when a target overshoots the numbers", () => {
     updateDevice({ id: "dev1", params: [{ name: "Release", value: "3" }] });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: param "Release" only goes from 0.1 to 1.2 (or "A"), so 3 was set to the nearest valid value.',
     );
   });

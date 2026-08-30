@@ -10,6 +10,7 @@ import {
   parseSlot,
   parseSlotList,
 } from "../position-parsing.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("parseSceneIndexList", () => {
   it("should parse a single index", () => {
@@ -78,8 +79,7 @@ describe("parseSlotList", () => {
     const result = parseSlotList("0/1/2", "toSlot");
 
     expect(result).toStrictEqual([{ trackIndex: 0, sceneIndex: 1 }]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'toSlot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
@@ -88,8 +88,7 @@ describe("parseSlotList", () => {
     parseSlotList("0/1", "toSlot");
 
     // Exactly two parts must not trigger the extra-parts warning.
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("has extra parts"),
     );
   });
@@ -99,8 +98,7 @@ describe("parseSlotList", () => {
     expect(parseSlotList(",0/1", "toSlot")).toStrictEqual([
       { trackIndex: 0, sceneIndex: 1 },
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'toSlot ",0/1" has empty entries, which were dropped',
     );
   });
@@ -115,12 +113,10 @@ describe("parseSlotList", () => {
     parseSlotList(",0/1", "slot");
     parseSlotList("0/1/2", "slot");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'slot ",0/1" has empty entries, which were dropped',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'slot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
@@ -130,8 +126,7 @@ describe("parseSlotList", () => {
     parseSlotList("", "toSlot");
     parseSlotList(undefined, "toSlot");
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("has empty entries"),
     );
   });

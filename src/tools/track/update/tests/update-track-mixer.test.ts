@@ -12,6 +12,7 @@ import {
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateTrack - mixer properties", () => {
   let track123: RegisteredMockObject;
@@ -316,8 +317,7 @@ describe("updateTrack - mixer properties", () => {
     updateTrack({ id: "123", gainDb: -6 });
 
     expect(volumeParam1.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("updateTrack: gainDb is disabled"),
     );
   });

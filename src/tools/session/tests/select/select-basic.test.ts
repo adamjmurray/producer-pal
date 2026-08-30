@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/session/select.ts";
 import {
@@ -29,16 +30,14 @@ vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
  * @param fired - True when the warning is expected, false for the negative control
  */
 function expectViewConflictWarning(fired: boolean): void {
-  const outletMock = (globalThis as Record<string, unknown>)
-    .outlet as ReturnType<typeof vi.fn>;
   // Anchored at the start: max-api-adapter prepends "WARNING: ", so any prefix
   // of its own renders as "WARNING: Warning: ignoring view=...".
   const warning = expect.stringMatching(/^ignoring view=/);
 
   if (fired) {
-    expect(outletMock).toHaveBeenCalledWith(1, warning);
+    expect(capturedWarnings()).toContainEqual(warning);
   } else {
-    expect(outletMock).not.toHaveBeenCalledWith(1, warning);
+    expect(capturedWarnings()).not.toContainEqual(warning);
   }
 }
 

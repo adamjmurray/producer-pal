@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface SimplerProps {
   multiSampleMode?: number;
@@ -155,8 +156,7 @@ describe("Simpler pseudo-params", () => {
       applySpecializedParamWrite(device, "playbackMode", "bogus", "t");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid playbackMode"),
       );
     });
@@ -183,8 +183,7 @@ describe("Simpler pseudo-params", () => {
       applySpecializedParamWrite(device, "retrigger", "sometimes", "t");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"sometimes" is not a valid retrigger (expected true/false)',
         ),
@@ -221,8 +220,7 @@ describe("Simpler pseudo-params", () => {
       applySpecializedParamWrite(device, "voices", 9, "t");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("voices must be one of"),
       );
     });
@@ -239,8 +237,7 @@ describe("Simpler pseudo-params", () => {
 
       expect(handled).toBe(true);
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("read-only"),
       );
     });
@@ -277,8 +274,7 @@ describe("Simpler pseudo-params", () => {
         "warp_as",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("warpAs requires a numeric"),
       );
     });

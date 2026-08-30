@@ -9,6 +9,7 @@ import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { readDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-drum-mocks.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const DEVICE = livePath.track(1).device(0);
 const CHAIN = `${DEVICE} chains 0`;
@@ -124,7 +125,7 @@ describe("readDevice drum-map by target kind", () => {
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);
-    expect(outlet).not.toHaveBeenCalledWith(1, PAD_WARNING);
+    expect(capturedWarnings()).not.toContain(PAD_WARNING);
   });
 
   it("warns instead of mapping when drum-map is asked of a drum pad", () => {
@@ -133,7 +134,7 @@ describe("readDevice drum-map by target kind", () => {
     const result = readDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(outlet).toHaveBeenCalledWith(1, PAD_WARNING);
+    expect(capturedWarnings()).toContain(PAD_WARNING);
   });
 
   // A kit behind a pad only plays through that pad's note, so its pitches
@@ -151,7 +152,7 @@ describe("readDevice drum-map by target kind", () => {
     const result = readDevice({ path: "t1/d0/pC1", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(outlet).toHaveBeenCalledWith(1, PAD_WARNING);
+    expect(capturedWarnings()).toContain(PAD_WARNING);
   });
 
   it("warns instead of mapping when drum-map is asked of a drum chain", () => {
@@ -160,8 +161,7 @@ describe("readDevice drum-map by target kind", () => {
     const result = readDevice({ path: "t1/d0/pC1/c0", include: ["drum-map"] });
 
     expect(result.drumMap).toBeUndefined();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "readDevice: a drum chain has no drum map of its own — read its drum rack for the kit's map",
     );
   });

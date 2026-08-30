@@ -19,6 +19,7 @@ import {
   updateMacroCount,
 } from "../helpers/update-device-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("moveDeviceToPath", () => {
   let device: RegisteredMockObject;
@@ -34,8 +35,7 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "x9/d0")).toBe(
       "unresolvable",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'device not moved: invalid toPath "x9/d0" - "x9" is not a track or scene',
       ),
@@ -50,8 +50,7 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t99/d0/c0")).toBe(
       "unresolvable",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'device not moved: Track in path "t99/d0/c0" does not exist',
     );
   });
@@ -69,8 +68,7 @@ describe("moveDeviceToPath", () => {
         "t99/d0/c0",
       ),
     ).toBe("unresolvable");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'device not moved: Track in path "t99/d0/c0" does not exist',
     );
   });
@@ -104,7 +102,7 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
       "refused",
     );
-    expect(outlet).toHaveBeenCalledWith(1, "Live refused the move");
+    expect(capturedWarnings()).toContain("Live refused the move");
   });
 
   it("names the one refusal Live's own state explains", () => {
@@ -128,8 +126,7 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
       "refused",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Live refused the move: the destination already has an instrument, and only one is allowed",
     );
   });
@@ -144,7 +141,7 @@ describe("moveDeviceToPath", () => {
       "no-destination",
     );
     expect(liveSet.call).not.toHaveBeenCalled();
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -174,8 +171,7 @@ describe("moveDrumChainToPath", () => {
     // G9 is note 139, past MIDI's 127, so no pad answers to it.
     moveDrumChainToPath(chainApi, "t0/d0/pG9", false);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'toPath "t0/d0/pG9" is not a drum pad path',
     );
     expect(chain.set).not.toHaveBeenCalled();
@@ -198,8 +194,7 @@ describe("updateMacroCount", () => {
 
     updateMacroCount(deviceApi, 8);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macro count only available on rack devices",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();

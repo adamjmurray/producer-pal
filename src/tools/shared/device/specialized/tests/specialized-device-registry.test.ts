@@ -29,6 +29,7 @@ import {
   readSpecializedParams,
 } from "../specialized-device-registry.ts";
 import { type InactiveWhenRule } from "../specialized-device-types.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a mock device with a given class_display_name.
@@ -150,8 +151,7 @@ describe("applySpecializedActions", () => {
 
     applySpecializedActions(device, ["1bad("], "updateDevice");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("could not parse action"),
     );
   });
@@ -161,8 +161,7 @@ describe("applySpecializedActions", () => {
 
     applySpecializedActions(device, ["doesNotExist"], "updateDevice");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unknown action"),
     );
   });
@@ -172,8 +171,7 @@ describe("applySpecializedActions", () => {
 
     applySpecializedActions(device, ["reverse"], "updateDevice");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unknown action"),
     );
   });
@@ -184,8 +182,7 @@ describe("applySpecializedActions", () => {
     applySpecializedActions(device, ["reverse"], "updateDevice");
 
     expect(device.call).not.toHaveBeenCalledWith("reverse");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("unknown action"),
     );
   });

@@ -10,6 +10,7 @@ import {
   drumPatternNotes,
 } from "#src/notation/barbeat/barbeat-test-helpers.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("bar|beat interpretNotation() - core functionality", () => {
   it("returns empty array for empty input", () => {
@@ -304,8 +305,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.velocity).toBe(127);
     expect(result[0]!.velocity_deviation).toBe(0);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("outside valid range 0-127; clamped to 127"),
     );
     // Malformed syntax (negative velocity) is still a fatal parse error.
@@ -317,8 +317,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.probability).toBe(1);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("outside valid range 0.0-1.0; clamped to 1"),
     );
   });
@@ -326,8 +325,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   it("skips out-of-range pitch and warns instead of throwing", () => {
     expect(interpretNotation("C-3 1|1")).toStrictEqual([]);
     expect(interpretNotation("C9 1|1")).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("note skipped"),
     );
   });
@@ -396,8 +394,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     // Time position with no pitches
     interpretNotation("1|1");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Time position 1|1 has no pitches"),
     );
   });
@@ -406,8 +403,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     // Repeat pattern with no pitches (multiple positions)
     interpretNotation("1|1x3@n/4");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Time position has no pitches"),
     );
   });

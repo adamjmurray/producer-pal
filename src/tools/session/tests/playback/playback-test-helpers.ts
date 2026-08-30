@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface LiveSetConfig {
   numerator?: number;
@@ -155,11 +156,10 @@ export function expectLoopLengthNotWritten(handle: RegisteredMockObject): void {
 }
 
 /**
- * Assert the loop-ordering warning was relayed to the LLM on outlet 1.
+ * Assert the loop-ordering warning reached the model.
  */
 export function expectLoopOrderWarning(): void {
-  expect(outlet).toHaveBeenCalledWith(
-    1,
+  expect(capturedWarnings()).toContainEqual(
     expect.stringContaining("loopEnd must be after loopStart"),
   );
 }

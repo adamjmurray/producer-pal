@@ -21,6 +21,7 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Standard properties for a 4-bar arrangement MIDI clip (beats 0-16). */
 const FOUR_BAR_CLIP_PROPS = {
@@ -109,8 +110,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       arrangementLength: "2bar",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "arrangementLength parameter ignored for session clip (id 123)",
     );
 

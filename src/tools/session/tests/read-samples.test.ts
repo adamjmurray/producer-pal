@@ -11,6 +11,7 @@ import {
   mockKickSnareFolder,
   mockKickWithDrumsSubfolder,
 } from "./samples-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("readSamples", () => {
   let context: { sampleFolder: string | null };
@@ -185,8 +186,7 @@ describe("readSamples", () => {
 
       readSamples({}, context);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "Stopped scanning for samples at 1000 files. Consider using a smaller sample folder.",
       );
     });
@@ -199,8 +199,7 @@ describe("readSamples", () => {
 
       readSamples({}, context);
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("Stopped scanning for samples"),
       );
     });

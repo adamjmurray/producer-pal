@@ -17,6 +17,7 @@ import {
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Count how many times a mock clip method ran, so a clip updated twice is
@@ -94,9 +95,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     // keep t5/s1 — sliding it onto t5/s0 would overwrite whatever sits there.
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s1 does not exist");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain("destination t5/s1 does not exist");
+    expect(capturedWarnings()).not.toContain(
       "destination t5/s0 does not exist",
     );
   });
@@ -107,8 +107,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("destinations for"),
     );
   });
@@ -125,8 +124,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     expect(callsNamed(mocks.clip456.call, "duplicate_loop")).toBe(1);
     expect(result).toStrictEqual({ id: "456", path: "t1/s1", noteCount: 0 });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "id/path named 1 clip(s) more than once; each clip was updated once",
     );
   });
@@ -155,9 +153,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ id: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "destination t5/s0 does not exist");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain("destination t5/s0 does not exist");
+    expect(capturedWarnings()).not.toContain(
       "destination t5/s1 does not exist",
     );
   });
@@ -178,8 +175,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       toPath: "t1/s1,t1/s2",
     })) as Array<{ id: string; path?: string }>;
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 123 was not moved: t1/s1 holds clip 456, which this call also " +
         "updates; move that clip out in its own call first",
     );
@@ -201,12 +197,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ path: "t0/s0,t1/s1", toPath: "t1/s1,t0/s0" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip 123 was not moved: t1/s1 holds clip 456"),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip 456 was not moved: t0/s0 holds clip 123"),
     );
 
@@ -237,8 +231,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
     // The second clip stayed put, so its path is still its own slot.
     expect(result[1]).toStrictEqual({ id: "456", path: "t1/s1" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 456 was not moved: clip 123 is already moving to t1/s2; " +
         "name one slot per clip",
     );
@@ -255,8 +248,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     const result = await updateClip({ path: "t0/s0", toPath: "t0/s0" });
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("was not moved"),
     );
   });
@@ -280,9 +272,8 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       });
 
       expect(result).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
-      expect(outlet).toHaveBeenCalledWith(1, `${param} "null" names nothing`);
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(`${param} "null" names nothing`);
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("destinations for"),
       );
     },

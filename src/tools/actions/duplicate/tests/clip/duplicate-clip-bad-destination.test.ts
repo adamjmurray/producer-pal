@@ -16,6 +16,7 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // A toPath entry that names nowhere must cost only its own copy. Before this,
 // the first entry's copy was made and then thrown away with the whole call, so
@@ -49,8 +50,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       id: "live_set/tracks/0/clip_slots/1/clip",
       path: "t0/s1",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("was not duplicated: no clip slot at t0/s9"),
     );
   });
@@ -85,10 +85,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
       path: "t2",
       arrangementStart: "3|1",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'duplicate: no track at toPath "t99"',
-    );
+    expect(capturedWarnings()).toContain('duplicate: no track at toPath "t99"');
   });
 
   it("copies nowhere, without failing, when every track is missing", async () => {

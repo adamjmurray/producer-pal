@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  capturedWarnings,
   endWarningCapture,
   recordWarning,
   resetWarningCapture,
@@ -82,6 +83,7 @@ describe("context - project scope (default)", () => {
 
       expect(result).toStrictEqual({ content: "test content" });
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("returns empty string when project context is missing", async () => {
@@ -89,6 +91,7 @@ describe("context - project scope (default)", () => {
 
       expect(result).toStrictEqual({ content: "" });
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -98,6 +101,7 @@ describe("context - project scope (default)", () => {
         "Content required for write action",
       );
       expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("clears content when content is an empty string", async () => {
@@ -216,8 +220,8 @@ describe("context - project scope (default)", () => {
       // it needs to re-send a merged write.
       expect(toolContext.projectContext!.content).toBe(EXISTING);
       expect(result).toStrictEqual({ content: EXISTING });
-      // outlet 1 DOES fire — that's how console.warn reaches the LLM. Only the
-      // project-context update on outlet 0 must not.
+      // The warning still reaches the model on the response. Only the
+      // project-context update on outlet 0 must not fire.
       expect(outlet).not.toHaveBeenCalledWith(
         0,
         "update_project_context",
@@ -448,5 +452,6 @@ describe("context - project scope (default)", () => {
       context({ action: "delete", name: "x" }, toolContext),
     ).rejects.toThrow("Unknown action for scope:project: delete");
     expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });

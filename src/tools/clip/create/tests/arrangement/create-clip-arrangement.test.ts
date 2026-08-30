@@ -16,6 +16,7 @@ import {
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,
 } from "../create-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Call processClipIteration for a single arrangement position with sensible
@@ -246,8 +247,7 @@ describe("createClip - arrangement view", () => {
       name: "A,B,C",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("name: 3 names for 2 clips"),
     );
   });

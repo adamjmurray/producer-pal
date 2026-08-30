@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Velocity is randomized within a bucket on interpret, so assert the bucket, not
 // the exact value (a documented lossy axis).
@@ -154,8 +155,7 @@ describe("stark interpreter — pitched lines", () => {
     expect(notes.map((n) => n.pitch).toSorted((a, b) => a - b)).toStrictEqual([
       36, 120,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("mixed drum and pitched sections"),
     );
   });
@@ -166,7 +166,7 @@ describe("stark interpreter — pitched lines", () => {
     expect(notes.map((n) => n.pitch).toSorted((a, b) => a - b)).toStrictEqual([
       36, 67,
     ]);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -213,8 +213,7 @@ describe("stark interpreter — absolute octaves on note tokens", () => {
 
     expect(notes.map((n) => n.pitch)).toStrictEqual([62]);
     expect(notes[0]?.start_time).toBe(1);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('note "C9" is out of MIDI range'),
     );
   });
@@ -223,8 +222,7 @@ describe("stark interpreter — absolute octaves on note tokens", () => {
     const notes = interpretNotation("melody: [C3 E-3 G3]");
 
     expect(notes.map((n) => n.pitch)).toStrictEqual([60, 67]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('note "E-3" is out of MIDI range'),
     );
   });
@@ -515,8 +513,7 @@ describe("stark interpreter — additional branch coverage", () => {
 
     expect(notes).toHaveLength(2);
     expect(notes.every((n) => n.pitch === 36)).toBe(true);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("2 same-pitch+start collisions"),
     );
   });

@@ -9,6 +9,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { validateIdType, validateIdTypes } from "../id-validation.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("validateIdType", () => {
   beforeEach(() => {
@@ -214,8 +215,7 @@ describe("validateIdTypes", () => {
       expect(result).toHaveLength(2);
       expect(result[0]!.id).toBe("track_1");
       expect(result[1]!.id).toBe("track_3");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'testTool: id "scene_1" is not a track (found Scene)',
       );
     });
@@ -230,12 +230,10 @@ describe("validateIdTypes", () => {
       });
 
       expect(result).toHaveLength(0);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'testTool: id "nonexistent_1" does not exist',
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'testTool: id "nonexistent_2" does not exist',
       );
     });
@@ -257,11 +255,7 @@ describe("validateIdTypes", () => {
       });
 
       expect(result).toHaveLength(0);
-      // Two warnings should have been emitted
-      const outletCalls = (outlet as ReturnType<typeof vi.fn>).mock.calls;
-      const warnCalls = outletCalls.filter((call) => call[0] === 1);
-
-      expect(warnCalls).toHaveLength(2);
+      expect(capturedWarnings()).toHaveLength(2);
     });
 
     it("should handle mix of non-existent and wrong type IDs", () => {
@@ -284,12 +278,10 @@ describe("validateIdTypes", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe("track_1");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'testTool: id "nonexistent" does not exist',
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'testTool: id "scene_1" is not a track (found Scene)',
       );
     });

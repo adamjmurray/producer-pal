@@ -18,6 +18,7 @@ import {
   type ClipPropsToSet,
 } from "#src/tools/clip/update/helpers/update-clip-properties-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -90,8 +91,7 @@ describe("updateClip - Properties and ID handling", () => {
     });
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateClip: id "nonexistent" does not exist',
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Test");

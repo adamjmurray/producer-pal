@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { handleArrangementToSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 1;
@@ -175,8 +176,7 @@ describe("handleArrangementToSlotMove", () => {
   it("says what the re-created clip loses", () => {
     runMove({ hasEnvelopes: 1 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
     );
   });
@@ -185,8 +185,7 @@ describe("handleArrangementToSlotMove", () => {
   it("names no loss when the clip loses nothing", () => {
     runMove();
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
   });
@@ -197,8 +196,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(lookupMockObject("dest_slot")?.call).toHaveBeenCalledWith(
       "delete_clip",
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
   });
@@ -224,8 +222,7 @@ describe("handleArrangementToSlotMove", () => {
   ])("refuses %s", (_label, opts: MoveOptions, expected) => {
     const updatedClips = runMove(opts);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`clip ${SOURCE_ID} was not moved: ${expected}`),
     );
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalled();
@@ -235,8 +232,7 @@ describe("handleArrangementToSlotMove", () => {
   it("refuses a destination slot that does not exist", () => {
     const updatedClips = runMove({ destSlotExists: false });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
     );
     expect(
@@ -261,8 +257,7 @@ describe("handleArrangementToSlotMove", () => {
       noteResult: null,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `clip ${SOURCE_ID} was not moved: could not determine its track`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);

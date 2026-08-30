@@ -189,3 +189,26 @@ export function detachWarningCapture(start: () => Promise<unknown>): void {
 export function resetWarningCapture(): void {
   activeCapture = null;
 }
+
+/**
+ * What the active capture has collected so far, without ending it. For tests
+ * only — this is how a test asserts a tool warned, since a warning no longer
+ * leaves V8 anywhere a mock can see it.
+ *
+ * @returns The warnings recorded so far, or empty when nothing is capturing
+ */
+export function capturedWarnings(): string[] {
+  return activeCapture?.messages ?? [];
+}
+
+/**
+ * Forget what the active capture has collected, keeping it active. For tests
+ * only — the equivalent of clearing a mock partway through a test, so a later
+ * assertion sees only what the second half raised.
+ */
+export function clearCapturedWarnings(): void {
+  if (activeCapture != null) {
+    activeCapture.messages.length = 0;
+    activeCapture.dropped = 0;
+  }
+}

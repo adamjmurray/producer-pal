@@ -25,6 +25,7 @@ vi.mock(import("#src/tools/clip/code-exec/apply-code-to-clip.ts"), () => ({
 
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const FOUR_FOUR = { signature_numerator: 4, signature_denominator: 4 };
 
@@ -59,8 +60,7 @@ describe("prepareClipData", () => {
   it("does not warn when interpreted notes have no same-pitch collisions", () => {
     prepareClipData(null, "C3 1|1 D3 1|1", null, 4, 4, undefined, null);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Dropped"),
     );
   });
@@ -68,8 +68,7 @@ describe("prepareClipData", () => {
   it("warns with singular wording for exactly one dropped duplicate", () => {
     prepareClipData(null, "C3 1|1 C3 1|1", null, 4, 4, undefined, null);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Dropped 1 duplicate note at the same pitch and start",
     );
   });
@@ -77,8 +76,7 @@ describe("prepareClipData", () => {
   it("warns with plural wording for multiple dropped duplicates", () => {
     prepareClipData(null, "C3 1|1 C3 1|1 C3 1|1", null, 4, 4, undefined, null);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Dropped 2 duplicate notes at the same pitch and start",
     );
   });
@@ -103,12 +101,11 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
 
     await createClip({ slot: "0/0", notes: "C3 1|1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Failed to create clip at t0/s0:"),
     );
     // No bar|beat position: a clip slot doesn't have one.
-    expect(outlet).not.toHaveBeenCalledWith(1, expect.stringContaining("|"));
+    expect(capturedWarnings()).not.toContainEqual(expect.stringContaining("|"));
   });
 
   it("warns with the arrangement position when an arrangement clip fails to create", async () => {
@@ -131,11 +128,12 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
       notes: "C3 1|1",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Failed to create clip at t0 at 1|1:"),
     );
-    expect(outlet).not.toHaveBeenCalledWith(1, expect.stringContaining("/s"));
+    expect(capturedWarnings()).not.toContainEqual(
+      expect.stringContaining("/s"),
+    );
   });
 });
 

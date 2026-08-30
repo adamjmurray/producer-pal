@@ -13,6 +13,7 @@ import {
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
 import { copyLabels } from "../sources/duplicate-label-helpers.ts";
 import { duplicateClipSlot } from "../clip/duplicate-clip-slot-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /** Source clip, in slot 0/0 */
 const SOURCE_CLIP_ID = "56";
@@ -115,8 +116,7 @@ describe("duplicateClipSlot", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsMidi: 0 });
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "MIDI clip 56 was not duplicated: track 1 is audio",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
@@ -126,8 +126,7 @@ describe("duplicateClipSlot", () => {
     setupSlotDuplication({ clipIsMidi: 0 });
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "audio clip 56 was not duplicated: track 1 is MIDI",
     );
   });
@@ -138,8 +137,7 @@ describe("duplicateClipSlot", () => {
     const { sourceClipSlot } = setupSlotDuplication({ destIsFrozen: 1 });
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "MIDI clip 56 was not duplicated: track 1 is frozen",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
@@ -151,8 +149,7 @@ describe("duplicateClipSlot", () => {
     // is_frozen is falsy, so the frozen guard must not fire (kills its
     // forced-true mutant).
     expect(duplicateClipSlot(0, 0, 1, 0)).not.toBeNull();
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("is frozen"),
     );
   });
@@ -163,8 +160,7 @@ describe("duplicateClipSlot", () => {
     setupSlotDuplication({ copyLands: false });
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 56 was not duplicated: no clip landed at t1/s0",
     );
   });
@@ -178,8 +174,7 @@ describe("duplicateClipSlot", () => {
     });
 
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toBeNull();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 56 was not duplicated: no clip landed at t1/s0",
     );
     // The clip that was already there is not the copy, so it keeps its name.
@@ -235,8 +230,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
     );
 
     expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "MIDI clip 56 was not duplicated: track 2 is frozen",
     );
   });

@@ -9,6 +9,7 @@ import {
   QUANTIZE_GRID,
   QUANTIZE_GRID_ALIASES,
 } from "#src/tools/clip/update/helpers/update-clip-notes-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
@@ -114,8 +115,7 @@ describe("handleQuantization", () => {
 
     handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "quantize/quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
     );
     expect(mockClip.call).not.toHaveBeenCalled();
@@ -128,8 +128,7 @@ describe("handleQuantization", () => {
 
     handleQuantization(mockClip, { quantizeGrid: "1/16" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
     );
   });
@@ -141,7 +140,7 @@ describe("handleQuantization", () => {
 
     // 1/16 maps to grid value 5
     expect(mockClip.call).toHaveBeenCalledWith("quantize", 5, 1);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("should call quantize with correct grid value and amount", () => {
@@ -173,8 +172,7 @@ describe("handleQuantization", () => {
       quantizePitch: "invalid",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('invalid note name "invalid"'),
     );
     expect(mockClip.call).not.toHaveBeenCalled();

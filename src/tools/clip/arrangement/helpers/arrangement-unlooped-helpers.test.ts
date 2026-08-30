@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as tilingHelpers from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const EPSILON = 0.001;
 
@@ -202,16 +203,13 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16); // loop_start(0) + 16
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("capped at file content boundary"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("beats available"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("requested"),
       );
     });
@@ -226,16 +224,13 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 50,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Cannot lengthen unlooped audio clip"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("beats available"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("currently shown"),
       );
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
@@ -251,8 +246,7 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 50,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("no additional file content"),
       );
       expect(set).not.toHaveBeenCalledWith("loop_end", expect.anything());
@@ -269,7 +263,7 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16);
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("does not warn at the exact cap boundary (target == requested - EPSILON)", () => {
@@ -283,7 +277,7 @@ describe("handleUnloopedLengthening", () => {
       });
 
       expect(set).toHaveBeenCalledWith("loop_end", 16 - EPSILON);
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("does not extend end_marker when target equals current end_marker", () => {
@@ -314,12 +308,10 @@ describe("handleUnloopedLengthening", () => {
       // actualArrangementLength == currentArrangementLength(8)
       unwarped({ end_time: 8 });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Cannot lengthen unlooped audio clip"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("at file boundary"),
       );
     });
@@ -328,8 +320,7 @@ describe("handleUnloopedLengthening", () => {
       // actualArrangementLength == currentArrangementLength + EPSILON
       unwarped({ end_time: 8 + EPSILON });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Cannot lengthen unlooped audio clip"),
       );
     });
@@ -338,20 +329,16 @@ describe("handleUnloopedLengthening", () => {
       // actual(12) is between current(8) and requested(16)
       unwarped({ end_time: 12 });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("capped at file content boundary"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("beats achieved"),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("requested"),
       );
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("Cannot lengthen"),
       );
     });
@@ -360,14 +347,14 @@ describe("handleUnloopedLengthening", () => {
       // actualArrangementLength(16) == requested(16)
       unwarped({ end_time: 16 });
 
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("does not warn at the exact cap boundary (actual == requested - EPSILON)", () => {
       // actualArrangementLength == arrangementLengthBeats - EPSILON; `<` is false
       unwarped({ end_time: 16 - EPSILON });
 
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("computes clip start time by subtracting current length from end time", () => {
@@ -378,12 +365,10 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 100,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("capped at file content boundary"),
       );
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("at file boundary"),
       );
     });
@@ -396,8 +381,7 @@ describe("handleUnloopedLengthening", () => {
         arrangementLengthBeats: 18,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("capped at file content boundary"),
       );
     });

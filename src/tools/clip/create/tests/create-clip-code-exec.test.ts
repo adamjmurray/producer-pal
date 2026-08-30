@@ -28,6 +28,7 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 
 // Import the mocked module to configure per-test behavior
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface SessionCodeExecMocks {
   clipsByScene: Map<number, RegisteredMockObject>;
@@ -178,8 +179,7 @@ describe("createClip - code execution", () => {
     });
 
     // Should emit a warning via console.warn
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Code execution failed for clip"),
     );
 

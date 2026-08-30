@@ -11,6 +11,7 @@ import {
   buildClipContext,
 } from "../../helpers/update-clip-transform-helpers.ts";
 import { makeNotesMockClip, rawNote } from "./notes-mock-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function createSessionClipMock(length = 8) {
   return {
@@ -309,8 +310,7 @@ describe("update-clip-transform-helpers", () => {
       );
 
       expect(result.noteCount).toBe(0);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("transforms ignored: clip has no notes"),
       );
       // Should NOT call remove_notes_extended or add_new_notes

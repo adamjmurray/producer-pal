@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { context } from "../context.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
@@ -35,7 +36,7 @@ describe("context - global scope", () => {
       );
       expect(result).toStrictEqual({ content: "global facts" });
       // The project outlet path must not fire for a global read.
-      expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("throws when the node route reports failure", async () => {
@@ -69,7 +70,7 @@ describe("context - global scope", () => {
       );
       expect(result).toStrictEqual({ content: "new global facts" });
       // Global writes go over the RPC bridge, not the project update_project_context outlet.
-      expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
 
     it("allows an empty write to clear the file (matches the webui editor)", async () => {

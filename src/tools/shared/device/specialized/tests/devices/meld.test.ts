@@ -14,6 +14,7 @@ import {
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
 import { registerMonoPolyWriteTests } from "../mono-poly-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a mock Meld device and return its LiveAPI.
@@ -121,8 +122,7 @@ describe("Meld pseudo-params", () => {
       applySpecializedParamWrite(device, "polyVoices", 7, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("polyVoices"),
       );
     });
@@ -133,8 +133,7 @@ describe("Meld pseudo-params", () => {
       applySpecializedParamWrite(device, "polyVoices", 0, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("polyVoices"),
       );
     });
@@ -171,8 +170,7 @@ describe("Meld pseudo-params", () => {
       applySpecializedParamWrite(device, "unisonVoices", 3, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("unisonVoices"),
       );
     });
@@ -183,8 +181,7 @@ describe("Meld pseudo-params", () => {
       applySpecializedParamWrite(device, "unisonVoices", 1.5, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("unisonVoices"),
       );
     });

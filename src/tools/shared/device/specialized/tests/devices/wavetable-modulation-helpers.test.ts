@@ -15,6 +15,7 @@ import {
   buildModMethods,
   registerWavetable,
 } from "./wavetable-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Edge cases of the Wavetable mod-matrix helpers: the index-0 boundaries (source
 // "Amp" and target slot 0 are both real values, not "not found"), the ±1 amount
@@ -92,14 +93,12 @@ describe("modulation source resolution", () => {
       "updateDevice",
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `setModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
       ),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `clearModulation source "Nope" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
       ),
@@ -178,8 +177,7 @@ describe("modulation target resolution", () => {
     );
 
     expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 3, 0.5);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("could not add to matrix"),
     );
   });
@@ -195,8 +193,7 @@ describe("modulation target resolution", () => {
       "updateDevice",
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'clearModulation target "Filter Freq" is not in the modulation matrix',
       ),
@@ -231,8 +228,7 @@ describe("setModulation amount contract", () => {
       "updateDevice",
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`amount must be in -1..1 (got ${amount})`),
     );
   });

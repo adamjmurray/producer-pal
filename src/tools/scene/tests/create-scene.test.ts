@@ -13,6 +13,7 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "../create-scene.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -299,8 +300,7 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
       expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
       expect(result).toHaveLength(2);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("name: 3 names for 2 scenes"),
       );
     });
@@ -344,8 +344,7 @@ describe("createScene", () => {
       expect(scene1.set).toHaveBeenCalledWith("color", 65280);
       expect(scene2.set).not.toHaveBeenCalledWith("color", expect.anything());
       expect(scene3.set).not.toHaveBeenCalledWith("color", expect.anything());
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("color: 2 colors for 4 scenes"),
       );
       expect(result).toHaveLength(4);

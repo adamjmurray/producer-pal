@@ -11,6 +11,7 @@ import {
   lookupMockObject,
   mockNonExistentObjects,
 } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // The real move runs here — the rest of the device suite stubs it out, which is
 // how a destination that threw before returning an outcome went unnoticed.
@@ -62,8 +63,7 @@ describe("duplicate device - a toPath entry that names nowhere", () => {
       { id: "live_set/tracks/1/devices/0", path: "t1/d0" },
     ]);
     // ...and the bad one names the path the caller sent, not the shifted t100.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'device not moved: Track in path "t99/d0/c0" does not exist',
     );
   });

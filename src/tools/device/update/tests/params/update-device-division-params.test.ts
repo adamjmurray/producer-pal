@@ -11,6 +11,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - division params", () => {
   let param: RegisteredMockObject;
@@ -84,8 +85,7 @@ describe("updateDevice - division params", () => {
       params: [{ name: "793", value: "1/128" }],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: "1/128" is not a valid division option',
     );
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());

@@ -14,6 +14,7 @@ import {
 import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 import { handleArrangementStartOperation } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
@@ -159,8 +160,7 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK).takeLane(0))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 32, 8);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}/l0`,
     );
     expect(
@@ -178,8 +178,7 @@ describe("moving an arrangement clip to another lane", () => {
     expect(
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
     ).toHaveBeenCalledWith("create_take_lane");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
     );
   });
@@ -218,8 +217,7 @@ describe("moving an arrangement clip to another lane", () => {
   ])("refuses %s", (_label, opts: MoveOptions, expected) => {
     const result = runMove(opts);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(`clip ${SOURCE_ID} was not moved: ${expected}`),
     );
     expect(
@@ -234,8 +232,7 @@ describe("moving an arrangement clip to another lane", () => {
       sourcePath: livePath.track(SOURCE_TRACK).takeLane(0).arrangementClip(0),
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `toPath ignored for take-lane clip (id ${SOURCE_ID})`,
       ),

@@ -27,6 +27,7 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 
 // Import the mocked module to configure per-test behavior
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateClip - code execution", () => {
   let mocks: UpdateClipMocks;
@@ -135,8 +136,7 @@ describe("updateClip - code execution", () => {
     );
 
     // Should emit a warning via console.warn (routed through outlet)
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Code execution failed for clip 123"),
     );
 
@@ -163,8 +163,7 @@ describe("updateClip - code execution", () => {
       { id: "456", path: "t1/s1", noteCount: 0 },
     ]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Code execution failed for clip 456"),
     );
   });

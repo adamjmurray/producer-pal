@@ -18,6 +18,7 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -104,8 +105,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
     });
 
     // Should warn about not finding the track
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'Could not find track "NonExistentTrack" in routing options',
     );
 

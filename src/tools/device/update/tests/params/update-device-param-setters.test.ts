@@ -13,6 +13,7 @@ import {
   registerSimplerDevice,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a device holding one 0–1 continuous param whose min/max labels are
@@ -252,8 +253,7 @@ describe("updateDevice - param value conversion", () => {
       });
 
       expect(param.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('could not interpret "custom-value"'),
       );
     });
@@ -264,8 +264,7 @@ describe("updateDevice - param value conversion", () => {
       updateDevice({ id: "dev1", params: [{ name: "Mode", value: "-dB" }] });
 
       expect(param.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('could not interpret "-dB"'),
       );
     });
@@ -385,8 +384,7 @@ describe("updateDevice - param value conversion", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
       updateDevice({ id: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('invalid note name "C-3"'),
       );
     });
@@ -525,8 +523,7 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "NonExistentParam", value: "0.5" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('"NonExistentParam" not found'),
       );
     });
@@ -557,8 +554,7 @@ describe("updateDevice - sample pseudo-param", () => {
       params: [{ name: "sample", value: "/tmp/kick.wav" }],
     });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining('"sample" not found'),
     );
   });
@@ -628,8 +624,7 @@ describe("updateDevice - actions arg", () => {
 
     updateDevice({ id: "chain-1", actions: ["reverse"] });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("'actions' not applicable to Chain"),
     );
   });

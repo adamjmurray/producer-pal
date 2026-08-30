@@ -12,6 +12,7 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toolDefReadScene } from "../read-scene.def.ts";
 import { readScene } from "../read-scene.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Helper to create default Scene mock config
 const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({
@@ -200,8 +201,7 @@ describe("readScene", () => {
     const result = readScene({ sceneIndex: 0, include: ["clips"] });
 
     expect(result.clips).toHaveLength(1);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("no clip at trackIndex"),
     );
   });

@@ -11,6 +11,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - params by name", () => {
   let paramFreq: RegisteredMockObject;
@@ -102,8 +103,7 @@ describe("updateDevice - params by name", () => {
       params: [{ name: "Nonexistent", value: "0.5" }],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: param "Nonexistent" not found on device',
     );
   });

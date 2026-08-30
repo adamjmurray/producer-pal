@@ -18,6 +18,7 @@ import {
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
 import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function registerSimpler(opts: { multiSampleMode?: number } = {}) {
   return registerMockObject("simpler-1", {
@@ -103,7 +104,7 @@ function expectSampleSkipped(
     "replace_sample",
     expect.anything(),
   );
-  expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
+  expect(capturedWarnings()).toContainEqual(expect.stringContaining(reason));
 }
 
 describe("setSimplerSample", () => {
@@ -251,8 +252,7 @@ describe("setSimplerSample", () => {
 
     setSimplerSample(LiveAPI.from("id op-1"), "/tmp/kick.wav", "createDevice");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("createDevice:"),
     );
   });
@@ -325,8 +325,7 @@ describe("setSimplerGain", () => {
     );
 
     expect(sample.set).not.toHaveBeenCalledWith("gain", expect.anything());
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("'gainDb' must be a number"),
     );
   });
@@ -337,8 +336,7 @@ describe("setSimplerGain", () => {
     setSimplerGain(LiveAPI.from("id op-1"), 0, "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("'gainDb' only applies to Simpler devices"),
     );
   });
@@ -349,14 +347,12 @@ describe("setSimplerGain", () => {
     setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("multi-sample mode"),
     );
     // The multi-sample guard must RETURN, not fall through into the loaded-sample
     // probe below it (which would emit a second, misleading warning).
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("requires a loaded sample"),
     );
   });
@@ -367,8 +363,7 @@ describe("setSimplerGain", () => {
     setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("'gainDb' requires a loaded sample"),
     );
   });

@@ -12,6 +12,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // An unwarped audio clip's marker properties are SECONDS, not beats. Verified
 // in Live: writing 0.25 → 0.75 into the markers of a clip at 120 BPM reads back
@@ -238,8 +239,7 @@ describe("updateClip - unwarped audio clip region", () => {
 
     await updateClip({ id: "123", warping: false, looping: true });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "warping: false ignored - looping: true forces warping on",
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
@@ -260,8 +260,7 @@ describe("updateClip - unwarped audio clip region", () => {
     // end_marker to the whole sample (1.09 s), and re-warping reads that back
     // as 1.09 beats — the region collapses even though `warping` ends up
     // exactly where it started.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "warping: false ignored - looping: true forces warping on",
     );
     expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 0);

@@ -18,6 +18,7 @@ import {
   registerArrangementClip,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const SLOT_ID = /tracks\/(\d+)\/clip_slots\/(\d+)/;
 
@@ -134,8 +135,7 @@ describe("duplicate - a list of sources", () => {
       });
 
       expect(result).toStrictEqual({ id: "clipA-in-t2s0", path: "t2/s0" });
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "toPath names 1 destination(s) for 2 sources, and each needs its own",
         ),
@@ -155,8 +155,7 @@ describe("duplicate - a list of sources", () => {
         toPath: "t2/s0,t3/s0,t4/s0",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "the last 1 toPath destination(s) went unused — 2 sources take 1 each",
         ),
@@ -249,8 +248,7 @@ describe("duplicate - a list of sources", () => {
       expect(result).toHaveLength(4);
       expect(track2.call).toHaveBeenCalledTimes(4);
       // A position per source is a row, not a pile.
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("later ones will overwrite earlier ones"),
       );
     });
@@ -279,8 +277,7 @@ describe("duplicate - a list of sources", () => {
         arrangementStart: "5|1",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '2 clips duplicated to "t2" at the same position',
         ),

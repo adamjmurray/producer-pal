@@ -17,6 +17,7 @@ import {
   validateAndConfigureRouteToSource,
   validateArrangementParameters,
 } from "../duplicate-validation-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("validateAndConfigureRouteToSource", () => {
   it("returns the user values unchanged when routeToSource is falsy", () => {
@@ -182,10 +183,7 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(99)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'duplicate: no track at toPath "t99"',
-    );
+    expect(capturedWarnings()).toContain('duplicate: no track at toPath "t99"');
   });
 
   it("marks a track a MIDI clip can't go to", () => {
@@ -198,8 +196,7 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(5)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "duplicate: MIDI clip cannot be duplicated to audio track 5",
     );
   });
@@ -212,8 +209,7 @@ describe("resolveDestinationTargets", () => {
     expect(resolveDestinationTargets(clip, [mainLane(8)])).toStrictEqual([
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "duplicate: audio clip cannot be duplicated to MIDI track 8",
     );
   });
@@ -229,8 +225,7 @@ describe("resolveDestinationTargets", () => {
     expect(
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "duplicate: MIDI clip cannot be duplicated to audio track 5",
     );
   });

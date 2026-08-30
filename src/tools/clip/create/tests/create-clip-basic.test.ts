@@ -18,6 +18,7 @@ import {
   note,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when nothing names a destination", async () => {
@@ -267,8 +268,7 @@ describe("createClip - basic validation and time signatures", () => {
       looping: false,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         "firstStart parameter ignored for non-looping clips",
       ),
@@ -297,8 +297,7 @@ describe("convertTimingParameters (unit)", () => {
   it("warns when firstStart is used with a non-looping clip", () => {
     convertTimingParameters(null, null, "1|2", null, false, 4, 4, 4, 4);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });
@@ -308,8 +307,7 @@ describe("convertTimingParameters (unit)", () => {
     // `looping === false` → true and whole-condition → true / && → || mutants.
     convertTimingParameters(null, null, "1|2", null, true, 4, 4, 4, 4);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });
@@ -319,8 +317,7 @@ describe("convertTimingParameters (unit)", () => {
     // is false; the && → || mutant would make it warn.
     convertTimingParameters(null, null, "1|2", null, null, 4, 4, 4, 4);
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("firstStart parameter ignored"),
     );
   });

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/stark/stark-interpreter.ts";
 import { formatNotation } from "#src/notation/stark/stark-serializer.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 function note(
   pitch: number,
@@ -248,8 +249,7 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     const back = interpretNotation(out);
 
     expect(back.map((n) => n.duration)).toStrictEqual([6]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("longer than 6 beats"),
     );
   });
@@ -257,7 +257,7 @@ describe("stark serializer — warns when a note is too long to spell", () => {
   it("does not warn when every note fits the grid (a 6-beat note is exact)", () => {
     formatNotation([note(60, 0, 6), note(62, 6, 2)]);
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("does not warn for a long note trimmed by legato overlap, not the ceiling", () => {
@@ -270,15 +270,14 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     expect(interpretNotation(out).map((n) => n.start_time)).toStrictEqual([
       0, 2,
     ]);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("uses the plural noun and warns once for multiple overlong notes", () => {
     formatNotation([note(60, 0, 8), note(62, 8, 7)]);
 
-    expect(outlet).toHaveBeenCalledTimes(1);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toHaveLength(1);
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("2 notes longer than 6 beats"),
     );
   });
@@ -289,8 +288,7 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     const out = formatNotation([note(36, 0, 8)], DRUM);
 
     expect(out).toBe("kick /1.: X");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("longer than 6 beats"),
     );
   });
@@ -301,8 +299,7 @@ describe("stark serializer — warns when a note is too long to spell", () => {
     // repeat-emission path must still tally the ceiling clip and warn.
     formatNotation([note(60, 0, 8), note(60, 8, 8), note(60, 16, 8)]);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("longer than 6 beats"),
     );
   });

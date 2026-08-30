@@ -17,6 +17,7 @@ import {
   writeIntFromSet,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const LABELS = ["alpha", "beta", "gamma"] as const;
 
@@ -96,8 +97,7 @@ describe("writeEnumByIndex", () => {
     expect(device.set).not.toHaveBeenCalled();
     // The warning must list the valid labels, comma-separated — it is the only
     // place the model learns what it should have passed.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         '"delta" is not a valid mode. Options: alpha, beta, gamma',
       ),
@@ -183,7 +183,9 @@ describe("writeBoolProp", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("valid f"));
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("valid f"),
+    );
   });
 });
 
@@ -230,8 +232,7 @@ describe("writeIntInRange", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("count must be an integer 1-6"),
     );
   });
@@ -301,8 +302,7 @@ describe("writeIntFromSet", () => {
 
     expect(device.set).not.toHaveBeenCalled();
     // The warning must enumerate the allowed values, comma-separated.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `voices must be one of ${ALLOWED.join(", ")} (got "5")`,
       ),

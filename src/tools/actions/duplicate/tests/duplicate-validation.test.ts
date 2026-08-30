@@ -13,6 +13,7 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { registerSessionClipForArrangementDup } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - input validation", () => {
   it("should throw an error when type is missing", async () => {
@@ -142,8 +143,7 @@ describe("duplicate - clip session validation", () => {
       id: "live_set/tracks/0/clip_slots/1/clip",
       path: "t0/s1",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("count ignored for clips"),
     );
   });
@@ -158,8 +158,7 @@ describe("duplicate - clip session validation", () => {
       arrangementLength: "4bar",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("arrangementLength ignored"),
     );
   });

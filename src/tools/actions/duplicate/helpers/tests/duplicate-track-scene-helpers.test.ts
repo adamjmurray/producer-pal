@@ -20,6 +20,7 @@ import {
   duplicateSceneToArrangement,
   duplicateTrack,
 } from "../duplicate-track-scene-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock updateClip to avoid complex internal logic
 // @ts-expect-error Vitest mock types are overly strict for partial mocks
@@ -136,8 +137,7 @@ describe("duplicate-track-scene-helpers", () => {
       expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
       // No name/color/routeToSource → none of those side effects fire.
       expect(newTrack.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("routing options"),
       );
     });
@@ -201,8 +201,7 @@ describe("duplicate-track-scene-helpers", () => {
           "delete_device",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContain(
           "Could not check for Producer Pal device in duplicated track",
         );
       } finally {
@@ -308,8 +307,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("Armed the source track"),
       );
     });
@@ -322,8 +320,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           'Could not find track "Source Track" in routing options',
         ),
@@ -341,8 +338,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           'Could not route to "Source Track" due to duplicate track names',
         ),
@@ -379,8 +375,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(expectedMessage),
       );
     });

@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a mock Roar device and return its LiveAPI.
@@ -92,8 +93,7 @@ describe("Roar pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid routingMode"),
       );
     });
@@ -122,8 +122,7 @@ describe("Roar pseudo-params", () => {
       applySpecializedParamWrite(device, "envListen", "maybe", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"maybe" is not a valid envListen (expected true/false)',
         ),

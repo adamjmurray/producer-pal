@@ -16,6 +16,7 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
 import { resolveNestedParamTarget } from "../nested-param-target.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const RACK_PATH = "live_set tracks 0 devices 0";
 
@@ -148,7 +149,7 @@ function resolveSampleTarget(prefix: string, force = false): LiveAPI | null {
  */
 function expectWarnedNull(target: LiveAPI | null, message: string): void {
   expect(target).toBeNull();
-  expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(message));
+  expect(capturedWarnings()).toContainEqual(expect.stringContaining(message));
 }
 
 /**
@@ -216,10 +217,7 @@ describe("resolveNestedParamTarget", () => {
 
       resolveSampleTarget("pC1/d0");
 
-      const warning = vi
-        .mocked(outlet)
-        .mock.calls.map((call) => String(call[1]))
-        .join("\n");
+      const warning = capturedWarnings().join("\n");
 
       expect(warning).toContain("force:true");
       expect(warning).toContain("another pad");
@@ -240,8 +238,7 @@ describe("resolveNestedParamTarget", () => {
       expect(chain.call).toHaveBeenCalledWith("delete_device", 0);
       expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
       expect(target?.id).toBe("new-simpler");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("replaced a DrumSampler"),
       );
     });

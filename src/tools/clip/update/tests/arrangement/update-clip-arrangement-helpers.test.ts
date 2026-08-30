@@ -16,6 +16,7 @@ import {
   moveGroupKey,
   type MoveGroup,
 } from "../../helpers/arrangement/update-clip-move-groups.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * How many clips the tally counted on one lane at one position.
@@ -89,8 +90,7 @@ describe("update-clip-arrangement-helpers", () => {
     it("should warn and return original ID for session clips", () => {
       const result = runStartOperation(clipStub("123", 0), 16);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "arrangementStart parameter ignored for session clip (id 123)",
       );
       expect(result).toBe("123");
@@ -100,8 +100,7 @@ describe("update-clip-arrangement-helpers", () => {
       // Should not throw, just warn and return original clip id
       const result = runStartOperation(clipStub("456", 1, null), 16);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "could not determine trackIndex for clip 456",
       );
       expect(result).toBe("456");
@@ -258,8 +257,7 @@ describe("update-clip-arrangement-helpers", () => {
       });
 
       // Should warn about failure and return original clip ID
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "failed to duplicate clip 100 - original preserved",
       );
       expect(result).toBe("100");
@@ -341,8 +339,7 @@ describe("update-clip-arrangement-helpers", () => {
       });
 
       expect(result).toBeNull();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "non-survivor clip 200 already deleted, skipping",
       );
       // Should NOT call delete_clip since clip doesn't exist
@@ -370,8 +367,7 @@ describe("update-clip-arrangement-helpers", () => {
       });
 
       expect(result).toBe("777");
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "arrangementStart ignored for take-lane clip (id 777): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere",
       );
       // Neither duplicate_clip_to_arrangement nor delete_clip should fire —

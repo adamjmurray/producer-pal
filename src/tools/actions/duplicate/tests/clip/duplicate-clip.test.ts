@@ -21,6 +21,7 @@ import {
   registerSessionClipForArrangementDup,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", async () => {
@@ -363,8 +364,7 @@ describe("duplicate - clip duplication", () => {
         toPath: "t2/s0",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("arrangementStart/locator ignored"),
       );
     });
@@ -440,7 +440,7 @@ describe("duplicate - clip duplication", () => {
         toPath,
       });
 
-      expect(outlet).toHaveBeenCalledWith(1, 'toPath "null" names nothing');
+      expect(capturedWarnings()).toContain('toPath "null" names nothing');
       expect(track0.call).toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         "id clip1",
@@ -465,8 +465,7 @@ describe("duplicate - clip duplication", () => {
         toSlot: "2/0",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "arrangementStart/locator ignored — toSlot names a clip slot",
         ),
@@ -495,8 +494,7 @@ describe("duplicate - clip duplication", () => {
         arrangementStart: "3|1",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
       expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
@@ -533,8 +531,7 @@ describe("duplicate - clip duplication", () => {
         arrangementLength: "1bar", // 4 beats == clip length → Case 2 (exact)
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
       expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
@@ -648,8 +645,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual([]);
       expect(track0.call).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "Ran out of time after duplicating 0 of 3. " +
           "Not duplicated: t0 3|1, t0 4|1, t0 5|1. Re-run for those positions.",
       );
@@ -677,8 +673,7 @@ describe("duplicate - clip duplication", () => {
         { deadline: Date.now() - 1 },
       );
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "Ran out of time after duplicating 0 of 3. " +
           "Not duplicated: t1 3|1, t2 3|1, t3 3|1. Re-run for those positions.",
       );

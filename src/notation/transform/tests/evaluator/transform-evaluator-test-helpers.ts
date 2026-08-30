@@ -6,6 +6,7 @@ import { expect } from "vitest";
 import { type NoteContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const TEST_NOTE_DEFAULTS: NoteEvent = {
   pitch: 60,
@@ -95,5 +96,5 @@ export function expectTransformError(transformString: string) {
   const result = evaluateTransform(transformString, DEFAULT_CONTEXT);
 
   expect(result).toStrictEqual({});
-  expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+  expect(capturedWarnings()).not.toHaveLength(0);
 }

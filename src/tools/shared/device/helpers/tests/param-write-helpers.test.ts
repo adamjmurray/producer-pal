@@ -16,6 +16,7 @@ import {
   warnParamDisabled,
 } from "../param-write-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const paramPath = `${livePath.track(0).device(0)} parameters 0`;
 
@@ -70,7 +71,7 @@ describe("setParamIfEnabled", () => {
       true,
     );
     expect(param.set).toHaveBeenCalledWith("display_value", -6);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("skips the write and warns when the parameter is disabled", () => {
@@ -80,8 +81,7 @@ describe("setParamIfEnabled", () => {
       setParamIfEnabled(paramApi(), "value", 0.5, 'chain "Kick" pan'),
     ).toBe(false);
     expect(param.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('chain "Kick" pan is disabled'),
     );
   });
@@ -113,7 +113,7 @@ describe("setParamValueAndVerify", () => {
 
     expect(landed).toBe(true);
     expect(param.set).toHaveBeenCalledWith("value", 0.8);
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("warns when Live ignores the write", () => {
@@ -129,8 +129,7 @@ describe("setParamValueAndVerify", () => {
     );
 
     expect(landed).toBe(false);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: param "Drive" was not changed — it still reads "0.50". Live ignores a value outside the parameter\'s range.',
     );
   });
@@ -143,7 +142,7 @@ describe("setParamValueAndVerify", () => {
     setParamValueAndVerify(paramApi(), 0.1, 'updateDevice: param "Drive"');
 
     expect(param.properties.value).toBe(Math.fround(0.1));
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -151,8 +150,7 @@ describe("warnParamDisabled", () => {
   it("names the parameter and points at the macro", () => {
     warnParamDisabled("updateTrack: gainDb");
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateTrack: gainDb is disabled and was not changed — a rack macro is mapped to it. Set that macro instead, or unmap it in Live.",
     );
   });

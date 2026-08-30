@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Discriminating cases for the param value-conversion pipeline. Each uses
 // str_for_value mappings crafted so that a single mutated branch produces an
@@ -56,8 +57,7 @@ describe("updateDevice - param conversion discriminators", () => {
       // "1/16" resolves to raw -4 via the division path; a numeric-branch
       // fallthrough would fail to interpret the fraction and warn instead.
       expect(param.set).toHaveBeenCalledWith("value", -4);
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("could not interpret"),
       );
     });
@@ -114,7 +114,7 @@ describe("updateDevice - param conversion discriminators", () => {
       });
 
       expect(param.set).toHaveBeenCalledWith("value", 0);
-      expect(outlet).not.toHaveBeenCalled();
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 

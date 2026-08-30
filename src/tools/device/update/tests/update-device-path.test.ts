@@ -15,6 +15,7 @@ import {
 import "#src/live-api-adapter/live-api-extensions.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { updateDevice } from "../update-device.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice with path parameter", () => {
   it("should throw error when neither id nor path is provided", () => {
@@ -441,8 +442,7 @@ describe("updateDevice with path parameter", () => {
       // safe resolver catches it, warns, and drops the item instead of aborting.
       const result = updateDevice({ path: "zzz", name: "Test" });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("updateDevice:"),
       );
       expect(result).toStrictEqual([]);

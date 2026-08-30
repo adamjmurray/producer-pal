@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
@@ -19,6 +19,10 @@ import {
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Set up live_set and track mock properties for arrangement clip tiling tests.
@@ -363,7 +367,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       return USE_CALL_FALLBACK;
     });
 
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
 
     const result = await updateClip(
       {
@@ -388,8 +392,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     );
 
     // Should NOT emit envelope warning (preserves envelopes via non-destructive tiling)
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Automation envelopes were lost"),
     );
 

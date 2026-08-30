@@ -23,6 +23,7 @@ import {
   withEachLiveCallCostingASecond,
   type SplittingCallState,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const HOLDING_AREA = {} as const;
 
@@ -126,8 +127,7 @@ describe("performSplitting across a batch of clips", () => {
       );
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after splitting 1 of 2 clips. " +
         "Not split: clip_2. Re-run for those ids.",
     );
@@ -136,8 +136,7 @@ describe("performSplitting across a batch of clips", () => {
     // Beat 40 is inside clip_2, which the stop never reached. Calling it a
     // position that cut nothing would contradict the warning above it, and
     // send the caller to re-run without it.
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("cut nothing at"),
     );
   });
@@ -159,8 +158,7 @@ describe("performSplitting across a batch of clips", () => {
       );
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after splitting 1 of 2 clips. " +
         "Not split: clip_2. Re-run for those ids.",
     );
@@ -169,8 +167,7 @@ describe("performSplitting across a batch of clips", () => {
     // Beat 40 is inside clip_2, so "no split point falls inside any of the
     // clips" is false, and it would send the caller to move a position that
     // the warning above it just told them to re-run as is.
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("cut nothing"),
     );
   });

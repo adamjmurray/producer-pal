@@ -23,6 +23,7 @@ import {
   setupMultiClipMocks,
   setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("transport", () => {
   let liveSet: RegisteredMockObject;
@@ -259,8 +260,7 @@ describe("transport", () => {
     ).toThrow(
       'playback failed: id "nonexistent_clip" named no clip for action "play-session-clips"',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'playback: id "nonexistent_clip" does not exist',
     );
   });
@@ -388,8 +388,7 @@ describe("transport", () => {
     ).toThrow(
       'playback failed: id "nonexistent_clip" named no clip for action "stop-session-clips"',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'playback: id "nonexistent_clip" does not exist',
     );
   });

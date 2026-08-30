@@ -13,6 +13,10 @@ import {
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateTrack", () => {
   let track123: RegisteredMockObject;
@@ -98,11 +102,11 @@ describe("updateTrack", () => {
 
   it("should warn and return empty when id is missing", () => {
     expect(updateTrack({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
+    expect(capturedWarnings()).toContain("updateTrack: id is required");
 
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
     expect(updateTrack({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: id is required");
+    expect(capturedWarnings()).toContain("updateTrack: id is required");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -121,8 +125,7 @@ describe("updateTrack", () => {
     const result = updateTrack({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateTrack: id "nonexistent" does not exist',
     );
   });
@@ -133,8 +136,7 @@ describe("updateTrack", () => {
     const result = updateTrack({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123", path: "t0" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateTrack: id "nonexistent" does not exist',
     );
     expect(track123.set).toHaveBeenCalledWith("name", "Test");
@@ -160,8 +162,7 @@ describe("updateTrack", () => {
     expect(track123.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(track456.set).toHaveBeenCalledWith("name", "C");
     expect(track456.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateTrack: id "nonexistent" does not exist',
     );
   });
@@ -275,8 +276,7 @@ describe("updateTrack", () => {
         "current_monitoring_state",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("invalid monitoring state"),
       );
       expect(result).toStrictEqual({ id: "123", path: "t0" });
@@ -364,8 +364,7 @@ describe("updateTrack", () => {
           "output_routing_type",
           '{"output_routing_type":{"identifier":25}}',
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("input routing is only available"),
         );
       });
@@ -382,8 +381,7 @@ describe("updateTrack", () => {
           "input_routing_type",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining("input routing is only available"),
         );
       });
@@ -400,8 +398,7 @@ describe("updateTrack", () => {
           "current_monitoring_state",
           expect.anything(),
         );
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContainEqual(
           expect.stringContaining(
             "monitoringState is only available on armable",
           ),

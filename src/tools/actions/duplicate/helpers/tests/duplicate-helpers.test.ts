@@ -16,6 +16,7 @@ import {
   findRoutingOptionForDuplicateNames,
   type RoutingType,
 } from "../duplicate-routing-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface TrackNameMapping {
   [path: string]: string;
@@ -422,8 +423,7 @@ describe("duplicate-helpers", () => {
       });
 
       expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("was not duplicated: no clip slot at t1/s0"),
       );
     });

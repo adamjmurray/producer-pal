@@ -34,6 +34,7 @@ import {
   RETURN_ENTRY,
   routingProp,
 } from "./compressor-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // ---------------------------------------------------------------------------
 // sidechainSourceTrackId — read
@@ -177,8 +178,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("cannot be a sidechain source"),
     );
   });
@@ -249,8 +249,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("does not exist"),
     );
   });
@@ -269,8 +268,7 @@ describe("Compressor sidechainSourceTrackId write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('"No Input"'),
     );
   });
@@ -401,8 +399,7 @@ describe("Compressor sidechainChannel write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a valid sidechainChannel"),
     );
   });
@@ -419,8 +416,7 @@ describe("Compressor sidechainChannel write", () => {
     );
 
     // The full channel catalog, comma-separated.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         `Available: ${DEFAULT_AVAILABLE_CHANNELS.map((c) => c.display_name).join(", ")}`,
       ),
@@ -447,8 +443,7 @@ describe("Compressor sidechainChannel write", () => {
     );
 
     expect(device.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("not a valid sidechainChannel"),
     );
   });

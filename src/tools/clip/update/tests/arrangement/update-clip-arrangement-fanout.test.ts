@@ -10,6 +10,7 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * One 4-bar arrangement MIDI clip on its own track, so a move can't collide
@@ -90,8 +91,7 @@ describe("updateClip - arrangement params per clip", () => {
     await updateClip({ id: "100,101,102", arrangementStart: "5|1,9|1" });
 
     expect(tracks.map(movedTo)).toStrictEqual([16, 32, null]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "arrangementStart: 2 positions for 3 clips; the clips past the last position were not moved",
     );
   });
@@ -119,8 +119,7 @@ describe("updateClip - arrangement params per clip", () => {
       expect.anything(),
       expect.anything(),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "arrangementLength: 2 lengths for 3 clips; the clips past the last length kept the length they had",
     );
   });

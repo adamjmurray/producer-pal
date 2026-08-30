@@ -23,6 +23,7 @@ import {
 import { setupTrackMock } from "./helpers/read-track-registry-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("readTrack", () => {
   describe("devices", () => {
@@ -95,8 +96,7 @@ describe("readTrack", () => {
 
       readTrack({ trackIndex: 0, include: ["drum-map"] });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("instruments, which is unusual"),
       );
     });

@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupArrangementClipMocks } from "./create-clip-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Mock the loop-deadline module to control deadline behavior
 vi.mock(import("#src/tools/clip/helpers/loop-deadline.ts"), () => ({
@@ -38,8 +39,7 @@ describe("createClip - deadline exceeded", () => {
     );
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Deadline exceeded"),
     );
   });
@@ -83,8 +83,7 @@ describe("createClip - deadline exceeded", () => {
       id: "arrangement_clip",
       noteCount: 1,
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("Deadline exceeded after creating 1 of 2"),
     );
   });

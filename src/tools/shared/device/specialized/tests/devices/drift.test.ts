@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Default property values for a Drift device at factory defaults.
 const DRIFT_DEFAULTS = {
@@ -276,8 +277,7 @@ describe("Drift pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid lfoSource"),
       );
     });
@@ -329,8 +329,7 @@ describe("Drift pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid mod1Target"),
       );
     });
@@ -359,8 +358,7 @@ describe("Drift pseudo-params", () => {
       applySpecializedParamWrite(device, "voiceMode", "Quad", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid voiceMode"),
       );
     });
@@ -387,8 +385,7 @@ describe("Drift pseudo-params", () => {
       applySpecializedParamWrite(device, "voiceCount", 12, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("voiceCount"),
       );
     });
@@ -399,8 +396,7 @@ describe("Drift pseudo-params", () => {
       applySpecializedParamWrite(device, "voiceCount", 8.5, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("voiceCount"),
       );
     });
@@ -439,8 +435,7 @@ describe("Drift pseudo-params", () => {
       applySpecializedParamWrite(device, "pitchBendRange", 13, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("pitchBendRange"),
       );
     });
@@ -456,8 +451,7 @@ describe("Drift pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("pitchBendRange"),
       );
     });
@@ -473,8 +467,7 @@ describe("Drift pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("pitchBendRange"),
       );
     });

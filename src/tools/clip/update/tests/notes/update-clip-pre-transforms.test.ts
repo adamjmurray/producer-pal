@@ -12,6 +12,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface AddedNote {
   pitch: number;
@@ -195,8 +196,7 @@ describe("updateClip - preTransforms", () => {
       gainDb: -6,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         "preTransforms parameter ignored for audio clips",
       ),

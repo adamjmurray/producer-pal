@@ -218,7 +218,7 @@ describe("warning correlation", () => {
     expect(warningsSentFor("req-quiet")).toStrictEqual([]);
   });
 
-  it("still mirrors a warning to outlet 1, and wipes no buffer", async () => {
+  it("sends a warning on the response and nowhere else", async () => {
     vi.mocked(readTrack).mockImplementation(() => {
       warn("mine");
 
@@ -227,11 +227,13 @@ describe("warning correlation", () => {
 
     await mcp_request("req-debug", "ppal-read-track", "{}");
 
+    expect(warningsSentFor("req-debug")).toStrictEqual(["mine"]);
+
+    // The response is the only channel. There is no second outlet mirroring
+    // warnings, and no patch-side buffer to clear before the response goes out.
     const calls = vi.mocked(outlet).mock.calls;
 
-    // Outlet 1 is a debug stream now: the patch buffers nothing, so there is
-    // nothing to clear before the response goes out.
-    expect(calls).toContainEqual([1, "mine"]);
+    expect(calls.every((args) => args[0] === 0)).toBe(true);
     expect(calls.some((args) => args[1] === "zlclear")).toBe(false);
   });
 

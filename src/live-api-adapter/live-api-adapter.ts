@@ -66,10 +66,9 @@ import {
   syncProjectContextBackup,
 } from "./project-context-sync.ts";
 
-// Configure 2 outlets: MCP responses (0) and warnings (1)
-outlets = 2;
+// One outlet: MCP responses. Warnings ride inside the response JSON (ADR-0032).
+outlets = 1;
 setoutletassist(0, "tool call results");
-setoutletassist(1, "tool call warnings");
 
 /**
  * Persistent session-scoped state set by the Max patch via setter messages.

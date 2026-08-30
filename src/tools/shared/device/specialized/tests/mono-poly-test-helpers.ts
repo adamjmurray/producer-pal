@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { applySpecializedParamWrite } from "../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register the `write monoPoly` suite for a device that exposes the shared
@@ -48,8 +49,7 @@ export function registerMonoPolyWriteTests(
       applySpecializedParamWrite(device, "monoPoly", "stereo", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid monoPoly"),
       );
     });

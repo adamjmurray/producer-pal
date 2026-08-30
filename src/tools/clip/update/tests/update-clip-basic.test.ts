@@ -28,6 +28,10 @@ import {
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 // applyCodeToSingleClip is mocked so the code-exec loop in update-clip.ts can be
 // driven in isolation (return value / call count) without real note execution.
@@ -44,17 +48,11 @@ describe("updateClip - Basic operations", () => {
 
   it("should warn and return empty when neither id nor path is given", async () => {
     expect(await updateClip({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateClip: id or path is required",
-    );
+    expect(capturedWarnings()).toContain("updateClip: id or path is required");
 
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
     expect(await updateClip({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "updateClip: id or path is required",
-    );
+    expect(capturedWarnings()).toContain("updateClip: id or path is required");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -100,8 +98,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateClip: id "nonexistent" does not exist',
     );
   });
@@ -124,10 +121,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ path: "t9/s9,t1/s1", name: "By Path" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'updateClip: no clip at path "t9/s9"',
-    );
+    expect(capturedWarnings()).toContain('updateClip: no clip at path "t9/s9"');
     expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
   });
 
@@ -373,8 +367,7 @@ describe("updateClip - Basic operations", () => {
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'toPath "1/2" is the old slot spelling; use "t1/s2"',
       ),
@@ -396,7 +389,9 @@ describe("updateClip - Basic operations", () => {
 
       const result = await updateClip({ id: "123", [param]: "," });
 
-      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(reason));
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(reason),
+      );
       expect(result).not.toHaveProperty("slot");
     },
   );
@@ -410,8 +405,7 @@ describe("updateClip - Basic operations", () => {
     // The word, written out by a model that had no destination to name.
     const result = await updateClip({ id: "123", toPath: "null" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toPath "null" names nothing'),
     );
     expect(result).not.toHaveProperty("slot");
@@ -428,8 +422,7 @@ describe("updateClip - Basic operations", () => {
     ) as string;
     const result = await updateClip({ id: "123", toSlot });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("clip not moved"),
     );
     expect(result).not.toHaveProperty("slot");
@@ -471,8 +464,7 @@ describe("updateClip - Basic operations", () => {
 
     // slots.length is exactly 1 here: the > 1 guard must stay false so no
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContain(
       "toSlot: 2 destinations for 1 clip; the extra destinations went unused",
     );
   });
@@ -483,8 +475,7 @@ describe("updateClip - Basic operations", () => {
 
     await updateClip({ id: "123, 456", name: "A, B, C" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "name: 3 names for 2 clips; the extra names went unused",
     );
   });
@@ -548,8 +539,7 @@ describe("updateClip - Basic operations", () => {
 
     // handleWarpMarkerOperation runs only inside the warpOp != null guard; with
     // no warpBeatTime it warns, proving the guarded block executed.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "warpBeatTime required for add operation",
     );
   });
@@ -565,8 +555,7 @@ describe("updateClip - Basic operations", () => {
       "add_new_notes",
       expect.anything(),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContain(
       "notes parameter ignored for audio clip",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 1 });
@@ -577,8 +566,7 @@ describe("updateClip - Basic operations", () => {
 
     await updateClip({ id: "123", warping: false, gainDb: -6 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "gainDb, warping ignored for MIDI clips",
     );
   });
@@ -592,8 +580,7 @@ describe("updateClip - Basic operations", () => {
     // Loop bound is j < length: exactly one call, no extra iteration that would
     // dereference undefined and emit a "Failed to update clip" warning.
     expect(applyCodeToSingleClip).toHaveBeenCalledTimes(1);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("Failed to update clip"),
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 3 });
@@ -649,8 +636,7 @@ describe("updateClip - splitting mutation coverage", () => {
     // Session clips are excluded from arrangementClips, so prepareSplitParams
     // sees an empty list and warns. The <= 0 guard must return false for them
     // (forced-true / never-false mutants would include the clip and split it).
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "arrangementSplit requires arrangement clips",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });

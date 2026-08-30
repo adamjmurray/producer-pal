@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "./update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - moving a drum chain", () => {
   let chain0: RegisteredMockObject;
@@ -98,8 +99,7 @@ describe("updateDevice - moving a drum chain", () => {
     // the set is silently refused. Reporting the no-op as a move is the bug.
     const result = updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/p*" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'cannot move a drum chain to the catch-all pad "t0/d0/p*"',
       ),
@@ -131,8 +131,7 @@ describe("updateDevice - moving a drum chain", () => {
   it("warns that a move onto an occupied pad layers", () => {
     updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pD1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'drum pad "t0/d0/pD1" already had 1 chain(s), so the move layers',
       ),
@@ -145,8 +144,7 @@ describe("updateDevice - moving a drum chain", () => {
   it("stays quiet moving onto an empty pad", () => {
     updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pE1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("layers on top"),
     );
   });
@@ -155,8 +153,7 @@ describe("updateDevice - moving a drum chain", () => {
   it("stays quiet moving a pad onto itself", () => {
     updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("layers on top"),
     );
   });
@@ -168,10 +165,7 @@ describe("updateDevice - moving a drum chain", () => {
       toPath: "t1",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      'toPath "t1" is not a drum pad path',
-    );
+    expect(capturedWarnings()).toContain('toPath "t1" is not a drum pad path');
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
   });
@@ -184,8 +178,7 @@ describe("updateDevice - moving a drum chain", () => {
       toPath: "t1/d0/pD1",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -204,8 +197,7 @@ describe("updateDevice - moving a drum chain", () => {
     updateDevice({ path: "t0/d0/pC1/c0", toPath: "t0/d0/pD1/c0" });
 
     expect(chain0.set).toHaveBeenCalledWith("in_note", 38);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("does not name a pad in this rack"),
     );
   });
@@ -219,8 +211,7 @@ describe("updateDevice - moving a drum chain", () => {
       toPath: "t0/d0/pD1/d0/pE1",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -236,8 +227,7 @@ describe("updateDevice - moving a drum chain", () => {
     // Reading the first pad here makes the move a no-op reported as a success.
     updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/d0/pD1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -246,8 +236,7 @@ describe("updateDevice - moving a drum chain", () => {
   it("should warn and skip when toPath's track does not exist", () => {
     updateDevice({ path: "t0/d0/pC1", toPath: "t99/d0/pB1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("does not name a pad in this rack"),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -264,8 +253,7 @@ describe("updateDevice - moving a drum chain", () => {
     // The rest of the update still lands — only the move is refused.
     const result = updateDevice({ id: "123", toPath: "t1/d0", name: "X" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("cannot move the Producer Pal device"),
     );
     expect(device.set).toHaveBeenCalledWith("name", "X");
@@ -282,7 +270,7 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     // A non-drum Chain is not moveable to a pad: warn, and never touch in_note.
-    expect(outlet).toHaveBeenCalledWith(1, "cannot move Chain");
+    expect(capturedWarnings()).toContain("cannot move Chain");
     expect(chain.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "123" });
   });
@@ -332,8 +320,7 @@ describe("updateDevice - moving a drum chain", () => {
     it("skips the per-layer settings on a stacked pad and names the paths", () => {
       updateDevice({ id: "pad-36", gainDb: -6 });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("t0/d0/pC1/c0, t0/d0/pC1/c1"),
       );
     });
@@ -384,8 +371,7 @@ describe("updateDevice - moving a drum chain", () => {
       updateDevice({ path: `${rack}/pD1`, toPath: `${rack}/pE1` });
 
       expect(subChainD.set).toHaveBeenCalledWith("in_note", 40);
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("does not name a pad in this rack"),
       );
     });
@@ -393,8 +379,7 @@ describe("updateDevice - moving a drum chain", () => {
     it("refuses a move out of the nested rack into the outer one", () => {
       updateDevice({ path: "t0/d0/pC1/c0/d0/pD1", toPath: "t0/d0/pE1" });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("does not name a pad in this rack"),
       );
       expect(subChainD.set).not.toHaveBeenCalledWith(
@@ -406,8 +391,7 @@ describe("updateDevice - moving a drum chain", () => {
     it("refuses a move from the outer rack into the nested one", () => {
       updateDevice({ path: "t0/d0/pC1", toPath: "t0/d0/pC1/c0/d0/pE1" });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("does not name a pad in this rack"),
       );
       expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
@@ -464,7 +448,7 @@ describe("updateDevice - a toPath that does not resolve", () => {
   ])("renames both devices and warns about %s", (toPath, warning) => {
     const result = updateDevice({ id: "123,456", toPath, name: "X" });
 
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(warning));
+    expect(capturedWarnings()).toContainEqual(expect.stringContaining(warning));
     expect(first.set).toHaveBeenCalledWith("name", "X");
     expect(second.set).toHaveBeenCalledWith("name", "X");
     expect(result).toStrictEqual([{ id: "123" }, { id: "456" }]);

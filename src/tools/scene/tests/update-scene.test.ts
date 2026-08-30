@@ -17,6 +17,10 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 import "#src/live-api-adapter/live-api-extensions.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 async function withConsoleSpy(
   fn: (spy: ReturnType<typeof vi.spyOn>) => void,
@@ -151,8 +155,7 @@ describe("updateScene", () => {
   it("names the item when more names than scenes are given", () => {
     updateScene({ id: "123,456", name: "A,B,C,D" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("name: 4 names for 2 scenes"),
     );
   });
@@ -177,11 +180,11 @@ describe("updateScene", () => {
 
   it("should warn and return empty when id is missing", () => {
     expect(updateScene({})).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateScene: id is required");
+    expect(capturedWarnings()).toContain("updateScene: id is required");
 
-    vi.mocked(outlet).mockClear();
+    clearCapturedWarnings();
     expect(updateScene({ name: "Test" })).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(1, "updateScene: id is required");
+    expect(capturedWarnings()).toContain("updateScene: id is required");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -200,8 +203,7 @@ describe("updateScene", () => {
     const result = updateScene({ id: "nonexistent" });
 
     expect(result).toStrictEqual([]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateScene: id "nonexistent" does not exist',
     );
   });
@@ -212,8 +214,7 @@ describe("updateScene", () => {
     const result = updateScene({ id: "123, nonexistent", name: "Test" });
 
     expect(result).toStrictEqual({ id: "123", path: "s0" });
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateScene: id "nonexistent" does not exist',
     );
     expect(scene1.set).toHaveBeenCalledWith("name", "Test");
@@ -239,8 +240,7 @@ describe("updateScene", () => {
     expect(scene1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
     expect(scene2.set).toHaveBeenCalledWith("name", "C");
     expect(scene2.set).toHaveBeenCalledWith("color", 255); // #0000FF
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateScene: id "nonexistent" does not exist',
     );
   });

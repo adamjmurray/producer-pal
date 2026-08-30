@@ -30,6 +30,7 @@ vi.mock(import("#src/shared/pitch.ts"), async (importOriginal) => {
 
 import { createAudioClipInSession } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { pitchClassToNumber } from "#src/shared/pitch.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -383,8 +384,7 @@ describe("update-live-set-helpers", () => {
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.tempo).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "tempo must be between 20.0 and 999.0 BPM",
       );
     });
@@ -397,8 +397,7 @@ describe("update-live-set-helpers", () => {
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.tempo).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "tempo must be between 20.0 and 999.0 BPM",
       );
     });
@@ -477,7 +476,7 @@ describe("update-live-set-helpers", () => {
 
       expect(mockLiveSet.set).not.toHaveBeenCalled();
       expect(result.scale).toBeUndefined();
-      expect(outlet).toHaveBeenCalledWith(1, "invalid scale root: C");
+      expect(capturedWarnings()).toContain("invalid scale root: C");
     });
   });
 });

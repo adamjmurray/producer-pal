@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Live states no unit for about a fifth of its stock numeric params, so what
 // they measure is recorded in known-param-units.ts. Glue Compressor is the
@@ -134,8 +135,7 @@ describe("updateDevice - recorded param units", () => {
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('is measured in s, so "50 %" was not written'),
       );
     });
@@ -150,8 +150,7 @@ describe("updateDevice - recorded param units", () => {
     updateDevice({ id: "dev1", params: [{ name: "Blend", value: "50 %" }] });
 
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("never says what it measures"),
     );
   });
@@ -169,8 +168,7 @@ describe("updateDevice - recorded param units", () => {
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("never says what it measures"),
       );
     });

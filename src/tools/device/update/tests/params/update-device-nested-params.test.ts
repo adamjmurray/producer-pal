@@ -13,6 +13,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a Drum Rack at t0/d0 with a single empty C1 (MIDI 36) pad chain
@@ -100,8 +101,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       params: [{ name: "pC1/d0/", value: "/snare.wav" }],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('empty name after "/"'),
     );
   });
@@ -168,8 +168,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       ],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("failed to set param"),
     );
     expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
@@ -185,8 +184,7 @@ describe("updateDevice - pad instrument guard", () => {
       params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("sample write SKIPPED on pad C1"),
     );
     expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);

@@ -19,6 +19,7 @@ import {
   warnIfChainMixerLeftBehind,
 } from "../chain-mixer-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const rackPath = livePath.track(0).device(0);
 const chainPath = rackPath.chain(1);
@@ -199,8 +200,7 @@ describe("applyChainMixer", () => {
 
     applyChainMixer(chainApi(), { gainDb: -6 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("has no mixer device"),
     );
   });
@@ -215,8 +215,7 @@ describe("applyChainMixer", () => {
     applyChainMixer(chainApi(), { gainDb: -6, pan: 0.25 });
 
     expect(volume.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('chain "Snare" gainDb is disabled'),
     );
     // Mapping one parameter must not block the others on the same chain
@@ -229,8 +228,7 @@ describe("applyChainMixer", () => {
     applyChainMixer(chainApi(), { pan: -1 });
 
     expect(panning.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('chain "Snare" pan is disabled'),
     );
   });
@@ -302,9 +300,8 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -6 });
       applyChainMixer(chainApi(), { sendReturn: "a" });
 
-      expect(outlet).toHaveBeenCalledTimes(2);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toHaveLength(2);
+      expect(capturedWarnings()).toContain(
         "sendGainDb and sendReturn must both be specified",
       );
       expect(sends[0]?.set).not.toHaveBeenCalled();
@@ -315,8 +312,7 @@ describe("applyChainMixer", () => {
 
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "Chorus" });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'no return chain matching "Chorus" (returns: a Delay, b Reverb)',
       );
     });
@@ -326,8 +322,7 @@ describe("applyChainMixer", () => {
 
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "a" });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'no return chain matching "a" (rack has no return chains; they can only be added in Live)',
       );
     });
@@ -342,8 +337,7 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -12, sendReturn: "b Reverb" });
 
       expect(send.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('chain "Snare" send "b Reverb" is disabled'),
       );
     });
@@ -353,7 +347,7 @@ describe("applyChainMixer", () => {
 
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
 
-      expect(outlet).toHaveBeenCalledWith(1, "chain chain-1 has no send 2");
+      expect(capturedWarnings()).toContain("chain chain-1 has no send 2");
     });
   });
 });
@@ -381,8 +375,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
@@ -402,8 +395,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(otherRack.path),
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
@@ -416,8 +408,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
@@ -431,8 +422,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       true,
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       `chain "Snare" trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
     );
   });
@@ -449,8 +439,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(track.path),
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
     );
   });
@@ -476,8 +465,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
@@ -490,7 +478,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("stays quiet when the device stays in the same chain", () => {
@@ -501,7 +489,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       chainApi(),
     );
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("stays quiet when the device is not inside a chain", () => {
@@ -515,7 +503,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 
   it("stays quiet when the source chain no longer exists", () => {
@@ -530,7 +518,7 @@ describe("warnIfChainMixerLeftBehind", () => {
       LiveAPI.from(destination.path),
     );
 
-    expect(outlet).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toHaveLength(0);
   });
 });
 
@@ -585,8 +573,7 @@ describe("carryChainMixer", () => {
 
     expect(first?.set).toHaveBeenCalledWith("display_value", -12);
     expect(second?.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
   });
@@ -598,12 +585,10 @@ describe("carryChainMixer", () => {
 
     carryChainMixer(carried, chainApi());
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Snare" trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
     );
   });

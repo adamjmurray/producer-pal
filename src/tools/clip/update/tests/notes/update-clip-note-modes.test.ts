@@ -13,6 +13,7 @@ import {
   type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const DEFAULT_C3_NOTE = {
   pitch: 60,
@@ -110,8 +111,7 @@ describe("updateClip - Note updates", () => {
       updateClip({ id: "123", notes: "C3 1|1" }),
     ).resolves.toBeDefined();
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("notes parameter ignored for audio clip"),
     );
     expect(mocks.clip123.call).not.toHaveBeenCalledWith(

@@ -19,6 +19,7 @@ import {
   registerArrangementClip,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface DuplicateClipResult {
   id: string;
@@ -498,8 +499,7 @@ describe("duplicate - scene duplication", () => {
 
     expect(result).toStrictEqual([]);
     expect(track0.call).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after duplicating 0 of 2. " +
         "Not duplicated: 5|1, 9|1. Re-run for those positions.",
     );

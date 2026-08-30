@@ -12,6 +12,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "../update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // The unit on a written value used to be parsed off and dropped, leaving only
 // the number: any unit wrote, and a value in seconds reached a bare-number
@@ -73,8 +74,7 @@ describe("updateDevice - param units", () => {
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining('is measured in %, so "20 dB" was not written'),
       );
     });
@@ -103,8 +103,7 @@ describe("updateDevice - param units", () => {
       });
 
       expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("displays a plain number from 0 to 100"),
       );
     });

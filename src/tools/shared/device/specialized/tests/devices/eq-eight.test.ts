@@ -13,6 +13,7 @@ import {
   applySpecializedParamWrite,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Register a mock EQ Eight device and return its LiveAPI.
@@ -126,8 +127,7 @@ describe("EQ Eight pseudo-params", () => {
       applySpecializedParamWrite(device, "globalMode", "bogus", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid globalMode"),
       );
     });
@@ -169,8 +169,7 @@ describe("EQ Eight pseudo-params", () => {
       applySpecializedParamWrite(device, "oversample", "maybe", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"maybe" is not a valid oversample (expected true/false)',
         ),

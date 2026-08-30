@@ -12,6 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateTrack - send properties", () => {
   let track123: RegisteredMockObject;
@@ -298,7 +299,7 @@ describe("updateTrack - send properties", () => {
 });
 
 // Asserts that updateTrack declined to apply a send update: none of the given
-// sends were written, the warning was relayed to the LLM on outlet 1, and the
+// sends were written, the warning reached the model on the response, and the
 // track itself still reported a plain success result (warn-and-skip must never
 // throw, so partial successes can continue across tracks).
 function expectSendUpdateSkipped(
@@ -310,8 +311,7 @@ function expectSendUpdateSkipped(
     expect(send.set).not.toHaveBeenCalled();
   }
 
-  expect(outlet).toHaveBeenCalledWith(
-    1,
+  expect(capturedWarnings()).toContainEqual(
     expect.stringContaining(expectedWarning),
   );
   expect(result).toStrictEqual({ id: "123", path: "t0" });

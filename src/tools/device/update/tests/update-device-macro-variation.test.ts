@@ -11,6 +11,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - macroVariation", () => {
   let rackDevice: RegisteredMockObject;
@@ -42,8 +43,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "create",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macro variations only available on rack devices",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();
@@ -57,8 +57,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 5,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: variation index 5 out of range (3 available)",
     );
     expect(rackDevice.set).not.toHaveBeenCalledWith(
@@ -79,8 +78,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 3,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: variation index 3 out of range (3 available)",
     );
     expect(rackDevice.set).not.toHaveBeenCalledWith(
@@ -104,8 +102,7 @@ describe("updateDevice - macroVariation", () => {
       "selected_variation_index",
       expect.anything(),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("ignored"),
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
@@ -122,8 +119,7 @@ describe("updateDevice - macroVariation", () => {
     // not ignored.
     expect(rackDevice.set).toHaveBeenCalledWith("selected_variation_index", 1);
     expect(rackDevice.call).toHaveBeenCalledWith("recall_selected_variation");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("ignored"),
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
@@ -189,8 +185,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 2,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
     expect(rackDevice.set).not.toHaveBeenCalledWith(
@@ -206,8 +201,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "load",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
@@ -220,8 +214,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "delete",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
     expect(rackDevice.call).not.toHaveBeenCalled();
@@ -235,8 +228,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
     );
     // The index is ignored for 'create': it must NOT be written as a selection.
@@ -255,8 +247,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariationIndex ignored for 'revert'",
     );
     expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
@@ -270,8 +261,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "updateDevice: macroVariationIndex ignored for 'randomize'",
     );
     expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");

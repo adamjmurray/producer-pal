@@ -11,6 +11,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 const routingProperties = {
   available_input_routing_types: [
@@ -89,8 +90,7 @@ describe("updateTrack routing by name", () => {
       "output_routing_type",
       '{"output_routing_type":{"identifier":30}}',
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('2 options named "Bass"'),
     );
   });
@@ -102,8 +102,7 @@ describe("updateTrack routing by name", () => {
       "output_routing_type",
       expect.anything(),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('no output_routing_type named "Nowhere"'),
     );
   });

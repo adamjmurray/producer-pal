@@ -14,6 +14,7 @@ import {
   readSpecializedOptions,
   readSpecializedParams,
 } from "../../specialized-device-registry.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // Category list for testing: underscore-separated internal names.
 const MOCK_CATEGORY_LIST = [
@@ -127,8 +128,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid irCategory"),
       );
     });
@@ -145,8 +145,7 @@ describe("Hybrid Reverb pseudo-params", () => {
 
       // The whole catalog, comma-separated and de-underscored — this warning is
       // the model's only listing of the valid category names.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           "Available: Early Reflections, Halls, Real Places",
         ),
@@ -204,8 +203,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("not a valid irFile"),
       );
     });
@@ -218,8 +216,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       applySpecializedParamWrite(device, "irFile", "Any File", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("no files"),
       );
     });
@@ -282,8 +279,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       applySpecializedParamWrite(device, "irAttackTime", "abc", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irAttackTime"),
       );
     });
@@ -313,8 +309,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       applySpecializedParamWrite(device, "irDecayTime", "abc", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irDecayTime"),
       );
     });
@@ -344,8 +339,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       applySpecializedParamWrite(device, "irSizeFactor", "abc", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("irSizeFactor"),
       );
     });
@@ -407,8 +401,7 @@ describe("Hybrid Reverb pseudo-params", () => {
       );
 
       expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
           '"maybe" is not a valid irTimeShapingOn (expected true/false)',
         ),

@@ -25,6 +25,7 @@ vi.mock(import("#src/live-api-adapter/code-exec-v8-protocol.ts"), () => ({
 }));
 
 import { executeNoteCode } from "#src/live-api-adapter/code-exec-v8-protocol.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Make a clip's call mock report `noteCount` notes from get_notes_extended, so
@@ -121,8 +122,7 @@ describe("updateClip - duplicateLoop", () => {
     const result = await updateClip({ id: "123", duplicateLoop: true });
 
     expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "duplicateLoop parameter ignored for audio clip (id 123)",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
@@ -162,8 +162,7 @@ describe("updateClip - duplicateLoop", () => {
     // THEN the native double extends it - the two compose, no warning.
     expect(mocks.clip123.set).toHaveBeenCalledWith("loop_end", 16);
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0", noteCount: 8 });
@@ -226,8 +225,7 @@ describe("updateClip - duplicateLoop", () => {
       });
 
       expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("duplicateLoop sets the clip length"),
       );
       expect(result).toStrictEqual(expected);
@@ -312,8 +310,7 @@ describe("updateClip - duplicateLoop", () => {
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("duplicate_loop");
     expect(executeNoteCode).toHaveBeenCalledOnce();
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
     expect(result).toStrictEqual({ path: "t0/s0", noteCount: 8, id: "123" });

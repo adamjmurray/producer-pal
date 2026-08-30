@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   applyTransforms,
   evaluateTransform,
@@ -20,6 +20,10 @@ import {
   DEFAULT_CONTEXT,
   expectTransformError,
 } from "./transform-evaluator-test-helpers.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("Transform Evaluator Error Handling", () => {
   describe("applyTransforms parsing errors", () => {
@@ -67,7 +71,7 @@ describe("Transform Evaluator Error Handling", () => {
 
       // Should work fine
       expect(result.velocity!.value).toBe(60);
-      expect(outlet).not.toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).toHaveLength(0);
     });
   });
 
@@ -193,7 +197,7 @@ describe("Transform Evaluator Error Handling", () => {
         {},
       );
 
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
+      expect(capturedWarnings()).not.toHaveLength(0);
       expect(result).toStrictEqual({});
     });
   });
@@ -281,8 +285,7 @@ describe("Transform Evaluator Error Handling", () => {
       applyTransforms(notes, "gain = 0.5", 4, 4);
 
       expect(notes[0]!.velocity).toBe(100); // unchanged
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Audio parameters"),
       );
     });
@@ -348,7 +351,7 @@ describe("Transform Evaluator Error Handling", () => {
 
   describe("malformed-line warning deduplication", () => {
     it("relays one warning per malformed line, not one per note", () => {
-      vi.mocked(outlet).mockClear();
+      clearCapturedWarnings();
 
       const notes = createTestNotes([
         { start_time: 0 },
@@ -361,14 +364,9 @@ describe("Transform Evaluator Error Handling", () => {
       // note-invariant, so it must surface exactly once.
       applyTransforms(notes, "velocity = round(1, 2)", 4, 4);
 
-      const failureWarnings = vi
-        .mocked(outlet)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === 1 &&
-            typeof call[1] === "string" &&
-            call[1].includes("Failed to evaluate transform"),
-        );
+      const failureWarnings = capturedWarnings().filter((warning) =>
+        warning.includes("Failed to evaluate transform"),
+      );
 
       expect(failureWarnings).toHaveLength(1);
       // The whole assignment is skipped, so velocities are untouched.

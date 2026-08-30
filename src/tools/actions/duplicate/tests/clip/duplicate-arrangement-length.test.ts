@@ -17,6 +17,7 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-arrangement-test-helpers.ts";
 import { createShortenedClipInHoldingMock, updateClipMock } from "../setup.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - arrangementLength functionality", () => {
   it("should duplicate a clip to arrangement with shorter length", async () => {
@@ -83,8 +84,7 @@ describe("duplicate - arrangementLength functionality", () => {
       arrangementLength: "1bar",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("silenceWavPath missing in context"),
     );
   });

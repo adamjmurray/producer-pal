@@ -6,7 +6,7 @@
 // A bare pad path names the whole pad. These cover what that means once a pad
 // holds more than one chain, and on a nested rack that has no DrumPad objects.
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
@@ -14,6 +14,7 @@ import {
   registerMockObject,
   updateDevice,
 } from "./update-device-test-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 interface RackMocks {
   pad: RegisteredMockObject | null;
@@ -109,8 +110,7 @@ describe("updateDevice - bare drum pad paths", () => {
 
     updateDevice({ path: "t0/d0/pC1", gainDb: -6, pan: 0.5, name: "Kick" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'updateDevice: "t0/d0/pC1" has 2 layers, so per-layer settings ' +
         "(name, gainDb, pan) were skipped. Set them on t0/d0/pC1/c0, " +
         "t0/d0/pC1/c1.",
@@ -154,13 +154,10 @@ describe("updateDevice - bare drum pad paths", () => {
     updateDevice({ path: "t0/d0/pC1", macroCount: 4 });
 
     expect(
-      vi
-        .mocked(outlet)
-        .mock.calls.filter(
-          (call) =>
-            call[1] ===
-            "updateDevice: 'macroCount' not applicable to DrumChain",
-        ),
+      capturedWarnings().filter(
+        (warning) =>
+          warning === "updateDevice: 'macroCount' not applicable to DrumChain",
+      ),
     ).toHaveLength(1);
   });
 });

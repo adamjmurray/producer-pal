@@ -13,6 +13,7 @@ import {
 import { updateDevice } from "../update-device.ts";
 import { mockWorkingDeviceMoves } from "./update-device-test-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {
   let chain: RegisteredMockObject;
@@ -84,8 +85,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mute: true,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'mute' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
@@ -121,8 +121,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         color: "#FF0000",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'color' not applicable to DrumPad",
       );
       expect(result).toStrictEqual({ id: "790" });
@@ -134,8 +133,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         color: "#FF0000",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'color' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
@@ -159,8 +157,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         chokeGroup: 1,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'chokeGroup' not applicable to Chain",
       );
       expect(result).toStrictEqual({ id: "456" });
@@ -172,8 +169,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         chokeGroup: 1,
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'chokeGroup' not applicable to RackDevice",
       );
       expect(result).toStrictEqual({ id: "123" });
@@ -206,8 +202,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mappedPitch: "InvalidNote",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'updateDevice: invalid note name "InvalidNote"',
       );
       expect(drumChain.set).not.toHaveBeenCalledWith(
@@ -223,8 +218,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         mappedPitch: "C3",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'mappedPitch' not applicable to Chain",
       );
       expect(result).toStrictEqual({ id: "456" });
@@ -240,8 +234,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         params: [{ name: "789", value: "0.5" }],
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'params' not applicable to DrumPad",
       );
       expect(result).toStrictEqual({ id: "790" });
@@ -250,8 +243,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should not warn when params is an empty array on a DrumPad", () => {
       const result = updateDevice({ id: "790", params: [] });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContain(
         "updateDevice: 'params' not applicable to DrumPad",
       );
       expect(result).toStrictEqual({ id: "790" });
@@ -283,8 +275,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       (label, args, type, id) => {
         updateDevice({ id: id, ...args });
 
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContain(
           `updateDevice: '${label}' not applicable to ${type}`,
         );
       },
@@ -298,8 +289,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     ] as const)("warns that %s is not applicable to a Chain", (label, args) => {
       updateDevice({ id: "456", ...args });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         `updateDevice: '${label}' not applicable to Chain`,
       );
     });
@@ -307,8 +297,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("does not spuriously warn about A/B Compare when abCompare is unset", () => {
       updateDevice({ id: "123", mute: true });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContain(
         "updateDevice: A/B Compare not available on this device",
       );
     });
@@ -316,8 +305,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("does not spuriously adjust macro count on a rack when macroCount is unset", () => {
       updateDevice({ id: "801", abCompare: "a" });
 
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("macro count rounded"),
       );
     });
@@ -330,8 +318,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(chain.set).not.toHaveBeenCalledWith("mute", expect.anything());
       expect(chain.set).not.toHaveBeenCalledWith("solo", expect.anything());
       // Unset (null) params must be treated as absent, not warned about.
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("not applicable"),
       );
     });
@@ -347,8 +334,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         "out_note",
         expect.anything(),
       );
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContainEqual(
         expect.stringContaining("invalid note name"),
       );
     });
@@ -393,8 +379,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         name: "Hi-Hat",
       });
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "updateDevice: 'name' is read-only for DrumPad",
       );
       expect(drumPad.set).not.toHaveBeenCalledWith("name", expect.anything());
@@ -468,8 +453,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     updateDevice({ id: "chain-0", sendReturn: "a" });
 
     expect(send.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "sendGainDb and sendReturn must both be specified",
     );
   });
@@ -488,8 +472,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       });
 
       for (const name of ["gainDb", "pan", "sendGainDb", "sendReturn"]) {
-        expect(outlet).toHaveBeenCalledWith(
-          1,
+        expect(capturedWarnings()).toContain(
           `updateDevice: '${name}' not applicable to ${type}`,
         );
       }
@@ -547,12 +530,10 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
     // Announced, because the caller asked to move a device, not to set a fader.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Trimmed" trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -572,8 +553,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
@@ -589,8 +569,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -598,8 +577,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
   it("stays quiet when the device only moves within its own chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c0/d1" });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
     );
   });
@@ -627,8 +605,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t1/d0/c0" });
 
     expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
@@ -666,8 +643,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Trimmed" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
   });
@@ -685,12 +661,10 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       'chain "Trimmed" trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
     );
   });
@@ -711,10 +685,9 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(outlet).toHaveBeenCalledWith(1, "Live refused the move");
+    expect(capturedWarnings()).toContain("Live refused the move");
     expect(destinationVolume.set).not.toHaveBeenCalled();
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain"),
     );
   });

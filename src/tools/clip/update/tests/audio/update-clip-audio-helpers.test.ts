@@ -8,6 +8,7 @@ import {
   handleWarpMarkerOperation,
   setAudioParameters,
 } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
@@ -364,8 +365,7 @@ describe("handleWarpMarkerOperation", () => {
 
     handleWarpMarkerOperation(mockClip, "add", 1.0, 44100);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("warp markers only available on audio clips"),
     );
   });
@@ -381,8 +381,7 @@ describe("handleWarpMarkerOperation", () => {
     handleWarpMarkerOperation(mockClip, "remove", 4.0);
 
     expect(mockClip.call).toHaveBeenCalledWith("remove_warp_marker", 4.0);
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("warp markers only available"),
     );
   });
@@ -392,8 +391,7 @@ describe("handleWarpMarkerOperation", () => {
 
     handleWarpMarkerOperation(mockClip, "add", undefined, 44100);
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("warpBeatTime required for"),
     );
   });
@@ -450,8 +448,7 @@ describe("handleWarpMarkerOperation", () => {
       // Pins the actual warning text so a blanked string literal is caught.
       handleWarpMarkerOperation(mockClip, "move", 4.0, undefined, undefined);
 
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("warpDistance required for move"),
       );
     });

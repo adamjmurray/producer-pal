@@ -18,6 +18,7 @@ import {
   resolveMoveDestinations,
 } from "../../helpers/update-clip-session-helpers.ts";
 import { handleClipSlotMove } from "../../helpers/update-clip-slot-move-helpers.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(
   import("../../helpers/arrangement/update-clip-arrangement-helpers.ts"),
@@ -180,8 +181,7 @@ describe("handleClipSlotMove", () => {
       noteResult: null,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "could not determine slot position for clip 123",
     );
     expect(updatedClips).toHaveLength(1);
@@ -210,8 +210,7 @@ describe("handleClipSlotMove", () => {
       noteResult: null,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "could not determine slot position for clip 123",
     );
   }
@@ -253,8 +252,7 @@ describe("handleClipSlotMove", () => {
 
     // has_clip is falsy, so the overwrite warning must not fire (kills the
     // forced-true mutant on the has_clip guard).
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("overwrote the existing clip"),
     );
   });
@@ -273,8 +271,7 @@ describe("handleClipSlotMove", () => {
       path: "t2/s3",
     });
     // No duplicate_clip_to should have been called
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("overwriting"),
     );
   });
@@ -298,10 +295,7 @@ describe("handleClipSlotMove", () => {
       noteResult: null,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      "destination t99/s99 does not exist",
-    );
+    expect(capturedWarnings()).toContain("destination t99/s99 does not exist");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
   });
@@ -315,8 +309,7 @@ describe("handleClipSlotMove", () => {
       destIsMidi: 0,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "MIDI clip 123 was not moved: track 1 is audio",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
@@ -337,8 +330,7 @@ describe("handleClipSlotMove", () => {
       copyLands: false,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "MIDI clip 123 was not moved: track 17 is frozen",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
@@ -356,8 +348,7 @@ describe("handleClipSlotMove", () => {
 
     // is_frozen is falsy, so the frozen guard must not fire (kills its
     // forced-true mutant).
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("is frozen"),
     );
     expect(updatedClips[0]).toStrictEqual({ id: COPY_ID, path: "t1/s2" });
@@ -370,8 +361,7 @@ describe("handleClipSlotMove", () => {
       clipIsMidi: 0,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "audio clip 123 was not moved: track 1 is MIDI",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
@@ -393,8 +383,7 @@ describe("handleClipSlotMove", () => {
       expect.any(String),
     );
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
@@ -412,8 +401,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
@@ -434,12 +422,10 @@ describe("handleClipSlotMove", () => {
       copyLands: false,
     });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("overwrote the existing clip"),
     );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("so the original was kept"),
     );
   });
@@ -451,8 +437,7 @@ describe("handleClipSlotMove", () => {
       destHasClip: 1,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "overwrote the existing clip at t0/s1",
     );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
@@ -545,8 +530,7 @@ describe("handlePositionOperations", () => {
     });
 
     expect(handleArrangementOperations).not.toHaveBeenCalled();
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("only session clips move to a slot"),
     );
   });
@@ -560,8 +544,7 @@ describe("handlePositionOperations", () => {
       arrangementStartBeats: 8,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "toSlot ignored when arrangement parameters are specified",
     );
   });
@@ -572,8 +555,7 @@ describe("handlePositionOperations", () => {
       arrangementStartBeats: 8,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "toPath ignored when arrangement parameters are specified",
     );
   });
@@ -586,8 +568,7 @@ describe("handlePositionOperations", () => {
       arrangementLengthBeats: 8,
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "toPath ignored when arrangement parameters are specified",
     );
   });
@@ -597,8 +578,7 @@ describe("handlePositionOperations", () => {
   it("refuses to send a session clip to an arrangement lane", () => {
     runPositionOps({ toLane: { kind: "track", trackIndex: 4 } });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
         'toPath "t4" names an arrangement lane, so session clip 789 was not moved',
       ),
@@ -630,8 +610,7 @@ describe("handlePositionOperations", () => {
       arrangementStartBeats: 8,
     });
 
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("ignored when arrangement parameters"),
     );
     expect(handleArrangementOperations).toHaveBeenCalledWith(
@@ -691,8 +670,7 @@ describe("resolveMoveDestinations", () => {
     // An update tool warns and skips instead of throwing, but it must not pick
     // one destination over the other.
     expect(resolveMoveDestinations("t2/s3", "4/5", 1)).toStrictEqual([null]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("both name a destination, so no clip was moved"),
     );
   });
@@ -704,12 +682,10 @@ describe("resolveMoveDestinations", () => {
     expect(resolveMoveDestinations("t2/s3", ",", 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining('toSlot "," names nothing'),
     );
-    expect(outlet).not.toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("no clip was moved"),
     );
   });
@@ -717,8 +693,7 @@ describe("resolveMoveDestinations", () => {
   it("warns and skips a destination no clip can occupy", () => {
     // A scene names no track, so there is no one place the clip would go.
     expect(resolveMoveDestinations("s3", undefined, 1)).toStrictEqual([null]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("a scene alone names no track"),
     );
   });
@@ -740,8 +715,7 @@ describe("resolveMoveDestinations", () => {
       null,
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("1 destination for 3 clips"),
     );
   });
@@ -750,8 +724,7 @@ describe("resolveMoveDestinations", () => {
     expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("the extra destinations went unused"),
     );
   });
@@ -778,8 +751,7 @@ describe("resolveMoveDestinations", () => {
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("clip not moved:"),
     );
   });
@@ -791,8 +763,7 @@ describe("resolveMoveDestinations", () => {
       null,
       null,
     ]);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("it names nothing"),
     );
   });

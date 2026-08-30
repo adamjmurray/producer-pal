@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
@@ -17,6 +17,10 @@ import {
   setupProducerPalDeviceMocks,
   setupRoutingMocks,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  capturedWarnings,
+  clearCapturedWarnings,
+} from "#src/shared/max/v8-warning-capture.ts";
 
 describe("duplicate - track duplication", () => {
   it("should duplicate a single track (default count)", async () => {
@@ -190,8 +194,7 @@ describe("duplicate - track duplication", () => {
       1, // Index 1 where the Producer Pal device is
     );
     // ...and the removal is reported to the user.
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
     );
   });
@@ -245,8 +248,7 @@ describe("duplicate - track duplication", () => {
         "input_routing_type",
         JSON.stringify({ input_routing_type: { identifier: "no_input_id" } }),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'Changed track "Source Track" input routing from "Audio In" to "No Input"',
       );
 
@@ -296,8 +298,7 @@ describe("duplicate - track duplication", () => {
         "output_routing_type",
         expect.anything(),
       );
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         'Could not find track "Source Track" in routing options',
       );
     });
@@ -386,8 +387,7 @@ describe("duplicate - track duplication", () => {
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
 
       // It wasn't already armed, so the arm action is reported.
-      expect(outlet).toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).toContain(
         "routeToSource: Armed the source track",
       );
     });
@@ -398,7 +398,7 @@ describe("duplicate - track duplication", () => {
         arm: 1,
       });
 
-      vi.mocked(outlet).mockClear();
+      clearCapturedWarnings();
 
       await duplicate({
         type: "track",
@@ -410,8 +410,7 @@ describe("duplicate - track duplication", () => {
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
 
       // Verify the arm warning was NOT emitted since it was already armed
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
+      expect(capturedWarnings()).not.toContain(
         "routeToSource: Armed the source track",
       );
     });
@@ -450,8 +449,7 @@ describe("duplicate - track duplication", () => {
 
     expect(result).toStrictEqual([]);
     expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
-    expect(outlet).toHaveBeenCalledWith(
-      1,
+    expect(capturedWarnings()).toContain(
       "Ran out of time after duplicating 0 of 3 tracks. Re-run for the rest.",
     );
   });
