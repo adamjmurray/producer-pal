@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it, vi } from "vitest";
 import { useSkillOverrides } from "#webui/hooks/context/use-skill-overrides";
 import {
@@ -173,7 +174,7 @@ describe("useSkillOverrides", () => {
 
     const { result } = renderHook(useSkillOverrides);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({ kind: "ready", slots: [] });
     });
   });
@@ -423,7 +424,7 @@ describe("useSkillOverrides", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       const status = result.current.status;
 
       expect(status.kind === "ready" && status.slots[0]?.override).toBe("v2");

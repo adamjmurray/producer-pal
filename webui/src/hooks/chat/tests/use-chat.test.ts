@@ -6,7 +6,11 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { type UseChatProps } from "#webui/hooks/chat/use-chat-types";
@@ -21,7 +25,6 @@ import {
   createScriptedAdapter,
   echoUserTurn,
 } from "./helpers/use-chat-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -675,7 +678,9 @@ describe("useChat", () => {
         compacting = result.current.compact(1);
         // The switch below only races the bootstrap once it is parked in the
         // connect, which is the client existing but initialize() not resolved.
-        await waitFor(() => expect(adapter.createClient).toHaveBeenCalled());
+        await waitForHookState(() =>
+          expect(adapter.createClient).toHaveBeenCalled(),
+        );
       });
 
       await act(() => {

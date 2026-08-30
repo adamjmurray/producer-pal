@@ -3,11 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  type RenderHookResult,
-  renderHook,
-  waitFor,
-} from "@testing-library/preact";
+import { type RenderHookResult, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { expect, vi } from "vitest";
 import {
   type UseRemoteConfigReturn,
@@ -49,7 +46,7 @@ export async function setupRemoteConfigHook(
 
   const rendered = renderHook(() => useRemoteConfig("connected"));
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     if (initial.smallModelMode != null) {
       expect(rendered.result.current.serverSmallModelMode).toBe(
         initial.smallModelMode,

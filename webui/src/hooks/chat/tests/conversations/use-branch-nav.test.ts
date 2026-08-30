@@ -7,7 +7,8 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, waitFor } from "@testing-library/preact";
+import { renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useBranchNav } from "#webui/hooks/chat/use-chat-mode-state";
 import {
@@ -62,7 +63,7 @@ describe("useBranchNav", () => {
 
     const { result } = renderHook(() => useBranchNav("B", 0));
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current).toStrictEqual([
         { anchorIndex: 0, siblingIds: ["A", "B"], currentIndex: 1 },
       ]);
@@ -75,6 +76,6 @@ describe("useBranchNav", () => {
     const { result } = renderHook(() => useBranchNav("Solo", 0));
 
     // Give the async read a chance to run, then confirm it stays empty.
-    await waitFor(() => expect(result.current).toStrictEqual([]));
+    await waitForHookState(() => expect(result.current).toStrictEqual([]));
   });
 });

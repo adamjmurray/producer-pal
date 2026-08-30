@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
@@ -36,7 +37,7 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
     expect(mockFetch).toHaveBeenCalledWith(
@@ -55,14 +56,14 @@ describe("useRemoteConfig", () => {
       { initialProps: { status: "connecting" as McpStatus } },
     );
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
 
     mockFetch.mockResolvedValue(mockConfigResponse({ smallModelMode: false }));
     rerender({ status: "connected" });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -78,7 +79,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(true);
     });
   });
@@ -139,7 +140,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     // Wait for the fetch to resolve, then verify state stayed at default
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -150,7 +151,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     // Should stay at default, not throw
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
@@ -171,7 +172,7 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverLiveApiEnabled).toBe(true);
     });
   });
@@ -210,7 +211,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverLiveApiEnabled).toBe(false);
     });
   });
@@ -401,7 +402,9 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverNotation).toBeNull();
 
     // A response with no notation field IS an answer: fall back to the default.
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("resolves serverNotation to the default when /config is unreachable", async () => {
@@ -411,7 +414,9 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("resolves serverNotation to the default when /config returns non-OK", async () => {
@@ -423,7 +428,9 @@ describe("useRemoteConfig", () => {
 
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    await waitFor(() => expect(result.current.serverNotation).toBe("barbeat"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("barbeat"),
+    );
   });
 
   it("leaves serverNotation unknown when the request was aborted", async () => {
@@ -467,7 +474,7 @@ describe("useRemoteConfig", () => {
       window.dispatchEvent(new Event("focus"));
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.serverNotation).toBe("barbeat");
     });
   });
@@ -520,7 +527,9 @@ describe("useRemoteConfig", () => {
 
     // Reconnect triggers the fresh fetch, which resolves first and wins.
     rerender({ status: "connected" });
-    await waitFor(() => expect(result.current.serverNotation).toBe("stark"));
+    await waitForHookState(() =>
+      expect(result.current.serverNotation).toBe("stark"),
+    );
 
     // The held mount fetch now resolves with older data — it must be dropped.
     await act(async () => {

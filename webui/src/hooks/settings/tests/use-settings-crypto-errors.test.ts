@@ -7,7 +7,8 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Make the apiKey crypto throw so the load/save error paths in useSettings run.
@@ -30,7 +31,7 @@ async function renderPastFailedLoad() {
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const { result } = renderHook(() => useSettings());
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(errorSpy).toHaveBeenCalledWith(
       "Failed to load provider settings",
       expect.any(Error),
@@ -54,7 +55,7 @@ describe("useSettings crypto error handling", () => {
 
     renderHook(() => useSettings());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to load provider settings",
         expect.any(Error),
@@ -87,7 +88,7 @@ describe("useSettings crypto error handling", () => {
     expect(result.current.saveError).toMatch(/encrypt boom/);
     expect(result.current.savedModel).toBe(initialSavedModel);
     expect(result.current.settingsConfigured).toBe(initialSettingsConfigured);
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to save provider settings",
         expect.any(Error),

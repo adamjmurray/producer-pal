@@ -24,6 +24,10 @@ import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voi
 import { extractErrorMessage } from "#webui/hooks/voice/helpers/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
 import {
+  MAX_RESUME_ATTEMPTS,
+  RESUME_BACKOFF_MS,
+} from "#webui/lib/constants/voice-resume";
+import {
   buildGeminiVoiceInstructions,
   getVoiceLanguage,
 } from "#webui/lib/constants/voice-language";
@@ -126,11 +130,6 @@ export function createGenAIClient(
     ...(credential.ephemeral ? { httpOptions: { apiVersion: "v1alpha" } } : {}),
   });
 }
-
-/** Max consecutive failed resume attempts before we give up. */
-export const MAX_RESUME_ATTEMPTS = 3;
-/** Linear backoff base between resume attempts (attempt N waits N * this). */
-export const RESUME_BACKOFF_MS = 1000;
 
 /** Per-connection resumption state: server-issued handle + failed attempts.
  * `attempts` resets when a resumed session delivers its first message (real

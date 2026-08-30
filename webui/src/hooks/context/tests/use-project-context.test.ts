@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook, waitFor, act } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it, vi } from "vitest";
 import { useProjectContext } from "#webui/hooks/context/use-project-context";
 import {
@@ -53,7 +54,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "old",
@@ -123,7 +124,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "# hi",
@@ -141,7 +142,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "error",
         message: "network down",
@@ -159,7 +160,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("error");
     });
   });
@@ -192,7 +193,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status.kind).toBe("ready");
     });
 
@@ -228,7 +229,7 @@ describe("useProjectContext", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "new",
@@ -241,7 +242,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "v1",
@@ -284,7 +285,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "",
@@ -297,7 +298,7 @@ describe("useProjectContext", () => {
 
     const { result } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "error",
         message: "plain string error",
@@ -353,7 +354,7 @@ describe("useProjectContext", () => {
 
     const { result, unmount } = renderHook(() => useProjectContext());
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         content: "old",

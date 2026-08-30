@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { describe, expect, it } from "vitest";
 import {
   type MemoryEntryView,
@@ -187,7 +188,7 @@ describe("useMemoryCollection", () => {
 
     const { result } = renderHook(useMemoryCollection);
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(result.current.status).toStrictEqual({
         kind: "ready",
         entries: [],
@@ -520,7 +521,7 @@ describe("useMemoryCollection", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => {
+    await waitForHookState(() => {
       expect(readyEntries(result)[0]?.body).toBe("v2");
     });
   });

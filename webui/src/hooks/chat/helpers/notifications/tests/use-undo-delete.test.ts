@@ -7,7 +7,11 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUndoDelete } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
@@ -18,7 +22,6 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 // Wrap saveConversation in a spy that delegates to the real fake-indexeddb
 // implementation by default, so most tests exercise the real DB. Failure tests
@@ -50,7 +53,7 @@ type UndoResult = { current: ReturnType<typeof useUndoDelete> };
 async function undoIntoError(result: UndoResult): Promise<void> {
   await act(() => result.current.undoNotification!.action!.onClick());
 
-  await waitFor(() =>
+  await waitForHookState(() =>
     expect(result.current.undoNotification?.type).toBe("error"),
   );
 }
@@ -83,7 +86,7 @@ describe("useUndoDelete", () => {
 
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () =>
+    await waitForHookState(async () =>
       expect(await loadConversation(record.id)).toBeDefined(),
     );
   });
@@ -141,12 +144,14 @@ describe("useUndoDelete", () => {
     await act(() => result.current.pushDeleted(record));
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restored = await loadConversation(record.id);
 
       expect(restored?.title).toBe("Restore me");
     });
-    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalled();
   });
 
@@ -164,23 +169,25 @@ describe("useUndoDelete", () => {
     await act(() => result.current.undoNotification!.action!.onClick());
 
     // After undoing Second, it is restored and the banner reveals First.
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restoredSecond = await loadConversation(second.id);
 
       expect(restoredSecond?.title).toBe("Second");
     });
-    await waitFor(() =>
+    await waitForHookState(() =>
       expect(result.current.undoNotification?.message).toBe("Deleted “First”"),
     );
 
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       const restoredFirst = await loadConversation(first.id);
 
       expect(restoredFirst?.title).toBe("First");
     });
-    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
   });
 
   it("keeps the record and shows a retryable error when the restore save fails", async () => {
@@ -210,10 +217,12 @@ describe("useUndoDelete", () => {
     // restored and the banner clears.
     await act(() => result.current.undoNotification!.action!.onClick());
 
-    await waitFor(async () => {
+    await waitForHookState(async () => {
       expect(await loadConversation(record.id)).toBeDefined();
     });
-    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalled();
   });
 
@@ -247,7 +256,9 @@ describe("useUndoDelete", () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => expect(result.current.undoNotification).toBeNull());
+    await waitForHookState(() =>
+      expect(result.current.undoNotification).toBeNull(),
+    );
     expect(refreshList).toHaveBeenCalledTimes(1);
   });
 
@@ -319,7 +330,7 @@ describe("useUndoDelete", () => {
       if (!notif) break;
 
       await act(() => notif.action!.onClick());
-      await waitFor(() =>
+      await waitForHookState(() =>
         expect(result.current.undoNotification).not.toBe(notif),
       );
     }

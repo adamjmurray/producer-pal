@@ -41,7 +41,7 @@ import {
   type ScriptedAttempt,
   type TestMessage,
 } from "./helpers/use-chat-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
+import { openGate, waitUntil } from "#webui/test-utils/async-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
@@ -52,15 +52,40 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
 });
 
 // Shrink retry backoff so tests don't sit through real seconds-long delays.
-// 200 ms is small enough to keep the suite fast but large enough that the
-// "cancels retry when stopResponse is called during retry delay" test can
-// reliably abort while the timer is still pending (it waits ~50 ms first).
+// Most tests want it over as fast as possible; the ones that stop the retry
+// mid-delay hold it open instead, and wait on `started` rather than guessing
+// how long the failure takes to reach the backoff.
+const retry = vi.hoisted(() => {
+  const waiting: Array<() => void> = [];
+
+  return {
+    delayMs: 5,
+    /** Called by the mock when the backoff timer starts. */
+    begin(): void {
+      for (const resolve of waiting.splice(0)) resolve();
+    },
+    /** Arm before the send; await after it, to land inside the delay. */
+    started(): Promise<void> {
+      return new Promise<void>((resolve) => waiting.push(resolve));
+    },
+  };
+});
+
+/** Hold the retry timer open so a test can cancel it without racing it. */
+function holdRetryDelay(): void {
+  retry.delayMs = 30_000;
+}
+
 vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
   const actual = await importOriginal();
 
   return {
     ...actual,
-    calculateRetryDelay: () => 200,
+    calculateRetryDelay: () => {
+      retry.begin();
+
+      return retry.delayMs;
+    },
   };
 });
 
@@ -186,6 +211,7 @@ async function supersedeDuringConnect(signals?: AbortSignal[]) {
 describe("useChat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    retry.delayMs = 5;
   });
 
   describe("handleRetry", () => {
@@ -593,6 +619,7 @@ describe("useChat", () => {
       // then assert the indicator is already cleared while the stream is
       // still in flight.
       const [gate, resolveGate] = openGate();
+      let retryStreaming = false;
 
       const rateLimitAdapter = createScriptedAdapter(
         mockAdapter,
@@ -608,6 +635,7 @@ describe("useChat", () => {
           // keep the indicator up while it runs.
           async function* () {
             yield [...client.chatHistory];
+            retryStreaming = true;
             // Pause mid-stream — simulates a long-running response (thinking,
             // tool calls). The rate-limit indicator must already be hidden
             // by this point, not wait for the full stream to finish.
@@ -628,11 +656,10 @@ describe("useChat", () => {
         sendDone = true;
       });
 
-      // Drain timers/microtasks until the second sendMessage has yielded
-      // its first chunk and is suspended on the gate. The retry delay
-      // mock is 200 ms, plus a small margin for state to settle.
+      // Drain timers/microtasks until the second sendMessage has yielded its
+      // first chunk and is suspended on the gate.
       await act(async () => {
-        await new Promise((r) => setTimeout(r, 350));
+        await waitUntil(() => retryStreaming, "the retry to start streaming");
       });
 
       expect(sendDone).toBe(false);
@@ -659,7 +686,8 @@ describe("useChat", () => {
       );
       const { result } = renderChat(propsWith(alwaysRateLimitAdapter));
 
-      await sendThenStopDuringRetryDelay(result);
+      holdRetryDelay();
+      await sendThenStopDuringRetryDelay(result, retry.started);
 
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.rateLimitState).toBeNull();
@@ -686,7 +714,8 @@ describe("useChat", () => {
       );
       const { result } = renderChat(propsWith(realisticRateLimitAdapter));
 
-      await sendThenStopDuringRetryDelay(result);
+      holdRetryDelay();
+      await sendThenStopDuringRetryDelay(result, retry.started);
 
       expect(capturedClient).not.toBeNull();
       const chatHistory = capturedClient!.chatHistory;

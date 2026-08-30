@@ -7,7 +7,11 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import {
+  waitForHookState,
+  openGate,
+} from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import * as conversationDb from "#webui/lib/conversation-db";
@@ -26,7 +30,6 @@ import {
   waitForEffects,
   useConversationsWithUndo,
 } from "./use-conversations-test-helpers";
-import { openGate } from "#webui/test-utils/async-test-helpers";
 
 /**
  * Spy on saveConversation so its next call blocks until released, then calls
@@ -382,7 +385,7 @@ describe("useConversations delete/save races", () => {
     await act(async () => {
       result.current.notification!.action!.onClick();
     });
-    await waitFor(async () =>
+    await waitForHookState(async () =>
       expect(await loadConversation(savedId)).toBeDefined(),
     );
 
@@ -526,7 +529,7 @@ describe("useConversations delete/save races", () => {
     await act(async () => {
       result.current.notification!.action!.onClick();
     });
-    await waitFor(async () =>
+    await waitForHookState(async () =>
       expect(await loadConversation(keptId)).toBeDefined(),
     );
   });

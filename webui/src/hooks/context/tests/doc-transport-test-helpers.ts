@@ -10,7 +10,8 @@
 // rather than per-hook clones. Callers keep the `@vitest-environment happy-dom`
 // directive in their own file (it must be file-level).
 
-import { act, renderHook, waitFor } from "@testing-library/preact";
+import { act, renderHook } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import {
   afterEach,
   beforeEach,
@@ -107,7 +108,7 @@ export async function renderAndWait<T extends { status: { kind: string } }>(
 ): Promise<{ current: T }> {
   const { result } = renderHook(useHook);
 
-  await waitFor(() => {
+  await waitForHookState(() => {
     expect(result.current.status.kind).toBe(kind);
   });
 
@@ -159,7 +160,7 @@ export function describeDocTransport(spec: DocTransportSpec): void {
 
       const { result } = renderHook(spec.useHook);
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(result.current.status).toStrictEqual({
           kind: "ready",
           content: "# doc",
@@ -177,7 +178,7 @@ export function describeDocTransport(spec: DocTransportSpec): void {
 
       const { result } = renderHook(spec.useHook);
 
-      await waitFor(() => {
+      await waitForHookState(() => {
         expect(result.current.status).toStrictEqual({
           kind: "ready",
           content: "",

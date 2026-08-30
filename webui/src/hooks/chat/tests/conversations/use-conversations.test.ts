@@ -7,7 +7,8 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { renderHook, act, waitFor } from "@testing-library/preact";
+import { renderHook, act } from "@testing-library/preact";
+import { waitForHookState } from "#webui/test-utils/async-test-helpers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
@@ -474,7 +475,9 @@ describe("useConversations", () => {
     // restore does two IndexedDB round-trips (save, then list refresh), which
     // can outrun a single tick on a loaded CI runner.
     await act(() => result.current.notification!.action!.onClick());
-    await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+    await waitForHookState(() =>
+      expect(result.current.conversations).toHaveLength(1),
+    );
 
     expect(result.current.conversations[0]?.id).toBe(savedId);
     expect(result.current.notification).toBeNull();

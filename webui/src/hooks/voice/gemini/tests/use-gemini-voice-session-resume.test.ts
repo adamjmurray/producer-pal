@@ -14,11 +14,13 @@ import {
   msg,
 } from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 import {
-  MAX_RESUME_ATTEMPTS,
   openResumableGeminiSession,
-  RESUME_BACKOFF_MS,
   type ResumableSessionContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
+import {
+  MAX_RESUME_ATTEMPTS,
+  RESUME_BACKOFF_MS,
+} from "#webui/lib/constants/voice-resume";
 
 /** The connect calls recorded by a makeFakeAi() client, in call order. */
 type FakeAiCalls = {
