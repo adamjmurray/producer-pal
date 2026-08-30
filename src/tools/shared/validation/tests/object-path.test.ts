@@ -220,6 +220,19 @@ describe("parseObjectPath", () => {
     }
   });
 
+  it("accepts an enharmonic drum pad note", () => {
+    // Pads are keyed by MIDI note, so "pE#1" names the same pad as "pF1". The
+    // segment keeps the spelling as written; the lookup resolves it later.
+    expect(parseObjectPath("t1/d0/pE#1")).toStrictEqual({
+      kind: "device",
+      root: { kind: "track", trackIndex: 1 },
+      segments: [
+        { kind: "device", index: 0 },
+        { kind: "drum-pad", note: "E#1" },
+      ],
+    });
+  });
+
   // A path has to nest the way Live does, or it parses and then fails later as
   // a missing object — which reads as "your rack is wrong", not "your path is".
   it("rejects a segment that can't follow the one before it", () => {

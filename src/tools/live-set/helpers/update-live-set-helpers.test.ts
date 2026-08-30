@@ -294,6 +294,17 @@ describe("update-live-set-helpers", () => {
       expect(result).toStrictEqual({ scaleRoot: "F#", scaleName: "Minor" });
     });
 
+    it("should resolve an enharmonic root to its canonical spelling", () => {
+      expect(parseScale("Cb Major")).toStrictEqual({
+        scaleRoot: "B",
+        scaleName: "Major",
+      });
+      expect(parseScale("e# minor")).toStrictEqual({
+        scaleRoot: "F",
+        scaleName: "Minor",
+      });
+    });
+
     it("should handle Bb (flat notation)", () => {
       const result = parseScale("Bb Dorian");
 

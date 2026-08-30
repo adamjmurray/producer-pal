@@ -5,6 +5,7 @@
 
 import {
   VALID_PITCH_CLASS_NAMES,
+  numberToPitchClass,
   pitchClassToNumber,
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -152,13 +153,10 @@ export function parseScale(scaleString: string): {
   const scaleRoot = parts[0] as string;
   const scaleNameParts = parts.slice(1);
   const scaleName = scaleNameParts.join(" ");
-  const scaleRootLower = scaleRoot.toLowerCase();
   const scaleNameLower = scaleName.toLowerCase();
+  const canonicalRoot = canonicalizeScaleRoot(scaleRoot);
 
-  const scaleRootIndex =
-    VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(scaleRootLower);
-
-  if (scaleRootIndex === -1) {
+  if (canonicalRoot == null) {
     throw new Error(
       `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
     );
@@ -173,9 +171,28 @@ export function parseScale(scaleString: string): {
   }
 
   return {
-    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex] as string,
+    scaleRoot: canonicalRoot,
     scaleName: VALID_SCALE_NAMES[scaleNameIndex] as string,
   };
+}
+
+/**
+ * Canonicalize a scale root's spelling. A listed name keeps the user's choice of
+ * sharp or flat (F# stays F#); an enharmonic (Cb, E#) isn't listed, so it falls
+ * back to the canonical flat for the pitch it names.
+ * @param scaleRoot - Root as the user wrote it
+ * @returns The canonical spelling, or null if it names no pitch class
+ */
+function canonicalizeScaleRoot(scaleRoot: string): string | null {
+  const index = VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(
+    scaleRoot.toLowerCase(),
+  );
+
+  if (index !== -1) return VALID_PITCH_CLASS_NAMES[index] as string;
+
+  const pitchClass = pitchClassToNumber(scaleRoot);
+
+  return pitchClass == null ? null : numberToPitchClass(pitchClass);
 }
 
 /**
