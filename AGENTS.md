@@ -224,9 +224,15 @@ The practical consequences:
   `npm run fix`, then `npm run check`, then `npm run check:build`. If you
   touched `webui/**`, also run `npm run ui:test` — `check` doesn't include it.
 - `npm run build:debug` is the dev build. It force-enables the Direct Live API
-  tool, code execution, and work-in-progress warp markers, none of which exist
-  in a release build. `npm run check:build` overwrites it with a release build,
-  so re-run `build:debug` afterwards or the device in Live is the wrong one.
+  tool, which a release build gates off — harmless for evals and e2e, since it
+  stays off until `POST /config { liveApiEnabled }` turns it on. The `code`
+  param and the work-in-progress warp params are NOT on by default: they go
+  straight into the clip tool schemas with no runtime gate, so a model would
+  reach for a feature no release build ships. Opt in per build when you're
+  working on one (`ENABLE_CODE_EXEC=true npm run build:debug`), and rebuild
+  plain afterwards. `npm run check:build` overwrites the device with a release
+  build, so re-run `build:debug` afterwards or the device in Live is the wrong
+  one.
 - **Debugging**: import `console` from `src/shared/max/v8-max-console.ts` and
   use `console.warn()` — it shows up in the CLI and in the live MCP response.
   `console.log()` and `console.error()` don't.

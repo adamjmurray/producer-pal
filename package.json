@@ -32,10 +32,10 @@
   ],
   "scripts": {
     "build": "node scripts/build-and-release/helpers/check-build-flags.ts && npm run parser:build && npm run ui:build && rolldown -c config/rolldown.config.mjs && npm run dxt:build",
-    "build:debug": "ALLOW_DEV_BUILD_FLAGS=true ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_WARP_MARKERS=true npm run build",
+    "build:debug": "ALLOW_DEV_BUILD_FLAGS=true ENABLE_LIVE_API=true npm run build",
     "build:watch": "npm run build && rolldown -c config/rolldown.config.mjs -w",
     "dev": "npm run parser:build && rolldown -c config/rolldown.config.mjs -w",
-    "dev:debug": "ENABLE_LIVE_API=true ENABLE_CODE_EXEC=true ENABLE_WARP_MARKERS=true npm run dev",
+    "dev:debug": "ENABLE_LIVE_API=true npm run dev",
     "test": "npm run test:setup && vitest run --reporter=./config/vitest-minimal-reporter.mjs --silent=true",
     "test:watch": "npm run test:setup && vitest --reporter=dot --silent=true",
     "test:coverage": "npm run test:setup && vitest run --coverage --reporter=./config/vitest-minimal-reporter.mjs --reporter=json --outputFile.json=test-reports/vitest.json --silent=true",

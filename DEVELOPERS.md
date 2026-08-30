@@ -24,20 +24,30 @@ which require v24+.
 5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
    → Settings → Extension
 
-**Note**: For development and testing, use `npm run build:debug` to enable
-debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_WARP_MARKERS`).
-`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
-Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
-cannot disable it in this build. `POST /config { liveApiEnabled }` still works
-in either direction so e2e tests can exercise both states.
+**Note**: For development and testing, use `npm run build:debug`. It sets
+`ENABLE_LIVE_API=true`, which forces the runtime `liveApiEnabled` flag on so the
+Direct Live API tool (`ppal-live-api`) is always available — the Setup-tab
+toggle cannot disable it in this build. `POST /config { liveApiEnabled }` still
+works in either direction so e2e tests can exercise both states.
+
+The other two debug flags are **opt-in**, because they add params to
+`ppal-create-clip` / `ppal-update-clip` with no runtime gate — every model sees
+them in every eval and e2e run, and can reach for a feature no release build
+ships:
+
+```bash
+ENABLE_CODE_EXEC=true npm run build:debug      # the `code` param
+ENABLE_WARP_MARKERS=true npm run build:debug   # warp markers (work in progress)
+```
+
+`ENABLE_CODE_EXEC=true` adds the `code` param (JS note editing).
 `ENABLE_WARP_MARKERS=true` exposes the work-in-progress warp-marker surface —
 `warpMarkers` in `ppal-read-clip`'s `warp` include, and the `warpOp` /
-`warpBeatTime` / `warpSampleTime` / `warpDistance` params on `ppal-update-clip`
-— so it can be exercised by hand; release builds omit it entirely. Chat UI
-development (`npm run ui:dev`) works against any build: the MCP server reflects
-CORS for localhost origins by default, so a browser page on another local port
-can reach it. For a non-localhost browser origin (a remote inspector, or over
-the LAN), build with
+`warpBeatTime` / `warpSampleTime` / `warpDistance` params on `ppal-update-clip`.
+Release builds omit both entirely. Chat UI development (`npm run ui:dev`) works
+against any build: the MCP server reflects CORS for localhost origins by
+default, so a browser page on another local port can reach it. For a
+non-localhost browser origin (a remote inspector, or over the LAN), build with
 `ALLOW_DEV_BUILD_FLAGS=true ENABLE_REMOTE_CORS=true npm run build`. A plain
 `npm run build` refuses to run with any of the debug flags set, so an ambient
 one can't be baked into something that ships — `build:debug` and that override
@@ -201,7 +211,8 @@ Quick commands:
 - `node scripts/ppal-client.ts tools/list` - List available tools
 - `node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'` - Call a tool
 - `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live; the code-exec
-  suite is skipped unless `ENABLE_CODE_EXEC=true` is set —
+  suite is skipped unless `ENABLE_CODE_EXEC=true` is set, and needs a build made
+  with it too — `ENABLE_CODE_EXEC=true npm run build:debug`, then
   `ENABLE_CODE_EXEC=true npm run e2e:mcp`)
 - `npm run e2e:portal` - Run the portal e2e tests (needs `npm run build`, but no
   Ableton Live)
