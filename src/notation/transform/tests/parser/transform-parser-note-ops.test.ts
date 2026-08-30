@@ -257,5 +257,23 @@ describe("Transform Parser - note-count operations (ratchet/repeat/split/merge)"
         /note-count operation/,
       );
     });
+
+    // A model that reached for the right verb and only missed the parens used
+    // to get peggy's generic "Expected statement", read it as "merge isn't
+    // supported", and rewrote the clip by hand instead.
+    it.each([
+      ["merge", "merge()"],
+      ["ratchet", "ratchet(2)"],
+      ["repeat", "repeat(1bar)"],
+      ["split", "split(2|1)"],
+    ])("names the fix when %s is written without parens", (name, example) => {
+      expect(() => parse(name)).toThrow(
+        `${name} is a note-count operation and needs parentheses — write "${example}".`,
+      );
+    });
+
+    it("catches a parenless note op behind a selector", () => {
+      expect(() => parse("C1: merge")).toThrow(/needs parentheses/);
+    });
   });
 });

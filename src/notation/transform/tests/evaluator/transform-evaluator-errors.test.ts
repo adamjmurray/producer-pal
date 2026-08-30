@@ -72,18 +72,18 @@ describe("Transform Evaluator Error Handling", () => {
   });
 
   describe("unknown waveform function errors", () => {
-    it("throws on unknown function name", () => {
-      // unknown_func is a parse error (not in grammar's function name lists)
+    // The message names the function list on purpose: a model that guessed a
+    // name reads this and retries, instead of abandoning the DSL.
+    it("names the unknown function and lists the real ones", () => {
       expect(() =>
         evaluateTransform("velocity += unknown_func(1)", DEFAULT_CONTEXT),
-      ).toThrow(/transform syntax error/);
+      ).toThrow(/unknown function unknown_func\(\) — available: abs, /);
     });
 
-    it("throws on typo in waveform name", () => {
-      // coss is a parse error (not in grammar's function name lists)
+    it("catches a typo in a waveform name", () => {
       expect(() =>
         evaluateTransform("velocity += coss(1)", DEFAULT_CONTEXT),
-      ).toThrow(/transform syntax error/);
+      ).toThrow(/unknown function coss\(\).*\bcos\b/);
     });
   });
 

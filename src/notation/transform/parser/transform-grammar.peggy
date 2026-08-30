@@ -30,6 +30,25 @@
   // Maps a multiplicative operator character to its AST node type.
   const MULTIPLICATIVE_OP_TYPES = { "*": "multiply", "/": "divide", "%": "modulo" };
 
+  // Every function name the expression grammar accepts, for the unknownFunction
+  // error. Kept in step with the cyclicalFunctionName / otherFunctionName rules
+  // and `swing` by a parity test — a name here that the grammar rejects, or a
+  // rule name missing here, fails that test.
+  // A minimal correct call for each note-count op, for the two "you wrote it
+  // wrong" errors below.
+  function noteOpExample(name) {
+    if (name === "ratchet") return "ratchet(2)";
+    if (name === "repeat") return "repeat(1bar)";
+    if (name === "split") return "split(2|1)";
+    return "merge()";
+  }
+
+  const FUNCTION_NAMES = [
+    "abs", "ceil", "choose", "clamp", "clipseq", "cos", "curve", "floor",
+    "legato", "max", "min", "pow", "quant", "ramp", "rand", "reflect", "round",
+    "saw", "seq", "sin", "snap", "square", "step", "swing", "tri", "wrap",
+  ];
+
   // Borrow across bar lines so a `-n` range-bound offset can pull a position
   // earlier than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4).
   // The offset already produced a sub-1 `beat`; wrap it up into the previous
@@ -193,7 +212,7 @@ start
 // note-count operation (ratchet/merge/split/repeat). Both accept the same optional
 // `selector:` prefix and run in the same sequential pipeline.
 statement "statement"
-  = prefix:selectorPrefix? body:(noteOp / assignmentBody) {
+  = prefix:selectorPrefix? body:(noteOp / assignmentBody / badNoteOpWithoutParens) {
     const pitchRange = prefix?.pitchRange ?? null;
     const timeRange = prefix?.timeRange ?? null;
     const predicate = prefix?.predicate ?? null;
@@ -681,6 +700,7 @@ primary
   / badPeriod
   / badNoteOpInExpression
   / badDeleteInExpression
+  / unknownFunction
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
@@ -690,9 +710,34 @@ primary
 // noteOp rule first, so this never fires on correct usage.
 badNoteOpInExpression
   = name:("ratchet" / "repeat" / "merge" / "split") _ "(" {
-    const example = name === "ratchet" ? "ratchet(2)" : name === "repeat" ? "repeat(1bar)" : name === "split" ? "split(2|1)" : "merge()";
-    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${example}", not inside an expression.`);
+    throw new Error(`${name}() is a note-count operation, not a value — put it on its own line (optionally with a selector), e.g. "${noteOpExample(name)}", not inside an expression.`);
   }
+
+// A name used as a function that no rule defines — reached only after every real
+// function, note-count op, and shorthand has been tried. Without it the parse
+// fails at column 1 with peggy's generic "Expected statement", which tells a
+// model nothing: `duration *= random(0.9, 0.98)` reported a bad `d`, and models
+// gave up on the DSL and hand-wrote the result instead of trying `rand`.
+unknownFunction
+  = name:$([A-Za-z][A-Za-z0-9_]*) &{ return !FUNCTION_NAMES.includes(name); } "(" {
+    throw new Error(`unknown function ${name}() — available: ${FUNCTION_NAMES.join(", ")}. Note-count operations (ratchet/repeat/split/merge) go on their own line, not in an expression.`);
+  }
+
+// A note-count op written without its parentheses (`C1: merge`). Tried after the
+// real noteOp rule and every assignment form, so the name can only be this
+// mistake. Without it the line fails with peggy's generic "Expected statement",
+// which a model reads as "merge isn't supported" — it then clears the clip and
+// rewrites the notes by hand, the exact thing the op exists to avoid.
+badNoteOpWithoutParens
+  = name:noteOpLikeName !"(" {
+    throw new Error(`${name} is a note-count operation and needs parentheses — write "${noteOpExample(name)}".`);
+  }
+
+noteOpLikeName
+  = "ratchet" { return "ratchet"; }
+  / "repeat" { return "repeat"; }
+  / "merge" { return "merge"; }
+  / "split" { return "split"; }
 
 // `delete` is the shorthand delete action (alias for `v0`), not a value. Matched
 // here only to raise a targeted error when used in an expression (e.g.

@@ -63,6 +63,18 @@ call kind:
   `split` is variadic (any number of cut positions, so no "too many" case) and
   `merge()` with no argument is its valid span-all default.
 
+**Two shape mistakes fail the parse with a targeted message** rather than
+peggy's generic "Expected statement", which points at column 1 and names
+nothing:
+
+- A name no rule defines, used as a function (`duration *= random(0.9, 0.98)`):
+  reports the name and lists every function the grammar accepts.
+- A note-count operation without its parentheses (`C1: merge`) or used as a
+  value (`velocity = ratchet(2)`): names the operation and shows a correct call.
+
+Both exist because a model reads the error and retries. The generic message
+taught it the feature was unsupported, so it hand-wrote the result instead.
+
 ## Parameters
 
 - **period** (called `frequency` in the signatures above): the cycle length for
