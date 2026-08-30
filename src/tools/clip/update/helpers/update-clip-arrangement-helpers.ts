@@ -13,12 +13,12 @@ import {
 import { type TilingContext } from "#src/tools/shared/arrangement/helpers/arrangement-tiling-helpers.ts";
 import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
-  clearClipAtDuplicateTarget,
-  duplicateSelfOverlappingClip,
-} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
-import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+  type ArrangementTrack,
+  isTakeLaneClip,
+} from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { placeMovedClip } from "./update-clip-lane-move-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -28,7 +28,9 @@ interface ClipResult {
 
 interface HandleArrangementStartArgs {
   clip: LiveAPI;
-  arrangementStartBeats: number;
+  arrangementStartBeats: number | null;
+  /** Where to move the clip, or null to keep it on its own lane. */
+  destination: ArrangementTrack | null;
   tracksWithMovedClips: Map<number, number>;
   isMidiClip: boolean;
   context: TilingContext;
@@ -45,7 +47,8 @@ interface HandleArrangementStartArgs {
  *
  * @param args - Operation arguments
  * @param args.clip - The clip to move
- * @param args.arrangementStartBeats - New position in beats
+ * @param args.arrangementStartBeats - New position in beats, or null to keep the clip's own
+ * @param args.destination - Destination track and lane, or null for the clip's own lane
  * @param args.tracksWithMovedClips - Track of clips moved per track
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
@@ -56,6 +59,7 @@ interface HandleArrangementStartArgs {
 export function handleArrangementStartOperation({
   clip,
   arrangementStartBeats,
+  destination,
   tracksWithMovedClips,
   isMidiClip,
   context,
@@ -78,32 +82,33 @@ export function handleArrangementStartOperation({
   // Warn and preserve the clip unchanged.
   if (isTakeLaneClip(clip)) {
     console.warn(
-      `arrangementStart ignored for take-lane clip (id ${clip.id}): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere`,
+      `${destination == null ? "arrangementStart" : "toPath"} ignored for take-lane clip (id ${clip.id}): Live's API can't move a clip off a take lane. Drag it in Live's UI, or use ppal-duplicate to copy it elsewhere`,
     );
 
     return clip.id;
   }
 
-  // Get track and duplicate clip to new position
-  const trackIndex = clip.trackIndex;
+  const sourceTrackIndex = clip.trackIndex;
 
-  if (trackIndex == null) {
+  if (sourceTrackIndex == null) {
     console.warn(`could not determine trackIndex for clip ${clip.id}`);
 
     return clip.id;
   }
 
-  const track = LiveAPI.from(livePath.track(trackIndex));
+  const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex));
+  const destTrackIndex = destination?.trackIndex ?? sourceTrackIndex;
 
-  // Track clips being moved to same track
-  const moveCount = (tracksWithMovedClips.get(trackIndex) ?? 0) + 1;
+  // Counted against the track the clips land on, which is what the "same
+  // position" warning names.
+  const moveCount = (tracksWithMovedClips.get(destTrackIndex) ?? 0) + 1;
 
-  tracksWithMovedClips.set(trackIndex, moveCount);
+  tracksWithMovedClips.set(destTrackIndex, moveCount);
 
   // Non-survivor: just delete, don't bother moving (it would be overwritten)
   if (isNonSurvivor) {
     if (clip.exists()) {
-      track.call("delete_clip", toLiveApiId(clip.id));
+      sourceTrack.call("delete_clip", toLiveApiId(clip.id));
     } else {
       console.warn(`non-survivor clip ${clip.id} already deleted, skipping`);
     }
@@ -111,37 +116,24 @@ export function handleArrangementStartOperation({
     return null;
   }
 
-  // Clear overlapping clips at target to prevent Ableton crash. A false result
-  // means the clip overlaps its OWN target — route through the holding area so
-  // the original is overwritten and a full copy lands at the target.
-  const safeToMove = clearClipAtDuplicateTarget(
-    track,
-    clip.id,
-    arrangementStartBeats,
+  // Omitting arrangementStart with a destination means "same place, other
+  // lane", so read the clip's own start before anything moves it.
+  const targetBeats =
+    arrangementStartBeats ?? (clip.getProperty("start_time") as number);
+  const newClip = placeMovedClip({
+    clip,
+    destination,
+    destTrackIndex,
+    targetBeats,
     isMidiClip,
     context,
-  );
-
-  // duplicate_clip_to_arrangement returns ["id", number] array format
-  const newClip = safeToMove
-    ? LiveAPI.from(
-        track.call(
-          "duplicate_clip_to_arrangement",
-          toLiveApiId(clip.id),
-          arrangementStartBeats,
-        ) as [string, number],
-      )
-    : duplicateSelfOverlappingClip(
-        track,
-        clip.id,
-        arrangementStartBeats,
-        isMidiClip,
-        context,
-      );
+  });
 
   // Verify duplicate succeeded before deleting original
-  if (!newClip.exists()) {
-    console.warn(`failed to duplicate clip ${clip.id} - original preserved`);
+  if (newClip == null || !newClip.exists()) {
+    if (newClip != null) {
+      console.warn(`failed to duplicate clip ${clip.id} - original preserved`);
+    }
 
     return clip.id;
   }
@@ -149,8 +141,8 @@ export function handleArrangementStartOperation({
   // Delete the original to complete the move. For a self-overlapping move the
   // holding placement already trimmed it (or fully replaced it on a zero-offset
   // move), so guard with exists() — leaving a single clip at the new position.
-  if (safeToMove || clip.exists()) {
-    track.call("delete_clip", toLiveApiId(clip.id));
+  if (clip.exists()) {
+    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
   }
 
   // Return the new clip ID
@@ -162,6 +154,8 @@ interface HandleArrangementOperationsArgs {
   isAudioClip: boolean;
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
+  /** Destination track and lane from toPath, or null to stay on its own lane. */
+  destination?: ArrangementTrack | null;
   tracksWithMovedClips: Map<number, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
@@ -176,6 +170,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.isAudioClip - Whether the clip is audio
  * @param args.arrangementStartBeats - Target start position in beats
  * @param args.arrangementLengthBeats - Target length in beats
+ * @param args.destination - Destination track and lane, or null for the clip's own lane
  * @param args.tracksWithMovedClips - Map of tracks with moved clips
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
@@ -187,6 +182,7 @@ export function handleArrangementOperations({
   isAudioClip,
   arrangementStartBeats,
   arrangementLengthBeats,
+  destination,
   tracksWithMovedClips,
   context,
   updatedClips,
@@ -197,10 +193,13 @@ export function handleArrangementOperations({
   let finalClipId: string | null = clip.id;
   let currentClip = clip;
 
-  if (arrangementStartBeats != null) {
+  // A destination alone is a move too: it keeps the clip's own start time and
+  // changes only the lane it sits on.
+  if (arrangementStartBeats != null || destination != null) {
     finalClipId = handleArrangementStartOperation({
       clip,
-      arrangementStartBeats,
+      arrangementStartBeats: arrangementStartBeats ?? null,
+      destination: destination ?? null,
       tracksWithMovedClips,
       isMidiClip: !isAudioClip,
       context: context as TilingContext,

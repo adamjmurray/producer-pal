@@ -11,6 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { handleArrangementOperations } from "../../helpers/update-clip-arrangement-helpers.ts";
 import {
   handlePositionOperations,
@@ -488,6 +489,8 @@ interface PositionOpsOptions {
   isArrangementClip?: boolean;
   destinationParam?: "toPath" | "toSlot";
   toSlot?: { trackIndex: number; sceneIndex: number };
+  /** An arrangement-lane destination, instead of a slot */
+  toLane?: ClipPath;
   arrangementStartBeats?: number;
   arrangementLengthBeats?: number;
 }
@@ -502,6 +505,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     isArrangementClip = false,
     destinationParam = "toPath",
     toSlot,
+    toLane,
     arrangementStartBeats,
     arrangementLengthBeats,
   } = opts;
@@ -516,7 +520,8 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     } as unknown as LiveAPI,
     isAudioClip: false,
     destinationParam,
-    toSlot,
+    destination:
+      toSlot == null ? (toLane ?? null) : { kind: "slot", ...toSlot },
     arrangementStartBeats,
     arrangementLengthBeats,
     tracksWithMovedClips: new Map(),
@@ -584,6 +589,56 @@ describe("handlePositionOperations", () => {
     );
   });
 
+  // A session clip has no arrangement source to duplicate from, so a lane
+  // destination can't move it — and it must not be misread as a slot either.
+  it("refuses to send a session clip to an arrangement lane", () => {
+    runPositionOps({ toLane: { kind: "track", trackIndex: 4 } });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        'toPath "t4" names an arrangement lane, so session clip 789 was not moved',
+      ),
+    );
+    expect(handleArrangementOperations).toHaveBeenCalledWith(
+      expect.objectContaining({ destination: null }),
+    );
+  });
+
+  it("passes an arrangement clip's lane destination to the arrangement operations", () => {
+    runPositionOps({
+      isArrangementClip: true,
+      toLane: { kind: "new-take-lane", trackIndex: 4 },
+    });
+
+    expect(handleArrangementOperations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destination: { trackIndex: 4, takeLane: "new" },
+      }),
+    );
+  });
+
+  // A lane destination says where on the timeline to land, so unlike a slot it
+  // combines with arrangementStart instead of cancelling it.
+  it("keeps arrangementStart alongside a lane destination", () => {
+    runPositionOps({
+      isArrangementClip: true,
+      toLane: { kind: "track", trackIndex: 4 },
+      arrangementStartBeats: 8,
+    });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("ignored when arrangement parameters"),
+    );
+    expect(handleArrangementOperations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arrangementStartBeats: 8,
+        destination: { trackIndex: 4, takeLane: null },
+      }),
+    );
+  });
+
   it("runs the arrangement operations when no destination is given", () => {
     // Arrangement clip but no toSlot: the destination branch must stay false
     // (kills its forced-true mutant).
@@ -600,13 +655,23 @@ describe("resolveMoveDestinations", () => {
 
   it("reads a slot from toPath", () => {
     expect(resolveMoveDestinations("t2/s3", undefined, 1)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
+    ]);
+  });
+
+  it("reads an arrangement lane from toPath", () => {
+    expect(
+      resolveMoveDestinations("t2,t4/l0,t6/l+", undefined, 3),
+    ).toStrictEqual([
+      { kind: "track", trackIndex: 2 },
+      { kind: "take-lane", trackIndex: 4, laneIndex: 0 },
+      { kind: "new-take-lane", trackIndex: 6 },
     ]);
   });
 
   it("still reads the deprecated toSlot", () => {
     expect(resolveMoveDestinations(undefined, "2/3", 1)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
@@ -634,7 +699,7 @@ describe("resolveMoveDestinations", () => {
   // and the result said nothing about the clip staying put.
   it("moves to toPath when toSlot names nothing", () => {
     expect(resolveMoveDestinations("t2/s3", ",", 1)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -646,12 +711,12 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("warns and skips a destination that is not a clip slot", () => {
-    // update-clip has no cross-track move; duplicate is the tool for that.
-    expect(resolveMoveDestinations("t2", undefined, 1)).toStrictEqual([null]);
+  it("warns and skips a destination no clip can occupy", () => {
+    // A scene names no track, so there is no one place the clip would go.
+    expect(resolveMoveDestinations("s3", undefined, 1)).toStrictEqual([null]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining('toPath "t2" is not a clip slot'),
+      expect.stringContaining("a scene alone names no track"),
     );
   });
 
@@ -659,8 +724,8 @@ describe("resolveMoveDestinations", () => {
   // them in one slot, and the second copy overwrote the first.
   it("pairs each destination with the clip at the same position", () => {
     expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 2)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
-      { trackIndex: 4, sceneIndex: 5 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 4, sceneIndex: 5 },
     ]);
   });
 
@@ -668,7 +733,7 @@ describe("resolveMoveDestinations", () => {
   // overwrites the first.
   it("does not cycle a short destination list, and says which clips stayed", () => {
     expect(resolveMoveDestinations("t2/s3", undefined, 3)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       null,
     ]);
@@ -680,7 +745,7 @@ describe("resolveMoveDestinations", () => {
 
   it("warns about destinations with no clip to move", () => {
     expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 1)).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
@@ -688,13 +753,13 @@ describe("resolveMoveDestinations", () => {
     );
   });
 
-  it("skips only the entries that name no slot", () => {
+  it("skips only the entries no clip can occupy", () => {
     expect(
-      resolveMoveDestinations("t2/s3,t4,t6/s7", undefined, 3),
+      resolveMoveDestinations("t2/s3,s4,t6/s7", undefined, 3),
     ).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
-      { trackIndex: 6, sceneIndex: 7 },
+      { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
   });
 
@@ -706,9 +771,9 @@ describe("resolveMoveDestinations", () => {
     expect(
       resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3),
     ).toStrictEqual([
-      { trackIndex: 2, sceneIndex: 3 },
+      { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
-      { trackIndex: 6, sceneIndex: 7 },
+      { kind: "slot", trackIndex: 6, sceneIndex: 7 },
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,

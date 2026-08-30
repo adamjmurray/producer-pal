@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import * as arrangementWorkaround from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { type ArrangementTrack } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import {
   handleArrangementOperations,
   handleArrangementStartOperation,
@@ -31,6 +32,7 @@ function clipStub(
     getProperty: vi.fn((prop) =>
       prop === "is_arrangement_clip" ? isArrangementClip : null,
     ),
+    exists: () => true,
     trackIndex,
   } as unknown as LiveAPI;
 }
@@ -40,16 +42,19 @@ function clipStub(
  * @param clip - The clip stub under test
  * @param arrangementStartBeats - Requested arrangement start
  * @param tracksWithMovedClips - Move tally, for cases that assert on it
+ * @param destination - Where the clip moves, or null for its own lane
  * @returns The clip id the operation resolved to
  */
 function runStartOperation(
   clip: LiveAPI,
-  arrangementStartBeats: number,
+  arrangementStartBeats: number | null,
   tracksWithMovedClips = new Map<number, number>(),
+  destination: ArrangementTrack | null = null,
 ) {
   return handleArrangementStartOperation({
     clip,
     arrangementStartBeats,
+    destination,
     tracksWithMovedClips,
     isMidiClip: true,
     context: mockContext,
@@ -178,6 +183,7 @@ describe("update-clip-arrangement-helpers", () => {
       const result = handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 4,
+        destination: null,
         tracksWithMovedClips,
         isMidiClip: true,
         context: mockContext,
@@ -226,6 +232,7 @@ describe("update-clip-arrangement-helpers", () => {
       const result = handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 8,
+        destination: null,
         tracksWithMovedClips,
         isMidiClip: true,
         context: mockContext,
@@ -270,6 +277,7 @@ describe("update-clip-arrangement-helpers", () => {
 
           return null;
         }),
+        exists: () => true,
         trackIndex,
       };
 
@@ -279,6 +287,7 @@ describe("update-clip-arrangement-helpers", () => {
       handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 64,
+        destination: null,
         tracksWithMovedClips,
         isMidiClip: true,
         context: mockContext,
@@ -379,6 +388,7 @@ describe("update-clip-arrangement-helpers", () => {
       const result = handleArrangementStartOperation({
         clip: mockClip as unknown as LiveAPI,
         arrangementStartBeats: 16,
+        destination: null,
         tracksWithMovedClips: new Map(),
         isMidiClip: true,
         context: mockContext,
@@ -419,6 +429,7 @@ describe("update-clip-arrangement-helpers", () => {
         getProperty: vi.fn((prop) =>
           prop === "is_arrangement_clip" ? 1 : null,
         ),
+        exists: () => true,
         trackIndex,
       };
 
@@ -441,6 +452,7 @@ describe("update-clip-arrangement-helpers", () => {
         "789",
         16,
         false,
+        expect.anything(),
         expect.anything(),
       );
 
@@ -544,6 +556,7 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
   const result = handleArrangementStartOperation({
     clip: mockClip as unknown as LiveAPI,
     arrangementStartBeats: 16,
+    destination: null,
     tracksWithMovedClips,
     isMidiClip: true,
     context: mockContext,

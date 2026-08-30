@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { computeNonSurvivorClipIds } from "../helpers/update-clip-arrangement-optimizer.ts";
 
 /**
@@ -295,6 +296,57 @@ describe("computeNonSurvivorClipIds", () => {
     // eligible they would group and mark "601" a non-survivor; the eligibility
     // gate drops them, so no optimization applies.
     expect(computeNonSurvivorClipIds(clips, 32, null)).toBeNull();
+  });
+
+  // The hazard toPath destinations introduced: grouped by SOURCE track, the
+  // shorter clip is deleted rather than moved because of a sibling that isn't
+  // going anywhere near it.
+  it("groups by the lane the clips land on, not the one they start from", () => {
+    const short = mockArrangementClip("801", 0, 0, 4);
+    const long = mockArrangementClip("802", 0, 8, 24);
+    const destinations = new Map<string, ClipPath>([
+      ["801", { kind: "track", trackIndex: 5 }],
+      ["802", { kind: "track", trackIndex: 6 }],
+    ]);
+
+    expect(
+      computeNonSurvivorClipIds([short, long], 32, null, destinations),
+    ).toBeNull();
+  });
+
+  it("marks a non-survivor when two clips land on the same track", () => {
+    const short = mockArrangementClip("811", 0, 0, 4);
+    const long = mockArrangementClip("812", 1, 8, 24);
+    const destinations = new Map<string, ClipPath>([
+      ["811", { kind: "track", trackIndex: 5 }],
+      ["812", { kind: "track", trackIndex: 5 }],
+    ]);
+
+    expect(
+      computeNonSurvivorClipIds([short, long], 32, null, destinations),
+    ).toStrictEqual(new Set(["811"]));
+  });
+
+  // A slot is off the arrangement timeline and a take lane is re-created one
+  // clip at a time, so neither can overwrite what it lands next to here.
+  it.each([
+    ["a slot", { kind: "slot", trackIndex: 5, sceneIndex: 0 } as ClipPath],
+    [
+      "a take lane",
+      { kind: "take-lane", trackIndex: 0, laneIndex: 0 } as ClipPath,
+    ],
+  ])("skips a clip moving to %s", (_label, destination) => {
+    const short = mockArrangementClip("821", 0, 0, 4);
+    const long = mockArrangementClip("822", 0, 8, 24);
+
+    expect(
+      computeNonSurvivorClipIds(
+        [short, long],
+        32,
+        null,
+        new Map([["821", destination]]),
+      ),
+    ).toBeNull();
   });
 
   it("skips clips with null trackIndex", () => {

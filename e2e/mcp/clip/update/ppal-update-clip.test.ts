@@ -456,8 +456,8 @@ describe("ppal-update-clip", () => {
 
     await sleep(100);
 
-    // "t7" names a track, not a slot — update-clip can't move a clip across
-    // tracks, so it skips the move and finishes the rest of the update.
+    // "t7" names an arrangement lane, and a session clip can't move onto one —
+    // so the move is skipped and the rest of the update still lands.
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: { id: clip.id, toPath: "t7", name: "Renamed Anyway" },
@@ -468,7 +468,9 @@ describe("ppal-update-clip", () => {
     }>(result);
 
     expect(isToolError(result)).toBe(false);
-    expect(warnings.join(" ")).toContain("is not a clip slot");
+    expect(warnings.join(" ")).toContain(
+      "names an arrangement lane, so session clip",
+    );
 
     await sleep(100);
 

@@ -106,7 +106,7 @@ interface ClipResult {
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Deprecated session destination slot (trackIndex/sceneIndex); use toPath
- * @param args.toPath - Clip slot to move the clip to (e.g., "t2/s3")
+ * @param args.toPath - Where to move the clip: a clip slot ("t2/s3"), a track's arrangement lane ("t2"), or a take lane on it ("t2/l0", "t2/l+")
  * @param args.arrangementSplit - Comma-separated song-timeline bar|beat positions to split clips at
  * @param args.split - Deprecated split positions, measured from each clip's start; use arrangementSplit
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
@@ -195,7 +195,7 @@ export async function updateClip(
     context,
   );
   // prettier-ignore
-  const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
+  const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats, destinationById);
 
   const parsedNames = parseNames(name, mutableClips.length, "updateClip");
   const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
@@ -246,7 +246,7 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
-      toSlot: destinationById.get(clip.id) ?? null,
+      destination: destinationById.get(clip.id) ?? null,
       destinationParam,
       nonSurvivorClipIds,
       context,

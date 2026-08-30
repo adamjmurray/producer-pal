@@ -28,6 +28,7 @@ import {
 } from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
@@ -71,7 +72,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   duplicateLoop?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
-  toSlot?: { trackIndex: number; sceneIndex: number } | null;
+  /** Where this clip moves, from toPath (or the deprecated toSlot). */
+  destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
@@ -220,11 +222,11 @@ export function processSingleClipUpdate(
     );
   }
 
-  // Handle position operations (session toSlot or arrangement start/length)
+  // Handle position operations (a move from toPath, or arrangement start/length)
   handlePositionOperations({
     clip,
     isAudioClip,
-    toSlot: params.toSlot,
+    destination: params.destination,
     destinationParam: params.destinationParam,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,

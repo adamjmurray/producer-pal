@@ -21,12 +21,16 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   DRUM_LOOP_FILE,
-  parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import {
+  arrangementClipAt,
+  readClipDeep,
+  updateClip,
+} from "./arrangement-move-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -46,9 +50,9 @@ describe("arrangement clip moved into a session slot", () => {
 
     // Live snaps a written color to its nearest palette entry, so the source's
     // own color is what the copy has to match, not the one asked for.
-    const before = await readClip({ id: source.id });
+    const before = await readClipDeep(ctx.client!, { id: source.id });
 
-    const { data: moved, warnings } = await update(source.id, {
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
       toPath: `t${MIDI_TRACK}/s1`,
     });
 
@@ -57,7 +61,7 @@ describe("arrangement clip moved into a session slot", () => {
       `arrangement clip ${source.id} was re-created at t${MIDI_TRACK}/s1`,
     );
 
-    const clip = await readClip({ path: `t${MIDI_TRACK}/s1` });
+    const clip = await readClipDeep(ctx.client!, { path: `t${MIDI_TRACK}/s1` });
 
     expect(clip.id).toBe(moved.id);
     expect(clip.view).toBe("session");
@@ -68,7 +72,9 @@ describe("arrangement clip moved into a session slot", () => {
     expect(clip.notes).toContain("F3");
 
     // The original is gone, not left behind as a copy.
-    expect(await arrangementClipAt(MIDI_TRACK, "5|1")).toBeUndefined();
+    expect(
+      await arrangementClipAt(ctx.client!, MIDI_TRACK, "5|1"),
+    ).toBeUndefined();
   });
 
   // The marker properties are written in one fixed order because Live rejects
@@ -83,14 +89,18 @@ describe("arrangement clip moved into a session slot", () => {
       length: "2bar",
     });
 
-    await update(source.id, { looping: false, start: "1|3", length: "1bar" });
+    await updateClip(ctx.client!, source.id, {
+      looping: false,
+      start: "1|3",
+      length: "1bar",
+    });
 
-    const before = await readClip({ id: source.id });
+    const before = await readClipDeep(ctx.client!, { id: source.id });
 
-    const { data: moved } = await update(source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${MIDI_TRACK}/s2`,
     });
-    const after = await readClip({ id: moved.id });
+    const after = await readClipDeep(ctx.client!, { id: moved.id });
 
     expect(after.looping).toBe(false);
     expect(after.start).toBe(before.start);
@@ -107,11 +117,13 @@ describe("arrangement clip moved into a session slot", () => {
       length: "2bar",
     });
 
-    const { data: moved } = await update(source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${MIDI_TRACK}/s3`,
     });
 
-    expect((await readClip({ id: moved.id })).timeSignature).toBe("3/4");
+    expect(
+      (await readClipDeep(ctx.client!, { id: moved.id })).timeSignature,
+    ).toBe("3/4");
   });
 
   it("re-creates an audio clip from its sample", async () => {
@@ -125,12 +137,12 @@ describe("arrangement clip moved into a session slot", () => {
       pitchShift: 3,
     });
 
-    const before = await readClip({ id: source.id });
+    const before = await readClipDeep(ctx.client!, { id: source.id });
 
-    const { data: moved } = await update(source.id, {
+    const { data: moved } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}/s2`,
     });
-    const after = await readClip({ id: moved.id });
+    const after = await readClipDeep(ctx.client!, { id: moved.id });
 
     expect(after.type).toBe("audio");
     expect(after.sampleFile).toBe(before.sampleFile);
@@ -138,7 +150,9 @@ describe("arrangement clip moved into a session slot", () => {
     expect(after.gainDb).toBeCloseTo(-4.5, 1);
     expect(after.pitchShift).toBe(3);
     expect(after.length).toBe(before.length);
-    expect(await arrangementClipAt(AUDIO_TRACK, "5|1")).toBeUndefined();
+    expect(
+      await arrangementClipAt(ctx.client!, AUDIO_TRACK, "5|1"),
+    ).toBeUndefined();
   });
 
   it("warns before overwriting the clip already in the slot", async () => {
@@ -155,7 +169,7 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: moved, warnings } = await update(source.id, {
+    const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
       toPath: `t${MIDI_TRACK}/s4`,
     });
 
@@ -163,9 +177,9 @@ describe("arrangement clip moved into a session slot", () => {
       `overwrote the existing clip at t${MIDI_TRACK}/s4`,
     );
     expect(moved.id).not.toBe(occupant.id);
-    expect((await readClip({ path: `t${MIDI_TRACK}/s4` })).name).toBe(
-      "Takes Over",
-    );
+    expect(
+      (await readClipDeep(ctx.client!, { path: `t${MIDI_TRACK}/s4` })).name,
+    ).toBe("Takes Over");
   });
 
   // A "move" off a take lane would leave the original behind — Live's
@@ -179,7 +193,7 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: kept, warnings } = await update(source.id, {
+    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
       toPath: `t${MIDI_TRACK}/s5`,
     });
 
@@ -187,7 +201,9 @@ describe("arrangement clip moved into a session slot", () => {
       `clip ${source.id} was not moved: Live's API can't move a clip off a take lane`,
     );
     expect(kept.id).toBe(source.id);
-    expect((await readClip({ id: source.id })).view).toBe("arrangement");
+    expect((await readClipDeep(ctx.client!, { id: source.id })).view).toBe(
+      "arrangement",
+    );
     expect(await slotIsEmpty(`t${MIDI_TRACK}/s5`)).toBe(true);
   });
 
@@ -200,7 +216,7 @@ describe("arrangement clip moved into a session slot", () => {
       length: "1bar",
     });
 
-    const { data: kept, warnings } = await update(source.id, {
+    const { data: kept, warnings } = await updateClip(ctx.client!, source.id, {
       toPath: `t${AUDIO_TRACK}/s3`,
     });
 
@@ -208,7 +224,9 @@ describe("arrangement clip moved into a session slot", () => {
       `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
     );
     expect(kept.id).toBe(source.id);
-    expect((await arrangementClipAt(MIDI_TRACK, "25|1"))?.id).toBe(source.id);
+    expect((await arrangementClipAt(ctx.client!, MIDI_TRACK, "25|1"))?.id).toBe(
+      source.id,
+    );
   });
 });
 
@@ -233,42 +251,6 @@ async function createClip(
 }
 
 /**
- * Update a clip, keeping any warnings so a refusal can be asserted.
- * @param id - Clip id
- * @param args - The rest of the ppal-update-clip arguments
- * @returns The result and its warnings
- */
-async function update(
-  id: string | null,
-  args: Record<string, unknown>,
-): Promise<{ data: ReadClipResult; warnings: string[] }> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { id, ...args },
-  });
-
-  await sleep(100);
-
-  return parseToolResultWithWarnings<ReadClipResult>(result);
-}
-
-/**
- * Read a clip by id or path, with everything the round trips compare.
- * @param target - Either `{ id }` or `{ path }`
- * @returns The clip
- */
-async function readClip(
-  target: { id: string | null } | { path: string },
-): Promise<ReadClipResult> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { ...target, include: ["*"] },
-  });
-
-  return parseToolResult<ReadClipResult>(result);
-}
-
-/**
  * Whether a clip slot is empty. Reading an empty slot warns rather than
  * failing, so this asks past the warning.
  * @param path - Clip slot path (e.g. "t8/s5")
@@ -281,27 +263,4 @@ async function slotIsEmpty(path: string): Promise<boolean> {
   });
 
   return parseToolResultWithWarnings<ReadClipResult>(result).data.id == null;
-}
-
-/**
- * Read the arrangement clip at an exact position on a track.
- * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format
- * @returns The clip at that position, if any
- */
-async function arrangementClipAt(
-  trackIndex: number,
-  arrangementStart: string,
-): Promise<ReadClipResult | undefined> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips"] },
-  });
-  const { data } = parseToolResultWithWarnings<{
-    arrangementClips?: ReadClipResult[];
-  }>(result);
-
-  return data.arrangementClips?.find(
-    (clip) => clip.arrangementStart === arrangementStart,
-  );
 }

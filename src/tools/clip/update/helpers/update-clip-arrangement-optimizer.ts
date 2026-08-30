@@ -13,6 +13,10 @@
  */
 
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import {
+  arrangementPath,
+  type ClipPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 
 interface ClipMoveInfo {
   clipId: string;
@@ -39,40 +43,42 @@ interface ClipMoveInfo {
  * @param clips - Clips in the order they will be processed (ID order)
  * @param arrangementStartBeats - Target position in beats
  * @param arrangementLengthBeats - Target length (must be null for optimization)
+ * @param destinationById - Where each clip is moving, from toPath, keyed by clip id
  * @returns Set of non-survivor clip IDs, or null if optimization doesn't apply
  */
 export function computeNonSurvivorClipIds(
   clips: LiveAPI[],
   arrangementStartBeats: number | null | undefined,
   arrangementLengthBeats: number | null | undefined,
+  destinationById: Map<string, ClipPath> = new Map(),
 ): Set<string> | null {
   if (arrangementStartBeats == null || arrangementLengthBeats != null) {
     return null;
   }
 
-  // Group arrangement clips by track (clips on different tracks don't interact)
-  const trackClips = new Map<number, ClipMoveInfo[]>();
+  // Group by the lane the clips LAND on, not the one they start from. With
+  // per-clip destinations those differ, and grouping by the source track would
+  // delete a clip because a sibling heading somewhere else is longer.
+  const laneClips = new Map<string, ClipMoveInfo[]>();
 
   for (const clip of clips) {
-    if (!isEligibleForSurvivorAnalysis(clip)) continue;
+    const lane = survivorLane(clip, destinationById.get(clip.id));
 
-    const trackIndex = clip.trackIndex;
-
-    if (trackIndex == null) continue;
+    if (lane == null) continue;
 
     const startTime = clip.getProperty("start_time") as number;
     const endTime = clip.getProperty("end_time") as number;
 
-    const group = trackClips.get(trackIndex) ?? [];
+    const group = laneClips.get(lane) ?? [];
 
     group.push({ clipId: clip.id, clipLength: endTime - startTime });
-    trackClips.set(trackIndex, group);
+    laneClips.set(lane, group);
   }
 
   // Only optimize tracks with multiple clips
   let hasMultiClipTrack = false;
 
-  for (const group of trackClips.values()) {
+  for (const group of laneClips.values()) {
     if (group.length > 1) {
       hasMultiClipTrack = true;
       break;
@@ -84,7 +90,7 @@ export function computeNonSurvivorClipIds(
   // Backwards scan per track: a clip survives if its length > all after it
   const nonSurvivorIds = new Set<string>();
 
-  for (const group of trackClips.values()) {
+  for (const group of laneClips.values()) {
     if (group.length <= 1) continue;
 
     let maxLengthAfter = 0;
@@ -105,17 +111,32 @@ export function computeNonSurvivorClipIds(
 }
 
 /**
- * Whether a clip should participate in non-survivor grouping. Session clips
- * skip (they aren't moved via arrangement APIs), and take-lane clips skip
- * because `duplicate_clip_to_arrangement` is Track-only and they get
- * warned-and-skipped downstream — including them would let a long take-lane
- * clip wrongly mark a shorter main-lane clip as a non-survivor.
+ * The lane a clip lands on, or null when it doesn't take part in the grouping.
+ *
+ * Skipped: session clips (they aren't moved via arrangement APIs), take-lane
+ * SOURCES (`duplicate_clip_to_arrangement` is Track-only, so they're
+ * warned-and-skipped downstream — including one would let a long take-lane clip
+ * wrongly mark a shorter main-lane clip a non-survivor), clips moving to a slot
+ * (off the arrangement timeline entirely), and clips moving ONTO a take lane
+ * (re-created there one at a time, so the optimization has nothing to save).
  * @param clip - Candidate clip
- * @returns true when the clip should be grouped for survivor analysis
+ * @param destination - Where the clip is moving, if the call named anywhere
+ * @returns The destination lane's path, or null to skip the clip
  */
-function isEligibleForSurvivorAnalysis(clip: LiveAPI): boolean {
-  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
-  if (isTakeLaneClip(clip)) return false;
+function survivorLane(
+  clip: LiveAPI,
+  destination: ClipPath | undefined,
+): string | null {
+  if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return null;
+  if (isTakeLaneClip(clip)) return null;
 
-  return true;
+  if (destination != null) {
+    return destination.kind === "track"
+      ? arrangementPath(destination.trackIndex)
+      : null;
+  }
+
+  const trackIndex = clip.trackIndex;
+
+  return trackIndex == null ? null : arrangementPath(trackIndex);
 }
