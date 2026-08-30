@@ -288,7 +288,10 @@ describe("library tool — searches fan-out", () => {
     });
 
     expect("results" in result).toBe(false);
-    expect(result).toMatchObject({ items: [{ path: "/db/kick.wav" }] });
+    expect(result).toStrictEqual({
+      dbAvailable: true,
+      items: [{ path: "/db/kick.wav" }],
+    });
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("searches was empty"),
     );

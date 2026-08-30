@@ -113,14 +113,16 @@ describe("readDevice drum-map by target kind", () => {
 
     const result = readDevice({ path: "t1/d0/pC1", include: ["*"] });
 
-    expect(result).toMatchObject({
+    // The pad's own fields are the subject here; the chain tree under it has
+    // its own tests, so only its length is pinned.
+    expect(result).toStrictEqual({
       id: "pad-36",
       path: "t1/d0/pC1",
       name: "Kick",
       note: 36,
       pitch: "C1",
+      chains: expect.any(Array),
     });
-    expect(result.drumMap).toBeUndefined();
     expect(result.chains).toHaveLength(1);
     expect(outlet).not.toHaveBeenCalledWith(1, PAD_WARNING);
   });

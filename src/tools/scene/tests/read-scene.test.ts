@@ -322,7 +322,11 @@ describe("readScene", () => {
       setupLiveSetTracks([]);
       setupScene("123", 5, defaultSceneConfig({ name: "Scene by ID" }));
 
-      expect(readScene({ sceneId: "123" })).toMatchObject({
+      expect(readScene({ sceneId: "123" })).toStrictEqual({
+        clipCount: 0,
+        sceneIndex: 5,
+        tempo: 120,
+        timeSignature: "4/4",
         id: "123",
         name: "Scene by ID",
       });

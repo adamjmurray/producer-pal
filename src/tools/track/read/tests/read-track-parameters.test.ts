@@ -83,7 +83,12 @@ describe("readTrack", () => {
         properties: mockTrackProperties({ name: "Track by ID" }),
       });
 
-      expect(readTrack({ trackId: "123" })).toMatchObject({
+      expect(readTrack({ trackId: "123" })).toStrictEqual({
+        arrangementClipCount: 0,
+        deviceCount: 0,
+        sessionClipCount: 0,
+        trackIndex: 2,
+        type: "midi",
         id: "123",
         name: "Track by ID",
       });

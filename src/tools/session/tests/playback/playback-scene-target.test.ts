@@ -97,7 +97,9 @@ describe("playback play-scene target agreement", () => {
     mockScene(3, undefined, "Chorus");
     mockSessionClip("clip1", 0, 3);
 
-    expect(playback({ action: "play-scene", id: "clip1" })).toMatchObject({
+    expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
+      currentTime: "NaN|NaN+nNaN/4",
+      playing: true,
       sceneIndex: 3,
       sceneName: "Chorus",
     });
@@ -107,7 +109,9 @@ describe("playback play-scene target agreement", () => {
   it("names an unnamed scene by its number", () => {
     mockScene(3, undefined, "");
 
-    expect(playback({ action: "play-scene", sceneIndex: 3 })).toMatchObject({
+    expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
+      currentTime: "NaN|NaN+nNaN/4",
+      playing: true,
       sceneIndex: 3,
       sceneName: "4",
     });

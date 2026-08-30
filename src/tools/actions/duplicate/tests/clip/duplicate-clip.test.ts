@@ -446,7 +446,11 @@ describe("duplicate - clip duplication", () => {
         "id clip1",
         8,
       );
-      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
+      expect(result).toStrictEqual({
+        id: "live_set tracks 0 arrangement_clips 0",
+        path: "t0",
+        arrangementStart: "3|1",
+      });
     });
 
     it("copies to the toSlot and drops the arrangement position, with a warning", async () => {
@@ -555,7 +559,11 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
-      expect(result).toMatchObject({ path: "t0", arrangementStart: "3|1" });
+      expect(result).toStrictEqual({
+        id: "live_set tracks 0 arrangement_clips 0",
+        path: "t0",
+        arrangementStart: "3|1",
+      });
     });
 
     it("rejects a 0-indexed arrangementStart with the 1-indexing steer", async () => {

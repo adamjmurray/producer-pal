@@ -177,7 +177,15 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      arrangementClipCount: 0,
+      deviceCount: 0,
+      id: "track2",
+      isArmed: true,
+      name: "Boundary Track",
+      sessionClipCount: 0,
+      trackIndex: 1,
+      type: "midi",
       playingSlotIndex: 0,
       firedSlotIndex: 0,
     });

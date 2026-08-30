@@ -344,7 +344,8 @@ describe("duplicate - track duplication", () => {
         withoutClips: false, // This should be overridden
       });
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "t1",
         id: expect.any(String),
         trackIndex: expect.any(Number),
         clips: [],
@@ -361,7 +362,8 @@ describe("duplicate - track duplication", () => {
         withoutDevices: false, // This should be overridden
       });
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "t1",
         id: expect.any(String),
         trackIndex: expect.any(Number),
         clips: [],

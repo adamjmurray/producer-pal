@@ -58,9 +58,23 @@ describe("readDevice with a drum pad id", () => {
 
     const result = readDevice({ id: "pad-36", include: ["chains"] });
 
-    expect(result.chains).toMatchObject([
-      { id: "chain-1", path: "t1/d0/pC1/c0", name: "Layer 1" },
-      { id: "chain-2", path: "t1/d0/pC1/c1", name: "Layer 2" },
+    expect(result.chains).toStrictEqual([
+      {
+        id: "chain-1",
+        path: "t1/d0/pC1/c0",
+        name: "Layer 1",
+        type: "DrumChain",
+        mappedPitch: "C1",
+        devices: [],
+      },
+      {
+        id: "chain-2",
+        path: "t1/d0/pC1/c1",
+        name: "Layer 2",
+        type: "DrumChain",
+        mappedPitch: "C1",
+        devices: [],
+      },
     ]);
   });
 });

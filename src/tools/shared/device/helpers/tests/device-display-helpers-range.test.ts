@@ -90,6 +90,13 @@ describe("readParameter on a range ending in a word", () => {
     const result = readParameter(LiveAPI.from(paramPath));
 
     expect(result.alsoAccepts).toBeUndefined();
-    expect(result).toMatchObject({ min: -40, max: 0, value: -12, unit: "dB" });
+    expect(result).toStrictEqual({
+      id: "param-1",
+      name: "Threshold",
+      min: -40,
+      max: 0,
+      value: -12,
+      unit: "dB",
+    });
   });
 });

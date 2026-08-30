@@ -339,7 +339,11 @@ describe("createDevice", () => {
         });
 
         expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
-        expect(result).toMatchObject({ id: "device123" });
+        expect(result).toStrictEqual({
+          path: "t0/d2",
+          deviceIndex: 2,
+          id: "device123",
+        });
       });
 
       it("should create device in chain via path with position", () => {

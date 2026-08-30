@@ -43,7 +43,9 @@ describe("readDevice with path parameter", () => {
       type: 1,
     });
 
-    expect(readDevice({ deviceId: "device-456" })).toMatchObject({
+    expect(readDevice({ deviceId: "device-456" })).toStrictEqual({
+      path: "t1/d0",
+      type: "instrument: Operator",
       id: "device-456",
     });
   });
@@ -61,7 +63,9 @@ describe("readDevice with path parameter", () => {
       type: 1,
     });
 
-    expect(readDevice({ id: "null", path: "t1/d0" })).toMatchObject({
+    expect(readDevice({ id: "null", path: "t1/d0" })).toStrictEqual({
+      path: "t1/d0",
+      type: "instrument: Operator",
       id: "device-456",
     });
     expect(warn).toHaveBeenCalledWith('id "null" names nothing');

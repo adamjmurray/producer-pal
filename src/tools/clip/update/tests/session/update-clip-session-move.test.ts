@@ -151,7 +151,7 @@ describe("handleClipSlotMove", () => {
     );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({
+    expect(updatedClips[0]).toStrictEqual({
       id: COPY_ID,
       noteCount: 5,
       path: "t1/s2",
@@ -180,7 +180,7 @@ describe("handleClipSlotMove", () => {
       "could not determine slot position for clip 123",
     );
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ id: "123" });
   });
 
   /**
@@ -237,7 +237,7 @@ describe("handleClipSlotMove", () => {
       "duplicate_clip_to",
       expect.any(String),
     );
-    expect(updatedClips[0]).toMatchObject({
+    expect(updatedClips[0]).toStrictEqual({
       id: COPY_ID,
       path: "t2/s1",
     });
@@ -263,7 +263,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({
+    expect(updatedClips[0]).toStrictEqual({
       id: "123",
       path: "t2/s3",
     });
@@ -298,7 +298,7 @@ describe("handleClipSlotMove", () => {
       "destination t99/s99 does not exist",
     );
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ id: "123" });
   });
 
   // duplicate_clip_to no-ops on a type mismatch and the source is deleted right
@@ -316,7 +316,7 @@ describe("handleClipSlotMove", () => {
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
@@ -338,7 +338,7 @@ describe("handleClipSlotMove", () => {
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
     expect(updatedClips[0]).not.toHaveProperty("slot");
   });
 
@@ -355,7 +355,7 @@ describe("handleClipSlotMove", () => {
       1,
       expect.stringContaining("is frozen"),
     );
-    expect(updatedClips[0]).toMatchObject({ id: COPY_ID, path: "t1/s2" });
+    expect(updatedClips[0]).toStrictEqual({ id: COPY_ID, path: "t1/s2" });
   });
 
   it("should not move an audio clip to a MIDI track", () => {
@@ -392,7 +392,7 @@ describe("handleClipSlotMove", () => {
       1,
       "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
   });
 
   // The dangerous case: the slot already holds a clip, so a path lookup finds
@@ -412,7 +412,7 @@ describe("handleClipSlotMove", () => {
       "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
-    expect(updatedClips[0]).toMatchObject({ id: "123" });
+    expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
     // Reporting the clip that was already there as the moved clip is its own
     // defect, on top of deleting the source.
     expect(updatedClips[0]?.id).not.toBe(OCCUPANT_ID);
@@ -453,7 +453,7 @@ describe("handleClipSlotMove", () => {
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     // The copy replaced the occupant, so the result is the copy's id.
-    expect(updatedClips[0]).toMatchObject({
+    expect(updatedClips[0]).toStrictEqual({
       id: COPY_ID,
       path: "t0/s1",
     });
@@ -466,7 +466,8 @@ describe("handleClipSlotMove", () => {
       noteResult: { noteCount: 12 },
     });
 
-    expect(updatedClips[0]).toMatchObject({
+    expect(updatedClips[0]).toStrictEqual({
+      id: "456",
       noteCount: 12,
       path: "t0/s1",
     });

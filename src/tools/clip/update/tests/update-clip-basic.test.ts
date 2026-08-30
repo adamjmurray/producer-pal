@@ -342,7 +342,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toSlot: "1/2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -354,7 +354,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toPath: "t1/s2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -369,7 +369,7 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({ id: "123", toPath: "1/2" });
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });
@@ -457,7 +457,7 @@ describe("updateClip - Basic operations", () => {
       "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
     );
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
       id: "live_set/tracks/1/clip_slots/2/clip",
       path: "t1/s2",
     });

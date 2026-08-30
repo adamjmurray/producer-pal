@@ -168,11 +168,17 @@ describe("processDeviceChains", () => {
 
     const chains = deviceInfo.returnChains as ReturnChain[];
 
-    expect(chains[0]).toMatchObject({
+    expect(chains[0]).toStrictEqual({
+      devices: [],
+      path: "t0/d0/rc0",
+      type: "Chain",
       id: "chain-Return A",
       name: "Return A",
     });
-    expect(chains[1]).toMatchObject({
+    expect(chains[1]).toStrictEqual({
+      devices: [],
+      path: "t0/d0/rc1",
+      type: "Chain",
       id: "chain-Return B",
       name: "Return B",
     });
@@ -234,7 +240,7 @@ describe("processDeviceChains", () => {
 
     expect(chains).toHaveLength(1);
     expect(chains[0]?.devices).toHaveLength(1);
-    expect(chains[0]?.devices?.[0]).toMatchObject({
+    expect(chains[0]?.devices?.[0]).toStrictEqual({
       id: "nested-dev-1",
       type: "effect",
     });
@@ -292,7 +298,9 @@ describe("processDeviceChains", () => {
     const chains = deviceInfo.chains as Record<string, unknown>[];
 
     expect(chains).toHaveLength(1);
-    expect(chains[0]).toMatchObject({
+    expect(chains[0]).toStrictEqual({
+      path: "t0/d0/c0",
+      type: "Chain",
       id: "chain-A",
       name: "Chain A",
       deviceCount: 2,

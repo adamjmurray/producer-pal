@@ -135,7 +135,11 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(
       lookupMockObject(undefined, livePath.track(0).takeLane(0))?.call,
     ).toHaveBeenCalledWith("create_audio_clip", SAMPLE, 16);
-    expect(result).toMatchObject({ path: "t0/l0", arrangementStart: "5|1" });
+    expect(result).toStrictEqual({
+      id: "tl_clip_1",
+      path: "t0/l0",
+      arrangementStart: "5|1",
+    });
   });
 
   // Each source read is a distinct getProperty, so blanking any one would set
@@ -279,6 +283,10 @@ describe("duplicate an audio clip to a take lane", () => {
           "(warp markers reset to the sample's defaults)",
       ),
     );
-    expect(result).toMatchObject({ path: "t0", arrangementStart: "5|1" });
+    expect(result).toStrictEqual({
+      id: "tl_clip_37",
+      path: "t0",
+      arrangementStart: "5|1",
+    });
   });
 });

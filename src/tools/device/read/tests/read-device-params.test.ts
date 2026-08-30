@@ -109,7 +109,13 @@ describe("readDevice param-values include option", () => {
 
     const { params } = readDeviceParamValues();
 
-    expect(params[0]).toMatchObject({ value: 9.5, min: 1, max: 18 });
+    expect(params[0]).toStrictEqual({
+      id: "param-1",
+      name: "1 Q A",
+      value: 9.5,
+      min: 1,
+      max: 18,
+    });
   });
 
   it("should not include min and max for quantized parameters", () => {

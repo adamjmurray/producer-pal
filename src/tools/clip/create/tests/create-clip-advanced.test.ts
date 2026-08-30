@@ -122,7 +122,7 @@ describe("createClip - advanced features", () => {
       name: "Multiple",
     });
 
-    expect(singleResult).toMatchObject({
+    expect(singleResult).toStrictEqual({
       id: expect.any(String),
       path: "t0/s0",
     });
@@ -243,7 +243,8 @@ describe("createClip - advanced features", () => {
 
       const result = await createClip({ slot: "0/0", focus: true });
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "t0/s0",
         id: "live_set/tracks/0/clip_slots/0/clip",
       });
       expect(warn).toHaveBeenCalledWith(
@@ -453,7 +454,12 @@ describe("createClip - advanced features", () => {
         notes: "C1 D1 E1 1|1",
       });
 
-      expect(result).toMatchObject({ noteCount: 2 });
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        length: "1bar",
+        path: "t0/s0",
+        noteCount: 2,
+      });
     });
   });
 

@@ -670,7 +670,8 @@ describe("updateDevice - wrapInRack", () => {
     );
 
     // Result contains rack info even if chain creation failed
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      deviceCount: 1,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -693,7 +694,8 @@ describe("updateDevice - wrapInRack", () => {
       "wrapInRack: failed to create chain 1/1",
     );
 
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      deviceCount: 1,
       id: "new-rack",
       type: "audio-effect-rack",
     });
@@ -716,7 +718,11 @@ describe("updateDevice - wrapInRack", () => {
 
     const result = updateDevice({ path: "t0/d0", wrapInRack: true });
 
-    expect(result).toMatchObject({ id: "new-rack", type: "audio-effect-rack" });
+    expect(result).toStrictEqual({
+      deviceCount: 1,
+      id: "new-rack",
+      type: "audio-effect-rack",
+    });
   });
 
   it("defaults the insertion position to 0 when the device path has no index", () => {

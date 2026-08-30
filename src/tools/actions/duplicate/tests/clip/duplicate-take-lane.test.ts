@@ -195,7 +195,8 @@ describe("duplicate take lane", () => {
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(`created on take lane "t0/l0". Expand`),
     );
-    expect(result).toMatchObject({
+    expect(result).toStrictEqual({
+      id: "tl_clip_1",
       path: "t0/l0",
       arrangementStart: "5|1",
     });
@@ -742,7 +743,11 @@ describe("duplicate take lane", () => {
     });
 
     // Landed on the appended lane, not the one the source sits on
-    expect(result).toMatchObject({ path: "t0/l1" });
+    expect(result).toStrictEqual({
+      arrangementStart: "5|1",
+      id: "tl_clip_74",
+      path: "t0/l1",
+    });
 
     const destLane = lookupMockObject(
       undefined,
@@ -771,7 +776,11 @@ describe("duplicate take lane", () => {
 
     expect(track.call).toHaveBeenCalledWith("create_midi_clip", 16, 4);
     // Reported on the main lane ("t0"), not a lane path.
-    expect(result).toMatchObject({ path: "t0" });
+    expect(result).toStrictEqual({
+      arrangementStart: "5|1",
+      id: "tl_clip_76",
+      path: "t0",
+    });
 
     // It's a copy: nothing tries to clear the source off its lane.
     expect(track.call).not.toHaveBeenCalledWith(

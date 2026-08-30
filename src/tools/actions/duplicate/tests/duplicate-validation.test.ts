@@ -195,7 +195,7 @@ describe("duplicate - return format", () => {
 
     const result = await duplicate({ type: "track", id: "track1", count: 2 });
 
-    expect(result).toMatchObject([
+    expect(result).toStrictEqual([
       expect.objectContaining({ trackIndex: expect.any(Number) }),
       expect.objectContaining({ trackIndex: expect.any(Number) }),
     ]);

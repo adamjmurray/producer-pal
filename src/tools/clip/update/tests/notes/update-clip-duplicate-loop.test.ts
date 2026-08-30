@@ -165,12 +165,22 @@ describe("updateClip - duplicateLoop", () => {
   });
 
   it.each([
-    ["notes", "1|1 C3"],
-    ["transforms", "pitch += 12"],
-    ["preTransforms", "pitch += 12"],
+    // Only `transforms` reports a `transformed` count; `notes` and
+    // `preTransforms` run before that count is taken.
+    ["notes", "1|1 C3", { id: "123", path: "t0/s0", noteCount: 8 }],
+    [
+      "transforms",
+      "pitch += 12",
+      { transformed: 8, id: "123", path: "t0/s0", noteCount: 8 },
+    ],
+    [
+      "preTransforms",
+      "pitch += 12",
+      { id: "123", path: "t0/s0", noteCount: 8 },
+    ],
   ])(
     "doubles and composes %s without warning (no length conflict)",
-    async (param, value) => {
+    async (param, value, expected) => {
       setupMidiClipMock(mocks.clip123);
       mockNoteCount(mocks.clip123, 8);
 
@@ -185,7 +195,7 @@ describe("updateClip - duplicateLoop", () => {
         1,
         expect.stringContaining("duplicateLoop sets the clip length"),
       );
-      expect(result).toMatchObject({ id: "123", noteCount: 8 });
+      expect(result).toStrictEqual(expected);
     },
   );
 
@@ -208,7 +218,7 @@ describe("updateClip - duplicateLoop", () => {
       1,
       expect.stringContaining("duplicateLoop sets the clip length"),
     );
-    expect(result).toMatchObject({ id: "123" });
+    expect(result).toStrictEqual({ path: "t0/s0", noteCount: 8, id: "123" });
   });
 
   it("applies preTransforms before the double and notes/transforms after", async () => {

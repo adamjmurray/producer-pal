@@ -584,9 +584,10 @@ describe("duplicate - device duplication", () => {
 
     // The temp track mirrors the source track, so the copy the second
     // destination moves is the one at the source's CURRENT index.
-    expect(vi.mocked(moveDeviceToPathMock).mock.calls[1]?.[0]).toMatchObject({
-      _path: String(livePath.track(1).device(2)),
-    });
+    expect(vi.mocked(moveDeviceToPathMock).mock.calls[1]?.[0]).toHaveProperty(
+      "_path",
+      String(livePath.track(1).device(2)),
+    );
   });
 
   it("stays quiet when no arrangement param was sent", async () => {

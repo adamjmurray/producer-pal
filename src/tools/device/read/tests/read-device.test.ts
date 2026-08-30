@@ -383,7 +383,7 @@ describe("readDevice", () => {
       const drumPads = result.drumPads as Record<string, unknown>[];
 
       expect(drumPads).toHaveLength(1);
-      expect(drumPads[0]).toMatchObject({
+      expect(drumPads[0]).toStrictEqual({
         id: "pad-36",
         note: 36,
         pitch: "C1",

@@ -188,7 +188,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       "duplicate_clip_to",
       expect.anything(),
     );
-    expect(result[1]).toMatchObject({ path: "t1/s2" });
+    expect(result[1]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
   });
 
   it("refuses both moves when two clips would trade slots", async () => {
@@ -234,9 +234,9 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       toPath: "t1/s2,t1/s2",
     })) as Array<{ id: string; path?: string }>;
 
-    expect(result[0]).toMatchObject({ path: "t1/s2" });
+    expect(result[0]).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
     // The second clip stayed put, so its path is still its own slot.
-    expect(result[1]).toMatchObject({ path: "t1/s1" });
+    expect(result[1]).toStrictEqual({ id: "456", path: "t1/s1" });
     expect(outlet).toHaveBeenCalledWith(
       1,
       "clip 456 was not moved: clip 123 is already moving to t1/s2; " +
@@ -254,7 +254,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     const result = await updateClip({ path: "t0/s0", toPath: "t0/s0" });
 
-    expect(result).toMatchObject({ id: "123", path: "t0/s0" });
+    expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
     expect(outlet).not.toHaveBeenCalledWith(
       1,
       expect.stringContaining("was not moved"),
@@ -279,7 +279,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
         toPath: "t1/s2",
       });
 
-      expect(result).toMatchObject({ path: "t1/s2" });
+      expect(result).toStrictEqual({ id: "t1/s2/clip", path: "t1/s2" });
       expect(outlet).toHaveBeenCalledWith(1, `${param} "null" names nothing`);
       expect(outlet).not.toHaveBeenCalledWith(
         1,

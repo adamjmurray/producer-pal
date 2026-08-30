@@ -126,7 +126,9 @@ describe("duplicate-track-scene-helpers", () => {
 
       const result = duplicateTrack(0);
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "t1",
+        id: "live_set/tracks/1",
         trackIndex: 1,
         clips: [],
       });
@@ -495,7 +497,9 @@ describe("duplicate-track-scene-helpers", () => {
 
       const result = duplicateScene(0);
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
+        path: "s1",
+        id: "live_set/scenes/1",
         sceneIndex: 1,
         clips: [],
       });
@@ -631,7 +635,7 @@ describe("duplicate-track-scene-helpers", () => {
         4,
       );
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
         arrangementStart: "5|1",
         clips: [],
       });

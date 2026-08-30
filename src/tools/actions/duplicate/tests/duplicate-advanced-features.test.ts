@@ -338,7 +338,8 @@ function registerNewTrack(
  * @param result - The duplicate() return value
  */
 function expectTrackResult(result: unknown): void {
-  expect(result).toMatchObject({
+  expect(result).toStrictEqual({
+    path: expect.any(String),
     id: expect.any(String),
     trackIndex: expect.any(Number),
     clips: expect.any(Array),
