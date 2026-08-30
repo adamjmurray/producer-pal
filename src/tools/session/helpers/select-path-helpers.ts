@@ -51,7 +51,7 @@ interface ImpliedTrack {
 /** The params a path can name a second time. */
 interface PathAgreementArgs {
   trackIndex?: number;
-  trackType?: "return" | "master";
+  trackType?: TrackCategory;
   sceneIndex?: number;
 }
 

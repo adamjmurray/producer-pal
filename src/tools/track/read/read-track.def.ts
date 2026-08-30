@@ -28,10 +28,10 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       canonical: "id",
     }),
     trackType: z
-      .enum(["return", "master"])
+      .enum(["regular", "return", "master"])
       .optional()
       .describe(
-        "return or master (omit for audio/midi tracks, which have independent trackIndexes)",
+        "regular (default, audio/midi), return, or master. regular and return tracks have independent trackIndexes",
       ),
     trackIndex: z.coerce
       .number()

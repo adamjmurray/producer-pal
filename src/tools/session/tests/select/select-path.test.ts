@@ -279,6 +279,9 @@ describe("select path param", () => {
     expect(() => select({ path: "rt0", trackType: "master" })).toThrow(
       "select failed: path and trackType name different targets",
     );
+    expect(() => select({ path: "rt0", trackType: "regular" })).toThrow(
+      "select failed: path and trackType name different targets",
+    );
     expect(() => select({ path: "s3", sceneIndex: 4 })).toThrow(
       "select failed: path and sceneIndex name different targets",
     );

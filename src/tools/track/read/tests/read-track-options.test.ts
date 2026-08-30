@@ -433,6 +433,12 @@ describe("readTrack", () => {
 
         expectRegularTrackResult(result);
       });
+
+      it("reads regular track when trackType is explicitly regular", () => {
+        const result = setupAndReadRegularTrack("Regular Track", "regular");
+
+        expectRegularTrackResult(result);
+      });
     });
 
     describe("invalid trackType", () => {
@@ -440,14 +446,17 @@ describe("readTrack", () => {
         expect(() => {
           readTrack({ trackIndex: 0, trackType: "invalid" });
         }).toThrow(
-          'Invalid trackType: invalid. Must be "return" or "master", or omit for regular tracks.',
+          'Invalid trackType: invalid. Must be "regular", "return", or "master".',
         );
       });
     });
   });
 });
 
-function setupAndReadRegularTrack(name: string): ReturnType<typeof readTrack> {
+function setupAndReadRegularTrack(
+  name: string,
+  trackType?: string,
+): ReturnType<typeof readTrack> {
   setupTrackPathMappedMocks({
     trackId: "track1",
     objects: {
@@ -455,7 +464,7 @@ function setupAndReadRegularTrack(name: string): ReturnType<typeof readTrack> {
     },
   });
 
-  return readTrack({ trackIndex: 0 });
+  return readTrack({ trackIndex: 0, trackType });
 }
 
 function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {

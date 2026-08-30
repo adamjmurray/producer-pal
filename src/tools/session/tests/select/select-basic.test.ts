@@ -148,6 +148,22 @@ describe("view", () => {
       expect(result.selectedTrack).toBeDefined();
     });
 
+    it("selects regular track when trackType is explicitly regular", () => {
+      const track = registerMockObject("track_id_123", {
+        path: livePath.track(2),
+        type: "Track",
+      });
+      const songView = setupSongViewMock();
+
+      const result = select({ trackType: "regular", trackIndex: 2 });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "selected_track",
+        `id ${track.id}`,
+      );
+      expect(result.selectedTrack).toBeDefined();
+    });
+
     it("defaults to regular track type when only index provided", () => {
       registerMockObject("track_id_123", {
         path: livePath.track(2),

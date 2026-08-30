@@ -118,7 +118,7 @@ export function readTrack(
     track = LiveAPI.from(livePath.masterTrack());
   } else {
     throw new Error(
-      `Invalid trackType: ${trackType}. Must be "return" or "master", or omit for regular tracks.`,
+      `Invalid trackType: ${trackType}. Must be "regular", "return", or "master".`,
     );
   }
 

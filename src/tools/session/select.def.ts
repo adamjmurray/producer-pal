@@ -52,9 +52,9 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe("0-based track index"),
     trackType: z
-      .enum(["return", "master"])
+      .enum(["regular", "return", "master"])
       .optional()
-      .describe("omit for audio/midi tracks, or: return, master"),
+      .describe("regular (default, audio/midi), return, or master"),
 
     sceneIndex: z.coerce
       .number()

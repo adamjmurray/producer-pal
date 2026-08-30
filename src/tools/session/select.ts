@@ -46,7 +46,7 @@ export interface SelectArgs {
   // External params (from schema)
   id?: string;
   view?: "session" | "arrangement";
-  trackType?: "return" | "master";
+  trackType?: TrackCategory;
   trackIndex?: number;
   sceneIndex?: number;
   /** Clip slot "t0/s3", a device "t0/d1", a drum pad "t0/d0/pC1", or a bare track "t0" */
