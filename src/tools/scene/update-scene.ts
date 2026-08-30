@@ -74,7 +74,7 @@ export function updateScene(
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
   // mid-list — otherwise every later name/color shifts onto the wrong scene.
-  const parsedNames = parseNames(name, sceneIds.length, "updateScene");
+  const parsedNames = parseNames(name, sceneIds.length, "scene");
   const parsedColors = parseCommaSeparatedColors(color, sceneIds.length);
 
   // Validate timeSignature format up front so a malformed value fails before

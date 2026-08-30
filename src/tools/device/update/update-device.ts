@@ -144,7 +144,7 @@ export function updateDevice(
     > | null;
   } else {
     const items = parseCommaSeparatedIds(path ?? ids);
-    const parsedNames = parseNames(name, items.length, "updateDevice");
+    const parsedNames = parseNames(name, items.length, "device");
     const parsedColors = parseCommaSeparatedColors(color, items.length);
 
     const updateOptions: UpdateTargetOptions = {

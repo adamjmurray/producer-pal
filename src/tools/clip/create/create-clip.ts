@@ -7,10 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
-import {
-  parseCommaSeparatedNames,
-  warnExtraNames,
-} from "#src/tools/shared/validation/name-utils.ts";
+import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
 import {
   parseArrangementStartList,
   type ClipSlotPosition,
@@ -312,16 +309,11 @@ function parseMultiClipParams(
   color: string | null,
   totalPositionCount: number,
 ): { parsedNames: string[] | null; parsedColors: string[] | null } {
-  const parsedNames = parseCommaSeparatedNames(
-    name ?? undefined,
-    totalPositionCount,
-  );
+  const parsedNames = parseNames(name ?? undefined, totalPositionCount, "clip");
   const parsedColors = parseCommaSeparatedColors(
     color ?? undefined,
     totalPositionCount,
   );
-
-  warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
   return { parsedNames, parsedColors };
 }

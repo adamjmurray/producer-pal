@@ -32,6 +32,16 @@ schema tolerant. There's no built-in "degrade to a comma-separated string"
 switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 `params` array adds a `preprocess` that also accepts a JSON-stringified array.
 
+## Comma-separated params pair one way
+
+When a param varies per item, use `src/tools/shared/validation/list-pairing.ts`:
+one value covers every item, N values pair 1:1 in order, anything else warns and
+applies what it can. Nothing cycles.
+
+`pairValues` / `valueForIndex` for values, `pairExact` for a destination that
+holds one item — broadcasting a lone clip slot to three clips would destroy two
+of them. `color` still cycles, as a documented exception; see ADR-0031.
+
 ## Params that don't apply to every action
 
 A modal tool publishes one schema for every action, so a caller can always send

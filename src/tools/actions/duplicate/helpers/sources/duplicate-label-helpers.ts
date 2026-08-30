@@ -13,8 +13,7 @@ import {
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 
 /** The names and colors a call hands out, and where the current source is. */
@@ -72,10 +71,8 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
   }
 
   labels.total = labels.sources * copies;
-  labels.names = parseCommaSeparatedNames(labels.name, labels.total);
+  labels.names = parseNames(labels.name, labels.total, "copy");
   labels.colors = parseCommaSeparatedColors(labels.color, labels.total);
-
-  warnExtraNames(labels.names, labels.total, "duplicate");
 }
 
 /**

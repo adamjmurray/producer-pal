@@ -299,10 +299,9 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
       expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
       expect(result).toHaveLength(2);
-      // The tool label prefixes the "extra names ignored" warning.
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("createScene: 3 names provided"),
+        expect.stringContaining("name: 3 names for 2 scenes"),
       );
     });
 

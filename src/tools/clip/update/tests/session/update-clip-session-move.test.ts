@@ -742,7 +742,7 @@ describe("resolveMoveDestinations", () => {
     ]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("1 destination(s) for 3 clip(s)"),
+      expect.stringContaining("1 destination for 3 clips"),
     );
   });
 

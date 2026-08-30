@@ -12,9 +12,9 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
-  pairArrangementValues,
+  pairValues,
   type PairLabels,
-} from "../update-clip-pairing.ts";
+} from "#src/tools/shared/validation/list-pairing.ts";
 
 /** One arrangement time per clip, in beats. */
 export interface ArrangementBeats {
@@ -34,13 +34,15 @@ const NO_BEATS: ArrangementBeats = { broadcast: null, perClip: [] };
 const START_LABELS: PairLabels = {
   param: "arrangementStart",
   noun: "position",
-  shortfall: "kept their own",
+  item: "clip",
+  shortfall: "were not moved",
 };
 
 const LENGTH_LABELS: PairLabels = {
   param: "arrangementLength",
   noun: "length",
-  shortfall: "kept their own",
+  item: "clip",
+  shortfall: "kept the length they had",
 };
 
 /**
@@ -137,6 +139,6 @@ function fanOut(
 
   return {
     broadcast: values.length === 1 ? (values[0] as number) : null,
-    perClip: pairArrangementValues(values, clipCount, labels),
+    perClip: pairValues(values, clipCount, labels),
   };
 }

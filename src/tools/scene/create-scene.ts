@@ -12,8 +12,7 @@ import {
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene } from "./capture-scene.ts";
@@ -102,10 +101,8 @@ export function createScene(
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
 
-  const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedNames = parseNames(name, count, "scene");
   const parsedColors = parseCommaSeparatedColors(color, count);
-
-  warnExtraNames(parsedNames, count, "createScene");
 
   for (let i = 0; i < count; i++) {
     const sceneName = getNameForIndex(name, i, parsedNames);

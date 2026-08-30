@@ -3,102 +3,52 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseCommaSeparatedValues } from "#src/tools/shared/validation/color-utils.ts";
+import {
+  splitList,
+  valueForIndex,
+  warnPairingMismatch,
+} from "#src/tools/shared/validation/list-pairing.ts";
 
 /**
- * Parse comma-separated names when creating/updating multiple items.
- * Only splits when count > 1 and the value contains a comma.
- * @param value - Input string that may contain commas
- * @param count - Number of items being named
- * @returns Array of trimmed name strings, or null if not applicable
- */
-export function parseCommaSeparatedNames(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  return parseCommaSeparatedValues(value, count);
-}
-
-/**
- * Get name for a specific index when creating/updating multiple items.
- * When parsedNames is provided and the index is beyond the array,
- * returns undefined so excess items keep their default/existing name.
- * @param baseName - Base name string (the raw parameter value)
- * @param index - Current item index
- * @param parsedNames - Comma-separated names array, or null
- * @returns Name for this index, or undefined if not applicable
- */
-export function getNameForIndex(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null,
-): string | undefined {
-  if (baseName == null) return undefined;
-
-  if (parsedNames != null) {
-    // Out-of-bounds index returns undefined (noUncheckedIndexedAccess)
-    return parsedNames[index];
-  }
-
-  return baseName;
-}
-
-/**
- * Parse comma-separated names and warn if too many were provided.
- * Combines parseCommaSeparatedNames + warnExtraNames in one call.
- * @param value - Input string that may contain commas
- * @param count - Number of items being named
- * @param toolName - Tool name for the warning message
- * @returns Array of trimmed name strings, or null if not applicable
+ * Parse a comma-separated name param and warn when it names the wrong number.
+ *
+ * One name covers every item; a list pairs 1:1 in order. See `list-pairing.ts`
+ * for why nothing cycles.
+ * @param value - The raw name param
+ * @param count - How many items the call names
+ * @param item - What the call acts on, singular ("clip", "track")
+ * @returns One name per item, or null when the value covers every item
  */
 export function parseNames(
   value: string | undefined,
   count: number,
-  toolName: string,
+  item: string,
 ): string[] | null {
-  const parsed = parseCommaSeparatedNames(value, count);
+  const parsed = splitList(value, count);
 
-  warnExtraNames(parsed, count, toolName);
-  warnFewerNames(parsed, count, toolName);
+  warnPairingMismatch(parsed?.length ?? 0, count, {
+    param: "name",
+    noun: "name",
+    item,
+    shortfall: "were not renamed",
+  });
 
   return parsed;
 }
 
 /**
- * Emit a warning when more names were provided than items to name.
- * @param parsedNames - Parsed name array, or null
- * @param count - Number of items being named
- * @param toolName - Tool name for the warning message
+ * The name for one item, or undefined when the call named none for it.
+ * @param value - The raw name param
+ * @param index - The item's position in the call
+ * @param parsed - The split names, or null
+ * @returns The name, or undefined
  */
-export function warnExtraNames(
-  parsedNames: string[] | null,
-  count: number,
-  toolName: string,
-): void {
-  if (parsedNames != null && parsedNames.length > count) {
-    console.warn(
-      `${toolName}: ${parsedNames.length} names provided but only ${count} items — ignoring extra`,
-    );
-  }
-}
-
-/**
- * Emit a warning when fewer names were provided than items to name.
- * @param parsedNames - Parsed name array, or null
- * @param count - Number of items being named
- * @param toolName - Tool name for the warning message
- */
-export function warnFewerNames(
-  parsedNames: string[] | null,
-  count: number,
-  toolName: string,
-): void {
-  if (parsedNames != null && parsedNames.length < count) {
-    console.warn(
-      `${toolName}: ${parsedNames.length} names provided for ${count} items — extras will keep default names`,
-    );
-  }
+export function getNameForIndex(
+  value: string | undefined,
+  index: number,
+  parsed: string[] | null,
+): string | undefined {
+  return valueForIndex(value, index, parsed);
 }
 
 /**

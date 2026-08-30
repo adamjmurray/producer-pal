@@ -148,12 +148,12 @@ describe("updateScene", () => {
     });
   });
 
-  it("warns with the tool label when more names than scenes are given", () => {
+  it("names the item when more names than scenes are given", () => {
     updateScene({ id: "123,456", name: "A,B,C,D" });
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("updateScene: 4 names provided"),
+      expect.stringContaining("name: 4 names for 2 scenes"),
     );
   });
 

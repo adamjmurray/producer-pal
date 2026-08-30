@@ -111,7 +111,7 @@ describe("parseArrangementParams", () => {
       null,
     ]);
     expect(console.warn).toHaveBeenCalledWith(
-      "arrangementStart names 2 position(s) for 3 clip(s); the clips past the last position kept their own",
+      "arrangementStart: 2 positions for 3 clips; the clips past the last position were not moved",
     );
   });
 
@@ -122,7 +122,7 @@ describe("parseArrangementParams", () => {
       0, 4,
     ]);
     expect(console.warn).toHaveBeenCalledWith(
-      "arrangementStart names 3 position(s) for 2 clip(s); the extra positions went unused",
+      "arrangementStart: 3 positions for 2 clips; the extra positions went unused",
     );
   });
 
@@ -130,7 +130,7 @@ describe("parseArrangementParams", () => {
     parseArrangementParams(undefined, "1bar,2bar,1bar", 2);
 
     expect(console.warn).toHaveBeenCalledWith(
-      "arrangementLength names 3 length(s) for 2 clip(s); the extra lengths went unused",
+      "arrangementLength: 3 lengths for 2 clips; the extra lengths went unused",
     );
   });
 

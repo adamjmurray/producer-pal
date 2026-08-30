@@ -31,7 +31,7 @@ import {
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
-import { pairWithClips } from "./update-clip-pairing.ts";
+import { pairExact } from "#src/tools/shared/validation/list-pairing.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
@@ -103,9 +103,10 @@ export function resolveMoveDestinations(
           }))
         : pathDestinations(toPath as string);
 
-    return pairWithClips(destinations, clipCount, {
+    return pairExact(destinations, clipCount, {
       param: toSlot == null ? "toPath" : "toSlot",
       noun: "destination",
+      item: "clip",
       shortfall: "were not moved",
     });
   } catch (error) {

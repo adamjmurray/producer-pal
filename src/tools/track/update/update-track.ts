@@ -295,7 +295,7 @@ export function updateTrack(
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
   // mid-list — otherwise every later name/color shifts onto the wrong track.
-  const parsedNames = parseNames(name, trackIds.length, "updateTrack");
+  const parsedNames = parseNames(name, trackIds.length, "track");
   const parsedColors = parseCommaSeparatedColors(color, trackIds.length);
 
   const updatedTracks: UpdateTrackResult[] = [];

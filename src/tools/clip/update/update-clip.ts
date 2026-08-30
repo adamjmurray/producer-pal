@@ -183,7 +183,7 @@ export async function updateClip(
     context,
   });
 
-  const parsedNames = parseNames(name, mutableClips.length, "updateClip");
+  const parsedNames = parseNames(name, mutableClips.length, "clip");
   const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
 
   const updatedClips: ClipResult[] = [];

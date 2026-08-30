@@ -24,8 +24,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
@@ -93,9 +92,7 @@ export function createDevice(
     );
   }
 
-  const parsedNames = parseCommaSeparatedNames(name, paths.length);
-
-  warnExtraNames(parsedNames, paths.length, "createDevice");
+  const parsedNames = parseNames(name, paths.length, "device");
 
   // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
   // paths share track 0 and the rack. Resolve each one once for the whole call.

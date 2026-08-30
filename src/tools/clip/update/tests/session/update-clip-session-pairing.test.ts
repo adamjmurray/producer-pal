@@ -109,7 +109,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      expect.stringContaining("destination(s) for"),
+      expect.stringContaining("destinations for"),
     );
   });
 
@@ -283,7 +283,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
       expect(outlet).toHaveBeenCalledWith(1, `${param} "null" names nothing`);
       expect(outlet).not.toHaveBeenCalledWith(
         1,
-        expect.stringContaining("destination(s) for"),
+        expect.stringContaining("destinations for"),
       );
     },
   );

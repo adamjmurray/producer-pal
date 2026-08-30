@@ -236,9 +236,8 @@ describe("createClip - arrangement view", () => {
     expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00
   });
 
-  it("warns with the tool name when more names than positions are provided", async () => {
-    // 3 names for 2 positions → warnExtraNames warns. The blanked tool-name
-    // string mutant would drop the "createClip:" prefix from the warning.
+  it("names the item when more names than positions are provided", async () => {
+    // The blanked item-noun mutant would drop "clips" from the warning.
     setupArrangementClipMocks();
 
     await createClip({
@@ -249,7 +248,7 @@ describe("createClip - arrangement view", () => {
 
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("createClip: 3 names provided"),
+      expect.stringContaining("name: 3 names for 2 clips"),
     );
   });
 

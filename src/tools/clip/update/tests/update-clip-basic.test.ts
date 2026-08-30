@@ -454,7 +454,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ id: "123", toSlot: "1/2, 3/4" });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
+      "toSlot: 2 destinations for 1 clip; the extra destinations went unused",
     );
 
     expect(result).toStrictEqual({
@@ -473,20 +473,19 @@ describe("updateClip - Basic operations", () => {
     // "using first" warning fires (kills > 1 -> >= 1 and the forced-true mutant).
     expect(outlet).not.toHaveBeenCalledWith(
       1,
-      "toSlot names 2 destination(s) for 1 clip(s); the extra destinations went unused",
+      "toSlot: 2 destinations for 1 clip; the extra destinations went unused",
     );
   });
 
-  it("should include the tool name when more names than clips are provided", async () => {
+  it("should name the item when more names than clips are provided", async () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
     await updateClip({ id: "123, 456", name: "A, B, C" });
 
-    // The "updateClip" tool-name literal must be preserved in the warning.
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "updateClip: 3 names provided but only 2 items — ignoring extra",
+      "name: 3 names for 2 clips; the extra names went unused",
     );
   });
 

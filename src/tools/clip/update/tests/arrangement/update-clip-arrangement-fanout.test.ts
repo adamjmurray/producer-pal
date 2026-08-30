@@ -92,7 +92,7 @@ describe("updateClip - arrangement params per clip", () => {
     expect(tracks.map(movedTo)).toStrictEqual([16, 32, null]);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "arrangementStart names 2 position(s) for 3 clip(s); the clips past the last position kept their own",
+      "arrangementStart: 2 positions for 3 clips; the clips past the last position were not moved",
     );
   });
 
@@ -121,7 +121,7 @@ describe("updateClip - arrangement params per clip", () => {
     );
     expect(outlet).toHaveBeenCalledWith(
       1,
-      "arrangementLength names 2 length(s) for 3 clip(s); the clips past the last length kept their own",
+      "arrangementLength: 2 lengths for 3 clips; the clips past the last length kept the length they had",
     );
   });
 });

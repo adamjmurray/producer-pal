@@ -14,8 +14,7 @@ import {
 } from "#src/tools/shared/validation/color-utils.ts";
 import {
   getNameForIndex,
-  parseCommaSeparatedNames,
-  warnExtraNames,
+  parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
@@ -192,10 +191,8 @@ export function createTrack(
   const createdTracks: CreatedTrackResult[] = [];
   let currentIndex = effectiveTrackIndex;
 
-  const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedNames = parseNames(name, count, "track");
   const parsedColors = parseCommaSeparatedColors(color, count);
-
-  warnExtraNames(parsedNames, count, "createTrack");
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
