@@ -111,8 +111,10 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
   async context to do that automatically. So: adding an `await` to
-  `handleRequest` needs a matching `resumeWarningCapture()`, and any new promise
-  V8 can suspend on needs `suspendWarningCapture()`. Miss either and warnings
+  `handleRequest` needs a matching `resumeWarningCapture()` on every path back
+  out, `catch` included; any new promise V8 can suspend on needs
+  `suspendWarningCapture()`; and a `void`-ed async call is a suspension point
+  too, so it needs `detachWarningCapture()`. Miss any of them and warnings
   silently land on another request's response. Warnings raised with no request
   in flight go to the Max console instead — don't try to route them into a
   response. See `src/shared/max/v8-warning-capture.ts`.

@@ -13,18 +13,23 @@
 // saw it. The buffer lives here instead, where the request is known.
 //
 // There is one active capture, and V8 has no async context to hang it off, so
-// keeping it pointed at the right request takes three rules. All are
+// keeping it pointed at the right request takes four rules. All are
 // load-bearing: drop one and warnings silently swap requests, or reach nobody.
 //
 //  1. A request re-asserts its own capture after every await it performs
-//     (resumeWarningCapture). It cannot assume the capture it began is still
-//     active: another request that started while it was parked has since made
-//     itself active.
+//     (resumeWarningCapture), on every path back out — a catch that unwinds an
+//     awaited section is one of them. It cannot assume the capture it began is
+//     still active: another request that started while it was parked has since
+//     made itself active.
 //  2. Every promise V8 can suspend on clears the capture for the wait and
 //     restores it on resume (suspendWarningCapture). Three exist —
 //     requestNode, requestCodeExecution, and the Task-backed sleep — and a
 //     fourth has to do the same.
-//  3. A capture that has responded is dead, and never becomes active again.
+//  3. A `void`-ed async call is a suspension point too, in the caller
+//     (detachWarningCapture). It runs into rule 2 with the caller's capture
+//     active, so rule 2 pockets that capture and reinstates it whenever the
+//     work resumes — over whatever request is running by then.
+//  4. A capture that has responded is dead, and never becomes active again.
 //     Fire-and-forget work outlives its request, so the capture a resume hands
 //     back may be one nobody is going to read.
 //
@@ -151,6 +156,32 @@ export async function suspendWarningCapture<T>(
     // continuation has no response to ride, so its warnings go to the Max
     // console, and a request actually running re-asserts its own capture.
     activeCapture = suspended?.ended === false ? suspended : null;
+  }
+}
+
+/**
+ * Start fire-and-forget work with no capture active, restoring the caller's
+ * once it parks.
+ *
+ * Wrap every `void`-ed async call made from inside a request. Without this the
+ * work runs into its first suspendWarningCapture holding the caller's capture,
+ * which pockets it and reinstates it whenever the work resumes — over whatever
+ * request is running by then, so that request's warnings go to the caller's
+ * response. Detaching first makes the suspend see nothing, and the work's own
+ * warnings go to the Max console, where warnings with no response to ride
+ * belong.
+ *
+ * @param start - Starts the work; its promise is deliberately not awaited
+ */
+export function detachWarningCapture(start: () => Promise<unknown>): void {
+  const caller = activeCapture;
+
+  activeCapture = null;
+
+  try {
+    void start();
+  } finally {
+    activeCapture = caller;
   }
 }
 

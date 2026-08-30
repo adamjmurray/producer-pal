@@ -25,6 +25,7 @@ import {
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   beginWarningCapture,
+  detachWarningCapture,
   endWarningCapture,
   resumeWarningCapture,
 } from "#src/shared/max/v8-warning-capture.ts";
@@ -271,8 +272,9 @@ export function projectContext(content: unknown): void {
     // Device-UI and webui edits reach us only through this setter (never an MCP
     // tool call), so kick off a best-effort on-disk backup here too. Fire-and-
     // forget: the write is Node-side and must not block the param update, and
-    // requestNode never rejects so this can't throw.
-    if (isEdit) void backupProjectContextOnEdit(value);
+    // requestNode never rejects so this can't throw. Detached because a void-ed
+    // async call is a suspension point — see v8-warning-capture.ts rule 3.
+    if (isEdit) detachWarningCapture(() => backupProjectContextOnEdit(value));
   } finally {
     endLiveApiScope();
   }
@@ -528,6 +530,10 @@ async function handleRequest(
         useCompact ? toCompactJSLiteral(output) : output,
       );
     } catch (toolError) {
+      // A throw is a path back out of an awaited section too: the tool may have
+      // failed after a round trip, leaving a later request's capture active.
+      resumeWarningCapture(warnings);
+
       const message =
         toolError instanceof Error ? toolError.message : String(toolError);
 
@@ -541,6 +547,10 @@ async function handleRequest(
       reportLiveApiBuildStats();
     }
   } catch (error) {
+    // Same reason as the tool-error catch: the project-context sync above can
+    // throw after its await.
+    resumeWarningCapture(warnings);
+
     const message = error instanceof Error ? error.message : String(error);
 
     result = formatErrorResponse(`Error parsing tool call request: ${message}`);

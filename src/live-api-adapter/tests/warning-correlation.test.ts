@@ -8,7 +8,7 @@
 // two in flight — parallel subagent tool calls are routine — could swap them, and
 // a warning raised with no request at all rode along on the next one.
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { warn } from "#src/shared/max/v8-max-console.ts";
 import { waitUntil } from "#src/shared/max/v8-sleep.ts";
@@ -29,8 +29,18 @@ vi.mock(import("#src/tools/track/read/read-track.ts"), () => ({
   readTrack: vi.fn(),
 }));
 
+// The one thing that warns while a failed request unwinds — the debug build's
+// LiveAPI build stats, reported from handleRequest's finally. Stubbed silent by
+// default, like a release build.
+vi.mock(import("#src/live-api-adapter/live-api-build-stats.ts"), () => ({
+  beginLiveApiBuildStats: vi.fn(),
+  reportLiveApiBuildStats: vi.fn(),
+}));
+
 const { createClip } = await import("#src/tools/clip/create/create-clip.ts");
 const { readTrack } = await import("#src/tools/track/read/read-track.ts");
+const { reportLiveApiBuildStats } =
+  await import("#src/live-api-adapter/live-api-build-stats.ts");
 const { requestNode } =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
 const { mcp_request, node_response } =
@@ -82,6 +92,11 @@ function answerNodeRequest(): void {
 }
 
 describe("warning correlation", () => {
+  // Silent by default, like a release build.
+  beforeEach(() => {
+    vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {});
+  });
+
   it("keeps each request's warnings on its own response", async () => {
     // The only way V8 suspends mid-request is a round trip to Node, so that is
     // where the other request gets to run.
@@ -154,6 +169,42 @@ describe("warning correlation", () => {
     } finally {
       restoreTask();
     }
+  });
+
+  // A throw is a path back out of an awaited section, so the catch has to
+  // re-assert too. Without that, a warning raised while the request unwinds
+  // rides out on whichever request started in the gap.
+  it("keeps a failing request's unwind warnings on its own response", async () => {
+    // Fires exactly once, in the failing request's finally — the only warning
+    // this test cares about routing.
+    // Stands in for whatever warns while a request unwinds — in a debug build
+    // that is the LiveAPI build stats, reported from handleRequest's finally.
+    vi.mocked(reportLiveApiBuildStats).mockImplementation(() => {
+      warn("unwinding");
+    });
+    vi.mocked(createClip).mockImplementation(async () => {
+      await requestNode("any-route");
+
+      throw new Error("boom");
+    });
+    vi.mocked(readTrack).mockReturnValue({} as never);
+
+    const failing = mcp_request("req-failing", "ppal-create-clip", "{}");
+
+    await vi.waitFor(() => expect(pendingNodeRequestId()).toBeDefined());
+    answerNodeRequest();
+
+    // Starts in the same tick the failing tool resumes in, so it is the active
+    // capture while that request unwinds.
+    const other = mcp_request("req-other", "ppal-read-track", "{}");
+
+    await Promise.all([failing, other]);
+
+    // req-other runs start to finish inside the gap, so it has taken the
+    // capture and given it back by the time the failing one unwinds. Without a
+    // resume in the catch, the failing request's own warning reaches nobody.
+    expect(warningsSentFor("req-other")).toStrictEqual(["unwinding"]);
+    expect(warningsSentFor("req-failing")).toStrictEqual(["unwinding"]);
   });
 
   it("sends no warnings for a request that raised none", async () => {
