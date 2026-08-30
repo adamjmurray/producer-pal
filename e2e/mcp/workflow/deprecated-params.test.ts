@@ -13,9 +13,8 @@
  * catalogs — MCP and REST each build their own, and REST once served a param
  * MCP was hiding.
  *
- * The other half — that the hidden names still work — is covered where the
- * clips are: ppal-duplicate and ppal-update-clip each pin a toSlot call, and
- * ppal-create-clip pins the trackIndex/sceneIndex fallback.
+ * The other half — that the hidden names still work — is
+ * hidden-params-runtime.test.ts, which calls every one of them for real.
  *
  * Run with: npm run e2e:mcp -- deprecated-params
  */
