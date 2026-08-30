@@ -7,8 +7,14 @@ import { parseLabel, strForValue } from "./device-label-helpers.ts";
 
 // Probes to find where a sentinel word ends. Each is one str_for_value call,
 // but the word sits on the endpoint alone in every case seen in Live, so the
-// first probe normally wins. The rest cover a word that spans a real range.
+// first probe normally brackets it and nothing more is needed.
 const TRIM_PROBES = 20;
+
+interface NumericPoint {
+  raw: number;
+  value: number;
+  label: string;
+}
 
 export interface ParamNumericRange {
   rawMin: number;
@@ -67,8 +73,11 @@ export function readNumericRange(
   }
 
   const minIsWord = minValue == null;
+  const goodEnd: NumericPoint = minIsWord
+    ? { raw: rawMax, value: maxValue as number, label: maxLabel }
+    : { raw: rawMin, value: minValue, label: minLabel };
   const badEnd = minIsWord ? rawMin : rawMax;
-  const trimmed = trimSentinel(param, minIsWord ? rawMax : rawMin, badEnd);
+  const trimmed = trimSentinel(param, goodEnd, badEnd);
 
   if (trimmed == null) {
     return null;
@@ -139,34 +148,77 @@ export function numericLabel(label: string): number | null {
  * @returns Display value, or null if the label isn't a number
  */
 export function displayAt(param: LiveAPI, raw: number): number | null {
-  return numericLabel(strForValue(param, raw));
+  return pointAt(param, raw)?.value ?? null;
 }
 
 /**
- * Walk in from the end whose label is a word until the label is a number again.
- * Steps start right next to the bad end and back off, so a word occupying only
- * the endpoint — every case seen in Live — costs one call.
+ * The numeric point nearest the end whose label is a word.
+ *
+ * Probes step out from the bad end, so a word sitting on the endpoint alone —
+ * every case seen in Live — is bracketed by the first call. Bisecting that
+ * bracket is the part that makes the answer tight: the probe that first reads
+ * as a number can sit twice as far out as the word actually reaches, and
+ * everything between the two is range the model never gets told about.
  * @param param - DeviceParameter LiveAPI object
- * @param goodEnd - The raw end whose label is a number
+ * @param goodEnd - The end whose label is a number
  * @param badEnd - The raw end whose label is a word
- * @returns The nearest raw value with a numeric label, or null if there is none
+ * @returns The nearest raw value with a numeric label, or null when the numbers
+ *   reach no further than goodEnd itself
  */
 function trimSentinel(
   param: LiveAPI,
-  goodEnd: number,
+  goodEnd: NumericPoint,
   badEnd: number,
-): { raw: number; value: number; label: string } | null {
-  const span = badEnd - goodEnd;
+): NumericPoint | null {
+  const span = badEnd - goodEnd.raw;
+  const tolerance = Math.abs(span) * 2 ** -TRIM_PROBES;
+  // The bracket: `word` reads as the word, `nearest` reads as a number. goodEnd
+  // is a number by construction, so the bracket is valid before any probe.
+  let word = badEnd;
+  let nearest = goodEnd;
 
   for (let i = TRIM_PROBES; i >= 1; i--) {
     const raw = badEnd - span * 2 ** -i;
-    const label = strForValue(param, raw);
-    const value = numericLabel(label);
+    const point = pointAt(param, raw);
 
-    if (value != null) {
-      return { raw, value, label };
+    if (point != null) {
+      nearest = point;
+      break;
+    }
+
+    word = raw;
+  }
+
+  // Halving a bracket at most |span| wide TRIM_PROBES times reaches tolerance,
+  // so this terminates on the condition, never on the bound.
+  for (
+    let i = 0;
+    i < TRIM_PROBES && Math.abs(nearest.raw - word) > tolerance;
+    i++
+  ) {
+    const raw = (word + nearest.raw) / 2;
+    const point = pointAt(param, raw);
+
+    if (point == null) {
+      word = raw;
+    } else {
+      nearest = point;
     }
   }
 
-  return null;
+  return nearest.raw === goodEnd.raw ? null : nearest;
+}
+
+/**
+ * Read a parameter's label at a raw value, keeping the label alongside the
+ * number it parses to.
+ * @param param - DeviceParameter LiveAPI object
+ * @param raw - Raw value to query
+ * @returns The point, or null if the label isn't a number
+ */
+function pointAt(param: LiveAPI, raw: number): NumericPoint | null {
+  const label = strForValue(param, raw);
+  const value = numericLabel(label);
+
+  return value == null ? null : { raw, value, label };
 }

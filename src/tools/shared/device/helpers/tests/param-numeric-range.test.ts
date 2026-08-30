@@ -111,8 +111,33 @@ describe("readNumericRange", () => {
     expect(readNumericRange(param, 0, 4, "Off", "Extreme")).toBeNull();
   });
 
+  // The probes step out from the word by doubling, so the first one that reads
+  // as a number can sit far past where the word actually ends. Everything
+  // between is range the model would never be told about.
+  it("lands on the word's edge, not the probe that first cleared it", () => {
+    const param = paramWithLabels((raw) =>
+      raw < 0.7 ? raw.toFixed(4) : "Off",
+    );
+    const range = readNumericRange(param, 0, 1, "0.0000", "Off");
+
+    // Without bisection this stops at the midpoint, losing a fifth of the range.
+    expect(range?.rawMax).toBeGreaterThan(0.7 - 1e-5);
+    expect(range?.rawMax).toBeLessThan(0.7);
+  });
+
+  it("finds the numbers even when the word covers more than half the range", () => {
+    const param = paramWithLabels((raw) =>
+      raw < 0.4 ? raw.toFixed(4) : "Off",
+    );
+    const range = readNumericRange(param, 0, 1, "0.0000", "Off");
+
+    expect(range?.rawMax).toBeGreaterThan(0.4 - 1e-5);
+    expect(range?.rawMax).toBeLessThan(0.4);
+    expect(range?.sentinel).toStrictEqual({ label: "Off", raw: 1 });
+  });
+
   it("gives up when the word covers the whole range but one end", () => {
-    // Only the far end parses, so every probe inward hits the word.
+    // Only the far end parses, so the numbers have no width to report.
     const param = paramWithLabels((raw) => (raw <= 0 ? "0 ms" : "Off"));
 
     expect(readNumericRange(param, 0, 1, "0 ms", "Off")).toBeNull();
