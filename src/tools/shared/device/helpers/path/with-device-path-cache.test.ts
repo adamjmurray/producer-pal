@@ -5,7 +5,10 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   cachedDevicePath,
   invalidateDevicePathCache,
@@ -42,6 +45,23 @@ describe("withDevicePathCache", () => {
       invalidateDevicePathCache();
 
       expect(cachedDevicePath(trackPath)).not.toBe(before);
+    });
+  });
+
+  // A path can fail a lookup and then have a device created at it later in the
+  // same call. A cached miss would answer "doesn't exist" for the new device.
+  it("does not cache a path that resolved to nothing", () => {
+    mockNonExistentObjects();
+
+    withDevicePathCache(() => {
+      const missing = livePath.track(0).device(3).toString();
+      const before = cachedDevicePath(missing);
+
+      expect(before.exists()).toBe(false);
+
+      registerMockObject("new-device", { path: livePath.track(0).device(3) });
+
+      expect(cachedDevicePath(missing).exists()).toBe(true);
     });
   });
 

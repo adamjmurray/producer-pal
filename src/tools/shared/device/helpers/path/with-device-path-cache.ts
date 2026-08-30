@@ -44,8 +44,9 @@ export function withDevicePathCache<T>(fn: () => T): T {
 }
 
 /**
- * Resolve a path, reusing the object if this call already resolved it.
- * Outside a scope this is plain LiveAPI.from.
+ * Resolve a path, reusing the object if this call already resolved it. A path
+ * that resolved to nothing is not cached. Outside a scope this is plain
+ * LiveAPI.from.
  * @param path - Live API path
  * @returns The object at that path
  */
@@ -58,7 +59,12 @@ export function cachedDevicePath(path: string): LiveAPI {
 
   const object = LiveAPI.from(path);
 
-  cache.set(path, object);
+  // An object built against a path that resolved to nothing never picks up an
+  // occupant created there later — and creating a device at a path a failed
+  // lookup just probed is an ordinary thing for one call to do. Caching the
+  // miss would answer "doesn't exist" for a device that does, so only a hit is
+  // worth keeping.
+  if (object.exists()) cache.set(path, object);
 
   return object;
 }
