@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 export interface MidiNote {
@@ -53,6 +54,22 @@ export function buildClipResultObject(
   if (path != null) result.path = path;
 
   return result;
+}
+
+/**
+ * Report a clip at its current position, for an update that didn't move it.
+ * @param clip - The clip that stayed put
+ * @param updatedClips - Array to collect results
+ * @param noteResult - Note update result for result
+ */
+export function keepClip(
+  clip: LiveAPI,
+  updatedClips: ClipResult[],
+  noteResult: NoteUpdateResult | null,
+): void {
+  updatedClips.push(
+    buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
+  );
 }
 
 /**

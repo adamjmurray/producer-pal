@@ -8,6 +8,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   buildClipResultObject,
   type ClipResult,
+  keepClip,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -18,13 +19,16 @@ import {
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import {
   canRecreateClip,
-  recreateClipInSlot,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import {
+  recreateIntoEmptySlot,
+  recreateIntoOccupiedSlot,
+} from "./update-clip-slot-move-scratch-helpers.ts";
 
 interface SlotMoveArgs {
   clip: LiveAPI;
@@ -157,29 +161,42 @@ export function handleArrangementToSlotMove({
 
   // Read before the source is touched: everything below changes what it holds.
   const losses = recreatedClipLosses(clip);
-  const track = LiveAPI.from(livePath.track(clip.trackIndex as number));
+  const sourceTrack = LiveAPI.from(livePath.track(clip.trackIndex as number));
+  const destPath = slotPath(toSlot.trackIndex, toSlot.sceneIndex);
+  const destinationWasOccupied = Boolean(destClipSlot.getProperty("has_clip"));
 
-  // Unlike an arrangement lane, a slot refuses a create over the clip it holds,
-  // so the occupant goes first. The guards above already ruled out the ways the
-  // create can fail, so this doesn't clear a slot for a copy that never lands.
-  if (destClipSlot.getProperty("has_clip")) {
-    destClipSlot.call("delete_clip");
-    console.warn(
-      `overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
-    );
-  }
+  // An occupied destination tries the safe path first (build the replacement
+  // elsewhere, verify it, swap it in atomically) and only destroys the
+  // occupant up front when the track has nowhere else to build in. See
+  // update-clip-slot-move-scratch-helpers.ts.
+  const newClip = destinationWasOccupied
+    ? recreateIntoOccupiedSlot(
+        clip,
+        toSlot,
+        destClipSlot,
+        destPath,
+        updatedClips,
+        noteResult,
+      )
+    : recreateIntoEmptySlot(
+        clip,
+        destClipSlot,
+        destPath,
+        updatedClips,
+        noteResult,
+      );
 
-  const newClip = recreateClipInSlot(clip, destClipSlot, undefined, undefined);
+  if (newClip == null) return;
 
   console.warn(
-    `arrangement clip ${clip.id} was re-created at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}` +
+    `arrangement clip ${clip.id} was re-created at ${destPath}` +
       (losses ? ` (${losses})` : ""),
   );
 
   if (isTakeLaneClip(clip)) {
     emptyTakeLaneClip(clip);
   } else {
-    track.call("delete_clip", toLiveApiId(clip.id));
+    sourceTrack.call("delete_clip", toLiveApiId(clip.id));
   }
 
   updatedClips.push(
@@ -241,20 +258,4 @@ function destinationSlot(
   keepClip(clip, updatedClips, noteResult);
 
   return null;
-}
-
-/**
- * Report the clip at its current position, for a move that didn't happen.
- * @param clip - The clip that stayed put
- * @param updatedClips - Array to collect results
- * @param noteResult - Note update result for result
- */
-function keepClip(
-  clip: LiveAPI,
-  updatedClips: ClipResult[],
-  noteResult: NoteUpdateResult | null,
-): void {
-  updatedClips.push(
-    buildClipResultObject(clip.id, noteResult, objectPathForApi(clip)),
-  );
 }

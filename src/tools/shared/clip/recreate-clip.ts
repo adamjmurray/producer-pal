@@ -98,7 +98,10 @@ export function recreateClipInSlot(
 
 /**
  * Whether a clip can be re-created at all. A MIDI clip always can; an audio clip
- * is rebuilt from its sample, so it needs a `file_path`.
+ * is rebuilt from its sample, so it needs a `file_path`. A non-empty
+ * `file_path` only means Live once saw a sample there — not that the file is
+ * still on disk, so the create itself can still fail (there's no filesystem
+ * access here to check first).
  * @param clip - The clip being copied
  * @returns True when {@link recreateClip} can rebuild it
  */
