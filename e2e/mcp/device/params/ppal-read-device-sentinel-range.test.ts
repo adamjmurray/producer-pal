@@ -11,14 +11,14 @@
  * Compressor's Ratio read as 64 when it reaches 100. A mock can only assert
  * what we already believed, so the numbers here come from real Live.
  *
- * Run with: npm run e2e:mcp -- device/ppal-read-device-sentinel-range
+ * Run with: npm run e2e:mcp -- device/params/ppal-read-device-sentinel-range
  */
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   parseToolResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 interface ParamInfo {
   name: string;

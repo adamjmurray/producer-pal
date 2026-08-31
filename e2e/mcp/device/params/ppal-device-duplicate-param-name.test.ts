@@ -11,7 +11,7 @@
  *
  * See dev/Device-Param-Labels.md.
  *
- * Run with: npm run e2e:mcp -- device/ppal-device-duplicate-param-name
+ * Run with: npm run e2e:mcp -- device/params/ppal-device-duplicate-param-name
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -19,7 +19,7 @@ import {
   getToolWarnings,
   parseToolResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 interface ParamInfo {
   id: string;

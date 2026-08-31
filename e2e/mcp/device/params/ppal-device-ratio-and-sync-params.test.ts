@@ -14,14 +14,14 @@
  *
  * See dev/Device-Param-Labels.md.
  *
- * Run with: npm run e2e:mcp -- device/ppal-device-ratio-and-sync-params
+ * Run with: npm run e2e:mcp -- device/params/ppal-device-ratio-and-sync-params
  */
 import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   parseToolResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers";
+} from "../../mcp-test-helpers";
 
 interface ParamInfo {
   name: string;
