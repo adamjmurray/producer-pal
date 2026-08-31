@@ -396,11 +396,7 @@ export function resolveDestinationAndWarn(
   // the destination resolver folded takeLane onto the paths already, and the
   // lane resolver warns if it had no new lane to name.
   warnUnusedTakeLane(type, destination, takeLane, console.warn, takeLaneName);
-  warnSharedArrangementDestination(
-    params.sources,
-    destination,
-    arrangementStart ?? locator,
-  );
+  warnSharedArrangementDestination(params.sources, destination);
 
   return destination;
 }

@@ -218,11 +218,17 @@ describe("duplicate - a list of sources", () => {
           arrangementStart: "5|1",
         },
       ]);
+      // A genuine row: each source lands on its own track, so no collision.
+      expect(capturedWarnings()).not.toContainEqual(
+        expect.stringContaining("later ones will overwrite earlier ones"),
+      );
     });
 
-    // A track's arrangement holds many clips, told apart by position, so one
-    // container destination is meaningful for every source at once.
-    it("broadcasts a container toPath to every source", async () => {
+    // toPath is broadcast whole to every source in this mode (see
+    // planSources) — never split per source — so a named toPath shared by
+    // several sources always piles them onto the same spots, however many
+    // positions the list names.
+    it("warns when a container toPath is broadcast to every source", async () => {
       registerMockObject("clipA", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -247,9 +253,12 @@ describe("duplicate - a list of sources", () => {
 
       expect(result).toHaveLength(4);
       expect(track2.call).toHaveBeenCalledTimes(4);
-      // A position per source is a row, not a pile.
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("later ones will overwrite earlier ones"),
+      // Each source writes both "t2" positions, so clipA and clipB collide at
+      // 5|1 and again at 9|1 — a pile, not a row.
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          '2 clips duplicated to "t2" at the same position',
+        ),
       );
     });
 
