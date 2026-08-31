@@ -70,6 +70,10 @@ export function parseArrangementParams(
     return { startBeats: NO_BEATS, lengthBeats: NO_BEATS };
   }
 
+  // One meter for the whole timeline. Live reports the signature under the
+  // playhead and exposes no way to find where the meter changes, so in a Set
+  // that changes meter these positions are wrong past the first change, and the
+  // error shifts when the user moves the playhead. Documented as a limitation.
   const liveSet = LiveAPI.from(livePath.liveSet);
   const numerator = liveSet.getProperty("signature_numerator") as number;
   const denominator = liveSet.getProperty("signature_denominator") as number;

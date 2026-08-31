@@ -3,7 +3,8 @@ title: Limitations
 description:
   What Producer Pal can't do, and the workarounds. No control over VST/AU
   plug-in internals, no editing clip envelopes or automation, no audio analysis
-  or synthesis, and one drum pitch map per track.
+  or synthesis, no visibility into arrangement time signature changes, and one
+  drum pitch map per track.
 ---
 
 # Limitations
@@ -113,6 +114,39 @@ changing every repeat. It stays the same clip, so its envelopes stay with it.
 Audio clips have no equivalent, since there are no notes to write.
 
 :::
+
+## Time Signature Changes Aren't Visible
+
+Live lets you change meter partway through the Arrangement. Producer Pal can't
+see those changes. The Live API exposes a single song time signature (the meter
+at the playhead) and no list of where the changes are, so Producer Pal treats
+the whole timeline as one meter.
+
+Two things follow, and both are silent:
+
+- **Arrangement bar numbers are wrong past the first change.** In a Set that
+  runs 16 bars of 4/4 and then switches to 3/4, asking for bar 17 lands on
+  bar 13.
+- **The error moves with your playhead.** The meter Producer Pal reads is
+  whichever one is under the playhead, so the same request lands somewhere else
+  depending on where the playhead was sitting when you asked.
+
+Live's own API has the same blind spot in its bar-number lookup, which reports
+bar 22 for the position Live's ruler calls bar 17, so there is nothing to read
+back to catch the mistake.
+
+::: warning Don't arrange with Producer Pal in a Set that changes meter
+
+There is no workaround. If your Set changes time signature, keep Producer Pal
+away from arrangement positions: place and move clips in Live's timeline
+yourself.
+
+:::
+
+Only positions on the song timeline are affected. Session clips are fine, and so
+are **clip** time signatures: each clip carries its own meter, which Producer
+Pal reads and sets normally. Arrangement clip positions, arrangement lengths,
+and locator positions are the parts that go wrong.
 
 ## One Drum Rack Pitch Map Per Track
 

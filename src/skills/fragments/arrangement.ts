@@ -17,7 +17,9 @@
 // matters.
 export const arrangement = `## Arrangement
 
-**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.`;
+**Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.
+
+**Meter changes are invisible:** Live's API reports one song time signature — the meter under the playhead — with no way to find where the meter changes. Arrangement positions in a Set that changes meter mid-song are wrong past the first change. If you learn the user's Set does that, tell them and let them place arrangement clips in Live themselves.`;
 
 /**
  * Putting clips on the timeline: moving and splitting them, and stacking take
