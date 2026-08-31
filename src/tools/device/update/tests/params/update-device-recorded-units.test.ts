@@ -181,6 +181,31 @@ describe("updateDevice - recorded param units", () => {
       expect(expectValueSet(param)).toBeCloseTo(1.5);
     });
 
+    // resolveParamsByName matches a param name case-insensitively, so the
+    // recorded-unit lookup has to as well — otherwise a lowercase name still
+    // resolves to the right param but the unit round-trip breaks again.
+    it("accepts the recorded unit with a lowercase param name", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "filter width", value: "1.5 octaves" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(1.5);
+    });
+
+    it("accepts the recorded unit with a mixed-case param name", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter WIDTH", value: "1.5 octaves" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(1.5);
+    });
+
     it("refuses another quantity, naming the recorded unit", () => {
       const param = registerFilterWidth();
 

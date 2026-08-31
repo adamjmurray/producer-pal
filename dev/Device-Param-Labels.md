@@ -63,6 +63,11 @@ Beat Repeat, Delay, Filter Delay and Overdrive, Corpus `Width`, Reverb
 gives no unit. The range is part of the key so a Live version that moves a range
 drops the entry rather than reporting a stale unit.
 
+**A recorded unit's spelling stands for itself on write.** `parseLabel` has no
+pattern for "octaves", so a write like `"1.5 octaves"` matches it only by
+comparing directly to the param's own recorded unit — not by teaching
+`parseLabel` a new pattern.
+
 **A param name is not unique within a device.** Corpus exposes two called
 `Width`: a filter bandwidth on 0.5–9 and a stereo width on 0–100 %. A write by
 that name matches both, so it warns with each param's id and writes neither —

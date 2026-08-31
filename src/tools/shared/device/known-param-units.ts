@@ -100,6 +100,11 @@ export function knownParamUnit(
  * unit at all". `knownParamUnit` layers the range check on top for anything
  * that reads a value; this is for deciding whether a written string is even
  * worth treating as this param's unit before a range is known.
+ *
+ * The param name matches case-insensitively, same as `resolveParamsByName` —
+ * a caller can write "filter width" and still hit the param `resolveParamsByName`
+ * resolves it to. `deviceName` doesn't need this: it's always read from
+ * `class_display_name`, never typed by a caller, so its case is stable.
  * @param deviceName - The device's class_display_name
  * @param paramName - The parameter's name
  * @returns The recorded entry, or undefined if there isn't one
@@ -108,7 +113,14 @@ function lookupEntry(
   deviceName: string | undefined,
   paramName: string,
 ): KnownParamUnit | undefined {
-  return deviceName == null ? undefined : KNOWN_UNITS[deviceName]?.[paramName];
+  const params = deviceName == null ? undefined : KNOWN_UNITS[deviceName];
+
+  if (params == null) return undefined;
+
+  const nameLower = paramName.toLowerCase();
+  const key = Object.keys(params).find((k) => k.toLowerCase() === nameLower);
+
+  return key == null ? undefined : params[key];
 }
 
 /**

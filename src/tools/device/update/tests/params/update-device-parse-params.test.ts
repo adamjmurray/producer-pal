@@ -84,6 +84,18 @@ describe("normalizeParamValue", () => {
       );
     });
 
+    // resolveParamsByName matches a param name case-insensitively, so this
+    // lookup has to as well or a lowercased name resolves to the right param
+    // but misses its recorded unit.
+    it("matches the param name case-insensitively", () => {
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "filter width"),
+      ).toBe(1.5);
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "Filter WIDTH"),
+      ).toBe(1.5);
+    });
+
     it("ignores the recorded unit with no device/param context", () => {
       expect(normalizeParamValue("1.5 octaves")).toBe("1.5 octaves");
     });
