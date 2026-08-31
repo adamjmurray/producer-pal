@@ -8,10 +8,7 @@ import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts"
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
 import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
-import {
-  parseArrangementStartList,
-  type ClipSlotPosition,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
   createClips,
@@ -152,10 +149,9 @@ export async function createClip(
 
   // Resolve where the clips go before touching Live, so a bad destination fails
   // instead of creating half of them somewhere else.
-  const arrangementStarts = parseArrangementStartList(arrangementStart);
   const destinations = resolveCreateClipDestinations(
     { path, slot, trackIndex, sceneIndex, takeLane },
-    arrangementStarts,
+    arrangementStart,
   );
   const { clipSlots, arrangementPositions } = destinations;
 

@@ -9,8 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
-import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
+import { namedCommaSeparatedIds, namedParam } from "#src/tools/shared/utils.ts";
 import {
   pairValues,
   type PairLabels,
@@ -62,9 +61,17 @@ export function parseArrangementParams(
 ): ArrangementParams {
   // A blank names no position, so read it as omitted rather than as a value
   // that failed to parse — a caller that fills unused strings with "" gets the
-  // clip left where it is instead of an error.
-  const positions = parseArrangementStartList(arrangementStart);
-  const durations = parseCommaSeparatedIds(arrangementLength);
+  // clip left where it is instead of an error. A value that is not blank but
+  // still names nothing (",  ,") is a different thing: the caller asked for a
+  // move, so say it didn't happen.
+  const positions = namedCommaSeparatedIds(
+    namedParam(arrangementStart, "arrangementStart"),
+    "arrangementStart",
+  );
+  const durations = namedCommaSeparatedIds(
+    namedParam(arrangementLength, "arrangementLength"),
+    "arrangementLength",
+  );
 
   if (positions.length === 0 && durations.length === 0) {
     return { startBeats: NO_BEATS, lengthBeats: NO_BEATS };

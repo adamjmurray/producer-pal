@@ -11,7 +11,7 @@
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
-import { namedParam } from "#src/tools/shared/utils.ts";
+import { namedCommaSeparatedIds, namedParam } from "#src/tools/shared/utils.ts";
 import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -65,17 +65,23 @@ interface SplitDestinations {
 /**
  * Resolves where a create-clip call's clips go.
  * @param params - The destination params as the tool received them
- * @param arrangementStarts - Parsed arrangement bar|beat positions
+ * @param arrangementStart - Bar|beat position(s), comma-separated, as sent
  * @returns Clip slots and arrangement positions, both possibly empty
  */
 export function resolveCreateClipDestinations(
   params: ClipDestinationParams,
-  arrangementStarts: string[],
+  arrangementStart?: string | null,
 ): ClipDestinations {
   // A blank param names nothing, so read it as omitted rather than as a
-  // destination that failed to parse.
+  // destination that failed to parse. A position list that is not blank but
+  // still names nothing warns instead: a real position beside a slot-only path
+  // is refused, so one that parses to nothing must not just vanish.
   const path = namedParam(params.path, "path");
   const slot = namedHiddenPath(params.slot ?? undefined, "slot");
+  const arrangementStarts = namedCommaSeparatedIds(
+    namedParam(arrangementStart, "arrangementStart"),
+    "arrangementStart",
+  );
 
   // Honoring one and dropping the other is exactly the silent-destination bug
   // path replaces, so refuse instead of picking.
