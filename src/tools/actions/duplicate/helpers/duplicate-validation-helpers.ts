@@ -8,6 +8,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { DUPLICATE_TYPES } from "#src/tools/constants.ts";
 import {
   type ArrangementTrack,
   warnUnusedTakeLane,
@@ -94,11 +95,9 @@ export function validateBasicInputs(
     throw new Error("duplicate failed: type is required");
   }
 
-  const validTypes = ["track", "scene", "clip", "device", "drum-pad"];
-
-  if (!validTypes.includes(type)) {
+  if (!(DUPLICATE_TYPES as readonly string[]).includes(type)) {
     throw new Error(
-      `duplicate failed: type must be one of ${validTypes.join(", ")}`,
+      `duplicate failed: type must be one of ${DUPLICATE_TYPES.join(", ")}`,
     );
   }
 

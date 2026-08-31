@@ -156,9 +156,14 @@ export function warnUnusedDestination(
   const toPath = namedParam(rawToPath, "toPath");
   const toSlot = namedHiddenPath(rawToSlot, "toSlot");
 
-  if (type !== "device" && type !== "drum-pad" && toPath != null) {
+  if (
+    type !== "device" &&
+    type !== "drum-pad" &&
+    type !== "chain" &&
+    toPath != null
+  ) {
     console.warn(
-      `toPath ignored: only supported for clips, devices, and drum pads (type "${type}")`,
+      `toPath ignored: only supported for clips, devices, drum pads and chains (type "${type}")`,
     );
   }
 

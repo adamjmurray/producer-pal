@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
-import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
+import { DUPLICATE_TYPES, MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { boundedString } from "#src/tools/shared/tool-framework/bounded-string.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 import {
@@ -45,9 +45,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "source drum pad path instead of id, e.g. 't0/d0/pC1' (drum pads only)",
       ),
-    type: z
-      .enum(["track", "scene", "clip", "device", "drum-pad"])
-      .describe("type of object to duplicate"),
+    type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
       default: "name (comma-separated when duplicating multiple)",

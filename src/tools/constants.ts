@@ -25,6 +25,18 @@ export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
 export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
 export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
 
+// What ppal-duplicate can copy. One list, because the schema enum and the
+// runtime check both need it and a type added to only one is invisible until
+// a call fails.
+export const DUPLICATE_TYPES = [
+  "track",
+  "scene",
+  "clip",
+  "device",
+  "drum-pad",
+  "chain",
+] as const;
+
 // Device type string constants (7 valid types)
 export const DEVICE_TYPE = {
   INSTRUMENT: "instrument",

@@ -13,12 +13,13 @@ import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
 import { type ClipDestinations } from "../clip/duplicate-destination-helpers.ts";
-import { duplicateDeviceWithPaths } from "../duplicate-device-helpers.ts";
+import { duplicateChainWithPaths } from "../device/duplicate-chain-helpers.ts";
+import { duplicateDeviceWithPaths } from "../device/duplicate-device-helpers.ts";
 import {
   duplicateDrumPad,
   resolveSourcePad,
   type PadTarget,
-} from "../duplicate-drum-pad-helpers.ts";
+} from "../device/duplicate-drum-pad-helpers.ts";
 import {
   claimLabels,
   labelColor,
@@ -119,18 +120,38 @@ export function duplicateChainSources(
   return collectSources(sources, (source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.
-    type === "drum-pad"
-      ? duplicateDrumPadSource(source, path, labels, i === 0 ? count : 1)
-      : duplicateDeviceWithPaths(
-          sourceObject(source, type),
-          source.toPath,
-          labels,
-          i === 0 ? count : 1,
-        ),
+    runOneChainSource(type, source, path, labels, i === 0 ? count : 1),
   );
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Run one source through the copier its type calls for.
+ * @param type - Object type to duplicate
+ * @param source - The source's turn
+ * @param path - Source drum pad path, when the call named its source that way
+ * @param labels - The call's names and colors
+ * @param count - Number of copies (warns if > 1)
+ * @returns The copy or copies made for this source
+ */
+function runOneChainSource(
+  type: string,
+  source: SourceShare,
+  path: string | undefined,
+  labels: CopyLabels,
+  count: number,
+): object | object[] {
+  if (type === "drum-pad") {
+    return duplicateDrumPadSource(source, path, labels, count);
+  }
+
+  const object = sourceObject(source, type);
+
+  return type === "chain"
+    ? duplicateChainWithPaths(object, source.toPath, labels, count)
+    : duplicateDeviceWithPaths(object, source.toPath, labels, count);
+}
 
 /**
  * Reads a source fresh at the start of its turn. A copy made for an earlier
