@@ -12,6 +12,9 @@
  * settings are skipped with a warning naming the layer paths, because one
  * absolute value written to every layer flattens the balance between them.
  *
+ * A layer path is the other half: re-pointing one chain's in_note splits a
+ * stacked pad apart, and merges it back onto another pad.
+ *
  * Run with: npm run e2e:mcp -- ppal-update-device-layered-pad
  */
 import { describe, expect, it } from "vitest";
@@ -151,5 +154,52 @@ describe("ppal-update-device layered drum pad", () => {
 
     expect(chain?.gainDb).toBe(-6);
     expect(chain?.name).toBe("Kick");
+  });
+
+  // The split: re-pointing one layer's in_note is the only way to take a
+  // stacked pad back apart. The pad path moves every layer, so this is what a
+  // layer path is for.
+  it("splits a layered pad by moving one layer to an empty pad", async () => {
+    const { rackPath } = await createLayeredPad(ctx.client!);
+
+    const before = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
+    const movedName = before.chains?.[1]?.name;
+
+    await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${rackPath}/pD1/c1`, toPath: `${rackPath}/pF1` },
+    });
+
+    await sleep(200);
+
+    const source = await readDrumPad(ctx.client!, `${rackPath}/pD1`);
+    const destination = await readDrumPad(ctx.client!, `${rackPath}/pF1`);
+
+    expect(source.chains).toHaveLength(1);
+    expect(destination.chains).toHaveLength(1);
+    expect(destination.chains?.[0]?.name).toBe(movedName);
+  });
+
+  // The merge, and the other half of the same primitive: Live layers rather
+  // than replaces, so the warning is the only thing telling a caller the
+  // destination's own chain is still there.
+  it("merges one layer onto an occupied pad, and warns that it layers", async () => {
+    const { rackPath } = await createTrackWithDrumRack(ctx.client!);
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-device",
+      arguments: { path: `${rackPath}/pC1/c0`, toPath: `${rackPath}/pD1` },
+    });
+
+    expect(JSON.stringify(result)).toContain("layers on top of them");
+
+    await sleep(200);
+
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pD1`)).chains,
+    ).toHaveLength(2);
+    expect(
+      (await readDrumPad(ctx.client!, `${rackPath}/pC1`)).chains ?? [],
+    ).toHaveLength(0);
   });
 });
