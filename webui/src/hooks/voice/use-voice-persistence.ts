@@ -130,7 +130,7 @@ export function useVoicePersistence(
   // Destructured because the hook returns a fresh object every render, and the
   // autosave effect below depends on these: taking `limit` itself would restart
   // the debounce on every render.
-  const { showSaveRefused, showSaveError } = limit;
+  const { showSaveRefused, showSaveError, retireSaveRefused } = limit;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -166,6 +166,12 @@ export function useVoicePersistence(
     // on the active sibling.
     setConversations(await listConversations(store.activeId()));
   }, [store]);
+
+  // The refusal stands until dismissed, which is right while the user is still
+  // in that conversation and wrong once they leave it. Same as the chat path.
+  useEffect(() => {
+    retireSaveRefused();
+  }, [activeConversationId, retireSaveRefused]);
 
   // Undo restores into whichever mode is mounted, so hand it this one's list
   // refresher for as long as voice is the mounted mode.
@@ -254,8 +260,10 @@ export function useVoicePersistence(
           // write a deleted conversation back. Nothing more will ever be saved
           // to this conversation, and the user is still talking into it, so it
           // has to say so on screen — a console warning is not user-visible.
+          // Unless they have since left, in which case the banner would land on
+          // whatever they moved to, which saves fine.
           if (!result.saved) {
-            showSaveRefused();
+            if (snapshot.id === store.activeId()) showSaveRefused();
 
             return;
           }

@@ -124,6 +124,10 @@ export function useConversations({
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
+  // Destructured because the hook returns a fresh object every render, and the
+  // retire effect below depends on it: taking `limit` itself would clear the
+  // banner on the very next render instead of when the conversation changes.
+  const { retireSaveRefused } = limit;
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(() => getHashConversationId());
@@ -170,6 +174,14 @@ export function useConversations({
   useEffect(() => {
     undoDelete.setRefreshList(refreshList);
   }, [undoDelete, refreshList]);
+
+  // "This conversation is no longer in storage" stands until dismissed, which
+  // is right while the user is still in that conversation and wrong the moment
+  // they leave it. Switching, starting a new one and deleting the live one all
+  // move the active id, so retire it here rather than at each of them.
+  useEffect(() => {
+    retireSaveRefused();
+  }, [activeConversationId, retireSaveRefused]);
 
   const restoreRecord = useCallback(
     (record: ConversationRecord) => {

@@ -6,6 +6,7 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
+import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   deleteConversation as dbDeleteConversation,
@@ -53,5 +54,12 @@ describe("useVoicePersistence when the row is gone", () => {
       type: "error",
     });
     expect(await loadConversation(record.id)).toBeUndefined();
+
+    // Standing over the conversation it belongs to is the point; standing over
+    // the next one, which saves fine, is the same lie in the other direction.
+    await act(() => result.current.startNewConversation());
+    await waitForEffects();
+
+    expect(result.current.limitNotification).toBeNull();
   });
 });

@@ -61,6 +61,51 @@ describe("useConversations save guards", () => {
     expect(handle.result.current.notification?.message).toContain(
       "no longer in storage",
     );
+
+    // It stands until the user leaves that conversation — hanging it over a new
+    // one that saves fine is the same lie in the other direction.
+    await act(() => handle.result.current.startNewConversation());
+    await waitForEffects();
+
+    expect(handle.result.current.notification).toBeNull();
+  });
+
+  // The other ordering: the user leaves while the save is still in flight, so
+  // there is no later id change for the retire effect to catch.
+  it("does not raise the banner over a conversation the refusal isn't about", async () => {
+    const handle = await setupInterleavingHook();
+
+    await saveHistory(handle, "first turn");
+    const id = handle.result.current.activeConversationId!;
+    const { release, restore } = gateNextSave();
+
+    handle.state.chatHistory = [
+      { role: "user", content: "first turn" },
+      { role: "assistant", content: "second turn" },
+    ];
+
+    let save!: Promise<unknown>;
+
+    await act(() => {
+      save = handle.result.current.saveCurrentConversation();
+    });
+
+    // The user moves on while that save is still held, so the id has already
+    // settled somewhere else by the time the refusal comes back.
+    await act(() => handle.result.current.startNewConversation());
+    await waitForEffects();
+
+    await act(async () => {
+      await dbDeleteConversation(id);
+      release();
+      await save;
+    });
+
+    await waitForEffects();
+    restore();
+
+    expect(handle.result.current.activeConversationId).not.toBe(id);
+    expect(handle.result.current.notification).toBeNull();
   });
 
   it("does not adopt metadata from a save for a conversation the user has left", async () => {

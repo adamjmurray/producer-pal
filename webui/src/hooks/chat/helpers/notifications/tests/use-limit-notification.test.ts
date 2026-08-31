@@ -258,6 +258,71 @@ describe("useLimitNotification", () => {
       vi.useRealTimers();
     });
 
+    // The refusal is about one conversation. Leaving it ends the condition;
+    // without this the banner hangs over a new conversation that saves fine.
+    it("retires when the refused conversation is left", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveRefused();
+      });
+
+      expect(result.current.limitNotification).not.toBeNull();
+
+      await act(() => {
+        result.current.retireSaveRefused();
+      });
+
+      expect(result.current.limitNotification).toBeNull();
+    });
+
+    it("leaves an unrelated banner alone when nothing was refused", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await showWarning(result);
+
+      await act(() => {
+        result.current.retireSaveRefused();
+      });
+
+      expect(result.current.limitNotification).not.toBeNull();
+    });
+
+    // A newer banner replaced the refusal, so the refusal is no longer what is
+    // on screen and retiring must not take the newer one down with it.
+    it("leaves a banner raised after the refusal alone", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveRefused();
+      });
+      await showWarning(result);
+
+      await act(() => {
+        result.current.retireSaveRefused();
+      });
+
+      expect(result.current.limitNotification).not.toBeNull();
+    });
+
+    it("does not re-clear a banner raised after a dismissed refusal", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveRefused();
+      });
+      await act(() => {
+        result.current.dismissLimitNotification();
+      });
+      await showWarning(result);
+
+      await act(() => {
+        result.current.retireSaveRefused();
+      });
+
+      expect(result.current.limitNotification).not.toBeNull();
+    });
+
     it("cancels a running limit-notification timer", async () => {
       vi.useFakeTimers();
 

@@ -15,8 +15,9 @@ const AUTO_DISMISS_MS = 4000;
 /**
  * Hook managing the notification banner for conversation persistence events
  * (limit enforcement and save failures).
- * @returns Notification state, dismiss handler, and functions to show
- *   limit-enforcement results, save errors, and refused saves
+ * @returns Notification state, dismiss handler, functions to show
+ *   limit-enforcement results, save errors and refused saves, and a retire
+ *   handler for when the refused conversation is left
  */
 export function useLimitNotification(): {
   limitNotification: TransferNotificationData | null;
@@ -24,18 +25,24 @@ export function useLimitNotification(): {
   showLimitNotification: (result: EnforceLimitResult) => void;
   showSaveError: (error: unknown) => void;
   showSaveRefused: () => void;
+  retireSaveRefused: () => void;
 } {
   const [notification, setNotification] =
     useState<TransferNotificationData | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while the standing refusal is the banner on screen, so leaving that
+  // conversation can retire it without wiping an unrelated banner.
+  const refusedRef = useRef(false);
 
   const dismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    refusedRef.current = false;
     setNotification(null);
   }, []);
 
   const showTimed = useCallback((data: TransferNotificationData) => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    refusedRef.current = false;
     setNotification(data);
     timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
   }, []);
@@ -67,11 +74,22 @@ export function useLimitNotification(): {
   // A four-second flash the user blinks past leaves them typing into nothing.
   const showRefused = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    refusedRef.current = true;
     setNotification({
       message:
         "This conversation is no longer in storage — it was deleted, so nothing more will be saved to it.",
       type: "error",
     });
+  }, []);
+
+  // The condition is about one conversation, so it ends when the user leaves
+  // it — otherwise the banner hangs over a new conversation that saves fine.
+  // Only retires the refusal: any other banner on screen is left alone.
+  const retireRefused = useCallback(() => {
+    if (!refusedRef.current) return;
+
+    refusedRef.current = false;
+    setNotification(null);
   }, []);
 
   useEffect(() => {
@@ -86,6 +104,7 @@ export function useLimitNotification(): {
     showLimitNotification: show,
     showSaveError: showError,
     showSaveRefused: showRefused,
+    retireSaveRefused: retireRefused,
   };
 }
 

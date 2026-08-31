@@ -121,7 +121,10 @@ export async function writeConversation(
     // a deleted conversation back. The slot stays as it was, so an undo
     // that restores the row lets the next save land again.
     if (!result.saved) {
-      limit.showSaveRefused();
+      // A save held up long enough for the user to leave is about a
+      // conversation they are no longer in. Saying so now would put the banner
+      // over whatever they moved to, which saves fine.
+      if (snapshot.id === store.activeId()) limit.showSaveRefused();
 
       return;
     }
