@@ -85,7 +85,7 @@ function resolveDrumPadPathToId(
   if (resolved.remainingSegments.length > 0) {
     console.warn(
       resolved.remainingSegments.some((segment) => segment.startsWith("p"))
-        ? `delete: path "${targetPath}" names a pad of a nested Drum Rack, which can't be deleted`
+        ? `delete: path "${targetPath}" names a pad of a nested Drum Rack. Such a rack has no pad objects, and Live can only clear a pad — delete the pad's devices to empty it instead`
         : `delete: path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
 

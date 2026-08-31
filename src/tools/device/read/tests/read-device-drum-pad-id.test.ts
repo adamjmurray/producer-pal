@@ -28,6 +28,7 @@ describe("readDevice with a drum pad id", () => {
       name: "Kick",
       note: 36,
       pitch: "C1",
+      chainCount: 0,
     });
   });
 

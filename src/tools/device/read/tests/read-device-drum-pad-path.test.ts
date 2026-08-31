@@ -138,6 +138,7 @@ describe("readDevice with drum pad path", () => {
       name: "Kick",
       note: 36,
       pitch: "C1",
+      chainCount: 0,
     });
   });
 
@@ -402,6 +403,7 @@ describe("readDevice with drum pad path", () => {
       name: "All Notes",
       note: -1,
       pitch: "*",
+      chainCount: 1,
     });
   });
 

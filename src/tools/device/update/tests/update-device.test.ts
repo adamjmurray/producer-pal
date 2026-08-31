@@ -634,8 +634,10 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
-    it("should warn and skip when trying to move a DrumPad", () => {
-      registerMockObject("123", { type: "DrumPad" });
+    it("should warn and skip when trying to move a rack Chain", () => {
+      // Not a DrumPad: a pad id names the whole pad now, and a pad move is an
+      // in_note re-map that updateDrumPadGroup handles.
+      registerMockObject("123", { type: "Chain" });
 
       // Should not throw, just warn and continue with other updates
       const result = updateDevice({
@@ -643,7 +645,7 @@ describe("updateDevice", () => {
         toPath: "t1",
       });
 
-      expect(capturedWarnings()).toContain("cannot move DrumPad");
+      expect(capturedWarnings()).toContain("cannot move Chain");
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 

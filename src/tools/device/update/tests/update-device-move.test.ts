@@ -76,7 +76,7 @@ describe("updateDevice - moving a drum chain", () => {
     // An explicit chain path (pC1/c0) moves ONLY that chain, not the whole pad,
     // so the sibling chain on the same in_note is untouched.
     expect(chain1.set).not.toHaveBeenCalled();
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
   });
 
   it("should resolve a sharp-accidental target pad note", () => {
@@ -105,7 +105,7 @@ describe("updateDevice - moving a drum chain", () => {
       ),
     );
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
   });
 
   it("should move all chains in a drum pad when using pad path", () => {
@@ -167,7 +167,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(capturedWarnings()).toContain('toPath "t1" is not a drum pad path');
     expect(chain0.set).not.toHaveBeenCalledWith("in_note", expect.anything());
-    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/c0" });
+    expect(result).toStrictEqual({ id: "chain-0", path: "t0/d0/pC1/c0" });
   });
 
   it("should warn and skip when toPath names a different rack", () => {

@@ -24,7 +24,12 @@ describe("updateDevice - Chain and DrumPad support", () => {
     registerMockObject("123", { type: "RackDevice" });
     chain = registerMockObject("456", { type: "Chain" });
     drumChain = registerMockObject("789", { type: "DrumChain" });
-    drumPad = registerMockObject("790", { type: "DrumPad" });
+    drumPad = registerMockObject("790", {
+      // A real pad path, so the empty-pad warning can name it.
+      path: livePath.track(0).device(0).drumPad(36),
+      type: "DrumPad",
+      properties: { note: 36 },
+    });
     registerMockObject("791", { type: "Track" });
   });
 
@@ -59,14 +64,19 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toStrictEqual({ id: "789" });
     });
 
-    it("should set mute on a DrumPad", () => {
+    it("warns and skips a drum pad with no chains", () => {
       const result = updateDevice({
         id: "790",
         mute: true,
       });
 
-      expect(drumPad.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "790" });
+      // Live drops writes to an empty pad, so there is nothing to report.
+      expect(capturedWarnings()).toContain(
+        'updateDevice: drum pad "t0/d0/pC1" has no chains, so there is ' +
+          "nothing to update — Live ignores writes to an empty pad",
+      );
+      expect(drumPad.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual([]);
     });
 
     it("should set mute to false (unmute)", () => {
@@ -113,18 +123,6 @@ describe("updateDevice - Chain and DrumPad support", () => {
       // setColor converts #FF0000 to (0xFF << 16) | (0x00 << 8) | 0x00 = 16711680
       expect(drumChain.set).toHaveBeenCalledWith("color", 16711680);
       expect(result).toStrictEqual({ id: "789" });
-    });
-
-    it("should warn when color is used on a DrumPad", () => {
-      const result = updateDevice({
-        id: "790",
-        color: "#FF0000",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "updateDevice: 'color' not applicable to DrumPad",
-      );
-      expect(result).toStrictEqual({ id: "790" });
     });
 
     it("should warn when color is used on a Device", () => {
@@ -228,25 +226,25 @@ describe("updateDevice - Chain and DrumPad support", () => {
   describe("device-only properties on non-devices", () => {
     // collapsed — kept for potential future use (test removed)
 
-    it("should warn when params is used on a DrumPad", () => {
+    it("should warn when params is used on a Chain", () => {
       const result = updateDevice({
-        id: "790",
+        id: "456",
         params: [{ name: "789", value: "0.5" }],
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'params' not applicable to DrumPad",
+        "updateDevice: 'params' not applicable to Chain",
       );
-      expect(result).toStrictEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "456" });
     });
 
-    it("should not warn when params is an empty array on a DrumPad", () => {
-      const result = updateDevice({ id: "790", params: [] });
+    it("should not warn when params is an empty array on a Chain", () => {
+      const result = updateDevice({ id: "456", params: [] });
 
       expect(capturedWarnings()).not.toContain(
-        "updateDevice: 'params' not applicable to DrumPad",
+        "updateDevice: 'params' not applicable to Chain",
       );
-      expect(result).toStrictEqual({ id: "790" });
+      expect(result).toStrictEqual({ id: "456" });
     });
   });
 
@@ -372,19 +370,6 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumChain.set).toHaveBeenCalledWith("name", "Kick");
       expect(result).toStrictEqual({ id: "789" });
     });
-
-    it("should warn when name is used on a DrumPad (read-only)", () => {
-      const result = updateDevice({
-        id: "790",
-        name: "Hi-Hat",
-      });
-
-      expect(capturedWarnings()).toContain(
-        "updateDevice: 'name' is read-only for DrumPad",
-      );
-      expect(drumPad.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(result).toStrictEqual({ id: "790" });
-    });
   });
 });
 
@@ -458,7 +443,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     );
   });
 
-  it.each(["DrumPad", "SimplerDevice"] as const)(
+  it.each(["SimplerDevice"] as const)(
     "warns when mixer params are used on a %s",
     (type) => {
       registerMockObject("target-1", { type });

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { midiToNoteName } from "#src/shared/pitch.ts";
+import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { arrangementPath, slotPath } from "./object-path-helpers.ts";
 import { formatObjectPath } from "./object-path.ts";
@@ -88,8 +89,17 @@ function devicePathForApi(api: LiveAPI, path: string): string | undefined {
 
   // A pad segment above the object (".. drum_pads 36 chains 0 ..") names a
   // chain whose rack-relative index we'd have to go looking for. Say nothing
-  // rather than hand back the wrong chain.
+  // rather than hand back the wrong chain. Live normally hands back the
+  // rack-relative path instead, so this is the rare shape that kept one.
   if (path.includes(" drum_pads ")) return undefined;
 
-  return extractDevicePath(path) ?? undefined;
+  // Name a drum chain the way reads do — "pC1/c0", not "c3". Only when the
+  // object named is itself a chain: working it out costs a rack read per chain
+  // segment, and a device inside a pad is reachable by either spelling.
+  return (
+    extractDevicePath(
+      path,
+      api.type === "DrumChain" ? drumChainSegmentNamer(api) : undefined,
+    ) ?? undefined
+  );
 }

@@ -226,6 +226,7 @@ describe("readDevice - paths through a nested drum rack", () => {
       name: "Hat",
       note: 60,
       pitch: "C3",
+      chainCount: 1,
     });
   });
 

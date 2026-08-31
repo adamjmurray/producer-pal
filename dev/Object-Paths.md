@@ -47,6 +47,7 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                 |
 | `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                    |
 | `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1        |
+| `t0/d0/pC1/c1` | one layer of a drum pad           | `... chains N` with that `in_note`    |
 | `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0` |
 
 Chains auto-create when referenced (up to 16), except the catch-all pad: Live
@@ -179,10 +180,24 @@ a destination needs and not what a source needs. So it works as a destination
 (`create-clip`, `duplicate`), and a tool that wants one specific clip wants its
 id. `select` takes it and selects the track.
 
-Two objects report no path, because the grammar can't spell them without going
-looking: a chain reached through a pad segment (`… drum_pads 36 chains 0 …`,
-whose rack-relative chain index isn't in the path), and anything that resolved
-to nothing.
+A drum chain has two spellings that both resolve — pad-relative `t0/d0/pC1/c1`
+and rack-relative `t0/d0/c3` — and results always give the pad-relative one. It
+survives longer: the layer index shifts only when that pad's own layers change,
+where a rack index shifts on any chain added or removed anywhere in the rack.
+Live's own path is the rack-relative one, so `objectPathForApi` converts it,
+which costs a rack read and is why only a chain result gets the treatment. A
+device inside a pad still reports the rack-relative form.
+
+Beware the two chain orders. `pC1/cN` counts the rack's chains filtered by
+`in_note`, **not** `pad.chains` — measured on 12.4.3 the two disagree once a pad
+is layered, so reading a layer out of `pad.chains` labels it with another
+layer's path.
+
+Two things report no path: an object that resolved to nothing, and the rare
+object whose Live path keeps a pad segment mid-path
+(`… drum_pads 36 chains 0 …`) — its rack-relative index isn't in the path, and
+naming the wrong layer is worse than naming none. Live normally hands back the
+rack-relative path instead.
 
 Error messages follow: name the path and show the fix, never restate a
 requirement in index terms.

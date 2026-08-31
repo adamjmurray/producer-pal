@@ -6,12 +6,17 @@
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
 import { fromLiveApiId } from "#src/tools/shared/utils.ts";
-import { buildDrumPadPath, extractDevicePath } from "./device-path-builders.ts";
+import {
+  type ChainSegmentFn,
+  buildDrumPadPath,
+  extractDevicePath,
+} from "./device-path-builders.ts";
 import { cachedDevicePath } from "./with-device-path-cache.ts";
 
 export type DrumPadTargetType = "chain" | "device";
 
 const DRUM_PADS_TAIL = / drum_pads \d+$/;
+const CHAINS_TAIL = / chains \d+$/;
 
 export interface DrumPadResolution {
   target: LiveAPI | null;
@@ -207,6 +212,45 @@ export function chainsOnDrumPad(pad: LiveAPI): LiveAPI[] {
 }
 
 /**
+ * Name rack chains the way a pad does — `pC1/c0` rather than the rack-relative
+ * `c3` — so a write result hands back the spelling reads use. The pad-local
+ * index also holds still longer: it shifts only when that pad's own layers
+ * change, where a rack index shifts on any chain added or removed anywhere in
+ * the rack.
+ *
+ * Falls back to the rack-relative name for a plain (non-drum) rack chain, or
+ * anything Live can't answer for.
+ *
+ * Reads the rack once per drum chain, so this is for naming one result, not for
+ * a listing that already threads its paths down. `leaf` is the object being
+ * named, reused when the walk reaches it so the common case builds nothing new.
+ * @param leaf - The object whose path is being spelled
+ * @returns A namer for `extractDevicePath`
+ */
+export function drumChainSegmentNamer(leaf: LiveAPI): ChainSegmentFn {
+  return (livePathThroughChain, index) => {
+    const chain =
+      livePathThroughChain === leaf.path
+        ? leaf
+        : LiveAPI.from(livePathThroughChain);
+
+    if (chain.type !== "DrumChain") return `c${index}`;
+
+    const inNote = chain.getProperty("in_note") as number;
+    const noteName = inNote < 0 ? "*" : midiToNoteName(inNote);
+
+    if (noteName == null) return `c${index}`;
+
+    const rack = LiveAPI.from(livePathThroughChain.replace(CHAINS_TAIL, ""));
+    const layer = chainsForInNote(rack, inNote).findIndex(
+      (sibling) => sibling.id === chain.id,
+    );
+
+    return layer < 0 ? `c${index}` : `p${noteName}/c${layer}`;
+  };
+}
+
+/**
  * The path that names a DrumPad, e.g. "t1/d0/pC1". Both casts hold for any real
  * pad: it always sits on a track's device, and its note is always 0-127.
  * @param pad - The DrumPad
@@ -226,7 +270,7 @@ export function drumPadPath(pad: LiveAPI): string {
  * on it. A layered pad has several chains; a virtual pad has no DrumPad.
  * @param liveApiPath - Live API path to the drum rack device
  * @param drumPadNote - Note name (e.g. "C1"), or "*" for the catch-all
- * @returns The pad and its chains, or null when the rack or the pad is empty
+ * @returns The pad and its chains, or null when the path names no pad at all
  */
 export function resolveDrumPadGroup(
   liveApiPath: string,
@@ -241,10 +285,13 @@ export function resolveDrumPadGroup(
   if (inNote == null) return null;
 
   const chains = chainsForInNote(rack, inNote);
+  const pad = findDrumPadByNote(rack, inNote);
 
-  if (chains.length === 0) return null;
+  // A pad with no chains is a real, empty pad, and resolves so the caller can
+  // say why it can't be written. No chains *and* no pad object is nothing.
+  if (chains.length === 0 && pad == null) return null;
 
-  return { pad: findDrumPadByNote(rack, inNote), chains };
+  return { pad, chains };
 }
 
 /**

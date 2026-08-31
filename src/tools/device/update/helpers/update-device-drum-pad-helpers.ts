@@ -55,14 +55,28 @@ export interface DrumPadUpdateResult {
  * @param group - The pad and its chains
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
  * @param options - Update options
- * @returns The pad's id and path, and the ids of the chains written to
+ * @returns The pad's id and path, and the ids of the chains written to, or null
+ *   for a pad with no chains, which Live ignores every write to
  */
 export function updateDrumPadGroup(
   group: DrumPadGroup,
   padPath: string,
   options: UpdateTargetOptions,
-): DrumPadUpdateResult {
+): DrumPadUpdateResult | null {
   const { pad, chains } = group;
+
+  // Live drops every write to a pad with no chains — `set` returns 1 and the
+  // read-back stays 0 — so there is nothing here to write, and saying the
+  // write landed would be a lie.
+  if (chains.length === 0) {
+    console.warn(
+      `updateDevice: drum pad "${padPath}" has no chains, so there is nothing ` +
+        `to update — Live ignores writes to an empty pad`,
+    );
+
+    return null;
+  }
+
   const applicable =
     chains.length > 1 ? dropPerLayerProps(options, padPath, chains) : options;
 

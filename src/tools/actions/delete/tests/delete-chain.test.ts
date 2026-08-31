@@ -189,7 +189,9 @@ describe("deleteObject chain deletion", () => {
     });
     expect(consoleSpy).toHaveBeenCalledWith(
       'delete: chain "chain-0" needs a free drum pad to move to, and its ' +
-        "Drum Rack has none — a rack nested in a drum pad has no pads at all.",
+        "Drum Rack has none — a rack nested in a drum pad has no pads at all. " +
+        "Live offers no other way to remove it; delete its devices to empty " +
+        "the pad, or move it with update-device's toPath.",
     );
   });
 

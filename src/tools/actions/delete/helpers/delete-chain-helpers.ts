@@ -36,7 +36,9 @@ export function deleteDrumChain(id: string, chain: LiveAPI): boolean {
   if (scratchPad == null) {
     console.warn(
       `delete: chain "${id}" needs a free drum pad to move to, and its ` +
-        `Drum Rack has none — a rack nested in a drum pad has no pads at all.`,
+        `Drum Rack has none — a rack nested in a drum pad has no pads at all. ` +
+        `Live offers no other way to remove it; delete its devices to empty ` +
+        `the pad, or move it with update-device's toPath.`,
     );
 
     return false;

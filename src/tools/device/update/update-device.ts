@@ -257,20 +257,14 @@ function resolveIdToTarget(id: string): ResolvedTarget | null {
  * what it reports on a pad answers "not applicable to DrumPad" when written
  * back by id.
  * @param target - The object an id resolved to
- * @returns The whole-pad target, or null when this isn't a pad with chains
+ * @returns The whole-pad target, or null when this isn't a pad
  */
 function drumPadTarget(target: LiveAPI): ResolvedTarget | null {
   if (target.type !== "DrumPad") return null;
 
-  const chains = chainsOnDrumPad(target);
-
-  // An empty pad has no chains to write to. Its own mute and solo still work
-  // through the plain object path.
-  if (chains.length === 0) return null;
-
   return {
     kind: "drum-pad",
-    group: { pad: target, chains },
+    group: { pad: target, chains: chainsOnDrumPad(target) },
     padPath: drumPadPath(target),
   };
 }
@@ -397,13 +391,11 @@ function updateTarget(
     }
   }
 
-  // Name works on devices and chains, but DrumPad names are read-only
+  // No DrumPad case: a pad is never a lone target — id and path both resolve
+  // one to the whole pad, and updateDrumPadGroup writes `name` to its chain,
+  // since Live drops writes to `pad.name`.
   if (options.name != null) {
-    if (type === "DrumPad") {
-      console.warn("updateDevice: 'name' is read-only for DrumPad");
-    } else {
-      target.set("name", stripReturnChainLetter(target, options.name));
-    }
+    target.set("name", stripReturnChainLetter(target, options.name));
   }
 
   if (!isDeviceType(type)) {

@@ -148,6 +148,21 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(result).toStrictEqual({ chainIds: ["chain-0", "chain-1"] });
   });
 
+  it("warns and skips a pad with no chains, by path as well as by id", () => {
+    const { pad } = registerDrumRack(0);
+
+    const result = updateDevice({ path: "t0/d0/pC1", mute: true });
+
+    // Live drops the write — set returns 1 and the read-back stays 0 — so a
+    // result here would say a mute happened that didn't.
+    expect(capturedWarnings()).toContain(
+      'updateDevice: drum pad "t0/d0/pC1" has no chains, so there is nothing ' +
+        "to update — Live ignores writes to an empty pad",
+    );
+    expect(pad?.set).not.toHaveBeenCalled();
+    expect(result).toStrictEqual([]);
+  });
+
   it("warns once, not once per layer, for a device-only property", () => {
     registerDrumRack(2);
 

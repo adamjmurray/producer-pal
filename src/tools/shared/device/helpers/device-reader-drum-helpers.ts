@@ -226,6 +226,9 @@ function buildDrumPadFromChains(
     note: inNote,
     pitch: isCatchAll ? "*" : midiToNoteName(inNote),
     name: firstChain.name,
+    // `name` alone can't tell a layered pad from a single-chain one: Live
+    // labels both "Multi" once a chain is named that. The count can.
+    chainCount: processedChains.length,
   };
 
   // Aggregate state from chains

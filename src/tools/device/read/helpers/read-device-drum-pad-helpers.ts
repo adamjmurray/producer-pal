@@ -236,6 +236,9 @@ export function buildDrumPadInfo(
     name: pad.getProperty("name"),
     note: midiNote,
     pitch: noteName,
+    // Counted off the pad, not chainsOnDrumPad: the two collections hold the
+    // same chains in different orders, and only the count is wanted here.
+    chainCount: pad.getChildCount("chains"),
   };
 
   if (isSoloed) {
@@ -280,6 +283,7 @@ function buildPadlessDrumPadInfo(
     name: firstChain.getProperty("name"),
     note: midiNote,
     pitch: midiNote < 0 ? "*" : midiToNoteName(midiNote),
+    chainCount: chains.length,
   };
 
   if (options.includeChains || options.includeDrumPads) {

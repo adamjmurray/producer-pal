@@ -363,7 +363,7 @@ describe("updateDevice with path parameter", () => {
         "name",
         "New Layer",
       );
-      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/c0" });
+      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/pC1/c0" });
     });
 
     it("should update drum chain mute state by path (pNOTE/index)", () => {
@@ -375,7 +375,7 @@ describe("updateDevice with path parameter", () => {
       const result = updateDevice({ path: "t1/d0/pC1/c0", mute: true });
 
       expect(chains.get("chain-36")?.set).toHaveBeenCalledWith("mute", 1);
-      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/c0" });
+      expect(result).toStrictEqual({ id: "chain-36", path: "t1/d0/pC1/c0" });
     });
 
     it("should return empty array for invalid chain index", () => {

@@ -3,11 +3,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
+ * Names one `chains N` segment. Given the Live path through that chain, so a
+ * caller can ask Live what the chain is before naming it.
+ */
+export type ChainSegmentFn = (
+  livePathThroughChain: string,
+  index: string,
+) => string;
+
+const rackRelativeChain: ChainSegmentFn = (_livePath, index) => `c${index}`;
+
+/**
  * Extract simplified path from Live API canonical path
  * @param liveApiPath - e.g., "live_set tracks 1 devices 0 chains 2"
+ * @param chainSegment - Names each `chains N` segment; rack-relative by default
  * @returns Simplified path e.g., "t1/d0/c2", "rt0/d0", "mt/d0", or null if invalid
  */
-export function extractDevicePath(liveApiPath: string): string | null {
+export function extractDevicePath(
+  liveApiPath: string,
+  chainSegment: ChainSegmentFn = rackRelativeChain,
+): string | null {
   let prefix;
 
   const regularMatch = liveApiPath.match(/^live_set tracks (\d+)/);
@@ -41,7 +56,12 @@ export function extractDevicePath(liveApiPath: string): string | null {
       parts.push(`rc${index}`);
     } else {
       // Regular chains
-      parts.push(`c${index}`);
+      parts.push(
+        chainSegment(
+          liveApiPath.slice(0, match.index + match[0].length),
+          index as string,
+        ),
+      );
     }
   }
 

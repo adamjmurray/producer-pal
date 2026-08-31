@@ -388,6 +388,7 @@ describe("readDevice", () => {
         note: 36,
         pitch: "C1",
         name: "Kick",
+        chainCount: 1,
       });
     });
   });
