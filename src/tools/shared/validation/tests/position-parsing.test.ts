@@ -121,8 +121,9 @@ describe("parseSlotList", () => {
     );
   });
 
-  it("should not warn for a clean list or a blank param", () => {
+  it("should not warn for a clean list, a trailing comma, or a blank param", () => {
     parseSlotList("0/1, 2/3", "toSlot");
+    parseSlotList("0/1,2/3,", "toSlot");
     parseSlotList("", "toSlot");
     parseSlotList(undefined, "toSlot");
 

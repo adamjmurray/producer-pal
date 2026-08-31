@@ -8,7 +8,10 @@
 // here is how one `toPath` is shared out.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import {
+  parseCommaSeparatedIds,
+  reportDroppedEntries,
+} from "#src/tools/shared/utils.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   resolveClipDestinations,
@@ -54,9 +57,20 @@ export function planSources({
 }: SourcePlanArgs): SourceShare[] {
   const ids = parseCommaSeparatedIds(id);
 
-  // One source is the whole call: leave every param exactly as it arrived, so
-  // nothing re-splits a list that was already going to be split downstream.
-  if (ids.length <= 1) return [{ id, toPath, toSlot }];
+  reportDroppedEntries(id ?? "", ids, "id");
+
+  // A list that parses to nothing still reaches the lookup whole, which then
+  // reports the wrong thing — that the source is missing or the wrong type,
+  // rather than that the id named no source at all.
+  if (ids.length === 0 && id != null) {
+    console.warn(`id "${id}" names nothing`);
+  }
+
+  // One source is the whole call: leave the destinations exactly as they
+  // arrived, so nothing re-splits a list that was already going to be split
+  // downstream. The id itself goes on cleaned, or a stray comma would reach the
+  // lookup as part of the id and fail to find a source that is right there.
+  if (ids.length <= 1) return [{ id: ids[0] ?? id, toPath, toSlot }];
 
   if (broadcasts) {
     return ids.map((sourceId) => ({ id: sourceId, toPath, toSlot }));

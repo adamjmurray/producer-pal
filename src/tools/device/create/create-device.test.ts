@@ -519,6 +519,28 @@ describe("createDevice", () => {
       ]);
     });
 
+    // "path is required" is false when a path was sent — it just named nothing,
+    // which is a different mistake with a different fix.
+    it("does not call a path that names nothing a missing path", () => {
+      expect(() =>
+        createDevice({ path: ", ,", deviceName: "Compressor" }),
+      ).toThrow('createDevice failed: path ", ," names nothing');
+    });
+
+    // name pairs with path by position, so an empty path entry hands t1 the
+    // name t2 was meant to get and drops the last name on the floor.
+    it("says an empty path entry was dropped", async () => {
+      registerTrack1WithDevice456();
+
+      const mockConsole = await import("#src/shared/max/v8-max-console.ts");
+
+      createDevice({ path: "t0,,t1", deviceName: "Compressor", name: "A,B,C" });
+
+      expect(mockConsole.warn).toHaveBeenCalledWith(
+        'path "t0,,t1" has empty entries, which were dropped',
+      );
+    });
+
     it("should return single result for single path (backward compatible)", () => {
       const result = createDevice({
         path: "t0",

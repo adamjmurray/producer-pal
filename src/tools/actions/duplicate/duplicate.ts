@@ -3,7 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import {
+  namedIdParam,
+  namedParam,
+  parseCommaSeparatedIds,
+  reportDroppedEntries,
+} from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
@@ -122,6 +127,10 @@ export async function duplicate(
     arrangementStart,
     locator,
   );
+
+  // Here, not in resolveArrangementPositions, which runs once per source: one
+  // mistake in the list gets one word for the call.
+  reportDroppedPositions(arrangementStart, locator);
   // A container destination — a track's arrangement or a take lane on it — holds
   // many copies and tells them apart by position, so every source can have the
   // whole list. A clip slot, device slot or drum pad holds one object, so the
@@ -219,4 +228,23 @@ export async function duplicate(
   }
 
   return createdObjects;
+}
+
+/**
+ * Report an empty entry in either arrangement position list, once for the call.
+ * @param arrangementStart - Comma-separated bar|beat positions, if sent
+ * @param locator - Comma-separated locator refs, if sent
+ */
+function reportDroppedPositions(
+  arrangementStart: string | null | undefined,
+  locator: string | null | undefined,
+): void {
+  for (const [value, label] of [
+    [arrangementStart, "arrangementStart"],
+    [locator, "locator"],
+  ] as const) {
+    if (value == null) continue;
+
+    reportDroppedEntries(value, parseCommaSeparatedIds(value), label);
+  }
 }

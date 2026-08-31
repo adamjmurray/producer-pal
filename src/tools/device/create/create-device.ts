@@ -20,6 +20,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import {
   parseCommaSeparatedIds,
+  reportDroppedEntries,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -86,9 +87,13 @@ export function createDevice(
 
   const paths = parseCommaSeparatedIds(path);
 
+  reportDroppedEntries(path ?? "", paths, "path");
+
   if (paths.length === 0) {
     throw new Error(
-      "createDevice failed: path is required when creating a device",
+      path == null || path.trim() === ""
+        ? "createDevice failed: path is required when creating a device"
+        : `createDevice failed: path "${path}" names nothing`,
     );
   }
 

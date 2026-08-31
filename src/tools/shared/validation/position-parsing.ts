@@ -6,6 +6,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   parseCommaSeparatedIds,
+  reportDroppedEntries,
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.ts";
 
@@ -44,11 +45,9 @@ export function parseSlotList(
   const entries = parseCommaSeparatedIds(input);
   const trimmed = input?.trim();
 
-  // Slots are read positionally, so a dropped entry shifts every later one onto
-  // the wrong scene instead of just making one fewer. toPath warns about this.
-  if (trimmed && entries.length < trimmed.split(",").length) {
-    console.warn(`${label} "${input}" has empty entries, which were dropped`);
-  }
+  // namedHiddenPath has already dropped a value that names nothing, and said so,
+  // so anything arriving here with a comma in it has a real entry.
+  if (trimmed) reportDroppedEntries(input ?? trimmed, entries, label);
 
   return entries.map((entry) => {
     const parts = entry.split("/");

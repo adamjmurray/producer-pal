@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
@@ -263,6 +264,22 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
       expectDuplicatedAt(track0, "id clip1", 8, 16);
       expect(result).toHaveLength(2);
+    });
+
+    it("says an empty locator entry was dropped", async () => {
+      setupClipWithLocators(multiCuePoints);
+
+      await duplicate({
+        type: "clip",
+        id: "clip1",
+        locator: "locator-1,,locator-2",
+      });
+
+      expect(
+        capturedWarnings().filter((warning) => warning.includes("locator ")),
+      ).toStrictEqual([
+        'locator "locator-1,,locator-2" has empty entries, which were dropped',
+      ]);
     });
 
     it("should duplicate a clip to multiple locator name positions", async () => {

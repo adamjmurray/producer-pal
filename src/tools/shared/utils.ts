@@ -194,7 +194,41 @@ export function namedCommaSeparatedIds(
     console.warn(`${label} "${raw}" names nothing`);
   }
 
+  reportDroppedEntries(raw, entries, label);
+
   return entries;
+}
+
+/**
+ * Warns when splitting a list dropped an empty entry.
+ *
+ * Only where it matters. A trailing comma drops an entry but moves nothing, and
+ * a list where every entry is empty named nothing at all — a different mistake,
+ * left to each caller.
+ *
+ * Says what happened and stops there. Whether it also moved something depends
+ * on what the tool reads against the list — names, colors, destinations, or
+ * nothing at all — and a shared helper cannot know.
+ * @param raw - The param's value, as sent
+ * @param entries - What it split into
+ * @param label - Param name, for the warning
+ */
+export function reportDroppedEntries(
+  raw: string,
+  entries: string[],
+  label: string,
+): void {
+  // Plain scan, not a regex: `id` has no length cap, and anchoring a character
+  // class at the end of a long run of separators costs quadratic time.
+  const named = raw.split(",");
+
+  while (named.length > 0 && (named.at(-1) ?? "").trim() === "") {
+    named.pop();
+  }
+
+  if (entries.length >= named.length) return;
+
+  console.warn(`${label} "${raw}" has empty entries, which were dropped`);
 }
 
 /**

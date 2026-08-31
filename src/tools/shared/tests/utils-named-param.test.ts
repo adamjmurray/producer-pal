@@ -130,6 +130,45 @@ describe("namedCommaSeparatedIds", () => {
     expect(namedCommaSeparatedIds(null, "path")).toStrictEqual([]);
     expect(warn).not.toHaveBeenCalled();
   });
+
+  // Ids are positional the same way paths are, so the same drop gets the same
+  // word. Without it the list is one short and every later pair shifts.
+  it("says an empty entry was dropped", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds("t0,,t1", "id")).toStrictEqual(["t0", "t1"]);
+    expect(warn).toHaveBeenCalledWith(
+      'id "t0,,t1" has empty entries, which were dropped',
+    );
+  });
+
+  // The list already named nothing, and it was told so. Adding "entries were
+  // dropped" on top would be two warnings for one mistake.
+  it("does not add a drop warning to a list that named nothing", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds(",  ,", "id")).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  // A trailing comma is the commonest typo in a hand-written list, and it
+  // moves nothing: there is no later entry to shift.
+  it("takes a trailing comma without a word", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds("t0,t1, ", "id")).toStrictEqual(["t0", "t1"]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // A leading empty shifts every entry, same as an interior one.
+  it("says a leading empty entry was dropped", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds(",t0", "id")).toStrictEqual(["t0"]);
+    expect(warn).toHaveBeenCalledWith(
+      'id ",t0" has empty entries, which were dropped',
+    );
+  });
 });
 
 describe("paramNamesSomething", () => {

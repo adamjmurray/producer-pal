@@ -27,6 +27,19 @@ describe("deleteObject when id or path names nothing", () => {
     expect(warnSpy).toHaveBeenCalledWith('path "," names nothing');
   });
 
+  // Both real ids are still deleted. The word is about the list itself: it came
+  // out shorter than what was typed, which the caller would otherwise never
+  // learn.
+  it("says an empty id entry was dropped", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    deleteObject({ id: "123,,456", type: "track" });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'id "123,,456" has empty entries, which were dropped',
+    );
+  });
+
   // Unaffected by the fix above: a blank value already reads as omitted, so
   // the existing required-param error still fires instead of a warning.
   it("still throws when id is whitespace-only", () => {

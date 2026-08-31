@@ -98,7 +98,7 @@ describe("parseObjectPathList", () => {
 
     parseObjectPathList("t1,,t2", "path");
     expect(warn).toHaveBeenCalledWith(
-      'path "t1,,t2" has empty entries, which were dropped; later entries shift up',
+      'path "t1,,t2" has empty entries, which were dropped',
     );
   });
 });
