@@ -86,14 +86,44 @@ export function knownParamUnit(
   minValue: number,
   maxValue: number,
 ): KnownParamUnit | null {
-  const entry =
-    deviceName == null ? undefined : KNOWN_UNITS[deviceName]?.[paramName];
+  const entry = lookupEntry(deviceName, paramName);
 
   if (entry == null) return null;
 
   return sameEnd(entry.min, minValue) && sameEnd(entry.max, maxValue)
     ? entry
     : null;
+}
+
+/**
+ * The raw entry for a param, with no range check — just "is there a recorded
+ * unit at all". `knownParamUnit` layers the range check on top for anything
+ * that reads a value; this is for deciding whether a written string is even
+ * worth treating as this param's unit before a range is known.
+ * @param deviceName - The device's class_display_name
+ * @param paramName - The parameter's name
+ * @returns The recorded entry, or undefined if there isn't one
+ */
+function lookupEntry(
+  deviceName: string | undefined,
+  paramName: string,
+): KnownParamUnit | undefined {
+  return deviceName == null ? undefined : KNOWN_UNITS[deviceName]?.[paramName];
+}
+
+/**
+ * The spelling of a param's recorded unit, ignoring the range check —
+ * `normalizeParamValue` calls this before a param (and its current range) is
+ * resolved, just to decide whether a trailing word is worth matching at all.
+ * @param deviceName - The device's class_display_name
+ * @param paramName - The parameter's name
+ * @returns The recorded unit's spelling, or null if none is recorded
+ */
+export function recordedUnitSpelling(
+  deviceName: string | undefined,
+  paramName: string,
+): string | null {
+  return lookupEntry(deviceName, paramName)?.unit ?? null;
 }
 
 /**
@@ -137,6 +167,27 @@ export function canonicalUnit(unit: string): {
   return typeof parsed.value === "number" && parsed.unit != null
     ? { canonical: parsed.unit, scale: parsed.value }
     : { canonical: unit, scale: 1 };
+}
+
+/**
+ * Split a written value into a leading number and whatever text follows it.
+ * Used to compare a written unit spelling against a param's own recorded one
+ * when `parseLabel` doesn't know it — the recorded spelling stands for itself.
+ * @param text - The text to split, e.g. "1.5 octaves"
+ * @returns The number and trimmed trailing text, or null with no leading number
+ */
+export function splitLeadingNumber(
+  text: string,
+): { value: number; trailing: string } | null {
+  const match = text.trim().match(/^([+-]?[\d.]+)\s*(.*)$/);
+
+  if (match == null) return null;
+
+  const value = Number.parseFloat(match[1] as string);
+
+  return Number.isFinite(value)
+    ? { value, trailing: (match[2] as string).trim() }
+    : null;
 }
 
 /**

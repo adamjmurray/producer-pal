@@ -8,6 +8,7 @@ import { parseLabel } from "#src/tools/shared/device/helpers/device-label-helper
 import {
   type KnownParamUnit,
   canonicalUnit,
+  splitLeadingNumber,
 } from "#src/tools/shared/device/known-param-units.ts";
 
 /** What a numeric write needs to know about the param's units. */
@@ -46,24 +47,37 @@ export interface WriteUnitContext {
 export function displayValueForWrite(ctx: WriteUnitContext): number | null {
   const requested = parseLabel(ctx.writtenText).unit;
 
-  if (requested == null) return ctx.inputValue;
+  if (requested != null) {
+    // A param whose own labels carry a unit is already canonical on both
+    // sides: its display range was parsed through the same conversion the
+    // input was.
+    if (ctx.labelUnit != null) {
+      return requested === ctx.labelUnit ? ctx.inputValue : refuse(ctx);
+    }
 
-  // A param whose own labels carry a unit is already canonical on both sides:
-  // its display range was parsed through the same conversion the input was.
-  if (ctx.labelUnit != null) {
-    return requested === ctx.labelUnit ? ctx.inputValue : refuse(ctx);
+    if (ctx.known == null) return refuse(ctx);
+
+    // A recorded unit describes what the param *displays*, which is not
+    // always canonical: Glue Compressor's Release shows seconds. Put the
+    // value back on that scale so it can be searched against the param's
+    // own range.
+    const { canonical, scale } = canonicalUnit(ctx.known.unit);
+
+    return requested === canonical ? ctx.inputValue / scale : refuse(ctx);
   }
 
-  if (ctx.known == null) return refuse(ctx);
+  // parseLabel doesn't recognize every unit read-device records (Erosion's
+  // "octaves", say) — that spelling stands for itself. No trailing text at
+  // all is the documented no-unit case and is always allowed; anything else
+  // still has to match the param's own recorded unit.
+  const trailing = splitLeadingNumber(ctx.writtenText)?.trailing;
 
-  // A recorded unit describes what the param *displays*, which is not always
-  // canonical: Glue Compressor's Release shows seconds. Put the value back on
-  // that scale so it can be searched against the param's own range.
-  const { canonical, scale } = canonicalUnit(ctx.known.unit);
+  if (!trailing) return ctx.inputValue;
 
-  if (requested !== canonical) return refuse(ctx);
-
-  return ctx.inputValue / scale;
+  return ctx.known != null &&
+    trailing.toLowerCase() === ctx.known.unit.toLowerCase()
+    ? ctx.inputValue
+    : refuse(ctx);
 }
 
 /**

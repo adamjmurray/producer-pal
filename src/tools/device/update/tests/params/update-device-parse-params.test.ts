@@ -70,6 +70,42 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("25L")).toBe("25L");
     expect(normalizeParamValue("C")).toBe(0);
   });
+
+  describe("a recorded unit parseLabel doesn't know", () => {
+    it("coerces a value spelled in the param's own recorded unit", () => {
+      expect(
+        normalizeParamValue("1.5 octaves", "Erosion", "Filter Width"),
+      ).toBe(1.5);
+    });
+
+    it("ignores the recorded unit for a different param", () => {
+      expect(normalizeParamValue("1.5 octaves", "Erosion", "Other")).toBe(
+        "1.5 octaves",
+      );
+    });
+
+    it("ignores the recorded unit with no device/param context", () => {
+      expect(normalizeParamValue("1.5 octaves")).toBe("1.5 octaves");
+    });
+
+    it("keeps a division string a string even for a recorded-unit param", () => {
+      expect(normalizeParamValue("1/16", "Erosion", "Filter Width")).toBe(
+        "1/16",
+      );
+    });
+
+    it("keeps a value with no leading number a string", () => {
+      expect(normalizeParamValue("loud", "Erosion", "Filter Width")).toBe(
+        "loud",
+      );
+    });
+
+    it("keeps a malformed leading number a string", () => {
+      expect(normalizeParamValue(".octaves", "Erosion", "Filter Width")).toBe(
+        ".octaves",
+      );
+    });
+  });
 });
 
 describe("paramsInputSchema", () => {

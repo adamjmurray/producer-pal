@@ -141,6 +141,95 @@ describe("updateDevice - recorded param units", () => {
     });
   });
 
+  describe("a param recorded as octaves", () => {
+    // Erosion's Filter Width: 0.1-2.5, displayed as a bare number, in octaves.
+    // parseLabel has no pattern for "octaves" — read-device still reports it
+    // (known-param-units.ts), and a write needs to round-trip the same spelling.
+    const registerFilterWidth = (): RegisteredMockObject =>
+      registerBareParam("Erosion", "Filter Width", 0.1, 2.5);
+
+    it("accepts the recorded unit", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5 octaves" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(1.5);
+    });
+
+    it("accepts the recorded unit case-insensitively", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5 Octaves" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(1.5);
+    });
+
+    it("still takes a bare number", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5" }],
+      });
+
+      expect(expectValueSet(param)).toBeCloseTo(1.5);
+    });
+
+    it("refuses another quantity, naming the recorded unit", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5 Hz" }],
+      });
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining(
+          'is measured in octaves, so "1.5 Hz" was not written',
+        ),
+      );
+    });
+
+    it("refuses an unrecognized spelling", () => {
+      const param = registerFilterWidth();
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5 wobbles" }],
+      });
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('could not interpret "1.5 wobbles"'),
+      );
+    });
+
+    // The range no longer matching drops the recorded entry (the range guard
+    // below), but normalizeParamValue's spelling match runs before a param is
+    // resolved and so can't see that — it still turns "1.5 octaves" into a
+    // number. displayValueForWrite is the one that catches the stale entry.
+    it("refuses the recorded unit when the param's range no longer matches", () => {
+      const param = registerBareParam("Erosion", "Filter Width", 0.1, 3);
+
+      updateDevice({
+        id: "dev1",
+        params: [{ name: "Filter Width", value: "1.5 octaves" }],
+      });
+
+      expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining("never says what it measures"),
+      );
+    });
+  });
+
   // Live shows this as "57/43" — a ratio between two sections, not a quantity —
   // and its Info View names no unit. It was briefly recorded as a percentage
   // from a manual summary, which made read-device report a unit Live disowns.

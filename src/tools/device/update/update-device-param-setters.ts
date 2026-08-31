@@ -135,7 +135,7 @@ function setOneParam(
       return toEntries(
         setParamValue(
           namedParam,
-          normalizeParamValue(rawValue),
+          normalizeParamValue(rawValue, deviceName, key),
           toolName,
           rawValue,
           deviceName,
@@ -146,7 +146,7 @@ function setOneParam(
     return applyNestedParam(device, key, rawValue, toolName, force);
   }
 
-  const inputValue = normalizeParamValue(rawValue);
+  const inputValue = normalizeParamValue(rawValue, deviceName, key);
 
   // A specialized pseudo-param (e.g. Simpler's `sample`) is not a
   // DeviceParameter, so there is no value to read back.
