@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * E2E tests for naming a chain send's return chain by id.
+ * E2E tests for naming a chain send's return chain by id, and for setting
+ * several of a chain's sends in one call with `sends`.
  * Uses: racks-test, whose "Kit" Drum Rack has the two return chains
  * "A Saturator" and "B Reverb". See e2e/live-sets/racks-test-spec.md.
  *
@@ -70,6 +71,47 @@ describe("update-device sendReturn by id", () => {
 
     expect(sends.find((s) => s.return === "B Reverb")?.gainDb).toBeCloseTo(
       -14,
+      1,
+    );
+  });
+
+  // The multi-send write, and the round trip that makes it usable: what a read
+  // reports as `returnId` is what `sends` takes back.
+  it("sets both sends in one call, addressed by the ids a read reported", async () => {
+    const before = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
+    const returns = await readReturnChains(ctx.client!);
+
+    // Every read send names its return by id; that id is what goes back in.
+    for (const send of before) {
+      expect(returns.some((rc) => rc.id === send.returnId)).toBe(true);
+    }
+
+    const ids = ["A Saturator", "B Reverb"].map(
+      (name) => returns.find((rc) => rc.name === name)!.id,
+    );
+
+    const { warnings } = await callWithWarnings(
+      ctx.client!,
+      "ppal-update-device",
+      {
+        path: CLAP,
+        sends: [
+          { return: ids[0], gainDb: -20 },
+          { return: ids[1], gainDb: -8 },
+        ],
+      },
+    );
+
+    expect(warnings).toStrictEqual([]);
+
+    const after = padChain(await readKitPads(ctx.client!), "Clap").sends ?? [];
+
+    expect(after.find((s) => s.return === "A Saturator")?.gainDb).toBeCloseTo(
+      -20,
+      1,
+    );
+    expect(after.find((s) => s.return === "B Reverb")?.gainDb).toBeCloseTo(
+      -8,
       1,
     );
   });

@@ -10,7 +10,10 @@ import {
   type ParamValueResult,
   refreshParamValues,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { applyChainMixer } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
+import {
+  applyChainMixer,
+  type ChainSend,
+} from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   setParamValues,
@@ -38,6 +41,7 @@ export interface UpdatePropertyOptions {
   pan?: number;
   sendGainDb?: number;
   sendReturn?: string;
+  sends?: ChainSend[];
   chokeGroup?: number;
   mappedPitch?: string;
   force?: boolean;
@@ -74,6 +78,7 @@ export function updateDeviceProperties(
     pan,
     sendGainDb,
     sendReturn,
+    sends,
     chokeGroup,
     mappedPitch,
     force,
@@ -114,6 +119,7 @@ export function updateDeviceProperties(
   warnIfSet("pan", pan, type);
   warnIfSet("sendGainDb", sendGainDb, type);
   warnIfSet("sendReturn", sendReturn, type);
+  warnIfSet("sends", sends, type);
   warnIfSet("chokeGroup", chokeGroup, type);
   warnIfSet("mappedPitch", mappedPitch, type);
 
@@ -160,6 +166,7 @@ export function updateNonDeviceProperties(
     warnIfSet("pan", options.pan, type);
     warnIfSet("sendGainDb", options.sendGainDb, type);
     warnIfSet("sendReturn", options.sendReturn, type);
+    warnIfSet("sends", options.sends, type);
   }
 
   if (type === "DrumChain") {
@@ -204,6 +211,7 @@ function hasChainMixerParams(options: UpdatePropertyOptions): boolean {
     options.gainDb != null ||
     options.pan != null ||
     options.sendGainDb != null ||
-    options.sendReturn != null
+    options.sendReturn != null ||
+    options.sends != null
   );
 }

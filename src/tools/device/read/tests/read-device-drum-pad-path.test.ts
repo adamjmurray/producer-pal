@@ -293,8 +293,11 @@ describe("readDevice with drum pad path", () => {
     const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
     const chains = result.chains as Record<string, unknown>[];
 
-    // Only the send that is turned up is listed, named after return chain B.
-    expect(chains[0]!.sends).toStrictEqual([{ return: "B Delay", gainDb: -9 }]);
+    // Only the send that is turned up is listed, named after return chain B,
+    // with its id so the read can be handed straight back as a `sends` entry.
+    expect(chains[0]!.sends).toStrictEqual([
+      { return: "B Delay", returnId: "return-chain-1", gainDb: -9 },
+    ]);
   });
 
   it("should read drum pad with chains containing devices", () => {

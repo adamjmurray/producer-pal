@@ -152,7 +152,8 @@ describe("readChainMixer", () => {
     });
 
     expect(readChainMixer(chainApi())).toStrictEqual({
-      sends: [{ return: "Reverb", gainDb: -12 }],
+      // The id rides along so a read round-trips straight back into `sends`.
+      sends: [{ return: "Reverb", returnId: "rc-1", gainDb: -12 }],
     });
   });
 
@@ -348,6 +349,82 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
 
       expect(capturedWarnings()).toContain("chain chain-1 has no send 2");
+    });
+
+    // The `sends` list is the multi-send spelling. It reuses the single-send
+    // path, so only the list behavior itself needs covering here.
+    describe("as a list", () => {
+      it("sets every send in one call", () => {
+        const [first, second] = registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "b Reverb", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -6);
+        expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", gainDb: -6 },
+          { return: "b Reverb", gainDb: -12 },
+        ]);
+      });
+
+      it("reports only the entries that landed, and warns about the rest", () => {
+        const [first] = registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "nope", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -6);
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", gainDb: -6 },
+        ]);
+        expect(capturedWarnings().join()).toContain(
+          'no return chain matching "nope"',
+        );
+      });
+
+      it("honors both the scalar pair and the list in one call", () => {
+        const [first, second] = registerChainWithSends();
+
+        applyChainMixer(chainApi(), {
+          sendGainDb: -3,
+          sendReturn: "a Delay",
+          sends: [{ return: "b Reverb", gainDb: -12 }],
+        });
+
+        expect(first?.set).toHaveBeenCalledWith("display_value", -3);
+        expect(second?.set).toHaveBeenCalledWith("display_value", -12);
+      });
+
+      it("lets the list win when it names the same return as the pair", () => {
+        const [first] = registerChainWithSends();
+
+        applyChainMixer(chainApi(), {
+          sendGainDb: -3,
+          sendReturn: "a Delay",
+          sends: [{ return: "a Delay", gainDb: -12 }],
+        });
+
+        expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
+      });
+
+      it("writes nothing for an empty list", () => {
+        const [first, second] = registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), { sends: [] });
+
+        expect(first?.set).not.toHaveBeenCalled();
+        expect(second?.set).not.toHaveBeenCalled();
+        expect(applied.sends).toBeUndefined();
+      });
     });
   });
 });

@@ -23,7 +23,7 @@ export interface ChainInfo {
   name?: string;
   gainDb?: number;
   pan?: number;
-  sends?: { return: string; gainDb: number }[];
+  sends?: { return: string; returnId?: string; gainDb: number }[];
   devices?: DeviceInfo[];
   deviceCount?: number;
 }

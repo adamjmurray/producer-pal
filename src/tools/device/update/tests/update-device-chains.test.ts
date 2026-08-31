@@ -443,6 +443,17 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     );
   });
 
+  // Same gate: `sends` alone has to open it. It shipped not doing so, and
+  // every unit test passed because they all called applyChainMixer directly.
+  it("sets sends when it is the only mixer param given", () => {
+    updateDevice({
+      id: "chain-0",
+      sends: [{ return: "a", gainDb: -12 }],
+    });
+
+    expect(send.set).toHaveBeenCalledWith("display_value", -12);
+  });
+
   it.each(["SimplerDevice"] as const)(
     "warns when mixer params are used on a %s",
     (type) => {
@@ -454,9 +465,16 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         pan: 1,
         sendGainDb: -6,
         sendReturn: "a",
+        sends: [{ return: "a", gainDb: -6 }],
       });
 
-      for (const name of ["gainDb", "pan", "sendGainDb", "sendReturn"]) {
+      for (const name of [
+        "gainDb",
+        "pan",
+        "sendGainDb",
+        "sendReturn",
+        "sends",
+      ]) {
         expect(capturedWarnings()).toContain(
           `updateDevice: '${name}' not applicable to ${type}`,
         );

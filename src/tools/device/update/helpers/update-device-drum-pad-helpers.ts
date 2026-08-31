@@ -24,6 +24,7 @@ const PER_LAYER_PROPS = [
   "pan",
   "sendGainDb",
   "sendReturn",
+  "sends",
 ] as const;
 
 // Anything that lands on a chain rather than on the DrumPad object.

@@ -91,6 +91,7 @@ type ResolvedTarget =
  * @param args.pan - Chain pan -1 to 1 (chains only)
  * @param args.sendGainDb - Chain send level in dB, requires sendReturn (chains only)
  * @param args.sendReturn - Rack return chain id, name, or letter, requires sendGainDb (chains only)
+ * @param args.sends - Several sends at once as [{return, gainDb}] (chains only)
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
@@ -120,6 +121,7 @@ export function updateDevice(
     pan,
     sendGainDb,
     sendReturn,
+    sends,
     chokeGroup,
     mappedPitch,
     wrapInRack,
@@ -163,6 +165,7 @@ export function updateDevice(
       pan,
       sendGainDb,
       sendReturn,
+      sends,
       chokeGroup,
       mappedPitch,
       force,

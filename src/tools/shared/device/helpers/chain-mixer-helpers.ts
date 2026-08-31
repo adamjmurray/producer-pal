@@ -8,11 +8,19 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
 
+export interface ChainSend {
+  /** Return chain id, exact name, or letter prefix */
+  return: string;
+  /** Send level in dB */
+  gainDb: number;
+}
+
 export interface ChainMixerParams {
   gainDb?: number;
   pan?: number;
   sendGainDb?: number;
   sendReturn?: string;
+  sends?: ChainSend[];
 }
 
 export interface ChainMixerCarry {
@@ -112,6 +120,16 @@ export function applyChainMixer(
   ) {
     applied.sendGainDb = sendGainDb;
     applied.sendReturn = sendReturn;
+  }
+
+  // After the scalar pair, so a call using both honors both. They only collide
+  // when they name the same return, and then the list is the later word.
+  const landed = (params.sends ?? []).filter((send) =>
+    applyChainSend(chain, mixer, send.gainDb, send.return),
+  );
+
+  if (landed.length > 0) {
+    applied.sends = landed;
   }
 
   return applied;
@@ -352,8 +370,8 @@ function applyChainSend(
     return false;
   }
 
-  const returns = returnChains(chain);
-  const names = returns.map((rc) => rc.getProperty("name") as string);
+  const returns = returnChainInfo(chain);
+  const names = returns.map((rc) => rc.name);
   const index = findReturnIndex(
     names,
     sendReturn,
@@ -423,36 +441,36 @@ function readActiveSends(
     return [];
   }
 
-  const names = returnChainNames(chain);
+  const returns = returnChainInfo(chain);
 
-  return active.map(({ send, index }) => ({
-    return: names[index] ?? `Return ${index + 1}`,
-    gainDb: send.getProperty("display_value"),
-  }));
+  return active.map(({ send, index }) => {
+    const info = returns[index];
+
+    return {
+      return: info?.name ?? `Return ${index + 1}`,
+      // The id is what a write should quote back: names collide and get
+      // renamed, and `sends` accepts either.
+      ...(info == null ? {} : { returnId: info.id }),
+      gainDb: send.getProperty("display_value"),
+    };
+  });
 }
 
 /**
- * The return chains of the rack that owns a chain, in send order
+ * Name and id of each return chain of the rack that owns a chain, in send
+ * order. Memoized per request because every chain of a rack asks for the same
+ * list, and a 64-pad kit resolving it per pad doubled the cost of reading the
+ * kit. Nothing creates a return chain mid-request — racks expose no way to —
+ * so the list can't go stale under us.
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns The return chains, index-aligned with the chain's sends
+ * @returns Return chain names and ids, index-aligned with the chain's sends
  */
-function returnChains(chain: LiveAPI): LiveAPI[] {
-  return LiveAPI.from(rackPath(chain)).getChildren("return_chains");
-}
-
-/**
- * Names of the return chains of the rack that owns a chain, in send order.
- * Memoized per request because every chain of a rack asks for the same list,
- * and a 64-pad kit resolving it per pad doubled the cost of reading the kit.
- * @param chain - Chain or DrumChain LiveAPI object
- * @returns The return chain names, index-aligned with the chain's sends
- */
-function returnChainNames(chain: LiveAPI): string[] {
+function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
   const path = rackPath(chain);
 
-  return requestMemo(`return-chain-names ${path}`, () =>
+  return requestMemo(`return-chain-info ${path}`, () =>
     LiveAPI.from(path)
       .getChildren("return_chains")
-      .map((rc) => rc.getProperty("name") as string),
+      .map((rc) => ({ name: rc.getProperty("name") as string, id: rc.id })),
   );
 }
