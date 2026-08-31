@@ -458,19 +458,25 @@ function readActiveSends(
 
 /**
  * Name and id of each return chain of the rack that owns a chain, in send
- * order. Memoized per request because every chain of a rack asks for the same
- * list, and a 64-pad kit resolving it per pad doubled the cost of reading the
- * kit. Nothing creates a return chain mid-request — racks expose no way to —
- * so the list can't go stale under us.
+ * order. The chain list itself is memoized per request — every chain of a
+ * rack asks for the same list, and a 64-pad kit resolving it per pad doubled
+ * the cost of reading the kit. Nothing creates or deletes a return chain
+ * mid-request, so the list and its ids can't go stale under us — but `name`
+ * can: a multi-id update-device call can rename one return chain and then
+ * send to it by the new name in the same request, so it's read fresh off the
+ * memoized objects on every call instead of cached alongside them.
  * @param chain - Chain or DrumChain LiveAPI object
  * @returns Return chain names and ids, index-aligned with the chain's sends
  */
 function returnChainInfo(chain: LiveAPI): { name: string; id: string }[] {
   const path = rackPath(chain);
 
-  return requestMemo(`return-chain-info ${path}`, () =>
-    LiveAPI.from(path)
-      .getChildren("return_chains")
-      .map((rc) => ({ name: rc.getProperty("name") as string, id: rc.id })),
+  const chains = requestMemo(`return-chain-info ${path}`, () =>
+    LiveAPI.from(path).getChildren("return_chains"),
   );
+
+  return chains.map((rc) => ({
+    name: rc.getProperty("name") as string,
+    id: rc.id,
+  }));
 }

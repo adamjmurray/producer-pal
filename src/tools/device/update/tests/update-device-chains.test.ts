@@ -4,6 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -481,6 +485,71 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
       }
     },
   );
+});
+
+describe("updateDevice - return chain rename mid-request", () => {
+  it("sends by a return chain's new name after an earlier id in the same call renamed it", () => {
+    const rackPath = livePath.track(0).device(0);
+    const chainAPath = rackPath.chain(0);
+    const chainBPath = rackPath.chain(1);
+    const returnXPath = rackPath.returnChain(0);
+
+    registerMockObject("rack", {
+      path: rackPath,
+      properties: { return_chains: children("return-x") },
+    });
+
+    const returnX = registerMockObject("return-x", {
+      path: returnXPath,
+      type: "Chain",
+      properties: { name: "Delay" },
+    });
+
+    // Real Live reflects a name write immediately; the mock's set() is a
+    // pure spy by default, so mirror that here.
+    returnX.set.mockImplementation((prop: string, value: unknown) => {
+      if (prop === "name") returnX.properties.name = value;
+    });
+
+    registerMockObject("chain-a", { path: chainAPath, type: "Chain" });
+    registerMockObject("mixer-a", {
+      path: `${chainAPath} mixer_device`,
+      properties: { sends: children("send-a") },
+    });
+    registerMockObject("send-a");
+
+    registerMockObject("chain-b", { path: chainBPath, type: "Chain" });
+    registerMockObject("mixer-b", {
+      path: `${chainBPath} mixer_device`,
+      properties: { sends: children("send-b") },
+    });
+    const sendB = registerMockObject("send-b");
+
+    // One request, matching how the adapter wraps a real tool call: the
+    // return-chain memo lives for its whole duration.
+    beginLiveApiScope();
+
+    try {
+      updateDevice({
+        id: "chain-a,return-x,chain-b",
+        name: "Chain A,Echo,Chain B",
+        sends: [{ return: "Echo", gainDb: -6 }],
+      });
+    } finally {
+      endLiveApiScope();
+    }
+
+    expect(returnX.set).toHaveBeenCalledWith("name", "Echo");
+    // chain-a's send to "Echo" legitimately misses — at that point in the
+    // request Live still calls the return chain "Delay". chain-b's must not,
+    // and must not double the "no return chain matching" warning either.
+    expect(sendB.set).toHaveBeenCalledWith("display_value", -6);
+    expect(
+      capturedWarnings().filter((w) =>
+        w.includes('no return chain matching "Echo"'),
+      ),
+    ).toHaveLength(1);
+  });
 });
 
 describe("updateDevice - moving a device out of a trimmed chain", () => {
