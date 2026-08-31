@@ -199,6 +199,51 @@ describe("createConversationStore", () => {
     expect(order).toStrictEqual(["first", "second"]);
   });
 
+  it("kills a save that shares a fork's id once the fork rolls back", () => {
+    // A tool step's autosave can fire while a fork's first write is still in
+    // flight. Since the fork claimed the id first, that autosave reads it
+    // back as a plain continuation (reuseId === the fork's id). If the fork's
+    // write then fails and rolls back, that queued continuation must not be
+    // able to write under the dead id — it would land as an orphaned record
+    // with no branch linkage.
+    const store = createConversationStore();
+    const trunk = store.beginSave(false)!;
+
+    store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+
+    const fork = store.beginSave(true)!;
+    const followUp = store.beginSave(false)!;
+
+    expect(followUp.id).toBe(fork.id);
+    expect(followUp.reuseId).toBe(fork.id);
+    expect(fork.stillLive()).toBe(true);
+    expect(followUp.stillLive()).toBe(true);
+
+    fork.rollback();
+
+    expect(fork.stillLive()).toBe(false);
+    expect(followUp.stillLive()).toBe(false);
+    expect(store.activeId()).toBe(trunk.id);
+    expect(store.liveId()).toBe(trunk.id);
+  });
+
+  it("leaves an unrelated save's id alone when a fork rolls back", () => {
+    const store = createConversationStore();
+    const trunk = store.beginSave(false)!;
+
+    store.markPersisted(trunk, createTestRecord({ id: trunk.id }));
+
+    const fork = store.beginSave(true)!;
+
+    fork.rollback();
+
+    // The retry after rollback claims a fresh id and must start out live.
+    const retry = store.beginSave(true)!;
+
+    expect(retry.id).not.toBe(fork.id);
+    expect(retry.stillLive()).toBe(true);
+  });
+
   it("keeps running queued work after one fails, and drain stays resolved", async () => {
     const store = createConversationStore();
     const order: string[] = [];

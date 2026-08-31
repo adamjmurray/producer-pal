@@ -17,13 +17,13 @@ import { confirmLeavingStream } from "#webui/hooks/chat/helpers/conversations/co
 import { useLimitNotification } from "#webui/hooks/chat/helpers/notifications/use-limit-notification";
 import { type UndoDeleteReturn } from "#webui/hooks/chat/helpers/notifications/use-undo-delete";
 import {
-  buildConversationSaveRecord,
   buildLockedSettings,
   getHashConversationId,
   resolvePanelNotification,
   setLocationHash,
   useHashNavigation,
 } from "#webui/hooks/chat/helpers/conversations/use-conversations-helpers";
+import { writeConversation } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import {
   type SyncActiveMetaParams,
   useSyncActiveMeta,
@@ -43,7 +43,6 @@ import {
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
-  saveConversation,
   setBookmark,
 } from "#webui/lib/conversation-db";
 
@@ -129,6 +128,10 @@ export function useConversations({
     string | null
   >(() => getHashConversationId());
   const programmaticHashRef = useRef(false);
+  // Failed fork-write attempts, keyed by the id that died. Shared across every
+  // save queued behind the same failed fork so writeConversation's retry bound
+  // holds across all of them, not just within one.
+  const deadForkAttempts = useRef<Map<string, number>>(new Map());
 
   const publishActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
@@ -246,57 +249,23 @@ export function useConversations({
       // the branch linkage; later saves of that id recover it by reading the
       // record back. Run concurrently, a later save's read could resolve before
       // the fork save's write landed — dropping the linkage and orphaning the
-      // branch. The queue makes read-after-write deterministic.
-      return store.enqueue(async () => {
-        try {
-          const record = await buildConversationSaveRecord({
-            id: snapshot.id,
-            reuseId: snapshot.reuseId,
-            fork,
-            refs,
-            chatHistory,
-            updatedAt,
-          });
-
-          const result = await saveConversation(record, {
-            expectPersisted: snapshot.expectPersisted,
-          });
-
-          // Refused, not failed: the row is gone — another tab deleted it, or
-          // an import's limit trim evicted it — and the transaction won't write
-          // a deleted conversation back. The slot stays as it was, so an undo
-          // that restores the row lets the next save land again.
-          if (!result.saved) {
-            limit.showSaveRefused();
-
-            return;
-          }
-
-          store.markPersisted(snapshot, record);
-          limit.showLimitNotification(result);
-          await refreshList();
-        } catch (error) {
-          // The branch was never written, so undo the claim and put the fork
-          // signal back (unless a newer one has taken its place). Without both,
-          // the next save takes the plain first-save path from the failed
-          // branch's own id: no link to the trunk, and the trunk's title and
-          // bookmark copied onto a record that isn't it.
-          snapshot.rollback();
-
-          if (
-            fork != null &&
-            pendingForkRef &&
-            pendingForkRef.current == null
-          ) {
-            pendingForkRef.current = fork;
-          }
-
-          // App.tsx fire-and-forgets this call, so surface the failure here
-          // instead of letting it become an unhandled rejection
-          console.error("Failed to save conversation", error);
-          limit.showSaveError(error);
-        }
-      });
+      // branch. The queue makes read-after-write deterministic. writeConversation
+      // also handles a fork ahead of this save rolling back and killing the id
+      // this save is holding, recovering rather than writing an orphan.
+      return store.enqueue(() =>
+        writeConversation({
+          snapshot,
+          fork,
+          refs,
+          chatHistory,
+          updatedAt,
+          store,
+          pendingForkRef,
+          deadForkAttempts: deadForkAttempts.current,
+          limit,
+          refreshList,
+        }),
+      );
     },
     [getChatHistory, refreshList, limit, pendingForkRef, store],
   );

@@ -9,6 +9,7 @@
 import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_FORK_SAVE_ATTEMPTS } from "#webui/hooks/chat/helpers/conversations/write-conversation";
 import { type PendingFork } from "#webui/hooks/chat/use-chat-types";
 import * as conversationDb from "#webui/lib/conversation-db";
 import {
@@ -149,6 +150,173 @@ describe("useConversations branching", () => {
     expect(forkId).not.toBe(originalId);
     expect(fork?.forkParentId).toBe(originalId);
     expect(fork?.forkedAtIndex).toBe(0);
+  });
+
+  // A tool step's autosave can fire between the fork claiming its id and that
+  // first write settling, queuing behind it as a plain continuation of the
+  // same (not-yet-written) id. If the fork's write then fails and rolls back,
+  // that queued continuation must not resurrect the dead id as an orphaned,
+  // unlinked record — the fork instead retries with a fresh id.
+  // A tool step's autosave can fire between the fork claiming its id and that
+  // first write settling, queuing behind it as a plain continuation of the
+  // same (not-yet-written) id. If the fork's write then fails and rolls back,
+  // that queued continuation must not resurrect the dead id as an orphaned
+  // record — nor may it sit and wait, since nothing guarantees another save
+  // ever comes. It takes over the retry itself.
+  it("recovers immediately when a queued autosave finds its fork rolled back", async () => {
+    const { result, state, pendingForkRef, originalId } =
+      await setupWithSavedOriginal();
+
+    let releaseWrite: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const failing = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockImplementationOnce(async () => {
+        await gate;
+        throw new Error("quota");
+      });
+
+    const FOLLOWUP = [...FORKED, { role: "assistant", content: "more" }];
+
+    await act(async () => {
+      pendingForkRef.current = { anchorIndex: 0 };
+      state.chatHistory = FORKED;
+      const forkSave = result.current.saveCurrentConversation();
+
+      // Queues behind the fork save as a plain continuation of its dead id.
+      state.chatHistory = FOLLOWUP;
+      const followUp = result.current.saveCurrentConversation();
+
+      releaseWrite();
+      await Promise.all([forkSave, followUp]);
+    });
+
+    failing.mockRestore();
+
+    // The follow-up took over the retry itself — no further save was needed.
+    expect(pendingForkRef.current).toBeNull();
+
+    const forkId = result.current.activeConversationId!;
+
+    expect(forkId).not.toBe(originalId);
+
+    const fork = await loadConversation(forkId);
+
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+    expect(fork?.messages).toStrictEqual(FOLLOWUP);
+
+    const original = await loadConversation(originalId);
+
+    expect(original?.messages).toStrictEqual(ORIGINAL);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
+  // The full shape of a multi-step turn: tool steps 2 and 3 autosave while the
+  // fork's first write is still in flight, then the stream ends and fires its
+  // own final autosave. None of these calls happens again — if the fork's
+  // write fails, this chain of already-queued saves is the only chance to
+  // land it. No test-driven extra save follows.
+  it("recovers a fork through the chain of already-queued autosaves, with no manual retry", async () => {
+    const { result, state, pendingForkRef, originalId } =
+      await setupWithSavedOriginal();
+
+    let releaseWrite: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const failing = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockImplementationOnce(async () => {
+        await gate;
+        throw new Error("quota");
+      });
+
+    const STEP2 = [...FORKED, { role: "assistant", content: "tool step 2" }];
+    const STEP3 = [...STEP2, { role: "assistant", content: "tool step 3" }];
+    const FINAL = [...STEP3, { role: "assistant", content: "final" }];
+
+    await act(async () => {
+      pendingForkRef.current = { anchorIndex: 0 };
+      state.chatHistory = FORKED;
+      const forkSave = result.current.saveCurrentConversation();
+
+      state.chatHistory = STEP2;
+      const step2Save = result.current.saveCurrentConversation();
+
+      state.chatHistory = STEP3;
+      const step3Save = result.current.saveCurrentConversation();
+
+      // Stands in for useStreamEndAutosave's own call once the turn finishes.
+      state.chatHistory = FINAL;
+      const endOfStreamSave = result.current.saveCurrentConversation();
+
+      releaseWrite();
+      await Promise.all([forkSave, step2Save, step3Save, endOfStreamSave]);
+    });
+
+    failing.mockRestore();
+
+    expect(pendingForkRef.current).toBeNull();
+
+    const forkId = result.current.activeConversationId!;
+
+    expect(forkId).not.toBe(originalId);
+
+    const fork = await loadConversation(forkId);
+
+    expect(fork?.forkParentId).toBe(originalId);
+    expect(fork?.forkedAtIndex).toBe(0);
+    expect(fork?.messages).toStrictEqual(FINAL);
+
+    const original = await loadConversation(originalId);
+
+    expect(original?.messages).toStrictEqual(ORIGINAL);
+    expect(await listConversations()).toHaveLength(1);
+  });
+
+  it("gives up after repeated fork-write failures instead of retrying forever, and surfaces it", async () => {
+    const { result, state, pendingForkRef, originalId } =
+      await setupWithSavedOriginal();
+
+    const failing = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockRejectedValue(new Error("quota"));
+
+    await act(async () => {
+      pendingForkRef.current = { anchorIndex: 0 };
+
+      const saves: Promise<void>[] = [];
+
+      // One more queued autosave than the retry bound allows.
+      for (let i = 0; i < MAX_FORK_SAVE_ATTEMPTS + 1; i++) {
+        state.chatHistory = [
+          ...FORKED,
+          { role: "assistant", content: `step ${i}` },
+        ];
+        saves.push(result.current.saveCurrentConversation());
+      }
+
+      await Promise.all(saves);
+    });
+
+    // Bounded: only MAX_FORK_SAVE_ATTEMPTS real writes were attempted, not one
+    // per queued save. Checked before mockRestore, which clears call history.
+    expect(failing).toHaveBeenCalledTimes(MAX_FORK_SAVE_ATTEMPTS);
+    failing.mockRestore();
+
+    // Gave up rather than spinning, and did not fall back to overwriting the
+    // trunk with the fork's content.
+    expect(pendingForkRef.current).toBeNull();
+    expect(result.current.activeConversationId).toBe(originalId);
+    expect(result.current.notification?.type).toBe("error");
+
+    const original = await loadConversation(originalId);
+
+    expect(original?.messages).toStrictEqual(ORIGINAL);
+    expect(await listConversations()).toHaveLength(1);
   });
 
   it("keeps branch linkage on a later (post-response) save", async () => {

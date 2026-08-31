@@ -74,8 +74,20 @@ export interface SaveSnapshot {
    * created, so leaving the slot on it strands the retry: no source to branch
    * from, and the trunk's metadata copied onto a record that isn't it.
    * A no-op for a normal save, or once the slot has moved on.
+   *
+   * Always kills the id, even where moving the slot back is skipped: a save
+   * queued behind this one may have claimed the same id (a follow-up read it
+   * off the slot before the branch failed) and must not resurrect it as an
+   * orphaned record once {@link stillLive} tells it the id is dead.
    */
   rollback: () => void;
+  /**
+   * Whether the id this save claimed is still live. False once a branching
+   * save that claimed the same id has rolled back — the row was never
+   * created, so writing under it now would orphan a record with no branch
+   * linkage instead of retrying the fork.
+   */
+  stillLive: () => boolean;
 }
 
 /**
@@ -162,7 +174,9 @@ export function createConversationStore(
   // the first list refresh can highlight it. The mount then loads it for real
   // and resets if it has gone.
   let slot: Slot =
-    restoredId == null ? freshSlot() : { id: restoredId, state: "persisted" };
+    restoredId == null
+      ? freshSlot()
+      : { id: restoredId, state: "persisted", claim: { dead: false } };
   let queue: Promise<void> = Promise.resolve();
   let notify: (id: string | null) => void = noop;
   const metaRef: { current: ActiveMeta | null } = { current: null };
@@ -207,13 +221,21 @@ export function createConversationStore(
 
       if (branch) enter(freshSlot());
 
+      // Shared with every other save that reads this same claimed-but-not-yet-
+      // persisted id off the slot (a follow-up autosave queued behind this
+      // one), so rolling this save back invalidates them too.
+      const claim = slot.claim;
+
       const snapshot: SaveSnapshot = {
         id: slot.id,
         expectPersisted: slot.state === "persisted",
         reuseId: sourceId ?? (slot.state === "fresh" ? null : slot.id),
+        stillLive: () => !claim.dead,
         rollback: !branch
           ? noop
           : () => {
+              claim.dead = true;
+
               // Only if the slot is still the one this save claimed: the user
               // may have switched away, and a delete waiting to drain must not
               // be revived.
@@ -244,7 +266,7 @@ export function createConversationStore(
 
     adopt: (record) => {
       metaRef.current = metaFromRecord(record);
-      enter({ id: record.id, state: "persisted" });
+      enter({ id: record.id, state: "persisted", claim: { dead: false } });
     },
 
     markDeleted: () => {
@@ -312,6 +334,14 @@ function noop(): void {}
 interface Slot {
   id: string;
   state: SlotState;
+  /** Shared with every {@link SaveSnapshot} claiming this id, so a rollback
+   * can mark them all dead at once. Fresh per id, never reused. */
+  claim: Claim;
+}
+
+/** Whether a slot's current id was rolled back out from under it. */
+interface Claim {
+  dead: boolean;
 }
 
 /**
@@ -322,5 +352,5 @@ interface Slot {
  * @returns The fresh slot
  */
 function freshSlot(): Slot {
-  return { id: crypto.randomUUID(), state: "fresh" };
+  return { id: crypto.randomUUID(), state: "fresh", claim: { dead: false } };
 }
