@@ -120,6 +120,16 @@ describe("namedCommaSeparatedIds", () => {
     expect(namedCommaSeparatedIds(",  ,", "id")).toStrictEqual([]);
     expect(warn).toHaveBeenCalledWith('id ",  ," names nothing');
   });
+
+  // An omitted param is nullish by the time it gets here, and there is nothing
+  // to tell a caller about a param they never sent.
+  it("takes an omitted param without a word", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds(undefined, "id")).toStrictEqual([]);
+    expect(namedCommaSeparatedIds(null, "path")).toStrictEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });
 
 describe("paramNamesSomething", () => {

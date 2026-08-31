@@ -17,9 +17,9 @@ import {
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
+  namedCommaSeparatedIds,
   namedIdParam,
   namedPathParam,
-  parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -145,7 +145,12 @@ export function updateDevice(
       unknown
     > | null;
   } else {
-    const items = parseCommaSeparatedIds(path ?? ids);
+    // validateExclusiveParams only asks whether a param was sent, so an id or
+    // path whose entries all trim away gets past it and updates nothing. Say
+    // which param named nothing instead of returning an empty result in silence.
+    const items = path
+      ? namedCommaSeparatedIds(path, "path")
+      : namedCommaSeparatedIds(ids, "id");
     const parsedNames = parseNames(name, items.length, "device");
     const parsedColors = parseColors(color, items.length, "device");
 

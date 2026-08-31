@@ -19,8 +19,8 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
   findReturnIndex,
+  namedCommaSeparatedIds,
   namedIdParam,
-  parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -246,8 +246,10 @@ export function updateTrack(
     return [];
   }
 
-  // Parse comma-separated string into array
-  const trackIds = parseCommaSeparatedIds(targets);
+  // Parse comma-separated string into array. An id that parses to nothing
+  // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
+  // reading the same as an omitted id.
+  const trackIds = namedCommaSeparatedIds(targets, "id");
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped

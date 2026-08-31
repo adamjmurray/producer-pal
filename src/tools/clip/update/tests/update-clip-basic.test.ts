@@ -55,6 +55,34 @@ describe("updateClip - Basic operations", () => {
     expect(capturedWarnings()).toContain("updateClip: id or path is required");
   });
 
+  // id and path both name clips, so a path keeps the call non-empty while an
+  // id whose entries all trim away drops out unnoticed. The caller asked for
+  // those ids.
+  it("should warn about an empty id even when path carries the call", async () => {
+    setupMidiClipMock(mocks.clip456);
+
+    // clip456 sits at t1/s1
+    const result = await updateClip({
+      id: ",  ,",
+      path: "t1/s1",
+      name: "By Path",
+    });
+
+    expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
+    expect(capturedWarnings()).toStrictEqual(['id ",  ," names nothing']);
+  });
+
+  // On its own the empty id leaves nothing to act on, so the existing
+  // required-param warning follows the one naming the param that went nowhere.
+  it("should warn about an empty id given on its own", async () => {
+    expect(await updateClip({ id: ",  ," })).toStrictEqual([]);
+    expect(capturedWarnings()).toStrictEqual([
+      'id ",  ," names nothing',
+      "updateClip: id or path is required",
+    ]);
+  });
+
   // A permanent alias, not a migration: models reach for the plural on their
   // own, so it keeps working.
   it("still updates by the ids alias", async () => {

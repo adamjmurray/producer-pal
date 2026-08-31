@@ -174,15 +174,20 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
 }
 
 /**
- * Splits a param already confirmed to name something (e.g. via
- * {@link namedIdParam}/{@link namedPathParam}) into its comma-separated
- * entries, warning when every one comes out empty — that state reads exactly
- * like an omitted param unless something says otherwise.
- * @param raw - The param's value, already confirmed non-blank
+ * Splits a param read by {@link namedIdParam}/{@link namedPathParam} into its
+ * comma-separated entries, warning when every one comes out empty — that state
+ * reads exactly like an omitted param unless something says otherwise. An
+ * omitted param is nullish by then, and says nothing.
+ * @param raw - The param's value, or nullish when it was omitted
  * @param label - Param name, for the warning
- * @returns The trimmed, non-empty entries — empty only after warning
+ * @returns The trimmed, non-empty entries — empty only when omitted or warned
  */
-export function namedCommaSeparatedIds(raw: string, label: string): string[] {
+export function namedCommaSeparatedIds(
+  raw: string | null | undefined,
+  label: string,
+): string[] {
+  if (raw == null) return [];
+
   const entries = parseCommaSeparatedIds(raw);
 
   if (entries.length === 0) {

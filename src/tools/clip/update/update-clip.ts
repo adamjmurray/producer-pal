@@ -9,9 +9,9 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
+  namedCommaSeparatedIds,
   namedIdParam,
   namedPathParam,
-  parseCommaSeparatedIds,
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -288,8 +288,11 @@ function requestedClipIds({
   const namedIds = namedIdParam(id, ids, "ids");
   const namedPaths = namedPathParam(path, paths);
 
+  // An id that parses to nothing gets its own word even when path carries the
+  // call: the combined list is still non-empty, so nothing else would notice
+  // that the ids the caller asked for dropped out.
   return [
-    ...(namedIds == null ? [] : parseCommaSeparatedIds(namedIds)),
+    ...namedCommaSeparatedIds(namedIds, "id"),
     ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
   ];
 }
