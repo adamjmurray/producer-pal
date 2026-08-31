@@ -257,6 +257,42 @@ describe("resolveOrCreateDrumPadChain", () => {
     expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
   });
 
+  // No leading `c`: the walk starts at the device, and the outer pad's chain 0
+  // is implied.
+  it("creates the inner rack's pad chain without an explicit outer chain", () => {
+    const { inner, outer } = registerNestedDrumRack();
+
+    const chain = resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", [
+      "d0",
+      "pD1",
+    ]);
+
+    expect(chain?.id).toBe("inner-chain");
+    expect(inner.call).toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("refuses a nested pad with nothing between it and the outer pad", () => {
+    const { inner, outer } = registerNestedDrumRack();
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["pD1"]),
+    ).toBeNull();
+    expect(inner.call).not.toHaveBeenCalledWith("insert_chain");
+    expect(outer.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  // A pad with no chains reports the miss as a chain miss whatever follows it,
+  // so a device segment lands in the chain-index parser and has to be refused.
+  it("refuses a device segment where a chain index belongs", () => {
+    const rack = registerDrumRack([]);
+
+    expect(
+      resolveOrCreateDrumPadChain(LiveAPI.from(DEVICE_PATH), "C1", ["d0"]),
+    ).toBeNull();
+    expect(rack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
   it("resolves an inner pad chain that already exists", () => {
     const { inner } = registerNestedDrumRack();
 

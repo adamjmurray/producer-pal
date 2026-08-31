@@ -118,6 +118,16 @@ describe("updateTrack routing by name", () => {
     );
   });
 
+  it("says none rather than an empty list when nothing is available", () => {
+    registerMockObject("456", { path: livePath.track(1) });
+
+    updateTrack({ id: "456", outputRoutingType: "Nowhere" });
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining("available: none"),
+    );
+  });
+
   describe("deprecated *Id params", () => {
     it("still applies the routing", () => {
       updateTrack({

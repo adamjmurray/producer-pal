@@ -133,6 +133,16 @@ describe("handleQuantization", () => {
     );
   });
 
+  it("should name quantizePitch alone on an audio clip", () => {
+    mockClip.getProperty.mockReturnValue(0); // is_midi_clip = 0
+
+    handleQuantization(mockClip, { quantizePitch: "C3" });
+
+    expect(capturedWarnings()).toContain(
+      "quantizePitch ignored for audio clip (id 321): quantization is MIDI-only",
+    );
+  });
+
   it("should default to a 1/16 grid when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 

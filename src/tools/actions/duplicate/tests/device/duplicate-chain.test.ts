@@ -7,7 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 vi.mock(
   import("#src/tools/device/update/helpers/update-device-helpers.ts"),
@@ -317,5 +320,123 @@ describe("duplicate - chain", () => {
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).not.toContain(
       "macro mappings",
     );
+  });
+  it("warns that count is ignored, since only one copy is made", async () => {
+    setupRack();
+
+    await duplicate({ type: "chain", id: "chain-0", count: 2 });
+
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+      "count parameter ignored for chain duplication",
+    );
+  });
+
+  it("copies the chain's color", async () => {
+    const { created } = setupRack();
+
+    registerMockObject("chain-0", {
+      path: `${RACK} chains 0`,
+      type: "Chain",
+      properties: {
+        name: "Source",
+        mute: 0,
+        solo: 0,
+        color: 0xff0000,
+        devices: [],
+      },
+    });
+
+    await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(created.set).toHaveBeenCalledWith("color", 0xff0000);
+  });
+
+  it("copies into a rack nested under a drum pad", async () => {
+    setupRack();
+
+    const drumRack = registerMockObject("drum-rack", {
+      path: livePath.track(1).device(0),
+      type: "RackDevice",
+      properties: {
+        class_name: "DrumGroupDevice",
+        chains: children("drum-chain"),
+        return_chains: [],
+      },
+    });
+
+    registerMockObject("drum-chain", {
+      path: `${livePath.track(1).device(0)} chains 0`,
+      type: "DrumChain",
+      properties: { in_note: 36, devices: children("nested-rack") },
+    });
+
+    const nested = registerMockObject("nested-rack", {
+      path: `${livePath.track(1).device(0)} chains 0 devices 0`,
+      type: "RackDevice",
+      properties: {
+        class_name: "InstrumentGroupDevice",
+        return_chains: [],
+      },
+      methods: { insert_chain: () => ["id", "chain-new"] },
+    });
+
+    await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0/pC1/d0" });
+
+    expect(nested.call).toHaveBeenCalledWith("insert_chain");
+    expect(drumRack.call).not.toHaveBeenCalledWith("insert_chain");
+  });
+
+  it("warns when toPath names a chain rather than a rack", async () => {
+    setupRack();
+
+    await duplicate({ type: "chain", id: "chain-0", toPath: "t1/d0/c0" });
+
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+      "no destination rack at toPath",
+    );
+  });
+
+  it("warns when toPath names a device that is not there", async () => {
+    setupRack();
+    mockNonExistentObjects();
+
+    await duplicate({ type: "chain", id: "chain-0", toPath: "t9/d9" });
+
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+      "no destination rack at toPath",
+    );
+  });
+
+  // The chain still gets made; only its devices are left behind, so the copy
+  // has to say so rather than look like it worked.
+  it("warns when the new chain has no addressable path", async () => {
+    setupRack({ deviceIds: ["d-0"] });
+
+    // An empty path is what Live reports for an object that resolved to
+    // nothing, and it is the one thing pathField cannot spell.
+    registerMockObject("chain-new", {
+      path: "",
+      type: "Chain",
+      properties: { name: "", mute: 0, solo: 0, devices: [] },
+    });
+
+    await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
+      "no addressable path",
+    );
+  });
+
+  it("stops copying devices when the temp track runs out of them", async () => {
+    setupRack({ deviceIds: ["d-0", "d-1"] });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("d-0", { path: `${RACK} chains 0 devices 0` });
+    registerMockObject("d-1", { path: `${RACK} chains 0 devices 1` });
+    // Nothing registered at the temp track, so its first device is missing.
+    mockNonExistentObjects();
+
+    await duplicate({ type: "chain", id: "chain-0" });
+
+    expect(moveDeviceToPathMock).not.toHaveBeenCalled();
   });
 });

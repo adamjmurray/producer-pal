@@ -189,4 +189,25 @@ describe("split position coordinates", () => {
       expect.stringContaining("arrangementSplit cut nothing at 51|1"),
     );
   });
+
+  // Clip-relative positions get their own explanation, and several of them are
+  // "them", not "it".
+  it("names every clip-relative position that landed in no clip", () => {
+    const { mockClip, clips } = setupSplitTest(CLIP_AT_BAR_5);
+
+    // 8 beats into a 16-beat clip cuts; 100 and 200 are far past its end.
+    performSplitting(
+      [mockClip],
+      [8, 100, 200],
+      clips,
+      HOLDING_AREA,
+      LEGACY_SPLIT_MODE,
+    );
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "positions are relative to each clip's start, and no clip is long enough for them",
+      ),
+    );
+  });
 });

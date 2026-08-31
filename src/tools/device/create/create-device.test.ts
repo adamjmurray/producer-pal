@@ -303,6 +303,23 @@ describe("createDevice", () => {
         });
       });
 
+      it("counts the devices in the past-the-end warning in the plural", async () => {
+        const mockConsole = await import("#src/shared/max/v8-max-console.ts");
+
+        registerMockObject("track-0", {
+          path: livePath.track(0),
+          properties: { devices: children("device-a", "device-b") },
+          methods: { insert_device: () => ["id", "device123"] },
+        });
+        registerMockObject("device123", { path: livePath.track(0).device(2) });
+
+        createDevice({ path: "t0/d5", deviceName: "Compressor" });
+
+        expect(mockConsole.warn).toHaveBeenCalledWith(
+          expect.stringContaining("(2 devices)"),
+        );
+      });
+
       it("should create device on master track via path", () => {
         const masterTrack = registerMockObject("mt-0", {
           path: livePath.masterTrack(),

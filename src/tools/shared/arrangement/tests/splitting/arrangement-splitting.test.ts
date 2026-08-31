@@ -10,6 +10,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
+  LEGACY_SPLIT_MODE,
   performSplitting,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
@@ -311,6 +312,20 @@ describe("prepareSplitParams", () => {
     expect(warnings.has("split-no-valid-points")).toBe(true);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("No valid arrangementSplit points"),
+    );
+  });
+
+  // The deprecated `split` reads its points from each clip's own start, so the
+  // warning has to name that origin rather than the song's.
+  it("names the clip start when clip-relative points are all at or before it", () => {
+    const { mockClip, warnings } = setupPrepareTest();
+
+    prepareSplitParams("1|1", [mockClip], warnings, LEGACY_SPLIT_MODE);
+
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining(
+        "No valid split points (all at or before clip start)",
+      ),
     );
   });
 
