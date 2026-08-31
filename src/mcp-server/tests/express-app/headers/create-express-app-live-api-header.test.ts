@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { DISABLED_TOOLS_HEADER, LIVE_API_HEADER } from "#src/shared/config.ts";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
+import { TOOL_NAMES } from "../../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import { listToolNames } from "./mcp-header-test-helpers.ts";
 
@@ -71,6 +72,19 @@ describe("POST /mcp Direct Live API header against an enabled device", () => {
 
   it("leaves it in place for a request that sends no header", async () => {
     const names = await listToolNames(appState.serverUrl, {});
+
+    expect(names).toContain(LIVE_API_TOOL_ID);
+  });
+
+  it("grants the tool to an explicit opt-in even when a curated whitelist omits it", async () => {
+    // validateTools only checks tool names, not agreement with the flag, so a
+    // whitelist set after the flag turns on can still drop ppal-live-api by
+    // name. The per-request header must still win.
+    await appState.postConfig({ tools: TOOL_NAMES });
+
+    const names = await listToolNames(appState.serverUrl, {
+      [LIVE_API_HEADER]: "true",
+    });
 
     expect(names).toContain(LIVE_API_TOOL_ID);
   });

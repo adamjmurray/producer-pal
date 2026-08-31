@@ -18,6 +18,7 @@ import {
 } from "#src/shared/config.ts";
 import { NOTATION_HEADER } from "#src/shared/notation.ts";
 import { LIVE_API_TOOL_ID } from "#src/shared/tool-groups.ts";
+import { TOOL_NAMES } from "../../../create-mcp-server.ts";
 import { setupExpressAppServer } from "../../express-app-test-helpers.ts";
 import { lastMcpContext } from "#src/test/mocks/mock-max.ts";
 import { SKILLS_HEADER } from "./mcp-header-test-helpers.ts";
@@ -285,6 +286,18 @@ describe("REST API per-request small-model-mode header", () => {
       // Past the gate is the claim; whatever the tool then makes of these args
       // is its own business.
       expect(response.status).not.toBe(404);
+    });
+
+    it("grants the tool to an explicit opt-in even when a curated whitelist omits it, with the flag already on", async () => {
+      // validateTools only checks tool names, not agreement with the flag, so
+      // a whitelist set after the flag turns on can still drop ppal-live-api
+      // by name. The per-request header must still win.
+      await appState.postConfig({ liveApiEnabled: true });
+      await appState.postConfig({ tools: TOOL_NAMES });
+
+      const asked = await catalog({ [LIVE_API_HEADER]: "true" });
+
+      expect(asked.has(LIVE_API_TOOL_ID)).toBe(true);
     });
   });
 });

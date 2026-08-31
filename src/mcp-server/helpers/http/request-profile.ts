@@ -7,6 +7,7 @@ import { type Request } from "express";
 import {
   DISABLED_TOOLS_HEADER,
   FORMAT_HEADER,
+  isBooleanHeaderSet,
   LIVE_API_HEADER,
   SMALL_MODEL_MODE_HEADER,
   resolveCompactOutput,
@@ -62,18 +63,21 @@ export function resolveRequestProfile(
   req: Request,
   defaults: RequestProfileDefaults,
 ): RequestProfile {
+  const liveApiHeaderValue = req.get(LIVE_API_HEADER);
   const liveApiEnabled = resolveLiveApiEnabled(
-    req.get(LIVE_API_HEADER),
+    liveApiHeaderValue,
     defaults.liveApiEnabled,
   );
 
-  // Only touch the toolset when the header actually changed the flag. An
-  // explicit POST /config whitelist can omit ppal-live-api while the device
-  // flag stays on, and a request that didn't ask must not hand it back.
-  const baseTools =
-    liveApiEnabled === defaults.liveApiEnabled
-      ? defaults.tools
-      : withLiveApiTool(defaults.tools, liveApiEnabled);
+  // Only touch the toolset when the header explicitly set the flag — checking
+  // whether it CHANGED the resolved value can't tell "absent, defaulted to
+  // true" from "sent true, coinciding with an already-true default", and only
+  // the first is safe to leave alone. An explicit POST /config whitelist can
+  // omit ppal-live-api while the device flag stays on, and a request that
+  // didn't ask must not hand it back.
+  const baseTools = isBooleanHeaderSet(liveApiHeaderValue)
+    ? withLiveApiTool(defaults.tools, liveApiEnabled)
+    : defaults.tools;
 
   return {
     tools: resolveEnabledTools(req.get(DISABLED_TOOLS_HEADER), baseTools),

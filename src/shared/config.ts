@@ -160,10 +160,20 @@ function resolveBooleanHeader(
   headerValue: string | undefined,
   fallback: boolean,
 ): boolean {
-  if (headerValue === "true") return true;
-  if (headerValue === "false") return false;
+  return isBooleanHeaderSet(headerValue) ? headerValue === "true" : fallback;
+}
 
-  return fallback;
+/**
+ * Whether a header carries a recognized "true"/"false" value, as opposed to
+ * being absent or unparseable. Callers that only compare a resolved boolean
+ * against a default can't tell "absent, defaulted" from "explicit, and it
+ * happens to match the default" — this is for the ones that need to.
+ *
+ * @param headerValue - The request's header value, or undefined when absent
+ * @returns Whether the header explicitly set the flag
+ */
+export function isBooleanHeaderSet(headerValue: string | undefined): boolean {
+  return headerValue === "true" || headerValue === "false";
 }
 
 // --- Per-request tool subsetting (MCP transport) ---
