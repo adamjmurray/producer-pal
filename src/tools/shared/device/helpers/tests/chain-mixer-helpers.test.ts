@@ -407,13 +407,78 @@ describe("applyChainMixer", () => {
       it("lets the list win when it names the same return as the pair", () => {
         const [first] = registerChainWithSends();
 
-        applyChainMixer(chainApi(), {
+        const applied = applyChainMixer(chainApi(), {
           sendGainDb: -3,
           sendReturn: "a Delay",
           sends: [{ return: "a Delay", gainDb: -12 }],
         });
 
         expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
+        // Both writes succeeded, so both used to be reported — naming a level
+        // the send does not have, to a model that reads this back.
+        expect(applied.sendGainDb).toBeUndefined();
+        expect(applied.sendReturn).toBeUndefined();
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", gainDb: -12 },
+        ]);
+        expect(capturedWarnings().join()).toContain(
+          'sends overrides sendGainDb/sendReturn: "a Delay" ended up at -12 dB',
+        );
+      });
+
+      // A send holds one value, so the second write overwrites the first.
+      it("reports one entry per return when the list names one twice", () => {
+        const [first] = registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a Delay", gainDb: -12 },
+          ],
+        });
+
+        expect(first?.set).toHaveBeenLastCalledWith("display_value", -12);
+        expect(applied.sends).toStrictEqual([
+          { return: "a Delay", gainDb: -12 },
+        ]);
+        expect(capturedWarnings().join()).toContain(
+          'sends names one return more than once: "a Delay" ended up at -12 dB',
+        );
+      });
+
+      // Warning once per write would name the level each one lost to the next.
+      it("names the level that survived the whole call, not each write", () => {
+        registerChainWithSends();
+
+        applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a Delay", gainDb: -9 },
+            { return: "a Delay", gainDb: -12 },
+          ],
+        });
+
+        const warnings = capturedWarnings().join();
+
+        expect(warnings).toContain(
+          'sends names one return more than once: "a Delay" ended up at -12 dB',
+        );
+        expect(warnings).not.toContain("-6 dB");
+        expect(warnings).not.toContain("-9 dB");
+      });
+
+      // Two spellings of one return are still one send.
+      it("collapses two spellings of the same return", () => {
+        registerChainWithSends();
+
+        const applied = applyChainMixer(chainApi(), {
+          sends: [
+            { return: "a Delay", gainDb: -6 },
+            { return: "a", gainDb: -12 },
+          ],
+        });
+
+        expect(applied.sends).toStrictEqual([{ return: "a", gainDb: -12 }]);
       });
 
       it("writes nothing for an empty list", () => {
