@@ -67,3 +67,135 @@ describe("useVoicePersistence delete vs. switch", () => {
     spy.mockRestore();
   });
 });
+
+describe("useVoicePersistence bulk delete vs. switch", () => {
+  it("tears down the live session for whichever conversation is live when a bulk delete lands", async () => {
+    const bookmarked = await saveVoiceRecord({
+      voiceHistory: [userTextItem("keep")],
+      bookmarked: true,
+    });
+    const unbookmarked = await saveVoiceRecord({
+      voiceHistory: [userTextItem("sweep me")],
+    });
+
+    window.location.hash = bookmarked.id;
+
+    const onLiveRecordDeleted = vi.fn();
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBe(bookmarked.id);
+
+    const original = conversationDb.deleteUnbookmarkedConversations;
+    const [gate, release] = openGate();
+    const spy = vi
+      .spyOn(conversationDb, "deleteUnbookmarkedConversations")
+      .mockImplementationOnce(async () => {
+        await gate;
+
+        return await original();
+      });
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.switchConversation(unbookmarked.id);
+      release();
+      await sweeping;
+    });
+
+    // The sweep started while `bookmarked` (spared) was live, but the user
+    // switched to `unbookmarked` (swept) before it landed — the live session
+    // must go with whichever conversation is actually live at the end.
+    expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
+    expect(
+      await conversationDb.loadConversation(unbookmarked.id),
+    ).toBeUndefined();
+    expect(result.current.activeConversationId).toBeNull();
+    spy.mockRestore();
+  });
+});
+
+describe("useVoicePersistence bulk delete vs. bookmark", () => {
+  it("does not tear down or wipe a live record bookmarked mid-sweep", async () => {
+    // The sweep's pre-await mark blocks patchActiveMeta, so the bookmark this
+    // test toggles mid-flight lands in the DB but can't reach metaRef — the
+    // exact staleness a metaRef-derived decision would get wrong.
+    const live = await saveVoiceRecord({
+      voiceHistory: [userTextItem("keep me now")],
+    });
+
+    window.location.hash = live.id;
+
+    const onLiveRecordDeleted = vi.fn();
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBe(live.id);
+
+    const original = conversationDb.deleteUnbookmarkedConversations;
+    const [gate, release] = openGate();
+    const spy = vi
+      .spyOn(conversationDb, "deleteUnbookmarkedConversations")
+      .mockImplementationOnce(async () => {
+        await gate;
+
+        return await original();
+      });
+    let sweeping!: Promise<void>;
+
+    await act(async () => {
+      sweeping = result.current.deleteUnbookmarkedConversations();
+      await result.current.toggleBookmark(live.id);
+      release();
+      await sweeping;
+    });
+
+    expect(onLiveRecordDeleted).not.toHaveBeenCalled();
+    expect(result.current.activeConversationId).toBe(live.id);
+
+    const reloaded = await conversationDb.loadConversation(live.id);
+
+    expect(reloaded?.bookmarked).toBe(true);
+    spy.mockRestore();
+  });
+});
+
+describe("useVoicePersistence bulk delete vs. a failed survival check", () => {
+  it("leaves the live session alone and resolves the slot when the DB read fails", async () => {
+    const live = await saveVoiceRecord({
+      voiceHistory: [userTextItem("keep me")],
+    });
+
+    window.location.hash = live.id;
+
+    const onLiveRecordDeleted = vi.fn();
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBe(live.id);
+
+    // Only the sweep's own survival check should see this: it's the next
+    // (and only, in this flow) call to loadConversation after the mount load
+    // above has already resolved.
+    const spy = vi
+      .spyOn(conversationDb, "loadConversation")
+      .mockRejectedValueOnce(new Error("simulated DB failure"));
+
+    // Must resolve, not reject: the caller (a Settings button) is
+    // fire-and-forget with no .catch() anywhere above it.
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(onLiveRecordDeleted).not.toHaveBeenCalled();
+    // The slot must not be left stuck marked-deleted: it resolves back to the
+    // conversation that was live going in, on the assumption a failed check
+    // isn't proof it was swept.
+    expect(result.current.activeConversationId).toBe(live.id);
+    // `live` was genuinely unbookmarked, so the real (unmocked) delete did
+    // remove its row — only confirming that failed. The sidebar must still
+    // refresh to the DB's actual state despite it, not stay on the stale
+    // pre-sweep list.
+    expect(result.current.conversations).toStrictEqual([]);
+    spy.mockRestore();
+  });
+});
