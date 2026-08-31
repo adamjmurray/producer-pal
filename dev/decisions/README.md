@@ -78,7 +78,7 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0010](0010-user-content-overrides-layer.md)             | `~/.producer-pal` is a content-override layer, not a settings mirror  |
 | [0011](0011-dotted-triplet-note-value-suffixes.md)       | Dotted (`d`) / triplet (`t`) note-value suffixes; letters not `.`     |
 | [0012](0012-no-chord-symbols-in-bar-beat.md)             | No chord symbols in bar\|beat; they stay Stark-only                   |
-| [0013](0013-config-override-gate.md)                     | Config-override env vars are opt-in (gated), not opt-out              |
+| [0013](0013-config-override-gate.md)                     | Config-override env vars are opt-in (gated), not opt-out (superseded) |
 | [0014](0014-subagent-resume-from-transcript.md)          | A subagent resumes from its recorded transcript, not a live session   |
 | [0015](0015-project-context-param-rename.md)             | Rename the project-context device parameter in 2.1.0, while it's free |
 | [0016](0016-notation-head-gating-granularity.md)         | One fragment per notation is the tool-gating floor (superseded)       |
@@ -97,3 +97,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0030](0030-leaving-a-conversation-stops-the-turn.md)    | Leaving a conversation stops the turn, with a warning                 |
 | [0031](0031-list-params-broadcast-or-pair-exactly.md)    | A comma-separated param broadcasts one value or pairs exactly         |
 | [0032](0032-warnings-ride-inside-the-response-json.md)   | Warnings ride inside the response JSON, not as trailing Max atoms     |
+| [0033](0033-portal-settings-are-per-client.md)           | Portal settings are per-client, so the override gate is gone          |

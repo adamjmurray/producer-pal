@@ -121,34 +121,29 @@ Available now (7):
 Every setting flag has an environment-variable form, for clients whose MCP
 config is easier to write with `env` than with `args`.
 
-| Variable                        | Values                          | Effect                                                |
-| ------------------------------- | ------------------------------- | ----------------------------------------------------- |
-| `MCP_SERVER_ORIGIN`             | URL                             | Where the device is (default `http://localhost:3350`) |
-| `ALLOW_CONFIGURATION_OVERRIDES` | `true` / `false`                | Gate for every setting variable below                 |
-| `TOOLS`                         | tool/group names                | `--tools`                                             |
-| `DISABLE_TOOLS`                 | tool/group names                | `--disable-tools`                                     |
-| `NOTATION`                      | `barbeat`, `midi-json`, `stark` | `--notation`                                          |
-| `FORMAT`                        | `compact`, `json`               | `--format`                                            |
-| `JSON_OUTPUT`                   | `true` / `false`                | Boolean alias for `FORMAT`; `FORMAT` wins             |
-| `SMALL_MODEL_MODE`              | `true` / `false`                | `--small-model-mode`                                  |
-| `LIVE_API`                      | `true` / `false`                | `--live-api`                                          |
-| `ENABLE_LOGGING`                | `true` / `false`                | Write a bridge log file                               |
-| `VERBOSE_LOGGING`               | `true` / `false`                | Add debug detail to that log                          |
+| Variable            | Values                          | Effect                                                |
+| ------------------- | ------------------------------- | ----------------------------------------------------- |
+| `MCP_SERVER_ORIGIN` | URL                             | Where the device is (default `http://localhost:3350`) |
+| `TOOLS`             | tool/group names                | `--tools`                                             |
+| `DISABLE_TOOLS`     | tool/group names                | `--disable-tools`                                     |
+| `NOTATION`          | `barbeat`, `midi-json`, `stark` | `--notation`                                          |
+| `FORMAT`            | `compact`, `json`               | `--format`                                            |
+| `JSON_OUTPUT`       | `true` / `false`                | Boolean alias for `FORMAT`; `FORMAT` wins             |
+| `SMALL_MODEL_MODE`  | `true` / `false`                | `--small-model-mode`                                  |
+| `LIVE_API`          | `true` / `false`                | `--live-api`                                          |
+| `ENABLE_LOGGING`    | `true` / `false`                | Write a bridge log file                               |
+| `VERBOSE_LOGGING`   | `true` / `false`                | Add debug detail to that log                          |
 
-::: warning The override gate
+::: tip Settings are yours alone
 
-Every setting variable is ignored unless `ALLOW_CONFIGURATION_OVERRIDES` is
-`true`. `MCP_SERVER_ORIGIN` and the logging variables are not gated.
-
-The reason is that environment variables are ambient. A shell inherits them, and
-the [Claude Desktop extension](/installation/claude-desktop) always sets them,
-so an unset toggle would otherwise silently overwrite settings you chose on the
-device. CLI flags need no gate: passing one is already deliberate.
+Every setting rides along as a request header, so it applies to your bridge and
+nothing else. The device's own settings, the [chat UI](/guide/chat-ui), and any
+other connected client are untouched.
 
 Unlike the flags, the boolean variables are three-state.
-`SMALL_MODEL_MODE=false` actively turns the setting _off_ on the device, where
-the flag can only turn it on. Leave a variable unset (or blank) to leave the
-device alone.
+`SMALL_MODEL_MODE=false` actively turns the setting _off_ for this bridge, where
+the flag can only turn it on. Leave a variable unset (or blank) to follow the
+device's setting.
 
 :::
 

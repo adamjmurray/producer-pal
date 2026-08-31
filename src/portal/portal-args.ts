@@ -27,14 +27,9 @@ export interface PortalArgs {
 /**
  * Parse the portal's CLI flags and env vars into everything the bridge needs.
  *
- * Env vars are ambient — the Claude Desktop extension always sets them, and a
- * shell can inherit them — so they apply only when explicitly opted in via
- * ALLOW_CONFIGURATION_OVERRIDES="true"; otherwise the device / chat UI stay
- * authoritative. Explicit CLI flags are NOT gated: passing a flag is already an
- * intentional per-invocation opt-in. Opt-in (=== "true"), NOT opt-out
- * (!== "false") — see dev/decisions/0013-config-override-gate.md for why the
- * intuitive polarity is wrong (a stock extension would clobber the device's own
- * settings).
+ * Flags and env vars both apply directly: every setting rides as a per-request
+ * header, so it reaches only this client and can't disturb the device or any
+ * other client. See dev/decisions/0033-portal-settings-are-per-client.md.
  *
  * Invalid values are logged and ignored rather than fatal, so a portal cached by
  * npx still starts against a device it doesn't fully understand.
@@ -45,9 +40,6 @@ export interface PortalArgs {
  */
 export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
   const flags = new Set(argv);
-  const allowEnvOverrides = env.ALLOW_CONFIGURATION_OVERRIDES === "true";
-  const envValue = (name: string): string | undefined =>
-    allowEnvOverrides ? env[name] : undefined;
 
   // Strip trailing slashes from the origin so a value like
   // "http://localhost:3350/" doesn't produce "http://localhost:3350//mcp" (404).
@@ -57,17 +49,16 @@ export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
 
   const bridgeOptions: BridgeOptions = {};
 
-  // Small model mode: `-s` / `--small-model-mode` flag (ungated) or the
-  // SMALL_MODEL_MODE env var (gated). Tri-state — undefined leaves the device's
-  // own setting alone, while true/false are both pushed so the extension's
-  // toggle can force the setting on OR off.
+  // Small model mode: `-s` / `--small-model-mode` flag or the SMALL_MODEL_MODE
+  // env var. Tri-state — undefined leaves the device's own setting alone, while
+  // true/false are both sent so the extension's toggle can force it on OR off.
   const smallModelMode =
     flags.has("-s") || flags.has("--small-model-mode")
       ? true
-      : parseBoolEnv(envValue("SMALL_MODEL_MODE"));
+      : parseBoolEnv(env.SMALL_MODEL_MODE);
 
-  // Direct Live API opt-in: `-l` / `--live-api` flag (ungated) or LIVE_API env
-  // (gated). Enables the low-level `ppal-live-api` tool for THIS client only —
+  // Direct Live API opt-in: `-l` / `--live-api` flag or the LIVE_API env var.
+  // Enables the low-level `ppal-live-api` tool for THIS client only —
   // it rides as a request header, so an agent under evaluation on the same
   // device still doesn't see it. Advanced escape hatch for custom integrations,
   // scripting, and debugging directly against the Live Object Model; not
@@ -75,26 +66,22 @@ export function parsePortalArgs(argv: string[], env: Env): PortalArgs {
   const liveApiEnabled =
     flags.has("-l") || flags.has("--live-api")
       ? true
-      : parseBoolEnv(envValue("LIVE_API"));
+      : parseBoolEnv(env.LIVE_API);
 
   if (smallModelMode != null) bridgeOptions.smallModelMode = smallModelMode;
   if (liveApiEnabled != null) bridgeOptions.liveApiEnabled = liveApiEnabled;
 
-  const notation = resolveNotationArg(argv, envValue("NOTATION"));
+  const notation = resolveNotationArg(argv, env.NOTATION);
 
   if (notation != null) bridgeOptions.notation = notation;
 
-  const jsonOutput = resolveJsonOutputArg(
-    argv,
-    envValue("FORMAT"),
-    envValue("JSON_OUTPUT"),
-  );
+  const jsonOutput = resolveJsonOutputArg(argv, env.FORMAT, env.JSON_OUTPUT);
 
   if (jsonOutput != null) bridgeOptions.jsonOutput = jsonOutput;
 
   const disabledTools = resolveDisabledTools(
-    readOptionArg(argv, ["--tools"]) ?? envValue("TOOLS"),
-    readOptionArg(argv, ["--disable-tools"]) ?? envValue("DISABLE_TOOLS"),
+    readOptionArg(argv, ["--tools"]) ?? env.TOOLS,
+    readOptionArg(argv, ["--disable-tools"]) ?? env.DISABLE_TOOLS,
   );
 
   if (disabledTools != null) bridgeOptions.disabledTools = disabledTools;
@@ -156,7 +143,7 @@ function parseBoolEnv(value: string | undefined): boolean | undefined {
  * "no override".
  *
  * @param argv - CLI arguments
- * @param envNotation - The NOTATION env var, when overrides are allowed
+ * @param envNotation - The NOTATION env var, if set
  * @returns The notation, or undefined for no override
  */
 function resolveNotationArg(
@@ -186,8 +173,8 @@ function resolveNotationArg(
  * token-optimized literal.
  *
  * @param argv - CLI arguments
- * @param envFormat - The FORMAT env var, when overrides are allowed
- * @param envJsonOutput - The JSON_OUTPUT env var, when overrides are allowed
+ * @param envFormat - The FORMAT env var, if set
+ * @param envJsonOutput - The JSON_OUTPUT env var, if set
  * @returns True for JSON, false for compact, undefined for no override
  */
 function resolveJsonOutputArg(
