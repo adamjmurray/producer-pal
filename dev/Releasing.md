@@ -88,10 +88,11 @@ Desktop shows — but the bump script does not write it. It's generated from the
 template during the build, so it picks the version up on its own.
 
 Nothing reconciles any of this at runtime — whichever copy an artifact happens
-to read is what it claims to be — so `src/test/meta/version-agreement.test.ts`
-asserts they're identical, and `npm run tag` re-checks the config.ts one. That
-test's file lists are the authoritative inventory; this section deliberately
-doesn't restate a total, because a count in prose goes stale silently.
+to read is what it claims to be — so
+`src/test/meta/versions/version-agreement.test.ts` asserts they're identical,
+and `npm run tag` re-checks the config.ts one. That test's file lists are the
+authoritative inventory; this section deliberately doesn't restate a total,
+because a count in prose goes stale silently.
 
 ## Step 0: Checklist before releasing
 

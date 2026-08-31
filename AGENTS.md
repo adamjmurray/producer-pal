@@ -269,6 +269,11 @@ which returns the path the device actually landed at. A test that assumes `d1`
 passes for whoever wrote it and fails for everyone else. The same goes for any
 other per-machine Live preference a test might lean on.
 
+**Save test Live Sets from `MIN_LIVE_VERSION`**, not from whatever Live you have
+installed. Live can't open a Set saved by a newer version, so a Set authored
+above the minimum makes every test that opens it unrunnable on the oldest Live
+we support. `src/test/meta/versions/live-set-versions.test.ts` catches it.
+
 ## Protected Files (Require User Approval)
 
 These hold quality thresholds — **don't relax any of them without asking:**
