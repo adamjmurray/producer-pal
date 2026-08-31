@@ -200,3 +200,74 @@ describe("updateDevice - a name that matches more than one param", () => {
     expect(dryWet.set).toHaveBeenCalledWith("value", 80);
   });
 });
+
+describe("updateDevice - two rack macros renamed the same", () => {
+  let macro1: RegisteredMockObject;
+  let macro2: RegisteredMockObject;
+
+  beforeEach(() => {
+    registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { parameters: children("m1", "m2") },
+    });
+
+    // Live lets two macros carry the same name. Only the raw names collide —
+    // read-device names them apart by their original_name.
+    macro1 = registerMockObject("m1", {
+      properties: {
+        name: "Drive",
+        original_name: "Macro 1",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 127,
+      },
+      methods: { str_for_value: (v: unknown) => String(v) },
+    });
+
+    macro2 = registerMockObject("m2", {
+      properties: {
+        name: "Drive",
+        original_name: "Macro 2",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 127,
+      },
+      methods: { str_for_value: (v: unknown) => String(v) },
+    });
+  });
+
+  it("writes neither when addressed by the name they share", () => {
+    updateDevice({ id: "123", params: [{ name: "Drive", value: "42" }] });
+
+    expect(macro1.set).not.toHaveBeenCalled();
+    expect(macro2.set).not.toHaveBeenCalled();
+    expect(capturedWarnings()).toContain(
+      'updateDevice: param "Drive" names 2 params on this device — ' +
+        "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
+        "Write by id to pick one.",
+    );
+  });
+
+  it("writes the one named by the name read-device reports", () => {
+    updateDevice({
+      id: "123",
+      params: [{ name: "Drive (Macro 2)", value: "42" }],
+    });
+
+    expect(macro2.set).toHaveBeenCalledWith("value", 42);
+    expect(macro1.set).not.toHaveBeenCalled();
+  });
+
+  it("matches that name case-insensitively too", () => {
+    updateDevice({
+      id: "123",
+      params: [{ name: "drive (macro 1)", value: "42" }],
+    });
+
+    expect(macro1.set).toHaveBeenCalledWith("value", 42);
+    expect(macro2.set).not.toHaveBeenCalled();
+  });
+});

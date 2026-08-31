@@ -68,7 +68,9 @@ drops the entry rather than reporting a stale unit.
 that name matches both, so it warns with each param's id and writes neither —
 picking the first lands a value on a control the caller may not have meant and
 reports success. Corpus is the only stock device with a repeated name, but a
-rack with two macros renamed the same is easy to build.
+rack with two macros renamed the same is easy to build — there only the raw
+names collide, so the `name (original_name)` form read-device reports still
+picks one out.
 
 ## Checking a param for real
 
