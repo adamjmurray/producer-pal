@@ -15,6 +15,7 @@ import {
   resolvePathsToIds,
 } from "./helpers/delete-path-helpers.ts";
 import {
+  namedCommaSeparatedIds,
   namedIdParam,
   namedPathParam,
   parseCommaSeparatedIds,
@@ -96,8 +97,10 @@ export function deleteObject(
     );
   }
 
-  // Collect IDs from both sources
-  const objectIds = targets ? parseCommaSeparatedIds(targets) : [];
+  // Collect IDs from both sources. targets is already confirmed non-blank, so
+  // an id that parses to nothing (e.g. ",  ,") is worth a warning of its own
+  // rather than reading the same as an omitted id.
+  const objectIds = targets ? namedCommaSeparatedIds(targets, "id") : [];
 
   // Resolve paths to IDs for the types that can be addressed by location.
   // A path that names nothing is reported, not dropped: an empty result reads
@@ -109,7 +112,7 @@ export function deleteObject(
     const resolvedPaths =
       type === "clip"
         ? resolveClipPaths(path)
-        : resolvePathsToIds(parseCommaSeparatedIds(path), type);
+        : resolvePathsToIds(namedCommaSeparatedIds(path, "path"), type);
 
     objectIds.push(...resolvedPaths.ids);
     unresolvedPaths.push(...resolvedPaths.unresolved);

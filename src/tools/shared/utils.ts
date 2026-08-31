@@ -174,6 +174,25 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
 }
 
 /**
+ * Splits a param already confirmed to name something (e.g. via
+ * {@link namedIdParam}/{@link namedPathParam}) into its comma-separated
+ * entries, warning when every one comes out empty — that state reads exactly
+ * like an omitted param unless something says otherwise.
+ * @param raw - The param's value, already confirmed non-blank
+ * @param label - Param name, for the warning
+ * @returns The trimmed, non-empty entries — empty only after warning
+ */
+export function namedCommaSeparatedIds(raw: string, label: string): string[] {
+  const entries = parseCommaSeparatedIds(raw);
+
+  if (entries.length === 0) {
+    console.warn(`${label} "${raw}" names nothing`);
+  }
+
+  return entries;
+}
+
+/**
  * Parses a comma-separated string of indices into an array of integers
  * @param indices - Comma-separated string of indices (e.g., "0, 1, 2")
  * @returns Array of integer indices

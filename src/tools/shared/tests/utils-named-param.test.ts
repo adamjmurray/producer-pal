@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
+  namedCommaSeparatedIds,
   namedIdParam,
   namedParam,
   namedPathParam,
@@ -99,6 +100,25 @@ describe("namedPathParam", () => {
     expect(warn).toHaveBeenCalledWith(
       'paths "t9/s9" ignored — "path" names the target',
     );
+  });
+});
+
+describe("namedCommaSeparatedIds", () => {
+  it("splits a param with real entries, without a word", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds("t0, t1", "id")).toStrictEqual(["t0", "t1"]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // A param already confirmed non-blank can still parse to nothing once every
+  // entry trims away — that reads exactly like an omitted param unless this
+  // says otherwise.
+  it("warns when every entry is blank", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    expect(namedCommaSeparatedIds(",  ,", "id")).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith('id ",  ," names nothing');
   });
 });
 
