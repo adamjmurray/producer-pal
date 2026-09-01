@@ -22,11 +22,17 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     id: z.coerce
       .string()
       .optional()
-      .describe("provide this or trackType/trackIndex"),
+      .describe("provide this, path, or trackType/trackIndex"),
 
     trackId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
     }),
+    path: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "track path instead of id: 't0', 'rt0' for a return, 'mt' for the main track",
+      ),
     trackType: z
       .enum(["regular", "return", "master"])
       .optional()

@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
@@ -13,9 +12,12 @@ import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
-import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  resolveReadTrackTarget,
+  type ReadTrackArgs,
+} from "./helpers/read-track-target-helpers.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
@@ -39,22 +41,6 @@ import {
   readTakeLanes,
   type ReadTakeLaneResult,
 } from "./helpers/read-track-helpers.ts";
-
-interface ReadTrackArgs {
-  trackIndex?: number;
-  id?: string;
-  /** Hidden alias for id */
-  trackId?: string;
-  trackType?: string;
-  returnTrackNames?: string[];
-  include?: string[];
-  /**
-   * Session clips on this track, when the caller already knows. A Live Set read
-   * counts every clip slot for its scenes anyway, and counting again here
-   * would build the whole grid a second time.
-   */
-  sessionClipCount?: number;
-}
 
 interface ReadTrackGenericArgs {
   track: LiveAPI;
@@ -92,44 +78,14 @@ export function readTrack(
   args: ReadTrackArgs = {},
   context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
-  const { trackIndex, trackType, returnTrackNames } = args;
-  const trackId = namedIdParam(args.id, args.trackId, "trackId");
-  const category = trackType ?? "regular";
-
-  // Validate parameters
-  if (trackId == null && trackIndex == null && category !== "master") {
-    throw new Error("Either id or trackIndex must be provided");
-  }
-
-  let track: LiveAPI;
-  let resolvedTrackIndex: number | null | undefined = trackIndex;
-  let resolvedCategory = category;
-
-  if (trackId != null) {
-    // Use the id to access the track directly and validate it's a track
-    track = validateIdType(trackId, "track", "readTrack");
-    // Determine track category and index from the track's path
-    resolvedCategory = (track.category as string | undefined) ?? "regular";
-    resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
-  } else if (category === "regular") {
-    track = LiveAPI.from(livePath.track(trackIndex as number)); // validated above
-  } else if (category === "return") {
-    track = LiveAPI.from(livePath.returnTrack(trackIndex as number)); // validated above
-  } else if (category === "master") {
-    track = LiveAPI.from(livePath.masterTrack());
-  } else {
-    throw new Error(
-      `Invalid trackType: ${trackType}. Must be "regular", "return", or "master".`,
-    );
-  }
+  const { track, category, trackIndex } = resolveReadTrackTarget(args);
 
   return readTrackGeneric({
     track,
-    trackIndex:
-      resolvedCategory === "master" ? null : (resolvedTrackIndex ?? null),
-    category: resolvedCategory,
+    trackIndex: category === "master" ? null : trackIndex,
+    category,
     include: args.include,
-    returnTrackNames,
+    returnTrackNames: args.returnTrackNames,
     notation: context.notation,
     sessionClipCount: args.sessionClipCount,
   });

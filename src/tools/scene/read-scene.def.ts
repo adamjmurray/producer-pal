@@ -16,11 +16,18 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
     destructiveHint: false,
   },
   inputSchema: {
-    id: z.coerce.string().optional().describe("provide this or sceneIndex"),
+    id: z.coerce
+      .string()
+      .optional()
+      .describe("provide this, path, or sceneIndex"),
 
     sceneId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
     }),
+    path: z.coerce
+      .string()
+      .optional()
+      .describe("scene path instead of id (e.g., 's3')"),
     sceneIndex: z.coerce
       .number()
       .int()
