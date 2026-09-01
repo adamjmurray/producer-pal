@@ -129,7 +129,18 @@ still survives on a text param, where clearing a name is a real request.
 - **Rule 5 must throw actively, not just stop dropping.** `z.coerce.number()`
   turns `""` into `0`, so removing the drop alone would silently give bpm 0 —
   worse than today.
-- Before making rule 5 blanket, confirm no published enum has `""` among its
-  options.
+- **Rule 5 rests on a measurement, not on ADR-0029's parenthetical.** That ADR
+  says clients fill a param they have no value for with null "or a blank
+  string", and `src/test/meta/tool-schemas/empty-params.test.ts` pins `""` as
+  reading like an omitted param for every non-text param of every tool — so rule
+  5 inverts a pin covering the whole tool surface. Measured against codex-cli
+  Luna over 13 eval scenarios and 128 tool calls across 16 tools: nothing
+  arrived blank, null, or as the word `"null"`, and an all-optional tool with
+  nothing to say came through as `{}`. The blank-fill risk is real only for a
+  client that behaves differently, and it stays unmeasured for every client but
+  this one — `evals/schema-compat`'s `unset-optionals` variant asks the same of
+  the AI-SDK providers and has not been run.
+- No published enum has `""` among its options, so rule 5 has no exception to
+  carve out.
 - The `.def.ts` descriptions and the Skills need the trailing-comma and
   empty-entry rules stated, since both change what a caller can write.
