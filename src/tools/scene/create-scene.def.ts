@@ -40,8 +40,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per scene, in order (does not cycle)",
+      default: "#RRGGBB for all, or comma-separated one per scene, in order",
       smallModel: "#RRGGBB",
     }),
     tempo: param(z.coerce.number().optional(), {

@@ -52,8 +52,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: "name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per copy, in order (does not cycle)",
+      default: "#RRGGBB for all, or comma-separated one per copy, in order",
       smallModel: "#RRGGBB",
     }),
 

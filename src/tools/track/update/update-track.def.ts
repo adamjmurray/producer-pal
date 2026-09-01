@@ -32,12 +32,12 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     }),
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated for each (extras keep existing name), ideally unique",
+        "name for all, or comma-separated one per track, in order (blank entry = unchanged), ideally unique",
       smallModel: "name, ideally unique",
     }),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated one per track, in order (does not cycle)",
+        "#RRGGBB for all, or comma-separated one per track, in order (blank entry = unchanged)",
       smallModel: "#RRGGBB",
     }),
     gainDb: z.coerce

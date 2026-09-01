@@ -74,8 +74,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     }),
 
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per position, in order (does not cycle)",
+      default: "#RRGGBB for all, or comma-separated one per position, in order",
       smallModel: "#RRGGBB",
     }),
 
