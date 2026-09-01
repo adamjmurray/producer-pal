@@ -64,12 +64,15 @@ const CATCH_ALL_PAD = "*";
 // What results said before 2.2.0: a bare track index, or trackIndex/sceneIndex.
 // Honored with a warning rather than refused — a model pasting back what a
 // result told it made a well-founded guess, not a typo.
+// A Map, not an object: a plain object answers "constructor" and "toString"
+// from its prototype, and returning one of those as a parsed root loses the
+// caller's input from every error message downstream.
 /** The "+" roots, keyed by their spelling. */
-const NEW_OBJECT_ROOTS: Record<string, NewObjectSegment | undefined> = {
-  [NEW_TRACK]: { kind: "new-track" },
-  [NEW_RETURN_TRACK]: { kind: "new-return-track" },
-  [NEW_SCENE]: { kind: "new-scene" },
-};
+const NEW_OBJECT_ROOTS = new Map<string, NewObjectSegment>([
+  [NEW_TRACK, { kind: "new-track" }],
+  [NEW_RETURN_TRACK, { kind: "new-return-track" }],
+  [NEW_SCENE, { kind: "new-scene" }],
+]);
 
 /** What each "+" root names, for messages. */
 export const NEW_OBJECT_NOUNS: Record<NewObjectSegment["kind"], string> = {
@@ -181,7 +184,7 @@ export function formatObjectPath(path: ObjectPath): string {
  * @returns True for "t+", "rt+" and "s+"
  */
 export function isNewObjectPath(path: ObjectPath): path is NewObjectSegment {
-  return path.kind in NEW_OBJECT_NOUNS;
+  return Object.hasOwn(NEW_OBJECT_NOUNS, path.kind);
 }
 
 /**
@@ -243,9 +246,9 @@ function parseRoot(
 ): Extract<ObjectPath, TrackSegment | NewObjectSegment | { kind: "scene" }> {
   if (segment === "mt") return { kind: "master-track" };
 
-  const created = NEW_OBJECT_ROOTS[segment];
+  const created = NEW_OBJECT_ROOTS.get(segment);
 
-  if (created) return created;
+  if (created != null) return created;
 
   const returnTrack = RETURN_TRACK_ROOT.exec(segment);
 

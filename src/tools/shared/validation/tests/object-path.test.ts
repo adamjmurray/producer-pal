@@ -172,6 +172,18 @@ describe("parseObjectPath", () => {
     expect(() => parseObjectPath("track0")).toThrow(/"track0" is not a track/);
   });
 
+  it("rejects a root named after an Object prototype member", () => {
+    // The "+" roots used to sit in a plain object, so looking one up answered
+    // "constructor" and "toString" from the prototype. The bogus value came
+    // back as if it were a parsed root, and the caller's input vanished from
+    // the error every consumer went on to throw.
+    for (const segment of ["constructor", "toString", "hasOwnProperty"]) {
+      expect(() => parseObjectPath(segment)).toThrow(
+        new RegExp(`"${segment}" is not a track or scene`),
+      );
+    }
+  });
+
   it("rejects a scene segment anywhere a slot can't be", () => {
     for (const path of ["rt0/s1", "mt/s1", "t0/d0/s1", "t0/s1/d0"]) {
       expect(() => parseObjectPath(path)).toThrow(
