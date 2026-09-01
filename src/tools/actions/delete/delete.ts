@@ -10,7 +10,7 @@ import {
   sceneIdPerPath,
   trackIdPerPath,
 } from "#src/tools/shared/validation/path-target-lookup.ts";
-import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { deleteTrackObject } from "./helpers/delete-track-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
@@ -301,53 +301,6 @@ function confirmDeleted(type: string, id: string): boolean {
 }
 
 /**
- * Deletes a track by its index
- * @param id - The object ID
- * @param object - The object to delete
- * @returns true if the track is gone, false if skipped or Live refused
- */
-function deleteTrackObject(id: string, object: LiveAPI): boolean {
-  // Check for return track first
-  const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
-
-  if (returnMatch) {
-    const returnTrackIndex = Number(returnMatch[1]);
-    const liveSet = LiveAPI.from(livePath.liveSet);
-
-    liveSet.call("delete_return_track", returnTrackIndex);
-
-    return confirmDeleted("track", id);
-  }
-
-  // Regular track
-  const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
-
-  if (Number.isNaN(trackIndex)) {
-    console.warn(
-      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
-    );
-
-    return false;
-  }
-
-  const hostTrackIndex = getHostTrackIndex();
-
-  if (trackIndex === hostTrackIndex) {
-    console.warn(
-      "delete: cannot delete track hosting the Producer Pal device, skipping",
-    );
-
-    return false;
-  }
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
-
-  liveSet.call("delete_track", trackIndex);
-
-  return confirmDeleted("track", id);
-}
-
-/**
  * Deletes a scene by its index
  * @param id - The object ID
  * @param object - The object to delete
@@ -583,7 +536,7 @@ function deleteObjectByType(
     return false;
   }
 
-  if (type === "track") return deleteTrackObject(id, object);
+  if (type === "track") return deleteTrackObject(id, object, confirmDeleted);
   if (type === "scene") return deleteSceneObject(id, object);
   if (type === "clip") return deleteClipObject(id, object, tracks);
   if (type === "device") return deleteDeviceObject(id, object);
