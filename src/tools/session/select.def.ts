@@ -58,23 +58,17 @@ export const toolDefSelect = defineTool("ppal-select", {
       independent: true,
     }),
 
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based track index"),
-    trackType: z
-      .enum(["regular", "return", "master"])
-      .optional()
-      .describe("regular (default, audio/midi), return, or master"),
+    trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
+    trackType: deprecatedParam(
+      z.enum(["regular", "return", "master"]).optional(),
+      { replacedBy: "path" },
+    ),
 
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based scene index"),
+    sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
 
     path: z.coerce
       .string()
