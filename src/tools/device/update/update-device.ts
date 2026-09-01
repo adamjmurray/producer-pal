@@ -51,6 +51,7 @@ import {
   isValidUpdateType,
 } from "./helpers/update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
+import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -213,8 +214,8 @@ function updateMultipleTargets(
   resolveItem: (item: string) => ResolvedTarget | null,
   itemType: string,
   updateOptions: UpdateTargetOptions,
-  parsedNames: string[] | null,
-  parsedColors: string[] | null,
+  parsedNames: ListEntries | null,
+  parsedColors: ListEntries | null,
 ): Record<string, unknown> | Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
 

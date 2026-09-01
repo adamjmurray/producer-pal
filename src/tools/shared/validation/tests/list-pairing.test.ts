@@ -51,6 +51,16 @@ describe("list-pairing", () => {
       expect(splitList("A,B", 5)).toStrictEqual(["A", "B"]);
       expect(splitList("A,B,C", 2)).toStrictEqual(["A", "B", "C"]);
     });
+
+    it("does not count a trailing comma as an entry", () => {
+      expect(splitList("A,B,", 3)).toStrictEqual(["A", "B"]);
+      expect(splitList("A,B, ", 2)).toStrictEqual(["A", "B"]);
+    });
+
+    it("reads an empty entry as no value for that item", () => {
+      expect(splitList("A,,C", 3)).toStrictEqual(["A", undefined, "C"]);
+      expect(splitList(",B", 2)).toStrictEqual([undefined, "B"]);
+    });
   });
 
   describe("valueForIndex", () => {

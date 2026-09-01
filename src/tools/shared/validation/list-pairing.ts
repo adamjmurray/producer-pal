@@ -29,6 +29,9 @@ export interface PairLabels {
   shortfall: string;
 }
 
+/** The entries of a value list; undefined where the caller left one empty. */
+export type ListEntries = Array<string | undefined>;
+
 /**
  * Split a comma-separated param into one entry per item.
  *
@@ -42,12 +45,21 @@ export interface PairLabels {
 export function splitList(
   value: string | undefined,
   count: number,
-): string[] | null {
+): ListEntries | null {
   if (count <= 1 || !value?.includes(",")) {
     return null;
   }
 
-  return value.split(",").map((v) => v.trim());
+  const entries = value.split(",").map((v) => v.trim());
+
+  // One trailing comma isn't an entry, the way most languages read a list
+  // literal. Without this, "A,B," over three items clears the third name.
+  if (entries.at(-1) === "") entries.pop();
+
+  // An empty entry means "no value for this one", so the item keeps what it
+  // had — the same as running off the end of a short list. Never a way to
+  // clear a value: `name: ""` alone does that for the whole call.
+  return entries.map((entry) => (entry === "" ? undefined : entry));
 }
 
 /**
@@ -61,7 +73,7 @@ export function splitList(
 export function valueForIndex(
   value: string | undefined,
   index: number,
-  parsed: string[] | null,
+  parsed: ListEntries | null,
 ): string | undefined {
   if (value == null) return undefined;
 

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type ListEntries,
   splitList,
   valueForIndex,
   warnPairingMismatch,
@@ -23,7 +24,7 @@ export function parseColors(
   value: string | undefined,
   count: number,
   item: string,
-): string[] | null {
+): ListEntries | null {
   const parsed = splitList(value, count);
 
   warnPairingMismatch(parsed?.length ?? 0, count, {
@@ -46,7 +47,7 @@ export function parseColors(
 export function getColorForIndex(
   color: string | undefined,
   index: number,
-  parsedColors: string[] | null,
+  parsedColors: ListEntries | null,
 ): string | undefined {
   return valueForIndex(color, index, parsedColors);
 }

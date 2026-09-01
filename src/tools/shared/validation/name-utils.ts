@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type ListEntries,
   splitList,
   valueForIndex,
   warnPairingMismatch,
@@ -23,7 +24,7 @@ export function parseNames(
   value: string | undefined,
   count: number,
   item: string,
-): string[] | null {
+): ListEntries | null {
   const parsed = splitList(value, count);
 
   warnPairingMismatch(parsed?.length ?? 0, count, {
@@ -46,7 +47,7 @@ export function parseNames(
 export function getNameForIndex(
   value: string | undefined,
   index: number,
-  parsed: string[] | null,
+  parsed: ListEntries | null,
 ): string | undefined {
   return valueForIndex(value, index, parsed);
 }

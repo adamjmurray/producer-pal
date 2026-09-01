@@ -167,6 +167,29 @@ describe("updateTrack", () => {
     );
   });
 
+  // A trailing comma is the commonest typo in a hand-written list. Counting it
+  // as an entry made it an empty name, which Live accepts, so track 3 lost its
+  // name without a word.
+  it("does not clear a name for a trailing comma", () => {
+    updateTrack({ id: "123,456,789", name: "A,B," });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "A");
+    expect(track456.set).toHaveBeenCalledWith("name", "B");
+    expect(track789.set).not.toHaveBeenCalledWith("name", expect.anything());
+    expect(capturedWarnings()).toContain(
+      "name: 2 names for 3 tracks; the tracks past the last name were not renamed",
+    );
+  });
+
+  it("leaves a track alone for an empty name entry", () => {
+    updateTrack({ id: "123,456,789", name: "A,,C" });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "A");
+    expect(track456.set).not.toHaveBeenCalledWith("name", expect.anything());
+    expect(track789.set).toHaveBeenCalledWith("name", "C");
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
   it("should return single object for single ID and array for comma-separated IDs", () => {
     const singleResult = updateTrack({ id: "123", name: "Single" });
     const arrayResult = updateTrack({ id: "123, 456", name: "Multiple" });

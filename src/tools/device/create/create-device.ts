@@ -28,6 +28,7 @@ import {
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;
@@ -127,7 +128,7 @@ function createDevicesAtPaths(
   deviceName: string,
   paths: string[],
   baseName: string | undefined,
-  parsedNames: string[] | null,
+  parsedNames: ListEntries | null,
   params: ParamEntry[] | undefined,
 ): CreateDeviceResult[] {
   const results: CreateDeviceResult[] = [];

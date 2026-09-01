@@ -15,6 +15,7 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
 
 /** The names and colors a call hands out, and where the current source is. */
 export interface CopyLabels {
@@ -24,8 +25,8 @@ export interface CopyLabels {
   sources: number;
   /** Copies the whole call asks for, once a source has reported its share. */
   total: number | null;
-  names: string[] | null;
-  colors: string[] | null;
+  names: ListEntries | null;
+  colors: ListEntries | null;
   /** Where the current source's copies start in the call's copy list. */
   offset: number;
 }

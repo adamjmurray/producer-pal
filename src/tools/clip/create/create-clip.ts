@@ -27,6 +27,7 @@ import {
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
+import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
 
 export interface CreateClipArgs {
   /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
@@ -304,7 +305,7 @@ function parseMultiClipParams(
   name: string | null,
   color: string | null,
   totalPositionCount: number,
-): { parsedNames: string[] | null; parsedColors: string[] | null } {
+): { parsedNames: ListEntries | null; parsedColors: ListEntries | null } {
   const parsedNames = parseNames(name ?? undefined, totalPositionCount, "clip");
   const parsedColors = parseColors(
     color ?? undefined,

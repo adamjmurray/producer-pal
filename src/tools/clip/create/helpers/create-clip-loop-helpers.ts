@@ -36,14 +36,15 @@ import {
   resolveClipTransform,
 } from "./create-clip-transform-helpers.ts";
 import { calculateClipLength } from "./create-clip-validation-helpers.ts";
+import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
 
 export interface CreateClipsParams {
   view: string;
   clipSlots: ClipSlotPosition[];
   arrangementPositions: ArrangementPosition[];
   baseName: string | null;
-  parsedNames: string[] | null;
-  parsedColors: string[] | null;
+  parsedNames: ListEntries | null;
+  parsedColors: ListEntries | null;
   nameStartIndex: number;
   initialClipLength: number;
   liveSet: LiveAPI;
