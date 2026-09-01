@@ -34,20 +34,22 @@ describe("createClip location params through the tool schema", () => {
     {},
   ).validating;
 
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])(
-    "refuses a %s trackIndex/sceneIndex instead of filling t0/s0",
-    async (_l, v) => {
-      const raw = { trackIndex: v, sceneIndex: v };
-      const args = z.object(params).parse(unsetEmptyParams(raw, params));
+  it("refuses a null trackIndex/sceneIndex instead of filling t0/s0", async () => {
+    const raw = { trackIndex: null, sceneIndex: null };
+    const args = z.object(params).parse(unsetEmptyParams(raw, params));
 
-      expect(args.trackIndex).toBeUndefined();
-      expect(args.sceneIndex).toBeUndefined();
-      await expect(createClip(args)).rejects.toThrow("path is required");
-    },
-  );
+    expect(args.trackIndex).toBeUndefined();
+    expect(args.sceneIndex).toBeUndefined();
+    await expect(createClip(args)).rejects.toThrow("path is required");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank trackIndex outright", () => {
+    expect(() =>
+      unsetEmptyParams({ trackIndex: "", sceneIndex: "" }, params),
+    ).toThrow("trackIndex: a blank string is not a value for this param.");
+  });
 });
 
 describe("createClip path param", () => {

@@ -254,10 +254,7 @@ describe("select path param", () => {
   // A caller that sends every param, filling the ones it has no value for with
   // null, must not be read as having named a second, conflicting target. This
   // goes through the schema the tool registers, not straight to the handler.
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])("ignores a %s trackIndex/sceneIndex beside a path", (_label, empty) => {
+  it("ignores a null trackIndex/sceneIndex beside a path", () => {
     registerMockObject("track_5", { path: livePath.track(5), type: "Track" });
 
     const songView = setupSongViewMock();
@@ -265,11 +262,24 @@ describe("select path param", () => {
       toolDefSelect.toolOptions.inputSchema,
       {},
     ).validating;
-    const raw = { path: "t5", trackIndex: empty, sceneIndex: empty };
+    const raw = { path: "t5", trackIndex: null, sceneIndex: null };
 
     select(z.object(params).parse(unsetEmptyParams(raw, params)));
 
     expect(songView.set).toHaveBeenCalledWith("selected_track", "id track_5");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank trackIndex beside a path", () => {
+    const params = resolveToolSchema(
+      toolDefSelect.toolOptions.inputSchema,
+      {},
+    ).validating;
+
+    expect(() =>
+      unsetEmptyParams({ path: "t5", trackIndex: "", sceneIndex: "" }, params),
+    ).toThrow("trackIndex: a blank string is not a value for this param.");
   });
 
   it("refuses a path that disagrees with the param it duplicates", () => {

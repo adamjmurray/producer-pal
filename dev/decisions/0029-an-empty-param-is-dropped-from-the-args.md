@@ -6,8 +6,13 @@
 ## Context
 
 Clients fill the params they have no value for with `null` (or a blank string)
-rather than leaving them out. Our schemas turn that into a value the caller
-never sent:
+rather than leaving them out.
+
+> Amended by [ADR-0035](0035-malformed-calls-are-refused-up-front.md) rule 5:
+> only the `null` half is dropped. A blank on a param with no empty value of its
+> own is refused. The blank-fill this ADR assumed was measured and not found —
+> see that ADR's consequences. Our schemas turn that into a value the caller
+> never sent:
 
 - `z.coerce.number()` runs `Number()`, and `Number(null)` is `0` — a real index.
   A tool checking `x == null` to decide whether it was given a location then

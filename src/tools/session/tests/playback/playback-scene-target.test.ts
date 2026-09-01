@@ -144,20 +144,33 @@ describe("playback play-scene target agreement", () => {
   // A caller that sends every param, filling the ones it has no value for with
   // null, must not be read as having named a second, conflicting scene. This
   // goes through the schema the tool registers, not straight to the handler.
-  it.each([
-    ["null", null],
-    ["blank", ""],
-  ])("ignores a %s sceneIndex beside a path", (_label, empty) => {
+  it("ignores a null sceneIndex beside a path", () => {
     const scene = mockScene(3);
     const params = resolveToolSchema(
       toolDefPlayback.toolOptions.inputSchema,
       {},
     ).validating;
-    const raw = { action: "play-scene", path: "s3", sceneIndex: empty };
+    const raw = { action: "play-scene", path: "s3", sceneIndex: null };
 
     playback(z.object(params).parse(unsetEmptyParams(raw, params)));
 
     expect(scene.call).toHaveBeenCalledWith("fire");
+  });
+
+  // A blank is refused where the null is dropped: a number has no empty value,
+  // so a caller sending one meant something and the call can't guess what.
+  it("refuses a blank sceneIndex beside a path", () => {
+    const params = resolveToolSchema(
+      toolDefPlayback.toolOptions.inputSchema,
+      {},
+    ).validating;
+
+    expect(() =>
+      unsetEmptyParams(
+        { action: "play-scene", path: "s3", sceneIndex: "" },
+        params,
+      ),
+    ).toThrow("sceneIndex: a blank string is not a value for this param.");
   });
 
   it("fires the scene when path and an id agree", () => {

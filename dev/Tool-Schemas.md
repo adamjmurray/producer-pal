@@ -114,15 +114,22 @@ comma-separated `sceneIndex`) and `z.coerce.number()` for numeric ones
 strings or numbers interchangeably, and the MCP SDK validates before our handler
 runs, so the coercion has to be at the schema level.
 
-## Params sent as null
+## Params sent as null, or blank
 
 Write an optional param the plain way — nothing to remember. Clients fill the
 params they have no value for with `null`, and `unsetEmptyParams()` drops those
 args before validation on every call path, so a null reads as a param never
 sent. Without it `Number(null)` is 0, `z.coerce.string()` gives `"null"`, and a
-boolean or enum rejects the whole call. A blank string survives on a text param,
-where clearing a name or a clip's notes is a real request. See ADR-0029; the
-line is held by `src/test/meta/tool-schemas/empty-params.test.ts`.
+boolean or enum rejects the whole call. See ADR-0029.
+
+A blank string is not the same thing. It survives on a text param, where
+clearing a name or a clip's notes is a real request; on a param with no empty
+value of its own — a number, boolean, enum or array — it is **refused**, naming
+the param. Dropping it is what let `bpm: ""` become a call that set no tempo and
+said nothing. See ADR-0035 rule 5.
+
+Both halves are held for the whole tool surface by
+`src/test/meta/tool-schemas/empty-params.test.ts`.
 
 A param nested below the args isn't reached — wrap that shape in
 `optionalParams()`, as `library-query-schema.ts` does.

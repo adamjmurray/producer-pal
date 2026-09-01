@@ -34,13 +34,19 @@ describe("unsetEmptyParams", () => {
     ).toStrictEqual({});
   });
 
-  it("drops a blank everywhere it is not a value", () => {
-    expect(
-      unsetEmptyParams(
-        { trackIndex: "", count: "   ", solo: "", sort: "" },
-        schema,
-      ),
-    ).toStrictEqual({});
+  // A number, boolean or enum has no empty value, so a blank one is a mistake
+  // whichever way you read it — and dropping it silently is how `count: ""`
+  // became a call that quietly did one of something.
+  it.each([
+    ["a number", { trackIndex: "" }, "trackIndex"],
+    ["a defaulted number", { count: "   " }, "count"],
+    ["a boolean", { solo: "" }, "solo"],
+    ["an enum", { sort: "" }, "sort"],
+  ])("refuses a blank on %s", (_label, args, param) => {
+    expect(() => unsetEmptyParams(args, schema)).toThrow(
+      `${param}: a blank string is not a value for this param. ` +
+        "Leave it out instead.",
+    );
   });
 
   it("keeps a blank on a text param, where clearing is a real request", () => {
@@ -88,12 +94,18 @@ describe("optionalParams", () => {
     }),
   );
 
-  it("reads a nested param's empty value as unset", () => {
-    expect(nested.parse({ kind: null, query: null, limit: "" })).toStrictEqual({
-      kind: "audio",
-      query: undefined,
-      limit: undefined,
-    });
+  it("reads a nested param's null as unset", () => {
+    expect(
+      nested.parse({ kind: null, query: null, limit: null }),
+    ).toStrictEqual({ kind: "audio", query: undefined, limit: undefined });
+  });
+
+  // A nested param reads a blank the same way the args-level pass does — the
+  // shape is a level down from the args, not a different rule.
+  it("refuses a blank on a nested param that has no blank value", () => {
+    expect(() => nested.parse({ limit: "" })).toThrow(
+      "limit: a blank string is not a value for this param.",
+    );
   });
 
   it("leaves the published JSON Schema alone", () => {
