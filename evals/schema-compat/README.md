@@ -14,6 +14,12 @@ and stops. For each (model × variant) it records whether the provider:
 - **filled** it in a structurally correct shape, scored by a per-variant
   `check()` in [`schema-compat-variants.ts`](./schema-compat-variants.ts).
 
+A second, narrower question was added later: **does a model fill an optional
+param it has no value for with `""` or `null`, or leave it out?** ADR-0029
+assumes it fills; ADR-0035's rule 5 would make the blank an error. The
+`unset-optionals` variant measures it, and is not in the snapshot below — run it
+for an answer.
+
 ## Running it
 
 ```bash
