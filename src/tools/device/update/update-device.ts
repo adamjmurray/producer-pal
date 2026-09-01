@@ -51,8 +51,8 @@ import {
   isValidUpdateType,
 } from "./helpers/update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
-import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;

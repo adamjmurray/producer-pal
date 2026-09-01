@@ -36,7 +36,7 @@ import {
   resolveClipTransform,
 } from "./create-clip-transform-helpers.ts";
 import { calculateClipLength } from "./create-clip-validation-helpers.ts";
-import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 export interface CreateClipsParams {
   view: string;

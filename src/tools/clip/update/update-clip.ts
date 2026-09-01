@@ -31,11 +31,11 @@ import {
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
   targetIds,
-} from "#src/tools/shared/validation/target-lists.ts";
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   id?: string;

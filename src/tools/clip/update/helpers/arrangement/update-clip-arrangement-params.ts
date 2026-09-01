@@ -13,7 +13,7 @@ import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
 import {
   pairValues,
   type PairLabels,
-} from "#src/tools/shared/validation/list-pairing.ts";
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /** One arrangement time per clip, in beats. */
 export interface ArrangementBeats {

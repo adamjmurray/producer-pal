@@ -11,7 +11,7 @@ import {
   splitList,
   valueForIndex,
   warnPairingMismatch,
-} from "../list-pairing.ts";
+} from "../lists/list-pairing.ts";
 
 vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
   warn: vi.fn(),

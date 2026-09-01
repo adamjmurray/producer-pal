@@ -12,7 +12,7 @@
 // quietly landing clips somewhere else.
 
 import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
-import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
+import { pairValues } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   isTakeLaneRequested,
