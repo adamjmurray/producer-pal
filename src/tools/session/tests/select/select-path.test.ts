@@ -166,6 +166,16 @@ describe("select path param", () => {
     );
   });
 
+  // The "+" roots name a place to create something, which select never does.
+  it("refuses a path that names something to create", () => {
+    expect(() => select({ path: "t+" })).toThrow(
+      'invalid path "t+" - a new track does not exist yet; select names something that does',
+    );
+    expect(() => select({ path: "s+" })).toThrow(
+      'invalid path "s+" - a new scene does not exist yet; select names something that does',
+    );
+  });
+
   it("refuses a scene that doesn't exist, path or param", () => {
     mockNonExistentObjects();
     const songView = setupSongViewMock();

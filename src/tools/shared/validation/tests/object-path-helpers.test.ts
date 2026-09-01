@@ -121,6 +121,17 @@ describe("requireClipPath", () => {
     }
   });
 
+  // A "+" root parses fine but names a place, not a thing, so a clip caller
+  // has to be told that rather than falling into the return/main-track answer.
+  it("rejects a path that names something to create", () => {
+    expect(() => requireClipPath(parseObjectPath("t+"))).toThrow(
+      /a new track holds no clips/,
+    );
+    expect(() => requireClipPath(parseObjectPath("s+"))).toThrow(
+      /a new scene holds no clips/,
+    );
+  });
+
   it("passes take lanes through, which are arrangement destinations", () => {
     expect(requireClipPath(parseObjectPath("t0/l1"))).toStrictEqual({
       kind: "take-lane",
@@ -236,6 +247,12 @@ describe("requireDevicePath", () => {
 
   // The bug this grammar's one parser fixes: rt0 used to fall through to the
   // device parser, which answered with a message about device indices.
+  it("rejects a path that names something to create", () => {
+    expect(() => requireDevicePath(parseObjectPath("rt+"))).toThrow(
+      /a new return track holds no devices/,
+    );
+  });
+
   it("rejects a bare track, naming the track the caller wrote", () => {
     expect(() => requireDevicePath(parseObjectPath("t0"))).toThrow(
       'invalid path "t0" - a track is not a device; add a device index (e.g. "t0/d0")',

@@ -61,6 +61,21 @@ describe("parseObjectPath", () => {
     });
   });
 
+  it("reads the roots that name something to create", () => {
+    expect(parseObjectPath("t+")).toStrictEqual({ kind: "new-track" });
+    expect(parseObjectPath("rt+")).toStrictEqual({ kind: "new-return-track" });
+    expect(parseObjectPath("s+")).toStrictEqual({ kind: "new-scene" });
+  });
+
+  it("refuses a tail under a root that names something to create", () => {
+    expect(() => parseObjectPath("t+/s0")).toThrow(
+      'invalid path "t+/s0" - a new track has no parts yet',
+    );
+    expect(() => parseObjectPath("rt+/d0")).toThrow(
+      'invalid path "rt+/d0" - a new return track has no parts yet',
+    );
+  });
+
   it("reads multi-digit indices, not just the first digit", () => {
     expect(parseObjectPath("t12/s34")).toStrictEqual({
       kind: "slot",
@@ -326,6 +341,9 @@ describe("formatObjectPath", () => {
       "t7/s2",
       "t0/l0",
       "t2/l+",
+      "t+",
+      "rt+",
+      "s+",
       "t1/d0",
       "mt/d0/c1/d2",
       "rt0/d0/rc1",

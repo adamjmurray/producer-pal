@@ -20,6 +20,8 @@ import {
 } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
+  isNewObjectPath,
+  NEW_OBJECT_NOUNS,
   parseObjectPath,
   pathError,
   type DeviceSegment,
@@ -284,6 +286,9 @@ export function trackSegmentPath(track: TrackSegment): TrackPath {
  * @returns The reason, as a sentence fragment
  */
 function describeNonClipPath(path: ObjectPath): string {
+  if (isNewObjectPath(path))
+    return `${NEW_OBJECT_NOUNS[path.kind]} holds no clips`;
+
   switch (path.kind) {
     case "device":
       return "device paths hold no clips";
@@ -300,6 +305,10 @@ function describeNonClipPath(path: ObjectPath): string {
  * @returns The reason, as a sentence fragment
  */
 function describeNonDevicePath(path: ObjectPath): string {
+  if (isNewObjectPath(path)) {
+    return `${NEW_OBJECT_NOUNS[path.kind]} holds no devices`;
+  }
+
   switch (path.kind) {
     case "scene":
       return "a scene holds no devices";

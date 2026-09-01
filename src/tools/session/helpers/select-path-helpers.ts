@@ -10,6 +10,8 @@ import { livePath, type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { namedParam } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
+  isNewObjectPath,
+  NEW_OBJECT_NOUNS,
   parseObjectPath,
   pathError,
   type ObjectPath,
@@ -333,6 +335,14 @@ function deviceChainTarget(
  * @returns What select should select
  */
 function targetFromPath(path: ObjectPath): PathTarget {
+  if (isNewObjectPath(path)) {
+    throw pathError(
+      "path",
+      formatObjectPath(path),
+      `${NEW_OBJECT_NOUNS[path.kind]} does not exist yet; select names something that does`,
+    );
+  }
+
   switch (path.kind) {
     case "device":
       return {

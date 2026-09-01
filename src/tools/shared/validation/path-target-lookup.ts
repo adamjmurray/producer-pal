@@ -23,6 +23,8 @@ import {
   trackSegmentPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
+  isNewObjectPath,
+  NEW_OBJECT_NOUNS,
   parseObjectPath,
   pathError,
   type ObjectPath,
@@ -211,6 +213,8 @@ function idPerPath(
  * @returns What it names, as a noun phrase
  */
 function describePathKind(path: ObjectPath): string {
+  if (isNewObjectPath(path)) return NEW_OBJECT_NOUNS[path.kind];
+
   switch (path.kind) {
     case "scene":
       return "a scene";
