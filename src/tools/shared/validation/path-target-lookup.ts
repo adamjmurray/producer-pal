@@ -8,7 +8,9 @@
 //
 // A path that names the wrong kind of thing, or nothing at all, warns and
 // contributes nothing — the same as an id that doesn't resolve, so one bad
-// entry costs its own object rather than the whole batch.
+// entry costs its own object rather than the whole batch. A hole in the list
+// itself ("t0,,t1") is different: nothing can line up against a list whose
+// length is a guess, so it throws before anything runs, like a hole in `id`.
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -77,29 +79,6 @@ export function sceneIdPerPath(
   });
 }
 
-/**
- * Splits a path param into entries, treating an unusable param as naming
- * nothing rather than as an error: the same batch may also have named ids, and
- * those objects are still there to act on.
- * @param paths - The raw path param
- * @param tool - Tool name, for warnings
- * @param label - Param name the paths came from, for warnings
- * @returns One trimmed entry per path, or none when the param is unusable
- */
-export function pathEntriesOrNone(
-  paths: string,
-  tool: string,
-  label: string,
-): string[] {
-  try {
-    return pathEntries(paths, label);
-  } catch (error) {
-    console.warn(`${tool}: ${errorMessage(error)}`);
-
-    return [];
-  }
-}
-
 // --- Helpers below main exports ---
 
 /**
@@ -119,7 +98,7 @@ function idPerPath(
 ): Array<string | null> {
   const ids: Array<string | null> = [];
 
-  for (const entry of pathEntriesOrNone(paths, tool, label)) {
+  for (const entry of pathEntries(paths, label)) {
     try {
       const object = resolve(parseObjectPath(entry, label), entry);
 

@@ -49,11 +49,14 @@ describe("trackIdPerPath", () => {
     expect(trackIdPerPath("s1,t0", "tool")).toStrictEqual([null, "t0"]);
   });
 
-  it("treats an unusable param as naming nothing", () => {
-    // A hole in the list is refused by pathEntries; the batch may also have
-    // named ids, so it warns rather than throwing.
-    expect(trackIdPerPath("t0,,t1", "tool")).toStrictEqual([]);
-    expect(capturedWarnings().join("\n")).toContain("tool: ");
+  it("refuses a hole in the list", () => {
+    // Nothing can line up against a list whose length is a guess, so this is
+    // refused before anything runs — the same as a hole in `id`.
+    expect(() => trackIdPerPath("t0,,t1", "tool")).toThrow(/empty entry/);
+  });
+
+  it("ignores one trailing comma", () => {
+    expect(trackIdPerPath("t0,", "tool")).toStrictEqual(["t0"]);
   });
 });
 

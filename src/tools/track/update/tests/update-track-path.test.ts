@@ -88,6 +88,15 @@ describe("updateTrack by path", () => {
     expect(capturedWarnings()).toContain("updateTrack: id or path is required");
   });
 
+  it("refuses a hole in the path list", () => {
+    // Before, this warned and dropped every target while the length check
+    // still counted the hole - so a paired name list passed and landed on
+    // nothing at all.
+    expect(() =>
+      updateTrack({ path: "t0,,t1", name: "One,Two,Three" }),
+    ).toThrow(/empty entry/);
+  });
+
   it("counts ids and paths together when checking list lengths", () => {
     expect(() =>
       updateTrack({ id: "123", path: "t1", name: "One,Two,Three" }),

@@ -74,15 +74,12 @@ describe("clipIdsAtPaths", () => {
     );
   });
 
-  it("warns and contributes nothing for a param that names no clip at all", () => {
-    // Regression: splitting the param threw above the per-entry catch, so a
-    // stray "," took the whole call down — including the clips the same call
-    // named by id, which are still sitting there ready to be updated.
-    const warn = vi.spyOn(console, "warn");
-
-    expect(clipIdsAtPaths(",", "updateClip")).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('invalid path "," - it names nothing'),
+  it("refuses a param that names no clip at all", () => {
+    // A list that names nothing is malformed structure, so it is refused
+    // before anything runs — the same as `id: ","`. Nothing is lost by
+    // throwing: the caller drops the stray comma and retries.
+    expect(() => clipIdsAtPaths(",", "updateClip")).toThrow(
+      'invalid path "," - it names nothing',
     );
   });
 

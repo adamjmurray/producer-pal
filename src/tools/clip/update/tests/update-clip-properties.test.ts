@@ -145,6 +145,18 @@ describe("updateClip - Properties and ID handling", () => {
     expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 
+  it("should refuse an empty entry in a comma-separated path list", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await expect(
+      updateClip({ path: "t0/s0,,t1/s1", name: "One,Two,Three" }),
+    ).rejects.toThrow('invalid path "t0/s0,,t1/s1" - it has an empty entry.');
+
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
+  });
+
   describe("color quantization verification", () => {
     /**
      * Set up clip mock to return a specific color value from get("color").

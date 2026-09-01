@@ -12,15 +12,17 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { requireClipSlotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { pathEntriesOrNone } from "#src/tools/shared/validation/path-target-lookup.ts";
+import {
+  pathEntries,
+  requireClipSlotPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**
  * Resolves clip slot path(s) to the ids of the clips sitting there.
  * A malformed entry or an empty slot warns and contributes nothing, matching
  * how these tools skip an id that doesn't resolve — one bad entry costs its own
- * clip, not the whole batch.
+ * clip, not the whole batch. A hole in the list itself throws.
  * @param paths - Comma-separated clip slots (e.g. "t0/s1,t2/s3")
  * @param tool - Tool name, for warnings
  * @param label - Param name the paths came from, for warnings
@@ -50,7 +52,7 @@ export function clipIdPerPath(
 ): Array<string | null> {
   const ids: Array<string | null> = [];
 
-  for (const entry of pathEntriesOrNone(paths, tool, label)) {
+  for (const entry of pathEntries(paths, label)) {
     try {
       const slot = requireClipSlotPath(parseObjectPath(entry, label), label);
       const clip = LiveAPI.from(
