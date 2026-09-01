@@ -26,8 +26,28 @@
 
 // The clip writers, named because several separate gates reach for them.
 const CREATE_CLIP = "ppal-create-clip";
+const READ_TRACK = "ppal-read-track";
+const READ_SCENE = "ppal-read-scene";
 const UPDATE_CLIP = "ppal-update-clip";
 const DUPLICATE = "ppal-duplicate";
+
+/**
+ * Every tool that names a track or scene by `path` — reads, writes, creates,
+ * and the two that address either kind. Wide because the round trip is the
+ * point: a caller that can only read still gets a `path` back and needs to
+ * know what it means.
+ */
+const TRACK_SCENE_PATH_TOOLS = [
+  READ_TRACK,
+  READ_SCENE,
+  "ppal-create-track",
+  "ppal-create-scene",
+  "ppal-update-track",
+  "ppal-update-scene",
+  "ppal-select",
+  "ppal-delete",
+  "ppal-duplicate",
+] as const;
 
 /** The gate for guidance whose whole point is to be said out loud to a person. */
 const CONVERSATION_ONLY = "conversation-only";
@@ -47,8 +67,8 @@ const NOTE_TOOLS = [
   "ppal-read-clip",
   CREATE_CLIP,
   UPDATE_CLIP,
-  "ppal-read-track",
-  "ppal-read-scene",
+  READ_TRACK,
+  READ_SCENE,
 ] as const;
 
 /**
@@ -107,7 +127,7 @@ const ARRANGEMENT_TOOLS = [
   "ppal-read-clip",
   UPDATE_CLIP,
   DUPLICATE,
-  "ppal-read-track",
+  READ_TRACK,
 ] as const;
 
 /**
@@ -177,6 +197,8 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   arrangement: ARRANGEMENT_TOOLS,
   // Moving, splitting, and take lanes: read-clip has no tool to run any of it.
   "arrangement-write": ARRANGEMENT_WRITE_TOOLS,
+
+  "object-paths": TRACK_SCENE_PATH_TOOLS,
 
   "context-standard": ["ppal-context"],
   "context-basic": ["ppal-context"],
