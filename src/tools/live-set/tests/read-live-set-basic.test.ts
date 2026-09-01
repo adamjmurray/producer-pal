@@ -157,6 +157,7 @@ describe("readLiveSet - basic reading", () => {
       tracks: [
         {
           id: "track1",
+          path: "t0",
           type: "midi",
           name: "MIDI Track 1",
           trackIndex: 0,
@@ -170,6 +171,7 @@ describe("readLiveSet - basic reading", () => {
         },
         {
           id: "track2",
+          path: "t1",
           type: "audio",
           name: "Audio Track 2",
           trackIndex: 1,
@@ -194,6 +196,7 @@ describe("readLiveSet - basic reading", () => {
       scenes: [
         {
           id: "scene1",
+          path: "s0",
           name: "Scene 1",
           sceneIndex: 0,
           clipCount: 2,
@@ -202,6 +205,7 @@ describe("readLiveSet - basic reading", () => {
         },
         {
           id: "scene2",
+          path: "s1",
           name: "Scene 2",
           sceneIndex: 1,
           clipCount: 0,
@@ -209,6 +213,7 @@ describe("readLiveSet - basic reading", () => {
         },
         {
           id: "scene3",
+          path: "s2",
           name: "Scene 3",
           sceneIndex: 2,
           clipCount: 1,

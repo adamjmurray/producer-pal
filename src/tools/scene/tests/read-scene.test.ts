@@ -83,6 +83,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene1",
+      path: "s0",
       name: "Test Scene",
       sceneIndex: 0,
       clipCount: 0,
@@ -124,6 +125,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene2",
+      path: "s1",
       name: "Scene with Disabled Properties",
       sceneIndex: 1,
       clipCount: 0,
@@ -139,6 +141,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene3",
+      path: "s2",
       name: "3",
       sceneIndex: 2,
       clipCount: 0,
@@ -165,6 +168,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
+      path: "s0",
       name: "Scene with 2 Clips",
       sceneIndex: 0,
       clipCount: 2,
@@ -219,6 +223,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
+      path: "s0",
       name: "Scene with Clips",
       sceneIndex: 0,
       tempo: 120,
@@ -307,6 +312,7 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "123",
+        path: "s5",
         name: "Scene by ID",
         sceneIndex: 5,
         clipCount: 0,
@@ -328,6 +334,7 @@ describe("readScene", () => {
         tempo: 120,
         timeSignature: "4/4",
         id: "123",
+        path: "s5",
         name: "Scene by ID",
       });
     });
@@ -353,6 +360,7 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "456",
+        path: "s2",
         name: "Scene with Clips by ID",
         sceneIndex: 2,
         tempo: 110,

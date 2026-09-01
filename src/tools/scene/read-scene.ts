@@ -16,6 +16,7 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface ReadSceneArgs {
   sceneIndex?: number;
@@ -33,6 +34,7 @@ interface ReadSceneArgs {
 
 interface ReadSceneResult {
   id: string | null;
+  path?: string;
   name: string | null;
   sceneIndex?: number | null;
   color?: string | null;
@@ -102,6 +104,7 @@ export function readScene(
 
   const result: ReadSceneResult = {
     id: scene.id,
+    ...pathField(scene),
     name: sceneDisplayName(scene, resolvedSceneIndex as number),
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),

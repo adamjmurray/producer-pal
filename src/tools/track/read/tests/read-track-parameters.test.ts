@@ -64,6 +64,7 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "123",
+        path: "t2",
         type: "midi",
         name: "Track by ID",
         trackIndex: 2,
@@ -90,6 +91,7 @@ describe("readTrack", () => {
         trackIndex: 2,
         type: "midi",
         id: "123",
+        path: "t2",
         name: "Track by ID",
       });
     });
@@ -110,6 +112,7 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "456",
+        path: "rt1",
         type: "return",
         name: "Return by ID",
         returnTrackIndex: 1,
@@ -135,6 +138,7 @@ describe("readTrack", () => {
 
       expect(result).toStrictEqual({
         id: "789",
+        path: "mt",
         type: "master",
         name: "Master by ID",
         sessionClipCount: 0,

@@ -15,6 +15,7 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { namedIdParam, stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   categorizeDevices,
   readDevicesFlat,
@@ -345,6 +346,7 @@ export function readTrackGeneric({
 
   const result: Record<string, unknown> = {
     id: track.id,
+    ...pathField(track),
     type: computeTrackType(isMidiTrack, category),
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),

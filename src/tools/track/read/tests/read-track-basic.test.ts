@@ -146,6 +146,7 @@ describe("readTrack", () => {
 
     expect(result).toStrictEqual({
       id: "track2",
+      path: "t1",
       type: "audio",
       name: "Audio Track",
       trackIndex: 1,
@@ -181,6 +182,7 @@ describe("readTrack", () => {
       arrangementClipCount: 0,
       deviceCount: 0,
       id: "track2",
+      path: "t1",
       isArmed: true,
       name: "Boundary Track",
       sessionClipCount: 0,
@@ -277,6 +279,7 @@ describe("readTrack", () => {
 
     expect(result).toStrictEqual({
       id: "track3",
+      path: "t2",
       type: "midi",
       name: "Track with Clips",
       trackIndex: 2,
@@ -553,6 +556,7 @@ describe("readTrack", () => {
 function expectedSoloedMidiTrackResult(): Record<string, unknown> {
   return {
     id: "track1",
+    path: "t0",
     type: "midi",
     name: "Track 1",
     trackIndex: 0,

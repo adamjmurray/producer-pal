@@ -303,6 +303,7 @@ export class LiveAPI {
 
 interface TrackOverrides {
   id?: string;
+  path?: string;
   type?: string;
   name?: string;
   trackIndex?: number;
@@ -320,6 +321,7 @@ export const expectedTrack = (
   overrides: TrackOverrides = {},
 ): TrackOverrides => ({
   id: "1",
+  path: `t${overrides.trackIndex ?? 0}`,
   type: "midi",
   name: "Test Track",
   trackIndex: 0,
