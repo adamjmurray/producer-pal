@@ -136,10 +136,11 @@ still survives on a text param, where clearing a name is a real request.
   5 inverts a pin covering the whole tool surface. Measured against codex-cli
   Luna over 13 eval scenarios and 128 tool calls across 16 tools: nothing
   arrived blank, null, or as the word `"null"`, and an all-optional tool with
-  nothing to say came through as `{}`. The blank-fill risk is real only for a
-  client that behaves differently, and it stays unmeasured for every client but
-  this one — `evals/schema-compat`'s `unset-optionals` variant asks the same of
-  the AI-SDK providers and has not been run.
+  nothing to say came through as `{}`. `evals/schema-compat`'s `unset-optionals`
+  variant asks the same question of a bare five-optional-param schema and agrees
+  on that model. The blank-fill risk is real only for a client that behaves
+  differently, and it stays unmeasured for every client but this one — the same
+  variant against the AI-SDK providers has not been run.
 - No published enum has `""` among its options, so rule 5 has no exception to
   carve out.
 - The `.def.ts` descriptions and the Skills need the trailing-comma and
