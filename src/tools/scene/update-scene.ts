@@ -9,6 +9,7 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import {
   targetEntries,
   namedIdParam,
+  namedPathParam,
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -22,7 +23,11 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import {
+  countListEntries,
+  validateListLengths,
+} from "#src/tools/shared/validation/list-lengths.ts";
+import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
@@ -37,6 +42,9 @@ interface UpdateSceneArgs {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
+  path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   name?: string;
   color?: string;
   tempo?: number | null;
@@ -49,6 +57,8 @@ interface UpdateSceneArgs {
  * @param args - The scene parameters
  * @param args.id - Comma-separated scene IDs to update
  * @param args.ids - Hidden alias for id
+ * @param args.path - Comma-separated scene paths to update instead of ids
+ * @param args.paths - Hidden alias for path
  * @param args.name - Name for the scenes
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM. Pass -1 to disable.
@@ -58,21 +68,37 @@ interface UpdateSceneArgs {
  * @returns Single scene object or array of scene objects
  */
 export function updateScene(
-  { id, ids, name, color, tempo, timeSignature, focus }: UpdateSceneArgs = {},
+  {
+    id,
+    ids,
+    path,
+    paths,
+    name,
+    color,
+    tempo,
+    timeSignature,
+    focus,
+  }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
   const targets = namedIdParam(id, ids, "ids");
+  const targetPaths = namedPathParam(path, paths);
 
-  if (!targets) {
-    console.warn("updateScene: id is required");
+  if (!targets && !targetPaths) {
+    console.warn("updateScene: id or path is required");
 
     return [];
   }
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
+  // `id` and `path` name different scenes and add up, so the target count is
+  // their sum — comparing the two would refuse a call naming two of each.
   validateListLengths([
-    { param: "id", value: targets },
+    {
+      param: "id and path",
+      count: countListEntries(targets) + countListEntries(targetPaths),
+    },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
@@ -80,7 +106,10 @@ export function updateScene(
   // Parse comma-separated string into array. An id that parses to nothing
   // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
   // reading the same as an omitted id.
-  const sceneIds = targetEntries(targets, "id");
+  const sceneIds: Array<string | null> = [
+    ...(targets ? targetEntries(targets, "id") : []),
+    ...(targetPaths == null ? [] : sceneIdPerPath(targetPaths, "updateScene")),
+  ];
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
@@ -98,17 +127,18 @@ export function updateScene(
   const updatedScenes: UpdateSceneResult[] = [];
 
   for (let i = 0; i < sceneIds.length; i++) {
+    const sceneId = sceneIds[i];
+
+    // A path that named no scene already warned; it keeps its slot so later
+    // names/colors don't shift onto the wrong scene.
+    if (sceneId == null) continue;
+
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
     // onto the wrong scene.
-    const [scene] = validateIdTypes(
-      [sceneIds[i] as string],
-      "scene",
-      "updateScene",
-      {
-        skipInvalid: true,
-      },
-    );
+    const [scene] = validateIdTypes([sceneId], "scene", "updateScene", {
+      skipInvalid: true,
+    });
 
     if (scene == null) continue;
 

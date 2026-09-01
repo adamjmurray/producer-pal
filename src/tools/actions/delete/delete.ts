@@ -6,6 +6,10 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import {
+  sceneIdPerPath,
+  trackIdPerPath,
+} from "#src/tools/shared/validation/path-target-lookup.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -26,7 +30,18 @@ import {
   validateObjectTypes,
 } from "#src/tools/shared/validation/id-validation.ts";
 
-const PATH_SUPPORTED_TYPES = new Set(["clip", "device", "drum-pad", "chain"]);
+/**
+ * The types whose paths resolve one entry at a time, keeping a miss in place.
+ * Everything else goes through the device-chain resolver.
+ */
+const ID_PER_PATH: Record<
+  string,
+  (paths: string, tool: string) => Array<string | null>
+> = {
+  track: trackIdPerPath,
+  scene: sceneIdPerPath,
+  clip: clipIdPerPath,
+};
 
 const DELETABLE_TYPES = [
   "track",
@@ -65,7 +80,7 @@ interface DeleteArgs {
  * @param args - The parameters
  * @param args.id - Comma-separated list of object IDs
  * @param args.ids - Hidden alias for id
- * @param args.path - Comma-separated paths for clip/device/drum-pad/chain
+ * @param args.path - Comma-separated paths naming what to delete
  * @param args.paths - Hidden alias for path
  * @param args.type - Type of objects to delete
  * @param _context - Internal context object (unused, for consistent tool interface)
@@ -89,13 +104,6 @@ export function deleteObject(
     );
   }
 
-  // Handle path parameter - only valid for devices and drum-pads
-  if (path && !PATH_SUPPORTED_TYPES.has(type)) {
-    console.warn(
-      `delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths`,
-    );
-  }
-
   // Collect IDs from both sources. targets is already confirmed non-blank, so
   // an id that parses to nothing (e.g. ",  ,") is worth a warning of its own
   // rather than reading the same as an omitted id.
@@ -107,11 +115,14 @@ export function deleteObject(
   // delete done.
   const unresolvedPaths: string[] = [];
 
-  if (path && PATH_SUPPORTED_TYPES.has(type)) {
+  // Every deletable type can be addressed by location, so a path is always
+  // usable by the time the type check above has passed.
+  if (path) {
+    const lookup = ID_PER_PATH[type];
     const resolvedPaths =
-      type === "clip"
-        ? resolveClipPaths(path)
-        : resolvePathsToIds(targetEntries(path, "path"), type);
+      lookup == null
+        ? resolvePathsToIds(targetEntries(path, "path"), type)
+        : resolvePerPath(path, lookup);
 
     objectIds.push(...resolvedPaths.ids);
     unresolvedPaths.push(...resolvedPaths.unresolved);
@@ -215,21 +226,25 @@ export function deleteObject(
 }
 
 /**
- * The clip lookup in the shape the path resolvers use, so both branches report
- * their misses the same way.
- * @param path - Comma-separated clip slot paths
- * @returns The clip ids found, plus the paths that held no clip
+ * A per-entry lookup in the shape the path resolvers use, so both branches
+ * report their misses the same way.
+ * @param path - Comma-separated paths
+ * @param lookup - The type's path-to-id lookup
+ * @returns The ids found, plus the paths that named nothing
  */
-function resolveClipPaths(path: string): ResolvedPaths {
+function resolvePerPath(
+  path: string,
+  lookup: (paths: string, tool: string) => Array<string | null>,
+): ResolvedPaths {
   const entries = targetEntries(path, "path");
   const ids: string[] = [];
   const unresolved: string[] = [];
 
-  for (const [index, clipId] of clipIdPerPath(path, "delete").entries()) {
-    if (clipId == null) {
+  for (const [index, id] of lookup(path, "delete").entries()) {
+    if (id == null) {
       unresolved.push(entries[index] ?? path);
     } else {
-      ids.push(clipId);
+      ids.push(id);
     }
   }
 

@@ -9,7 +9,6 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   mockNonExistentObjects,
-  registerMockObject,
   simulateMockDeletes,
 } from "#src/test/mocks/mock-registry.ts";
 import {
@@ -460,21 +459,6 @@ describe("deleteObject device deletion", () => {
         type: "device",
         deleted: false,
       });
-    });
-
-    it("should warn when path is used with non-device/drum-pad type", () => {
-      const consoleSpy = vi.spyOn(console, "warn");
-
-      registerMockObject("track_1", {
-        path: livePath.track(0),
-        type: "Track",
-      });
-
-      deleteObject({ id: "track_1", path: "0/0", type: "track" });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'delete: path parameter is only valid for types "clip", "device", "drum-pad", or "chain", ignoring paths',
-      );
     });
 
     it("should delete a device nested inside a drum chain by path", () => {

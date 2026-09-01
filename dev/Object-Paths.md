@@ -153,9 +153,10 @@ Four tiers, in order of preference.
      `duplicate` is half-way: its `id` takes a list, but `path` names one drum
      pad for the whole call, so naming both still throws.
    - **A set — union.** Where the call already acts on a list (`delete`,
-     `update-clip`, `playback`'s clip actions), `id` and `path` both name
-     members of it, so the targets combine. Duplicates collapse — firing a clip
-     twice is a different Live call than firing it once.
+     `update-clip`, `update-track`, `update-scene`, `playback`'s clip actions),
+     `id` and `path` both name members of it, so the targets combine. Duplicates
+     collapse — firing a clip twice is a different Live call than firing it
+     once.
 
 ## Results
 
@@ -206,7 +207,12 @@ requirement in index terms.
 
 Deliberate omissions, reasoned in
 [ADR-0025](decisions/0025-object-path-grammar.md): arrangement clips (addressed
-by id), locators (`locator` param, by id or name), track/scene addressing on the
-read and update tools (`trackIndex` / `sceneIndex` stay), and
-new-track/new-scene positions (they create the location rather than address
-one).
+by id), locators (`locator` param, by id or name), and new-track/new-scene
+positions (they create the location rather than address one).
+
+ADR-0025 also kept tracks and scenes off the grammar. That went the other way
+once write results started reporting `path`: a result handed back `t0` and no
+tool took it. `update-track`, `update-scene` and `delete` now accept a track or
+scene `path` alongside `id`, and reads report one. The read tools still address
+by `trackIndex` / `sceneIndex` — swapping those for a path is bound up with
+whether `trackType` collapses into the path, which is a separate call.

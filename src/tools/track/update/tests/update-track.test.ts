@@ -102,11 +102,11 @@ describe("updateTrack", () => {
 
   it("should warn and return empty when id is missing", () => {
     expect(updateTrack({})).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateTrack: id is required");
+    expect(capturedWarnings()).toContain("updateTrack: id or path is required");
 
     clearCapturedWarnings();
     expect(updateTrack({ name: "Test" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateTrack: id is required");
+    expect(capturedWarnings()).toContain("updateTrack: id or path is required");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -184,7 +184,7 @@ describe("updateTrack", () => {
   // against 2, and refused.
   it("refuses a trailing comma that leaves the lists uneven", () => {
     expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
-      "id names 3 entries but name names 2 entries.",
+      "id and path names 3 entries but name names 2 entries.",
     );
   });
 

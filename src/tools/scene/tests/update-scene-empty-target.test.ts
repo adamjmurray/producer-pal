@@ -26,7 +26,7 @@ describe("updateScene when id names nothing", () => {
 
     expect(updateScene({ id: "   " })).toStrictEqual([]);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("updateScene: id is required");
+    expect(warn).toHaveBeenCalledWith("updateScene: id or path is required");
   });
 });
 

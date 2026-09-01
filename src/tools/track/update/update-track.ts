@@ -21,6 +21,7 @@ import {
   findReturnIndex,
   targetEntries,
   namedIdParam,
+  namedPathParam,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -33,12 +34,19 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import {
+  countListEntries,
+  validateListLengths,
+} from "#src/tools/shared/validation/list-lengths.ts";
+import { trackIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 interface UpdateTrackArgs {
   id?: string;
   /** Hidden alias for id */
   ids?: string;
+  path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   name?: string;
   color?: string;
   gainDb?: number;
@@ -187,6 +195,8 @@ function applySendProperties(
  * @param args - The track parameters
  * @param args.id - Track ID or comma-separated list of track IDs to update
  * @param args.ids - Hidden alias for id
+ * @param args.path - Track path(s) to update instead of ids, comma-separated
+ * @param args.paths - Hidden alias for path
  * @param args.name - Optional track name
  * @param args.color - Optional track color (CSS format: hex)
  * @param args.gainDb - Optional track gain in dB (-70 to 6)
@@ -215,6 +225,8 @@ export function updateTrack(
   {
     id,
     ids,
+    path,
+    paths,
     name,
     color,
     gainDb,
@@ -240,17 +252,23 @@ export function updateTrack(
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
   const targets = namedIdParam(id, ids, "ids");
+  const targetPaths = namedPathParam(path, paths);
 
-  if (!targets) {
-    console.warn("updateTrack: id is required");
+  if (!targets && !targetPaths) {
+    console.warn("updateTrack: id or path is required");
 
     return [];
   }
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
+  // `id` and `path` name different tracks and add up, so the target count is
+  // their sum — comparing the two would refuse a call naming two of each.
   validateListLengths([
-    { param: "id", value: targets },
+    {
+      param: "id and path",
+      count: countListEntries(targets) + countListEntries(targetPaths),
+    },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
@@ -258,7 +276,10 @@ export function updateTrack(
   // Parse comma-separated string into array. An id that parses to nothing
   // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
   // reading the same as an omitted id.
-  const trackIds = targetEntries(targets, "id");
+  const trackIds: Array<string | null> = [
+    ...(targets ? targetEntries(targets, "id") : []),
+    ...(targetPaths == null ? [] : trackIdPerPath(targetPaths, "updateTrack")),
+  ];
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
@@ -269,15 +290,18 @@ export function updateTrack(
   const updatedTracks: UpdateTrackResult[] = [];
 
   for (let i = 0; i < trackIds.length; i++) {
+    const trackId = trackIds[i];
+
+    // A path that named no track already warned; it keeps its slot so later
+    // names/colors don't shift onto the wrong track.
+    if (trackId == null) continue;
+
     // Validate one id at a time (skip invalid) so the loop index stays aligned
     // to the original ids: a skipped id must not pull later names/colors forward
     // onto the wrong track.
-    const [track] = validateIdTypes(
-      [trackIds[i] as string],
-      "track",
-      "updateTrack",
-      { skipInvalid: true },
-    );
+    const [track] = validateIdTypes([trackId], "track", "updateTrack", {
+      skipInvalid: true,
+    });
 
     if (track == null) continue;
 

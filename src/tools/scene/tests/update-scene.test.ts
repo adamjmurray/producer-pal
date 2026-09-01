@@ -154,7 +154,7 @@ describe("updateScene", () => {
 
   it("refuses more names than scenes, naming both counts", () => {
     expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
-      "id names 2 entries but name names 4 entries.",
+      "id and path names 2 entries but name names 4 entries.",
     );
   });
 
@@ -178,11 +178,11 @@ describe("updateScene", () => {
 
   it("should warn and return empty when id is missing", () => {
     expect(updateScene({})).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateScene: id is required");
+    expect(capturedWarnings()).toContain("updateScene: id or path is required");
 
     clearCapturedWarnings();
     expect(updateScene({ name: "Test" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateScene: id is required");
+    expect(capturedWarnings()).toContain("updateScene: id or path is required");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their

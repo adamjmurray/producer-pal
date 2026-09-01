@@ -24,6 +24,13 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     ids: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
     }),
+    path: param(z.coerce.string().optional(), {
+      default:
+        "scene path(s) to update instead of id, comma-separated (e.g., 's0' or 's0,s3')",
+      smallModel: "scene path to update instead of id (e.g., 's0')",
+    }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
       default:
         "name for all, or comma-separated one per scene, in order (blank entry = unchanged)",

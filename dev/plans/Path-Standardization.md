@@ -115,8 +115,9 @@ Two rules about what these may assert, both learned the hard way:
 
 ### Phase 5 — `path` everywhere: rejected
 
-Considered and dropped. `path` addresses clips and devices;
-[ADR-0025](../decisions/0025-object-path-grammar.md)'s scope stands.
+Considered and dropped — this phase was about naming an _arrangement clip_ by
+path, which is still no. (Tracks and scenes went the other way later; see
+[Object-Paths.md](../Object-Paths.md) → Not paths.)
 
 The idea was to make `path` the general way to address any object. That needed
 one thing first: a way to name an arrangement clip, since a lane path names the
@@ -168,6 +169,18 @@ different track, and a deleted object has no next call to spend it on.
 Two shapes report nothing: a chain reached through a pad segment, whose
 rack-relative index isn't in the Live API path, and an object that resolved to
 nothing.
+
+### Phase 7 — tracks and scenes take a path
+
+Phase 6 handed back `t0` and `s3` from write results that no tool accepted,
+which is the second addressing spelling ADR-0025 named as its own revisit
+condition. Track and scene reads now report `path`, and `update-track`,
+`update-scene` and `delete` accept one beside `id`.
+
+Open: whether the read tools drop `trackIndex` / `sceneIndex` for a path, and
+whether `trackType` collapses into it (a path already says return vs main; only
+`midi` vs `audio` is left to report). Both are breaking, so they wait on eval
+evidence.
 
 ## Docs to update as the phases land
 

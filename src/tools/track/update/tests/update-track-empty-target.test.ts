@@ -26,7 +26,7 @@ describe("updateTrack when id names nothing", () => {
 
     expect(updateTrack({ id: "   " })).toStrictEqual([]);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("updateTrack: id is required");
+    expect(warn).toHaveBeenCalledWith("updateTrack: id or path is required");
   });
 });
 
