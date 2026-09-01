@@ -20,12 +20,18 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 
 ```
 path    := root ( "/" segment )*
-root    := "t"<n> | "rt"<n> | "mt" | "s"<n>
+root    := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
 segment := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
 ```
 
 All indices are 0-based. `<note>` is a note name (`C1`, `F#2`); `p*` is the drum
 rack's catch-all pad.
+
+The `+` roots name a place rather than a thing, so only the create tools take
+one, and only as a whole path — `t+/s0` names nothing yet. On create, `t2`
+inserts at 2 while `t+` appends. `rt<n>` is refused there: Live always adds a
+return track at the end, so a path naming a position it can't honor would
+silently create the track somewhere else.
 
 Segments have to nest the way Live does, and a path that doesn't is a parse
 error rather than a missing object later: a track holds devices, a device holds
@@ -37,8 +43,11 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | -------------- | --------------------------------- | ------------------------------------- |
 | `t0`           | regular track, or its arrangement | `tracks 0`                            |
 | `rt0`          | return track                      | `return_tracks 0`                     |
-| `mt`           | master track                      | `master_track`                        |
+| `mt`           | main track                        | `master_track`                        |
 | `s3`           | scene                             | `scenes 3`                            |
+| `t+`           | a new track, appended             | —                                     |
+| `rt+`          | a new return track                | —                                     |
+| `s+`           | a new scene, appended             | —                                     |
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`               |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`               |
 | `t0/l+`        | a new take lane, appended         | —                                     |
@@ -215,12 +224,13 @@ requirement in index terms.
 
 Deliberate omissions, reasoned in
 [ADR-0025](decisions/0025-object-path-grammar.md): arrangement clips (addressed
-by id), locators (`locator` param, by id or name), and new-track/new-scene
-positions (they create the location rather than address one).
+by id) and locators (`locator` param, by id or name).
 
-ADR-0025 also kept tracks and scenes off the grammar. That went the other way
-once write results started reporting `path`: a result handed back `t0` and no
-tool took it. `update-track`, `update-scene` and `delete` now accept a track or
-scene `path` alongside `id`, and reads report one. The read tools still address
-by `trackIndex` / `sceneIndex` — swapping those for a path is bound up with
-whether `trackType` collapses into the path, which is a separate call.
+Two of ADR-0025's calls have since gone the other way. It kept tracks and scenes
+off the grammar, which broke once write results started reporting `path`: a
+result handed back `t0` and no tool took it. Every track and scene tool now
+takes a `path` — reads and writes both — and `trackIndex` / `sceneIndex` /
+`trackType` are retired behind it. It also left out new-track and new-scene
+positions, on the grounds that they create a location rather than address one;
+`t+`, `rt+` and `s+` are exactly that, and they earn their place by making a
+create result's `path` something the caller could have asked for.

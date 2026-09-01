@@ -121,7 +121,6 @@ Live, or make sure your standalone Max is up to date. See
   - Rich object shapes with IDs, types, and context (path, etc.)
 - Update selection and return only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
   - Select by path: a clip slot (e.g., `t0/s3`), a track (`t0`), a return track
     (`rt0`), the main track (`mt`), a scene (`s3`), or a device (e.g., `t0/d1`)
   - Switch between Session and Arrangement views
@@ -357,7 +356,7 @@ sounding.
 ### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
 
 - Add native Live devices (instruments, MIDI effects, audio effects)
-- Place devices on any track type: MIDI, audio, return, or master
+- Place devices on any track type: MIDI, audio, return, or the main track
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
