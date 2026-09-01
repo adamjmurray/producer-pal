@@ -81,7 +81,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe(
         "select by path, 0-based: 't0/s3' a clip slot, 't0' a track, 'rt0' a return track, " +
-          "'mt' the master track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
+          "'mt' the main track, 's3' a scene, 't0/d1' a device, 't0/d0/c1' a rack chain, " +
           "'t0/d0/pC1' a drum pad",
       ),
 

@@ -123,8 +123,7 @@ Live, or make sure your standalone Max is up to date. See
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
   - Select by path: a clip slot (e.g., `t0/s3`), a track (`t0`), a return track
-    (`rt0`), the master track (`mt`), a scene (`s3`), or a device (e.g.,
-    `t0/d1`)
+    (`rt0`), the main track (`mt`), a scene (`s3`), or a device (e.g., `t0/d1`)
   - Switch between Session and Arrangement views
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device

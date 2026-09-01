@@ -290,7 +290,7 @@ function describeNonClipPath(path: ObjectPath): string {
     case "scene":
       return "a scene alone names no track";
     default:
-      return "return and master tracks have no clips";
+      return "return and main tracks have no clips";
   }
 }
 

@@ -108,8 +108,8 @@ describe("requireClipPath", () => {
   it("rejects everything a clip can't occupy, in clip terms", () => {
     const cases: [string, RegExp][] = [
       ["t1/d0", /device paths hold no clips/],
-      ["rt0", /return and master tracks have no clips/],
-      ["mt", /return and master tracks have no clips/],
+      ["rt0", /return and main tracks have no clips/],
+      ["mt", /return and main tracks have no clips/],
       ["s3", /a scene alone names no track/],
     ];
 
