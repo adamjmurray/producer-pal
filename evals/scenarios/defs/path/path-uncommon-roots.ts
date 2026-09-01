@@ -8,13 +8,13 @@
  *
  * The grammar has nine one-letter conventions — `t`, `s`, `l`, `d`, `p`, `c`,
  * `rc`, `rt`, `mt` — and the clip scenarios only ever exercise the first few.
- * This walks the ones a model meets least: a return track, the master track,
+ * This walks the ones a model meets least: a return track, the main track,
  * and a drum pad.
  *
- * Graded on where the selection LANDED, not on the spelling: `select` publishes
- * `trackType`/`trackIndex` alongside `path`, so several correct answers exist
- * and grading one would mark the others wrong. The malformed-path rate that
- * this feeds comes from counting errors across saved runs, not from here.
+ * Graded on where the selection LANDED, read off the result's `path`. That is
+ * now the only thing in a select result that tells a return track from a
+ * regular one — `type` stopped carrying the role, and `trackType` is retired —
+ * which is exactly the reliance this scenario has to prove is safe.
  */
 
 import { type EvalScenario } from "../../types.ts";
@@ -27,19 +27,19 @@ import { assertCallResult } from "./path-scenario-helpers.ts";
 const TOOL_SELECT = "ppal-select";
 
 /**
- * Read the selected track's type off a select result.
+ * Read the selected track's path off a select result.
  * @param result - Parsed ppal-select result
- * @returns The type ("return", "master", "midi", "audio"), or ""
+ * @returns The path ("t0", "rt1", "mt"), or ""
  */
-function selectedTrackType(result: Record<string, unknown>): string {
-  const track = result.selectedTrack as { type?: string } | undefined;
+function selectedTrackPath(result: Record<string, unknown>): string {
+  const track = result.selectedTrack as { path?: string } | undefined;
 
-  return track?.type ?? "";
+  return track?.path ?? "";
 }
 
 export const pathUncommonRoots: EvalScenario = {
   id: "path-uncommon-roots",
-  description: "Navigate to a return track, the master track, and a drum pad",
+  description: "Navigate to a return track, the main track, and a drum pad",
   kind: "capability",
   liveSet: "basic-midi-4-track",
   // Selection is view state only — nothing to reset between trials.
@@ -48,7 +48,7 @@ export const pathUncommonRoots: EvalScenario = {
   messages: [
     MSG_CONNECT,
     "Show me the A-Delay return track.",
-    "Now show me the master track.",
+    "Now show me the main track.",
     "Show me the kick pad in the Drums track's drum rack.",
   ],
 
@@ -60,15 +60,15 @@ export const pathUncommonRoots: EvalScenario = {
       turn: 1,
       tool: TOOL_SELECT,
       what: "selected a return track",
-      check: (result) => selectedTrackType(result) === "return",
+      check: (result) => /^rt\d+$/.test(selectedTrackPath(result)),
     }),
 
     { type: "tool_called", tool: TOOL_SELECT, turn: 2 },
     assertCallResult({
       turn: 2,
       tool: TOOL_SELECT,
-      what: "selected the master track",
-      check: (result) => selectedTrackType(result) === "master",
+      what: "selected the main track",
+      check: (result) => selectedTrackPath(result) === "mt",
     }),
 
     { type: "tool_called", tool: TOOL_SELECT, turn: 3 },

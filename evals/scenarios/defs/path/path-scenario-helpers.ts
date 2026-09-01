@@ -45,6 +45,7 @@ const HIDDEN_LOCATION_PARAMS = new Set([
   "split",
   "trackIndex",
   "sceneIndex",
+  "trackType",
   "trackId",
   "sceneId",
   "clipId",
@@ -217,27 +218,33 @@ export function assertClipCreatedAtPath(
   ];
 }
 
-/** The published ways to name a scene. All three are equally correct. */
-const SCENE_LOCATION_PARAMS = ["id", "path", "sceneIndex"];
+/** The ways every tool can name a scene. Both are equally correct. */
+const SCENE_LOCATION_PARAMS = ["id", "path"];
 
 /**
- * Assert a call names its scene with a published location param. `id`, `path`
- * ("s1"), and `sceneIndex` all pass — only a hidden alias, or naming nothing,
- * fails. Which of the three a model picks is a counting question over saved
- * runs; grading one would mark the other two wrong.
+ * Assert a call names its scene with a published location param. `id` and
+ * `path` ("s1") both pass everywhere — only a hidden alias, or naming nothing,
+ * fails. Which one a model picks is a counting question over saved runs;
+ * grading one would mark the other wrong.
+ *
+ * `params` is for a tool that publishes a third way: `ppal-playback` still
+ * offers `sceneIndex`, while `ppal-select` retired it, so the accepted set
+ * can't be one list.
  *
  * @param options - What to grade
  * @param options.turn - Turn index containing the call
  * @param options.tool - Tool name
  * @param options.action - The `action` arg the call must carry, for tools that take one
+ * @param options.params - Published location params for this tool
  * @returns A custom assertion
  */
 export function assertNamesScene(options: {
   turn: number;
   tool: string;
   action?: string;
+  params?: string[];
 }): EvalAssertion {
-  const { turn, tool, action } = options;
+  const { turn, tool, action, params = SCENE_LOCATION_PARAMS } = options;
   const prefix = action == null ? "" : `${action} `;
 
   return {
@@ -252,9 +259,9 @@ export function assertNamesScene(options: {
         );
       }
 
-      if (!SCENE_LOCATION_PARAMS.some((key) => call.args[key] != null)) {
+      if (!params.some((key) => call.args[key] != null)) {
         throw new Error(
-          `no ${SCENE_LOCATION_PARAMS.join("/")} — args: ${JSON.stringify(call.args)}`,
+          `no ${params.join("/")} — args: ${JSON.stringify(call.args)}`,
         );
       }
 

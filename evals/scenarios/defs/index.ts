@@ -108,6 +108,7 @@ export {
   colorListPairing,
   duplicateDestinationPairing,
 } from "./pairing/list-pairing.ts";
+export { pathTrackSceneAddress } from "./path/path-track-scene-address.ts";
 export { pathUncommonRoots } from "./path/path-uncommon-roots.ts";
 export { rackPadOps } from "./device/rack-pad-ops.ts";
 export { sceneUpdateAndSelect } from "./workflow/scene-update-and-select.ts";

@@ -179,10 +179,10 @@ condition. Track and scene reads now report `path`, and `update-track`,
 
 ### Phase 8 — `type` stops carrying the role
 
-Decided, not yet built. `type` today says `midi | audio | return | master`,
-which is two questions in one field: what signal the track carries, and what
-role it plays. The path already answers the second (`t0`, `rt1`, `mt`), so the
-field keeps only the first.
+Built on `track-type-collapse`, pending the evals. `type` today says
+`midi | audio | return | master`, which is two questions in one field: what
+signal the track carries, and what role it plays. The path already answers the
+second (`t0`, `rt1`, `mt`), so the field keeps only the first.
 
 1. **A return or main track reports no `type` at all.** Not `"audio"`. They are
    audio-only, so the value would be constant — and worse, misleading: it reads
@@ -221,14 +221,27 @@ Both remaining sites of the conflation move together: `computeTrackType` in
 
 ### Phase 9 — creating by path
 
-Not started. `create-track` / `create-scene` would take `t+` / `rt+` / `s+`
-instead of `type` + index, which is what lets Phase 8's item 3 finish.
+Built on `track-type-collapse`, pending the evals. `create-track` and
+`create-scene` take `t+` / `rt+` / `s+` beside `t2` / `s2`, which is what let
+Phase 8's item 3 finish. Two things the plan didn't anticipate:
+
+- `rt<n>` is refused on create. Live only appends return tracks, so an index
+  there names a position it can't honor.
+- Retiring one enum VALUE had no mechanism — `deprecatedParam` retires a whole
+  param. `param()`'s `default` mode now takes `excludeEnumValues`, so
+  `type: "return"` is still accepted and no longer published.
 
 ### Order to build phases 8 and 9 in
 
 One commit each, on `track-type-collapse`, each green before the next is pushed.
 The order is not arbitrary: step 1 has to precede step 3, or there is a commit
 where a return track and the main track cannot be named at all.
+
+Steps 1–5 are built and pushed; step 6's scenarios are written but not run. Two
+calls made while building, neither in the plan: `select`'s own `trackType` /
+`trackIndex` / `sceneIndex` were retired with the read tools' (its `path`
+already covered all three), and `read-scene`'s `sceneIndex` went with
+`read-track`'s.
 
 1. **`path` on the read tools' input.** `read-track` and `read-scene` address by
    `trackIndex` / `sceneIndex` today and take no path. Add it first.
