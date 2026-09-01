@@ -177,10 +177,52 @@ which is the second addressing spelling ADR-0025 named as its own revisit
 condition. Track and scene reads now report `path`, and `update-track`,
 `update-scene` and `delete` accept one beside `id`.
 
-Open: whether the read tools drop `trackIndex` / `sceneIndex` for a path, and
-whether `trackType` collapses into it (a path already says return vs main; only
-`midi` vs `audio` is left to report). Both are breaking, so they wait on eval
-evidence.
+### Phase 8 — `type` stops carrying the role
+
+Decided, not yet built. `type` today says `midi | audio | return | master`,
+which is two questions in one field: what signal the track carries, and what
+role it plays. The path already answers the second (`t0`, `rt1`, `mt`), so the
+field keeps only the first.
+
+1. **A return or main track reports no `type` at all.** Not `"audio"`. They are
+   audio-only, so the value would be constant — and worse, misleading: it reads
+   as an invitation to put an audio clip there, which Live does not allow. The
+   field means "which signal, where there is a choice", and there is none.
+
+   This puts the whole weight of the role on the path, so the evals have to
+   prove models read and write `rt0` and `mt` reliably. If they don't, this is
+   the decision to revisit first.
+
+2. **`trackType` becomes a hidden param, not an error.** Same migration as the
+   other 2.x schema changes: accepted and validated, absent from the published
+   schema. Use `deprecatedParam({ replacedBy: "path" })` — it is going away,
+   unlike the permanent `aliasParam` guesses. `trackIndex` on the _track_ read
+   goes the same way; the `trackIndex` / `sceneIndex` aliases on the _clip_
+   tools stay permanent (Object-Paths.md tolerance, tier 1) and must not be
+   swept up with it.
+
+   This is what forces `path` onto the read tools: with `trackType` hidden,
+   `path` is the published way to name a return or the main track.
+
+3. **`create-track`'s `type` waits for Phase 9.** Its `return` is not addressing
+   — it picks a different Live call (`create_return_track`). It can only lose
+   the value once creation itself moves to a path (`t+`, `rt+`).
+
+4. **Say "main", not "master", in everything a model or user reads.** Live 12's
+   UI says Main and the path root `mt` reads as either. Tool and param
+   descriptions and the Skills all say main. Internal identifiers that mirror
+   the Live API property (`master_track`, `masterTrack`, `category: "master"`)
+   are a separate question — the `masterTrack` key in a Live Set read is
+   user-facing and still undecided.
+
+Both remaining sites of the conflation move together: `computeTrackType` in
+[read-track.ts](../../src/tools/track/read/read-track.ts) and the second copy in
+[select-response-helpers.ts](../../src/tools/session/helpers/select-response-helpers.ts).
+
+### Phase 9 — creating by path
+
+Not started. `create-track` / `create-scene` would take `t+` / `rt+` / `s+`
+instead of `type` + index, which is what lets Phase 8's item 3 finish.
 
 ## Docs to update as the phases land
 
