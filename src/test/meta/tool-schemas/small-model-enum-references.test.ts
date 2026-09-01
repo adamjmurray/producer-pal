@@ -78,8 +78,8 @@ function liveEnumValues(schema: ZodType): readonly string[] {
 const ORDINARY_WORDS: Record<string, readonly string[]> = {
   "ppal-library": ["folder"],
   // `return` is trimmed off create-track's `type` because "rt+" asks for one
-  // now, and `path` has to say what "rt+" makes. Unlike a real trim this one
-  // costs nothing if misread: the value is still accepted, just not offered.
+  // now, and `path` has to say what "rt+" makes. Safe to excuse: the word is
+  // prose here, and the value is still accepted anyway - only unoffered.
   "ppal-create-track": ["return"],
 };
 
@@ -170,11 +170,16 @@ function danglingEnumReferences(
 ): string[] {
   const { inputSchema, description } = def.toolOptions;
   const excused = ORDINARY_WORDS[def.toolName] ?? [];
+  const resolved = resolveParamModes(inputSchema, context);
+  // Both kinds count: whether a value was refused or merely not offered, a
+  // published description naming it points the model at something it can't
+  // pick out of the schema.
   const trimmed = [
     ...new Set(
-      Object.values(
-        resolveParamModes(inputSchema, context).excludeEnumValues,
-      ).flat(),
+      [
+        ...Object.values(resolved.excludeEnumValues),
+        ...Object.values(resolved.unpublishedEnumValues),
+      ].flat(),
     ),
   ].filter((value) => !excused.includes(value));
 

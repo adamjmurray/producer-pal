@@ -55,9 +55,12 @@ export type ParamModeValue =
 
 /**
  * A param's `default` value: its required base description, or that description
- * plus enum values to leave out of every published schema. The trim is a floor,
- * not an override — a mode that only replaces the description still gets it, so
- * a value hidden here is hidden everywhere.
+ * plus enum values to leave out of every published schema.
+ *
+ * This trim only stops a value being OFFERED — the handler still accepts it, so
+ * a caller who names it anyway is not refused. That is what makes it the way to
+ * retire an enum value without breaking anyone. A mode's own `excludeEnumValues`
+ * is the stricter thing: it takes the value out of the validating schema too.
  */
 export type ParamDefaultValue =
   | string
@@ -72,7 +75,10 @@ export type ParamModeMap = { default: ParamDefaultValue } & Partial<
 export interface ResolvedParamModes {
   excludeParams: string[];
   descriptionOverrides: Record<string, string>;
+  /** Enum values the winning mode refuses: gone from the validating schema. */
   excludeEnumValues: Record<string, string[]>;
+  /** Enum values `default` hides: gone from the published schema only. */
+  unpublishedEnumValues: Record<string, string[]>;
 }
 
 export interface ModeContext {
@@ -120,7 +126,8 @@ export function getParamModes(schema: ZodType): ParamModeMap | undefined {
  * enum values.
  * @param inputSchema - The tool's raw input schema
  * @param context - The active notation and small-model flag
- * @returns Flattened excludeParams / descriptionOverrides / excludeEnumValues
+ * @returns Flattened excludeParams / descriptionOverrides / excludeEnumValues /
+ *   unpublishedEnumValues
  */
 export function resolveParamModes(
   inputSchema: Record<string, ZodType>,
@@ -130,6 +137,7 @@ export function resolveParamModes(
   const excludeParams: string[] = [];
   const descriptionOverrides: Record<string, string> = {};
   const excludeEnumValues: Record<string, string[]> = {};
+  const unpublishedEnumValues: Record<string, string[]> = {};
 
   for (const [key, schema] of Object.entries(inputSchema)) {
     const modes = getParamModes(schema);
@@ -143,22 +151,30 @@ export function resolveParamModes(
       continue;
     }
 
-    // Always applied, whatever mode wins: a value trimmed on `default` is one
-    // no mode publishes.
-    const trimmed = new Set(enumValuesOf(modes.default) ?? []);
+    // `default`'s trim only hides a value; the winning mode's also refuses it.
+    // Keeping them apart is the whole point: a value trimmed on `default` is
+    // still one the handler accepts from a caller who names it anyway.
+    const hidden = enumValuesOf(modes.default) ?? [];
+
+    if (hidden.length > 0) unpublishedEnumValues[key] = [...hidden];
 
     if (winner !== undefined) {
       const desc = descriptionOf(winner);
 
       if (desc != null) descriptionOverrides[key] = desc;
 
-      for (const value of enumValuesOf(winner) ?? []) trimmed.add(value);
-    }
+      const refused = enumValuesOf(winner) ?? [];
 
-    if (trimmed.size > 0) excludeEnumValues[key] = [...trimmed];
+      if (refused.length > 0) excludeEnumValues[key] = [...refused];
+    }
   }
 
-  return { excludeParams, descriptionOverrides, excludeEnumValues };
+  return {
+    excludeParams,
+    descriptionOverrides,
+    excludeEnumValues,
+    unpublishedEnumValues,
+  };
 }
 
 /**

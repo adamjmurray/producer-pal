@@ -37,6 +37,7 @@ describe("resolveParamModes", () => {
       excludeParams: [],
       descriptionOverrides: {},
       excludeEnumValues: {},
+      unpublishedEnumValues: {},
     });
   });
 
@@ -144,9 +145,13 @@ describe("resolveParamModes", () => {
       { smallModelMode: true },
       { notation: "stark" as const },
     ]) {
-      expect(
-        resolveParamModes(schema, context).excludeEnumValues,
-      ).toStrictEqual({ type: ["return"] });
+      const resolved = resolveParamModes(schema, context);
+
+      expect(resolved.unpublishedEnumValues).toStrictEqual({
+        type: ["return"],
+      });
+      // Hidden, not refused - the handler still takes it.
+      expect(resolved.excludeEnumValues).toStrictEqual({});
     }
   });
 
@@ -176,10 +181,12 @@ describe("resolveParamModes", () => {
     const result = resolveParamModes(schema, { smallModelMode: true });
 
     expect(result.descriptionOverrides).toStrictEqual({ type: "type" });
-    expect(result.excludeEnumValues).toStrictEqual({ type: ["return"] });
+    expect(result.unpublishedEnumValues).toStrictEqual({ type: ["return"] });
   });
 
-  it("unions default's trim with a mode's own", () => {
+  // Both trims apply to what gets published, but only the mode's takes the
+  // value out of the schema that validates.
+  it("keeps a mode's trim apart from default's", () => {
     const schema = {
       include: param(z.array(z.enum(["a", "b", "c"])).default([]), {
         default: { description: "a or b", excludeEnumValues: ["c"] },
@@ -187,9 +194,10 @@ describe("resolveParamModes", () => {
       }),
     };
 
-    expect(
-      resolveParamModes(schema, { smallModelMode: true }).excludeEnumValues,
-    ).toStrictEqual({ include: ["c", "b"] });
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
+    expect(result.unpublishedEnumValues).toStrictEqual({ include: ["c"] });
   });
 
   it("lets the active notation win over small-model for the description", () => {
