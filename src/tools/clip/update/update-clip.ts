@@ -9,9 +9,6 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
-  targetEntries,
-  namedIdParam,
-  namedPathParam,
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -34,10 +31,11 @@ import {
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 import {
-  countListEntries,
-  validateListLengths,
-} from "#src/tools/shared/validation/list-lengths.ts";
+  targetCount,
+  targetIds,
+} from "#src/tools/shared/validation/target-lists.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   id?: string;
@@ -274,38 +272,6 @@ function stopBatch(
 }
 
 /**
- * The clips a call named, ids first then paths. id and path both name clips to
- * update, so a call may use either or both — neither contradicts the other the
- * way two destinations would. Entries stay in place, nulls included, so toPath
- * lines up with what the caller named.
- * @param args - The target params as the tool received them
- * @param args.id - Clip id(s)
- * @param args.ids - Hidden alias for id
- * @param args.path - Clip slot(s)
- * @param args.paths - Hidden alias for path
- * @returns One entry per named clip, null where a path named none
- */
-function requestedClipIds({
-  id,
-  ids,
-  path,
-  paths,
-}: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">): Array<
-  string | null
-> {
-  const namedIds = namedIdParam(id, ids, "ids");
-  const namedPaths = namedPathParam(path, paths);
-
-  // An id that parses to nothing gets its own word even when path carries the
-  // call: the combined list is still non-empty, so nothing else would notice
-  // that the ids the caller asked for dropped out.
-  return [
-    ...targetEntries(namedIds, "id"),
-    ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
-  ];
-}
-
-/**
  * Refuse a call whose lists disagree, then resolve the clips it names.
  *
  * Every list is checked together, before any of them is split: once one is
@@ -329,7 +295,7 @@ function resolveClipTargets(
   >,
 ): Array<string | null> {
   validateListLengths([
-    { param: "id and path", count: targetClipCount(targets) },
+    { param: "id and path", count: targetCount(targets) },
     { param: "name", value: values.name },
     { param: "color", value: values.color },
     { param: "arrangementStart", value: values.arrangementStart },
@@ -340,25 +306,7 @@ function resolveClipTargets(
     },
   ]);
 
-  return requestedClipIds(targets);
-}
-
-/**
- * How many clips the call names, without looking any of them up. The lists are
- * checked before anything touches Live, so this counts entries rather than
- * resolving them.
- * @param args - The call's id/ids and path/paths params
- * @returns The number of clips named
- */
-function targetClipCount(
-  args: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">,
-): number {
-  const named = [
-    namedIdParam(args.id, args.ids, "ids"),
-    namedPathParam(args.path, args.paths),
-  ];
-
-  return named.reduce((total, value) => total + countListEntries(value), 0);
+  return targetIds(targets, "updateClip", clipIdPerPath);
 }
 
 /**

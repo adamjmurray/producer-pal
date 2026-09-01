@@ -19,9 +19,6 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
   findReturnIndex,
-  targetEntries,
-  namedIdParam,
-  namedPathParam,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -34,10 +31,11 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 import {
-  countListEntries,
-  validateListLengths,
-} from "#src/tools/shared/validation/list-lengths.ts";
+  targetCount,
+  targetIds,
+} from "#src/tools/shared/validation/target-lists.ts";
 import { trackIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 
 interface UpdateTrackArgs {
@@ -251,10 +249,9 @@ export function updateTrack(
   }: UpdateTrackArgs,
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
-  const targets = namedIdParam(id, ids, "ids");
-  const targetPaths = namedPathParam(path, paths);
+  const named = { id, ids, path, paths };
 
-  if (!targets && !targetPaths) {
+  if (targetCount(named) === 0) {
     console.warn("updateTrack: id or path is required");
 
     return [];
@@ -262,24 +259,13 @@ export function updateTrack(
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
-  // `id` and `path` name different tracks and add up, so the target count is
-  // their sum — comparing the two would refuse a call naming two of each.
   validateListLengths([
-    {
-      param: "id and path",
-      count: countListEntries(targets) + countListEntries(targetPaths),
-    },
+    { param: "id and path", count: targetCount(named) },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
 
-  // Parse comma-separated string into array. An id that parses to nothing
-  // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
-  // reading the same as an omitted id.
-  const trackIds: Array<string | null> = [
-    ...(targets ? targetEntries(targets, "id") : []),
-    ...(targetPaths == null ? [] : trackIdPerPath(targetPaths, "updateTrack")),
-  ];
+  const trackIds = targetIds(named, "updateTrack", trackIdPerPath);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped

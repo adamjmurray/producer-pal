@@ -7,9 +7,6 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
-  targetEntries,
-  namedIdParam,
-  namedPathParam,
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
@@ -23,10 +20,11 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 import {
-  countListEntries,
-  validateListLengths,
-} from "#src/tools/shared/validation/list-lengths.ts";
+  targetCount,
+  targetIds,
+} from "#src/tools/shared/validation/target-lists.ts";
 import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,
@@ -81,10 +79,9 @@ export function updateScene(
   }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
-  const targets = namedIdParam(id, ids, "ids");
-  const targetPaths = namedPathParam(path, paths);
+  const named = { id, ids, path, paths };
 
-  if (!targets && !targetPaths) {
+  if (targetCount(named) === 0) {
     console.warn("updateScene: id or path is required");
 
     return [];
@@ -92,24 +89,13 @@ export function updateScene(
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
-  // `id` and `path` name different scenes and add up, so the target count is
-  // their sum — comparing the two would refuse a call naming two of each.
   validateListLengths([
-    {
-      param: "id and path",
-      count: countListEntries(targets) + countListEntries(targetPaths),
-    },
+    { param: "id and path", count: targetCount(named) },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
 
-  // Parse comma-separated string into array. An id that parses to nothing
-  // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
-  // reading the same as an omitted id.
-  const sceneIds: Array<string | null> = [
-    ...(targets ? targetEntries(targets, "id") : []),
-    ...(targetPaths == null ? [] : sceneIdPerPath(targetPaths, "updateScene")),
-  ];
+  const sceneIds = targetIds(named, "updateScene", sceneIdPerPath);
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped
