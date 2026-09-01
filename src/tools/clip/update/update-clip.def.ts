@@ -109,8 +109,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "a track's arrangement lane 't<track>', or a take lane 't<track>/l<lane>' or 't<track>/l+' " +
           "(e.g., 't2/s3' or 't2,t5'). Arrangement lanes pair with arrangementStart for the position; " +
           "without it the clip keeps its own. A clip re-created in a slot or on a take lane drops its " +
-          "automation envelopes. Paired 1:1 with the clips named by id/path, in order - destinations " +
-          "don't cycle, so name one per clip",
+          "automation envelopes. Paired 1:1 with the clips named by id/path, in order - name one per " +
+          "clip, since a single destination doesn't cover them all the way a name does",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged

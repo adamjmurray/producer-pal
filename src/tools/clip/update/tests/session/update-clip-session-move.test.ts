@@ -707,9 +707,9 @@ describe("resolveMoveDestinations", () => {
     ]);
   });
 
-  // Names and colors cycle; destinations can't — the second clip sent to a slot
-  // overwrites the first.
-  it("does not cycle a short destination list, and says which clips stayed", () => {
+  // A single name or color covers every clip; a single destination can't — the
+  // second clip sent to a slot overwrites the first.
+  it("does not spread a short destination list, and says which clips stayed", () => {
     expect(resolveMoveDestinations("t2/s3", undefined, 3)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,

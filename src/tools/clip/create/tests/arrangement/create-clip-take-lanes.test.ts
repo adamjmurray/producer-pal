@@ -293,8 +293,9 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(1, 0);
   });
 
-  // The list cycles, so one written l+ covers all three positions. Numbering
-  // the expanded positions instead would scatter them over three lanes.
+  // One written l+ covers all three positions, the way any single value covers
+  // every item. Numbering the expanded positions instead would scatter them
+  // over three lanes.
   it("keeps one l+ on one lane across several arrangementStarts", async () => {
     registerLiveSet();
     const track = registerTakeLaneTrack({ initialLanes: 0 });
