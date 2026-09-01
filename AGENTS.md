@@ -103,10 +103,16 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`.
 
-- **Update tools never throw** for a bad param combo or an operation that
-  doesn't apply. `console.warn()`, skip that operation, and keep going, so the
-  rest of a multi-item call still succeeds. Warnings are not silent — they're
-  appended to the tool response as `WARNING:` blocks the model reads.
+- **Update tools don't throw for an operation that doesn't apply** — but a call
+  they can't read at all is still refused before it starts. When something is
+  found to be inapplicable mid-flight, `console.warn()`, skip that operation,
+  and keep going, so the rest of a multi-item call still succeeds. Warnings are
+  not silent — they're appended to the tool response as `WARNING:` blocks the
+  model reads. Malformed structure is different: a target list with a hole in
+  it, comma-separated params that disagree in length, a blank string on a param
+  with no blank value. Those are checked up front and thrown, because nothing
+  has run yet and the model can retry without cleaning anything up. See
+  ADR-0035.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
