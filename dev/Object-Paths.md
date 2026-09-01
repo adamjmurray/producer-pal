@@ -124,8 +124,10 @@ stay in Live's UI.
 Four tiers, in order of preference.
 
 1. **Hidden params.** `slot`, `slots`, `toSlot`, `devicePath`, `takeLane` are
-   deprecated — accepted, warned, going away. `trackIndex` and `sceneIndex` on
-   clip tools are permanent aliases: models reach for them unprompted, and
+   deprecated — accepted, warned, going away, and so are `trackType` and
+   `trackIndex` on `read-track` and `sceneIndex` on `read-scene`, which the path
+   replaces. `trackIndex` and `sceneIndex` on the _clip_ tools are permanent
+   aliases, not part of that migration: models reach for them unprompted, and
    catching the guess beats a round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
@@ -146,12 +148,13 @@ Four tiers, in order of preference.
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
    - **A source — throw.** Where the call acts on one target (`read-clip`,
-     `read-device`, `update-device`, `duplicate`, `playback`'s `play-scene`),
-     two params naming different things has no answer, so it errors. Naming the
-     same target twice over is not a conflict: `play-scene` with `t0/s1,t2/s1`
-     fires scene 1, and `read-clip` takes an `id` that sits at the `path`.
-     `duplicate` is half-way: its `id` takes a list, but `path` names one drum
-     pad for the whole call, so naming both still throws.
+     `read-device`, `read-track`, `read-scene`, `update-device`, `duplicate`,
+     `playback`'s `play-scene`), two params naming different things has no
+     answer, so it errors. Naming the same target twice over is not a conflict:
+     `play-scene` with `t0/s1,t2/s1` fires scene 1, and `read-clip` takes an
+     `id` that sits at the `path`. `duplicate` is half-way: its `id` takes a
+     list, but `path` names one drum pad for the whole call, so naming both
+     still throws.
    - **A set — union.** Where the call already acts on a list (`delete`,
      `update-clip`, `update-track`, `update-scene`, `playback`'s clip actions),
      `id` and `path` both name members of it, so the targets combine. `delete`

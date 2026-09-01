@@ -5,7 +5,10 @@
 
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
-import { aliasParam } from "#src/tools/shared/tool-framework/hidden-param.ts";
+import {
+  aliasParam,
+  deprecatedParam,
+} from "#src/tools/shared/tool-framework/hidden-param.ts";
 import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
@@ -19,10 +22,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
   },
 
   inputSchema: {
-    id: z.coerce
-      .string()
-      .optional()
-      .describe("provide this, path, or trackType/trackIndex"),
+    id: z.coerce.string().optional().describe("provide this or path"),
 
     trackId: aliasParam(z.coerce.string().optional(), {
       canonical: "id",
@@ -33,18 +33,13 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       .describe(
         "track path instead of id: 't0', 'rt0' for a return, 'mt' for the main track",
       ),
-    trackType: z
-      .enum(["regular", "return", "master"])
-      .optional()
-      .describe(
-        "regular (default, audio/midi), return, or master. regular and return tracks have independent trackIndexes",
-      ),
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based index"),
+    trackType: deprecatedParam(
+      z.enum(["regular", "return", "master"]).optional(),
+      { replacedBy: "path" },
+    ),
+    trackIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
     include: param(
       z
         .array(
