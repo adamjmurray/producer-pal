@@ -70,18 +70,13 @@ describe("parseObjectPathList", () => {
 
   // The list is cycled against a position list, so a dropped entry moves every
   // later copy onto the wrong track instead of just making one fewer.
-  it("warns when it drops an empty entry", () => {
+  it("refuses a hole rather than shifting every later entry", () => {
     const warn = vi.spyOn(console, "warn");
 
-    expect(parseObjectPathList("t1,,t2", "toPath")).toStrictEqual([
-      { kind: "track", trackIndex: 1 },
-      { kind: "track", trackIndex: 2 },
-    ]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('toPath "t1,,t2" has empty entries'),
+    expect(() => parseObjectPathList("t1,,t2", "toPath")).toThrow(
+      'invalid toPath "t1,,t2" - it has an empty entry.',
     );
 
-    warn.mockClear();
     parseObjectPathList("t1,t2", "toPath");
     expect(warn).not.toHaveBeenCalled();
   });
@@ -90,15 +85,11 @@ describe("parseObjectPathList", () => {
   // update-clip/delete/playback's path, which names the objects to act on. It
   // used to call every entry a destination either way.
   it("does not call a source a destination", () => {
-    const warn = vi.spyOn(console, "warn");
-
     expect(() => parseObjectPathList(",", "path")).toThrow(
       'invalid path "," - it names nothing',
     );
-
-    parseObjectPathList("t1,,t2", "path");
-    expect(warn).toHaveBeenCalledWith(
-      'path "t1,,t2" has empty entries, which were dropped',
+    expect(() => parseObjectPathList("t1,,t2", "path")).toThrow(
+      'invalid path "t1,,t2" - it has an empty entry.',
     );
   });
 });

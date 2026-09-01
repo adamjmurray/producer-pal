@@ -174,61 +174,48 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
 }
 
 /**
- * Splits a param read by {@link namedIdParam}/{@link namedPathParam} into its
- * comma-separated entries, warning when every one comes out empty — that state
- * reads exactly like an omitted param unless something says otherwise. An
- * omitted param is nullish by then, and says nothing.
+ * Splits a target list — a param naming objects or places (`id`, `path`,
+ * `toPath`, `arrangementStart`, `locator`) — into its entries, refusing a list
+ * it can't read cleanly.
+ *
+ * One trailing comma is not an entry, the way most languages read a list
+ * literal. Any other empty entry is a hole, and a hole is refused rather than
+ * guessed at: dropping it shifts every later pairing, keeping it names nothing,
+ * and which of the two bites depends on params the caller isn't looking at. A
+ * list whose entries are all empty (`","`) names nothing, and is the same error.
+ *
+ * Refusing is safe here because nothing has run yet — the model retries with a
+ * corrected call and loses no work. Value lists (`name`, `color`) read an empty
+ * entry the opposite way, as "keep what you had"; see `splitList`.
  * @param raw - The param's value, or nullish when it was omitted
- * @param label - Param name, for the warning
- * @returns The trimmed, non-empty entries — empty only when omitted or warned
+ * @param label - Param name, for the error message
+ * @returns One trimmed entry per target, in order; empty only when omitted
+ * @throws Error when the list has a hole or names nothing
  */
-export function namedCommaSeparatedIds(
+export function targetEntries(
   raw: string | null | undefined,
   label: string,
 ): string[] {
-  if (raw == null) return [];
+  // A blank value is an unsent param (ADR-0029), not a list that names nothing.
+  // A lone comma is something the caller typed, and that is the error below.
+  if (raw == null || raw.trim() === "") return [];
 
-  const entries = parseCommaSeparatedIds(raw);
+  const entries = raw.split(",").map((entry) => entry.trim());
 
-  if (entries.length === 0) {
-    console.warn(`${label} "${raw}" names nothing`);
+  if (entries.at(-1) === "") entries.pop();
+
+  if (entries.every((entry) => entry === "")) {
+    throw new Error(`invalid ${label} "${raw}" - it names nothing`);
   }
 
-  reportDroppedEntries(raw, entries, label);
+  if (entries.includes("")) {
+    throw new Error(
+      `invalid ${label} "${raw}" - it has an empty entry. ` +
+        `Drop the extra comma, or name every target.`,
+    );
+  }
 
   return entries;
-}
-
-/**
- * Warns when splitting a list dropped an empty entry.
- *
- * Only where it matters. A trailing comma drops an entry but moves nothing, and
- * a list where every entry is empty named nothing at all — a different mistake,
- * left to each caller.
- *
- * Says what happened and stops there. Whether it also moved something depends
- * on what the tool reads against the list — names, colors, destinations, or
- * nothing at all — and a shared helper cannot know.
- * @param raw - The param's value, as sent
- * @param entries - What it split into
- * @param label - Param name, for the warning
- */
-export function reportDroppedEntries(
-  raw: string,
-  entries: string[],
-  label: string,
-): void {
-  // Plain scan, not a regex: `id` has no length cap, and anchoring a character
-  // class at the end of a long run of separators costs quadratic time.
-  const named = raw.split(",");
-
-  while (named.length > 0 && (named.at(-1) ?? "").trim() === "") {
-    named.pop();
-  }
-
-  if (entries.length >= named.length) return;
-
-  console.warn(`${label} "${raw}" has empty entries, which were dropped`);
 }
 
 /**

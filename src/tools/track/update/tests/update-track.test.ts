@@ -214,20 +214,19 @@ describe("updateTrack", () => {
     ]);
   });
 
-  it("should filter out empty IDs from comma-separated list", () => {
-    const result = updateTrack({
-      id: "123,,456,  ,789",
-      name: "Filtered",
-    });
+  // Refusing is atomic: nothing has been set, so the caller retries with the
+  // stray comma removed and loses no work.
+  it("should refuse an empty ID in a comma-separated list", () => {
+    expect(() =>
+      updateTrack({
+        id: "123,,456,  ,789",
+        name: "Filtered",
+      }),
+    ).toThrow('invalid id "123,,456,  ,789" - it has an empty entry.');
 
-    expect(track123.set).toHaveBeenCalledTimes(1);
-    expect(track456.set).toHaveBeenCalledTimes(1);
-    expect(track789.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual([
-      { id: "123", path: "t0" },
-      { id: "456", path: "t1" },
-      { id: "789", path: "t2" },
-    ]);
+    expect(track123.set).not.toHaveBeenCalled();
+    expect(track456.set).not.toHaveBeenCalled();
+    expect(track789.set).not.toHaveBeenCalled();
   });
 
   describe("routing properties", () => {

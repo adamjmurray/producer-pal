@@ -5,9 +5,8 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  parseCommaSeparatedIds,
-  reportDroppedEntries,
   parseCommaSeparatedIndices,
+  targetEntries,
 } from "#src/tools/shared/utils.ts";
 
 export interface ClipSlotPosition {
@@ -42,12 +41,7 @@ export function parseSlotList(
   input: string | null | undefined,
   label: string,
 ): ClipSlotPosition[] {
-  const entries = parseCommaSeparatedIds(input);
-  const trimmed = input?.trim();
-
-  // namedHiddenPath has already dropped a value that names nothing, and said so,
-  // so anything arriving here with a comma in it has a real entry.
-  if (trimmed) reportDroppedEntries(input ?? trimmed, entries, label);
+  const entries = targetEntries(input, label);
 
   return entries.map((entry) => {
     const parts = entry.split("/");
@@ -93,7 +87,7 @@ export function parseSceneIndexList(input?: string | null): number[] {
  * @returns Array of bar|beat position strings
  */
 export function parseArrangementStartList(input?: string | null): string[] {
-  return parseCommaSeparatedIds(input);
+  return targetEntries(input, "arrangementStart");
 }
 
 // --- Helpers below main exports ---

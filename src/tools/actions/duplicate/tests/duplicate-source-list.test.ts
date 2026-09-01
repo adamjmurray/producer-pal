@@ -101,53 +101,42 @@ describe("duplicate - a list of sources", () => {
       ]);
     });
 
-    // The destinations are shared out against the source list, so a source
-    // that vanishes changes which slot every later one gets.
-    it("says an empty id entry was dropped", async () => {
+    // The destinations are shared out against the source list, so a source that
+    // vanished would change which slot every later one gets.
+    it("refuses an empty id entry", async () => {
       registerTwoSlotSources([
         [2, 0],
         [3, 0],
       ]);
 
-      await duplicate({
-        type: "clip",
-        id: "clipA,,clipB",
-        toPath: "t2/s0,t3/s0",
-      });
-
-      expect(capturedWarnings()).toContainEqual(
-        'id "clipA,,clipB" has empty entries, which were dropped',
-      );
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,,clipB",
+          toPath: "t2/s0,t3/s0",
+        }),
+      ).rejects.toThrow('invalid id "clipA,,clipB" - it has an empty entry.');
     });
 
     // The lookup gets the list whole, so without this the caller is told the
     // source is the wrong type rather than that the id named no source.
-    it("says an id of only commas names nothing", async () => {
+    it("refuses an id of only commas", async () => {
       registerTwoSlotSources([[2, 0]]);
 
-      await duplicate({ type: "clip", id: ",", toPath: "t2/s0" }).catch(
-        () => undefined,
-      );
-
-      expect(capturedWarnings()).toContainEqual('id "," names nothing');
+      await expect(
+        duplicate({ type: "clip", id: ",", toPath: "t2/s0" }),
+      ).rejects.toThrow('invalid id "," - it names nothing');
     });
 
-    // One surviving source is forwarded whole rather than re-split, so the
-    // empty entry used to travel with it and the lookup failed on a source
-    // that was right there.
-    it("drops an empty entry even when one source survives", async () => {
+    // One surviving source is forwarded whole rather than re-split, so the empty
+    // entry used to travel with it and the lookup failed on a source that was
+    // right there. It is refused up front now, before any of that.
+    it("refuses a leading empty entry even when one source survives", async () => {
       registerTwoSlotSources([[2, 0]]);
 
-      const result = await duplicate({
-        type: "clip",
-        id: ",clipA",
-        toPath: "t2/s0",
-      });
-
-      expect(result).toStrictEqual({ id: "clipA-in-t2s0", path: "t2/s0" });
-      expect(capturedWarnings()).toContainEqual(
-        'id ",clipA" has empty entries, which were dropped',
-      );
+      await expect(
+        duplicate({ type: "clip", id: ",clipA", toPath: "t2/s0" }),
+      ).rejects.toThrow('invalid id ",clipA" - it has an empty entry.');
     });
 
     it("splits the destinations evenly when there are more than sources", async () => {

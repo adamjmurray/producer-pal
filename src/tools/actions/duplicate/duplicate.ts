@@ -6,8 +6,7 @@
 import {
   namedIdParam,
   namedParam,
-  parseCommaSeparatedIds,
-  reportDroppedEntries,
+  targetEntries,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
@@ -130,7 +129,7 @@ export async function duplicate(
 
   // Here, not in resolveArrangementPositions, which runs once per source: one
   // mistake in the list gets one word for the call.
-  reportDroppedPositions(arrangementStart, locator);
+  validatePositionLists(arrangementStart, locator);
   // A container destination — a track's arrangement or a take lane on it — holds
   // many copies and tells them apart by position, so every source can have the
   // whole list. A clip slot, device slot or drum pad holds one object, so the
@@ -231,20 +230,16 @@ export async function duplicate(
 }
 
 /**
- * Report an empty entry in either arrangement position list, once for the call.
+ * Refuse a malformed arrangement position list before anything is duplicated.
+ * Both lists are read further down in more than one place, so checking them
+ * here is what makes the refusal atomic.
  * @param arrangementStart - Comma-separated bar|beat positions, if sent
  * @param locator - Comma-separated locator refs, if sent
  */
-function reportDroppedPositions(
+function validatePositionLists(
   arrangementStart: string | null | undefined,
   locator: string | null | undefined,
 ): void {
-  for (const [value, label] of [
-    [arrangementStart, "arrangementStart"],
-    [locator, "locator"],
-  ] as const) {
-    if (value == null) continue;
-
-    reportDroppedEntries(value, parseCommaSeparatedIds(value), label);
-  }
+  targetEntries(arrangementStart, "arrangementStart");
+  targetEntries(locator, "locator");
 }

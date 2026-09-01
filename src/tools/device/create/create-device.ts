@@ -18,11 +18,7 @@ import {
   invalidateDevicePathCache,
   withDevicePathCache,
 } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
-import {
-  parseCommaSeparatedIds,
-  reportDroppedEntries,
-  unwrapSingleResult,
-} from "#src/tools/shared/utils.ts";
+import { targetEntries, unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -86,17 +82,13 @@ export function createDevice(
 
   validateDeviceName(deviceName);
 
-  const paths = parseCommaSeparatedIds(path);
-
-  reportDroppedEntries(path ?? "", paths, "path");
-
-  if (paths.length === 0) {
+  if (path == null || path.trim() === "") {
     throw new Error(
-      path == null || path.trim() === ""
-        ? "createDevice failed: path is required when creating a device"
-        : `createDevice failed: path "${path}" names nothing`,
+      "createDevice failed: path is required when creating a device",
     );
   }
+
+  const paths = targetEntries(path, "path");
 
   const parsedNames = parseNames(name, paths.length, "device");
 

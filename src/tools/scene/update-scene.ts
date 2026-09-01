@@ -7,7 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
-  namedCommaSeparatedIds,
+  targetEntries,
   namedIdParam,
   parseTimeSignature,
   unwrapSingleResult,
@@ -71,7 +71,7 @@ export function updateScene(
   // Parse comma-separated string into array. An id that parses to nothing
   // (e.g. ",  ,") was still sent, so it gets a word of its own rather than
   // reading the same as an omitted id.
-  const sceneIds = namedCommaSeparatedIds(targets, "id");
+  const sceneIds = targetEntries(targets, "id");
 
   // Parse names/colors against the original id count so the positional mapping
   // (name[k]/color[k] → ids[k]) survives even when an invalid id is skipped

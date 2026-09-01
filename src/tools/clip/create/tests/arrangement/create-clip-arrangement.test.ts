@@ -191,18 +191,16 @@ describe("createClip - arrangement view", () => {
   // A real position beside a slot-only path is refused; one that names nothing
   // used to vanish instead, so the same call read as "a clip slot was all I
   // ever asked for".
-  it("warns when arrangementStart names no position", async () => {
+  it("refuses an arrangementStart that names no position", async () => {
     setupArrangementClipMocks();
 
-    await createClip({
-      path: "t0/s1",
-      arrangementStart: ",  ,",
-      notes: "C4 1|1",
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('arrangementStart ",  ," names nothing'),
-    );
+    await expect(
+      createClip({
+        path: "t0/s1",
+        arrangementStart: ",  ,",
+        notes: "C4 1|1",
+      }),
+    ).rejects.toThrow('invalid arrangementStart ",  ," - it names nothing');
   });
 
   it("cycles clipseq() by clip.index across arrangement positions", async () => {

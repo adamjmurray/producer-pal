@@ -6,7 +6,7 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import { assertDefined } from "#src/shared/error-utils.ts";
-import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/utils.ts";
 
 export interface LocatorInfo {
   id: string;
@@ -204,7 +204,7 @@ export function resolveLocatorListToBeats(
   toolName: string,
 ): number[] {
   if (locatorId != null) {
-    const ids = parseCommaSeparatedIds(locatorId);
+    const ids = targetEntries(locatorId, "locatorId");
 
     return ids.map((id) => {
       const found = findLocator(liveSet, { locatorId: id });
@@ -218,7 +218,7 @@ export function resolveLocatorListToBeats(
   }
 
   if (locatorName != null) {
-    const names = parseCommaSeparatedIds(locatorName);
+    const names = targetEntries(locatorName, "locatorName");
 
     return names.map((name) => {
       const matches = findLocatorsByName(liveSet, name);
@@ -290,7 +290,7 @@ export function resolveLocatorRefListToBeats(
   locatorRef: string,
   toolName: string,
 ): number[] {
-  const refs = parseCommaSeparatedIds(locatorRef);
+  const refs = targetEntries(locatorRef, "locator");
 
   return refs.map((ref) => resolveLocatorRefToBeats(liveSet, ref, toolName));
 }

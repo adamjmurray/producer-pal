@@ -131,23 +131,18 @@ describe("updateClip - Properties and ID handling", () => {
     ]);
   });
 
-  it("should filter out empty IDs from comma-separated list", async () => {
+  // Refusing is atomic: nothing has been set, so the caller drops the stray
+  // comma and retries with no work to undo.
+  it("should refuse an empty ID in a comma-separated list", async () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    const result = await updateClip({
-      id: "123,,456,  ,",
-      name: "Filtered",
-    });
+    await expect(
+      updateClip({ id: "123,,456,  ,", name: "Filtered" }),
+    ).rejects.toThrow('invalid id "123,,456,  ," - it has an empty entry.');
 
-    // set the names of the two clips:
-    expect(mocks.clip123.set).toHaveBeenCalledWith("name", "Filtered");
-    expect(mocks.clip456.set).toHaveBeenCalledWith("name", "Filtered");
-
-    expect(result).toStrictEqual([
-      { id: "123", path: "t0/s0" },
-      { id: "456", path: "t1/s1" },
-    ]);
+    expect(mocks.clip123.set).not.toHaveBeenCalled();
+    expect(mocks.clip456.set).not.toHaveBeenCalled();
   });
 
   describe("color quantization verification", () => {

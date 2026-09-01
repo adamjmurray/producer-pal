@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 import "../duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
@@ -224,19 +223,21 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
     // A locator naming nothing parses to zero positions, and the destination
     // list is cycled against it — so without this the copy count comes from the
-    // track list and the clip lands at an undefined position.
+    // track list and the clip lands at an undefined position. A blank value
+    // reads as unset and is caught by the tool; a lone comma is a list that
+    // names nothing, and the list rule refuses it first.
     it.each([
-      ["", "empty"],
-      [",", "separators only"],
-      ["   ", "whitespace"],
+      ["", "empty", "duplicate failed: locator names no locators"],
+      [",", "separators only", 'invalid locator "," - it names nothing'],
+      ["   ", "whitespace", "duplicate failed: locator names no locators"],
     ])(
       "throws instead of placing a copy for a locator that is %s (%s)",
-      async (locator) => {
+      async (locator, _label, message) => {
         const track0 = setupClipWithLocators(standardCuePoints);
 
         await expect(
           duplicate({ type: "clip", id: "clip1", locator }),
-        ).rejects.toThrow("duplicate failed: locator names no locators");
+        ).rejects.toThrow(message);
 
         expect(track0.call).not.toHaveBeenCalledWith(
           "duplicate_clip_to_arrangement",
@@ -266,20 +267,18 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveLength(2);
     });
 
-    it("says an empty locator entry was dropped", async () => {
+    it("refuses an empty locator entry", async () => {
       setupClipWithLocators(multiCuePoints);
 
-      await duplicate({
-        type: "clip",
-        id: "clip1",
-        locator: "locator-1,,locator-2",
-      });
-
-      expect(
-        capturedWarnings().filter((warning) => warning.includes("locator ")),
-      ).toStrictEqual([
-        'locator "locator-1,,locator-2" has empty entries, which were dropped',
-      ]);
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          locator: "locator-1,,locator-2",
+        }),
+      ).rejects.toThrow(
+        'invalid locator "locator-1,,locator-2" - it has an empty entry.',
+      );
     });
 
     it("should duplicate a clip to multiple locator name positions", async () => {

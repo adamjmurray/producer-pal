@@ -69,21 +69,15 @@ describe("parseArrangementParams", () => {
 
   // Not blank, but names no position — the caller asked for a move, so the
   // clip staying put has to say so rather than read as a move that worked.
-  it("warns when a position list names nothing", () => {
-    const { startBeats } = parseArrangementParams(",  ,", undefined, 2);
-
-    expect(beatsForClip(startBeats, 0)).toBeNull();
-    expect(console.warn).toHaveBeenCalledWith(
-      'arrangementStart ",  ," names nothing',
+  it("refuses a position list that names nothing", () => {
+    expect(() => parseArrangementParams(",  ,", undefined, 2)).toThrow(
+      'invalid arrangementStart ",  ," - it names nothing',
     );
   });
 
-  it("warns when a length list names nothing", () => {
-    const { lengthBeats } = parseArrangementParams(undefined, ", ,", 2);
-
-    expect(beatsForClip(lengthBeats, 0)).toBeNull();
-    expect(console.warn).toHaveBeenCalledWith(
-      'arrangementLength ", ," names nothing',
+  it("refuses a length list that names nothing", () => {
+    expect(() => parseArrangementParams(undefined, ", ,", 2)).toThrow(
+      'invalid arrangementLength ", ," - it names nothing',
     );
   });
 

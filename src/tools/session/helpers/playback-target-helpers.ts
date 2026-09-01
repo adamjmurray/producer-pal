@@ -8,7 +8,7 @@ import {
   namedIdParam,
   namedParam,
   namedPathParam,
-  parseCommaSeparatedIds,
+  targetEntries,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
@@ -187,14 +187,9 @@ export function resolveClipSlotPositions(
  * @returns One position per id that named a session clip
  */
 function idSlotPositions(ids: string, action: string): ClipSlotPosition[] {
-  const clips = validateIdTypes(
-    parseCommaSeparatedIds(ids),
-    "clip",
-    "playback",
-    {
-      skipInvalid: true,
-    },
-  );
+  const clips = validateIdTypes(targetEntries(ids, "id"), "clip", "playback", {
+    skipInvalid: true,
+  });
 
   return clips.map((clip) => {
     const { trackIndex, sceneIndex } = clip;
@@ -398,7 +393,7 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
 
   const refs: SceneRef[] = [];
 
-  for (const id of parseCommaSeparatedIds(ids)) {
+  for (const id of targetEntries(ids, "id")) {
     const object = LiveAPI.from(id);
 
     if (!object.exists()) {

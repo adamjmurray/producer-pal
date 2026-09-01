@@ -11,7 +11,7 @@
 // Resolved before anything is created, so a bad destination fails instead of
 // quietly landing clips somewhere else.
 
-import { namedCommaSeparatedIds, namedParam } from "#src/tools/shared/utils.ts";
+import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
 import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -78,7 +78,7 @@ export function resolveCreateClipDestinations(
   // is refused, so one that parses to nothing must not just vanish.
   const path = namedParam(params.path, "path");
   const slot = namedHiddenPath(params.slot ?? undefined, "slot");
-  const arrangementStarts = namedCommaSeparatedIds(
+  const arrangementStarts = targetEntries(
     namedParam(arrangementStart, "arrangementStart"),
     "arrangementStart",
   );

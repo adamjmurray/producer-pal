@@ -284,11 +284,11 @@ describe("duplicate - scene duplication", () => {
     it("rejects a malformed arrangementStart that parses to no positions", async () => {
       setupArrangementSceneMocks();
 
-      // "," survives the earlier trim-only checks but parses to zero positions;
-      // it must throw, not silently produce no duplicates.
+      // "," survives the earlier trim-only checks but names no position; it
+      // must throw, not silently produce no duplicates.
       await expect(
         duplicate({ type: "scene", id: "scene1", arrangementStart: "," }),
-      ).rejects.toThrow(/no valid bar\|beat positions/);
+      ).rejects.toThrow('invalid arrangementStart "," - it names nothing');
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", async () => {

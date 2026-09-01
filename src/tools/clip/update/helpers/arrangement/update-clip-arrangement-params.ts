@@ -9,7 +9,7 @@ import {
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { namedCommaSeparatedIds, namedParam } from "#src/tools/shared/utils.ts";
+import { targetEntries, namedParam } from "#src/tools/shared/utils.ts";
 import {
   pairValues,
   type PairLabels,
@@ -64,11 +64,11 @@ export function parseArrangementParams(
   // clip left where it is instead of an error. A value that is not blank but
   // still names nothing (",  ,") is a different thing: the caller asked for a
   // move, so say it didn't happen.
-  const positions = namedCommaSeparatedIds(
+  const positions = targetEntries(
     namedParam(arrangementStart, "arrangementStart"),
     "arrangementStart",
   );
-  const durations = namedCommaSeparatedIds(
+  const durations = targetEntries(
     namedParam(arrangementLength, "arrangementLength"),
     "arrangementLength",
   );

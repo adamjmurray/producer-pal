@@ -208,9 +208,10 @@ describe("playback ids that names no clip", () => {
 
   // Nothing warned on this one at all: the entries were dropped before any id
   // was looked at, so the call reported a launch with no message of any kind.
-  it("refuses an ids that names no id", () => {
+  // Now the list itself is refused, before any clip is looked up.
+  it("refuses an id that names no id", () => {
     expect(() => playback({ action: "play-session-clips", id: "," })).toThrow(
-      'playback failed: id "," named no clip for action "play-session-clips"',
+      'invalid id "," - it names nothing',
     );
   });
 

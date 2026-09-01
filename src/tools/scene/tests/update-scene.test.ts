@@ -289,20 +289,19 @@ describe("updateScene", () => {
     ]);
   });
 
-  it("should filter out empty IDs from comma-separated list", () => {
-    const result = updateScene({
-      id: "123,,456,  ,789",
-      name: "Filtered",
-    });
+  // Refusing is atomic: nothing has been set, so the caller retries with the
+  // stray comma removed and loses no work.
+  it("should refuse an empty ID in a comma-separated list", () => {
+    expect(() =>
+      updateScene({
+        id: "123,,456,  ,789",
+        name: "Filtered",
+      }),
+    ).toThrow('invalid id "123,,456,  ,789" - it has an empty entry.');
 
-    expect(scene1.set).toHaveBeenCalledTimes(1);
-    expect(scene2.set).toHaveBeenCalledTimes(1);
-    expect(scene3.set).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual([
-      { id: "123", path: "s0" },
-      { id: "456", path: "s1" },
-      { id: "789", path: "s2" },
-    ]);
+    expect(scene1.set).not.toHaveBeenCalled();
+    expect(scene2.set).not.toHaveBeenCalled();
+    expect(scene3.set).not.toHaveBeenCalled();
   });
 
   describe("color quantization verification", () => {

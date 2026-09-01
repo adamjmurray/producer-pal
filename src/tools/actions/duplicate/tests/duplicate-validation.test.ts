@@ -167,46 +167,39 @@ describe("duplicate - clip session validation", () => {
   });
 });
 
-// A dropped position makes one fewer copy than the list asked for, and the
-// names are counted against the position count, so the last one goes unused.
+// Dropping a position would make one fewer copy than the list asked for, and
+// the names are counted against the position count, so the last one would go
+// unused. Nothing is duplicated yet, so refuse instead.
 describe("duplicate - an empty arrangementStart entry", () => {
-  it("says the entry was dropped", async () => {
+  it("refuses the call", async () => {
     registerSessionClipForArrangementDup();
     registerArrangementClip(0, 1, 16);
 
-    await duplicate({
-      type: "clip",
-      id: "clip1",
-      arrangementStart: "3|1,,5|1",
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      'arrangementStart "3|1,,5|1" has empty entries, which were dropped',
-    );
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1",
+        arrangementStart: "3|1,,5|1",
+      }),
+    ).rejects.toThrow('invalid arrangementStart "3|1,,5|1" - it has an empty');
   });
 
-  // The positions are resolved once per source, so reporting them there would
-  // repeat one mistake for every source the call names.
-  it("says it once for a call with several sources", async () => {
+  // The check runs once for the call, before any source is resolved, so a call
+  // naming several sources is refused before the first copy is made.
+  it("refuses before duplicating any of several sources", async () => {
     registerSessionClipForArrangementDup();
     registerArrangementClip(0, 1, 16);
     registerMockObject("clip2", {
       path: livePath.track(0).clipSlot(1).clip(),
     });
 
-    await duplicate({
-      type: "clip",
-      id: "clip1,clip2",
-      arrangementStart: "3|1,,5|1",
-    }).catch(() => undefined);
-
-    expect(
-      capturedWarnings().filter((warning) =>
-        warning.includes("arrangementStart"),
-      ),
-    ).toStrictEqual([
-      'arrangementStart "3|1,,5|1" has empty entries, which were dropped',
-    ]);
+    await expect(
+      duplicate({
+        type: "clip",
+        id: "clip1,clip2",
+        arrangementStart: "3|1,,5|1",
+      }),
+    ).rejects.toThrow('invalid arrangementStart "3|1,,5|1" - it has an empty');
   });
 });
 

@@ -8,10 +8,7 @@
 // here is how one `toPath` is shared out.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import {
-  parseCommaSeparatedIds,
-  reportDroppedEntries,
-} from "#src/tools/shared/utils.ts";
+import { targetEntries } from "#src/tools/shared/utils.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   resolveClipDestinations,
@@ -55,16 +52,7 @@ export function planSources({
   toSlot,
   broadcasts,
 }: SourcePlanArgs): SourceShare[] {
-  const ids = parseCommaSeparatedIds(id);
-
-  reportDroppedEntries(id ?? "", ids, "id");
-
-  // A list that parses to nothing still reaches the lookup whole, which then
-  // reports the wrong thing — that the source is missing or the wrong type,
-  // rather than that the id named no source at all.
-  if (ids.length === 0 && id != null) {
-    console.warn(`id "${id}" names nothing`);
-  }
+  const ids = targetEntries(id, "id");
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split

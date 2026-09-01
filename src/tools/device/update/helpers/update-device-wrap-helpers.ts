@@ -16,10 +16,7 @@ import {
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import {
-  parseCommaSeparatedIds,
-  toLiveApiId,
-} from "#src/tools/shared/utils.ts";
+import { targetEntries, toLiveApiId } from "#src/tools/shared/utils.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -59,7 +56,7 @@ export function wrapDevicesInRack({
   toPath,
   name,
 }: WrapDevicesOptions): WrapResult | null {
-  const items = parseCommaSeparatedIds(ids ?? path);
+  const items = targetEntries(ids ?? path, ids != null ? "ids" : "path");
   const isIdBased = ids != null;
   const devices = resolveDevices(items, isIdBased);
 

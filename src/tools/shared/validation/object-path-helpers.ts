@@ -13,10 +13,10 @@ import {
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
 import {
-  paramNamesSomething,
   namedParam,
+  paramNamesSomething,
   parseCommaSeparatedIds,
-  reportDroppedEntries,
+  targetEntries,
 } from "#src/tools/shared/utils.ts";
 import {
   formatObjectPath,
@@ -58,32 +58,14 @@ export function parseObjectPathList(
 }
 
 /**
- * Splits a path param into its entries without parsing them: a blank value
- * reads as omitted, one that names nothing is refused, and dropped entries are
- * announced.
+ * Splits a path param into its entries without parsing them. A blank value
+ * reads as omitted; everything else follows the target-list rule.
  * @param input - Comma-separated paths (e.g., "t1/d0" or "t1/d0,t2/d0")
  * @param label - Param name for error messages
  * @returns One trimmed entry per path, in order
  */
 export function pathEntries(input?: string | null, label = "path"): string[] {
-  const named = namedParam(input, label);
-
-  if (named == null) return [];
-
-  const entries = parseCommaSeparatedIds(named);
-
-  // "," names nothing but was still sent. An empty list reads as "wherever the
-  // caller didn't say" downstream, which is the silent wrong-object these
-  // params exist to prevent. Worded for either role: the same helper splits
-  // toPath, which names where things go, and update-clip's path, which names
-  // the clips to act on.
-  if (entries.length === 0) {
-    throw new Error(`invalid ${label} "${input}" - it names nothing`);
-  }
-
-  reportDroppedEntries(input ?? named, entries, label);
-
-  return entries;
+  return targetEntries(namedParam(input, label), label);
 }
 
 /**

@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
-  namedCommaSeparatedIds,
+  targetEntries,
   namedIdParam,
   namedParam,
   namedPathParam,
@@ -103,22 +103,21 @@ describe("namedPathParam", () => {
   });
 });
 
-describe("namedCommaSeparatedIds", () => {
+describe("targetEntries", () => {
   it("splits a param with real entries, without a word", () => {
     const warn = vi.spyOn(console, "warn");
 
-    expect(namedCommaSeparatedIds("t0, t1", "id")).toStrictEqual(["t0", "t1"]);
+    expect(targetEntries("t0, t1", "id")).toStrictEqual(["t0", "t1"]);
     expect(warn).not.toHaveBeenCalled();
   });
 
   // A param already confirmed non-blank can still parse to nothing once every
-  // entry trims away — that reads exactly like an omitted param unless this
-  // says otherwise.
-  it("warns when every entry is blank", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedCommaSeparatedIds(",  ,", "id")).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledWith('id ",  ," names nothing');
+  // entry trims away. It reads exactly like an omitted param, which is the
+  // silent wrong-object these params exist to prevent.
+  it("refuses a list where every entry is blank", () => {
+    expect(() => targetEntries(",  ,", "id")).toThrow(
+      'invalid id ",  ," - it names nothing',
+    );
   });
 
   // An omitted param is nullish by the time it gets here, and there is nothing
@@ -126,47 +125,43 @@ describe("namedCommaSeparatedIds", () => {
   it("takes an omitted param without a word", () => {
     const warn = vi.spyOn(console, "warn");
 
-    expect(namedCommaSeparatedIds(undefined, "id")).toStrictEqual([]);
-    expect(namedCommaSeparatedIds(null, "path")).toStrictEqual([]);
+    expect(targetEntries(undefined, "id")).toStrictEqual([]);
+    expect(targetEntries(null, "path")).toStrictEqual([]);
+    expect(targetEntries("", "id")).toStrictEqual([]);
+    expect(targetEntries("  ", "path")).toStrictEqual([]);
     expect(warn).not.toHaveBeenCalled();
   });
 
-  // Ids are positional the same way paths are, so the same drop gets the same
-  // word. Without it the list is one short and every later pair shifts.
-  it("says an empty entry was dropped", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedCommaSeparatedIds("t0,,t1", "id")).toStrictEqual(["t0", "t1"]);
-    expect(warn).toHaveBeenCalledWith(
-      'id "t0,,t1" has empty entries, which were dropped',
+  // The hole has two readings with different answers — a stray comma, or a lost
+  // entry — and nothing in the call says which. Dropping it shifts every later
+  // pairing; keeping it names nothing. So neither: refuse and let the caller say
+  // what they meant.
+  it("refuses a hole in the list", () => {
+    expect(() => targetEntries("t0,,t1", "id")).toThrow(
+      'invalid id "t0,,t1" - it has an empty entry.',
     );
   });
 
-  // The list already named nothing, and it was told so. Adding "entries were
-  // dropped" on top would be two warnings for one mistake.
-  it("does not add a drop warning to a list that named nothing", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedCommaSeparatedIds(",  ,", "id")).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledTimes(1);
+  // A leading empty shifts every entry, same as an interior one.
+  it("refuses a leading empty entry", () => {
+    expect(() => targetEntries(",t0", "id")).toThrow(
+      'invalid id ",t0" - it has an empty entry.',
+    );
   });
 
-  // A trailing comma is the commonest typo in a hand-written list, and it
-  // moves nothing: there is no later entry to shift.
-  it("takes a trailing comma without a word", () => {
+  // The commonest typo in a hand-written list, and it moves nothing: there is
+  // no later entry to shift. Read the way most languages read a list literal.
+  it("takes one trailing comma without a word", () => {
     const warn = vi.spyOn(console, "warn");
 
-    expect(namedCommaSeparatedIds("t0,t1, ", "id")).toStrictEqual(["t0", "t1"]);
+    expect(targetEntries("t0,t1, ", "id")).toStrictEqual(["t0", "t1"]);
     expect(warn).not.toHaveBeenCalled();
   });
 
-  // A leading empty shifts every entry, same as an interior one.
-  it("says a leading empty entry was dropped", () => {
-    const warn = vi.spyOn(console, "warn");
-
-    expect(namedCommaSeparatedIds(",t0", "id")).toStrictEqual(["t0"]);
-    expect(warn).toHaveBeenCalledWith(
-      'id ",t0" has empty entries, which were dropped',
+  // One is a typo; two is a hole in front of a typo.
+  it("refuses a second trailing comma", () => {
+    expect(() => targetEntries("t0,t1,,", "id")).toThrow(
+      'invalid id "t0,t1,," - it has an empty entry.',
     );
   });
 });

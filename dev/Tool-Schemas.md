@@ -42,6 +42,23 @@ applies what it can. Nothing cycles.
 holds one item — broadcasting a lone clip slot to three clips would destroy two
 of them. `color` still cycles, as a documented exception; see ADR-0031.
 
+## An empty entry means opposite things in the two kinds of list
+
+One trailing comma is not an entry in either kind, the way most languages read a
+list literal. Any other empty entry splits:
+
+- **Target lists** name objects or places (`id`, `path`, `toPath`,
+  `arrangementStart`, `locator`). Split them with `targetEntries` from
+  `src/tools/shared/utils.ts`, which refuses a hole and refuses a list that
+  names nothing at all (`","`). Dropping a hole shifts every later pairing and
+  keeping it names nothing, so neither is guessed at. Nothing has run when the
+  check fires, so refusing costs the caller only a retry.
+- **Value lists** are properties applied to targets (`name`, `color`). Split
+  them with `splitList`, which reads an empty entry as "no value for this one" —
+  the item keeps what it had. `name: ""` alone is how you clear a value.
+
+See ADR-0035.
+
 ## Params that don't apply to every action
 
 A modal tool publishes one schema for every action, so a caller can always send

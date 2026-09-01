@@ -94,12 +94,9 @@ describe("parseSlotList", () => {
   });
 
   // Slots are positional, so a dropped entry moves every later one.
-  it("should warn when it drops an empty entry", () => {
-    expect(parseSlotList(",0/1", "toSlot")).toStrictEqual([
-      { trackIndex: 0, sceneIndex: 1 },
-    ]);
-    expect(capturedWarnings()).toContain(
-      'toSlot ",0/1" has empty entries, which were dropped',
+  it("should refuse an empty entry rather than shift the list", () => {
+    expect(() => parseSlotList(",0/1", "toSlot")).toThrow(
+      'invalid toSlot ",0/1" - it has an empty entry.',
     );
   });
 
@@ -110,26 +107,23 @@ describe("parseSlotList", () => {
       'invalid slots "0" - expected trackIndex/sceneIndex format (e.g., "0/1")',
     );
 
-    parseSlotList(",0/1", "slot");
+    expect(() => parseSlotList(",0/1", "slot")).toThrow(
+      'invalid slot ",0/1" - it has an empty entry.',
+    );
+
     parseSlotList("0/1/2", "slot");
 
-    expect(capturedWarnings()).toContain(
-      'slot ",0/1" has empty entries, which were dropped',
-    );
     expect(capturedWarnings()).toContain(
       'slot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
 
-  it("should not warn for a clean list, a trailing comma, or a blank param", () => {
-    parseSlotList("0/1, 2/3", "toSlot");
-    parseSlotList("0/1,2/3,", "toSlot");
-    parseSlotList("", "toSlot");
-    parseSlotList(undefined, "toSlot");
-
-    expect(capturedWarnings()).not.toContainEqual(
-      expect.stringContaining("has empty entries"),
-    );
+  it("should take a clean list, a trailing comma, or a blank param", () => {
+    expect(parseSlotList("0/1, 2/3", "toSlot")).toHaveLength(2);
+    expect(parseSlotList("0/1,2/3,", "toSlot")).toHaveLength(2);
+    expect(parseSlotList("", "toSlot")).toStrictEqual([]);
+    expect(parseSlotList(undefined, "toSlot")).toStrictEqual([]);
+    expect(capturedWarnings()).toStrictEqual([]);
   });
 
   it("should throw for non-integer values", () => {

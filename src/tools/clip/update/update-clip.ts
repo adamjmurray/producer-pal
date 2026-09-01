@@ -9,7 +9,7 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
-  namedCommaSeparatedIds,
+  targetEntries,
   namedIdParam,
   namedPathParam,
   parseTimeSignature,
@@ -292,7 +292,7 @@ function requestedClipIds({
   // call: the combined list is still non-empty, so nothing else would notice
   // that the ids the caller asked for dropped out.
   return [
-    ...namedCommaSeparatedIds(namedIds, "id"),
+    ...targetEntries(namedIds, "id"),
     ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
   ];
 }
