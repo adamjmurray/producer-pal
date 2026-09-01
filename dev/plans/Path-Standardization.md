@@ -224,6 +224,35 @@ Both remaining sites of the conflation move together: `computeTrackType` in
 Not started. `create-track` / `create-scene` would take `t+` / `rt+` / `s+`
 instead of `type` + index, which is what lets Phase 8's item 3 finish.
 
+### Order to build phases 8 and 9 in
+
+One commit each, on `track-type-collapse`, each green before the next is pushed.
+The order is not arbitrary: step 1 has to precede step 3, or there is a commit
+where a return track and the main track cannot be named at all.
+
+1. **`path` on the read tools' input.** `read-track` and `read-scene` address by
+   `trackIndex` / `sceneIndex` today and take no path. Add it first.
+2. **`type` stops reporting the role.** Both `computeTrackType` sites together,
+   plus every test asserting `"return"` or `"master"`.
+3. **`trackType` and the track read's `trackIndex` become
+   `deprecatedParam({ replacedBy: "path" })`.** Only now is `path` the published
+   way to name a return or the main track. Leave the clip tools' `trackIndex` /
+   `sceneIndex` aliases alone.
+4. **"main", not "master", in every description and Skill.** Regenerate the
+   skills snapshots and `docs/_generated`.
+5. **Phase 9 — create by path.** `create-track` / `create-scene` take `t+` /
+   `rt+` / `s+`, which lets `create-track`'s `type` finish collapsing.
+6. **Eval scenarios for track and scene addressing.**
+   `evals/scenarios/defs/path/` is all clip- and device-shaped today. These have
+   to show models reaching for `rt0` and `mt` on their own, since item 1 of
+   Phase 8 puts the whole weight of the role on the path. Running them needs a
+   build from this branch.
+
+The evals come last on purpose. Run them before Phase 8 lands and the model
+still sees `trackType` and `type: "return"`, so it uses those and the run says
+nothing about the world being decided on. Nothing merges to `dev` until they
+pass — that is what this branch is for.
+
 ## Docs to update as the phases land
 
 Skills fragments (`arrangement.ts`, `devices/devices.ts`,
