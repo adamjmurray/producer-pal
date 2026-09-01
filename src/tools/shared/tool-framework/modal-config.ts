@@ -53,8 +53,18 @@ export type ParamModeValue =
   | null
   | { description?: string; excludeEnumValues?: string[] };
 
+/**
+ * A param's `default` value: its required base description, or that description
+ * plus enum values to leave out of every published schema. The trim is a floor,
+ * not an override — a mode that only replaces the description still gets it, so
+ * a value hidden here is hidden everywhere.
+ */
+export type ParamDefaultValue =
+  | string
+  | { description: string; excludeEnumValues?: string[] };
+
 /** A param's per-mode overrides over its required base description. */
-export type ParamModeMap = { default: string } & Partial<
+export type ParamModeMap = { default: ParamDefaultValue } & Partial<
   Record<ModeKey, ParamModeValue>
 >;
 
@@ -85,7 +95,11 @@ const MODES_TAG = Symbol("paramModes");
  * @returns The schema described with `default`, tagged with its modes
  */
 export function param<T extends ZodType>(schema: T, modes: ParamModeMap): T {
-  return tagSchema(describeWithTags(schema, modes.default), MODES_TAG, modes);
+  return tagSchema(
+    describeWithTags(schema, defaultDescription(modes.default)),
+    MODES_TAG,
+    modes,
+  );
 }
 
 /**
@@ -124,20 +138,24 @@ export function resolveParamModes(
 
     const winner = firstPresent(ladder, (k) => modes[k]);
 
-    if (winner === undefined) continue;
-
     if (winner === null) {
       excludeParams.push(key);
       continue;
     }
 
-    const desc = descriptionOf(winner);
+    // Always applied, whatever mode wins: a value trimmed on `default` is one
+    // no mode publishes.
+    const trimmed = new Set(enumValuesOf(modes.default) ?? []);
 
-    if (desc != null) descriptionOverrides[key] = desc;
+    if (winner !== undefined) {
+      const desc = descriptionOf(winner);
 
-    const enums = enumValuesOf(winner);
+      if (desc != null) descriptionOverrides[key] = desc;
 
-    if (enums != null) excludeEnumValues[key] = enums;
+      for (const value of enumValuesOf(winner) ?? []) trimmed.add(value);
+    }
+
+    if (trimmed.size > 0) excludeEnumValues[key] = [...trimmed];
   }
 
   return { excludeParams, descriptionOverrides, excludeEnumValues };
@@ -220,6 +238,16 @@ type PresentParamModeValue = Exclude<ParamModeValue, null>;
  * @returns The description string, or undefined
  */
 function descriptionOf(value: PresentParamModeValue): string | undefined {
+  return typeof value === "string" ? value : value.description;
+}
+
+/**
+ * The base description a param is described with, from either spelling of
+ * `default`.
+ * @param value - A param's `default` mode value
+ * @returns The description
+ */
+function defaultDescription(value: ParamDefaultValue): string {
   return typeof value === "string" ? value : value.description;
 }
 

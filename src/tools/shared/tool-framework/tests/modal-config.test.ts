@@ -129,6 +129,69 @@ describe("resolveParamModes", () => {
     expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
   });
 
+  it("trims an enum value in every mode when default says to", () => {
+    const schema = {
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
+      }),
+    };
+
+    for (const context of [
+      { smallModelMode: false, notation: "barbeat" as const },
+      { smallModelMode: true },
+      { notation: "stark" as const },
+    ]) {
+      expect(
+        resolveParamModes(schema, context).excludeEnumValues,
+      ).toStrictEqual({ type: ["return"] });
+    }
+  });
+
+  it("describes a param from default's object form", () => {
+    const schema = {
+      type: param(z.enum(["midi", "return"]).default("midi"), {
+        default: { description: "midi only", excludeEnumValues: ["return"] },
+      }),
+    };
+
+    expect(schema.type.description).toBe("midi only");
+  });
+
+  // The trim is a floor, not something a mode override replaces: a mode that
+  // only rewords the param must not put the hidden value back.
+  it("keeps default's trim when a mode overrides only the description", () => {
+    const schema = {
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
+        smallModel: "type",
+      }),
+    };
+
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.descriptionOverrides).toStrictEqual({ type: "type" });
+    expect(result.excludeEnumValues).toStrictEqual({ type: ["return"] });
+  });
+
+  it("unions default's trim with a mode's own", () => {
+    const schema = {
+      include: param(z.array(z.enum(["a", "b", "c"])).default([]), {
+        default: { description: "a or b", excludeEnumValues: ["c"] },
+        smallModel: { excludeEnumValues: ["b"] },
+      }),
+    };
+
+    expect(
+      resolveParamModes(schema, { smallModelMode: true }).excludeEnumValues,
+    ).toStrictEqual({ include: ["c", "b"] });
+  });
+
   it("lets the active notation win over small-model for the description", () => {
     const schema = {
       notes: param(z.string().optional(), {

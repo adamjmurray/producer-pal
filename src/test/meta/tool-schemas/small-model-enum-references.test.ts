@@ -77,6 +77,10 @@ function liveEnumValues(schema: ZodType): readonly string[] {
  */
 const ORDINARY_WORDS: Record<string, readonly string[]> = {
   "ppal-library": ["folder"],
+  // `return` is trimmed off create-track's `type` because "rt+" asks for one
+  // now, and `path` has to say what "rt+" makes. Unlike a real trim this one
+  // costs nothing if misread: the value is still accepted, just not offered.
+  "ppal-create-track": ["return"],
 };
 
 const SMALL_BARBEAT = { notation: "barbeat", smallModelMode: true } as const;

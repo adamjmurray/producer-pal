@@ -17,8 +17,10 @@ import {
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { resolveCreateTrackTarget } from "./create-track-target-helpers.ts";
 
 interface CreateTrackArgs {
+  path?: string;
   trackIndex?: number;
   count?: number;
   name?: string;
@@ -158,7 +160,8 @@ function getBaseTrackCount(
 /**
  * Creates new tracks at the specified index
  * @param args - The track parameters
- * @param args.trackIndex - Track index (0-based, -1 or omit to append)
+ * @param args.path - Where the track goes: "t+", "t<index>", or "rt+"
+ * @param args.trackIndex - Deprecated index (0-based, -1 or omit to append)
  * @param args.count - Number of tracks to create
  * @param args.name - Base name for the tracks
  * @param args.color - Color for the tracks (CSS format: hex)
@@ -170,21 +173,14 @@ function getBaseTrackCount(
  * @returns Single track object when count=1, array when count>1
  */
 export function createTrack(
-  {
-    trackIndex,
-    count = 1,
-    name,
-    color,
-    type = "midi",
-    mute,
-    solo,
-    arm,
-  }: CreateTrackArgs = {},
+  args: CreateTrackArgs = {},
   _context: Partial<ToolContext> = {},
 ): CreatedTrackResult | CreatedTrackResult[] {
-  const effectiveTrackIndex = trackIndex ?? -1;
+  const { count = 1, name, color, mute, solo, arm } = args;
+  const { type, trackIndex: effectiveTrackIndex } =
+    resolveCreateTrackTarget(args);
 
-  validateTrackCreation(count, type, trackIndex, effectiveTrackIndex);
+  validateTrackCreation(count, type, args.trackIndex, effectiveTrackIndex);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
   const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);

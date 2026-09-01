@@ -37,14 +37,14 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-read-live-set", args: { include: ALL } },
   { toolName: "ppal-update-live-set", args: { tempo: 124, scale: "F Minor" } },
 
-  { toolName: "ppal-create-track", args: { trackIndex: 3, name: "Keys" } },
+  { toolName: "ppal-create-track", args: { path: "t3", name: "Keys" } },
   { toolName: "ppal-read-track", args: { path: "t0", include: ALL } },
   {
     toolName: "ppal-update-track",
     args: { id: ID.vocalTrack, mute: false, gainDb: -3 },
   },
 
-  { toolName: "ppal-create-scene", args: { sceneIndex: 2, name: "Chorus" } },
+  { toolName: "ppal-create-scene", args: { path: "s2", name: "Chorus" } },
   { toolName: "ppal-read-scene", args: { path: "s1", include: ALL } },
   {
     toolName: "ppal-update-scene",
