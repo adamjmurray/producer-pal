@@ -152,11 +152,9 @@ describe("updateScene", () => {
     });
   });
 
-  it("names the item when more names than scenes are given", () => {
-    updateScene({ id: "123,456", name: "A,B,C,D" });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("name: 4 names for 2 scenes"),
+  it("refuses more names than scenes, naming both counts", () => {
+    expect(() => updateScene({ id: "123,456", name: "A,B,C,D" })).toThrow(
+      "id names 2 entries but name names 4 entries.",
     );
   });
 

@@ -8,6 +8,7 @@ import {
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { pairValues } from "#src/tools/shared/validation/list-pairing.ts";
+import { requireSameLength } from "#src/tools/shared/validation/list-lengths.ts";
 import { parseArrangementLength } from "../duplicate-helpers.ts";
 
 /**
@@ -136,9 +137,16 @@ export function planCopies(
   requested: (ArrangementTrack | null)[],
   positionsInBeats: number[],
 ): CopyPlan {
-  // toPath and arrangementStart each set a copy count; the longer list wins and
-  // the shorter one covers it, but only when it holds a single value. Nothing
-  // cycles — see `list-pairing.ts`.
+  // toPath and arrangementStart each set a copy count. One value covers every
+  // copy; two real lists have to agree, and a call where they don't is refused
+  // before any copy is made. The counts compared are the per-source ones — the
+  // destinations were already shared out across the sources. Nothing cycles;
+  // see `list-pairing.ts`.
+  requireSameLength(
+    { param: "toPath", count: requested.length },
+    { param: "arrangementStart", count: positionsInBeats.length },
+  );
+
   const copies = Math.max(requested.length, positionsInBeats.length);
   const targets = pairValues(requested, copies, {
     param: "toPath",

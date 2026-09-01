@@ -168,16 +168,23 @@ describe("updateTrack", () => {
   });
 
   // A trailing comma is the commonest typo in a hand-written list. Counting it
-  // as an entry made it an empty name, which Live accepts, so track 3 lost its
-  // name without a word.
+  // as an entry made it an empty name, which Live accepts, so the last track
+  // lost its name without a word. It is not an entry on either side now, so the
+  // two lists agree and the call goes through.
   it("does not clear a name for a trailing comma", () => {
-    updateTrack({ id: "123,456,789", name: "A,B," });
+    updateTrack({ id: "123,456", name: "A,B," });
 
     expect(track123.set).toHaveBeenCalledWith("name", "A");
     expect(track456.set).toHaveBeenCalledWith("name", "B");
-    expect(track789.set).not.toHaveBeenCalledWith("name", expect.anything());
-    expect(capturedWarnings()).toContain(
-      "name: 2 names for 3 tracks; the tracks past the last name were not renamed",
+    expect(capturedWarnings()).toStrictEqual([]);
+  });
+
+  // Which is also why the trailing comma can't hide a real mismatch: it is
+  // dropped before the counts are compared, so 3 ids against "A,B," is 3
+  // against 2, and refused.
+  it("refuses a trailing comma that leaves the lists uneven", () => {
+    expect(() => updateTrack({ id: "123,456,789", name: "A,B," })).toThrow(
+      "id names 3 entries but name names 2 entries.",
     );
   });
 

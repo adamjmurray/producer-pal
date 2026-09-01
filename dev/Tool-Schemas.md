@@ -57,6 +57,21 @@ list literal. Any other empty entry splits:
   them with `splitList`, which reads an empty entry as "no value for this one" —
   the item keeps what it had. `name: ""` alone is how you clear a value.
 
+## Two lists in one call must agree
+
+`validateListLengths` in `src/tools/shared/validation/list-lengths.ts`, called
+once per tool before any param is split: two comma-separated params that both
+name more than one entry must name the same number, or the call is refused. One
+value still covers every item, and nothing cycles.
+
+A param with a scalar item count (`count: 3`) is outside it — there's only one
+list in the call — and keeps ADR-0031's warning.
+
+Two tools can't check their raw args. update-clip's `id` and `path` name
+different clips and add up, so it passes the sum as a count and never compares
+the two. duplicate shares its destinations out across the sources first, so its
+check (`requireSameLength`) runs where the copies are planned.
+
 See ADR-0035.
 
 ## Params that don't apply to every action

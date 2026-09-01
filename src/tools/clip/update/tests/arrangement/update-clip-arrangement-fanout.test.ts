@@ -10,7 +10,6 @@ import {
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * One 4-bar arrangement MIDI clip on its own track, so a move can't collide
@@ -87,13 +86,16 @@ describe("updateClip - arrangement params per clip", () => {
     expect(tracks.map(movedTo)).toStrictEqual([16, 32, 48]);
   });
 
-  it("does not cycle a short position list", async () => {
-    await updateClip({ id: "100,101,102", arrangementStart: "5|1,9|1" });
-
-    expect(tracks.map(movedTo)).toStrictEqual([16, 32, null]);
-    expect(capturedWarnings()).toContain(
-      "arrangementStart: 2 positions for 3 clips; the clips past the last position were not moved",
+  // It never cycled — the third clip stayed put. Now the uneven call is refused
+  // outright, so the third clip's fate never comes up.
+  it("refuses a short position list", async () => {
+    await expect(
+      updateClip({ id: "100,101,102", arrangementStart: "5|1,9|1" }),
+    ).rejects.toThrow(
+      "id and path names 3 entries but arrangementStart names 2 entries.",
     );
+
+    expect(tracks.map(movedTo)).toStrictEqual([null, null, null]);
   });
 
   it("resizes every clip when one length is given", async () => {
@@ -111,16 +113,19 @@ describe("updateClip - arrangement params per clip", () => {
     expect(tracks[1]?.call).toHaveBeenCalledWith("create_midi_clip", 4, 12);
   });
 
-  it("does not cycle a short length list", async () => {
-    await updateClip({ id: "100,101,102", arrangementLength: "2bar,1bar" });
+  it("refuses a short length list", async () => {
+    await expect(
+      updateClip({ id: "100,101,102", arrangementLength: "2bar,1bar" }),
+    ).rejects.toThrow(
+      "id and path names 3 entries but arrangementLength names 2 entries.",
+    );
 
-    expect(tracks[2]?.call).not.toHaveBeenCalledWith(
-      "create_midi_clip",
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(capturedWarnings()).toContain(
-      "arrangementLength: 2 lengths for 3 clips; the clips past the last length kept the length they had",
-    );
+    for (const track of tracks) {
+      expect(track.call).not.toHaveBeenCalledWith(
+        "create_midi_clip",
+        expect.anything(),
+        expect.anything(),
+      );
+    }
   });
 });

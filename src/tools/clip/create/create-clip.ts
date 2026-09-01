@@ -28,6 +28,7 @@ import {
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
 import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 
 export interface CreateClipArgs {
   /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */
@@ -148,6 +149,8 @@ export async function createClip(
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
+  validateCreateClipLists({ path, slot, arrangementStart, name, color });
+
   // Resolve where the clips go before touching Live, so a bad destination fails
   // instead of creating half of them somewhere else.
   const destinations = resolveCreateClipDestinations(
@@ -251,6 +254,36 @@ export async function createClip(
   ];
 
   return finalizeCreatedClips(createdClips, auto, clipSlots, focus);
+}
+
+/**
+ * Refuse a call whose lists disagree, before any clip is created.
+ *
+ * Every list is checked together, before any of them is split: once one is
+ * split nothing knows whether the others are lists at all.
+ * @param args - The call's list params
+ * @param args.path - Where the clips go
+ * @param args.slot - The clip-slot spelling of path
+ * @param args.arrangementStart - Arrangement positions
+ * @param args.name - Clip names
+ * @param args.color - Clip colors
+ */
+function validateCreateClipLists({
+  path,
+  slot,
+  arrangementStart,
+  name,
+  color,
+}: Pick<
+  CreateClipArgs,
+  "path" | "slot" | "arrangementStart" | "name" | "color"
+>): void {
+  validateListLengths([
+    { param: path != null ? "path" : "slot", value: path ?? slot },
+    { param: "arrangementStart", value: arrangementStart },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
 }
 
 /**

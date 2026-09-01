@@ -121,11 +121,20 @@ still survives on a text param, where clearing a name is a real request.
 - **Clearing one name mid-batch needs a second call.** Both unambiguous forms
   still work: `name: ""` alone clears every target in the call, and
   `id: "t3", name: ""` clears one.
-- **Rule 4 is not a local patch.** Each param splits itself today, and
-  `namedCommaSeparatedIds(targets, "id")` runs before anything knows whether
-  `name` is even a list, so checking that two lists agree needs the whole set
-  validated together, up front, across roughly eight tools. Rule 3 stays a
-  per-param check, which is most of why it's unconditional.
+- **Rule 4 is not a local patch.** Each param splits itself, and
+  `targetEntries(targets, "id")` runs before anything knows whether `name` is
+  even a list, so checking that two lists agree needs the whole set validated
+  together, up front. Rule 3 stays a per-param check, which is most of why it's
+  unconditional.
+- **Rule 4 compares comma-bearing args, so a scalar item count is outside it.**
+  `count: 3` with `name: "A,B"` has only one list in it, and keeps ADR-0031's
+  warning. Every update tool takes its item count from a list (`id`, `path`), so
+  this only comes up in the create tools.
+- **Two tools can't check their raw args.** update-clip's `id` and `path` name
+  different clips and add up, so its target count is their sum and the two are
+  never compared to each other. duplicate shares its destinations out across the
+  sources before pairing, so the counts that have to agree are the per-source
+  ones — its check runs where the copies are planned, still before any is made.
 - **Rule 5 must throw actively, not just stop dropping.** `z.coerce.number()`
   turns `""` into `0`, so removing the drop alone would silently give bpm 0 —
   worse than today.

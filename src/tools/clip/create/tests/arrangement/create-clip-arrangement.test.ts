@@ -16,7 +16,6 @@ import {
   setupArrangementClipMocks,
   setupAudioArrangementClipMocks,
 } from "../create-clip-test-helpers.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 /**
  * Call processClipIteration for a single arrangement position with sensible
@@ -252,18 +251,17 @@ describe("createClip - arrangement view", () => {
     expect(clip.set).toHaveBeenCalledWith("color", 65280); // #00FF00
   });
 
-  it("names the item when more names than positions are provided", async () => {
-    // The blanked item-noun mutant would drop "clips" from the warning.
+  it("refuses more names than positions, naming both counts", async () => {
     setupArrangementClipMocks();
 
-    await createClip({
-      trackIndex: 0,
-      arrangementStart: "1|1,2|1",
-      name: "A,B,C",
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("name: 3 names for 2 clips"),
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1,2|1",
+        name: "A,B,C",
+      }),
+    ).rejects.toThrow(
+      "arrangementStart names 2 entries but name names 3 entries.",
     );
   });
 

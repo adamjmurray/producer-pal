@@ -33,6 +33,7 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 
 interface UpdateTrackArgs {
   id?: string;
@@ -245,6 +246,14 @@ export function updateTrack(
 
     return [];
   }
+
+  // Every list in the call is checked together, before any of them is split:
+  // once one is split nothing knows whether the others are lists at all.
+  validateListLengths([
+    { param: "id", value: targets },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
 
   // Parse comma-separated string into array. An id that parses to nothing
   // (e.g. ",  ,") was still sent, so it gets a word of its own rather than

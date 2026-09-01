@@ -34,6 +34,10 @@ import {
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import {
+  countListEntries,
+  validateListLengths,
+} from "#src/tools/shared/validation/list-lengths.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   id?: string;
@@ -153,7 +157,11 @@ export async function updateClip(
   // updateClip) spends the caller's remaining budget instead of restarting it.
   const deadline = context.deadline ?? null;
 
-  const requestedIds = requestedClipIds({ id, ids, path, paths });
+  // Refuses a call whose lists disagree before resolving anything.
+  const requestedIds = resolveClipTargets(
+    { id, ids, path, paths },
+    { name, color, arrangementStart, arrangementLength, toPath, toSlot },
+  );
 
   if (requestedIds.length === 0) {
     console.warn("updateClip: id or path is required");
@@ -295,6 +303,62 @@ function requestedClipIds({
     ...targetEntries(namedIds, "id"),
     ...(namedPaths == null ? [] : clipIdPerPath(namedPaths, "updateClip")),
   ];
+}
+
+/**
+ * Refuse a call whose lists disagree, then resolve the clips it names.
+ *
+ * Every list is checked together, before any of them is split: once one is
+ * split nothing knows whether the others are lists at all. `id` and `path` name
+ * different clips and add up, so the target count is their sum — comparing the
+ * two to each other would refuse a call naming two of each.
+ * @param targets - The call's id/ids and path/paths params
+ * @param values - The lists paired against the clips those params name
+ * @returns The clip ids the call names, null where a path held no clip
+ */
+function resolveClipTargets(
+  targets: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">,
+  values: Pick<
+    UpdateClipArgs,
+    | "name"
+    | "color"
+    | "arrangementStart"
+    | "arrangementLength"
+    | "toPath"
+    | "toSlot"
+  >,
+): Array<string | null> {
+  validateListLengths([
+    { param: "id and path", count: targetClipCount(targets) },
+    { param: "name", value: values.name },
+    { param: "color", value: values.color },
+    { param: "arrangementStart", value: values.arrangementStart },
+    { param: "arrangementLength", value: values.arrangementLength },
+    {
+      param: values.toPath != null ? "toPath" : "toSlot",
+      value: values.toPath ?? values.toSlot,
+    },
+  ]);
+
+  return requestedClipIds(targets);
+}
+
+/**
+ * How many clips the call names, without looking any of them up. The lists are
+ * checked before anything touches Live, so this counts entries rather than
+ * resolving them.
+ * @param args - The call's id/ids and path/paths params
+ * @returns The number of clips named
+ */
+function targetClipCount(
+  args: Pick<UpdateClipArgs, "id" | "ids" | "path" | "paths">,
+): number {
+  const named = [
+    namedIdParam(args.id, args.ids, "ids"),
+    namedPathParam(args.path, args.paths),
+  ];
+
+  return named.reduce((total, value) => total + countListEntries(value), 0);
 }
 
 /**

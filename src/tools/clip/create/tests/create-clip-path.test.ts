@@ -113,19 +113,20 @@ describe("createClip path param", () => {
   // A short track list used to cycle, so two tracks against four positions
   // silently made four clips. It pairs now: the positions with no track of
   // their own get nothing, and the caller is told which.
-  it("does not cycle the shorter of tracks and positions", async () => {
+  // It never cycled — only two clips were made, for four positions asked for.
+  // Now the uneven call is refused before any of them is created.
+  it("refuses uneven tracks and positions", async () => {
     setupArrangementClipMocks();
     registerArrangementTrack(1);
 
-    const result = (await createClip({
-      path: "t0,t1",
-      arrangementStart: "1|1,2|1,3|1,4|1",
-      notes: "C3 1|1",
-    })) as object[];
-
-    expect(result).toHaveLength(2);
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("path: 2 tracks for 4 positions"),
+    await expect(
+      createClip({
+        path: "t0,t1",
+        arrangementStart: "1|1,2|1,3|1,4|1",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      "path names 2 entries but arrangementStart names 4 entries.",
     );
   });
 

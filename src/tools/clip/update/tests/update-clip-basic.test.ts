@@ -489,15 +489,15 @@ describe("updateClip - Basic operations", () => {
     );
   });
 
-  it("should name the item when more names than clips are provided", async () => {
+  it("should refuse more names than clips, naming both counts", async () => {
     setupMidiClipMock(mocks.clip123);
     setupMidiClipMock(mocks.clip456);
 
-    await updateClip({ id: "123, 456", name: "A, B, C" });
+    await expect(
+      updateClip({ id: "123, 456", name: "A, B, C" }),
+    ).rejects.toThrow("id and path names 2 entries but name names 3 entries.");
 
-    expect(capturedWarnings()).toContain(
-      "name: 3 names for 2 clips; the extra names went unused",
-    );
+    expect(mocks.clip123.set).not.toHaveBeenCalledWith("name", "A");
   });
 
   describe("focus", () => {

@@ -52,6 +52,7 @@ import {
 } from "./helpers/update-device-type-helpers.ts";
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
+import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -146,6 +147,16 @@ export function updateDevice(
       unknown
     > | null;
   } else {
+    // Every list in the call is checked together, before any of them is split:
+    // once one is split nothing knows whether the others are lists at all.
+    // toPath is left out — it is one destination for the whole call, not a
+    // per-device list.
+    validateListLengths([
+      { param: path ? "path" : "id", value: path ?? ids },
+      { param: "name", value: name },
+      { param: "color", value: color },
+    ]);
+
     // validateExclusiveParams only asks whether a param was sent, so an id or
     // path whose entries all trim away gets past it and updates nothing. Say
     // which param named nothing instead of returning an empty result in silence.

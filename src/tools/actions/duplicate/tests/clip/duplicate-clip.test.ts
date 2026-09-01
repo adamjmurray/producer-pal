@@ -308,7 +308,9 @@ describe("duplicate - clip duplication", () => {
     // 3 positions over 2 tracks used to cycle (t2, t3, t2), making a copy at a
     // destination the caller never paired with bar 7. It pairs now: the third
     // position has no track of its own, so no third copy is made.
-    it("does not cycle tracks past the end of the list", async () => {
+    // It never cycled — two copies were made for three positions asked for.
+    // Now the uneven call is refused before any copy is made.
+    it("refuses uneven destinations and positions", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: { is_midi_clip: 1 },
@@ -320,19 +322,16 @@ describe("duplicate - clip duplication", () => {
       registerArrangementClip(2, 1, 24);
       registerArrangementClip(3, 0, 16);
 
-      const result = (await duplicate({
-        type: "clip",
-        id: "clip1",
-        arrangementStart: "3|1,5|1,7|1",
-        toPath: "t2,t3",
-      })) as Array<{ path: string; arrangementStart: string }>;
-
-      expect(
-        result.map((copy) => [copy.path, copy.arrangementStart]),
-      ).toStrictEqual([
-        ["t2", "3|1"],
-        ["t3", "5|1"],
-      ]);
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clip1",
+          arrangementStart: "3|1,5|1,7|1",
+          toPath: "t2,t3",
+        }),
+      ).rejects.toThrow(
+        "toPath names 2 entries but arrangementStart names 3 entries.",
+      );
     });
 
     it("rejects a bare track in toPath with no position, naming both options", async () => {
