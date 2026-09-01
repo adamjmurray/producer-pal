@@ -1,6 +1,6 @@
 # ADR-0035: A malformed call is refused up front, not warned mid-flight
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date logged:** 2026-08-31
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md),
   [ADR-0029](0029-an-empty-param-is-dropped-from-the-args.md),
@@ -28,14 +28,15 @@ defect, four behaviors.
 **A trailing comma means opposite things on the two sides of one call.**
 `splitList` keeps empty entries, `parseCommaSeparatedIds` drops them:
 
-| Call                         | Today                                     |
+| Call                         | Before                                    |
 | ---------------------------- | ----------------------------------------- |
 | `id: "t1,t2,"`               | 2 ids, silent                             |
 | `name: "A,B,"` over 2 tracks | spurious `name: 3 names for 2 tracks`     |
 | `name: "A,B,"` over 3 tracks | silent, and **track 3's name is cleared** |
 
-That last row is a live defect. The third entry is `""`, and `update-track.ts`
-only skips a nullish name, so a habitual trailing comma wipes a name.
+That last row was a live defect that reached users — the unfiltered splitter
+goes back to v2.0.0 at least. The third entry is `""`, and `update-track.ts`
+only skipped a nullish name, so a habitual trailing comma wiped a name.
 
 **A blank non-string arg reads as unsent.** `bpm: ""` is dropped by
 `unsetEmptyParams` and the call proceeds without it, while `bpm: "null"` fails
@@ -66,7 +67,7 @@ either way.
   on params the caller isn't looking at, so the rule doesn't ask — a target list
   with a gap in it is refused either way.
 - A target list whose entries are **all** empty (`id: ","`) names nothing at
-  all, and is the same error. That replaces the four answers we give today.
+  all, and is the same error. That replaces the four answers listed above.
 - In a **value list** it means "no value for this one" — the item keeps what it
   had. Silent, and nothing shifts.
 - **One trailing comma is silent everywhere** and is not an entry, as in most
@@ -84,8 +85,8 @@ broadcast, because a slot holds one clip.
 
 `""` on a number, boolean, enum or array param is refused. A JSON `null` is
 untouched — ADR-0029's defense against clients that fill empty params exists for
-exactly that, and it lives in a separate branch of `isEmptyParamValue`. Blank
-still survives on a text param, where clearing a name is a real request.
+exactly that, and it stays a separate branch in `unsetEmptyParams`. Blank still
+survives on a text param, where clearing a name is a real request.
 
 ## Alternatives rejected
 
@@ -152,5 +153,15 @@ still survives on a text param, where clearing a name is a real request.
   variant against the AI-SDK providers has not been run.
 - No published enum has `""` among its options, so rule 5 has no exception to
   carve out.
-- The `.def.ts` descriptions and the Skills need the trailing-comma and
-  empty-entry rules stated, since both change what a caller can write.
+- **Rule 5 reaches less than its wording suggests.** `z.coerce.string()` accepts
+  `""`, so every string param — including every id, path and name — is
+  untouched; only numbers, booleans, enums and arrays refuse a blank. That is
+  why inverting a whole-tool-surface pin changed six test files rather than the
+  surface.
+- **The rules are stated on the params, not in the Skills.** The trailing-comma
+  and length rules announce themselves: each error names the param and the fix,
+  so pre-empting them on ~30 param descriptions would spend the caller's context
+  to say what the failure already says. What the params do carry is the one
+  thing no error can, because it is not a failure: `blank entry = unchanged` on
+  each value list. The Skills say nothing — the fragment that would host it is
+  gated `"always"` and may not name a tool or a param.
