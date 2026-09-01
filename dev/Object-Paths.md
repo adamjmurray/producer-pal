@@ -154,9 +154,11 @@ Four tiers, in order of preference.
      pad for the whole call, so naming both still throws.
    - **A set — union.** Where the call already acts on a list (`delete`,
      `update-clip`, `update-track`, `update-scene`, `playback`'s clip actions),
-     `id` and `path` both name members of it, so the targets combine. Duplicates
-     collapse — firing a clip twice is a different Live call than firing it
-     once.
+     `id` and `path` both name members of it, so the targets combine. `delete`
+     and `playback` also collapse duplicates, because firing or deleting an
+     object twice is a different Live call than doing it once. The update tools
+     don't: writing the same value twice lands the same way, and a slot per
+     entry is what keeps a paired `name` or `color` list aligned.
 
 ## Results
 
