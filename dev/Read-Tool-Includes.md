@@ -134,8 +134,9 @@ Returns track overview by default. Use `include` to add detail.
 | Field                  | Type     | Description                                                   |
 | ---------------------- | -------- | ------------------------------------------------------------- |
 | `id`                   | `string` | Track ID                                                      |
+| `path`                 | `string` | Where the track is: `"t0"`, `"rt1"`, `"mt"`                   |
 | `name`                 | `string` | Track name                                                    |
-| `type`                 | `string` | `"midi"`, `"audio"`, `"return"`, or `"master"`                |
+| `type`                 | `string` | `"midi"` or `"audio"`; omitted on a return or the main track  |
 | `trackIndex`           | `number` | 0-based index (regular tracks only)                           |
 | `returnTrackIndex`     | `number` | 0-based index (return tracks only)                            |
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |

@@ -614,6 +614,7 @@ describe("view", () => {
       expect(result.view).toBe("session");
       expect(result.selectedTrack).toStrictEqual({
         id: "789",
+        path: "t0",
         type: "midi",
         trackIndex: 0,
       });
@@ -656,7 +657,7 @@ describe("view", () => {
 
       expect(result.selectedTrack).toStrictEqual({
         id: "return_456",
-        type: "return",
+        path: "rt2",
         trackIndex: 2,
       });
     });
@@ -681,9 +682,10 @@ describe("view", () => {
 
       const result = select({});
 
+      // No type: the path is what says this is the main track
       expect(result.selectedTrack).toStrictEqual({
         id: "master_789",
-        type: "master",
+        path: "mt",
       });
     });
 
@@ -711,6 +713,7 @@ describe("view", () => {
 
       expect(result.selectedTrack).toStrictEqual({
         id: "audio_track_456",
+        path: "t1",
         type: "audio",
         trackIndex: 1,
       });

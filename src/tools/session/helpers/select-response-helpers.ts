@@ -8,13 +8,14 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   arrangementPath,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";
-import { type TrackCategory } from "./select-helpers.ts";
 
 /**
  * Read full current view state (for no-args calls)
@@ -163,7 +164,11 @@ function buildTrackInfo(
 
   const info: NonNullable<SelectResult["selectedTrack"]> = {
     id: track.id,
-    type: computeTrackType(track, category),
+    ...pathField(track),
+    ...trackTypeField(
+      (track.getProperty("has_midi_input") as number) > 0,
+      category,
+    ),
   };
 
   if (category === "regular" && track.trackIndex != null) {
@@ -244,18 +249,4 @@ function readSelectedDeviceInfo(
   const path = extractDevicePath(device.path);
 
   return path ? { id: rawId, path } : undefined;
-}
-
-/**
- * Compute merged track type from category and has_midi_input. The caller has
- * already established that the track exists and has a category.
- * @param track - Selected track LiveAPI object
- * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", or "master"
- */
-function computeTrackType(track: LiveAPI, category: TrackCategory): string {
-  if (category === "return") return "return";
-  if (category === "master") return "master";
-
-  return (track.getProperty("has_midi_input") as number) > 0 ? "midi" : "audio";
 }

@@ -14,6 +14,7 @@ import {
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { stripFields } from "#src/tools/shared/utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import {
   resolveReadTrackTarget,
   type ReadTrackArgs,
@@ -89,19 +90,6 @@ export function readTrack(
     notation: context.notation,
     sessionClipCount: args.sessionClipCount,
   });
-}
-
-/**
- * Compute merged track type from MIDI flag and category
- * @param isMidiTrack - Whether the track has MIDI input
- * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", or "master"
- */
-function computeTrackType(isMidiTrack: boolean, category: string): string {
-  if (category === "return") return "return";
-  if (category === "master") return "master";
-
-  return isMidiTrack ? "midi" : "audio";
 }
 
 /**
@@ -303,7 +291,7 @@ export function readTrackGeneric({
   const result: Record<string, unknown> = {
     id: track.id,
     ...pathField(track),
-    type: computeTrackType(isMidiTrack, category),
+    ...trackTypeField(isMidiTrack, category),
     name: track.getProperty("name"),
     ...(includeColor && { color: track.getColor() }),
   };

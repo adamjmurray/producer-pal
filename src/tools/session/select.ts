@@ -58,7 +58,14 @@ export interface SelectArgs extends SelectIdArgs {
 
 export interface SelectResult {
   view?: string;
-  selectedTrack?: { id: string; type: string; trackIndex?: number };
+  selectedTrack?: {
+    id: string;
+    /** Where the track is: "t0", "rt1" for a return, "mt" for the main track */
+    path?: string;
+    /** Only a regular track has one — see trackTypeField */
+    type?: string;
+    trackIndex?: number;
+  };
   selectedScene?: { id: string; sceneIndex: number };
   selectedClip?: {
     id: string;

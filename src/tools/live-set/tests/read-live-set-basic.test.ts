@@ -150,7 +150,6 @@ describe("readLiveSet - basic reading", () => {
       returnTracks: [],
       masterTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),
@@ -263,7 +262,6 @@ describe("readLiveSet - basic reading", () => {
       returnTracks: [],
       masterTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),
