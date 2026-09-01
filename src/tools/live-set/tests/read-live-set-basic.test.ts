@@ -187,6 +187,7 @@ describe("readLiveSet - basic reading", () => {
         (() => {
           const { color: _color, ...track } = expectedTrack({
             id: "track3",
+            path: "t2",
             trackIndex: 2,
           });
 

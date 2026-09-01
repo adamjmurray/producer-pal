@@ -317,11 +317,13 @@ interface TrackOverrides {
   [key: string]: unknown;
 }
 
+// `path` is required: a return or main track spells it differently, and there
+// is nothing else in the overrides that reliably says which one this is, so a
+// default here would quietly assert the wrong path.
 export const expectedTrack = (
-  overrides: TrackOverrides = {},
+  overrides: TrackOverrides & { path: string },
 ): TrackOverrides => ({
   id: "1",
-  path: `t${overrides.trackIndex ?? 0}`,
   type: "midi",
   name: "Test Track",
   trackIndex: 0,
