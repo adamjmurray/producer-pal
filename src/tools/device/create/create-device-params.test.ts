@@ -115,6 +115,22 @@ describe("createDevice params", () => {
       expect(calls).not.toMatch(/updateDevice:/);
     });
 
+    // Refused before the device is created, so a bad params list doesn't leave
+    // a new device behind for the caller to clean up before retrying.
+    it("refuses a params entry with an empty value, creating nothing", () => {
+      registerSimplerCreationFixture();
+
+      expect(() =>
+        createDevice({
+          deviceName: "Simpler",
+          path: "t0",
+          params: [{ name: "Volume", value: "" }],
+        }),
+      ).toThrow(
+        'createDevice failed: params entry "Volume" has an empty value',
+      );
+    });
+
     it("does not call replace_sample on a non-Simpler when sample is in params", () => {
       const eqEight = registerMockObject("eq-new", {
         path: livePath.track(0).device(2),

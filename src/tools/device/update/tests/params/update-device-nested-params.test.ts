@@ -89,20 +89,20 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
     );
   });
 
-  it("warns and skips a path-prefixed param with an empty name after '/'", () => {
+  it("refuses a path-prefixed param with an empty name after '/'", () => {
     registerMockObject("drum-rack", {
       path: livePath.track(0).device(0),
       type: "RackDevice",
       properties: { chains: [], can_have_drum_pads: 1 },
     });
 
-    updateDevice({
-      path: "t0/d0",
-      params: [{ name: "pC1/d0/", value: "/snare.wav" }],
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('empty name after "/"'),
+    expect(() =>
+      updateDevice({
+        path: "t0/d0",
+        params: [{ name: "pC1/d0/", value: "/snare.wav" }],
+      }),
+    ).toThrow(
+      'updateDevice failed: params entry "pC1/d0/" has an empty name after "/"',
     );
   });
 

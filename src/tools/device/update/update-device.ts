@@ -43,6 +43,7 @@ import {
   stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
+import { validateParamEntries } from "./update-device-param-setters.ts";
 import { type ParamValueResult } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import {
@@ -144,6 +145,7 @@ export function updateDevice(
 
   validateExclusiveParams(ids, path, "id", "path");
   validateSendPair(sendGainDb, sendReturn, "updateDevice");
+  validateParamEntries(params, "updateDevice");
 
   // One value for the whole call, so a per-target skip would repeat itself
   // down the list. Refused before any target is touched.

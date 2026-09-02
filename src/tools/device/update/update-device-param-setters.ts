@@ -67,18 +67,9 @@ export function setParamValues(
     | undefined;
 
   for (const entry of params) {
+    // Malformed entries were refused up front, so both sides are non-empty.
     const key = entry.name.trim();
     const rawValue = entry.value.trim();
-
-    if (key === "") {
-      console.warn(`${toolName}: skipping param with empty name`);
-      continue;
-    }
-
-    if (rawValue === "") {
-      console.warn(`${toolName}: skipping param "${key}" with empty value`);
-      continue;
-    }
 
     // Isolate each param: a throw resolving one (e.g. a path-prefixed pad param
     // whose chain auto-create exceeds the cap) must not abort the rest of a
@@ -206,15 +197,8 @@ function applyNestedParam(
 ): WrittenParam[] {
   const slashIndex = key.lastIndexOf("/");
   const prefix = key.slice(0, slashIndex);
+  // Refused up front, so there is a name after the last "/".
   const paramName = key.slice(slashIndex + 1).trim();
-
-  if (paramName === "") {
-    console.warn(
-      `${toolName}: skipping param "${key}" with empty name after "/"`,
-    );
-
-    return [];
-  }
 
   const target = resolveNestedParamTarget(
     device,
@@ -514,4 +498,45 @@ function findDivisionRawValue(
   }
 
   return null;
+}
+
+/**
+ * Refuse a params list with an entry the setter can't read.
+ *
+ * An entry with no name, no value, or nothing after its last "/" names no
+ * parameter, so there is nothing to write. This is the shape a hole in a
+ * comma-separated list already gets refused for — and refusing here, before
+ * any device is touched, means the caller can fix the list and send it again
+ * with nothing to clean up.
+ * @param params - The params list as the caller sent it
+ * @param toolName - Tool name for the error message
+ */
+export function validateParamEntries(
+  params: ParamEntry[] | undefined,
+  toolName: string,
+): void {
+  for (const [index, entry] of (params ?? []).entries()) {
+    const key = entry.name.trim();
+
+    if (key === "") {
+      throw new Error(
+        `${toolName} failed: params entry ${index + 1} has an empty name`,
+      );
+    }
+
+    if (entry.value.trim() === "") {
+      throw new Error(
+        `${toolName} failed: params entry "${key}" has an empty value`,
+      );
+    }
+
+    if (
+      key.includes("/") &&
+      key.slice(key.lastIndexOf("/") + 1).trim() === ""
+    ) {
+      throw new Error(
+        `${toolName} failed: params entry "${key}" has an empty name after "/"`,
+      );
+    }
+  }
 }

@@ -169,28 +169,19 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
 
-    it("should warn and skip entries with an empty name", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "  ", value: "0.5" }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        "updateDevice: skipping param with empty name",
-      );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    // A hole in the params list, the same shape a hole in a comma-separated
+    // list is already refused for. Nothing has been written yet, so the caller
+    // fixes the list and sends it again.
+    it("should refuse an entry with an empty name", () => {
+      expect(() =>
+        updateDevice({ id: "123", params: [{ name: "  ", value: "0.5" }] }),
+      ).toThrow("updateDevice failed: params entry 1 has an empty name");
     });
 
-    it("should warn and skip entries with an empty value", () => {
-      const result = updateDevice({
-        id: "123",
-        params: [{ name: "789", value: "  " }],
-      });
-
-      expect(capturedWarnings()).toContain(
-        'updateDevice: skipping param "789" with empty value',
-      );
-      expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
+    it("should refuse an entry with an empty value", () => {
+      expect(() =>
+        updateDevice({ id: "123", params: [{ name: "789", value: "  " }] }),
+      ).toThrow('updateDevice failed: params entry "789" has an empty value');
     });
   });
 
