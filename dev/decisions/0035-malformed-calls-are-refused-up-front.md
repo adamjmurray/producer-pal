@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-08-31
-- **Amended:** 2026-09-02 (rule 1, third bullet: work that can't be repeated)
+- **Amended:** 2026-09-02 (rule 1, third bullet: work that can't be repeated;
+  fourth bullet: a whole-call param with no valid reading)
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md),
   [ADR-0029](0029-an-empty-param-is-dropped-from-the-args.md),
   [ADR-0031](0031-list-params-broadcast-or-pair-exactly.md)
@@ -73,6 +74,20 @@ either way.
   until that clip is reached, and a batch that half-succeeded has changed
   properties, not created things.
 
+- **A whole-call param the tool can't read → throw.** One value that applies to
+  every item and can't be acted on for any of them: half of the
+  `sendGainDb`/`sendReturn` pair, a `tempo` outside Live's range, a note name
+  that parses as nothing, a `params` entry with no name or no value. Nothing
+  about the item decides these, so warning per item repeated one message down
+  the list and still returned a success-shaped result for the rest of the call —
+  which reads as though the value landed. The check belongs ahead of the loop,
+  where nothing has run yet.
+
+  Unlike the third bullet, this holds in update tools too. It costs the caller
+  the rest of an otherwise-valid call, and that is the point: a call carrying a
+  value we can't read can't be carried out as asked, and a partial result the
+  model may read as a whole one is worse than a refusal it can retry.
+
 ### 2. Lists come in two kinds
 
 - **Target lists** name objects or places: `id`, `path`, `toPath`, `toSlot`,
@@ -137,6 +152,20 @@ survives on a text param, where clearing a name is a real request.
 - **ADR-0009 narrows** to what it was written for. New wording for AGENTS.md:
   update tools don't throw for an operation that doesn't apply — but a call they
   can't read at all is still refused before it starts.
+- **The test is whether the Live Set is unchanged**, not when we found out.
+  Timing is the usual proxy: an up-front check knows nothing has run. But a
+  problem found late and before the first write can still throw, which keeps a
+  tool's choice of when to look a performance decision rather than a
+  user-visible one.
+- **Rule 1's fourth bullet is where warn-and-skip had spread furthest.** Six
+  conditions moved: the send pair in `updateTrack`/`updateDevice`, the tempo
+  range in `updateScene`/`createScene`/`updateLiveSet`, `quantizePitch` in
+  `updateClip`, `mappedPitch` in `updateDevice`, and the three malformed
+  `params` entries in `updateDevice`/`createDevice`.
+- **`updateTrack`, `updateScene` and `updateClip` refuse a call naming no
+  target.** They warned and returned `[]`, which reads as "there was nothing to
+  do" — every other tool already threw. They had applied their own warn-and-skip
+  rule to a call with no items rather than to an item.
 - **ADR-0031's create-tool carve-out is reversed.** It said refusing a
   `path`/`arrangementStart` mismatch lost because "a create tool building the
   wrong NUMBER of things is worse than building none" and "it would be a third

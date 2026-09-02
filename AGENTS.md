@@ -109,7 +109,10 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   `src/live-api-adapter/live-api-release.ts`.
 
 - **Update tools don't throw for an operation that doesn't apply** — but a call
-  they can't read at all is still refused before it starts. When something is
+  they can't read at all is still refused before it starts. That covers a call
+  naming no target, and a whole-call param with no valid reading (a tempo out of
+  range, half a required pair): nothing about the item decides those, so
+  checking per item just repeats one warning down the list. When something is
   found to be inapplicable mid-flight, `console.warn()`, skip that operation,
   and keep going, so the rest of a multi-item call still succeeds. Warnings are
   not silent — they're appended to the tool response as `WARNING:` blocks the
