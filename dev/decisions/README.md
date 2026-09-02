@@ -100,3 +100,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0033](0033-portal-settings-are-per-client.md)           | Portal settings are per-client, so the override gate is gone          |
 | [0034](0034-a-drum-pad-is-a-slot-chains-are-layers.md)   | A drum pad is a slot, and chains are the layers on it                 |
 | [0035](0035-malformed-calls-are-refused-up-front.md)     | A malformed call is refused up front, not warned mid-flight           |
+| [0036](0036-paths-address-tracks-and-scenes.md)          | Paths address tracks and scenes too                                   |

@@ -174,8 +174,10 @@ nothing.
 
 Phase 6 handed back `t0` and `s3` from write results that no tool accepted,
 which is the second addressing spelling ADR-0025 named as its own revisit
-condition. Track and scene reads now report `path`, and `update-track`,
-`update-scene` and `delete` accept one beside `id`.
+condition — the call it prompted is
+[ADR-0036](../decisions/0036-paths-address-tracks-and-scenes.md). Track and
+scene reads now report `path`, and `update-track`, `update-scene` and `delete`
+accept one beside `id`.
 
 ### Phase 8 — `type` stops carrying the role
 
@@ -212,8 +214,9 @@ second (`t0`, `rt1`, `mt`), so the field keeps only the first.
    UI says Main and the path root `mt` reads as either. Tool and param
    descriptions and the Skills all say main. Internal identifiers that mirror
    the Live API property (`master_track`, `masterTrack`, `category: "master"`)
-   are a separate question — the `masterTrack` key in a Live Set read is
-   user-facing and still undecided.
+   stay. The one user-facing key, a Live Set read's `masterTrack`, is now
+   `mainTrack` — it was the last place a reader saw "master" while every
+   description around it said main.
 
 Both remaining sites of the conflation move together: `computeTrackType` in
 [read-track.ts](../../src/tools/track/read/read-track.ts) and the second copy in

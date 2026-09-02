@@ -226,11 +226,12 @@ Deliberate omissions, reasoned in
 [ADR-0025](decisions/0025-object-path-grammar.md): arrangement clips (addressed
 by id) and locators (`locator` param, by id or name).
 
-Two of ADR-0025's calls have since gone the other way. It kept tracks and scenes
-off the grammar, which broke once write results started reporting `path`: a
-result handed back `t0` and no tool took it. Every track and scene tool now
-takes a `path` — reads and writes both — and `trackIndex` / `sceneIndex` /
-`trackType` are retired behind it. It also left out new-track and new-scene
-positions, on the grounds that they create a location rather than address one;
-`t+`, `rt+` and `s+` are exactly that, and they earn their place by making a
-create result's `path` something the caller could have asked for.
+Two of ADR-0025's calls have since gone the other way, recorded in
+[ADR-0036](decisions/0036-paths-address-tracks-and-scenes.md). It kept tracks
+and scenes off the grammar, which broke once write results started reporting
+`path`: a result handed back `t0` and no tool took it. Every track and scene
+tool now takes a `path` — reads and writes both — and `trackIndex` /
+`sceneIndex` / `trackType` are retired behind it. It also left out new-track and
+new-scene positions, on the grounds that they create a location rather than
+address one; `t+`, `rt+` and `s+` are exactly that, and they earn their place by
+making a create result's `path` something the caller could have asked for.
