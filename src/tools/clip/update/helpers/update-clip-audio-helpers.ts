@@ -68,7 +68,9 @@ export function forceWarpForLooping(
   // vetoed unwarp entirely, so on a warped clip there is nothing left to do
   // here except say the flag was ignored.
   if (warping === false) {
-    console.warn("warping: false ignored - looping: true forces warping on");
+    console.warn(
+      `warping: false ignored for clip ${clip.id} - looping: true forces warping on`,
+    );
   }
 
   if ((clip.getProperty("warping") as number) > 0) return;

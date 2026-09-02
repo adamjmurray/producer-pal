@@ -270,7 +270,9 @@ describe("updateDevice - moving a drum chain", () => {
     });
 
     // A non-drum Chain is not moveable to a pad: warn, and never touch in_note.
-    expect(capturedWarnings()).toContain("cannot move Chain");
+    expect(capturedWarnings()).toContain(
+      "updateDevice: cannot move Chain id 123",
+    );
     expect(chain.set).not.toHaveBeenCalledWith("in_note", expect.anything());
     expect(result).toStrictEqual({ id: "123" });
   });

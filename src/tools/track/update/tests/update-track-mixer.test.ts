@@ -218,7 +218,9 @@ describe("updateTrack - mixer properties", () => {
     });
 
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("pan has no effect in split panning mode"),
+      expect.stringContaining(
+        "track t0 is in split panning mode, so pan had no effect",
+      ),
     );
 
     errorSpy.mockRestore();
@@ -237,7 +239,7 @@ describe("updateTrack - mixer properties", () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        "leftPan and rightPan have no effect in stereo panning mode",
+        "track t0 is in stereo panning mode, so leftPan/rightPan had no effect",
       ),
     );
 

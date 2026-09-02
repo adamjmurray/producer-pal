@@ -505,7 +505,7 @@ describe("take lanes", () => {
     // Re-creating carries notes, and the response says so. This clip has no
     // envelopes, so nothing was lost and the warning names no cost.
     expect(promoted.warnings.join(" ")).toContain(
-      "promoted to the main lane by re-creating the clip",
+      "was promoted to the main lane by re-creating it",
     );
     expect(promoted.warnings.join(" ")).not.toContain(
       "automation envelopes aren't copied",

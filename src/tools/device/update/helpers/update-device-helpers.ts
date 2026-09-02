@@ -14,6 +14,7 @@ import {
   warnIfChainMixerLeftBehind,
 } from "#src/tools/shared/device/helpers/chain-mixer-helpers.ts";
 import { stripReturnSlotLetter } from "#src/tools/shared/validation/name-utils.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { deviceHasInstrument } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   type InsertionPathResolution,
@@ -195,7 +196,9 @@ export function moveDeviceToPath(
   // is still wherever it was, and reporting its id would name a device that
   // never arrived — for a duplicate, one the cleanup is about to delete.
   if (!container.getChildIds("devices").includes(toLiveApiId(device.id))) {
-    console.warn(`Live refused the move${refusalReason(device, container)}`);
+    console.warn(
+      `Live refused the move of ${targetLabel(device)}${refusalReason(device, container)}`,
+    );
 
     return "refused";
   }
@@ -363,7 +366,7 @@ export function updateMacroVariation(
 
   if (!canHaveChains) {
     console.warn(
-      "updateDevice: macro variations only available on rack devices",
+      `updateDevice: macro variations only available on rack devices; skipping ${targetLabel(device)}`,
     );
 
     return;
@@ -455,7 +458,7 @@ function setVariationIndex(
 
   if (index >= variationCount) {
     console.warn(
-      `updateDevice: variation index ${index} out of range (${variationCount} available)`,
+      `updateDevice: variation index ${index} out of range on ${targetLabel(device)} (${variationCount} available)`,
     );
 
     return false;
@@ -508,7 +511,9 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
   const canHaveChains = device.getProperty("can_have_chains");
 
   if (!canHaveChains) {
-    console.warn("updateDevice: macro count only available on rack devices");
+    console.warn(
+      `updateDevice: macro count only available on rack devices; skipping ${targetLabel(device)}`,
+    );
 
     return;
   }
@@ -519,7 +524,7 @@ export function updateMacroCount(device: LiveAPI, targetCount: number): void {
   if (targetCount % 2 !== 0) {
     effectiveTarget = Math.min(targetCount + 1, 16);
     console.warn(
-      `updateDevice: macro count rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
+      `updateDevice: macro count on ${targetLabel(device)} rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
     );
   }
 
@@ -551,7 +556,9 @@ export function updateABCompare(device: LiveAPI, action: string): void {
   const canCompareAB = device.getProperty("can_compare_ab");
 
   if (!canCompareAB) {
-    console.warn("updateDevice: A/B Compare not available on this device");
+    console.warn(
+      `updateDevice: A/B Compare not available on ${targetLabel(device)}`,
+    );
 
     return;
   }

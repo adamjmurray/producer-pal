@@ -18,7 +18,10 @@ import {
   canonicalPath,
   withTempTrackCopy,
 } from "./duplicate-temp-track-helpers.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathField,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 
 /**
@@ -119,6 +122,10 @@ function duplicateDevice(
     return null;
   }
 
+  // Read before the temp track exists: it shifts every later track index, so a
+  // path read inside the copy would name the wrong track.
+  const sourceLabel = targetLabel(device);
+
   return withTempTrackCopy(
     device.path,
     "device",
@@ -153,14 +160,16 @@ function duplicateDevice(
       );
 
       if (outcome === "no-destination") {
-        console.warn(`duplicate: no destination at toPath "${destination}"`);
+        console.warn(
+          `duplicate: ${sourceLabel} not copied — no destination at toPath "${destination}"`,
+        );
 
         return null;
       }
 
       if (outcome === "refused") {
         console.warn(
-          `duplicate: the copy could not be moved to "${destination}"`,
+          `duplicate: the copy of ${sourceLabel} could not be moved to "${destination}"`,
         );
 
         return null;

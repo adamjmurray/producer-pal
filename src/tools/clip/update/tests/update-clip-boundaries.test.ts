@@ -86,7 +86,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "firstStart parameter ignored for non-looping clips",
+      "firstStart parameter ignored for non-looping clip 123",
     );
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
@@ -167,7 +167,7 @@ describe("updateClip - derived start warning (MIDI vs audio)", () => {
     await updateClip({ id: "123", length: "4bar" });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Derived start"),
+      expect.stringContaining("derived start"),
     );
   });
 

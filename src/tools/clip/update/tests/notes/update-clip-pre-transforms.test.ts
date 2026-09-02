@@ -198,7 +198,7 @@ describe("updateClip - preTransforms", () => {
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        "preTransforms parameter ignored for audio clips",
+        "preTransforms parameter ignored for audio clip 123",
       ),
     );
   });

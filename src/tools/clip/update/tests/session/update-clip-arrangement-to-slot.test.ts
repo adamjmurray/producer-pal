@@ -291,7 +291,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
   });
 
@@ -312,7 +312,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
     expect(updatedClips).toStrictEqual([
       { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
@@ -341,7 +341,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
     expect(updatedClips).toStrictEqual([
       { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
@@ -520,7 +520,7 @@ describe("handleArrangementToSlotMove", () => {
     const updatedClips = runMove({ destSlotExists: false });
 
     expect(capturedWarnings()).toContain(
-      `destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
+      `clip 123 was not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,

@@ -75,7 +75,7 @@ describe("update-clip-move-groups", () => {
     emitArrangementWarnings(groups);
 
     expect(console.warn).toHaveBeenCalledWith(
-      "3 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
+      "3 clips on t0 moved to the same position - later clips will overwrite earlier ones",
     );
   });
 
@@ -89,10 +89,10 @@ describe("update-clip-move-groups", () => {
 
     expect(console.warn).toHaveBeenCalledTimes(2);
     expect(console.warn).toHaveBeenCalledWith(
-      "2 clips on track 0 moved to the same position - later clips will overwrite earlier ones",
+      "2 clips on t0 moved to the same position - later clips will overwrite earlier ones",
     );
     expect(console.warn).toHaveBeenCalledWith(
-      "4 clips on track 2 moved to the same position - later clips will overwrite earlier ones",
+      "4 clips on t2 moved to the same position - later clips will overwrite earlier ones",
     );
   });
 });

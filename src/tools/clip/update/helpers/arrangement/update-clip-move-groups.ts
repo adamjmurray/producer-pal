@@ -49,7 +49,7 @@ export function emitArrangementWarnings(groups: Map<string, MoveGroup>): void {
   for (const { trackIndex, count } of groups.values()) {
     if (count > 1) {
       console.warn(
-        `${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
+        `${count} clips on t${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
       );
     }
   }

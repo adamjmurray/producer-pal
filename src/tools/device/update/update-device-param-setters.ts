@@ -33,6 +33,7 @@ import {
   warnParamDisabled,
 } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { findRawValueForDisplay } from "./helpers/param-display-search.ts";
 import {
   resolveParamsByName,
@@ -89,7 +90,7 @@ export function setParamValues(
       );
     } catch (e) {
       console.warn(
-        `${toolName}: failed to set param "${key}": ${errorMessage(e)}`,
+        `${toolName}: failed to set param "${key}" on ${targetLabel(device)}: ${errorMessage(e)}`,
       );
     }
   }
@@ -127,7 +128,7 @@ function setOneParam(
   if (key.includes("/")) {
     const matches = resolveParamsByName(device, key);
 
-    if (warnIfAmbiguousName(matches, key, toolName)) return [];
+    if (warnIfAmbiguousName(matches, key, toolName, device)) return [];
 
     const namedParam = matches[0];
 
@@ -156,13 +157,15 @@ function setOneParam(
 
   const matches = resolveParamsByName(device, key);
 
-  if (warnIfAmbiguousName(matches, key, toolName)) return [];
+  if (warnIfAmbiguousName(matches, key, toolName, device)) return [];
 
   // A purely numeric key is an absolute Live API param id.
   const param = matches[0] ?? (/^\d+$/.test(key) ? LiveAPI.from(key) : null);
 
   if (!param?.exists()) {
-    console.warn(`${toolName}: param "${key}" not found on device`);
+    console.warn(
+      `${toolName}: param "${key}" not found on ${targetLabel(device)}`,
+    );
 
     return [];
   }
@@ -250,7 +253,7 @@ function setParamValue(
   deviceName: string | undefined,
 ): WrittenParam | null {
   const paramName = param.getProperty("name") as string;
-  const label = `${toolName}: param "${paramName}"`;
+  const label = `${toolName}: ${targetLabel(param)} param "${paramName}"`;
 
   if (!isParamEnabled(param)) {
     warnParamDisabled(label);
@@ -499,10 +502,10 @@ function findDivisionRawValue(
   const max = param.getProperty("max") as number;
   const minInt = Math.ceil(Math.min(min, max));
   const maxInt = Math.floor(Math.max(min, max));
-  const targetLabel =
+  const wantedLabel =
     typeof inputValue === "number" ? String(inputValue) : inputValue;
 
-  const target = normalizeDivisionLabel(targetLabel);
+  const target = normalizeDivisionLabel(wantedLabel);
 
   for (let i = minInt; i <= maxInt; i++) {
     if (normalizeDivisionLabel(strForValue(param, i)) === target) {

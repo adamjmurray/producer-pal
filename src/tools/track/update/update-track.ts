@@ -26,7 +26,10 @@ import {
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathField,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -96,7 +99,7 @@ function applyMonitoringState(
 
   if (!canBeArmed) {
     console.warn(
-      `updateTrack: monitoringState is only available on armable tracks; skipping for track ${track.id}`,
+      `updateTrack: monitoringState is only available on armable tracks; skipping track ${targetLabel(track)}`,
     );
 
     return;
@@ -110,7 +113,7 @@ function applyMonitoringState(
 
   if (monitoringValue == null) {
     console.warn(
-      `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+      `updateTrack: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
     );
 
     return;
@@ -145,7 +148,9 @@ function applySendProperties(
   const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(`track ${track.id} has no mixer device`);
+    console.warn(
+      `updateTrack: track ${targetLabel(track)} has no mixer device`,
+    );
 
     return;
   }
@@ -153,7 +158,7 @@ function applySendProperties(
   const sends = mixer.getChildren("sends");
 
   if (sends.length === 0) {
-    console.warn(`track ${track.id} has no sends`);
+    console.warn(`updateTrack: track ${targetLabel(track)} has no sends`);
 
     return;
   }
@@ -169,13 +174,15 @@ function applySendProperties(
   );
 
   if (sendIndex === -1) {
-    console.warn(`no return track found matching "${sendReturn}"`);
+    console.warn(`updateTrack: no return track found matching "${sendReturn}"`);
 
     return;
   }
 
   if (sendIndex >= sends.length) {
-    console.warn(`send ${sendIndex} doesn't exist on track ${track.id}`);
+    console.warn(
+      `updateTrack: track ${targetLabel(track)} has no send for return "${sendReturn}"`,
+    );
 
     return;
   }
@@ -184,7 +191,7 @@ function applySendProperties(
     assertDefined(sends[sendIndex], `send at index ${sendIndex}`),
     "display_value",
     sendGainDb,
-    `updateTrack: send "${names[sendIndex]}"`,
+    `updateTrack: track ${targetLabel(track)} send "${names[sendIndex]}"`,
   );
 }
 

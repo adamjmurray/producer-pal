@@ -51,7 +51,9 @@ describe("updateDevice - disabled params", () => {
 
     expect(param.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('updateDevice: param "Volume" is disabled'),
+      expect.stringContaining(
+        'updateDevice: id vol param "Volume" is disabled',
+      ),
     );
   });
 

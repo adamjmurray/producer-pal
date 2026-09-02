@@ -317,7 +317,7 @@ describe("updateScene", () => {
         updateScene({ id: "123", color: "#FF0000" });
 
         expect(consoleSpy).toHaveBeenCalledWith(
-          "Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+          "Requested scene s0 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
         );
       });
     });

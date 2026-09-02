@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface MixerParams {
   gainDb?: number;
@@ -17,12 +18,14 @@ interface MixerParams {
 /**
  * Apply stereo panning and warn about invalid params
  * @param mixer - Mixer device object
+ * @param track - The track being updated, for the warning
  * @param pan - Pan value
  * @param leftPan - Left pan value
  * @param rightPan - Right pan value
  */
 function applyStereoPan(
   mixer: LiveAPI,
+  track: LiveAPI,
   pan: number | undefined,
   leftPan: number | undefined,
   rightPan: number | undefined,
@@ -37,8 +40,8 @@ function applyStereoPan(
 
   if (leftPan != null || rightPan != null) {
     console.warn(
-      "updateTrack: leftPan and rightPan have no effect in stereo panning mode. " +
-        "Set panningMode to 'split' or use 'pan' instead.",
+      `updateTrack: track ${targetLabel(track)} is in stereo panning mode, so leftPan/rightPan ` +
+        "had no effect; set panningMode to 'split', or use pan",
     );
   }
 }
@@ -46,12 +49,14 @@ function applyStereoPan(
 /**
  * Apply split panning and warn about invalid params
  * @param mixer - Mixer device object
+ * @param track - The track being updated, for the warning
  * @param pan - Pan value
  * @param leftPan - Left pan value
  * @param rightPan - Right pan value
  */
 function applySplitPan(
   mixer: LiveAPI,
+  track: LiveAPI,
   pan: number | undefined,
   leftPan: number | undefined,
   rightPan: number | undefined,
@@ -74,8 +79,8 @@ function applySplitPan(
 
   if (pan != null) {
     console.warn(
-      "updateTrack: pan has no effect in split panning mode. " +
-        "Set panningMode to 'stereo' or use leftPan/rightPan instead.",
+      `updateTrack: track ${targetLabel(track)} is in split panning mode, so pan had no ` +
+        "effect; set panningMode to 'stereo', or use leftPan/rightPan",
     );
   }
 }
@@ -122,8 +127,8 @@ export function applyMixerProperties(
 
   // Handle panning based on effective mode
   if (effectiveMode === "stereo") {
-    applyStereoPan(mixer, pan, leftPan, rightPan);
+    applyStereoPan(mixer, track, pan, leftPan, rightPan);
   } else {
-    applySplitPan(mixer, pan, leftPan, rightPan);
+    applySplitPan(mixer, track, pan, leftPan, rightPan);
   }
 }

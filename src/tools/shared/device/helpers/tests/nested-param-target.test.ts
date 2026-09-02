@@ -205,7 +205,7 @@ describe("resolveNestedParamTarget", () => {
 
       const target = resolveSampleTarget("pC1/d0");
 
-      expectWarnedNull(target, "sample write SKIPPED on pad C1");
+      expectWarnedNull(target, "sample write SKIPPED on pad t0/d0/pC1");
       expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
       expectNoDeviceInserted(chain);
     });

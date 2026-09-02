@@ -197,7 +197,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+      "duplicate: MIDI clip src_clip cannot be duplicated to audio track t5",
     );
   });
 
@@ -210,7 +210,7 @@ describe("resolveDestinationTargets", () => {
       null,
     ]);
     expect(capturedWarnings()).toContain(
-      "duplicate: audio clip cannot be duplicated to MIDI track 8",
+      "duplicate: audio clip src_clip cannot be duplicated to MIDI track t8",
     );
   });
 
@@ -226,7 +226,7 @@ describe("resolveDestinationTargets", () => {
       resolveDestinationTargets(clip, [mainLane(7), mainLane(5)]),
     ).toStrictEqual([mainLane(7), null]);
     expect(capturedWarnings()).toContain(
-      "duplicate: MIDI clip cannot be duplicated to audio track 5",
+      "duplicate: MIDI clip src_clip cannot be duplicated to audio track t5",
     );
   });
 });

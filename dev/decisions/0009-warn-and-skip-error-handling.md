@@ -33,3 +33,10 @@ mostly succeeds.
   and goes to the Max console instead.
 - This is a load-bearing contract for the whole update-tool family; new update
   tools follow it too.
+- **A warning names the item it skipped.** One call touches many items, so a
+  warning raised while working on item N carries N's identity — otherwise two
+  firings of the same reason are indistinguishable and the model can't tell
+  which clip kept its notes. Prefer the path (`t1`, `t1/d0`); use the id where
+  the path doesn't name the item, as an arrangement clip's path names its lane.
+  `targetLabel()` in `object-path-for-api.ts` picks. A whole-call param error is
+  different: nothing was skipped in particular, so it stays unqualified.

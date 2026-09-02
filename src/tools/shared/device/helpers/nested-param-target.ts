@@ -13,6 +13,7 @@ import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/de
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 const SAMPLE_PARAM = "sample";
 
@@ -78,16 +79,14 @@ export function resolveNestedParamTarget(
   const { target, targetType } = navigateRemainingSegments(rack, segments);
 
   if (!target?.exists()) {
-    console.warn(
-      `${toolName}: no device at "${prefix}" relative to the target device`,
-    );
+    console.warn(`${toolName}: no device at "${targetLabel(rack)}/${prefix}"`);
 
     return null;
   }
 
   if (targetType !== "device") {
     console.warn(
-      `${toolName}: "${prefix}" resolves to a ${targetType}, not a device`,
+      `${toolName}: "${targetLabel(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
     );
 
     return null;
@@ -172,12 +171,13 @@ function resolveDrumPadSampleTarget(
   force: boolean,
 ): LiveAPI | null {
   const { padNote, chainIndex } = slot;
+  const padLabel = `${targetLabel(rack)}/p${padNote}`;
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
   if (!chain?.exists()) {
     console.warn(
-      `${toolName}: could not resolve or create drum pad "${padNote}"`,
+      `${toolName}: could not resolve or create drum pad "${padLabel}"`,
     );
 
     return null;
@@ -212,7 +212,7 @@ function resolveDrumPadSampleTarget(
 
   if (!force) {
     console.warn(
-      `${toolName}: sample write SKIPPED on pad ${padNote} — it holds ` +
+      `${toolName}: sample write SKIPPED on pad ${padLabel} — it holds ` +
         `${description}, whose sample the Live API can't set. Honoring the ` +
         `write REPLACES it with a Simpler, losing all its settings. Ask the ` +
         `user before passing force:true. To keep it: load the sample on ` +
@@ -229,7 +229,7 @@ function resolveDrumPadSampleTarget(
   // again after its insert; this one keeps the invariant true in between.
   invalidateDevicePathCache();
   console.warn(
-    `${toolName}: force:true — replaced ${description} on pad ${padNote} with a Simpler to load the sample. Its settings are gone.`,
+    `${toolName}: force:true — replaced ${description} on pad ${padLabel} with a Simpler to load the sample. Its settings are gone.`,
   );
 
   return createSimplerInChain(chain, toolName);

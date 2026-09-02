@@ -91,7 +91,9 @@ describe("updateTrack routing by name", () => {
       '{"output_routing_type":{"identifier":30}}',
     );
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('2 options named "Bass"'),
+      expect.stringContaining(
+        'track t0 has 2 output_routing_type options named "Bass"',
+      ),
     );
   });
 

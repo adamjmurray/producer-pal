@@ -48,7 +48,9 @@ export function applyTransformsToExistingNotes(
   const rawNotes = readAllClipNotes(clip);
 
   if (rawNotes.length === 0) {
-    console.warn("transforms ignored: clip has no notes to transform");
+    console.warn(
+      `transforms ignored: clip ${clip.id} has no notes to transform`,
+    );
 
     return { noteCount: 0 };
   }

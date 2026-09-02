@@ -27,7 +27,10 @@ import {
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  pathField,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -381,7 +384,9 @@ function updateTarget(
 
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
-    console.warn(`cannot update ${type} objects`);
+    console.warn(
+      `updateDevice: cannot update ${type} objects (${targetLabel(target)})`,
+    );
 
     return null;
   }
@@ -400,12 +405,14 @@ function updateTarget(
       if (outcome === "no-destination") {
         console.warn(`move target at path "${options.toPath}" does not exist`);
       } else if (outcome === "refused") {
-        console.warn(`device not moved to "${options.toPath}"`);
+        console.warn(
+          `updateDevice: ${targetLabel(target)} was not moved to "${options.toPath}"`,
+        );
       }
     } else if (type === "DrumChain") {
       moveDrumChainToPath(target, options.toPath, false);
     } else {
-      console.warn(`cannot move ${type}`);
+      console.warn(`updateDevice: cannot move ${type} ${targetLabel(target)}`);
     }
   }
 

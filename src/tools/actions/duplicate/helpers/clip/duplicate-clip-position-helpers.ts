@@ -325,7 +325,7 @@ function warnRecreatedCopyLimits(
     const losses = recreatedClipLosses(object);
 
     console.warn(
-      "duplicate: promoted to the main lane by re-creating the clip" +
+      `duplicate: clip ${id} was promoted to the main lane by re-creating it` +
         (losses ? ` (${losses})` : ""),
     );
   } else if (promotes) {

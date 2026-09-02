@@ -107,21 +107,21 @@ export function updateDeviceProperties(
       updateMacroCount(target, macroCount);
     }
   } else {
-    warnIfSet("macroVariation", macroVariation, type);
-    warnIfSet("macroVariationIndex", macroVariationIndex, type);
-    warnIfSet("macroCount", macroCount, type);
+    warnIfSet("macroVariation", macroVariation, type, target);
+    warnIfSet("macroVariationIndex", macroVariationIndex, type, target);
+    warnIfSet("macroCount", macroCount, type, target);
   }
 
-  warnIfSet("mute", mute, type);
-  warnIfSet("solo", solo, type);
-  warnIfSet("color", color, type);
-  warnIfSet("gainDb", gainDb, type);
-  warnIfSet("pan", pan, type);
-  warnIfSet("sendGainDb", sendGainDb, type);
-  warnIfSet("sendReturn", sendReturn, type);
-  warnIfSet("sends", sends, type);
-  warnIfSet("chokeGroup", chokeGroup, type);
-  warnIfSet("mappedPitch", mappedPitch, type);
+  warnIfSet("mute", mute, type, target);
+  warnIfSet("solo", solo, type, target);
+  warnIfSet("color", color, type, target);
+  warnIfSet("gainDb", gainDb, type, target);
+  warnIfSet("pan", pan, type, target);
+  warnIfSet("sendGainDb", sendGainDb, type, target);
+  warnIfSet("sendReturn", sendReturn, type, target);
+  warnIfSet("sends", sends, type, target);
+  warnIfSet("chokeGroup", chokeGroup, type, target);
+  warnIfSet("mappedPitch", mappedPitch, type, target);
 
   return refreshParamValues(paramResults);
 }
@@ -137,12 +137,12 @@ export function updateNonDeviceProperties(
   type: string,
   options: UpdatePropertyOptions,
 ): void {
-  warnIfSet("params", options.params, type);
-  warnIfSet("actions", options.actions, type);
-  warnIfSet("macroVariation", options.macroVariation, type);
-  warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
-  warnIfSet("macroCount", options.macroCount, type);
-  warnIfSet("abCompare", options.abCompare, type);
+  warnIfSet("params", options.params, type, target);
+  warnIfSet("actions", options.actions, type, target);
+  warnIfSet("macroVariation", options.macroVariation, type, target);
+  warnIfSet("macroVariationIndex", options.macroVariationIndex, type, target);
+  warnIfSet("macroCount", options.macroCount, type, target);
+  warnIfSet("abCompare", options.abCompare, type, target);
 
   if (options.mute != null) {
     target.set("mute", options.mute ? 1 : 0);
@@ -161,19 +161,19 @@ export function updateNonDeviceProperties(
       applyChainMixer(target, options);
     }
   } else {
-    warnIfSet("color", options.color, type);
-    warnIfSet("gainDb", options.gainDb, type);
-    warnIfSet("pan", options.pan, type);
-    warnIfSet("sendGainDb", options.sendGainDb, type);
-    warnIfSet("sendReturn", options.sendReturn, type);
-    warnIfSet("sends", options.sends, type);
+    warnIfSet("color", options.color, type, target);
+    warnIfSet("gainDb", options.gainDb, type, target);
+    warnIfSet("pan", options.pan, type, target);
+    warnIfSet("sendGainDb", options.sendGainDb, type, target);
+    warnIfSet("sendReturn", options.sendReturn, type, target);
+    warnIfSet("sends", options.sends, type, target);
   }
 
   if (type === "DrumChain") {
     updateDrumChainProperties(target, options);
   } else {
-    warnIfSet("chokeGroup", options.chokeGroup, type);
-    warnIfSet("mappedPitch", options.mappedPitch, type);
+    warnIfSet("chokeGroup", options.chokeGroup, type, target);
+    warnIfSet("mappedPitch", options.mappedPitch, type, target);
   }
 }
 

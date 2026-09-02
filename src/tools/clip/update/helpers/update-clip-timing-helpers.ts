@@ -40,12 +40,14 @@ interface TimeSignature {
 
 /**
  * Determine start_marker value with bounds checking
+ * @param clipId - The clip being updated, for the warning
  * @param firstStartBeats - First start position in beats
  * @param startBeats - Start position in beats
  * @param endMarker - Clip end marker (content boundary)
  * @returns start_marker value or null if not applicable
  */
 function determineStartMarker(
+  clipId: string,
   firstStartBeats: number | null,
   startBeats: number | null,
   endMarker: number,
@@ -56,7 +58,7 @@ function determineStartMarker(
     }
 
     console.warn(
-      `firstStart parameter ignored - exceeds clip content boundary (${firstStartBeats} >= ${endMarker})`,
+      `firstStart ignored for clip ${clipId} - exceeds its content boundary (${firstStartBeats} >= ${endMarker})`,
     );
 
     return null;
@@ -150,7 +152,7 @@ export function calculateBeatPositions({
           Math.abs(startBeats - currentStart) > SAME_TIME_EPSILON
         ) {
           console.warn(
-            `Derived start (${startBeats}) differs from current start_marker (${currentStart})`,
+            `clip ${clip.id}: derived start (${startBeats}) differs from current start_marker (${currentStart})`,
           );
         }
       }
@@ -181,6 +183,7 @@ export function calculateBeatPositions({
   // Bound it by the end this update is writing rather than the stale one — an
   // expanding write moves the end first (see buildClipPropertiesToSet).
   const startMarkerBeats = determineStartMarker(
+    clip.id,
     firstStartBeats,
     startBeats,
     endBeats ?? readMarker("end_marker"),

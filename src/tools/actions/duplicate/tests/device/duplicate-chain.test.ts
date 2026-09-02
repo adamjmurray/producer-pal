@@ -119,7 +119,7 @@ describe("duplicate - chain", () => {
     await duplicate({ type: "chain", id: "return-chain-0" });
 
     expect(vi.mocked(consoleMock.warn).mock.calls.join()).toContain(
-      "rack return chain cannot be copied",
+      "is a rack return chain, which cannot be copied",
     );
   });
 

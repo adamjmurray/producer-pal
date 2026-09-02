@@ -64,6 +64,19 @@ export function pathField(api: LiveAPI): { path?: string } {
   return path == null ? {} : { path };
 }
 
+/**
+ * How a warning names the object it was working on, so two firings of the same
+ * reason are tellable apart. A clip is named by id — an arrangement clip's path
+ * names the lane it shares with every other clip there.
+ * @param api - The object the warning is about
+ * @returns Its path (`t1/d0`), or `id 7` when it has no path to spell
+ */
+export function targetLabel(api: LiveAPI): string {
+  const path = api.type === "Clip" ? undefined : objectPathForApi(api);
+
+  return path ?? `id ${api.id}`;
+}
+
 // --- Helpers below main exports ---
 
 /**

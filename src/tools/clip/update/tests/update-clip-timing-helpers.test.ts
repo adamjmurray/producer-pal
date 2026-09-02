@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,10 +59,10 @@ describe("update-clip-timing-helpers", () => {
       });
 
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("firstStart parameter ignored"),
+        expect.stringContaining("firstStart ignored for clip"),
       );
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("exceeds clip content boundary"),
+        expect.stringContaining("exceeds its content boundary"),
       );
       expect(result.startMarkerBeats).toBeNull();
       expect(result.firstStartBeats).toBe(8); // Still calculated, just not applied
@@ -138,7 +139,7 @@ describe("update-clip-timing-helpers", () => {
       expect(result.firstStartBeats).toBe(4);
       expect(result.startMarkerBeats).toBeNull();
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("firstStart parameter ignored"),
+        expect.stringContaining("firstStart ignored for clip"),
       );
     });
 

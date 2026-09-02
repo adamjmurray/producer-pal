@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface RoutingInfo {
   display_name: string;
@@ -43,7 +44,7 @@ export function applyRoutingProperties(
 
     if (isGroup || category !== "regular") {
       console.warn(
-        `updateTrack: input routing is only available on regular non-group tracks; skipping for track ${track.id}`,
+        `updateTrack: input routing is only available on regular non-group tracks; skipping track ${targetLabel(track)}`,
       );
     } else {
       setRouting(track, "input_routing_type", inputRoutingType);
@@ -105,7 +106,7 @@ function resolveRoutingIdentifier(
       const ids = matches.map((routing) => routing.identifier).join(", ");
 
       console.warn(
-        `updateTrack: ${property} has ${matches.length} options named "${value}"; using the first — send the identifier (${ids}) to pick another`,
+        `updateTrack: track ${targetLabel(track)} has ${matches.length} ${property} options named "${value}"; using the first — send the identifier (${ids}) to pick another`,
       );
     }
 
@@ -121,7 +122,7 @@ function resolveRoutingIdentifier(
   const names = available.map((routing) => routing.display_name).join(", ");
 
   console.warn(
-    `updateTrack: no ${property} named "${value}"; available: ${names || "none"}`,
+    `updateTrack: track ${targetLabel(track)} has no ${property} named "${value}"; available: ${names || "none"}`,
   );
 
   return null;

@@ -17,6 +17,7 @@ import {
   extractDevicePath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DuplicateDrumPadResult {
   id: string;
@@ -129,14 +130,16 @@ export function duplicateDrumPad(
  */
 function canCopyPads(rack: LiveAPI): boolean {
   if (rack.getProperty("can_have_drum_pads") !== 1) {
-    console.warn(`duplicate: the source pad is not in a Drum Rack`);
+    console.warn(
+      `duplicate: the source pad's device ${targetLabel(rack)} is not a Drum Rack`,
+    );
 
     return false;
   }
 
   if (rack.getProperty("has_drum_pads") !== 1) {
     console.warn(
-      `duplicate: this Drum Rack has no pads (a Drum Rack nested in a drum pad never does), so there is nothing to copy between`,
+      `duplicate: Drum Rack ${targetLabel(rack)} has no pads (a Drum Rack nested in a drum pad never does), so there is nothing to copy between`,
     );
 
     return false;

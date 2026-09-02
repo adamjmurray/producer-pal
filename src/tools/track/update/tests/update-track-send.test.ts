@@ -294,7 +294,7 @@ describe("updateTrack - send properties", () => {
       sendReturn: "C", // Matches return track at index 2
     });
 
-    expectSendUpdateSkipped(result, [send1, send2], "doesn't exist on track");
+    expectSendUpdateSkipped(result, [send1, send2], "has no send for return");
   });
 });
 

@@ -295,7 +295,9 @@ describe("handleClipSlotMove", () => {
       noteResult: null,
     });
 
-    expect(capturedWarnings()).toContain("destination t99/s99 does not exist");
+    expect(capturedWarnings()).toContain(
+      "clip 123 was not moved: destination t99/s99 does not exist",
+    );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
   });
@@ -438,7 +440,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "overwrote the existing clip at t0/s1",
+      "clip 123 overwrote the existing clip at t0/s1",
     );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);

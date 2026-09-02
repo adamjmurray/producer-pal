@@ -195,7 +195,7 @@ describe("duplicate - track duplication", () => {
     );
     // ...and the removal is reported to the user.
     expect(capturedWarnings()).toContain(
-      "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+      "duplicate: removed the Producer Pal device from the new track t1 - it cannot be duplicated",
     );
   });
 

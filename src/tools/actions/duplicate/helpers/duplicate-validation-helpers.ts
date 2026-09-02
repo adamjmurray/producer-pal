@@ -224,7 +224,8 @@ export function resolveDestinationTargets(
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
   return targets.map((target) =>
-    target != null && canCopyClipToTrack(target.trackIndex, clipIsMidi)
+    target != null &&
+    canCopyClipToTrack(sourceClip.id, target.trackIndex, clipIsMidi)
       ? target
       : null,
   );
@@ -232,11 +233,16 @@ export function resolveDestinationTargets(
 
 /**
  * Whether a clip can be copied to a track, warning about why not.
+ * @param clipId - The clip being copied, for the warning
  * @param trackIndex - Destination track index
  * @param clipIsMidi - Whether the clip being copied is MIDI
  * @returns True when the copy can be made
  */
-function canCopyClipToTrack(trackIndex: number, clipIsMidi: boolean): boolean {
+function canCopyClipToTrack(
+  clipId: string,
+  trackIndex: number,
+  clipIsMidi: boolean,
+): boolean {
   const track = LiveAPI.from(livePath.track(trackIndex));
 
   if (!track.exists()) {
@@ -251,8 +257,8 @@ function canCopyClipToTrack(trackIndex: number, clipIsMidi: boolean): boolean {
 
   if (clipIsMidi !== trackIsMidi) {
     console.warn(
-      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip cannot be duplicated to ` +
-        `${trackIsMidi ? "MIDI" : "audio"} track ${trackIndex}`,
+      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip ${clipId} cannot be duplicated to ` +
+        `${trackIsMidi ? "MIDI" : "audio"} track t${trackIndex}`,
     );
 
     return false;

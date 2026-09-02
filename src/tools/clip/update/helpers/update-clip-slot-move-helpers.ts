@@ -115,7 +115,7 @@ export function handleClipSlotMove({
 
   if (destinationWasOccupied) {
     console.warn(
-      `overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
+      `clip ${clip.id} overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
     );
   }
 
@@ -253,7 +253,7 @@ function destinationSlot(
   if (destClipSlot.exists()) return destClipSlot;
 
   console.warn(
-    `destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+    `clip ${clip.id} was not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
   );
   keepClip(clip, updatedClips, noteResult);
 

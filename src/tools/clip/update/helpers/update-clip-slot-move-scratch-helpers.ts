@@ -197,7 +197,7 @@ function recreateViaScratchSlot(
     return null;
   }
 
-  console.warn(`overwrote the existing clip at ${destPath}`);
+  console.warn(`clip ${clip.id} overwrote the existing clip at ${destPath}`);
 
   return newClip;
 }
@@ -226,7 +226,7 @@ function recreateOverOccupant(
   const attempt = attemptRecreate(clip, destClipSlot);
 
   if (attempt.ok) {
-    console.warn(`overwrote the existing clip at ${destPath}`);
+    console.warn(`clip ${clip.id} overwrote the existing clip at ${destPath}`);
 
     return attempt.clip;
   }

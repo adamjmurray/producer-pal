@@ -17,6 +17,7 @@ import {
   type MinimalClipInfo,
 } from "./duplicate-helpers.ts";
 import { configureRouting } from "./duplicate-routing-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Callback type for forEachClipInScene
@@ -80,13 +81,13 @@ function removeHostTrackDevice(
           Number.parseInt(deviceIndexMatch[1] ?? ""),
         );
         console.warn(
-          "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+          `duplicate: removed the Producer Pal device from the new track ${targetLabel(newTrack)} - it cannot be duplicated`,
         );
       }
     } catch {
       // If we can't access this_device, just continue without removing anything
       console.warn(
-        "Could not check for Producer Pal device in duplicated track",
+        `duplicate: could not check the new track ${targetLabel(newTrack)} for the Producer Pal device`,
       );
     }
   }

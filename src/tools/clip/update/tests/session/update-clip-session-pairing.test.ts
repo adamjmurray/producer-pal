@@ -95,9 +95,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     // keep t5/s1 — sliding it onto t5/s0 would overwrite whatever sits there.
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(capturedWarnings()).toContain("destination t5/s1 does not exist");
+    expect(capturedWarnings()).toContain(
+      "clip 456 was not moved: destination t5/s1 does not exist",
+    );
     expect(capturedWarnings()).not.toContain(
-      "destination t5/s0 does not exist",
+      "clip 456 was not moved: destination t5/s0 does not exist",
     );
   });
 
@@ -153,9 +155,11 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
 
     await updateClip({ id: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
-    expect(capturedWarnings()).toContain("destination t5/s0 does not exist");
+    expect(capturedWarnings()).toContain(
+      "clip 456 was not moved: destination t5/s0 does not exist",
+    );
     expect(capturedWarnings()).not.toContain(
-      "destination t5/s1 does not exist",
+      "clip 456 was not moved: destination t5/s1 does not exist",
     );
   });
 

@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { strForValue } from "#src/tools/shared/device/helpers/device-label-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Every parameter on a device matching a name (case-insensitive). A name is not
@@ -40,12 +41,14 @@ export function resolveParamsByName(device: LiveAPI, name: string): LiveAPI[] {
  * @param matches - The params the name resolved to
  * @param name - The name as the caller wrote it
  * @param toolName - Calling tool name for warning prefix
+ * @param device - The device the name was looked up on
  * @returns True if the name was ambiguous and nothing should be written
  */
 export function warnIfAmbiguousName(
   matches: LiveAPI[],
   name: string,
   toolName: string,
+  device: LiveAPI,
 ): boolean {
   if (matches.length < 2) return false;
 
@@ -57,7 +60,7 @@ export function warnIfAmbiguousName(
     .join(", ");
 
   console.warn(
-    `${toolName}: param "${name}" names ${matches.length} params on this device — ${described} — so nothing was written. Write by id to pick one.`,
+    `${toolName}: param "${name}" names ${matches.length} params on ${targetLabel(device)} — ${described} — so nothing was written. Write by id to pick one.`,
   );
 
   return true;

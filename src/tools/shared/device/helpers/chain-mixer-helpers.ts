@@ -7,6 +7,7 @@ import { requestMemo } from "#src/live-api-adapter/live-api-release.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { findReturnIndex, roundPan } from "#src/tools/shared/utils.ts";
 import { setParamIfEnabled } from "./param-write-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ChainSend {
   /** Return chain id, exact name, or letter prefix */
@@ -85,7 +86,7 @@ export function applyChainMixer(
   const mixer = chain.child("mixer_device");
 
   if (!mixer.exists()) {
-    console.warn(`chain ${chain.id} has no mixer device`);
+    console.warn(`${chainLabel(chain)} has no mixer device`);
 
     return applied;
   }
@@ -165,11 +166,10 @@ export function warnIfChainMixerLeftBehind(
   const where = toChain ? "destination chain" : "destination track";
   const hint = padHint(chain, destination, isCopy);
 
-  const name = chain.getProperty("name") as string;
   const verb = isCopy ? "does not follow the copy" : "stays behind";
 
   console.warn(
-    `chain "${name}" trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
+    `${chainLabel(chain)} trim (${summarizeChainMixer(mixer)}) ${verb} — reapply on the ${where} with ${tool} gainDb/pan/sendGainDb+sendReturn${hint}`,
   );
 }
 
@@ -387,7 +387,9 @@ function applyChainSend(
         ? ` (returns: ${names.join(", ")})`
         : " (rack has no return chains; they can only be added in Live)";
 
-    console.warn(`no return chain matching "${sendReturn}"${available}`);
+    console.warn(
+      `${chainLabel(chain)}: no return chain matching "${sendReturn}"${available}`,
+    );
 
     return null;
   }
@@ -395,7 +397,7 @@ function applyChainSend(
   const send = mixer.getChildAt("sends", index);
 
   if (send == null) {
-    console.warn(`chain ${chain.id} has no send ${index}`);
+    console.warn(`${chainLabel(chain)} has no send for return "${sendReturn}"`);
 
     return null;
   }
@@ -471,8 +473,9 @@ function applySendList(
  */
 function chainLabel(chain: LiveAPI): string {
   const name = chain.getProperty("name") as string | undefined;
+  const path = targetLabel(chain);
 
-  return name ? `chain "${name}"` : `chain ${chain.id}`;
+  return name ? `chain "${name}" (${path})` : `chain ${path}`;
 }
 
 /**

@@ -104,7 +104,7 @@ describe("updateDevice - params by name", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      'updateDevice: param "Nonexistent" not found on device',
+      'updateDevice: param "Nonexistent" not found on t0/d0',
     );
   });
 });
@@ -158,7 +158,7 @@ describe("updateDevice - a name that matches more than one param", () => {
     updateDevice({ id: "123", params: [{ name: "Width", value: "5" }] });
 
     expect(capturedWarnings()).toContain(
-      'updateDevice: param "Width" names 2 params on this device — ' +
+      'updateDevice: param "Width" names 2 params on t0/d0 — ' +
         "id 94 (0.5 to 9), id 95 (0 % to 100 %) — so " +
         "nothing was written. Write by id to pick one.",
     );
@@ -245,7 +245,7 @@ describe("updateDevice - two rack macros renamed the same", () => {
     expect(macro1.set).not.toHaveBeenCalled();
     expect(macro2.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContain(
-      'updateDevice: param "Drive" names 2 params on this device — ' +
+      'updateDevice: param "Drive" names 2 params on t0/d0 — ' +
         "id m1 (0 to 127), id m2 (0 to 127) — so nothing was written. " +
         "Write by id to pick one.",
     );

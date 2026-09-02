@@ -202,7 +202,7 @@ describe("duplicate-track-scene-helpers", () => {
           expect.anything(),
         );
         expect(capturedWarnings()).toContain(
-          "Could not check for Producer Pal device in duplicated track",
+          "duplicate: could not check the new track t1 for the Producer Pal device",
         );
       } finally {
         spy.mockRestore();

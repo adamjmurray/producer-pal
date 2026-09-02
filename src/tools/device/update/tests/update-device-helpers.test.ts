@@ -102,7 +102,7 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
       "refused",
     );
-    expect(capturedWarnings()).toContain("Live refused the move");
+    expect(capturedWarnings()).toContain("Live refused the move of t0/d0");
   });
 
   it("names the one refusal Live's own state explains", () => {
@@ -127,7 +127,7 @@ describe("moveDeviceToPath", () => {
       "refused",
     );
     expect(capturedWarnings()).toContain(
-      "Live refused the move: the destination already has an instrument, and only one is allowed",
+      "Live refused the move of t0/d0: the destination already has an instrument, and only one is allowed",
     );
   });
 
@@ -195,7 +195,7 @@ describe("updateMacroCount", () => {
     updateMacroCount(deviceApi, 8);
 
     expect(capturedWarnings()).toContain(
-      "updateDevice: macro count only available on rack devices",
+      "updateDevice: macro count only available on rack devices; skipping t0/d0",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();
   });

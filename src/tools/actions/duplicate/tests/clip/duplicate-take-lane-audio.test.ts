@@ -279,7 +279,7 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(promoted?.set).toHaveBeenCalledWith("gain", 0.6);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        "promoted to the main lane by re-creating the clip " +
+        "clip tl_src_clip was promoted to the main lane by re-creating it " +
           "(warp markers reset to the sample's defaults)",
       ),
     );

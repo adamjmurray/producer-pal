@@ -162,7 +162,10 @@ export function processSingleClipUpdate(
     });
     forceWarpForLooping(clip, looping, warping);
   } else {
-    warnIgnoredParams({ gainDb, pitchShift, warpMode, warping }, "MIDI clips");
+    warnIgnoredParams(
+      { gainDb, pitchShift, warpMode, warping },
+      `MIDI clip ${clip.id}`,
+    );
   }
 
   // Determine looping state. Read `wasLooping` here, after the audio params:
@@ -172,7 +175,9 @@ export function processSingleClipUpdate(
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
-    console.warn("firstStart parameter ignored for non-looping clips");
+    console.warn(
+      `firstStart parameter ignored for non-looping clip ${clip.id}`,
+    );
   }
 
   writeClipProperties(params, {
@@ -193,7 +198,7 @@ export function processSingleClipUpdate(
     // note write throw (mirrors create-clip's guard) so a multi-clip batch
     // keeps going. Transforms are still applied above by handleAudioClipUpdate.
     if (notationString != null) {
-      console.warn("notes parameter ignored for audio clip");
+      console.warn(`notes parameter ignored for audio clip ${clip.id}`);
     }
   }
 
@@ -409,6 +414,6 @@ function handleAudioClipUpdate(
   applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
-    console.warn("preTransforms parameter ignored for audio clips");
+    console.warn(`preTransforms parameter ignored for audio clip ${clip.id}`);
   }
 }

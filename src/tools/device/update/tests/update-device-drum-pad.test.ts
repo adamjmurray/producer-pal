@@ -171,7 +171,8 @@ describe("updateDevice - bare drum pad paths", () => {
     expect(
       capturedWarnings().filter(
         (warning) =>
-          warning === "updateDevice: 'macroCount' not applicable to DrumChain",
+          warning ===
+          "updateDevice: 'macroCount' not applicable to DrumChain t0/d0/pC1/c0",
       ),
     ).toHaveLength(1);
   });

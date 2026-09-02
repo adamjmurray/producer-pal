@@ -440,7 +440,7 @@ describe("duplicate take lane", () => {
     // throw (from the not-exists guard), not some other downstream error.
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        "failed to create take-lane clip at beat 0: failed to create Arrangement clip",
+        "failed to create take-lane copy of clip src_clip at beat 0: failed to create Arrangement clip",
       ),
     );
   });
@@ -477,7 +477,9 @@ describe("duplicate take lane", () => {
 
     expect(created).toHaveLength(2);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("failed to create take-lane clip at beat 4"),
+      expect.stringContaining(
+        "failed to create take-lane copy of clip src_clip at beat 4",
+      ),
     );
   });
 

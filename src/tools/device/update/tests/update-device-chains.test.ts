@@ -100,7 +100,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'mute' not applicable to RackDevice",
+        "updateDevice: 'mute' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -136,7 +136,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'color' not applicable to RackDevice",
+        "updateDevice: 'color' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -160,7 +160,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'chokeGroup' not applicable to Chain",
+        "updateDevice: 'chokeGroup' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -172,7 +172,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'chokeGroup' not applicable to RackDevice",
+        "updateDevice: 'chokeGroup' not applicable to RackDevice id 123",
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -221,7 +221,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'mappedPitch' not applicable to Chain",
+        "updateDevice: 'mappedPitch' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -237,7 +237,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'params' not applicable to Chain",
+        "updateDevice: 'params' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -246,7 +246,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       const result = updateDevice({ id: "456", params: [] });
 
       expect(capturedWarnings()).not.toContain(
-        "updateDevice: 'params' not applicable to Chain",
+        "updateDevice: 'params' not applicable to Chain id 456",
       );
       expect(result).toStrictEqual({ id: "456" });
     });
@@ -278,7 +278,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
         updateDevice({ id: id, ...args });
 
         expect(capturedWarnings()).toContain(
-          `updateDevice: '${label}' not applicable to ${type}`,
+          `updateDevice: '${label}' not applicable to ${type} id ${id}`,
         );
       },
     );
@@ -292,7 +292,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
       updateDevice({ id: "456", ...args });
 
       expect(capturedWarnings()).toContain(
-        `updateDevice: '${label}' not applicable to Chain`,
+        `updateDevice: '${label}' not applicable to Chain id 456`,
       );
     });
 
@@ -480,7 +480,7 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
         "sends",
       ]) {
         expect(capturedWarnings()).toContain(
-          `updateDevice: '${name}' not applicable to ${type}`,
+          `updateDevice: '${name}' not applicable to ${type} id target-1`,
         );
       }
     },
@@ -603,7 +603,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
     // Announced, because the caller asked to move a device, not to set a fader.
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
+      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
@@ -626,7 +626,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -678,7 +678,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(destinationVolume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -716,7 +716,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
   });
 
@@ -734,7 +734,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" trim could not be carried onto the destination chain — it stays on the chain the device left',
+      'chain "Trimmed" (t0/d0/c0) trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
@@ -757,7 +757,9 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
-    expect(capturedWarnings()).toContain("Live refused the move");
+    expect(capturedWarnings()).toContain(
+      "Live refused the move of t0/d0/c0/d0",
+    );
     expect(destinationVolume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain"),
