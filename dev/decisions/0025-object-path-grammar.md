@@ -1,6 +1,8 @@
 # ADR-0025: One object-path grammar, scoped to clips and devices
 
-- **Status:** Accepted
+- **Status:** Superseded in part by
+  [ADR-0036](0036-paths-address-tracks-and-scenes.md) — the scoping to clips and
+  devices only; the grammar itself stands
 - **Date logged:** 2026-08-16
 
 ## Context

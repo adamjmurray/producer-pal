@@ -119,7 +119,7 @@ export function readLiveSet(
     );
     const masterTrack = LiveAPI.from(livePath.masterTrack());
 
-    result.masterTrack = readTrackGeneric({
+    result.mainTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
       category: "master",

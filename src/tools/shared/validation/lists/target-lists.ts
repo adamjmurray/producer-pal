@@ -14,7 +14,7 @@ import {
   namedPathParam,
   targetEntries,
 } from "#src/tools/shared/utils.ts";
-import { countListEntries } from "#src/tools/shared/validation/list-lengths.ts";
+import { countListEntries } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The four ways a call names what to act on. */
 export interface TargetParams {

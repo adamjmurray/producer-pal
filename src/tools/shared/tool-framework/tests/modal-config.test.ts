@@ -37,6 +37,7 @@ describe("resolveParamModes", () => {
       excludeParams: [],
       descriptionOverrides: {},
       excludeEnumValues: {},
+      unpublishedEnumValues: {},
     });
   });
 
@@ -127,6 +128,76 @@ describe("resolveParamModes", () => {
 
     expect(result.descriptionOverrides).toStrictEqual({});
     expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
+  });
+
+  it("trims an enum value in every mode when default says to", () => {
+    const schema = {
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
+      }),
+    };
+
+    for (const context of [
+      { smallModelMode: false, notation: "barbeat" as const },
+      { smallModelMode: true },
+      { notation: "stark" as const },
+    ]) {
+      const resolved = resolveParamModes(schema, context);
+
+      expect(resolved.unpublishedEnumValues).toStrictEqual({
+        type: ["return"],
+      });
+      // Hidden, not refused - the handler still takes it.
+      expect(resolved.excludeEnumValues).toStrictEqual({});
+    }
+  });
+
+  it("describes a param from default's object form", () => {
+    const schema = {
+      type: param(z.enum(["midi", "return"]).default("midi"), {
+        default: { description: "midi only", excludeEnumValues: ["return"] },
+      }),
+    };
+
+    expect(schema.type.description).toBe("midi only");
+  });
+
+  // The trim is a floor, not something a mode override replaces: a mode that
+  // only rewords the param must not put the hidden value back.
+  it("keeps default's trim when a mode overrides only the description", () => {
+    const schema = {
+      type: param(z.enum(["midi", "audio", "return"]).default("midi"), {
+        default: {
+          description: "midi or audio",
+          excludeEnumValues: ["return"],
+        },
+        smallModel: "type",
+      }),
+    };
+
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.descriptionOverrides).toStrictEqual({ type: "type" });
+    expect(result.unpublishedEnumValues).toStrictEqual({ type: ["return"] });
+  });
+
+  // Both trims apply to what gets published, but only the mode's takes the
+  // value out of the schema that validates.
+  it("keeps a mode's trim apart from default's", () => {
+    const schema = {
+      include: param(z.array(z.enum(["a", "b", "c"])).default([]), {
+        default: { description: "a or b", excludeEnumValues: ["c"] },
+        smallModel: { excludeEnumValues: ["b"] },
+      }),
+    };
+
+    const result = resolveParamModes(schema, { smallModelMode: true });
+
+    expect(result.excludeEnumValues).toStrictEqual({ include: ["b"] });
+    expect(result.unpublishedEnumValues).toStrictEqual({ include: ["c"] });
   });
 
   it("lets the active notation win over small-model for the description", () => {

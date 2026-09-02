@@ -11,8 +11,8 @@
 // Parsing only: nothing here touches the Live API, so a bad path fails before
 // anything is created or moved. See dev/Object-Paths.md.
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
+import { parseLegacyPath } from "./object-path-legacy.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =
@@ -30,9 +30,16 @@ export type DeviceSegment =
 /** A device-chain segment that indexes into a Live API collection. */
 export type IndexedSegment = Exclude<DeviceSegment, { kind: "drum-pad" }>;
 
+/** A path naming a place to create something rather than a thing that exists. */
+export type NewObjectSegment =
+  | { kind: "new-track" }
+  | { kind: "new-return-track" }
+  | { kind: "new-scene" };
+
 /** Everything a path can name. */
 export type ObjectPath =
   | TrackSegment
+  | NewObjectSegment
   | { kind: "scene"; sceneIndex: number }
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
@@ -44,6 +51,9 @@ const RETURN_TRACK_ROOT = /^rt(\d+)$/;
 const SCENE = /^s(\d+)$/;
 const TAKE_LANE = /^l(\d+)$/;
 const NEW_TAKE_LANE = "l+";
+const NEW_TRACK = "t+";
+const NEW_RETURN_TRACK = "rt+";
+const NEW_SCENE = "s+";
 const DEVICE = /^d(\d+)$/;
 const CHAIN = /^c(\d+)$/;
 const RETURN_CHAIN = /^rc(\d+)$/;
@@ -54,8 +64,22 @@ const CATCH_ALL_PAD = "*";
 // What results said before 2.2.0: a bare track index, or trackIndex/sceneIndex.
 // Honored with a warning rather than refused — a model pasting back what a
 // result told it made a well-founded guess, not a typo.
-const LEGACY_TRACK = /^(\d+)$/;
-const LEGACY_SLOT = /^(\d+)\/(\d+)$/;
+// A Map, not an object: a plain object answers "constructor" and "toString"
+// from its prototype, and returning one of those as a parsed root loses the
+// caller's input from every error message downstream.
+/** The "+" roots, keyed by their spelling. */
+const NEW_OBJECT_ROOTS = new Map<string, NewObjectSegment>([
+  [NEW_TRACK, { kind: "new-track" }],
+  [NEW_RETURN_TRACK, { kind: "new-return-track" }],
+  [NEW_SCENE, { kind: "new-scene" }],
+]);
+
+/** What each "+" root names, for messages. */
+export const NEW_OBJECT_NOUNS: Record<NewObjectSegment["kind"], string> = {
+  "new-track": "a new track",
+  "new-return-track": "a new return track",
+  "new-scene": "a new scene",
+};
 
 const LIVE_API_COLLECTION = {
   device: "devices",
@@ -138,6 +162,12 @@ export function formatObjectPath(path: ObjectPath): string {
       return `t${path.trackIndex}/l${path.laneIndex}`;
     case "new-take-lane":
       return `t${path.trackIndex}/${NEW_TAKE_LANE}`;
+    case "new-track":
+      return NEW_TRACK;
+    case "new-return-track":
+      return NEW_RETURN_TRACK;
+    case "new-scene":
+      return NEW_SCENE;
     case "device":
       return [
         formatTrackSegment(path.root),
@@ -146,6 +176,15 @@ export function formatObjectPath(path: ObjectPath): string {
     default:
       return formatTrackSegment(path);
   }
+}
+
+/**
+ * Whether a path names something to create rather than something that exists.
+ * @param path - A parsed path
+ * @returns True for "t+", "rt+" and "s+"
+ */
+export function isNewObjectPath(path: ObjectPath): path is NewObjectSegment {
+  return Object.hasOwn(NEW_OBJECT_NOUNS, path.kind);
 }
 
 /**
@@ -194,42 +233,6 @@ export function pathError(
 // --- Helpers below main exports ---
 
 /**
- * Reads a pre-2.2.0 slot or bare track index, warning to teach the spelling
- * that replaced it.
- * @param input - The trimmed path
- * @param label - Param name for error messages
- * @returns What the legacy value names, or null when it isn't one
- */
-function parseLegacyPath(input: string, label: string): ObjectPath | null {
-  const slot = LEGACY_SLOT.exec(input);
-
-  if (slot) {
-    const trackIndex = Number(slot[1]);
-    const sceneIndex = Number(slot[2]);
-
-    console.warn(
-      `${label} "${input}" is the old slot spelling; use "t${trackIndex}/s${sceneIndex}"`,
-    );
-
-    return { kind: "slot", trackIndex, sceneIndex };
-  }
-
-  const track = LEGACY_TRACK.exec(input);
-
-  if (track) {
-    const trackIndex = Number(track[1]);
-
-    console.warn(
-      `${label} "${input}" is a bare track index; use "t${trackIndex}"`,
-    );
-
-    return { kind: "track", trackIndex };
-  }
-
-  return null;
-}
-
-/**
  * Parses the leading segment, which names a track or a scene.
  * @param segment - The first path segment
  * @param label - Param name for error messages
@@ -240,8 +243,12 @@ function parseRoot(
   segment: string,
   label: string,
   input: string,
-): Extract<ObjectPath, TrackSegment | { kind: "scene" }> {
+): Extract<ObjectPath, TrackSegment | NewObjectSegment | { kind: "scene" }> {
   if (segment === "mt") return { kind: "master-track" };
+
+  const created = NEW_OBJECT_ROOTS.get(segment);
+
+  if (created != null) return created;
 
   const returnTrack = RETURN_TRACK_ROOT.exec(segment);
 
@@ -279,6 +286,14 @@ function parseTail(
   label: string,
   input: string,
 ): ObjectPath {
+  if (isNewObjectPath(root)) {
+    throw pathError(
+      label,
+      input,
+      `${NEW_OBJECT_NOUNS[root.kind]} has no parts yet`,
+    );
+  }
+
   if (root.kind === "scene") {
     throw pathError(
       label,

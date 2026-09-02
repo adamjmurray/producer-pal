@@ -6,11 +6,14 @@
 // Addressing tracks and scenes by where they are instead of by id, so a caller
 // that just read a Set can act on what it found without carrying ids around.
 //
-// A path that names the wrong kind of thing, or nothing at all, warns and
-// contributes nothing — the same as an id that doesn't resolve, so one bad
-// entry costs its own object rather than the whole batch. A hole in the list
-// itself ("t0,,t1") is different: nothing can line up against a list whose
-// length is a guess, so it throws before anything runs, like a hole in `id`.
+// On a tool taking a list, a path that names the wrong kind of thing, or
+// nothing at all, warns and contributes nothing — the same as an id that
+// doesn't resolve, so one bad entry costs its own object rather than the whole
+// batch. A read naming one object has nothing left to return, so it throws.
+//
+// A hole in the list itself ("t0,,t1") is neither: nothing can line up against
+// a list whose length is a guess, so it throws before anything runs, like a
+// hole in `id`.
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -20,6 +23,8 @@ import {
   trackSegmentPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
+  isNewObjectPath,
+  NEW_OBJECT_NOUNS,
   parseObjectPath,
   pathError,
   type ObjectPath,
@@ -37,21 +42,9 @@ export function trackIdPerPath(
   tool: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, tool, label, (path, entry) => {
-    if (
-      path.kind !== "track" &&
-      path.kind !== "return-track" &&
-      path.kind !== "master-track"
-    ) {
-      throw pathError(
-        label,
-        entry,
-        `names ${describePathKind(path)}, not a track; expected "t<index>", "rt<index>", or "mt"`,
-      );
-    }
-
-    return LiveAPI.from(trackSegmentPath(path));
-  });
+  return idPerPath(paths, tool, label, (path, entry) =>
+    trackAtPath(path, entry, label),
+  );
 }
 
 /**
@@ -66,20 +59,116 @@ export function sceneIdPerPath(
   tool: string,
   label = "path",
 ): Array<string | null> {
-  return idPerPath(paths, tool, label, (path, entry) => {
-    if (path.kind !== "scene") {
-      throw pathError(
-        label,
-        entry,
-        `names ${describePathKind(path)}, not a scene; expected "s<index>"`,
-      );
-    }
+  return idPerPath(paths, tool, label, (path, entry) =>
+    sceneAtPath(path, entry, label),
+  );
+}
 
-    return LiveAPI.from(livePath.scene(path.sceneIndex));
-  });
+/**
+ * The track a single path names, for a read that has nothing to return when
+ * the path is bad and so throws instead of warning.
+ * @param entry - One track path (e.g. "t0", "rt1", "mt")
+ * @param tool - Tool name, for the error
+ * @param label - Param name the path came from, for the error
+ * @returns The track it names
+ */
+export function trackApiAtPath(
+  entry: string,
+  tool: string,
+  label = "path",
+): LiveAPI {
+  return existing(
+    trackAtPath(parseObjectPath(entry, label), entry, label),
+    entry,
+    tool,
+    label,
+  );
+}
+
+/**
+ * The scene a single path names. Throws like {@link trackApiAtPath}.
+ * @param entry - One scene path (e.g. "s3")
+ * @param tool - Tool name, for the error
+ * @param label - Param name the path came from, for the error
+ * @returns The scene it names
+ */
+export function sceneApiAtPath(
+  entry: string,
+  tool: string,
+  label = "path",
+): LiveAPI {
+  return existing(
+    sceneAtPath(parseObjectPath(entry, label), entry, label),
+    entry,
+    tool,
+    label,
+  );
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The track a parsed path names, or throws saying what it named instead.
+ * @param path - A parsed path
+ * @param entry - The path as written, for the error
+ * @param label - Param name the path came from, for the error
+ * @returns The track it names
+ */
+function trackAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  if (
+    path.kind !== "track" &&
+    path.kind !== "return-track" &&
+    path.kind !== "master-track"
+  ) {
+    throw pathError(
+      label,
+      entry,
+      `names ${describePathKind(path)}, not a track; expected "t<index>", "rt<index>", or "mt"`,
+    );
+  }
+
+  return LiveAPI.from(trackSegmentPath(path));
+}
+
+/**
+ * The scene a parsed path names, or throws saying what it named instead.
+ * @param path - A parsed path
+ * @param entry - The path as written, for the error
+ * @param label - Param name the path came from, for the error
+ * @returns The scene it names
+ */
+function sceneAtPath(path: ObjectPath, entry: string, label: string): LiveAPI {
+  if (path.kind !== "scene") {
+    throw pathError(
+      label,
+      entry,
+      `names ${describePathKind(path)}, not a scene; expected "s<index>"`,
+    );
+  }
+
+  return LiveAPI.from(livePath.scene(path.sceneIndex));
+}
+
+/**
+ * Passes an object through, or throws when the path named nothing.
+ * @param object - What the path resolved to
+ * @param entry - The path as written, for the error
+ * @param tool - Tool name, for the error
+ * @param label - Param name the path came from, for the error
+ * @returns The object
+ */
+function existing(
+  object: LiveAPI,
+  entry: string,
+  tool: string,
+  label: string,
+): LiveAPI {
+  if (!object.exists()) {
+    throw new Error(`${tool}: nothing at ${label} "${entry}"`);
+  }
+
+  return object;
+}
 
 /**
  * Resolves each entry through a type-specific lookup, keeping one slot per
@@ -124,6 +213,8 @@ function idPerPath(
  * @returns What it names, as a noun phrase
  */
 function describePathKind(path: ObjectPath): string {
+  if (isNewObjectPath(path)) return NEW_OBJECT_NOUNS[path.kind];
+
   switch (path.kind) {
     case "scene":
       return "a scene";

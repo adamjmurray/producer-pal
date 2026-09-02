@@ -4,7 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
+import {
+  parseObjectPath,
+  pathError,
+} from "#src/tools/shared/validation/object-path.ts";
 
 /**
  * Applies tempo property to a scene
@@ -64,4 +68,39 @@ export function sceneDisplayName(scene: LiveAPI, sceneIndex: number): string {
   const name = scene.getProperty("name") as string | null;
 
   return name == null || name === "" ? `${sceneIndex + 1}` : name;
+}
+
+/**
+ * Reads where new scenes go, from a path or the index the path replaced.
+ * @param path - "s+" to append, "s2" to insert at 2
+ * @param sceneIndex - Deprecated index
+ * @param liveSet - Live set, read only to append
+ * @returns The index to insert at, or undefined when neither was given
+ */
+export function resolveCreateSceneIndex(
+  path: string | undefined,
+  sceneIndex: number | undefined,
+  liveSet: LiveAPI,
+): number | undefined {
+  const entry = namedParam(path, "path");
+
+  if (entry == null) return sceneIndex;
+
+  if (sceneIndex != null) {
+    throw new Error(
+      "createScene: path says where the scene goes - don't send sceneIndex with it",
+    );
+  }
+
+  const parsed = parseObjectPath(entry, "path");
+
+  if (parsed.kind === "new-scene") return liveSet.getChildIds("scenes").length;
+
+  if (parsed.kind === "scene") return parsed.sceneIndex;
+
+  throw pathError(
+    "path",
+    entry,
+    'it names no place for a scene; expected "s+" or "s<index>"',
+  );
 }

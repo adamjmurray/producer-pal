@@ -27,8 +27,8 @@ import {
   warnAudioOnlyMidiParams,
   warnMidiOnlyAudioParams,
 } from "./helpers/create-clip-validation-helpers.ts";
-import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 export interface CreateClipArgs {
   /** Where the clip(s) go: "t0/s1" clip slot, "t0" arrangement, comma-separated */

@@ -53,8 +53,21 @@ export type ParamModeValue =
   | null
   | { description?: string; excludeEnumValues?: string[] };
 
+/**
+ * A param's `default` value: its required base description, or that description
+ * plus enum values to leave out of every published schema.
+ *
+ * This trim only stops a value being OFFERED — the handler still accepts it, so
+ * a caller who names it anyway is not refused. That is what makes it the way to
+ * retire an enum value without breaking anyone. A mode's own `excludeEnumValues`
+ * is the stricter thing: it takes the value out of the validating schema too.
+ */
+export type ParamDefaultValue =
+  | string
+  | { description: string; excludeEnumValues?: string[] };
+
 /** A param's per-mode overrides over its required base description. */
-export type ParamModeMap = { default: string } & Partial<
+export type ParamModeMap = { default: ParamDefaultValue } & Partial<
   Record<ModeKey, ParamModeValue>
 >;
 
@@ -62,7 +75,10 @@ export type ParamModeMap = { default: string } & Partial<
 export interface ResolvedParamModes {
   excludeParams: string[];
   descriptionOverrides: Record<string, string>;
+  /** Enum values the winning mode refuses: gone from the validating schema. */
   excludeEnumValues: Record<string, string[]>;
+  /** Enum values `default` hides: gone from the published schema only. */
+  unpublishedEnumValues: Record<string, string[]>;
 }
 
 export interface ModeContext {
@@ -85,7 +101,11 @@ const MODES_TAG = Symbol("paramModes");
  * @returns The schema described with `default`, tagged with its modes
  */
 export function param<T extends ZodType>(schema: T, modes: ParamModeMap): T {
-  return tagSchema(describeWithTags(schema, modes.default), MODES_TAG, modes);
+  return tagSchema(
+    describeWithTags(schema, defaultDescription(modes.default)),
+    MODES_TAG,
+    modes,
+  );
 }
 
 /**
@@ -106,7 +126,8 @@ export function getParamModes(schema: ZodType): ParamModeMap | undefined {
  * enum values.
  * @param inputSchema - The tool's raw input schema
  * @param context - The active notation and small-model flag
- * @returns Flattened excludeParams / descriptionOverrides / excludeEnumValues
+ * @returns Flattened excludeParams / descriptionOverrides / excludeEnumValues /
+ *   unpublishedEnumValues
  */
 export function resolveParamModes(
   inputSchema: Record<string, ZodType>,
@@ -116,6 +137,7 @@ export function resolveParamModes(
   const excludeParams: string[] = [];
   const descriptionOverrides: Record<string, string> = {};
   const excludeEnumValues: Record<string, string[]> = {};
+  const unpublishedEnumValues: Record<string, string[]> = {};
 
   for (const [key, schema] of Object.entries(inputSchema)) {
     const modes = getParamModes(schema);
@@ -124,23 +146,35 @@ export function resolveParamModes(
 
     const winner = firstPresent(ladder, (k) => modes[k]);
 
-    if (winner === undefined) continue;
-
     if (winner === null) {
       excludeParams.push(key);
       continue;
     }
 
-    const desc = descriptionOf(winner);
+    // `default`'s trim only hides a value; the winning mode's also refuses it.
+    // Keeping them apart is the whole point: a value trimmed on `default` is
+    // still one the handler accepts from a caller who names it anyway.
+    const hidden = enumValuesOf(modes.default) ?? [];
 
-    if (desc != null) descriptionOverrides[key] = desc;
+    if (hidden.length > 0) unpublishedEnumValues[key] = [...hidden];
 
-    const enums = enumValuesOf(winner);
+    if (winner !== undefined) {
+      const desc = descriptionOf(winner);
 
-    if (enums != null) excludeEnumValues[key] = enums;
+      if (desc != null) descriptionOverrides[key] = desc;
+
+      const refused = enumValuesOf(winner) ?? [];
+
+      if (refused.length > 0) excludeEnumValues[key] = [...refused];
+    }
   }
 
-  return { excludeParams, descriptionOverrides, excludeEnumValues };
+  return {
+    excludeParams,
+    descriptionOverrides,
+    excludeEnumValues,
+    unpublishedEnumValues,
+  };
 }
 
 /**
@@ -220,6 +254,16 @@ type PresentParamModeValue = Exclude<ParamModeValue, null>;
  * @returns The description string, or undefined
  */
 function descriptionOf(value: PresentParamModeValue): string | undefined {
+  return typeof value === "string" ? value : value.description;
+}
+
+/**
+ * The base description a param is described with, from either spelling of
+ * `default`.
+ * @param value - A param's `default` mode value
+ * @returns The description
+ */
+function defaultDescription(value: ParamDefaultValue): string {
   return typeof value === "string" ? value : value.description;
 }
 

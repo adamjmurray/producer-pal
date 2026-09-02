@@ -188,7 +188,7 @@ describe("duplicate - device duplication", () => {
 
     await expect(
       duplicate({ type: "device", id: "return_device1" }),
-    ).rejects.toThrow("cannot duplicate devices on return/master tracks");
+    ).rejects.toThrow("cannot duplicate devices on return and main tracks");
   });
 
   it("should throw error for device on master track", async () => {
@@ -199,7 +199,7 @@ describe("duplicate - device duplication", () => {
 
     await expect(
       duplicate({ type: "device", id: "master_device1" }),
-    ).rejects.toThrow("cannot duplicate devices on return/master tracks");
+    ).rejects.toThrow("cannot duplicate devices on return and main tracks");
   });
 
   it("should set custom name on duplicated device", async () => {

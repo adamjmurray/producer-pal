@@ -19,6 +19,7 @@ import { captureScene } from "./capture-scene.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
+  resolveCreateSceneIndex,
 } from "./scene-helpers.ts";
 
 interface SceneResult {
@@ -38,6 +39,7 @@ interface SceneProperties {
 }
 
 interface CreateSceneArgs {
+  path?: string;
   sceneIndex?: number;
   count?: number;
   capture?: boolean;
@@ -51,7 +53,8 @@ interface CreateSceneArgs {
 /**
  * Creates new scenes at the specified index or captures currently playing clips
  * @param args - The scene parameters
- * @param args.sceneIndex - Scene index (0-based) where to insert new scenes
+ * @param args.path - Where the scenes go: "s+" appends, "s2" inserts at 2
+ * @param args.sceneIndex - Deprecated index (0-based) where to insert new scenes
  * @param args.count - Number of scenes to create (ignored when capture=true)
  * @param args.capture - Capture currently playing Session clips instead of creating empty scenes
  * @param args.name - Base name for the scenes
@@ -64,7 +67,8 @@ interface CreateSceneArgs {
  */
 export function createScene(
   {
-    sceneIndex,
+    path,
+    sceneIndex: sceneIndexParam,
     count = 1,
     capture = false,
     name,
@@ -75,6 +79,9 @@ export function createScene(
   }: CreateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): SceneResult | SceneResult[] | CaptureSceneResult {
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const sceneIndex = resolveCreateSceneIndex(path, sceneIndexParam, liveSet);
+
   // Handle capture mode
   if (capture) {
     const result = captureScene({ sceneIndex, name });
@@ -93,8 +100,6 @@ export function createScene(
 
   // After validation, sceneIndex is guaranteed to be a number
   const validatedSceneIndex = sceneIndex as number;
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
 
   ensureSceneCountForIndex(liveSet, validatedSceneIndex);
 

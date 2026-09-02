@@ -54,7 +54,7 @@ export function resolveToolSchema(
   );
   const hidden = collectHiddenParams(validating);
   const hiddenKeys = Object.keys(hidden);
-  const published =
+  const visible =
     hiddenKeys.length === 0
       ? validating
       : Object.fromEntries(
@@ -62,6 +62,15 @@ export function resolveToolSchema(
             ([key]) => !hiddenKeys.includes(key),
           ),
         );
+  // The last trim happens here and nowhere else: an enum value `default` hides
+  // is one the model is never offered but the handler still accepts, so it must
+  // not reach `validating` above.
+  const published = filterSchemaForSmallModel(
+    visible,
+    [],
+    {},
+    resolved.unpublishedEnumValues,
+  );
 
   return {
     validating,

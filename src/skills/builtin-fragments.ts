@@ -67,6 +67,7 @@ import {
   gettingHelpBasic,
 } from "#src/skills/fragments/getting-help.ts";
 import { library } from "#src/skills/fragments/library.ts";
+import { objectPaths } from "#src/skills/fragments/object-paths.ts";
 import { specializedDevices } from "#src/skills/fragments/devices/specialized-devices.ts";
 import { timeAndValues } from "#src/skills/fragments/time-and-values.ts";
 import {
@@ -130,6 +131,9 @@ export function builtinFragments(
     "specialized-devices": specializedDevices,
     arrangement,
     "arrangement-write": arrangementWrite,
+
+    "object-paths": objectPaths,
+
     "working-with-live": workingWithLive,
     "context-standard": contextStandard,
     "context-basic": contextBasic,

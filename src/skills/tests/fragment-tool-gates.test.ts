@@ -75,10 +75,6 @@ const TEACHES_NO_FRAGMENT: Record<string, string> = {
   "ppal-connect": "delivers the skills, and none of them teach it",
   "ppal-read-live-set": "its schema is the whole guide",
   "ppal-update-live-set": "its schema is the whole guide",
-  "ppal-create-track": "its schema is the whole guide",
-  "ppal-update-track": "its schema is the whole guide",
-  "ppal-create-scene": "its schema is the whole guide",
-  "ppal-update-scene": "its schema is the whole guide",
   "ppal-playback": "its schema is the whole guide",
   "ppal-live-api": "the dev-only escape hatch, deliberately unguided",
 };

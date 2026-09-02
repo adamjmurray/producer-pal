@@ -31,7 +31,7 @@ import {
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
-import { pairExact } from "#src/tools/shared/validation/list-pairing.ts";
+import { pairExact } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,

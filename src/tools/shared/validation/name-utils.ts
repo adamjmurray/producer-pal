@@ -8,7 +8,7 @@ import {
   splitList,
   valueForIndex,
   warnPairingMismatch,
-} from "#src/tools/shared/validation/list-pairing.ts";
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 /**
  * Parse a comma-separated name param and warn when it names the wrong number.

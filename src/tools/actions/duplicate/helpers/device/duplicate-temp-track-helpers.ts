@@ -42,7 +42,7 @@ export function withTempTrackCopy<T>(
 
   if (sourceTrackIndex == null) {
     throw new Error(
-      `duplicate failed: cannot duplicate ${what}s on return/master tracks`,
+      `duplicate failed: cannot duplicate ${what}s on return and main tracks`,
     );
   }
 

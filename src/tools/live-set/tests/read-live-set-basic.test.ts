@@ -148,9 +148,8 @@ describe("readLiveSet - basic reading", () => {
       scale: "C Major",
       scalePitches: "C,D,E,F,G,A,B",
       returnTracks: [],
-      masterTrack: expect.objectContaining({
+      mainTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),
@@ -261,9 +260,8 @@ describe("readLiveSet - basic reading", () => {
       timeSignature: "3/4",
       tracks: [],
       returnTracks: [],
-      masterTrack: expect.objectContaining({
+      mainTrack: expect.objectContaining({
         id: "master1",
-        type: "master",
         name: "Master",
         deviceCount: 0,
       }),

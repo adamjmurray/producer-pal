@@ -61,6 +61,21 @@ describe("parseObjectPath", () => {
     });
   });
 
+  it("reads the roots that name something to create", () => {
+    expect(parseObjectPath("t+")).toStrictEqual({ kind: "new-track" });
+    expect(parseObjectPath("rt+")).toStrictEqual({ kind: "new-return-track" });
+    expect(parseObjectPath("s+")).toStrictEqual({ kind: "new-scene" });
+  });
+
+  it("refuses a tail under a root that names something to create", () => {
+    expect(() => parseObjectPath("t+/s0")).toThrow(
+      'invalid path "t+/s0" - a new track has no parts yet',
+    );
+    expect(() => parseObjectPath("rt+/d0")).toThrow(
+      'invalid path "rt+/d0" - a new return track has no parts yet',
+    );
+  });
+
   it("reads multi-digit indices, not just the first digit", () => {
     expect(parseObjectPath("t12/s34")).toStrictEqual({
       kind: "slot",
@@ -155,6 +170,18 @@ describe("parseObjectPath", () => {
     expect(() => parseObjectPath("t")).toThrow(/"t" is not a track or scene/);
     expect(() => parseObjectPath("rt/d0")).toThrow(/"rt" is not a track/);
     expect(() => parseObjectPath("track0")).toThrow(/"track0" is not a track/);
+  });
+
+  it("rejects a root named after an Object prototype member", () => {
+    // The "+" roots used to sit in a plain object, so looking one up answered
+    // "constructor" and "toString" from the prototype. The bogus value came
+    // back as if it were a parsed root, and the caller's input vanished from
+    // the error every consumer went on to throw.
+    for (const segment of ["constructor", "toString", "hasOwnProperty"]) {
+      expect(() => parseObjectPath(segment)).toThrow(
+        new RegExp(`"${segment}" is not a track or scene`),
+      );
+    }
   });
 
   it("rejects a scene segment anywhere a slot can't be", () => {
@@ -326,6 +353,9 @@ describe("formatObjectPath", () => {
       "t7/s2",
       "t0/l0",
       "t2/l+",
+      "t+",
+      "rt+",
+      "s+",
       "t1/d0",
       "mt/d0/c1/d2",
       "rt0/d0/rc1",

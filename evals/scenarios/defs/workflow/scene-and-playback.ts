@@ -42,7 +42,12 @@ export const sceneAndPlayback: EvalScenario = {
     // Turn 3: Play a scene named by position, not by the id just created —
     // the case 2.2.0 added a bare 's3' path for.
     { type: "tool_called", tool: TOOL_PLAYBACK, turn: 3 },
-    assertNamesScene({ turn: 3, tool: TOOL_PLAYBACK, action: "play-scene" }),
+    assertNamesScene({
+      turn: 3,
+      tool: TOOL_PLAYBACK,
+      action: "play-scene",
+      params: ["id", "path", "sceneIndex"],
+    }),
 
     // Turn 4: Stop playback
     { type: "tool_called", tool: TOOL_PLAYBACK, turn: 4 },

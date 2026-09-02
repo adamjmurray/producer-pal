@@ -24,7 +24,7 @@ import {
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { type ListEntries } from "#src/tools/shared/validation/list-pairing.ts";
+import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;

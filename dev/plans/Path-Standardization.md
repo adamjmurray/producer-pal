@@ -174,15 +174,17 @@ nothing.
 
 Phase 6 handed back `t0` and `s3` from write results that no tool accepted,
 which is the second addressing spelling ADR-0025 named as its own revisit
-condition. Track and scene reads now report `path`, and `update-track`,
-`update-scene` and `delete` accept one beside `id`.
+condition — the call it prompted is
+[ADR-0036](../decisions/0036-paths-address-tracks-and-scenes.md). Track and
+scene reads now report `path`, and `update-track`, `update-scene` and `delete`
+accept one beside `id`.
 
 ### Phase 8 — `type` stops carrying the role
 
-Decided, not yet built. `type` today says `midi | audio | return | master`,
-which is two questions in one field: what signal the track carries, and what
-role it plays. The path already answers the second (`t0`, `rt1`, `mt`), so the
-field keeps only the first.
+Built on `track-type-collapse`, pending the evals. `type` today says
+`midi | audio | return | master`, which is two questions in one field: what
+signal the track carries, and what role it plays. The path already answers the
+second (`t0`, `rt1`, `mt`), so the field keeps only the first.
 
 1. **A return or main track reports no `type` at all.** Not `"audio"`. They are
    audio-only, so the value would be constant — and worse, misleading: it reads
@@ -212,8 +214,9 @@ field keeps only the first.
    UI says Main and the path root `mt` reads as either. Tool and param
    descriptions and the Skills all say main. Internal identifiers that mirror
    the Live API property (`master_track`, `masterTrack`, `category: "master"`)
-   are a separate question — the `masterTrack` key in a Live Set read is
-   user-facing and still undecided.
+   stay. The one user-facing key, a Live Set read's `masterTrack`, is now
+   `mainTrack` — it was the last place a reader saw "master" while every
+   description around it said main.
 
 Both remaining sites of the conflation move together: `computeTrackType` in
 [read-track.ts](../../src/tools/track/read/read-track.ts) and the second copy in
@@ -221,8 +224,50 @@ Both remaining sites of the conflation move together: `computeTrackType` in
 
 ### Phase 9 — creating by path
 
-Not started. `create-track` / `create-scene` would take `t+` / `rt+` / `s+`
-instead of `type` + index, which is what lets Phase 8's item 3 finish.
+Built on `track-type-collapse`, pending the evals. `create-track` and
+`create-scene` take `t+` / `rt+` / `s+` beside `t2` / `s2`, which is what let
+Phase 8's item 3 finish. Two things the plan didn't anticipate:
+
+- `rt<n>` is refused on create. Live only appends return tracks, so an index
+  there names a position it can't honor.
+- Retiring one enum VALUE had no mechanism — `deprecatedParam` retires a whole
+  param. `param()`'s `default` mode now takes `excludeEnumValues`, so
+  `type: "return"` is still accepted and no longer published.
+
+### Order to build phases 8 and 9 in
+
+One commit each, on `track-type-collapse`, each green before the next is pushed.
+The order is not arbitrary: step 1 has to precede step 3, or there is a commit
+where a return track and the main track cannot be named at all.
+
+Steps 1–5 are built and pushed; step 6's scenarios are written but not run. Two
+calls made while building, neither in the plan: `select`'s own `trackType` /
+`trackIndex` / `sceneIndex` were retired with the read tools' (its `path`
+already covered all three), and `read-scene`'s `sceneIndex` went with
+`read-track`'s.
+
+1. **`path` on the read tools' input.** `read-track` and `read-scene` address by
+   `trackIndex` / `sceneIndex` today and take no path. Add it first.
+2. **`type` stops reporting the role.** Both `computeTrackType` sites together,
+   plus every test asserting `"return"` or `"master"`.
+3. **`trackType` and the track read's `trackIndex` become
+   `deprecatedParam({ replacedBy: "path" })`.** Only now is `path` the published
+   way to name a return or the main track. Leave the clip tools' `trackIndex` /
+   `sceneIndex` aliases alone.
+4. **"main", not "master", in every description and Skill.** Regenerate the
+   skills snapshots and `docs/_generated`.
+5. **Phase 9 — create by path.** `create-track` / `create-scene` take `t+` /
+   `rt+` / `s+`, which lets `create-track`'s `type` finish collapsing.
+6. **Eval scenarios for track and scene addressing.**
+   `evals/scenarios/defs/path/` is all clip- and device-shaped today. These have
+   to show models reaching for `rt0` and `mt` on their own, since item 1 of
+   Phase 8 puts the whole weight of the role on the path. Running them needs a
+   build from this branch.
+
+The evals come last on purpose. Run them before Phase 8 lands and the model
+still sees `trackType` and `type: "return"`, so it uses those and the run says
+nothing about the world being decided on. Nothing merges to `dev` until they
+pass — that is what this branch is for.
 
 ## Docs to update as the phases land
 

@@ -58,6 +58,14 @@ describe("trackIdPerPath", () => {
   it("ignores one trailing comma", () => {
     expect(trackIdPerPath("t0,", "tool")).toStrictEqual(["t0"]);
   });
+  // A "+" root would otherwise be described by the default arm as "a track",
+  // making the message read "names a track, not a track".
+  it("says a path names something to create, not a track", () => {
+    expect(trackIdPerPath("s+", "tool")).toStrictEqual([null]);
+    expect(capturedWarnings()).toContain(
+      'tool: invalid path "s+" - names a new scene, not a track; expected "t<index>", "rt<index>", or "mt"',
+    );
+  });
 });
 
 describe("sceneIdPerPath", () => {

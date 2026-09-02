@@ -20,11 +20,11 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { validateListLengths } from "#src/tools/shared/validation/list-lengths.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
   targetIds,
-} from "#src/tools/shared/validation/target-lists.ts";
+} from "#src/tools/shared/validation/lists/target-lists.ts";
 import { sceneIdPerPath } from "#src/tools/shared/validation/path-target-lookup.ts";
 import {
   applyTempoProperty,

@@ -18,11 +18,11 @@ export const devices = `## Devices & Instruments
 
 ### Device Paths
 
-Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad
+Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=main, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad
 
 - \`t0/d0\` = first device on first track
 - \`rt0/d0\` = first device on Return A
-- \`mt/d0\` = first device on master track
+- \`mt/d0\` = first device on the main track
 - \`t0/d0/c0/d0\` = first device in rack's first chain
 - \`t0/d0/rc0/d0\` = first device in rack's return chain
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad

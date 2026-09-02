@@ -8,7 +8,7 @@ import {
   countListEntries,
   requireSameLength,
   validateListLengths,
-} from "#src/tools/shared/validation/list-lengths.ts";
+} from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 describe("validateListLengths", () => {
   it("takes lists that agree", () => {

@@ -134,7 +134,7 @@ describe("createClip path param", () => {
 
   it("rejects a destination no clip can occupy", async () => {
     await expect(createClip({ path: "rt0" })).rejects.toThrow(
-      'invalid path "rt0" - return and master tracks have no clips; ' +
+      'invalid path "rt0" - return and main tracks have no clips; ' +
         'clips go to a track ("t0"), a take lane on it ("t0/l0"), or a clip slot ("t0/s1")',
     );
   });
