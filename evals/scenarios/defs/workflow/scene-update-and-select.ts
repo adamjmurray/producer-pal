@@ -83,8 +83,8 @@ function assertSceneSelected(): EvalAssertion {
     tool: TOOL_SELECT,
     args: {},
     expect: (result) =>
-      (result as { selectedScene?: { sceneIndex?: number } }).selectedScene
-        ?.sceneIndex === SCENE_INDEX,
+      (result as { selectedScene?: { path?: string } }).selectedScene?.path ===
+      `s${SCENE_INDEX}`,
     explain: (result) =>
       `expected scene ${SCENE_INDEX} selected, got ${JSON.stringify(
         (result as { selectedScene?: unknown }).selectedScene ?? null,
