@@ -85,7 +85,7 @@ export async function arrangementClipAt(
 ): Promise<ReadClipResult | undefined> {
   const result = await client.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips"] },
+    arguments: { path: `t${trackIndex}`, include: ["arrangement-clips"] },
   });
   const { data } = parseToolResultWithWarnings<{
     arrangementClips?: ReadClipResult[];

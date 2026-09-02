@@ -66,7 +66,7 @@ async function readDrumMap(
 ): Promise<Record<string, string> | undefined> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["drum-map"] },
+    arguments: { path: `t${trackIndex}`, include: ["drum-map"] },
   });
 
   return parseToolResult<{ drumMap?: Record<string, string> }>(result).drumMap;
@@ -110,7 +110,7 @@ async function createClip(trackIndex: number, notes: string): Promise<void> {
 async function deleteTrack(trackIndex: number): Promise<void> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex },
+    arguments: { path: `t${trackIndex}` },
   });
   const track = parseToolResult<{ id: string }>(result);
 

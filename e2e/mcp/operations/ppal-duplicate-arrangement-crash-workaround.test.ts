@@ -69,7 +69,10 @@ async function dupToArr(
 async function readArrClips(trackIndex: number): Promise<ReadClipResult[]> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips", "timing"] },
+    arguments: {
+      path: `t${trackIndex}`,
+      include: ["arrangement-clips", "timing"],
+    },
   });
 
   return parseToolResult<TrackResult>(result).arrangementClips ?? [];

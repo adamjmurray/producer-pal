@@ -76,7 +76,7 @@ describe("ppal-read-scene", () => {
 
   it("reads a scene by index", async () => {
     const scene = await firstScene();
-    const byIndex = await readScene({ sceneIndex: 0 });
+    const byIndex = await readScene({ path: "s0" });
 
     expect(byIndex.id).toBe(scene.id);
     expect(byIndex.sceneIndex).toBe(0);
@@ -112,15 +112,15 @@ describe("ppal-read-scene", () => {
     expect(Array.isArray(all.clips)).toBe(true);
   });
 
-  it("errors on a scene index that isn't there", async () => {
+  it("errors on a scene path that isn't there", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-read-scene",
-      arguments: { sceneIndex: 999 },
+      arguments: { path: "s999" },
     });
 
     expect(isToolError(result)).toBe(true);
     expect(getToolErrorMessage(result)).toContain(
-      "sceneIndex 999 does not exist",
+      'readScene: nothing at path "s999"',
     );
   });
 });

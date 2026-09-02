@@ -81,7 +81,7 @@ describe("ppal-duplicate with a source list", () => {
     return parseToolResult<ReadClipResult>(
       await ctx.client!.callTool({
         name: "ppal-read-clip",
-        arguments: { id },
+        arguments: { id, include: ["notes"] },
       }),
     );
   }

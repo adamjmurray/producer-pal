@@ -139,7 +139,7 @@ describe("ppal-delete", () => {
 
   it("deletes a return track", async () => {
     const returnTrack = await createTrack({
-      type: "return",
+      path: "rt+",
       name: "Return to Delete",
     });
     const deleted = parseToolResult<DeleteResult>(
@@ -163,7 +163,7 @@ describe("ppal-delete", () => {
   }
 
   /** t11 hosts the Producer Pal device in e2e-test-set. */
-  const readHostTrack = () => readTrack({ trackIndex: 11 });
+  const readHostTrack = () => readTrack({ path: "t11" });
 
   /**
    * Assert a delete result refused the host track and left it in place.
@@ -200,7 +200,7 @@ describe("ppal-delete", () => {
   it("still refuses the host track after a track above it is deleted in the same call", async () => {
     const hostTrack = await readHostTrack();
     // Above the host, so deleting it renumbers the host.
-    const above = await createTrack({ trackIndex: 0, name: "Above Host" });
+    const above = await createTrack({ path: "t0", name: "Above Host" });
     const { data, warnings } = parseToolResultWithWarnings<DeleteResult[]>(
       await del({ id: `${above.id},${hostTrack.id}`, type: "track" }),
     );
@@ -217,7 +217,7 @@ describe("ppal-delete", () => {
   });
 
   it("deletes a scene, and several scenes in one call", async () => {
-    const scene = await createScene({ sceneIndex: 0, name: "Scene to Delete" });
+    const scene = await createScene({ path: "s0", name: "Scene to Delete" });
     const deleted = parseToolResult<DeleteResult>(
       await del({ id: scene.id, type: "scene" }),
     );
@@ -225,8 +225,8 @@ describe("ppal-delete", () => {
     expect(deleted.type).toBe("scene");
     expect(deleted.deleted).toBe(true);
 
-    const scene1 = await createScene({ sceneIndex: 0, name: "Multi Scene 1" });
-    const scene2 = await createScene({ sceneIndex: 1, name: "Multi Scene 2" });
+    const scene1 = await createScene({ path: "s0", name: "Multi Scene 1" });
+    const scene2 = await createScene({ path: "s1", name: "Multi Scene 2" });
     const deletedScenes = parseToolResult<DeleteResult[]>(
       await del({ id: `${scene1.id},${scene2.id}`, type: "scene" }),
     );

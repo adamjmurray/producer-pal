@@ -173,7 +173,7 @@ async function readArrangementClips(): Promise<
     await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: {
-        trackIndex: EMPTY_MIDI_TRACK,
+        path: `t${EMPTY_MIDI_TRACK}`,
         include: ["arrangement-clips"],
       },
     }),

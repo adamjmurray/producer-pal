@@ -31,7 +31,7 @@ describe("ppal-update-scene", () => {
     const created = parseToolResult<CreateSceneResult[]>(
       await ctx.client!.callTool({
         name: "ppal-create-scene",
-        arguments: { sceneIndex: 0, count: 2, name: "UpdateTest" },
+        arguments: { path: "s0", count: 2, name: "UpdateTest" },
       }),
     );
 

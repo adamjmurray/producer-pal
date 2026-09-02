@@ -31,7 +31,10 @@ interface TrackSummary {
 interface ReadTrackResult {
   id: string;
   name: string;
-  type: string;
+  path: string;
+  // Only a regular track reports its signal type; "rt0"/"mt" already say what
+  // a return or the main track carries. See trackTypeField.
+  type?: string;
   color?: string;
   gainDb?: number;
   devices?: Array<{ id: string; name: string; type: string; path: string }>;
@@ -61,12 +64,11 @@ async function readTrack(
 describe("return and master tracks", () => {
   it("reads a return track's devices", async () => {
     const rt0 = await readTrack({
-      trackType: "return",
-      trackIndex: 0,
+      path: "rt0",
       include: ["devices"],
     });
 
-    expect(rt0.type).toBe("return");
+    expect(rt0.path).toBe("rt0");
     expect(rt0.name).toBe("A-Delay");
     expect(rt0.devices![0]!.type).toBe("audio-effect: Echo");
     expect(rt0.devices![0]!.path).toBe("rt0/d0");
@@ -111,8 +113,7 @@ describe("return and master tracks", () => {
     await sleep(100);
 
     const after = await readTrack({
-      trackType: "return",
-      trackIndex: 1,
+      path: "rt1",
       include: ["devices"],
     });
 
@@ -122,8 +123,7 @@ describe("return and master tracks", () => {
   it("writes a return track's mixer", async () => {
     const rt0 = (await readReturnTracks())[0]!;
     const before = await readTrack({
-      trackType: "return",
-      trackIndex: 0,
+      path: "rt0",
       include: ["color"],
     });
 
@@ -134,8 +134,7 @@ describe("return and master tracks", () => {
     await sleep(100);
 
     const after = await readTrack({
-      trackType: "return",
-      trackIndex: 0,
+      path: "rt0",
       include: ["mixer", "color"],
     });
 
@@ -182,11 +181,11 @@ describe("return and master tracks", () => {
 
   it("reads the master track's devices", async () => {
     const master = await readTrack({
-      trackType: "master",
+      path: "mt",
       include: ["devices"],
     });
 
-    expect(master.type).toBe("master");
+    expect(master.path).toBe("mt");
     expect(master.devices!.map((d) => d.path)).toStrictEqual([
       "mt/d0",
       "mt/d1",
@@ -195,7 +194,7 @@ describe("return and master tracks", () => {
   });
 
   it("writes the master track's gain", async () => {
-    const master = await readTrack({ trackType: "master" });
+    const master = await readTrack({ path: "mt" });
 
     await ctx.client!.callTool({
       name: "ppal-update-track",
@@ -203,7 +202,7 @@ describe("return and master tracks", () => {
     });
     await sleep(100);
 
-    const after = await readTrack({ trackType: "master", include: ["mixer"] });
+    const after = await readTrack({ path: "mt", include: ["mixer"] });
 
     expect(after.gainDb).toBeCloseTo(-3, 1);
   });

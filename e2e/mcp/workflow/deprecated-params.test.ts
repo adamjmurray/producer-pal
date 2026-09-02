@@ -92,10 +92,20 @@ describe("hidden params", () => {
     expect(select).toContain("path");
     expect(select).not.toContain("slot");
     expect(select).not.toContain("devicePath");
-    // select still names a track and a scene directly — those are real targets,
-    // not clip positions, so they stay published.
-    expect(select).toContain("trackIndex");
-    expect(select).toContain("sceneIndex");
+    expect(select).not.toContain("trackIndex");
+    expect(select).not.toContain("trackType");
+    expect(select).not.toContain("sceneIndex");
+
+    const readTrack = publishedParams("ppal-read-track");
+
+    expect(readTrack).toContain("path");
+    expect(readTrack).not.toContain("trackIndex");
+    expect(readTrack).not.toContain("trackType");
+
+    const readScene = publishedParams("ppal-read-scene");
+
+    expect(readScene).toContain("path");
+    expect(readScene).not.toContain("sceneIndex");
 
     const playback = publishedParams("ppal-playback");
 

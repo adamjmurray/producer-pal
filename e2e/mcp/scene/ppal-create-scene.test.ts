@@ -23,7 +23,7 @@ describe("ppal-create-scene", () => {
     // Test 1: Create single scene at index 0
     const basicResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 0 },
+      arguments: { path: "s0" },
     });
     const basic = parseToolResult<CreateSceneResult>(basicResult);
 
@@ -33,7 +33,7 @@ describe("ppal-create-scene", () => {
     // Test 2: Create scene with name
     const namedResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 1, name: "Test Scene" },
+      arguments: { path: "s1", name: "Test Scene" },
     });
     const named = parseToolResult<CreateSceneResult>(namedResult);
 
@@ -49,7 +49,7 @@ describe("ppal-create-scene", () => {
     // Test 3: Create scene with color
     const coloredResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 2, name: "Colored Scene", color: "#FF0000" },
+      arguments: { path: "s2", name: "Colored Scene", color: "#FF0000" },
     });
     const colored = parseToolResult<CreateSceneResult>(coloredResult);
 
@@ -66,7 +66,7 @@ describe("ppal-create-scene", () => {
     // Test 4: Create scene with tempo
     const tempoResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 3, name: "Tempo Scene", tempo: 120 },
+      arguments: { path: "s3", name: "Tempo Scene", tempo: 120 },
     });
     const tempo = parseToolResult<CreateSceneResult>(tempoResult);
 
@@ -82,7 +82,7 @@ describe("ppal-create-scene", () => {
     // Test 5: Create scene with timeSignature
     const timeSigResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 4, name: "TimeSig Scene", timeSignature: "3/4" },
+      arguments: { path: "s4", name: "TimeSig Scene", timeSignature: "3/4" },
     });
     const timeSig = parseToolResult<CreateSceneResult>(timeSigResult);
 
@@ -108,7 +108,7 @@ describe("ppal-create-scene", () => {
     // Test 1: Create multiple scenes with count
     const batchResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 5, count: 2 },
+      arguments: { path: "s5", count: 2 },
     });
     const batch = parseBatchResult<CreateSceneResult>(batchResult, 2);
 
@@ -120,7 +120,7 @@ describe("ppal-create-scene", () => {
     // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
-      arguments: { sceneIndex: 7, count: 2, name: "Multi" },
+      arguments: { path: "s7", count: 2, name: "Multi" },
     });
     const multiName = parseToolResult<CreateSceneResult[]>(multiNameResult);
 
@@ -145,7 +145,7 @@ describe("ppal-create-scene", () => {
     const csvResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: {
-        sceneIndex: 9,
+        path: "s9",
         count: 2,
         name: "Intro,Verse",
         color: "#FF0000,#00FF00",

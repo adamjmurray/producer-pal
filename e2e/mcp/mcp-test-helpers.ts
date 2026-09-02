@@ -394,7 +394,7 @@ export async function readDeviceCount(
   const track = parseToolResult<{ devices?: unknown[] }>(
     await client.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex, include: ["devices"] },
+      arguments: { path: `t${trackIndex}`, include: ["devices"] },
     }),
   );
 

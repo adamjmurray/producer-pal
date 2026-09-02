@@ -73,25 +73,25 @@ describe("ppal-select", () => {
   });
 
   it("selects regular, return and master tracks", async () => {
-    const regular = await select({ trackIndex: 0 });
+    const regular = await select({ path: "t0" });
 
     expect(regular.selectedTrack!.type).toBe("midi");
     expect(regular.selectedTrack!.trackIndex).toBe(0);
     expect(regular.selectedTrack!.id).toBeDefined();
 
-    const returnTrack = await select({ trackIndex: 0, trackType: "return" });
+    const returnTrack = await select({ path: "rt0" });
 
-    expect(returnTrack.selectedTrack!.type).toBe("return");
+    expect(returnTrack.selectedTrack!.path).toBe("rt0");
     expect(returnTrack.selectedTrack!.trackIndex).toBe(0);
 
-    const master = await select({ trackType: "master" });
+    const master = await select({ path: "mt" });
 
-    expect(master.selectedTrack!.type).toBe("master");
+    expect(master.selectedTrack!.path).toBe("mt");
     expect(master.selectedTrack!.trackIndex).toBeUndefined();
   });
 
-  it("selects a scene by index, switching to session view for it", async () => {
-    const scene = await select({ sceneIndex: 0 });
+  it("selects a scene by path, switching to session view for it", async () => {
+    const scene = await select({ path: "s0" });
 
     expect(scene.selectedScene!.sceneIndex).toBe(0);
     expect(scene.selectedScene!.id).toBeDefined();
@@ -101,7 +101,7 @@ describe("ppal-select", () => {
   it("selects a track by id, spelled the way a model guesses it", async () => {
     // "trackId" is a permanent alias that folds onto id, so the type still
     // comes from the object — this checks the select and the steer.
-    const trackId = (await select({ trackIndex: 0 })).selectedTrack!.id;
+    const trackId = (await select({ path: "t0" })).selectedTrack!.id;
     const result = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { trackId: `id ${trackId}` },
@@ -121,10 +121,11 @@ describe("ppal-select", () => {
   // one had been honored. Live is read back: the response naming both is not
   // proof both landed.
   it("selects a track and a scene named by separate id aliases", async () => {
-    const trackId = (await select({ trackIndex: 2 })).selectedTrack!.id;
-    const sceneId = (await select({ sceneIndex: 1 })).selectedScene!.id;
+    const trackId = (await select({ path: "t2" })).selectedTrack!.id;
+    const sceneId = (await select({ path: "s1" })).selectedScene!.id;
 
-    await select({ trackIndex: 0, sceneIndex: 0 });
+    await select({ path: "t0" });
+    await select({ path: "s0" });
 
     const { data, warnings } = parseToolResultWithWarnings<SelectResult>(
       await ctx.client!.callTool({
@@ -150,8 +151,8 @@ describe("ppal-select", () => {
   // Each of these writes the other's selection as a side effect, so honoring
   // both would report one object while Live sits on another.
   it("refuses two ids Live can't hold selected at once", async () => {
-    const trackId = (await select({ trackIndex: 2 })).selectedTrack!.id;
-    const sceneId = (await select({ sceneIndex: 1 })).selectedScene!.id;
+    const trackId = (await select({ path: "t2" })).selectedTrack!.id;
+    const sceneId = (await select({ path: "s1" })).selectedScene!.id;
     // t0/s0 "Beat" is on neither of those.
     const clipId = (await select({ path: "t0/s0" })).selectedClip!.id;
     const padId = (await select({ path: "t0/d0/pC1" })).selectedDrumPad!.id;
@@ -169,7 +170,7 @@ describe("ppal-select", () => {
       { id: `id ${padId}`, deviceId: `id ${driftId}` },
       "deviceId and id name different devices",
     );
-    const otherTrackId = (await select({ trackIndex: 0 })).selectedTrack!.id;
+    const otherTrackId = (await select({ path: "t0" })).selectedTrack!.id;
 
     await expectRefusal(
       { id: `id ${trackId}`, trackId: `id ${otherTrackId}` },
@@ -234,7 +235,7 @@ describe("ppal-select", () => {
   });
 
   it("selects a scene by id", async () => {
-    const sceneId = (await select({ sceneIndex: 0 })).selectedScene!.id;
+    const sceneId = (await select({ path: "s0" })).selectedScene!.id;
     const byId = await select({ id: `id ${sceneId}` });
 
     expect(byId.selectedScene!.id).toBe(sceneId);
@@ -291,7 +292,10 @@ interface SelectResult {
   view?: string;
   selectedTrack?: {
     id: string;
-    type: string;
+    path: string;
+    // Only a regular track reports its signal type; "rt0"/"mt" already say what
+    // a return or the main track carries. See trackTypeField.
+    type?: string;
     trackIndex?: number;
   };
   selectedScene?: {

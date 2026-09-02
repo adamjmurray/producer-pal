@@ -81,7 +81,7 @@ async function readTakeLanes(
 ): Promise<ReadTrackTakeLanesResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["arrangement-clips"] },
+    arguments: { path: `t${trackIndex}`, include: ["arrangement-clips"] },
   });
 
   return parseToolResult<ReadTrackTakeLanesResult>(result);
@@ -128,7 +128,7 @@ describe("take lanes", () => {
     // Overview reports the count (no arrangement-clips include)
     const overviewResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: EMPTY_MIDI_TRACK },
+      arguments: { path: `t${EMPTY_MIDI_TRACK}` },
     });
     const overview = parseToolResult<ReadTrackTakeLanesResult>(overviewResult);
 
@@ -172,7 +172,7 @@ describe("take lanes", () => {
     const midi = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: 1 },
+        arguments: { path: "t1" },
       }),
     );
 
@@ -183,7 +183,7 @@ describe("take lanes", () => {
     const group = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: 9 },
+        arguments: { path: "t9" },
       }),
     );
 
@@ -194,7 +194,7 @@ describe("take lanes", () => {
     const ret = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackType: "return", trackIndex: 0 },
+        arguments: { path: "rt0" },
       }),
     );
 
@@ -204,7 +204,7 @@ describe("take lanes", () => {
     const master = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackType: "master" },
+        arguments: { path: "mt" },
       }),
     );
 
@@ -247,7 +247,7 @@ describe("take lanes", () => {
     const overview = parseToolResult<ReadTrackTakeLanesResult>(
       await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: EMPTY_MIDI_TRACK },
+        arguments: { path: `t${EMPTY_MIDI_TRACK}` },
       }),
     );
 

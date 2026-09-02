@@ -43,7 +43,10 @@ interface TrackRouting {
 async function readRouting(trackIndex: number): Promise<TrackRouting> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-track",
-    arguments: { trackIndex, include: ["routings", "available-routings"] },
+    arguments: {
+      path: `t${trackIndex}`,
+      include: ["routings", "available-routings"],
+    },
   });
 
   return parseToolResult<TrackRouting>(result);

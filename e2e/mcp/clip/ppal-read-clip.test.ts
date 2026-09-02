@@ -131,7 +131,7 @@ describe("ppal-read-clip", () => {
     // First get the clip ID from reading the track's arrangement clips
     const trackResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 0, include: ["arrangement-clips"] },
+      arguments: { path: "t0", include: ["arrangement-clips"] },
     });
     const track = parseToolResult<TrackWithClips>(trackResult);
 

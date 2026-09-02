@@ -397,7 +397,7 @@ describe("specialized devices: Compressor", () => {
     const created = parseToolResult<{ id: string; returnTrackIndex: number }>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
-        arguments: { type: "return" },
+        arguments: { path: "rt+" },
       }),
     );
 

@@ -277,7 +277,7 @@ describe("ppal-update-track", () => {
     // Test 2: Send operations - first create a return track
     const returnResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { type: "return", name: "A-TestReturn" },
+      arguments: { path: "rt+", name: "A-TestReturn" },
     });
     const returnTrack = parseToolResult<CreateTrackResult>(returnResult);
 

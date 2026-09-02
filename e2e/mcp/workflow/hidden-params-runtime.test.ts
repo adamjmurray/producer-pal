@@ -36,12 +36,21 @@ interface AnyResult {
   id?: string;
   path?: string;
   name?: string;
+  trackIndex?: number;
   sceneIndex?: number;
-  selectedTrack?: { id: string };
+  selectedTrack?: { id: string; path?: string };
   selectedScene?: { id: string };
   selectedClip?: { id: string; path?: string };
   selectedDevice?: { id: string; path?: string };
   playing?: boolean;
+}
+
+interface TrackRouting {
+  id: string;
+  inputRoutingType: { inputId: string };
+  inputRoutingChannel: { inputId: string };
+  outputRoutingType: { outputId: string };
+  outputRoutingChannel: { outputId: string };
 }
 
 interface Case {
@@ -59,6 +68,14 @@ const state = {
   deleteById: "",
   moveClipId: "",
   arrangementClipId: "",
+  emptyTrackId: "",
+  // The routing a deprecated *Id param is set back to. Writing the value the
+  // track already holds exercises the param without moving t8's routing, which
+  // the routing suite reads as it found it.
+  inputRoutingTypeId: "",
+  inputRoutingChannelId: "",
+  outputRoutingTypeId: "",
+  outputRoutingChannelId: "",
 };
 
 /**
@@ -119,10 +136,75 @@ const CASES: Case[] = [
     verify: (d) => expect(d.id).toBe(state.trackId),
   },
   {
+    tool: "ppal-read-track",
+    param: "trackIndex",
+    args: () => ({ trackIndex: 0 }),
+    verify: (d) => expect(d.id).toBe(state.trackId),
+  },
+  {
+    tool: "ppal-read-track",
+    param: "trackType",
+    args: () => ({ trackType: "master" }),
+    verify: (d) => expect(d.path).toBe("mt"),
+  },
+  {
+    tool: "ppal-create-track",
+    param: "trackIndex",
+    // -1 appends, so the indexes every other case addresses stay put.
+    args: () => ({ trackIndex: -1, name: "Hidden Param Track" }),
+    verify: async (d) => {
+      const created = await call("ppal-read-track", { id: d.id });
+
+      expect(created.data.name).toBe("Hidden Param Track");
+    },
+  },
+  {
     tool: "ppal-update-track",
     param: "ids",
     args: () => ({ ids: state.trackId, name: "Aliased Track" }),
     verify: (d) => expect(d.id).toBe(state.trackId),
+  },
+  {
+    tool: "ppal-update-track",
+    param: "paths",
+    args: () => ({ paths: "t0", name: "Path Aliased Track" }),
+    verify: (d) => expect(d.id).toBe(state.trackId),
+  },
+  {
+    tool: "ppal-update-track",
+    param: "inputRoutingTypeId",
+    args: () => ({
+      id: state.emptyTrackId,
+      inputRoutingTypeId: state.inputRoutingTypeId,
+    }),
+    verify: (d) => expect(d.id).toBe(state.emptyTrackId),
+  },
+  {
+    tool: "ppal-update-track",
+    param: "inputRoutingChannelId",
+    args: () => ({
+      id: state.emptyTrackId,
+      inputRoutingChannelId: state.inputRoutingChannelId,
+    }),
+    verify: (d) => expect(d.id).toBe(state.emptyTrackId),
+  },
+  {
+    tool: "ppal-update-track",
+    param: "outputRoutingTypeId",
+    args: () => ({
+      id: state.emptyTrackId,
+      outputRoutingTypeId: state.outputRoutingTypeId,
+    }),
+    verify: (d) => expect(d.id).toBe(state.emptyTrackId),
+  },
+  {
+    tool: "ppal-update-track",
+    param: "outputRoutingChannelId",
+    args: () => ({
+      id: state.emptyTrackId,
+      outputRoutingChannelId: state.outputRoutingChannelId,
+    }),
+    verify: (d) => expect(d.id).toBe(state.emptyTrackId),
   },
   {
     tool: "ppal-read-scene",
@@ -131,9 +213,28 @@ const CASES: Case[] = [
     verify: (d) => expect(d.id).toBe(state.sceneId),
   },
   {
+    tool: "ppal-read-scene",
+    param: "sceneIndex",
+    args: () => ({ sceneIndex: 0 }),
+    verify: (d) => expect(d.id).toBe(state.sceneId),
+  },
+  {
+    tool: "ppal-create-scene",
+    param: "sceneIndex",
+    // The Set has s0-s7, so 8 appends and shifts nothing.
+    args: () => ({ sceneIndex: 8, name: "Hidden Param Scene" }),
+    verify: (d) => expect(d.sceneIndex).toBe(8),
+  },
+  {
     tool: "ppal-update-scene",
     param: "ids",
     args: () => ({ ids: state.sceneId, name: "Aliased Scene" }),
+    verify: (d) => expect(d.id).toBe(state.sceneId),
+  },
+  {
+    tool: "ppal-update-scene",
+    param: "paths",
+    args: () => ({ paths: "s0", name: "Path Aliased Scene" }),
     verify: (d) => expect(d.id).toBe(state.sceneId),
   },
   {
@@ -319,6 +420,24 @@ const CASES: Case[] = [
   },
   {
     tool: "ppal-select",
+    param: "trackIndex",
+    args: () => ({ trackIndex: 0 }),
+    verify: (d) => expect(d.selectedTrack?.id).toBe(state.trackId),
+  },
+  {
+    tool: "ppal-select",
+    param: "trackType",
+    args: () => ({ trackType: "master" }),
+    verify: (d) => expect(d.selectedTrack?.path).toBe("mt"),
+  },
+  {
+    tool: "ppal-select",
+    param: "sceneIndex",
+    args: () => ({ sceneIndex: 0 }),
+    verify: (d) => expect(d.selectedScene?.id).toBe(state.sceneId),
+  },
+  {
+    tool: "ppal-select",
     param: "slot",
     args: () => ({ slot: `${EMPTY_MIDI_TRACK}/0` }),
     verify: (d) => expect(d.selectedClip?.path).toBe(`t${EMPTY_MIDI_TRACK}/s0`),
@@ -365,6 +484,20 @@ describe("hidden params at runtime", () => {
 
     state.trackId = liveSet.tracks[0]!.id;
     state.sceneId = liveSet.scenes[0]!.id;
+
+    const routing = (
+      await call("ppal-read-track", {
+        path: `t${EMPTY_MIDI_TRACK}`,
+        include: ["routings"],
+      })
+    ).data as unknown as TrackRouting;
+
+    state.emptyTrackId = routing.id;
+    state.inputRoutingTypeId = routing.inputRoutingType.inputId;
+    state.inputRoutingChannelId = routing.inputRoutingChannel.inputId;
+    state.outputRoutingTypeId = routing.outputRoutingType.outputId;
+    state.outputRoutingChannelId = routing.outputRoutingChannel.outputId;
+
     state.clipId = await seedClip(`t${EMPTY_MIDI_TRACK}/s0`);
     state.deleteById = await seedClip(`t${RACKS_TRACK}/s0`);
     state.moveClipId = await seedClip(`t${EMPTY_MIDI_TRACK}/s6`);

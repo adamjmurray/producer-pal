@@ -39,7 +39,7 @@ export async function readClipsOnTrack(
   const result = await client.callTool({
     name: "ppal-read-track",
     arguments: {
-      trackIndex,
+      path: `t${trackIndex}`,
       include: ["arrangement-clips", "timing"],
     },
   });

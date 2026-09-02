@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseBatchResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -61,7 +62,7 @@ describe("ppal-create-track", () => {
     // Test 3: Create return track
     const returnResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { type: "return" },
+      arguments: { path: "rt+" },
     });
     const returnTrack = parseToolResult<CreateTrackResult>(returnResult);
 
@@ -72,8 +73,7 @@ describe("ppal-create-track", () => {
     const verifyReturn = await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: {
-        trackIndex: returnTrack.returnTrackIndex,
-        trackType: "return",
+        path: `rt${returnTrack.returnTrackIndex}`,
       },
     });
     const returnRead = parseToolResult<ReadTrackResult>(verifyReturn);
@@ -135,7 +135,7 @@ describe("ppal-create-track", () => {
     // Test 4: Create track at specific index
     const atIndexResult = await ctx.client!.callTool({
       name: "ppal-create-track",
-      arguments: { trackIndex: 0, name: "First Position" },
+      arguments: { path: "t0", name: "First Position" },
     });
     const atIndex = parseToolResult<CreateTrackResult>(atIndexResult);
 
@@ -186,14 +186,19 @@ describe("ppal-create-track", () => {
     expect(kickTrack.name).toBe("Kick");
     expect(snareTrack.name).toBe("Snare");
 
-    // Test 3: Create 3 tracks with only 2 names — third keeps default
+    // Test 3: Create 3 tracks with only 2 names — third keeps default, and the
+    // short list is called out rather than silently ignored.
     const fewerNamesResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { count: 3, name: "Bass,Lead" },
     });
-    const fewerNames = parseToolResult<CreateTrackResult[]>(fewerNamesResult);
+    const { data: fewerNames, warnings } =
+      parseToolResultWithWarnings<CreateTrackResult[]>(fewerNamesResult);
 
     expect(fewerNames).toHaveLength(3);
+    expect(warnings).toStrictEqual([
+      "WARNING: name: 2 names for 3 tracks; the tracks past the last name were not renamed",
+    ]);
 
     await sleep(100);
     const verifyBass = await ctx.client!.callTool({

@@ -60,7 +60,7 @@ async function readNeighborClips(): Promise<ReadClipResult[]> {
   const track = parseToolResult<{ sessionClips?: ReadClipResult[] }>(
     await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 3, include: ["session-clips"] },
+      arguments: { path: "t3", include: ["session-clips"] },
     }),
   );
 
