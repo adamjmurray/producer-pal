@@ -275,6 +275,17 @@ describe("createScene", () => {
       ).toThrow("count names 2 scenes but name names 3 entries");
     });
 
+    // Refusing is only free if nothing has happened yet. Creating past the end
+    // pads the Set with empty scenes first, so the check has to come before it
+    // or a refused call leaves scenes behind to delete by hand.
+    it("pads no scenes when it refuses the list", () => {
+      expect(() =>
+        createScene({ sceneIndex: 5, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
+
+      expect(liveSet.call).not.toHaveBeenCalledWith("create_scene", -1);
+    });
+
     it("should preserve commas in name when count is 1", () => {
       createScene({
         sceneIndex: 0,

@@ -99,6 +99,12 @@ export function createScene(
   // Create mode
   validateCreateSceneArgs(sceneIndex, count);
 
+  validateListLengths([
+    { param: "count", count, noun: "scene" },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
+
   // After validation, sceneIndex is guaranteed to be a number
   const validatedSceneIndex = sceneIndex as number;
 
@@ -106,12 +112,6 @@ export function createScene(
 
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
-
-  validateListLengths([
-    { param: "count", count, noun: "scene" },
-    { param: "name", value: name },
-    { param: "color", value: color },
-  ]);
 
   const parsedNames = parseNames(name, count, "scene");
   const parsedColors = parseColors(color, count, "scene");
