@@ -198,20 +198,15 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(drumChain.set).toHaveBeenCalledWith("out_note", 54);
     });
 
-    it("should warn for invalid note name in mappedPitch", () => {
-      const result = updateDevice({
-        id: "789",
-        mappedPitch: "InvalidNote",
-      });
-
-      expect(capturedWarnings()).toContain(
-        'updateDevice: invalid note name "InvalidNote"',
+    // One pitch for every target in the call, so a per-target skip repeated the
+    // same message. Refused before any of them is touched.
+    it("should refuse an invalid note name in mappedPitch", () => {
+      expect(() =>
+        updateDevice({ id: "789", mappedPitch: "InvalidNote" }),
+      ).toThrow(
+        'updateDevice failed: invalid note name "InvalidNote" for mappedPitch',
       );
-      expect(drumChain.set).not.toHaveBeenCalledWith(
-        "out_note",
-        expect.anything(),
-      );
-      expect(result).toStrictEqual({ id: "789" });
+      expect(drumChain.set).not.toHaveBeenCalled();
     });
 
     it("should warn when mappedPitch is used on a Chain", () => {

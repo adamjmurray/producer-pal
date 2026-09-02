@@ -5,6 +5,7 @@
 
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
@@ -160,9 +161,7 @@ export async function updateClip(
     throw new Error("updateClip failed: id or path is required");
   }
 
-  // Validate timeSignature up front so format errors throw to the caller
-  // instead of being swallowed by the per-clip warn-and-skip wrapper.
-  if (timeSignature != null) parseTimeSignature(timeSignature);
+  validateWholeCallParams(timeSignature, quantizePitch);
 
   const {
     clips: mutableClips,
@@ -300,6 +299,28 @@ function resolveClipTargets(
   ]);
 
   return targetIds(targets, "updateClip", clipIdPerPath);
+}
+
+/**
+ * Refuse a whole-call param the tool can't read, before any clip is touched.
+ *
+ * These are one value for every clip in the call, so a per-clip skip would
+ * repeat the same message down the list — and the per-clip warn-and-skip
+ * wrapper would swallow a throw from inside the loop.
+ * @param timeSignature - Time signature to apply, if given
+ * @param quantizePitch - Pitch to limit quantization to, if given
+ */
+function validateWholeCallParams(
+  timeSignature: string | undefined,
+  quantizePitch: string | undefined,
+): void {
+  if (timeSignature != null) parseTimeSignature(timeSignature);
+
+  if (quantizePitch != null && noteNameToMidi(quantizePitch) == null) {
+    throw new Error(
+      `updateClip failed: invalid note name "${quantizePitch}" for quantizePitch`,
+    );
+  }
 }
 
 /**

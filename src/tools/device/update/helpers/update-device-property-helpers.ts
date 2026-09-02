@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   type ParamValueResult,
@@ -191,13 +190,8 @@ function updateDrumChainProperties(
   }
 
   if (options.mappedPitch != null) {
-    const midiNote = noteNameToMidi(options.mappedPitch);
-
-    if (midiNote != null) {
-      target.set("out_note", midiNote);
-    } else {
-      console.warn(`updateDevice: invalid note name "${options.mappedPitch}"`);
-    }
+    // Refused up front by updateDevice, so this reads back a known-good name.
+    target.set("out_note", noteNameToMidi(options.mappedPitch));
   }
 }
 

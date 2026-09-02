@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import {
@@ -143,6 +144,14 @@ export function updateDevice(
 
   validateExclusiveParams(ids, path, "id", "path");
   validateSendPair(sendGainDb, sendReturn, "updateDevice");
+
+  // One value for the whole call, so a per-target skip would repeat itself
+  // down the list. Refused before any target is touched.
+  if (mappedPitch != null && noteNameToMidi(mappedPitch) == null) {
+    throw new Error(
+      `updateDevice failed: invalid note name "${mappedPitch}" for mappedPitch`,
+    );
+  }
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;
 

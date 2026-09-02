@@ -173,21 +173,6 @@ describe("handleQuantization", () => {
     expect(mockClip.call).toHaveBeenCalledWith("quantize_pitch", 60, 2, 1);
   });
 
-  it("should warn and skip when quantizePitch is invalid note name", () => {
-    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-
-    handleQuantization(mockClip, {
-      quantize: 1,
-      quantizeGrid: "1/8",
-      quantizePitch: "invalid",
-    });
-
-    expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('invalid note name "invalid"'),
-    );
-    expect(mockClip.call).not.toHaveBeenCalled();
-  });
-
   it.each([
     ["1/4", 1],
     ["1/8", 2],

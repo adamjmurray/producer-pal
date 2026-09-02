@@ -431,15 +431,8 @@ export function handleQuantization(
   const gridValue = QUANTIZE_GRID[grid];
 
   if (quantizePitch != null) {
-    const midiPitch = noteNameToMidi(quantizePitch);
-
-    if (midiPitch == null) {
-      console.warn(
-        `invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
-      );
-
-      return;
-    }
+    // Refused up front by updateClip, so this reads back a known-good name.
+    const midiPitch = noteNameToMidi(quantizePitch) as number;
 
     clip.call("quantize_pitch", midiPitch, gridValue, strength);
   } else {

@@ -43,6 +43,16 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
+  // One pitch for every clip in the call, so a per-clip skip would repeat the
+  // same message down the list — and the per-clip wrapper would swallow it.
+  it("refuses an invalid quantizePitch before touching a clip", async () => {
+    await expect(
+      updateClip({ id: "clip1", quantize: 1, quantizePitch: "invalid" }),
+    ).rejects.toThrow(
+      'updateClip failed: invalid note name "invalid" for quantizePitch',
+    );
+  });
+
   it("should refuse the call when neither id nor path is given", async () => {
     await expect(updateClip({})).rejects.toThrow(
       "updateClip failed: id or path is required",
