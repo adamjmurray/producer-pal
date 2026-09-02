@@ -148,10 +148,10 @@ describe("createScene", () => {
 
   it("should throw error when sceneIndex is missing", () => {
     expect(() => createScene({})).toThrow(
-      "createScene failed: sceneIndex is required",
+      "createScene failed: path is required",
     );
     expect(() => createScene({ count: 2 })).toThrow(
-      "createScene failed: sceneIndex is required",
+      "createScene failed: path is required",
     );
   });
 

@@ -388,7 +388,7 @@ describe("readScene", () => {
     it("throws error when neither id nor sceneIndex provided", () => {
       expect(() => {
         readScene({});
-      }).toThrow("Either id, path, or sceneIndex must be provided");
+      }).toThrow("readScene failed: id or path is required");
     });
 
     it("prioritizes id over sceneIndex when both provided", () => {

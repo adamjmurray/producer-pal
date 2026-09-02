@@ -168,7 +168,7 @@ function validateCreateSceneArgs(
   count: number,
 ): void {
   if (sceneIndex == null) {
-    throw new Error("createScene failed: sceneIndex is required");
+    throw new Error("createScene failed: path is required");
   }
 
   if (count < 1) {

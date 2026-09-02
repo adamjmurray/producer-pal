@@ -78,7 +78,7 @@ export function readScene(
 
   // Validate parameters
   if (sceneId == null && scenePath == null && sceneIndex == null) {
-    throw new Error("Either id, path, or sceneIndex must be provided");
+    throw new Error("readScene failed: id or path is required");
   }
 
   if (scenePath != null && (sceneId != null || sceneIndex != null)) {

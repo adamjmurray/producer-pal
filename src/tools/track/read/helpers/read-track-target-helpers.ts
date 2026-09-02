@@ -50,7 +50,7 @@ export function resolveReadTrackTarget(args: ReadTrackArgs): ReadTrackTarget {
     trackIndex == null &&
     category !== "master"
   ) {
-    throw new Error("Either id, path, or trackIndex must be provided");
+    throw new Error("readTrack failed: id or path is required");
   }
 
   if (path != null && (trackId != null || trackIndex != null)) {

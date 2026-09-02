@@ -11,8 +11,8 @@ import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
   // Small model mode drops `capture`, so neither string may mention it — and
-  // with capture gone, sceneIndex is required outright (the handler throws
-  // without it) rather than conditionally.
+  // with capture gone, path is required outright (the handler throws without
+  // it) rather than conditionally.
   description: {
     default: "Create empty scene(s) or capture playing session clips.",
     smallModel: "Create an empty scene.",

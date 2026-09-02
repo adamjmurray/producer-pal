@@ -391,7 +391,7 @@ describe("playback play-scene ids that name no scene", () => {
     registerMockObject("track9", { path: livePath.track(5), type: "Track" });
 
     expect(() => playback({ action: "play-scene", id: "track9" })).toThrow(
-      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
+      'playback failed: path "s<scene>" or a scene id is required',
     );
   });
 });

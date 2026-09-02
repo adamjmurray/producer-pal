@@ -153,7 +153,7 @@ describe("readTrack", () => {
     it("throws error when neither id nor trackIndex provided", () => {
       expect(() => {
         readTrack({});
-      }).toThrow("Either id, path, or trackIndex must be provided");
+      }).toThrow("readTrack failed: id or path is required");
     });
 
     it("ignores trackType when id is provided", () => {

@@ -238,7 +238,7 @@ describe("playback slots that names no position", () => {
 
   it("refuses play-scene rather than crashing on the empty list", () => {
     expect(() => playback({ action: "play-scene", slots: "," })).toThrow(
-      'playback failed: sceneIndex, path "s<scene>", or a scene id is required',
+      'playback failed: path "s<scene>" or a scene id is required',
     );
   });
 
