@@ -220,6 +220,41 @@ describe("duplicate - a list of sources", () => {
       expect(copyA.set).toHaveBeenCalledWith("name", "one");
       expect(copyB.set).toHaveBeenCalledWith("name", "two");
     });
+
+    // duplicate used to warn and label what it could, where the update tools
+    // threw for the same mistake. Nothing has been copied yet when the first
+    // source settles the total, so this is still refusable up front.
+    it("refuses a name list that doesn't match the copies", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2/s0,t3/s0",
+          name: "one,two,three",
+        }),
+      ).rejects.toThrow("this call names 2 copies but name names 3 entries");
+    });
+
+    it("refuses an empty entry in a name list", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      await expect(
+        duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          toPath: "t2/s0,t3/s0",
+          name: ",two",
+        }),
+      ).rejects.toThrow('invalid name ",two" - it has an empty entry');
+    });
   });
 
   describe("sources named by path", () => {

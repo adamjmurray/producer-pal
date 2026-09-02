@@ -69,7 +69,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated for each (indexed: clip slots first, then arrangement)",
+        "name for all, or comma-separated one per position, in order (clip slots first, then arrangement)",
       smallModel: "clip name",
     }),
 

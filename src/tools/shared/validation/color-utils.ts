@@ -25,7 +25,7 @@ export function parseColors(
   count: number,
   item: string,
 ): ListEntries | null {
-  const parsed = splitList(value, count);
+  const parsed = splitList(value, count, "color");
 
   warnPairingMismatch(parsed?.length ?? 0, count, {
     param: "color",

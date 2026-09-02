@@ -44,7 +44,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     }),
     name: param(z.string().optional(), {
       default:
-        "name for all, or comma-separated one per device, in order (blank entry = unchanged; not drum pads)",
+        "name for all, or comma-separated one per device, in order (not drum pads)",
       smallModel: "display name (not drum pads)",
     }),
     // Kept for potential future use
@@ -109,7 +109,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
     color: param(z.string().optional(), {
       default:
-        "#RRGGBB for all, or comma-separated one per chain, in order (blank entry = unchanged; chains only)",
+        "#RRGGBB for all, or comma-separated one per chain, in order (chains only)",
       smallModel: "#RRGGBB (chains only)",
     }),
     gainDb: param(z.coerce.number().min(-70).max(6).optional(), {

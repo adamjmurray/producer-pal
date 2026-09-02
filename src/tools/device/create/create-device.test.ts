@@ -542,6 +542,32 @@ describe("createDevice", () => {
       ).toThrow('invalid path "t0,,t1" - it has an empty entry.');
     });
 
+    // create-device used to warn and name what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match the paths", () => {
+      registerTrack1WithDevice456();
+
+      expect(() =>
+        createDevice({
+          path: "t0,t1",
+          deviceName: "Compressor",
+          name: "A,B,C",
+        }),
+      ).toThrow("path names 2 entries but name names 3 entries");
+    });
+
+    it("refuses an empty entry in a name list", () => {
+      registerTrack1WithDevice456();
+
+      expect(() =>
+        createDevice({
+          path: "t0,t1",
+          deviceName: "Compressor",
+          name: "A,",
+        }),
+      ).toThrow("path names 2 entries but name names 1 entry");
+    });
+
     it("should return single result for single path (backward compatible)", () => {
       const result = createDevice({
         path: "t0",

@@ -13,7 +13,6 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "../create-scene.ts";
-import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
@@ -272,37 +271,18 @@ describe("createScene", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should skip name for extras when count exceeds names", () => {
-      const scene3 = registerMockObject("live_set/scenes/3", {
-        path: livePath.scene(3),
-      });
+    // create-scene used to warn and build what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
 
-      const result = createScene({
-        sceneIndex: 0,
-        count: 4,
-        name: "Intro,Verse,Chorus",
-      });
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 4 scenes but name names 3 entries");
 
-      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
-      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
-      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
-      expect(scene3.set).not.toHaveBeenCalledWith("name", expect.anything());
-      expect(result).toHaveLength(4);
-    });
-
-    it("should ignore extra names when count is less than names", () => {
-      const result = createScene({
-        sceneIndex: 0,
-        count: 2,
-        name: "Intro,Verse,Chorus",
-      });
-
-      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
-      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
-      expect(result).toHaveLength(2);
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("name: 3 names for 2 scenes"),
-      );
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 2, name: "Intro,Verse,Chorus" }),
+      ).toThrow("count names 2 scenes but name names 3 entries");
     });
 
     it("should preserve commas in name when count is 1", () => {
@@ -329,25 +309,12 @@ describe("createScene", () => {
   });
 
   describe("comma-separated colors", () => {
-    it("should leave the scenes past the last color alone, not cycle", () => {
-      const scene3 = registerMockObject("live_set/scenes/3", {
-        path: livePath.scene(3),
-      });
+    it("refuses a color list that doesn't match count", () => {
+      registerMockObject("live_set/scenes/3", { path: livePath.scene(3) });
 
-      const result = createScene({
-        sceneIndex: 0,
-        count: 4,
-        color: "#FF0000,#00FF00",
-      });
-
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
-      expect(scene2.set).not.toHaveBeenCalledWith("color", expect.anything());
-      expect(scene3.set).not.toHaveBeenCalledWith("color", expect.anything());
-      expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("color: 2 colors for 4 scenes"),
-      );
-      expect(result).toHaveLength(4);
+      expect(() =>
+        createScene({ sceneIndex: 0, count: 4, color: "#FF0000,#00FF00" }),
+      ).toThrow("count names 4 scenes but color names 2 entries");
     });
 
     it("should use colors in order when count matches", () => {
@@ -360,17 +327,6 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
       expect(scene1.set).toHaveBeenCalledWith("color", 65280);
       expect(scene2.set).toHaveBeenCalledWith("color", 255);
-    });
-
-    it("should ignore extra colors when count is less than colors", () => {
-      createScene({
-        sceneIndex: 0,
-        count: 2,
-        color: "#FF0000,#00FF00,#0000FF",
-      });
-
-      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
-      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
     });
 
     it("should trim whitespace around comma-separated colors", () => {

@@ -79,16 +79,18 @@ either way.
   `arrangementStart`, `locator`.
 - **Value lists** are properties applied to targets: `name`, `color`.
 
+The distinction settles broadcasting, and nothing else: a lone value covers
+every item, while a lone destination does not, because a slot holds one clip and
+the rest would overwrite each other. Holes and lengths follow the same rule on
+both sides.
+
 ### 3. An empty entry never carries meaning
 
-- In a **target list** it's a hole, and always an error. Dropping it shifts
+- **A hole is an error in every list**, target or value. Dropping it shifts
   every later pairing; keeping it names nothing. Which of the two bites depends
-  on params the caller isn't looking at, so the rule doesn't ask — a target list
-  with a gap in it is refused either way.
+  on params the caller isn't looking at, so the rule doesn't ask.
 - A target list whose entries are **all** empty (`id: ","`) names nothing at
   all, and is the same error. That replaces the four answers listed above.
-- In a **value list** it means "no value for this one" — the item keeps what it
-  had. Silent, and nothing shifts.
 - **One trailing comma is silent everywhere** and is not an entry, as in most
   languages' list literals. `name: "A,B,"` and `name: "A,B"` become identical,
   so the ambiguity in the table above never has to be resolved.
@@ -96,8 +98,11 @@ either way.
 ### 4. Multi-valued lists must agree
 
 Two or more args with commas in them must name the same number of entries;
-otherwise the call is refused. ADR-0031's other rules stand: a single value
-still broadcasts to every item, nothing cycles, and destinations still never
+otherwise the call is refused. An item count the call worked out for itself
+counts as one of them — `count: 3` on create-track, the copies duplicate is
+about to make — so a value list has something to disagree with even on a tool
+with no target list. ADR-0031's other rules stand: a single value still
+broadcasts to every item, nothing cycles, and destinations still never
 broadcast, because a slot holds one clip.
 
 ### 5. A blank string on a non-string param is an error
@@ -146,10 +151,16 @@ survives on a text param, where clearing a name is a real request.
   even a list, so checking that two lists agree needs the whole set validated
   together, up front. Rule 3 stays a per-param check, which is most of why it's
   unconditional.
-- **Rule 4 compares comma-bearing args, so a scalar item count is outside it.**
-  `count: 3` with `name: "A,B"` has only one list in it, and keeps ADR-0031's
-  warning. Every update tool takes its item count from a list (`id`, `path`), so
-  this only comes up in the create tools.
+- **A scalar item count is inside rule 4.** `count: 3` with `name: "A,B"` has
+  only one comma-bearing arg, so the count has to be passed in as a list of its
+  own for the two to be compared. Without that, create-track, create-scene,
+  create-device and duplicate kept ADR-0031's warning while every update tool
+  threw for the same mistake — one rule with two answers, which is what a model
+  has to unlearn.
+- **A trailing comma can't hide a mismatch.** `name: "A,"` against two items is
+  one entry, but it is still a list: an arg counts as one when it has a comma in
+  it, not when it survives with two entries. Otherwise the short list would read
+  as a single value covering both items.
 - **Two tools can't check their raw args.** update-clip's `id` and `path` name
   different clips and add up, so its target count is their sum and the two are
   never compared to each other. duplicate shares its destinations out across the
@@ -188,10 +199,16 @@ survives on a text param, where clearing a name is a real request.
   untouched; only numbers, booleans, enums and arrays refuse a blank. That is
   why inverting a whole-tool-surface pin changed six test files rather than the
   surface.
-- **The rules are stated on the params, not in the Skills.** The trailing-comma
-  and length rules announce themselves: each error names the param and the fix,
-  so pre-empting them on ~30 param descriptions would spend the caller's context
-  to say what the failure already says. What the params do carry is the one
-  thing no error can, because it is not a failure: `blank entry = unchanged` on
-  each value list. The Skills say nothing — the fragment that would host it is
-  gated `"always"` and may not name a tool or a param.
+- **The rules are stated on the params, not in the Skills.** The trailing-comma,
+  hole and length rules announce themselves: each error names the param and the
+  fix, so pre-empting them on ~30 param descriptions would spend the caller's
+  context to say what the failure already says. The eight
+  `(blank entry = unchanged)` parentheticals went with the leniency they
+  described. The Skills say nothing — the fragment that would host it is gated
+  `"always"` and may not name a tool or a param.
+- **Nothing is lost by refusing a hole in a value list.** There was never a way
+  to clear one item's name inside a list; `name: ""` clears every target in the
+  call, and `id: "t3", name: ""` clears one. What a hole bought was leaving one
+  item's name alone while setting a sibling param across the whole list, which
+  costs a re-sent name (`stripReturnSlotLetter` exists so round-tripping a
+  reported name is safe) or a second call.

@@ -19,6 +19,7 @@ import {
   withDevicePathCache,
 } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { targetEntries, unwrapSingleResult } from "#src/tools/shared/utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -87,6 +88,11 @@ export function createDevice(
       "createDevice failed: path is required when creating a device",
     );
   }
+
+  validateListLengths([
+    { param: "path", value: path },
+    { param: "name", value: name },
+  ]);
 
   const paths = targetEntries(path, "path");
 

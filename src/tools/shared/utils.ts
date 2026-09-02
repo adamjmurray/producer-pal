@@ -185,8 +185,8 @@ export function parseCommaSeparatedIds(ids?: string | null): string[] {
  * list whose entries are all empty (`","`) names nothing, and is the same error.
  *
  * Refusing is safe here because nothing has run yet — the model retries with a
- * corrected call and loses no work. Value lists (`name`, `color`) read an empty
- * entry the opposite way, as "keep what you had"; see `splitList`.
+ * corrected call and loses no work. Value lists refuse a hole too, in
+ * `splitList`.
  * @param raw - The param's value, or nullish when it was omitted
  * @param label - Param name, for the error message
  * @returns One trimmed entry per target, in order; empty only when omitted

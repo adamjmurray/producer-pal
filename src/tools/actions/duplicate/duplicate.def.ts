@@ -49,7 +49,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {
-      default: "name (comma-separated when duplicating multiple)",
+      default: "name for all, or comma-separated one per copy, in order",
       smallModel: "name",
     }),
     color: param(z.string().optional(), {

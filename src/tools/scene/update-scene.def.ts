@@ -32,13 +32,11 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
 
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     name: param(z.string().optional(), {
-      default:
-        "name for all, or comma-separated one per scene, in order (blank entry = unchanged)",
+      default: "name for all, or comma-separated one per scene, in order",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {
-      default:
-        "#RRGGBB for all, or comma-separated one per scene, in order (blank entry = unchanged)",
+      default: "#RRGGBB for all, or comma-separated one per scene, in order",
       smallModel: "#RRGGBB",
     }),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),

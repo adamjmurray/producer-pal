@@ -25,7 +25,7 @@ export function parseNames(
   count: number,
   item: string,
 ): ListEntries | null {
-  const parsed = splitList(value, count);
+  const parsed = splitList(value, count, "name");
 
   warnPairingMismatch(parsed?.length ?? 0, count, {
     param: "name",

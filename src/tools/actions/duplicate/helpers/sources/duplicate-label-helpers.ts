@@ -11,6 +11,7 @@ import {
   getColorForIndex,
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -72,6 +73,15 @@ export function claimLabels(labels: CopyLabels, copies: number): void {
   }
 
   labels.total = labels.sources * copies;
+
+  // The first source settles the total, and nothing has been copied yet, so a
+  // name list that doesn't match the copies is still refusable up front.
+  validateListLengths([
+    { param: "this call", count: labels.total, noun: "copy" },
+    { param: "name", value: labels.name },
+    { param: "color", value: labels.color },
+  ]);
+
   labels.names = parseNames(labels.name, labels.total, "copy");
   labels.colors = parseColors(labels.color, labels.total, "copy");
 }

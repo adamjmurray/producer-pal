@@ -12,6 +12,7 @@ import {
   getColorForIndex,
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   getNameForIndex,
   parseNames,
@@ -186,6 +187,12 @@ export function createTrack(
   const baseTrackCount = getBaseTrackCount(liveSet, type, effectiveTrackIndex);
   const createdTracks: CreatedTrackResult[] = [];
   let currentIndex = effectiveTrackIndex;
+
+  validateListLengths([
+    { param: "count", count, noun: "track" },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
 
   const parsedNames = parseNames(name, count, "track");
   const parsedColors = parseColors(color, count, "track");

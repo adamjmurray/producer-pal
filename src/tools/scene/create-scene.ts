@@ -14,6 +14,7 @@ import {
   getNameForIndex,
   parseNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene } from "./capture-scene.ts";
 import {
@@ -105,6 +106,12 @@ export function createScene(
 
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
+
+  validateListLengths([
+    { param: "count", count, noun: "scene" },
+    { param: "name", value: name },
+    { param: "color", value: color },
+  ]);
 
   const parsedNames = parseNames(name, count, "scene");
   const parsedColors = parseColors(color, count, "scene");

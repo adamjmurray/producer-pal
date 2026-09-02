@@ -40,7 +40,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       smallModel: null,
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated for each",
+      default: "name for all, or comma-separated one per scene, in order",
       smallModel: "scene name",
     }),
     color: param(z.string().optional(), {

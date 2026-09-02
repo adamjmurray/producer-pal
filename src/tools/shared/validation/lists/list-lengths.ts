@@ -24,6 +24,8 @@ export interface ListArg {
    * other would refuse a call naming two of each.
    */
   count?: number;
+  /** What this arg counts, when "entries" doesn't fit: "track", "copy". */
+  noun?: string;
 }
 
 /**
@@ -39,8 +41,13 @@ export interface ListArg {
  */
 export function validateListLengths(args: ListArg[]): void {
   const lists = args
-    .map((arg) => ({ param: arg.param, count: entryCount(arg) }))
-    .filter((list) => list.count > 1);
+    .map((arg) => ({
+      param: arg.param,
+      noun: arg.noun ?? "entry",
+      count: entryCount(arg),
+      isList: isList(arg),
+    }))
+    .filter((list) => list.isList);
 
   const first = lists[0];
 
@@ -51,9 +58,10 @@ export function validateListLengths(args: ListArg[]): void {
   if (odd == null) return;
 
   throw new Error(
-    `${first.param} names ${plural(first.count)} but ${odd.param} names ` +
-      `${plural(odd.count)}. Comma-separated params must name the same ` +
-      `number of entries, or one value that covers them all.`,
+    `${first.param} names ${plural(first.count, first.noun)} but ` +
+      `${odd.param} names ${plural(odd.count, odd.noun)}. Comma-separated ` +
+      `params must name the same number of entries, or one value that ` +
+      `covers them all.`,
   );
 }
 
@@ -75,10 +83,24 @@ export function requireSameLength(
   if (a.count <= 1 || b.count <= 1 || a.count === b.count) return;
 
   throw new Error(
-    `${a.param} names ${plural(a.count)} but ${b.param} names ` +
-      `${plural(b.count)}. Comma-separated params must name the same number ` +
-      `of entries, or one value that covers them all.`,
+    `${a.param} names ${plural(a.count, "entry")} but ${b.param} names ` +
+      `${plural(b.count, "entry")}. Comma-separated params must name the ` +
+      `same number of entries, or one value that covers them all.`,
   );
+}
+
+/**
+ * Whether an arg is a list at all. A value with no comma in it covers every
+ * item and never conflicts. One with a comma is a list even when a trailing
+ * comma leaves it a single entry — "A," against two items is a short list, not
+ * one value covering both.
+ * @param arg - The list param
+ * @returns True when the arg has to agree with the other lists
+ */
+function isList(arg: ListArg): boolean {
+  if (arg.count != null) return arg.count > 1;
+
+  return arg.value?.includes(",") ?? false;
 }
 
 /**
@@ -119,9 +141,15 @@ function countEntries(value: string): number {
 }
 
 /**
- * @param count - How many entries
+ * "1 entry", "3 copies", "2 tracks" — a trailing y becomes -ies.
+ * @param count - How many
+ * @param noun - The singular noun
  * @returns The counted phrase
  */
-function plural(count: number): string {
-  return `${count} entr${count === 1 ? "y" : "ies"}`;
+function plural(count: number, noun: string): string {
+  if (count === 1) return `${count} ${noun}`;
+
+  const plur = noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`;
+
+  return `${count} ${plur}`;
 }

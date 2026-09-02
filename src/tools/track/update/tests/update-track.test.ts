@@ -188,13 +188,22 @@ describe("updateTrack", () => {
     );
   });
 
-  it("leaves a track alone for an empty name entry", () => {
-    updateTrack({ id: "123,456,789", name: "A,,C" });
+  // A gap in a name list used to mean "leave this one alone", while the same
+  // gap in an id list was refused. One rule now: no list takes a hole.
+  it("refuses an empty entry in a name list", () => {
+    expect(() => updateTrack({ id: "123,456,789", name: "A,,C" })).toThrow(
+      'invalid name "A,,C" - it has an empty entry',
+    );
+    expect(track123.set).not.toHaveBeenCalledWith("name", expect.anything());
+  });
 
-    expect(track123.set).toHaveBeenCalledWith("name", "A");
-    expect(track456.set).not.toHaveBeenCalledWith("name", expect.anything());
-    expect(track789.set).toHaveBeenCalledWith("name", "C");
-    expect(capturedWarnings()).toStrictEqual([]);
+  // `name: ""` still clears the name, for every target in the call — the one
+  // unambiguous spelling, now that a hole isn't one.
+  it("clears every name for a blank name param", () => {
+    updateTrack({ id: "123,456", name: "" });
+
+    expect(track123.set).toHaveBeenCalledWith("name", "");
+    expect(track456.set).toHaveBeenCalledWith("name", "");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {

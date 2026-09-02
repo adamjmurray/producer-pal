@@ -72,8 +72,8 @@ describe("validateListLengths", () => {
     ).toThrow("id names 3 entries but name names 2 entries.");
   });
 
-  // A hole is still an entry here. Rule 3 refuses it in a target list and a
-  // value list reads it as "keep what you had", so either way the count stands.
+  // A hole is still an entry for counting. It is refused when the list is
+  // split, which is after this check, so the count has to stand here.
   it("counts an empty entry", () => {
     expect(() =>
       validateListLengths([

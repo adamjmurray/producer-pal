@@ -464,31 +464,20 @@ describe("createTrack", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should skip name for extras when count exceeds names", () => {
-      const tracks = registerTrackMocks(4);
+    // create-track used to warn and build what it could, where the update
+    // tools threw for the same mistake.
+    it("refuses a name list that doesn't match count", () => {
+      registerTrackMocks(4);
 
-      const result = createTrack({
-        trackIndex: 0,
-        count: 4,
-        name: "kick,snare,hat",
-      });
+      expect(() =>
+        createTrack({ trackIndex: 0, count: 4, name: "kick,snare,hat" }),
+      ).toThrow("count names 4 tracks but name names 3 entries");
 
-      expectTrackNames(tracks, ["kick", "snare", "hat"]);
-      expectNoTrackNames(tracks.slice(3));
-      expect(result).toHaveLength(4);
-    });
+      registerTrackMocks(2);
 
-    it("should ignore extra names when count is less than names", () => {
-      const tracks = registerTrackMocks(2);
-
-      const result = createTrack({
-        trackIndex: 0,
-        count: 2,
-        name: "kick,snare,hat",
-      });
-
-      expectTrackNames(tracks, ["kick", "snare"]);
-      expect(result).toHaveLength(2);
+      expect(() =>
+        createTrack({ trackIndex: 0, count: 2, name: "kick,snare,hat" }),
+      ).toThrow("count names 2 tracks but name names 3 entries");
     });
 
     it("should preserve commas in name when count is 1", () => {
@@ -519,42 +508,20 @@ describe("createTrack", () => {
 
       expectTrackNames(tracks, ["kick", "snare", "hat"]);
     });
-
-    it("should skip name for extras beyond comma-separated list", () => {
-      const tracks = registerTrackMocks(5);
-
-      createTrack({
-        trackIndex: 0,
-        count: 5,
-        name: "kick,snare,hat",
-      });
-
-      // First 3 tracks use the provided names
-      expectTrackNames(tracks, ["kick", "snare", "hat"]);
-      // Subsequent tracks keep default name
-      expectNoTrackNames(tracks.slice(3));
-    });
   });
 
   describe("comma-separated colors", () => {
-    it("should leave the tracks past the last color alone, not cycle", () => {
-      const tracks = registerTrackMocks(4);
+    it("refuses a color list that doesn't match count", () => {
+      registerTrackMocks(4);
 
-      createTrack({
-        trackIndex: 0,
-        count: 4,
-        name: "Track",
-        color: "#FF0000,#00FF00",
-      });
-
-      expectTrackColors(tracks, [
-        16711680, // #FF0000
-        65280, // #00FF00
-      ]);
-
-      for (const track of tracks.slice(2)) {
-        expect(track.set).not.toHaveBeenCalledWith("color", expect.anything());
-      }
+      expect(() =>
+        createTrack({
+          trackIndex: 0,
+          count: 4,
+          name: "Track",
+          color: "#FF0000,#00FF00",
+        }),
+      ).toThrow("count names 4 tracks but color names 2 entries");
     });
 
     it("should use colors in order when count matches", () => {
@@ -572,22 +539,6 @@ describe("createTrack", () => {
         65280, // #00FF00
         255, // #0000FF
       ]);
-    });
-
-    it("should ignore extra colors when count is less than colors", () => {
-      const track0 = registerMockObject("midi_track_0", {});
-      const track1 = registerMockObject("midi_track_1", {});
-
-      createTrack({
-        trackIndex: 0,
-        count: 2,
-        name: "Track",
-        color: "#FF0000,#00FF00,#0000FF",
-      });
-
-      expect(track0.set).toHaveBeenCalledWith("color", 16711680); // #FF0000
-      expect(track1.set).toHaveBeenCalledWith("color", 65280); // #00FF00
-      // #0000FF is not used
     });
 
     it("should throw error when count is 1 and color contains commas", () => {
@@ -642,16 +593,6 @@ function expectTrackNames(
 ): void {
   for (const [i, expectedName] of expectedNames.entries()) {
     expect(tracks[i]!.set).toHaveBeenCalledWith("name", expectedName);
-  }
-}
-
-/**
- * Assert the given tracks never had a name set, so they keep Live's default.
- * @param tracks - Registered track mocks expected to have no name assignment
- */
-function expectNoTrackNames(tracks: RegisteredMockObject[]): void {
-  for (const track of tracks) {
-    expect(track.set).not.toHaveBeenCalledWith("name", expect.anything());
   }
 }
 

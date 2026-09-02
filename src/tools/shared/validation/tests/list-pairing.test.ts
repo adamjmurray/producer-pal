@@ -37,29 +37,37 @@ async function freshConsole(): Promise<{ warn: unknown }> {
 describe("list-pairing", () => {
   describe("splitList", () => {
     it("returns null when there is nothing to pair", () => {
-      expect(splitList("A,B", 1)).toBeNull();
-      expect(splitList("Lead", 3)).toBeNull();
-      expect(splitList(undefined, 3)).toBeNull();
+      expect(splitList("A,B", 1, "name")).toBeNull();
+      expect(splitList("Lead", 3, "name")).toBeNull();
+      expect(splitList(undefined, 3, "name")).toBeNull();
     });
 
     it("splits and trims", () => {
-      expect(splitList("A,B,C", 3)).toStrictEqual(["A", "B", "C"]);
-      expect(splitList(" A , B ", 2)).toStrictEqual(["A", "B"]);
+      expect(splitList("A,B,C", 3, "name")).toStrictEqual(["A", "B", "C"]);
+      expect(splitList(" A , B ", 2, "name")).toStrictEqual(["A", "B"]);
     });
 
     it("keeps a mismatched count as written, for the caller to warn about", () => {
-      expect(splitList("A,B", 5)).toStrictEqual(["A", "B"]);
-      expect(splitList("A,B,C", 2)).toStrictEqual(["A", "B", "C"]);
+      expect(splitList("A,B", 5, "name")).toStrictEqual(["A", "B"]);
+      expect(splitList("A,B,C", 2, "name")).toStrictEqual(["A", "B", "C"]);
     });
 
     it("does not count a trailing comma as an entry", () => {
-      expect(splitList("A,B,", 3)).toStrictEqual(["A", "B"]);
-      expect(splitList("A,B, ", 2)).toStrictEqual(["A", "B"]);
+      expect(splitList("A,B,", 3, "name")).toStrictEqual(["A", "B"]);
+      expect(splitList("A,B, ", 2, "name")).toStrictEqual(["A", "B"]);
     });
 
-    it("reads an empty entry as no value for that item", () => {
-      expect(splitList("A,,C", 3)).toStrictEqual(["A", undefined, "C"]);
-      expect(splitList(",B", 2)).toStrictEqual([undefined, "B"]);
+    // A gap reads two ways — a stray comma, or a value that went missing — and
+    // the call doesn't say which.
+    it("refuses an empty entry, naming the param", () => {
+      expect(() => splitList("A,,C", 3, "name")).toThrow(
+        'invalid name "A,,C" - it has an empty entry. Drop the extra comma, ' +
+          "or give every item a value.",
+      );
+      expect(() => splitList(",B", 2, "color")).toThrow(
+        'invalid color ",B" - it has an empty entry',
+      );
+      expect(() => splitList("A, ,C", 3, "name")).toThrow("empty entry");
     });
   });
 

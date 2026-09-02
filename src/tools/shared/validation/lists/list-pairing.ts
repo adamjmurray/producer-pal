@@ -4,10 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // One rule for every comma-separated list a tool pairs against the items it
-// acts on: one value covers them all, N values pair 1:1 in order, and anything
-// else warns and applies what it can. Nothing cycles — a caller can't predict
-// where a cycled value lands, and the two only ever disagree when both lists
-// are longer than 1 and unequal, which is the case nobody means.
+// acts on: one value covers them all, or exactly N pair 1:1 in order, and no
+// entry may be empty. A length mismatch is refused before any work runs, and a
+// hole is refused here. Nothing cycles — a caller can't predict where a cycled
+// value lands.
 //
 // Destinations are the exception, in one direction only: a clip slot holds one
 // clip, so broadcasting a lone slot to three clips would destroy two of them.
@@ -29,8 +29,8 @@ export interface PairLabels {
   shortfall: string;
 }
 
-/** The entries of a value list; undefined where the caller left one empty. */
-export type ListEntries = Array<string | undefined>;
+/** The entries of a value list, one per item. */
+export type ListEntries = string[];
 
 /**
  * Split a comma-separated param into one entry per item.
@@ -40,11 +40,14 @@ export type ListEntries = Array<string | undefined>;
  * everything".
  * @param value - The raw param, as the caller sent it
  * @param count - How many items the call acts on
+ * @param param - The param's name, for the error message
  * @returns The entries, or null when the whole value applies to every item
+ * @throws Error when an entry inside the list is empty
  */
 export function splitList(
   value: string | undefined,
   count: number,
+  param: string,
 ): ListEntries | null {
   if (count <= 1 || !value?.includes(",")) {
     return null;
@@ -56,10 +59,17 @@ export function splitList(
   // literal. Without this, "A,B," over three items clears the third name.
   if (entries.at(-1) === "") entries.pop();
 
-  // An empty entry means "no value for this one", so the item keeps what it
-  // had — the same as running off the end of a short list. Never a way to
-  // clear a value: `name: ""` alone does that for the whole call.
-  return entries.map((entry) => (entry === "" ? undefined : entry));
+  // A gap has two readings — a stray comma, or a value that went missing — and
+  // nothing in the call says which. Clearing one item's value inside a list was
+  // never possible either way: `${param}: ""` clears it for the whole call.
+  if (entries.includes("")) {
+    throw new Error(
+      `invalid ${param} "${value}" - it has an empty entry. Drop the extra ` +
+        `comma, or give every item a value.`,
+    );
+  }
+
+  return entries;
 }
 
 /**
@@ -68,7 +78,7 @@ export function splitList(
  * @param value - The raw param, as the caller sent it
  * @param index - The item's position in the call
  * @param parsed - The split entries, or null when the value covers every item
- * @returns The value, or undefined when the call named none for this item
+ * @returns The value, or undefined when the list ran out before this item
  */
 export function valueForIndex(
   value: string | undefined,
@@ -77,7 +87,8 @@ export function valueForIndex(
 ): string | undefined {
   if (value == null) return undefined;
 
-  // Past the last entry this is undefined, so the item keeps what it had.
+  // A list too short for the items is refused up front, so past the last entry
+  // only happens where nothing checked — and there the item keeps what it had.
   return parsed == null ? value : parsed[index];
 }
 

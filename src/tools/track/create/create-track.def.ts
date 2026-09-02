@@ -29,7 +29,7 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       smallModel: null,
     }),
     name: param(z.string().optional(), {
-      default: "name for all, or comma-separated for each",
+      default: "name for all, or comma-separated one per track, in order",
       smallModel: "track name",
     }),
     color: param(z.string().optional(), {

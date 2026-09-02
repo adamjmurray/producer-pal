@@ -35,17 +35,19 @@ switch — tolerance lives in the schema, e.g. `device-params-schema.ts`'s
 ## Comma-separated params pair one way
 
 When a param varies per item, use `src/tools/shared/validation/list-pairing.ts`:
-one value covers every item, N values pair 1:1 in order, anything else warns and
-applies what it can. Nothing cycles.
+one value covers every item, or exactly N pair 1:1 in order, and no entry may be
+empty. Anything else is refused before any work runs. Nothing cycles — including
+`color`, which used to (ADR-0031).
 
 `pairValues` / `valueForIndex` for values, `pairExact` for a destination that
 holds one item — broadcasting a lone clip slot to three clips would destroy two
-of them. `color` still cycles, as a documented exception; see ADR-0031.
+of them.
 
-## An empty entry means opposite things in the two kinds of list
+## An empty entry is a hole in either kind of list
 
 One trailing comma is not an entry in either kind, the way most languages read a
-list literal. Any other empty entry splits:
+list literal. Any other empty entry is a hole and is refused, in either kind of
+list:
 
 - **Target lists** name objects or places (`id`, `path`, `toPath`,
   `arrangementStart`, `locator`). Split them with `targetEntries` from
@@ -54,8 +56,8 @@ list literal. Any other empty entry splits:
   keeping it names nothing, so neither is guessed at. Nothing has run when the
   check fires, so refusing costs the caller only a retry.
 - **Value lists** are properties applied to targets (`name`, `color`). Split
-  them with `splitList`, which reads an empty entry as "no value for this one" —
-  the item keeps what it had. `name: ""` alone is how you clear a value.
+  them with `splitList`, which refuses a hole for the same reason. `name: ""`
+  alone is how you clear a value, for every target in the call.
 
 ## Two lists in one call must agree
 
