@@ -438,13 +438,11 @@ describe("updateDevice - chain mixer (gainDb, pan, sends)", () => {
     expect(panning.set).toHaveBeenCalledWith("value", 0.5);
   });
 
-  it("warns when sendReturn is the only mixer param given", () => {
-    updateDevice({ id: "chain-0", sendReturn: "a" });
-
-    expect(send.set).not.toHaveBeenCalled();
-    expect(capturedWarnings()).toContain(
-      "sendGainDb and sendReturn must both be specified",
+  it("refuses the call when sendReturn is the only mixer param given", () => {
+    expect(() => updateDevice({ id: "chain-0", sendReturn: "a" })).toThrow(
+      "updateDevice failed: sendGainDb and sendReturn must both be specified",
     );
+    expect(send.set).not.toHaveBeenCalled();
   });
 
   // Same gate: `sends` alone has to open it. It shipped not doing so, and

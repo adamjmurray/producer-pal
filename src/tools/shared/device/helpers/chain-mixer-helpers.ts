@@ -115,8 +115,9 @@ export function applyChainMixer(
     applied.pan = pan;
   }
 
+  // A half pair was refused up front, so either both are set or neither is.
   const scalarSend =
-    sendGainDb != null || sendReturn != null
+    sendGainDb != null && sendReturn != null
       ? applyChainSend(chain, mixer, sendGainDb, sendReturn)
       : null;
 
@@ -362,15 +363,9 @@ function summarizeChainMixer(mixer: Record<string, unknown>): string {
 function applyChainSend(
   chain: LiveAPI,
   mixer: LiveAPI,
-  sendGainDb: number | undefined,
-  sendReturn: string | undefined,
+  sendGainDb: number,
+  sendReturn: string,
 ): number | null {
-  if (sendGainDb == null || sendReturn == null) {
-    console.warn("sendGainDb and sendReturn must both be specified");
-
-    return null;
-  }
-
   const returns = returnChainInfo(chain);
   const names = returns.map((rc) => rc.name);
   const index = findReturnIndex(

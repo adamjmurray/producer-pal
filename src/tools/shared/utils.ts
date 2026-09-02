@@ -437,3 +437,26 @@ export function findReturnIndex(
     return lower.startsWith(wanted) && (next === "-" || next === " ");
   });
 }
+
+/**
+ * Refuse a call that names only half of the sendGainDb/sendReturn pair.
+ *
+ * Half a pair names no send at all, so there is nothing to write — and it is
+ * the same value for every target, so a per-target skip would repeat one
+ * warning down the whole list. Refusing up front costs nothing: no target has
+ * been touched yet.
+ * @param sendGainDb - Send level in dB, if given
+ * @param sendReturn - The return the level applies to, if given
+ * @param toolName - Tool name for the error message
+ */
+export function validateSendPair(
+  sendGainDb: number | undefined,
+  sendReturn: string | undefined,
+  toolName: string,
+): void {
+  if ((sendGainDb != null) !== (sendReturn != null)) {
+    throw new Error(
+      `${toolName} failed: sendGainDb and sendReturn must both be specified`,
+    );
+  }
+}

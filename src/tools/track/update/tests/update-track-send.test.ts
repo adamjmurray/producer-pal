@@ -148,24 +148,17 @@ describe("updateTrack - send properties", () => {
     );
   });
 
-  it("should warn and skip when only sendGainDb is provided", () => {
-    // Should not throw, just warn and skip the send update
-    const result = updateTrack({
-      id: "123",
-      sendGainDb: -12,
-    });
-
-    expectSendUpdateSkipped(result, [send1, send2], "must both be specified");
-  });
-
-  it("should warn and skip when only sendReturn is provided", () => {
-    // Should not throw, just warn and skip the send update
-    const result = updateTrack({
-      id: "123",
-      sendReturn: "A",
-    });
-
-    expectSendUpdateSkipped(result, [send1, send2], "must both be specified");
+  // Half a pair names no send, and it names the same non-send for every track
+  // in the list. Refused before any of them is touched.
+  it.each([
+    ["sendGainDb", { sendGainDb: -12 }],
+    ["sendReturn", { sendReturn: "A" }],
+  ])("refuses the call when only %s is provided", (_label, args) => {
+    expect(() => updateTrack({ id: "123", ...args })).toThrow(
+      "updateTrack failed: sendGainDb and sendReturn must both be specified",
+    );
+    expect(send1.set).not.toHaveBeenCalled();
+    expect(send2.set).not.toHaveBeenCalled();
   });
 
   it("should warn and skip when return track not found", () => {

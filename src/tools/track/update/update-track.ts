@@ -20,6 +20,7 @@ import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-
 import {
   findReturnIndex,
   unwrapSingleResult,
+  validateSendPair,
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -133,13 +134,7 @@ function applySendProperties(
   sendGainDb: number | undefined,
   sendReturn: string | undefined,
 ): void {
-  // Validate both params provided together
-  if ((sendGainDb != null) !== (sendReturn != null)) {
-    console.warn("sendGainDb and sendReturn must both be specified");
-
-    return;
-  }
-
+  // A half pair was refused up front, so this is the "neither was sent" case.
   if (sendGainDb == null || sendReturn == null) {
     return;
   }
@@ -261,6 +256,8 @@ export function updateTrack(
   if (targetCount(named) === 0) {
     throw new Error("updateTrack failed: id or path is required");
   }
+
+  validateSendPair(sendGainDb, sendReturn, "updateTrack");
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.

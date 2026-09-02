@@ -21,6 +21,7 @@ import {
   namedIdParam,
   namedPathParam,
   unwrapSingleResult,
+  validateSendPair,
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -141,6 +142,7 @@ export function updateDevice(
   path = namedPathParam(path, paths);
 
   validateExclusiveParams(ids, path, "id", "path");
+  validateSendPair(sendGainDb, sendReturn, "updateDevice");
 
   let result: Record<string, unknown> | Record<string, unknown>[] | null;
 

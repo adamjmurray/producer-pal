@@ -295,16 +295,15 @@ describe("applyChainMixer", () => {
       expect(first?.set).not.toHaveBeenCalled();
     });
 
-    it("warns when only one of sendGainDb and sendReturn is given", () => {
+    // The tools refuse a half pair before they reach a chain, so by here it is
+    // "neither was sent": write nothing, and say nothing either.
+    it("ignores only one of sendGainDb and sendReturn", () => {
       const sends = registerChainWithSends();
 
       applyChainMixer(chainApi(), { sendGainDb: -6 });
       applyChainMixer(chainApi(), { sendReturn: "a" });
 
-      expect(capturedWarnings()).toHaveLength(2);
-      expect(capturedWarnings()).toContain(
-        "sendGainDb and sendReturn must both be specified",
-      );
+      expect(capturedWarnings()).toStrictEqual([]);
       expect(sends[0]?.set).not.toHaveBeenCalled();
     });
 
