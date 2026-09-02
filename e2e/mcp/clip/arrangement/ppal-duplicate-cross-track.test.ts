@@ -133,8 +133,13 @@ describe("cross-track arrangement clip duplicate", () => {
     const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
 
     expect(data).toStrictEqual([]);
-    expect(warnings.join(" ")).toContain(
-      `MIDI clip cannot be duplicated to audio track ${AUDIO_TRACK}`,
+
+    // The warning names the clip it skipped and spells the track as a path.
+    const warningText = warnings.join(" ");
+
+    expect(warningText).toContain(`MIDI clip ${source.id}`);
+    expect(warningText).toContain(
+      `cannot be duplicated to audio track t${AUDIO_TRACK}`,
     );
     expect(await clipAt(AUDIO_TRACK, position)).toBeUndefined();
   });

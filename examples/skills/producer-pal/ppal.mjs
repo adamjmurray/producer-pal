@@ -18,7 +18,7 @@
 // Examples:
 //   node ppal.mjs --list-tools --notation midi-json
 //   node ppal.mjs ppal-read-live-set
-//   node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+//   node ppal.mjs ppal-read-track '{"path": "t0"}'
 //   node ppal.mjs ppal-create-clip '{...}' --timeout-ms 10000
 //   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 //
@@ -177,7 +177,7 @@ time, --list-tools included.
 Examples:
   node ppal.mjs --list-tools --notation midi-json
   node ppal.mjs ppal-read-live-set
-  node ppal.mjs ppal-read-track '{"trackIndex": 0}'
+  node ppal.mjs ppal-read-track '{"path": "t0"}'
   node ppal.mjs ppal-create-clip '{...}' --notation midi-json
   node ppal.mjs ppal-connect --disable-tools ppal-library,ppal-create-device
 `;

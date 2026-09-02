@@ -144,6 +144,30 @@ describe("ppal-create-device", () => {
     expect(text).toContain("t1/d0");
   });
 
+  // Aiming two devices at d1 and d2 used to land both at d1 and d2 and push
+  // the two originals past them, so the second entry never went where it was
+  // named. Refused up front now, before either one is created.
+  it("refuses a path list spelled through its own insert", async () => {
+    const trackIndex = await createTrack("midi");
+
+    await createDevice("Compressor", `t${trackIndex}`);
+    await createDevice("Reverb", `t${trackIndex}`);
+
+    const before = await readDeviceCount(ctx.client!, trackIndex);
+    const text = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-device",
+        arguments: {
+          deviceName: "Utility",
+          path: `t${trackIndex}/d0,t${trackIndex}/d1`,
+        },
+      }),
+    );
+
+    expect(text).toContain("is spelled through");
+    expect(await readDeviceCount(ctx.client!, trackIndex)).toBe(before);
+  });
+
   it("allows a MIDI effect before a track's instrument", async () => {
     const device = await createDevice("Arpeggiator", "t1/d0");
 

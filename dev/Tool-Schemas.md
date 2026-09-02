@@ -110,11 +110,10 @@ checks every tool. Background: ADR-0021.
 
 ## Coercion
 
-Use `z.coerce.string()` for ID params (`ids`, `trackId`, `clipId`,
-comma-separated `sceneIndex`) and `z.coerce.number()` for numeric ones
-(`trackIndex`, `sceneIndex`, `count`, `tempo`, `gainDb`). Models pass values as
-strings or numbers interchangeably, and the MCP SDK validates before our handler
-runs, so the coercion has to be at the schema level.
+Use `z.coerce.string()` for ID params (`id`, `ids`, `path`, `paths`) and
+`z.coerce.number()` for numeric ones (`count`, `tempo`, `gainDb`). Models pass
+values as strings or numbers interchangeably, and the MCP SDK validates before
+our handler runs, so the coercion has to be at the schema level.
 
 ## Params sent as null, or blank
 

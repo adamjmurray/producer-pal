@@ -67,7 +67,7 @@ Returns all enabled tools with their JSON Schema input definitions:
 POST http://localhost:3350/api/tools/{toolName}
 Content-Type: application/json
 
-{ "trackIndex": 0, "include": ["session-clips"] }
+{ "path": "t0", "include": ["session-clips"] }
 ```
 
 Returns (the default `json` format, see
@@ -278,7 +278,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
 # Read track 0 with all clips
 curl -X POST http://localhost:3350/api/tools/ppal-read-track \
   -H 'Content-Type: application/json' \
-  -d '{"trackIndex": 0, "include": ["session-clips", "arrangement-clips"]}'
+  -d '{"path": "t0", "include": ["session-clips", "arrangement-clips"]}'
 
 # List available tools
 curl http://localhost:3350/api/tools
