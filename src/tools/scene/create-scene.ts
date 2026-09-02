@@ -17,6 +17,7 @@ import {
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
+import { validateTempo } from "#src/tools/shared/utils.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
@@ -77,6 +78,8 @@ export function createScene(
 ): SceneResult | SceneResult[] | CaptureSceneResult {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const sceneIndex = resolveCreateSceneIndex(path, sceneIndexParam, liveSet);
+
+  validateTempo(tempo, "createScene", -1);
 
   // Handle capture mode
   if (capture) {

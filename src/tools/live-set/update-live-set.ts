@@ -14,7 +14,7 @@ import {
   findLocator,
   getLocatorId,
 } from "#src/tools/shared/locator/locator-helpers.ts";
-import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import { parseTimeSignature, validateTempo } from "#src/tools/shared/utils.ts";
 import {
   applyScale,
   applyTempo,
@@ -93,6 +93,8 @@ export async function updateLiveSet(
   // already applied). Mirrors updateClip's upfront validation.
   const parsedTimeSignature =
     timeSignature != null ? parseTimeSignature(timeSignature) : null;
+
+  validateTempo(tempo, "updateLiveSet");
 
   if (tempo != null) {
     applyTempo(liveSet, tempo, result);

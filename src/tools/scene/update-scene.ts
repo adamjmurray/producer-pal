@@ -8,6 +8,7 @@ import { verifyColorQuantization } from "#src/tools/shared/color-verification-he
 import {
   parseTimeSignature,
   unwrapSingleResult,
+  validateTempo,
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -83,6 +84,8 @@ export function updateScene(
   if (targetCount(named) === 0) {
     throw new Error("updateScene failed: id or path is required");
   }
+
+  validateTempo(tempo, "updateScene", -1);
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.

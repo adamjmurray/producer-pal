@@ -207,12 +207,7 @@ export function applyTempo(
   tempo: number,
   result: { tempo?: number },
 ): void {
-  if (tempo < 20 || tempo > 999) {
-    console.warn("tempo must be between 20.0 and 999.0 BPM");
-
-    return;
-  }
-
+  // Range already refused by validateTempo, before any property was written.
   liveSet.set("tempo", tempo);
   result.tempo = tempo;
 }

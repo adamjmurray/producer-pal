@@ -376,30 +376,16 @@ describe("update-live-set-helpers", () => {
       expect(result.tempo).toBe(999);
     });
 
-    it("should warn and not set tempo below 20 BPM", () => {
+    // The range is refused by validateTempo before updateLiveSet writes
+    // anything, so by here the value is known good. See update-live-set.test.ts.
+    it("writes a boundary tempo", () => {
       const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
       const result: { tempo?: number } = {};
 
-      applyTempo(mockLiveSet, 19, result);
+      applyTempo(mockLiveSet, 20, result);
 
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.tempo).toBeUndefined();
-      expect(capturedWarnings()).toContain(
-        "tempo must be between 20.0 and 999.0 BPM",
-      );
-    });
-
-    it("should warn and not set tempo above 999 BPM", () => {
-      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
-      const result: { tempo?: number } = {};
-
-      applyTempo(mockLiveSet, 1000, result);
-
-      expect(mockLiveSet.set).not.toHaveBeenCalled();
-      expect(result.tempo).toBeUndefined();
-      expect(capturedWarnings()).toContain(
-        "tempo must be between 20.0 and 999.0 BPM",
-      );
+      expect(mockLiveSet.set).toHaveBeenCalledWith("tempo", 20);
+      expect(result.tempo).toBe(20);
     });
   });
 

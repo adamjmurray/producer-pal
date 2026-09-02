@@ -129,6 +129,16 @@ describe("createScene", () => {
     expect(scene0.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
   });
 
+  // Checked before the padding scenes are created, so a bad tempo doesn't
+  // leave a run of empty scenes behind.
+  it("refuses an out-of-range tempo before creating anything", () => {
+    expect(() => createScene({ sceneIndex: 0, tempo: 0 })).toThrow(
+      "createScene failed: tempo must be between 20.0 and 999.0 BPM " +
+        "(or -1 to disable)",
+    );
+    expect(liveSet.call).not.toHaveBeenCalled();
+  });
+
   it("should disable time signature when 'disabled' is passed", () => {
     createScene({
       sceneIndex: 0,

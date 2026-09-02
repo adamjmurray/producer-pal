@@ -116,17 +116,15 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
-  it("should warn and skip an out-of-range tempo (e.g. 0) instead of writing it", async () => {
-    await withConsoleSpy((consoleSpy) => {
-      const result = updateScene({ id: "123", tempo: 0 });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
-      );
-      expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
-      expect(scene1.set).not.toHaveBeenCalledWith("tempo_enabled", true);
-      expect(result).toStrictEqual({ id: "123", path: "s0" });
-    });
+  // One value for every scene in the call, so a per-scene skip repeated the
+  // same message and still let the names land. Refused before any scene is
+  // touched instead.
+  it.each([0, 1000])("refuses an out-of-range tempo of %i", (tempo) => {
+    expect(() => updateScene({ id: "123", tempo })).toThrow(
+      "updateScene failed: tempo must be between 20.0 and 999.0 BPM " +
+        "(or -1 to disable)",
+    );
+    expect(scene1.set).not.toHaveBeenCalled();
   });
 
   it("accepts boundary tempos of exactly 20 and 999", () => {
@@ -136,17 +134,6 @@ describe("updateScene", () => {
 
     updateScene({ id: "456", tempo: 999 });
     expect(scene2.set).toHaveBeenCalledWith("tempo", 999);
-  });
-
-  it("warns and skips a tempo above the maximum", async () => {
-    await withConsoleSpy((consoleSpy) => {
-      updateScene({ id: "123", tempo: 1000 });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
-      );
-      expect(scene1.set).not.toHaveBeenCalledWith("tempo", expect.any(Number));
-    });
   });
 
   it("refuses more names than scenes, naming both counts", () => {

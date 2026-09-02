@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
 import {
   parseObjectPath,
@@ -22,16 +21,7 @@ export function applyTempoProperty(
   if (tempo === -1) {
     scene.set("tempo_enabled", false);
   } else if (tempo != null) {
-    // Mirror the live-set tempo guard: an out-of-range value (e.g. 0) would
-    // otherwise be written and enabled as an invalid scene tempo. Warn and skip.
-    if (tempo < 20 || tempo > 999) {
-      console.warn(
-        "scene tempo must be between 20.0 and 999.0 BPM (or -1 to disable)",
-      );
-
-      return;
-    }
-
+    // Range already refused by validateTempo, before any scene was touched.
     scene.set("tempo", tempo);
     scene.set("tempo_enabled", true);
   }

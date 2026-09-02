@@ -460,3 +460,36 @@ export function validateSendPair(
     );
   }
 }
+
+/** Live's tempo range, shared by the live set and per-scene tempos. */
+const MIN_TEMPO = 20;
+const MAX_TEMPO = 999;
+
+/**
+ * Refuse a tempo Live can't hold, before anything is written.
+ *
+ * One value for the whole call, so checking it per scene fired the same
+ * message once per scene and still let the names and colors land. Mirrors the
+ * up-front parseTimeSignature call beside it.
+ * @param tempo - Tempo in BPM, if given
+ * @param toolName - Tool name for the error message
+ * @param disableValue - Value meaning "turn tempo off", exempt from the range
+ *   check. Scenes have one; the live set does not.
+ */
+export function validateTempo(
+  tempo: number | null | undefined,
+  toolName: string,
+  disableValue?: number,
+): void {
+  if (tempo == null || tempo === disableValue) return;
+
+  if (tempo < MIN_TEMPO || tempo > MAX_TEMPO) {
+    const disableHint =
+      disableValue == null ? "" : ` (or ${disableValue} to disable)`;
+
+    throw new Error(
+      `${toolName} failed: tempo must be between ${MIN_TEMPO}.0 and ` +
+        `${MAX_TEMPO}.0 BPM${disableHint}`,
+    );
+  }
+}

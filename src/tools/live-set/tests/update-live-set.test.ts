@@ -65,14 +65,13 @@ describe("updateLiveSet", () => {
     ).rejects.toThrow("Unknown locator operation: bogus");
   });
 
-  it("should warn and skip for invalid tempo", async () => {
-    // Should not throw, just warn and skip the tempo update
-    const result1 = await updateLiveSet({ tempo: 10 });
-    const result2 = await updateLiveSet({ tempo: 1000 });
-
-    // Tempo should not be in the result when skipped
-    expect(result1).toStrictEqual({ id: "live_set_id" });
-    expect(result2).toStrictEqual({ id: "live_set_id" });
+  // One value for the whole call, and Live can't hold it — refused before any
+  // property is written, the way a malformed timeSignature already was.
+  it.each([10, 1000])("refuses an out-of-range tempo of %i", async (tempo) => {
+    await expect(updateLiveSet({ tempo })).rejects.toThrow(
+      "updateLiveSet failed: tempo must be between 20.0 and 999.0 BPM",
+    );
+    expect(liveSet.set).not.toHaveBeenCalled();
   });
 
   it("should update time signature", async () => {
