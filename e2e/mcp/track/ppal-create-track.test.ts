@@ -67,13 +67,13 @@ describe("ppal-create-track", () => {
     const returnTrack = parseToolResult<CreateTrackResult>(returnResult);
 
     expect(returnTrack.id).toBeDefined();
-    expect(typeof returnTrack.returnTrackIndex).toBe("number");
+    expect(returnTrack.path).toMatch(/^rt\d+$/);
 
     await sleep(100);
     const verifyReturn = await ctx.client!.callTool({
       name: "ppal-read-track",
       arguments: {
-        path: `rt${returnTrack.returnTrackIndex}`,
+        path: returnTrack.path,
       },
     });
     const returnRead = parseToolResult<ReadTrackResult>(verifyReturn);
@@ -92,7 +92,7 @@ describe("ppal-create-track", () => {
       }),
     );
 
-    expect(typeof data.returnTrackIndex).toBe("number");
+    expect(data.path).toMatch(/^rt\d+$/);
     expect(warnings).toStrictEqual([
       'WARNING: createTrack: type "return" is deprecated and will be removed; use path "rt+" instead',
     ]);
@@ -285,7 +285,6 @@ interface LiveSetResult {
 interface CreateTrackResult {
   id: string;
   path?: string;
-  returnTrackIndex?: number;
 }
 
 interface ReadTrackResult {

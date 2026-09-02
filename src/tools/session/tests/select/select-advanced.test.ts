@@ -616,11 +616,10 @@ describe("view", () => {
         id: "789",
         path: "t0",
         type: "midi",
-        trackIndex: 0,
       });
       expect(result.selectedScene).toStrictEqual({
         id: "012",
-        sceneIndex: 2,
+        path: "s2",
       });
       // Clip and device are read from detail_clip and track view
       expect(result.selectedClip).toBeDefined();
@@ -634,7 +633,7 @@ describe("view", () => {
       expect(result).toStrictEqual(expectReadState({ view: "arrangement" }));
     });
 
-    it("reads return track with trackIndex", () => {
+    it("reads a return track", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -658,11 +657,10 @@ describe("view", () => {
       expect(result.selectedTrack).toStrictEqual({
         id: "return_456",
         path: "rt2",
-        trackIndex: 2,
       });
     });
 
-    it("reads master track without trackIndex", () => {
+    it("reads the main track", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -715,7 +713,6 @@ describe("view", () => {
         id: "audio_track_456",
         path: "t1",
         type: "audio",
-        trackIndex: 1,
       });
     });
 

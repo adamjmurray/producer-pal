@@ -64,9 +64,8 @@ export interface SelectResult {
     path?: string;
     /** Only a regular track has one — see trackTypeField */
     type?: string;
-    trackIndex?: number;
   };
-  selectedScene?: { id: string; sceneIndex: number };
+  selectedScene?: { id: string; path: string };
   selectedClip?: {
     id: string;
     /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the

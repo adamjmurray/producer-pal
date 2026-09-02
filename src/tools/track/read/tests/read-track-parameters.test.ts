@@ -112,7 +112,6 @@ describe("readTrack", () => {
         id: "456",
         path: "rt1",
         name: "Return by ID",
-        returnTrackIndex: 1,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -171,7 +170,6 @@ describe("readTrack", () => {
 
       // Should read as regular track (from path) not return track
       expect(result.path).toBe("t0");
-      expect(result.returnTrackIndex).toBeUndefined();
     });
   });
 
@@ -209,7 +207,6 @@ describe("readTrack", () => {
         id: "456",
         path: "rt1",
         name: "Return by Path",
-        returnTrackIndex: 1,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -274,7 +271,6 @@ describe("readTrack", () => {
       const result = readTrack({ path: "t0", trackType: "return" });
 
       expect(result.path).toBe("t0");
-      expect(result.returnTrackIndex).toBeUndefined();
     });
   });
 

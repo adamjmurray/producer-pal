@@ -251,6 +251,12 @@ The results followed in the same release: `trackIndex` on `create-track` and
 on `create-device` are gone — `path` spells all three. A drum pad still reports
 `chainCount`, but only when its `chains` array isn't there to be counted.
 
+The last four went with them, so the rule has no exceptions to remember:
+`returnTrackIndex` on `create-track` and `read-track`, and `trackIndex` on
+`select`'s `selectedTrack` — which named a return index or a regular one
+depending on a sibling field. `select`'s `selectedScene` and capture's `clips[]`
+had no path to fall back on, so they gained one (`s2`, `t3/s5`).
+
 1. **`path` on the read tools' input.** `read-track` and `read-scene` address by
    `trackIndex` / `sceneIndex` today and take no path. Add it first.
 2. **`type` stops reporting the role.** Both `computeTrackType` sites together,

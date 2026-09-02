@@ -28,7 +28,6 @@ import {
   type CategorizedDevices,
 } from "./helpers/read-track-device-helpers.ts";
 import {
-  addReturnTrackIndex,
   addOptionalBooleanProperties,
   addProducerPalHostInfo,
   addRoutingInfo,
@@ -317,8 +316,6 @@ export function readTrackGeneric({
   if (groupId) {
     result.groupId = atomToString(groupId);
   }
-
-  addReturnTrackIndex(result, category, trackIndex);
 
   // One drum-rack walk for all three clip reads below (see drumModeForTrack).
   const isDrumMode = drumModeForTrack(track, include);

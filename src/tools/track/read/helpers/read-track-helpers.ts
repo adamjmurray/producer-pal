@@ -259,22 +259,6 @@ export function addOptionalBooleanProperties(
 }
 
 /**
- * Add a return track's index. A regular track's index is already in its `path`.
- * @param result - Result object to modify
- * @param category - Track category (regular, return, or master)
- * @param trackIndex - Track index
- */
-export function addReturnTrackIndex(
-  result: Record<string, unknown>,
-  category: string,
-  trackIndex: number | null,
-): void {
-  if (category === "return") {
-    result.returnTrackIndex = trackIndex;
-  }
-}
-
-/**
  * Add slot index properties for regular tracks
  * @param result - Result object to modify
  * @param track - Track object

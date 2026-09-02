@@ -35,7 +35,6 @@ interface CreateTrackArgs {
 interface CreatedTrackResult {
   id: string;
   path: string;
-  returnTrackIndex?: number;
 }
 
 /**
@@ -215,21 +214,14 @@ export function createTrack(
       i,
     );
 
-    createdTracks.push(
-      type === "return"
-        ? {
-            id: trackId,
-            path: formatObjectPath({
-              kind: "return-track",
-              returnIndex: resultIndex,
-            }),
-            returnTrackIndex: resultIndex,
-          }
-        : {
-            id: trackId,
-            path: formatObjectPath({ kind: "track", trackIndex: resultIndex }),
-          },
-    );
+    createdTracks.push({
+      id: trackId,
+      path: formatObjectPath(
+        type === "return"
+          ? { kind: "return-track", returnIndex: resultIndex }
+          : { kind: "track", trackIndex: resultIndex },
+      ),
+    });
 
     // For subsequent midi/audio tracks with explicit index, increment since tracks shift right
     if (type !== "return" && effectiveTrackIndex !== -1) {

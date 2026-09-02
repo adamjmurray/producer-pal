@@ -72,7 +72,6 @@ describe("createTrack by path", () => {
     expect(createTrack({ path: "rt+", name: "Reverb" })).toStrictEqual({
       id: "return_track_0",
       path: "rt2",
-      returnTrackIndex: 2,
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
   });

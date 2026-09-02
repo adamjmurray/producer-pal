@@ -208,7 +208,6 @@ describe("readTrack", () => {
           id: "return_track_1",
           path: "rt1",
           name: "Return B",
-          returnTrackIndex: 1,
           sessionClipCount: 0,
           arrangementClipCount: 0,
           deviceCount: 0,
@@ -301,9 +300,6 @@ describe("readTrack", () => {
           arrangementClipCount: 0,
           deviceCount: 1,
         });
-
-        // trackIndex should be ignored for master track
-        expect(result.returnTrackIndex).toBeUndefined();
       });
 
       it("throws when master track does not exist", () => {
@@ -468,6 +464,5 @@ function setupAndReadRegularTrack(
 
 function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {
   expect(result.path).toBe("t0");
-  expect(result.returnTrackIndex).toBeUndefined();
   expect(result.id).toBe("track1");
 }

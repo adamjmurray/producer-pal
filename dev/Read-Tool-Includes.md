@@ -137,7 +137,6 @@ Returns track overview by default. Use `include` to add detail.
 | `path`                 | `string` | Where the track is: `"t0"`, `"rt1"`, `"mt"`                   |
 | `name`                 | `string` | Track name                                                    |
 | `type`                 | `string` | `"midi"` or `"audio"`; omitted on a return or the main track  |
-| `returnTrackIndex`     | `number` | 0-based index (return tracks only)                            |
 | `instrument`           | `string` | Instrument class name (omitted if no instrument)              |
 | `groupId`              | `string` | Parent group track ID (only when grouped)                     |
 | `isArmed`              | `true`   | Only present when armed                                       |

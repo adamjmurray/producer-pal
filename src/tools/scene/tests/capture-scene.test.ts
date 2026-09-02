@@ -160,7 +160,7 @@ describe("captureScene", () => {
     expect(result.sceneIndex).toBe(13);
   });
 
-  it("should return captured clips with their IDs and track indices", () => {
+  it("should return captured clips with their IDs and slot paths", () => {
     registerMockObject("live_set", {
       path: livePath.liveSet,
       properties: { tracks: ["id", "1", "id", "2", "id", "3"] },
@@ -183,8 +183,8 @@ describe("captureScene", () => {
       path: "s1",
       sceneIndex: 1,
       clips: [
-        { id: "live_set/tracks/0/clip_slots/1/clip", trackIndex: 0 },
-        { id: "live_set/tracks/2/clip_slots/1/clip", trackIndex: 2 },
+        { id: "live_set/tracks/0/clip_slots/1/clip", path: "t0/s1" },
+        { id: "live_set/tracks/2/clip_slots/1/clip", path: "t2/s1" },
       ],
     });
   });

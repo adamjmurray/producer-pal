@@ -80,12 +80,12 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "return1",
             name: "Return A",
-            returnTrackIndex: 0,
+            path: "rt0",
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
-            returnTrackIndex: 1,
+            path: "rt1",
           }),
         ],
         mainTrack: expect.objectContaining({

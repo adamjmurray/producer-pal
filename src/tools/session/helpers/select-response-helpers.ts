@@ -8,7 +8,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  objectPathForApi,
+  pathField,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   arrangementPath,
   slotPath,
@@ -162,7 +165,7 @@ function buildTrackInfo(
 
   if (category == null) return undefined;
 
-  const info: NonNullable<SelectResult["selectedTrack"]> = {
+  return {
     id: track.id,
     ...pathField(track),
     ...trackTypeField(
@@ -170,27 +173,21 @@ function buildTrackInfo(
       category,
     ),
   };
-
-  if (category === "regular" && track.trackIndex != null) {
-    info.trackIndex = track.trackIndex;
-  } else if (category === "return" && track.returnTrackIndex != null) {
-    info.trackIndex = track.returnTrackIndex;
-  }
-
-  return info;
 }
 
 /**
  * Build scene info from a LiveAPI scene reference
  * @param scene - LiveAPI reference to a scene
- * @returns Scene info or undefined if scene doesn't exist
+ * @returns Scene info, or undefined when the scene is gone or unnameable
  */
 function buildSceneInfo(
   scene: LiveAPI,
 ): SelectResult["selectedScene"] | undefined {
-  if (!scene.exists() || scene.sceneIndex == null) return undefined;
+  if (!scene.exists()) return undefined;
 
-  return { id: scene.id, sceneIndex: scene.sceneIndex };
+  const path = objectPathForApi(scene);
+
+  return path == null ? undefined : { id: scene.id, path };
 }
 
 /**

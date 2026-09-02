@@ -179,9 +179,9 @@ Four tiers, in order of preference.
 Every write result — create, update, duplicate — reports `path` beside `id`, so
 the next call can address what was just written without rebuilding the path from
 indices. No result repeats that address as an index: no `slot`, no `trackIndex`,
-`sceneIndex` or `deviceIndex`. A return track's `returnTrackIndex` is the one
-holdout. `delete` is the exception: after deleting `t2`, that path names a
-different track, so a deleted object reports none.
+`sceneIndex`, `deviceIndex` or `returnTrackIndex` — no exceptions, so there is
+nothing to remember. `delete` is the one place a result carries no path at all:
+after deleting `t2`, that path names a different track.
 
 | Object                 | Result                                      |
 | ---------------------- | ------------------------------------------- |

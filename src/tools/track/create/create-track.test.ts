@@ -354,12 +354,8 @@ describe("createTrack", () => {
 
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
       expect(track.set).toHaveBeenCalledWith("name", "New Return");
-      // Result returnTrackIndex should reflect position (2 existing return tracks)
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        path: "rt2",
-        returnTrackIndex: 2,
-      });
+      // The path reflects position (2 existing return tracks)
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
 
     it("should create multiple return tracks", () => {
@@ -373,8 +369,8 @@ describe("createTrack", () => {
       expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_return_track");
 
       expect(result).toStrictEqual([
-        { id: "return_track_0", path: "rt2", returnTrackIndex: 2 },
-        { id: "return_track_1", path: "rt3", returnTrackIndex: 3 },
+        { id: "return_track_0", path: "rt2" },
+        { id: "return_track_1", path: "rt3" },
       ]);
     });
 
@@ -400,20 +396,16 @@ describe("createTrack", () => {
       );
       // Should still create the track
       expect(liveSet.call).toHaveBeenCalledWith("create_return_track");
-      // The ignored trackIndex must NOT leak into the result index: a return
-      // track is always appended, so returnTrackIndex is the existing return
-      // count (2), never the passed-in 5.
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        path: "rt2",
-        returnTrackIndex: 2,
-      });
+      // The ignored trackIndex must NOT leak into the result path: a return
+      // track is always appended, so its index is the existing return count
+      // (2), never the passed-in 5.
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
 
     it("should index a return track by the return-track count, not the total track count", () => {
       // Regression guard: the default mock happens to have equal regular and
-      // return track counts, which masks whether returnTrackIndex is derived
-      // from return_tracks (correct) or tracks (wrong). Use asymmetric counts.
+      // return track counts, which masks whether the index is derived from
+      // return_tracks (correct) or tracks (wrong). Use asymmetric counts.
       registerMockObject("liveSet", {
         path: livePath.liveSet,
         properties: {
@@ -429,11 +421,7 @@ describe("createTrack", () => {
       const result = createTrack({ type: "return", name: "New Return" });
 
       // 2 existing return tracks → index 2 (NOT 3, the regular-track count).
-      expect(result).toStrictEqual({
-        id: "return_track_0",
-        path: "rt2",
-        returnTrackIndex: 2,
-      });
+      expect(result).toStrictEqual({ id: "return_track_0", path: "rt2" });
     });
   });
 

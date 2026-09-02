@@ -57,7 +57,6 @@ describe("select-response-helpers", () => {
         id: "track_1",
         path: "t0",
         type: "midi",
-        trackIndex: 0,
       });
     });
 
@@ -79,7 +78,6 @@ describe("select-response-helpers", () => {
         id: "track_2",
         path: "t1",
         type: "audio",
-        trackIndex: 1,
       });
     });
 
@@ -100,7 +98,6 @@ describe("select-response-helpers", () => {
       expect(result).toStrictEqual({
         id: "return_track_0",
         path: "rt0",
-        trackIndex: 0,
       });
     });
 
@@ -161,7 +158,7 @@ describe("select-response-helpers", () => {
 
       const result = buildSceneResponseFromId("id scene_0");
 
-      expect(result).toStrictEqual({ id: "scene_0", sceneIndex: 0 });
+      expect(result).toStrictEqual({ id: "scene_0", path: "s0" });
     });
 
     it("returns undefined for non-existent scene", () => {

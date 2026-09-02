@@ -365,7 +365,6 @@ interface DeleteResult {
 interface CreateTrackResult {
   id: string;
   path?: string;
-  returnTrackIndex?: number;
 }
 
 interface CreateSceneResult {

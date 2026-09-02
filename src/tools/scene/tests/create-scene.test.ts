@@ -467,8 +467,8 @@ describe("createScene", () => {
         id: "live_set/scenes/2",
         path: "s2",
         clips: [
-          { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
-          { id: "live_set/tracks/2/clip_slots/2/clip", trackIndex: 2 },
+          { id: "live_set/tracks/0/clip_slots/2/clip", path: "t0/s2" },
+          { id: "live_set/tracks/2/clip_slots/2/clip", path: "t2/s2" },
         ],
       });
     });

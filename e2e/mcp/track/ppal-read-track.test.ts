@@ -67,7 +67,7 @@ describe("ppal-read-track", () => {
     const returnTrack = parseToolResult<ReadTrackResult>(returnResult);
 
     expect(returnTrack.id).toBeDefined();
-    expect(returnTrack.returnTrackIndex).toBe(0);
+    expect(returnTrack.path).toBe("rt0");
 
     // Test 4: Read master track
     const masterResult = await ctx.client!.callTool({
@@ -206,7 +206,6 @@ interface ReadTrackResult {
   type: "midi" | "audio" | null;
   name: string | null;
   path?: string;
-  returnTrackIndex?: number | null;
   hasProducerPalDevice?: boolean;
   isGroup?: boolean;
   groupId?: string;

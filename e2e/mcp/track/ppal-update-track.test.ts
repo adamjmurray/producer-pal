@@ -338,7 +338,6 @@ interface LiveSetResult {
 
 interface CreateTrackResult {
   id: string;
-  returnTrackIndex?: number;
 }
 
 interface UpdateTrackResult {

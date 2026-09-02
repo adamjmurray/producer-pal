@@ -395,7 +395,7 @@ describe("specialized devices: Compressor", () => {
     // Return/master sources now resolve to a track id on read (they
     // previously read back as null). A return track only becomes a routable
     // sidechain source once it carries an audio-bearing device, so give it one.
-    const created = parseToolResult<{ id: string; returnTrackIndex: number }>(
+    const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
         arguments: { path: "rt+" },
@@ -406,11 +406,7 @@ describe("specialized devices: Compressor", () => {
 
     const returnTrackId = created.id;
 
-    await createTestDevice(
-      ctx.client!,
-      "Reverb",
-      `rt${created.returnTrackIndex}`,
-    );
+    await createTestDevice(ctx.client!, "Reverb", created.path);
 
     const compId = await createEffect("Compressor");
     const sourceIds = (await readDevice(compId, ["options"])).options

@@ -76,24 +76,22 @@ describe("ppal-select", () => {
     const regular = await select({ path: "t0" });
 
     expect(regular.selectedTrack!.type).toBe("midi");
-    expect(regular.selectedTrack!.trackIndex).toBe(0);
+    expect(regular.selectedTrack!.path).toBe("t0");
     expect(regular.selectedTrack!.id).toBeDefined();
 
     const returnTrack = await select({ path: "rt0" });
 
     expect(returnTrack.selectedTrack!.path).toBe("rt0");
-    expect(returnTrack.selectedTrack!.trackIndex).toBe(0);
 
     const master = await select({ path: "mt" });
 
     expect(master.selectedTrack!.path).toBe("mt");
-    expect(master.selectedTrack!.trackIndex).toBeUndefined();
   });
 
   it("selects a scene by path, switching to session view for it", async () => {
     const scene = await select({ path: "s0" });
 
-    expect(scene.selectedScene!.sceneIndex).toBe(0);
+    expect(scene.selectedScene!.path).toBe("s0");
     expect(scene.selectedScene!.id).toBeDefined();
     expect(scene.view).toBe("session");
   });
@@ -296,11 +294,10 @@ interface SelectResult {
     // Only a regular track reports its signal type; "rt0"/"mt" already say what
     // a return or the main track carries. See trackTypeField.
     type?: string;
-    trackIndex?: number;
   };
   selectedScene?: {
     id: string;
-    sceneIndex: number;
+    path: string;
   };
   selectedClip?: {
     id: string;

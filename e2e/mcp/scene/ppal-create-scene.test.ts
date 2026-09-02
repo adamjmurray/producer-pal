@@ -216,6 +216,12 @@ describe("ppal-create-scene", () => {
     expect(capture.path).toMatch(/^s[1-9]\d*$/);
     expect(Array.isArray(capture.clips)).toBe(true);
     expect(capture.clips!.length).toBeGreaterThan(0);
+    // Every captured clip names the slot it landed in, on the new scene
+    const sceneSuffix = `/${capture.path!}`;
+
+    for (const clip of capture.clips!) {
+      expect(clip.path.endsWith(sceneSuffix)).toBe(true);
+    }
 
     // The capture inserts exactly one scene
     await sleep(100);
@@ -258,7 +264,7 @@ interface CreateSceneResult {
 interface CaptureSceneResult {
   id: string;
   path: string;
-  clips?: Array<{ id: string; trackIndex: number }>;
+  clips?: Array<{ id: string; path: string }>;
 }
 
 interface ReadSceneResult {
