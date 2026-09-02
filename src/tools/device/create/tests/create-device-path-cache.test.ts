@@ -117,16 +117,20 @@ function nestedDeviceResolves(): number {
 describe("createDevice path cache", () => {
   beforeEach(setupNestedRacks);
 
-  // Without the invalidation the third path hits the cache and inserts into the
-  // inner rack, which by then sits a slot lower than the path names.
-  it("stops trusting a cached device path after an append Live re-sorts", () => {
-    createDevice({
-      deviceName: "Operator",
-      path: `${NESTED}, t0/d0/c0, ${NESTED}`,
-    });
+  // The third path is spelled through the chain the second one re-sorts, so it
+  // no longer names the inner rack. That is refused up front now rather than
+  // left to the cache: re-resolving would have found a real device at that
+  // path and inserted into the wrong one.
+  it("refuses a path spelled through a chain an earlier append re-sorts", () => {
+    expect(() =>
+      createDevice({
+        deviceName: "Operator",
+        path: `${NESTED}, t0/d0/c0, ${NESTED}`,
+      }),
+    ).toThrow(`path entry "${NESTED}" is spelled through "t0/d0/c0"`);
 
-    expect(innerInserts()).toBe(1);
-    expect(nestedDeviceResolves()).toBe(2);
+    // Refused before anything ran, so there is nothing to clean up.
+    expect(innerInserts()).toBe(0);
   });
 
   // An audio effect goes on the end, so every path already resolved still

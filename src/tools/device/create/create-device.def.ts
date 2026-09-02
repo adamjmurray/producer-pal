@@ -23,7 +23,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .describe("device name, omit to list available devices"),
     path: param(z.coerce.string().optional(), {
       default:
-        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0' or 't0,t1,t0/d0/c0')",
+        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0' or 't0,t1,t0/d0/c0'). An insert renumbers the chain, so no later entry may be spelled through a chain an earlier one inserts into",
       smallModel:
         "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
     }),

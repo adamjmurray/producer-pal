@@ -26,6 +26,16 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
+import {
+  requireDeviceContainer,
+  type DeviceContainerPath,
+} from "#src/tools/shared/validation/object-path-helpers.ts";
+import {
+  type DeviceSegment,
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;
@@ -95,6 +105,8 @@ export function createDevice(
 
   const paths = targetEntries(path, "path");
 
+  validateInsertionOrder(paths, deviceName);
+
   const parsedNames = parseNames(name, paths.length, "device");
 
   // Every path in the batch climbs the same prefix — sixteen `t0/d0/c<n>`
@@ -110,6 +122,99 @@ export function createDevice(
   }
 
   return unwrapSingleResult(results);
+}
+
+/** Where one path entry inserts, and whether it names a slot in that chain. */
+interface InsertionTarget {
+  /** How the container is spelled back to the caller. */
+  display: string;
+  /** The same container with pad notes resolved, so "pC1" and "pc1" match. */
+  key: string;
+  positioned: boolean;
+}
+
+/**
+ * Refuse a path list whose later entries are spelled through a chain an earlier
+ * entry has renumbered.
+ *
+ * An insert shifts every later device down a slot, so a `d<n>` written after it
+ * — in that chain, or anywhere below it — names something that has already
+ * moved. An append renumbers too when Live re-sorts the chain around it, which
+ * is every device but an audio effect. Nothing has run yet, so refusing costs
+ * the caller only a retry (ADR-0035).
+ * @param paths - The path entries, in order
+ * @param deviceName - The device every entry inserts
+ * @throws Error when an entry is spelled through a renumbered chain
+ */
+function validateInsertionOrder(paths: string[], deviceName: string): void {
+  const appendRenumbers = !(
+    VALID_DEVICES.audioEffects as readonly string[]
+  ).includes(deviceName);
+  const renumbered: InsertionTarget[] = [];
+
+  for (const p of paths) {
+    const target = insertionTarget(p);
+
+    if (target == null) continue;
+
+    const stale = renumbered.find(
+      (earlier) =>
+        target.key.startsWith(`${earlier.key}/`) ||
+        (target.positioned && target.key === earlier.key),
+    );
+
+    if (stale != null) {
+      throw new Error(
+        `createDevice failed: path entry "${p}" is spelled through "${stale.display}", ` +
+          `which an earlier entry renumbers by inserting into it. Make these calls ` +
+          `separately, or name where the device should land after that insert.`,
+      );
+    }
+
+    if (target.positioned || appendRenumbers) renumbered.push(target);
+  }
+}
+
+/**
+ * The chain a path inserts into, and whether it names a position in it. A path
+ * that doesn't parse has no target — the insert loop reports it, one entry at a
+ * time, the way it always has.
+ * @param path - One path entry
+ * @returns The container and whether the insert is positioned, or null
+ */
+function insertionTarget(path: string): InsertionTarget | null {
+  let parsed: DeviceContainerPath;
+
+  try {
+    parsed = requireDeviceContainer(parseObjectPath(path, "path"), "path");
+  } catch {
+    return null;
+  }
+
+  const positioned = parsed.segments.at(-1)?.kind === "device";
+  const segments = positioned ? parsed.segments.slice(0, -1) : parsed.segments;
+  const container = { kind: "device", root: parsed.root, segments } as const;
+
+  return {
+    display: formatObjectPath(container),
+    key: formatObjectPath({ ...container, segments: segments.map(padByNote) }),
+    positioned,
+  };
+}
+
+/**
+ * Spell a drum pad by its MIDI note, so two spellings of one pad compare equal.
+ * Note names are case-insensitive and enharmonic, so "pC1", "pc1" and "pB#0"
+ * all name the same pad and only the number says so.
+ * @param segment - One parsed device-path segment
+ * @returns The segment, with a pad's note replaced by its MIDI number
+ */
+function padByNote(segment: DeviceSegment): DeviceSegment {
+  if (segment.kind !== "drum-pad") return segment;
+
+  const midi = noteNameToMidi(segment.note);
+
+  return midi == null ? segment : { ...segment, note: String(midi) };
 }
 
 /**
