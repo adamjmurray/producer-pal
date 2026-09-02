@@ -531,3 +531,181 @@ describe("readDevice with drum pad path", () => {
     );
   });
 });
+
+/**
+ * Setup a Drum Rack whose C1 pad holds another Drum Rack. Live gives a rack
+ * nested inside a drum pad no pads of its own, only chains grouped by in_note —
+ * so its C3 "pad" has no id, and its path is the only handle on it.
+ */
+function setupPadlessNestedRackMocks() {
+  const rackPath = String(livePath.track(1).device(0));
+  const outerChain = `${rackPath} chains 0`;
+  const subRack = `${outerChain} devices 0`;
+
+  registerMockObject("drum-rack-1", {
+    path: rackPath,
+    type: "Device",
+    properties: {
+      class_display_name: "Drum Rack",
+      type: 1,
+      is_active: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: children("pad-36"),
+      chains: children("chain-1"),
+    },
+  });
+  registerMockObject("pad-36", {
+    path: `${rackPath} drum_pads 36`,
+    type: "DrumPad",
+    properties: { note: 36, name: "Sub Kit", chains: children("chain-1") },
+  });
+  registerMockObject("chain-1", {
+    path: outerChain,
+    type: "DrumChain",
+    properties: {
+      name: "Sub Kit",
+      in_note: 36,
+      out_note: 36,
+      devices: children("sub-rack"),
+    },
+  });
+  registerMockObject("sub-rack", {
+    path: subRack,
+    type: "Device",
+    properties: {
+      class_display_name: "Drum Rack",
+      type: 1,
+      is_active: 1,
+      can_have_chains: 1,
+      can_have_drum_pads: 1,
+      drum_pads: [],
+      chains: children("sub-chain"),
+    },
+  });
+  registerMockObject("sub-chain", {
+    path: `${subRack} chains 0`,
+    type: "DrumChain",
+    properties: { name: "Hat", in_note: 60, out_note: 60, devices: [] },
+  });
+}
+
+// The drumPads list is how a model finds out what pads exist, so it has to name
+// the path each pad answers to — the pads of a nested rack have no id, and the
+// path is then the only handle on them.
+describe("readDevice drumPads list", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("names the path of every pad it lists", () => {
+    setupCatchAllChainMocks();
+
+    const rack = readDevice({ path: "t1/d0", include: ["drum-pads"] });
+
+    expect(rack.drumPads).toStrictEqual([
+      {
+        path: "t1/d0/p*",
+        name: "All Notes",
+        note: -1,
+        pitch: "*",
+        chainCount: 1,
+      },
+    ]);
+  });
+
+  it("names the path alongside the id of a pad the rack backs", () => {
+    setupKickPadMocks({ padExtra: { chainIds: ["chain-1"] } });
+    registerMockObject("drum-rack-1", {
+      path: String(livePath.track(1).device(0)),
+      type: "Device",
+      properties: {
+        class_display_name: "Drum Rack",
+        type: 1,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        drum_pads: children("pad-36"),
+        chains: children("chain-1"),
+      },
+    });
+
+    const rack = readDevice({ path: "t1/d0", include: ["drum-pads"] });
+
+    expect(rack.drumPads).toStrictEqual([
+      {
+        id: "pad-36",
+        path: "t1/d0/pC1",
+        name: "Chain",
+        note: 36,
+        pitch: "C1",
+        chainCount: 1,
+        hasInstrument: false,
+      },
+    ]);
+  });
+
+  // Both routes to a pad the rack has no DrumPad for build from the same
+  // chains, so the pad reads the same whichever way it was reached.
+  it("matches the pad read for a muted, silent catch-all", () => {
+    setupCatchAllChainMocks();
+    registerMockObject("catch-all", {
+      path: `${livePath.track(1).device(0)} chains 0`,
+      type: "DrumChain",
+      properties: {
+        name: "All Notes",
+        in_note: -1,
+        out_note: 36,
+        mute: 1,
+        devices: [],
+      },
+    });
+
+    const pad = readDevice({ path: "t1/d0/p*", include: [] });
+
+    expect(pad).toStrictEqual({
+      path: "t1/d0/p*",
+      name: "All Notes",
+      note: -1,
+      pitch: "*",
+      chainCount: 1,
+      state: "muted",
+      hasInstrument: false,
+    });
+    expect(
+      readDevice({ path: "t1/d0", include: ["drum-pads"] }).drumPads,
+    ).toStrictEqual([pad]);
+  });
+
+  it("names the path of a nested rack's pad, which has no id", () => {
+    setupPadlessNestedRackMocks();
+
+    const subRack = readDevice({
+      path: "t1/d0/pC1/c0/d0",
+      include: ["drum-pads"],
+    });
+
+    expect(subRack.drumPads).toStrictEqual([
+      {
+        path: "t1/d0/pC1/c0/d0/pC3",
+        name: "Hat",
+        note: 60,
+        pitch: "C3",
+        chainCount: 1,
+        hasInstrument: false,
+      },
+    ]);
+  });
+
+  // A nested rack's pad is reachable by path only, so the path the list prints
+  // has to resolve. It lands on the pad's chain — the rack has no pad object
+  // for it — which is the same thing every write to that path acts on.
+  it("resolves the nested pad path it printed", () => {
+    setupPadlessNestedRackMocks();
+
+    const target = readDevice({ path: "t1/d0/pC1/c0/d0/pC3" });
+
+    expect(target.id).toBe("sub-chain");
+    expect(target.path).toBe("t1/d0/pC1/c0/d0/pC3");
+  });
+});

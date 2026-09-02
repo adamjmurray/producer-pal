@@ -30,7 +30,7 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=main, \`d\`=device,
 
 A \`drumMap\` always comes with \`drumRackPath\`, the rack that owns those pads — build pad paths from it (\`<drumRackPath>/p<note>\`), not from the track's device list, because the kit is often nested inside another rack.
 
-A Drum Rack nested inside a drum pad has no pads of its own — read-device lists its pads without an \`id\`. Reach those by path only: they can't be deleted or duplicated as pads, and Live offers no way to delete their chains either — empty one by deleting its devices, or move it with \`toPath\`.
+A Drum Rack nested inside a drum pad has no pads of its own — read-device lists its pads with a \`path\` but no \`id\`. Use that path: they can't be deleted or duplicated as pads, and Live offers no way to delete their chains either — empty one by deleting its devices, or move it with \`toPath\`.
 
 ppal-select takes these paths too: \`path: "t0/d0/pC1"\` shows a pad in Live, \`t0/d0/c1\` a rack chain.
 

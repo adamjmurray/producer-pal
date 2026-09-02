@@ -12,7 +12,78 @@ import {
   computeState,
   deviceHasInstrument,
 } from "./device-state-helpers.ts";
+import { buildDrumPadPath } from "./path/device-path-builders.ts";
 import { extractDevicePath } from "./path/device-path-helpers.ts";
+
+// A drum pad is reached three ways — as a read target with its DrumPad object,
+// as a target the rack has no DrumPad for, and in a rack's `drumPads` list.
+// buildDrumPadFields is the one place all three assemble their fields.
+
+export interface DrumPadFields {
+  /** Absent when the rack has no DrumPad for this note: the catch-all, and
+   * every pad of a Drum Rack nested in a drum pad. Its absence says the pad
+   * can't be named by id, which is why `path` has to be there. */
+  id?: string | undefined;
+  /** Absent only when the caller had no rack path to build from */
+  path?: string | null;
+  note: number;
+  name?: unknown;
+  chainCount: number;
+  state?: string | undefined;
+  /** Only ever false: nothing in the pad makes sound */
+  hasInstrument?: boolean;
+}
+
+/**
+ * Build a drum pad's fields, minus its chains.
+ * @param fields - What the caller resolved about the pad
+ * @returns Drum pad info
+ */
+export function buildDrumPadFields(
+  fields: DrumPadFields,
+): Record<string, unknown> {
+  const { id, path, note, name, chainCount, state, hasInstrument } = fields;
+
+  return {
+    ...(id == null ? {} : { id }),
+    ...(path == null ? {} : { path }),
+    name,
+    note,
+    pitch: drumPadPitch(note),
+    // `name` alone can't tell a layered pad from a single-chain one: Live
+    // labels both "Multi" once a chain is named that. The count can.
+    chainCount,
+    ...(state == null ? {} : { state }),
+    ...(hasInstrument === false ? { hasInstrument: false } : {}),
+  };
+}
+
+/**
+ * The pitch a pad reports: `*` for the catch-all, null for a note outside
+ * 0-127. Live never routes to one, but nothing here proves that.
+ * @param note - The pad's MIDI note, or -1 for the catch-all
+ * @returns Note name, `*`, or null
+ */
+export function drumPadPitch(note: number): string | null {
+  return note < 0 ? "*" : midiToNoteName(note);
+}
+
+/**
+ * The path a rack's pad sits at.
+ * @param rackPath - The rack's own path, or null when it has none
+ * @param note - The pad's MIDI note, or -1 for the catch-all
+ * @returns The pad path, or null when the rack has none
+ */
+export function drumPadPathForNote(
+  rackPath: string | null,
+  note: number,
+): string | null {
+  // A note that doesn't name gets the catch-all spelling, so the path is at
+  // least a path.
+  return rackPath == null
+    ? null
+    : buildDrumPadPath(rackPath, drumPadPitch(note) ?? "*");
+}
 
 export interface DrumChainOptions {
   includeDrumPads: boolean;
@@ -23,7 +94,8 @@ export interface DrumChainOptions {
     device: LiveAPI,
     options: Record<string, unknown>,
   ) => Record<string, unknown>;
-  parentPath: string | null;
+  /** The pad's own path, or null when the rack has none to build from */
+  padPath: string | null;
 }
 
 export interface ProcessedChain {
@@ -35,6 +107,7 @@ export interface ProcessedChain {
 
 export interface DrumPadInfo {
   id?: string;
+  path?: string;
   note: number;
   pitch: string | null;
   name?: string;
@@ -42,34 +115,6 @@ export interface DrumPadInfo {
   hasInstrument?: boolean;
   chains?: Record<string, unknown>[];
   _processedChains?: ProcessedChain[];
-}
-
-/**
- * Build path for a drum rack chain based on its in_note and position within that note group
- * @param parentPath - Parent device path (e.g., "t0/d0")
- * @param inNote - Chain's in_note property (-1 for catch-all, >=0 for specific note)
- * @param indexWithinNote - Index within chains having the same in_note
- * @returns Chain path (e.g., "t0/d0/pC1/c0" or catch-all form `t0/d0/p*` + `/c0`)
- */
-function buildDrumChainPath(
-  parentPath: string,
-  inNote: number,
-  indexWithinNote: number,
-): string {
-  if (inNote === -1) {
-    // Catch-all chain: p*/c0, p*/c1, etc.
-    return `${parentPath}/p*/c${indexWithinNote}`;
-  }
-
-  const noteName = midiToNoteName(inNote);
-
-  if (noteName == null) {
-    // Invalid note - use catch-all notation with index
-    return `${parentPath}/p*/c${indexWithinNote}`;
-  }
-
-  // Note-specific chain: pC1/c0, pC1/c1, etc.
-  return `${parentPath}/p${noteName}/c${indexWithinNote}`;
 }
 
 /**
@@ -86,17 +131,15 @@ function processDrumRackChain(
   indexWithinNote: number,
   options: DrumChainOptions,
 ): Record<string, unknown> {
-  const { includeDrumPads, includeChains, parentPath } = options;
-  const chainPath = parentPath
-    ? buildDrumChainPath(parentPath, inNote, indexWithinNote)
-    : null;
+  const { includeDrumPads, includeChains, padPath } = options;
+  const chainPath = padPath == null ? null : `${padPath}/c${indexWithinNote}`;
 
   // A pad carries its chains only when both were asked for. Otherwise the whole
   // chain info is dropped and only the pad reads it, so build the short form.
   const chainInfo =
     includeDrumPads && includeChains
       ? shownDrumChainInfo(chain, chainPath, options)
-      : padOnlyDrumChainInfo(chain);
+      : drumPadChainSummary(chain);
 
   // Internal tracking for drum map building
   chainInfo._inNote = inNote;
@@ -152,13 +195,14 @@ function shownDrumChainInfo(
 }
 
 /**
- * The three things a drum pad takes from a chain it won't be showing. The rest
- * of buildChainInfo is pure cost here — the chain mixer alone is a mixer, a
- * volume, a pan and one send per return chain, per pad.
+ * The three things a drum pad takes from a chain. Doubles as the whole chain
+ * info when the pad won't be showing its chains: the rest of buildChainInfo is
+ * pure cost then — the chain mixer alone is a mixer, a volume, a pan and one
+ * send per return chain, per pad.
  * @param chain - Chain object from drum rack
  * @returns Chain info holding only what the pad reads
  */
-function padOnlyDrumChainInfo(chain: LiveAPI): Record<string, unknown> {
+export function drumPadChainSummary(chain: LiveAPI): Record<string, unknown> {
   const state = computeState(chain);
 
   return {
@@ -204,52 +248,46 @@ function groupChainsByNote(chains: LiveAPI[]): Map<number, LiveAPI[]> {
 }
 
 /**
- * Build drum pad info from grouped chains
+ * Build drum pad info from the chains routed to its note.
  * @param inNote - MIDI note or -1 for catch-all
- * @param processedChains - Processed chain info objects
+ * @param chains - What each chain contributes to the pad
  * @param padId - The pad's ID, absent when the rack has no pad for this note
+ * @param padPath - The pad's path, absent when the rack has none
  * @returns Drum pad info object
  */
-function buildDrumPadFromChains(
+export function buildDrumPadFromChains(
   inNote: number,
-  processedChains: ProcessedChain[],
+  chains: ProcessedChain[],
   padId: string | undefined,
+  padPath: string | null,
 ): Record<string, unknown> {
-  const firstChain = assertDefined(processedChains[0], "first chain");
-  const isCatchAll = inNote === -1;
+  const firstChain = assertDefined(chains[0], "first chain");
 
-  const drumPadInfo: Record<string, unknown> = {
-    // No id for the catch-all, or for a Drum Rack nested in a drum pad — that
-    // rack has no pads, only chains grouped by in_note. Its absence is how a
-    // caller knows the pad can't be named by id.
-    ...(padId == null ? {} : { id: padId }),
+  return buildDrumPadFields({
+    id: padId,
+    path: padPath,
     note: inNote,
-    pitch: isCatchAll ? "*" : midiToNoteName(inNote),
     name: firstChain.name,
-    // `name` alone can't tell a layered pad from a single-chain one: Live
-    // labels both "Multi" once a chain is named that. The count can.
-    chainCount: processedChains.length,
-  };
+    chainCount: chains.length,
+    state: aggregateChainState(chains),
+    hasInstrument: chains.some((chain) => chain._hasInstrument),
+  });
+}
 
-  // Aggregate state from chains
-  const states = new Set(
-    processedChains.map((c) => c.state).filter((s) => s !== undefined),
-  );
+/**
+ * The state a pad shows for the chains under it. Soloed wins over muted, and
+ * chains that are neither say nothing.
+ * @param chains - The pad's chains
+ * @returns Soloed, muted, or undefined
+ */
+function aggregateChainState(chains: ProcessedChain[]): string | undefined {
+  const states = new Set(chains.map((chain) => chain.state));
 
   if (states.has(STATE.SOLOED)) {
-    drumPadInfo.state = STATE.SOLOED;
-  } else if (states.has(STATE.MUTED)) {
-    drumPadInfo.state = STATE.MUTED;
+    return STATE.SOLOED;
   }
 
-  // Check if any chain has instrument
-  const anyHasInstrument = processedChains.some((c) => c._hasInstrument);
-
-  if (!anyHasInstrument) {
-    drumPadInfo.hasInstrument = false;
-  }
-
-  return drumPadInfo;
+  return states.has(STATE.MUTED) ? STATE.MUTED : undefined;
 }
 
 /**
@@ -322,6 +360,7 @@ export function processDrumPads(
   const processedDrumPads: Record<string, unknown>[] = [];
 
   for (const [inNote, chainsForNote] of noteGroups) {
+    const padPath = drumPadPathForNote(parentPath, inNote);
     // Process each chain in the group
     const processedChains = chainsForNote.map((chain, indexWithinNote) =>
       processDrumRackChain(chain, inNote, indexWithinNote, {
@@ -330,7 +369,7 @@ export function processDrumPads(
         depth,
         maxDepth,
         readDeviceFn,
-        parentPath,
+        padPath,
       }),
     );
 
@@ -339,6 +378,7 @@ export function processDrumPads(
       inNote,
       processedChains,
       padIdsByNote.get(inNote),
+      padPath,
     );
 
     // Add chains if requested

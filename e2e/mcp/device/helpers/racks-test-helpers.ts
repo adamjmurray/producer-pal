@@ -42,6 +42,8 @@ export interface DeviceInfo {
 }
 
 export interface DrumPadInfo {
+  id?: string;
+  path?: string;
   note: number;
   pitch: string;
   name: string;

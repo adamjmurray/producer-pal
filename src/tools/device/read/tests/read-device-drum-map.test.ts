@@ -208,9 +208,11 @@ describe("readDevice drum-map by target kind", () => {
     // walked for the map, not asked for.
     expect(pads[0]).toStrictEqual({
       id: "kit-pad",
+      // The kit is nested, so the pad's path runs through the outer rack.
+      path: "t1/d0/c0/d0/pC1",
+      name: "Kick",
       note: 36,
       pitch: "C1",
-      name: "Kick",
       chainCount: 1,
     });
     expect(kit?.chains).toBeUndefined();

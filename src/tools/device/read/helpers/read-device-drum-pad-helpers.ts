@@ -9,9 +9,14 @@
 // resolves against.
 
 import { assertDefined } from "#src/shared/error-utils.ts";
-import { midiToNoteName, noteNameToMidi } from "#src/shared/pitch.ts";
+import { noteNameToMidi } from "#src/shared/pitch.ts";
 import { STATE } from "#src/tools/constants.ts";
 import { readDevice as readDeviceShared } from "#src/tools/shared/device/device-reader.ts";
+import {
+  buildDrumPadFields,
+  buildDrumPadFromChains,
+  drumPadChainSummary,
+} from "#src/tools/shared/device/helpers/device-reader-drum-helpers.ts";
 import { buildChainInfo } from "#src/tools/shared/device/helpers/device-reader-helpers.ts";
 import {
   chainsForInNote,
@@ -227,28 +232,16 @@ export function buildDrumPadInfo(
   path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const midiNote = pad.getProperty("note") as number;
-  // A pad's note is always 0-127, so it always names.
-  const noteName = midiToNoteName(midiNote) as string;
-  const isMuted = (pad.getProperty("mute") as number) > 0;
-  const isSoloed = (pad.getProperty("solo") as number) > 0;
-
-  const drumPadInfo: Record<string, unknown> = {
+  const drumPadInfo = buildDrumPadFields({
     id: pad.id,
     path,
     name: pad.getProperty("name"),
-    note: midiNote,
-    pitch: noteName,
+    note: pad.getProperty("note") as number,
     // Counted off the pad, not chainsOnDrumPad: the two collections hold the
     // same chains in different orders, and only the count is wanted here.
     chainCount: pad.getChildCount("chains"),
-  };
-
-  if (isSoloed) {
-    drumPadInfo.state = STATE.SOLOED;
-  } else if (isMuted) {
-    drumPadInfo.state = STATE.MUTED;
-  }
+    state: drumPadState(pad),
+  });
 
   // Include chains if requested
   if (options.includeChains || options.includeDrumPads) {
@@ -263,10 +256,23 @@ export function buildDrumPadInfo(
 }
 
 /**
+ * A pad's own mute/solo state.
+ * @param pad - Drum pad Live API object
+ * @returns Soloed, muted, or undefined when neither
+ */
+function drumPadState(pad: LiveAPI): string | undefined {
+  if ((pad.getProperty("solo") as number) > 0) {
+    return STATE.SOLOED;
+  }
+
+  return (pad.getProperty("mute") as number) > 0 ? STATE.MUTED : undefined;
+}
+
+/**
  * Build info for a pad the rack has no DrumPad object for: the catch-all, or any
  * pad of a Drum Rack nested in a drum pad. There is no pad to take an id, a
- * name, or a mute/solo state from, so the chains carry all of it — the same
- * shape the drum-pads tree walk emits for these pads.
+ * name, or a mute/solo state from, so the chains carry all of it — built by the
+ * same function the drum-pads tree walk uses, so both routes answer alike.
  * @param chains - The chains the rack routes to this pad
  * @param midiNote - The pad's MIDI note, or -1 for the catch-all
  * @param path - Simplified path for response
@@ -279,15 +285,12 @@ function buildPadlessDrumPadInfo(
   path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
-  const firstChain = assertDefined(chains[0], "chain routed to the pad");
-
-  const drumPadInfo: Record<string, unknown> = {
+  const drumPadInfo = buildDrumPadFromChains(
+    midiNote,
+    chains.map((chain) => drumPadChainSummary(chain)),
+    undefined,
     path,
-    name: firstChain.getProperty("name"),
-    note: midiNote,
-    pitch: midiNote < 0 ? "*" : midiToNoteName(midiNote),
-    chainCount: chains.length,
-  };
+  );
 
   if (options.includeChains || options.includeDrumPads) {
     drumPadInfo.chains = buildDrumPadChains(chains, path, options);
