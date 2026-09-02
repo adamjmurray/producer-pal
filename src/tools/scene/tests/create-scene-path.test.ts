@@ -34,7 +34,6 @@ describe("createScene by path", () => {
     expect(createScene({ path: "s1", name: "Inserted" })).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
-      sceneIndex: 1,
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 1);
   });
@@ -45,7 +44,6 @@ describe("createScene by path", () => {
     expect(createScene({ path: "s+", name: "Appended" })).toStrictEqual({
       id: "live_set/scenes/2",
       path: "s2",
-      sceneIndex: 2,
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_scene", 2);
   });

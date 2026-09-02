@@ -286,7 +286,7 @@ describe("ppal-create-clip", () => {
     });
     const audioTrack = parseToolResult<CreateTrackResult>(audioTrackResult);
 
-    expect(audioTrack.trackIndex).toBeDefined();
+    expect(audioTrack.path).toMatch(/^t\d+$/);
 
     await sleep(100);
 
@@ -294,7 +294,7 @@ describe("ppal-create-clip", () => {
     const audioSessionResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${audioTrack.trackIndex}/s0`,
+        path: `${audioTrack.path}/s0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -317,7 +317,7 @@ describe("ppal-create-clip", () => {
     const audioArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${audioTrack.trackIndex}`,
+        path: `${audioTrack.path}`,
         arrangementStart: "17|1",
         sampleFile: SAMPLE_FILE,
       },
@@ -345,7 +345,7 @@ describe("ppal-create-clip", () => {
     const audioNamedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${audioTrack.trackIndex}/s1`,
+        path: `${audioTrack.path}/s1`,
         sampleFile: SAMPLE_FILE,
         name: "Named Audio Clip",
         color: "#00FF00",

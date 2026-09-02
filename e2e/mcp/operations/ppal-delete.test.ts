@@ -275,7 +275,7 @@ describe("ppal-delete", () => {
   });
 
   it("deletes a device by path", async () => {
-    const created = parseToolResult<{ deviceIndex: number }>(
+    const created = parseToolResult<{ path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: { deviceName: "EQ Eight", path: `t${RACKS_TRACK}` },
@@ -285,10 +285,7 @@ describe("ppal-delete", () => {
     await sleep(100);
 
     const deleted = parseToolResult<DeleteResult>(
-      await del({
-        path: `t${RACKS_TRACK}/d${created.deviceIndex}`,
-        type: "device",
-      }),
+      await del({ path: created.path, type: "device" }),
     );
 
     expect(deleted.deleted).toBe(true);
@@ -367,13 +364,13 @@ interface DeleteResult {
 
 interface CreateTrackResult {
   id: string;
-  trackIndex?: number;
+  path?: string;
   returnTrackIndex?: number;
 }
 
 interface CreateSceneResult {
   id: string;
-  sceneIndex: number;
+  path: string;
 }
 
 interface CreateClipResult {

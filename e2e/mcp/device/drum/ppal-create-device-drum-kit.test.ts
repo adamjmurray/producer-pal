@@ -21,6 +21,7 @@ import {
   setupMcpTestContext,
   sleep,
   supportsSampleLoading,
+  trackIndexFromPath,
 } from "../../mcp-test-helpers";
 
 const ctx = setupMcpTestContext({ once: true });
@@ -35,11 +36,11 @@ beforeAll(async () => {
 
 interface CreateTrackResult {
   id: string;
-  trackIndex: number;
+  path: string;
 }
 
 interface CreateDeviceResult {
-  deviceIndex: number;
+  path: string;
 }
 
 interface ReadDeviceResult {
@@ -61,7 +62,7 @@ async function createMidiTrack(): Promise<number> {
 
   await sleep(100);
 
-  return track.trackIndex;
+  return trackIndexFromPath(track.path);
 }
 
 /**
@@ -138,7 +139,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
           },
         }),
       );
-    const rack = `t${t}/d${created.deviceIndex}`;
+    const rack = created.path;
 
     await sleep(150);
 

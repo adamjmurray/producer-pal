@@ -159,7 +159,6 @@ describe("readLiveSet - basic reading", () => {
           path: "t0",
           type: "midi",
           name: "MIDI Track 1",
-          trackIndex: 0,
           state: "soloed",
           isGroup: true,
           playingSlotIndex: 2,
@@ -173,7 +172,6 @@ describe("readLiveSet - basic reading", () => {
           path: "t1",
           type: "audio",
           name: "Audio Track 2",
-          trackIndex: 1,
           state: "muted",
           isGroupMember: true,
           groupId: "track1",
@@ -187,7 +185,6 @@ describe("readLiveSet - basic reading", () => {
           const { color: _color, ...track } = expectedTrack({
             id: "track3",
             path: "t2",
-            trackIndex: 2,
           });
 
           return track;
@@ -198,7 +195,6 @@ describe("readLiveSet - basic reading", () => {
           id: "scene1",
           path: "s0",
           name: "Scene 1",
-          sceneIndex: 0,
           clipCount: 2,
           tempo: 120,
           timeSignature: "4/4",
@@ -207,7 +203,6 @@ describe("readLiveSet - basic reading", () => {
           id: "scene2",
           path: "s1",
           name: "Scene 2",
-          sceneIndex: 1,
           clipCount: 0,
           triggered: true,
         },
@@ -215,7 +210,6 @@ describe("readLiveSet - basic reading", () => {
           id: "scene3",
           path: "s2",
           name: "Scene 3",
-          sceneIndex: 2,
           clipCount: 1,
           tempo: 120,
           timeSignature: "4/4",

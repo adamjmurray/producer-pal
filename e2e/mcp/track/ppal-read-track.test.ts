@@ -56,7 +56,7 @@ describe("ppal-read-track", () => {
     const byIndex = parseToolResult<ReadTrackResult>(byIndexResult);
 
     expect(byIndex.id).toBe(trackId);
-    expect(byIndex.trackIndex).toBe(0);
+    expect(byIndex.path).toBe("t0");
     expect(byIndex.type).toBe("midi");
 
     // Test 3: Read return track
@@ -139,7 +139,7 @@ describe("ppal-read-track", () => {
       const track = parseToolResult<ReadTrackResult>(trackResult);
 
       expect(track.type).toBe("midi");
-      expect(track.trackIndex).toBe(i);
+      expect(track.path).toBe(`t${i}`);
     }
 
     // Test 11: Verify audio tracks exist (t4, t5, t6 are Audio 1, Audio 2, FX Bus)
@@ -150,7 +150,7 @@ describe("ppal-read-track", () => {
     const audioTrack = parseToolResult<ReadTrackResult>(audioTrackResult);
 
     expect(audioTrack.type).toBe("audio");
-    expect(audioTrack.trackIndex).toBe(4);
+    expect(audioTrack.path).toBe("t4");
 
     // Test 12: Find Producer Pal host track (t11 "PPAL" in e2e-test-set)
     const ppalTrackResult = await ctx.client!.callTool({
@@ -197,7 +197,7 @@ interface LiveSetResult {
     id: string;
     name: string;
     type: string;
-    trackIndex: number;
+    path: string;
   }>;
 }
 
@@ -205,7 +205,7 @@ interface ReadTrackResult {
   id: string | null;
   type: "midi" | "audio" | null;
   name: string | null;
-  trackIndex?: number | null;
+  path?: string;
   returnTrackIndex?: number | null;
   hasProducerPalDevice?: boolean;
   isGroup?: boolean;

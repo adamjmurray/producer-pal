@@ -21,6 +21,7 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
   type UpdateClipResult,
 } from "../../mcp-test-helpers.ts";
 import {
@@ -59,7 +60,7 @@ async function createAudioTrack(trackName: string): Promise<number> {
 
   await sleep(100);
 
-  return track.trackIndex!;
+  return trackIndexFromPath(track.path);
 }
 
 /** Creates a sample audio clip in a clip slot and returns its id. */
@@ -248,7 +249,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${track.trackIndex}/s0`,
+        path: `${track.path}/s0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -257,7 +258,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${track.trackIndex}/s1`,
+        path: `${track.path}/s1`,
         sampleFile: SAMPLE_FILE,
       },
     });

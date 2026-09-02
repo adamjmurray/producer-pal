@@ -122,7 +122,6 @@ describe("readDevice drum-map by target kind", () => {
       name: "Kick",
       note: 36,
       pitch: "C1",
-      chainCount: 1,
       chains: expect.any(Array),
     });
     expect(result.chains).toHaveLength(1);

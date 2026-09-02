@@ -28,7 +28,8 @@ export interface DrumPadFields {
   path?: string | null;
   note: number;
   name?: unknown;
-  chainCount: number;
+  /** Omitted when the pad's `chains` array will be right there to count */
+  chainCount?: number | undefined;
   state?: string | undefined;
   /** Only ever false: nothing in the pad makes sound */
   hasInstrument?: boolean;
@@ -50,9 +51,10 @@ export function buildDrumPadFields(
     name,
     note,
     pitch: drumPadPitch(note),
-    // `name` alone can't tell a layered pad from a single-chain one: Live
-    // labels both "Multi" once a chain is named that. The count can.
-    chainCount,
+    // Stands in for the `chains` array when it isn't being sent: `name` alone
+    // can't tell a layered pad from a single-chain one, since Live labels both
+    // "Multi" once a chain is named that.
+    ...(chainCount == null ? {} : { chainCount }),
     ...(state == null ? {} : { state }),
     ...(hasInstrument === false ? { hasInstrument: false } : {}),
   };
@@ -253,6 +255,7 @@ function groupChainsByNote(chains: LiveAPI[]): Map<number, LiveAPI[]> {
  * @param chains - What each chain contributes to the pad
  * @param padId - The pad's ID, absent when the rack has no pad for this note
  * @param padPath - The pad's path, absent when the rack has none
+ * @param withChains - Whether the caller will attach the pad's `chains` array
  * @returns Drum pad info object
  */
 export function buildDrumPadFromChains(
@@ -260,6 +263,7 @@ export function buildDrumPadFromChains(
   chains: ProcessedChain[],
   padId: string | undefined,
   padPath: string | null,
+  withChains: boolean,
 ): Record<string, unknown> {
   const firstChain = assertDefined(chains[0], "first chain");
 
@@ -268,7 +272,7 @@ export function buildDrumPadFromChains(
     path: padPath,
     note: inNote,
     name: firstChain.name,
-    chainCount: chains.length,
+    chainCount: withChains ? undefined : chains.length,
     state: aggregateChainState(chains),
     hasInstrument: chains.some((chain) => chain._hasInstrument),
   });
@@ -379,6 +383,7 @@ export function processDrumPads(
       processedChains,
       padIdsByNote.get(inNote),
       padPath,
+      includeDrumPads && includeChains,
     );
 
     // Add chains if requested

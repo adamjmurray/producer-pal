@@ -209,7 +209,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d2",
-          deviceIndex: 2,
         });
       });
 
@@ -229,7 +228,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d1",
-          deviceIndex: 1,
         });
       });
 
@@ -257,7 +255,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "rt0/d0",
-          deviceIndex: 0,
         });
       });
 
@@ -276,7 +273,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d0",
-          deviceIndex: 0,
         });
       });
 
@@ -299,7 +295,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d1",
-          deviceIndex: 1,
         });
       });
 
@@ -343,7 +338,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "mt/d0",
-          deviceIndex: 0,
         });
       });
     });
@@ -358,7 +352,6 @@ describe("createDevice", () => {
         expect(chain0.call).toHaveBeenCalledWith("insert_device", "Compressor");
         expect(result).toStrictEqual({
           path: "t0/d2",
-          deviceIndex: 2,
           id: "device123",
         });
       });
@@ -391,7 +384,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d0/c0/d0",
-          deviceIndex: 0,
         });
       });
 
@@ -427,7 +419,6 @@ describe("createDevice", () => {
         expect(result).toStrictEqual({
           id: "device123",
           path: "t0/d0/rc0/d0",
-          deviceIndex: 0,
         });
       });
     });
@@ -514,8 +505,8 @@ describe("createDevice", () => {
       });
 
       expect(result).toStrictEqual([
-        { id: "device123", path: "t0/d2", deviceIndex: 2 },
-        { id: "device456", path: "t1/d0", deviceIndex: 0 },
+        { id: "device123", path: "t0/d2" },
+        { id: "device456", path: "t1/d0" },
       ]);
     });
 
@@ -577,7 +568,6 @@ describe("createDevice", () => {
       expect(result).toStrictEqual({
         id: "device123",
         path: "t0/d2",
-        deviceIndex: 2,
       });
     });
 
@@ -595,7 +585,6 @@ describe("createDevice", () => {
       expect(result).toStrictEqual({
         id: "device123",
         path: "t0/d2",
-        deviceIndex: 2,
       });
       expect(device.set).toHaveBeenCalledWith("name", "My Compressor");
     });
@@ -614,7 +603,6 @@ describe("createDevice", () => {
       expect(result).toStrictEqual({
         id: "device123",
         path: "t0/d2",
-        deviceIndex: 2,
       });
       expect(mockConsole.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to create"),

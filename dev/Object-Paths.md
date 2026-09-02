@@ -178,8 +178,9 @@ Four tiers, in order of preference.
 
 Every write result — create, update, duplicate — reports `path` beside `id`, so
 the next call can address what was just written without rebuilding the path from
-indices. Clip results report nothing else positional: no `slot`, no
-`trackIndex`. `delete` is the exception: after deleting `t2`, that path names a
+indices. No result repeats that address as an index: no `slot`, no `trackIndex`,
+`sceneIndex` or `deviceIndex`. A return track's `returnTrackIndex` is the one
+holdout. `delete` is the exception: after deleting `t2`, that path names a
 different track, so a deleted object reports none.
 
 | Object                 | Result                                      |

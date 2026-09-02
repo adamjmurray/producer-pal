@@ -38,7 +38,6 @@ interface CreateDeviceArgs {
 interface CreateDeviceResult {
   id: string;
   path?: string;
-  deviceIndex: number | null;
   params?: ParamValueResult[];
 }
 
@@ -70,7 +69,7 @@ function validateDeviceName(deviceName: string): void {
  * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
- * @returns Device list, or object(s) with deviceId and deviceIndex
+ * @returns Device list, or object(s) naming each created device
  */
 export function createDevice(
   { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
@@ -170,7 +169,7 @@ function createDevicesAtPaths(
  * Create device at a path (track or chain)
  * @param deviceName - Device name
  * @param path - Device path
- * @returns Object with deviceId, deviceIndex, and the new device
+ * @returns Object with the device's id and path, and the device itself
  */
 function createDeviceAtPath(
   deviceName: string,
@@ -230,7 +229,6 @@ function createDeviceAtPath(
   return {
     id,
     ...pathField(device),
-    deviceIndex: device.deviceIndex,
     device,
   };
 }

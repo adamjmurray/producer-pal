@@ -50,7 +50,7 @@ describe("ppal-read-live-set", () => {
     expect(firstTrack?.id).toBeDefined();
     expect(typeof firstTrack?.name).toBe("string");
     expect(["midi", "audio"]).toContain(firstTrack?.type);
-    expect(typeof firstTrack?.trackIndex).toBe("number");
+    expect(firstTrack?.path).toBe("t0");
 
     // Instrument is always included when the track has one
     expect(firstTrack?.instrument).toBeDefined();
@@ -71,7 +71,7 @@ describe("ppal-read-live-set", () => {
 
     expect(firstScene?.id).toBeDefined();
     expect(typeof firstScene?.name).toBe("string");
-    expect(typeof firstScene?.sceneIndex).toBe("number");
+    expect(firstScene?.path).toBe("s0");
   });
 
   it("reads return tracks and locators", async () => {
@@ -113,14 +113,14 @@ interface ReadLiveSetResult {
   timeSignature: string;
   sceneCount?: number;
   regularTrackCount?: number;
-  scenes?: Array<{ id: string; name: string; sceneIndex: number }>;
+  scenes?: Array<{ id: string; name: string; path: string }>;
   tracks?: Array<{
     id: string;
     name: string;
     type: "midi" | "audio";
-    trackIndex: number;
+    path: string;
     instrument?: { id: string; name: string } | null;
   }>;
-  returnTracks?: Array<{ id: string; name: string; trackIndex: number }>;
+  returnTracks?: Array<{ id: string; name: string; path: string }>;
   locators?: Array<{ id: string; name: string; time: string }>;
 }

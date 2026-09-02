@@ -38,7 +38,6 @@ describe("readScene by path", () => {
       id: "456",
       path: "s1",
       name: "By Path",
-      sceneIndex: 1,
       clipCount: 0,
     });
   });

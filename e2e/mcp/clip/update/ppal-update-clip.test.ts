@@ -465,11 +465,9 @@ describe("ppal-update-clip", () => {
 
     await sleep(100);
 
-    const audioClipId = await createClipInSlot(
-      ctx,
-      `t${audioTrack.trackIndex}/s0`,
-      { sampleFile: SAMPLE_FILE },
-    );
+    const audioClipId = await createClipInSlot(ctx, `${audioTrack.path}/s0`, {
+      sampleFile: SAMPLE_FILE,
+    });
 
     // Test 1: Update audio clip gain
     await ctx.client!.callTool({

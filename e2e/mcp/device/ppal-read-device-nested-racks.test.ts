@@ -144,6 +144,29 @@ describe("read-device on nested racks", () => {
       expect(kit.drumMap?.F1).toBe("Sub Kit");
     });
 
+    // drum-map forces chains on to build the map, then strips them off the
+    // pads. Without putting the count back, those pads would report neither
+    // the array nor a count of it.
+    it("counts a pad's chains when the map strips the array away", async () => {
+      const kit = await read(KIT, { include: ["drum-map", "drum-pads"] });
+      const pads = kit.drumPads ?? [];
+
+      expect(pads.length).toBeGreaterThan(0);
+
+      for (const pad of pads) {
+        expect(pad.chains).toBeUndefined();
+        expect(pad.chainCount).toBeGreaterThan(0);
+      }
+
+      // With the array right there, the count is not sent twice.
+      const withChains = await readKitPads(ctx.client!);
+
+      for (const pad of withChains.drumPads ?? []) {
+        expect(pad.chainCount).toBeUndefined();
+        expect(pad.chains?.length).toBeGreaterThan(0);
+      }
+    });
+
     it("maps the nested rack's own pads", async () => {
       const subKit = await read(SUB_KIT, { include: ["drum-map"] });
 

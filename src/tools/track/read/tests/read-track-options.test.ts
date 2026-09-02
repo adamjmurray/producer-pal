@@ -303,7 +303,6 @@ describe("readTrack", () => {
         });
 
         // trackIndex should be ignored for master track
-        expect(result.trackIndex).toBeUndefined();
         expect(result.returnTrackIndex).toBeUndefined();
       });
 
@@ -468,7 +467,7 @@ function setupAndReadRegularTrack(
 }
 
 function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {
-  expect(result.trackIndex).toBe(0);
+  expect(result.path).toBe("t0");
   expect(result.returnTrackIndex).toBeUndefined();
   expect(result.id).toBe("track1");
 }

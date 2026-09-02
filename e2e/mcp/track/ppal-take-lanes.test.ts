@@ -34,6 +34,7 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
 import { CHILD_TRACK, EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
 
@@ -51,7 +52,7 @@ interface ReadTrackTakeLanesResult {
 }
 
 interface LiveSetTracksResult {
-  tracks: Array<{ id: string; trackIndex: number; takeLaneCount?: number }>;
+  tracks: Array<{ id: string; path: string; takeLaneCount?: number }>;
 }
 
 interface DuplicateClipResult {
@@ -305,9 +306,9 @@ describe("take lanes", () => {
     );
 
     const withLanes = liveSet.tracks.find(
-      (t) => t.trackIndex === EMPTY_MIDI_TRACK,
+      (t) => t.path === `t${EMPTY_MIDI_TRACK}`,
     );
-    const withoutLanes = liveSet.tracks.find((t) => t.trackIndex === 0);
+    const withoutLanes = liveSet.tracks.find((t) => t.path === "t0");
 
     expect(withLanes?.takeLaneCount).toBe(1);
     expect(withoutLanes).not.toHaveProperty("takeLaneCount");
@@ -321,17 +322,18 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(track.trackIndex).toBeDefined();
+    const trackIndex = trackIndexFromPath(track.path);
+
     await sleep(100);
 
     const clip = await createOnLane({
-      path: `t${track.trackIndex}/l+`,
+      path: `t${trackIndex}/l+`,
       arrangementStart: "1|1",
       sampleFile: SAMPLE_FILE,
     });
 
     expect(clip.id).toBeDefined();
-    expect(clip.path).toBe(`t${track.trackIndex}/l0`);
+    expect(clip.path).toBe(`t${trackIndex}/l0`);
 
     await sleep(100);
     const readClip = parseToolResult<ReadClipResult>(
@@ -344,7 +346,7 @@ describe("take lanes", () => {
     expect(readClip.type).toBe("audio");
 
     // The lane clip is reachable through the track's take lane list
-    const detail = await readTakeLanes(track.trackIndex!);
+    const detail = await readTakeLanes(trackIndex);
 
     expect(detail.takeLanes).toHaveLength(1);
     expect(detail.takeLanes![0]!.clips).toHaveLength(1);
@@ -423,12 +425,14 @@ describe("take lanes", () => {
       }),
     );
 
+    const audioTrackIndex = trackIndexFromPath(audioTrack.path);
+
     await sleep(100);
     const audioSource = parseToolResult<CreateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${audioTrack.trackIndex}`,
+          path: `t${audioTrackIndex}`,
           arrangementStart: "1|1",
           sampleFile: SAMPLE_FILE,
           warping: true,
@@ -445,12 +449,12 @@ describe("take lanes", () => {
           type: "clip",
           id: audioSource.id,
           arrangementStart: "5|1",
-          toPath: `t${audioTrack.trackIndex}/l+`,
+          toPath: `t${audioTrackIndex}/l+`,
         },
       }),
     );
 
-    expect(audioDup.data.path).toBe(`t${audioTrack.trackIndex}/l0`);
+    expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0`);
     expect(audioDup.warnings.join(" ")).toContain(
       "warp markers reset to the sample's defaults",
     );

@@ -70,7 +70,6 @@ describe("createScene", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
-      sceneIndex: 1,
     });
   });
 
@@ -91,9 +90,9 @@ describe("createScene", () => {
     expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
 
     expect(result).toStrictEqual([
-      { id: "live_set/scenes/0", path: "s0", sceneIndex: 0 },
-      { id: "live_set/scenes/1", path: "s1", sceneIndex: 1 },
-      { id: "live_set/scenes/2", path: "s2", sceneIndex: 2 },
+      { id: "live_set/scenes/0", path: "s0" },
+      { id: "live_set/scenes/1", path: "s1" },
+      { id: "live_set/scenes/2", path: "s2" },
     ]);
   });
 
@@ -105,7 +104,6 @@ describe("createScene", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/0",
       path: "s0",
-      sceneIndex: 0,
     });
   });
 
@@ -206,25 +204,19 @@ describe("createScene", () => {
     expect(singleResult).toStrictEqual({
       id: "live_set/scenes/0",
       path: "s0",
-      sceneIndex: 0,
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    const arrayResultArr = arrayResult as Array<{
-      id: string;
-      sceneIndex: number;
-    }>;
+    const arrayResultArr = arrayResult as Array<{ id: string; path: string }>;
 
     expect(arrayResultArr[0]).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
-      sceneIndex: 1,
     });
     expect(arrayResultArr[1]).toStrictEqual({
       id: "live_set/scenes/2",
       path: "s2",
-      sceneIndex: 2,
     });
   });
 
@@ -239,7 +231,6 @@ describe("createScene", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/0",
       path: "s0",
-      sceneIndex: 0,
     });
   });
 
@@ -253,7 +244,6 @@ describe("createScene", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/0",
       path: "s0",
-      sceneIndex: 0,
     });
   });
 
@@ -375,7 +365,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [],
       });
     });
@@ -397,7 +386,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [],
       });
     });
@@ -418,7 +406,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [],
       });
     });
@@ -457,7 +444,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [],
       });
     });
@@ -480,7 +466,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [
           { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
           { id: "live_set/tracks/2/clip_slots/2/clip", trackIndex: 2 },
@@ -505,7 +490,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
         path: "s0",
-        sceneIndex: 0,
       });
     });
 
@@ -530,7 +514,6 @@ describe("createScene", () => {
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [],
       });
     });

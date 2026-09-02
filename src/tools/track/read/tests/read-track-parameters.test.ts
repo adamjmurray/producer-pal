@@ -67,7 +67,6 @@ describe("readTrack", () => {
         path: "t2",
         type: "midi",
         name: "Track by ID",
-        trackIndex: 2,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -88,7 +87,6 @@ describe("readTrack", () => {
         arrangementClipCount: 0,
         deviceCount: 0,
         sessionClipCount: 0,
-        trackIndex: 2,
         type: "midi",
         id: "123",
         path: "t2",
@@ -172,7 +170,7 @@ describe("readTrack", () => {
       const result = readTrack({ id: "999", trackType: "return" });
 
       // Should read as regular track (from path) not return track
-      expect(result.trackIndex).toBe(0);
+      expect(result.path).toBe("t0");
       expect(result.returnTrackIndex).toBeUndefined();
     });
   });
@@ -190,7 +188,6 @@ describe("readTrack", () => {
         path: "t2",
         type: "midi",
         name: "By Path",
-        trackIndex: 2,
         sessionClipCount: 0,
         arrangementClipCount: 0,
         deviceCount: 0,
@@ -276,7 +273,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ path: "t0", trackType: "return" });
 
-      expect(result.trackIndex).toBe(0);
+      expect(result.path).toBe("t0");
       expect(result.returnTrackIndex).toBeUndefined();
     });
   });

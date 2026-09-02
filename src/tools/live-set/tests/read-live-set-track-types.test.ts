@@ -74,7 +74,6 @@ describe("readLiveSet - track types", () => {
             id: "track1",
             name: "Regular Track",
             type: "midi",
-            trackIndex: 0,
           }),
         ],
         returnTracks: [

@@ -306,7 +306,6 @@ interface TrackOverrides {
   path?: string;
   type?: string;
   name?: string;
-  trackIndex?: number;
   color?: string;
   isArmed?: boolean;
   playingSlotIndex?: number;
@@ -326,7 +325,6 @@ export const expectedTrack = (
   id: "1",
   type: "midi",
   name: "Test Track",
-  trackIndex: 0,
   color: "#FF0000",
   isArmed: true,
   playingSlotIndex: 2,
@@ -340,7 +338,6 @@ export const expectedTrack = (
 interface SceneOverrides {
   id?: string;
   name?: string;
-  sceneIndex?: number;
   color?: string;
   isEmpty?: boolean;
   tempo?: string;
@@ -353,7 +350,6 @@ export const expectedScene = (
 ): SceneOverrides => ({
   id: "1",
   name: "Test Scene",
-  sceneIndex: 0,
   color: "#000000",
   isEmpty: false,
   tempo: "disabled",

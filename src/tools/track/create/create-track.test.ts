@@ -63,7 +63,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "midi_track_1",
       path: "t1",
-      trackIndex: 1,
     });
   });
 
@@ -80,7 +79,7 @@ describe("createTrack", () => {
 
     const result = createTrack({ trackIndex: 0 });
 
-    expect(result).toStrictEqual({ id: "36", path: "t0", trackIndex: 0 });
+    expect(result).toStrictEqual({ id: "36", path: "t0" });
   });
 
   it("should create a single audio track when type is audio", () => {
@@ -97,7 +96,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "audio_track_0",
       path: "t0",
-      trackIndex: 0,
     });
   });
 
@@ -125,17 +123,14 @@ describe("createTrack", () => {
       {
         id: "midi_track_2",
         path: "t2",
-        trackIndex: 2,
       },
       {
         id: "midi_track_3",
         path: "t3",
-        trackIndex: 3,
       },
       {
         id: "midi_track_4",
         path: "t4",
-        trackIndex: 4,
       },
     ]);
   });
@@ -150,7 +145,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "midi_track_0",
       path: "t0",
-      trackIndex: 0,
     });
   });
 
@@ -172,7 +166,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "midi_track_0",
       path: "t0",
-      trackIndex: 0,
     });
   });
 
@@ -192,7 +185,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "midi_track_0",
       path: "t0",
-      trackIndex: 0,
     });
   });
 
@@ -203,11 +195,10 @@ describe("createTrack", () => {
 
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
     expect(track.set).toHaveBeenCalledWith("name", "Appended Track");
-    // Result trackIndex should reflect actual position (count of existing tracks)
+    // The result path reflects the actual position (count of existing tracks)
     expect(result).toStrictEqual({
       id: "midi_track_-1",
       path: "t2",
-      trackIndex: 2, // existing tracks count
     });
   });
 
@@ -217,7 +208,7 @@ describe("createTrack", () => {
     const result = createTrack({ trackIndex: -1, name: "Appended Track" });
 
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
-    expect((result as { trackIndex: number }).trackIndex).toBe(2); // existing tracks count
+    expect((result as { path: string }).path).toBe("t2"); // existing tracks count
   });
 
   it("should throw error when count is less than 1", () => {
@@ -288,8 +279,8 @@ describe("createTrack", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "create_midi_track", -1);
     // Result indices reflect final positions after the 2 existing tracks.
     expect(result).toStrictEqual([
-      { id: "midi_track_-1", path: "t2", trackIndex: 2 },
-      { id: "midi_track_-1", path: "t3", trackIndex: 3 },
+      { id: "midi_track_-1", path: "t2" },
+      { id: "midi_track_-1", path: "t3" },
     ]);
   });
 
@@ -306,7 +297,6 @@ describe("createTrack", () => {
     expect(result).toStrictEqual({
       id: "midi_track_0",
       path: "t0",
-      trackIndex: 0,
     });
   });
 
@@ -340,22 +330,19 @@ describe("createTrack", () => {
     expect(singleResult).toStrictEqual({
       id: "midi_track_0",
       path: "t0",
-      trackIndex: 0,
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
-    const results = arrayResult as Array<{ id: string; trackIndex: number }>;
+    const results = arrayResult as Array<{ id: string; path: string }>;
 
     expect(results).toHaveLength(2);
     expect(results[0]).toStrictEqual({
       id: "midi_track_1",
       path: "t1",
-      trackIndex: 1,
     });
     expect(results[1]).toStrictEqual({
       id: "midi_track_2",
       path: "t2",
-      trackIndex: 2,
     });
   });
 
@@ -493,7 +480,6 @@ describe("createTrack", () => {
       expect(result).toStrictEqual({
         id: "midi_track_0",
         path: "t0",
-        trackIndex: 0,
       });
     });
 

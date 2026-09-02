@@ -48,7 +48,6 @@ describe("createTrack by path", () => {
     expect(createTrack({ path: "t+", name: "Appended" })).toStrictEqual({
       id: "midi_track_-1",
       path: "t2",
-      trackIndex: 2,
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_midi_track", -1);
   });
@@ -61,7 +60,6 @@ describe("createTrack by path", () => {
     ).toStrictEqual({
       id: "audio_track_1",
       path: "t1",
-      trackIndex: 1,
     });
     expect(liveSet.call).toHaveBeenCalledWith("create_audio_track", 1);
   });

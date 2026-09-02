@@ -29,7 +29,7 @@ describe("ppal-create-track", () => {
     const midi = parseToolResult<CreateTrackResult>(midiResult);
 
     expect(midi.id).toBeDefined();
-    expect(typeof midi.trackIndex).toBe("number");
+    expect(midi.path).toMatch(/^t\d+$/);
 
     await sleep(100);
     const verifyMidi = await ctx.client!.callTool({
@@ -156,7 +156,7 @@ describe("ppal-create-track", () => {
     });
     const atIndex = parseToolResult<CreateTrackResult>(atIndexResult);
 
-    expect(atIndex.trackIndex).toBe(0);
+    expect(atIndex.path).toBe("t0");
   });
 
   it("creates multiple tracks in batch", async () => {
@@ -284,7 +284,7 @@ interface LiveSetResult {
 
 interface CreateTrackResult {
   id: string;
-  trackIndex?: number;
+  path?: string;
   returnTrackIndex?: number;
 }
 

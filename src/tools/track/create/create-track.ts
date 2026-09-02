@@ -35,7 +35,6 @@ interface CreateTrackArgs {
 interface CreatedTrackResult {
   id: string;
   path: string;
-  trackIndex?: number;
   returnTrackIndex?: number;
 }
 
@@ -229,7 +228,6 @@ export function createTrack(
         : {
             id: trackId,
             path: formatObjectPath({ kind: "track", trackIndex: resultIndex }),
-            trackIndex: resultIndex,
           },
     );
 

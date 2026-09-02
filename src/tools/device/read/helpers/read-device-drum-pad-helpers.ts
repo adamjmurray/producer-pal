@@ -232,6 +232,7 @@ export function buildDrumPadInfo(
   path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
+  const withChains = options.includeChains || options.includeDrumPads;
   const drumPadInfo = buildDrumPadFields({
     id: pad.id,
     path,
@@ -239,12 +240,11 @@ export function buildDrumPadInfo(
     note: pad.getProperty("note") as number,
     // Counted off the pad, not chainsOnDrumPad: the two collections hold the
     // same chains in different orders, and only the count is wanted here.
-    chainCount: pad.getChildCount("chains"),
+    chainCount: withChains ? undefined : pad.getChildCount("chains"),
     state: drumPadState(pad),
   });
 
-  // Include chains if requested
-  if (options.includeChains || options.includeDrumPads) {
+  if (withChains) {
     drumPadInfo.chains = buildDrumPadChains(
       chainsOnDrumPad(pad),
       path,
@@ -285,14 +285,16 @@ function buildPadlessDrumPadInfo(
   path: string,
   options: ReadOptions,
 ): Record<string, unknown> {
+  const withChains = options.includeChains || options.includeDrumPads;
   const drumPadInfo = buildDrumPadFromChains(
     midiNote,
     chains.map((chain) => drumPadChainSummary(chain)),
     undefined,
     path,
+    withChains,
   );
 
-  if (options.includeChains || options.includeDrumPads) {
+  if (withChains) {
     drumPadInfo.chains = buildDrumPadChains(chains, path, options);
   }
 

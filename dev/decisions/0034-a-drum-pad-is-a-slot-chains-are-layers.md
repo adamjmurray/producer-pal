@@ -51,7 +51,8 @@ gets the destination-occupied warning for free. `out_note` is exposed as
 **Treating `pad.name` as data.** Live computes it — the chain's name at one
 chain, the note name at zero, `"Multi"` at two or more — and a user can name a
 chain "Multi", so it can't distinguish a layered pad from a single-chain one.
-Pad reads carry `chainCount` instead.
+Pad reads carry the layers instead: the `chains` array, or a `chainCount` when
+chains weren't asked for.
 
 **Reading layers out of `pad.chains`.** Its order disagrees with the rack's
 chains filtered by `in_note` once a pad is layered, so it labels a layer with

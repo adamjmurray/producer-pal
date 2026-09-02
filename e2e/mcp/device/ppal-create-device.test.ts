@@ -20,6 +20,7 @@ import {
   readDeviceCount,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
 
 const ctx = setupMcpTestContext();
@@ -49,7 +50,7 @@ describe("ppal-create-device", () => {
    * @returns The new track's index
    */
   async function createTrack(type: "midi" | "audio"): Promise<number> {
-    const track = parseToolResult<{ id: string; trackIndex: number }>(
+    const track = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-track",
         arguments: { type },
@@ -58,7 +59,7 @@ describe("ppal-create-device", () => {
 
     await sleep(100);
 
-    return track.trackIndex;
+    return trackIndexFromPath(track.path);
   }
 
   /**
@@ -99,13 +100,13 @@ describe("ppal-create-device", () => {
     const eq = await createDevice("EQ Eight", `t${trackIndex}/d0`);
 
     expect(eq.id).toBeDefined();
-    expect(eq.deviceIndex).toBe(0);
+    expect(eq.path).toBe(`t${trackIndex}/d0`);
   });
 
   it("appends an audio effect and a MIDI effect to a track", async () => {
     const comp = await createDevice("Compressor", "t0");
 
-    expect(typeof comp.deviceIndex).toBe("number");
+    expect(comp.path).toMatch(/^t0\/d\d+$/);
     expect((await readDevice(comp.id)).type).toContain("Compressor");
 
     const arp = await createDevice("Arpeggiator", "t0");
@@ -146,7 +147,7 @@ describe("ppal-create-device", () => {
   it("allows a MIDI effect before a track's instrument", async () => {
     const device = await createDevice("Arpeggiator", "t1/d0");
 
-    expect(device.deviceIndex).toBe(0);
+    expect(device.path).toBe("t1/d0");
   });
 
   it("appends and warns for a position past the end of the chain", async () => {
@@ -165,7 +166,7 @@ describe("ppal-create-device", () => {
       }),
     );
 
-    expect(result.data.deviceIndex).toBe(startingDevices);
+    expect(result.data.path).toBe(`t${trackIndex}/d${startingDevices}`);
     expect(result.warnings.join("\n")).toContain(
       "past the end of the device chain",
     );
@@ -178,12 +179,9 @@ describe("ppal-create-device", () => {
 
     await sleep(100);
 
-    const chainDevice = await createDevice(
-      "Compressor",
-      `t${trackIndex}/d${rack.deviceIndex}/c0/d0`,
-    );
+    const chainDevice = await createDevice("Compressor", `${rack.path}/c0/d0`);
 
-    expect(chainDevice.deviceIndex).toBe(0);
+    expect(chainDevice.path).toBe(`${rack.path}/c0/d0`);
   });
 });
 
@@ -195,7 +193,7 @@ interface ListDevicesResult {
 
 interface CreateDeviceResult {
   id: string;
-  deviceIndex: number;
+  path: string;
 }
 
 interface ReadDeviceResult {

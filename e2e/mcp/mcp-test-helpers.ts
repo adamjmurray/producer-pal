@@ -291,7 +291,7 @@ async function resetConfigAndSettle(): Promise<void> {
 
 interface CreateDeviceResult {
   id: string;
-  deviceIndex: number | null;
+  path?: string;
 }
 
 /**
@@ -343,14 +343,13 @@ function createdDevice(
   containerPath: string,
   created: CreateDeviceResult,
 ): CreatedDevice {
-  if (created.deviceIndex == null) {
-    throw new Error(`create-device gave no index for "${containerPath}"`);
+  const deviceIndex = Number(created.path?.match(/\/d(\d+)$/)?.[1]);
+
+  if (created.path == null || Number.isNaN(deviceIndex)) {
+    throw new Error(`create-device gave no device path for "${containerPath}"`);
   }
 
-  return {
-    path: `${containerPath}/d${created.deviceIndex}`,
-    deviceIndex: created.deviceIndex,
-  };
+  return { path: created.path, deviceIndex };
 }
 
 /**
@@ -407,7 +406,7 @@ export async function readDeviceCount(
  * @returns The new track's index
  */
 export async function createMidiTrack(client: Client): Promise<number> {
-  const track = parseToolResult<{ trackIndex: number }>(
+  const track = parseToolResult<{ path: string }>(
     await client.callTool({
       name: "ppal-create-track",
       arguments: { type: "midi" },
@@ -416,7 +415,23 @@ export async function createMidiTrack(client: Client): Promise<number> {
 
   await sleep(150);
 
-  return track.trackIndex;
+  return trackIndexFromPath(track.path);
+}
+
+/**
+ * The 0-based index a track path names. Track results report `path`, not an
+ * index, so a test that needs the number takes it from there.
+ * @param path - Track path from a tool result, e.g. `t3`
+ * @returns The track index
+ */
+export function trackIndexFromPath(path: string | undefined | null): number {
+  const index = Number(path?.match(/^t(\d+)$/)?.[1]);
+
+  if (Number.isNaN(index)) {
+    throw new Error(`not a regular track path: "${path}"`);
+  }
+
+  return index;
 }
 
 /**
@@ -570,7 +585,7 @@ export interface UpdateClipResult {
 /** Result from ppal-create-track tool */
 export interface CreateTrackResult {
   id: string;
-  trackIndex?: number;
+  path?: string;
 }
 
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */

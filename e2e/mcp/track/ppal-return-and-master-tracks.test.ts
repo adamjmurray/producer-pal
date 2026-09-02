@@ -87,7 +87,7 @@ describe("return and master tracks", () => {
   });
 
   it("creates and deletes a device on a return track", async () => {
-    const created = parseToolResult<{ id: string; deviceIndex: number }>(
+    const created = parseToolResult<{ id: string; path: string }>(
       await ctx.client!.callTool({
         name: "ppal-create-device",
         arguments: { deviceName: "Compressor", path: "rt1" },
@@ -103,7 +103,7 @@ describe("return and master tracks", () => {
       }),
     );
 
-    expect(device.path).toBe(`rt1/d${created.deviceIndex}`);
+    expect(device.path).toBe(created.path);
     expect(device.type).toContain("Compressor");
 
     await ctx.client!.callTool({

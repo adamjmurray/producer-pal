@@ -131,7 +131,7 @@ describe("ppal-update-scene", () => {
 
 interface CreateSceneResult {
   id: string;
-  sceneIndex: number;
+  path: string;
 }
 
 interface UpdateSceneResult {

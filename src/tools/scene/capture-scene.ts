@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -11,10 +12,9 @@ interface CapturedClip {
   trackIndex: number;
 }
 
-interface CaptureSceneResult {
+export interface CaptureSceneResult {
   id: string;
   path: string;
-  sceneIndex: number;
   clips: CapturedClip[];
 }
 
@@ -28,12 +28,12 @@ interface CaptureSceneArgs {
  * @param args - The parameters
  * @param args.sceneIndex - Optional scene index to select before capturing
  * @param args.name - Optional name for the captured scene
- * @returns Result object with information about the captured scene
+ * @returns The captured scene, plus its index for the caller's follow-up writes
  */
 export function captureScene({
   sceneIndex,
   name,
-}: CaptureSceneArgs = {}): CaptureSceneResult {
+}: CaptureSceneArgs = {}): CaptureSceneResult & { sceneIndex: number } {
   const liveSet = LiveAPI.from(livePath.liveSet);
   const appView = LiveAPI.from(livePath.view.song);
 

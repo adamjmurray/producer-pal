@@ -16,7 +16,7 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
-import { captureScene } from "./capture-scene.ts";
+import { captureScene, type CaptureSceneResult } from "./capture-scene.ts";
 import {
   applyTempoProperty,
   applyTimeSignatureProperty,
@@ -26,11 +26,6 @@ import {
 interface SceneResult {
   id: string;
   path: string;
-  sceneIndex: number;
-}
-
-interface CaptureSceneResult extends SceneResult {
-  clips: Array<{ id: string; trackIndex: number }>;
 }
 
 interface SceneProperties {
@@ -85,9 +80,14 @@ export function createScene(
 
   // Handle capture mode
   if (capture) {
-    const result = captureScene({ sceneIndex, name });
+    // The index is Live's answer to where the capture landed; it stays out of
+    // the result, where `path` already says it.
+    const { sceneIndex: capturedIndex, ...result } = captureScene({
+      sceneIndex,
+      name,
+    });
 
-    applyCaptureProperties(result, { color, tempo, timeSignature });
+    applyCaptureProperties(capturedIndex, { color, tempo, timeSignature });
 
     if (focus) {
       focusSelect({ view: "session", id: result.id });
@@ -201,18 +201,17 @@ function ensureSceneCountForIndex(liveSet: LiveAPI, sceneIndex: number): void {
 
 /**
  * Applies scene properties in capture mode
- * @param result - The capture result object
- * @param result.sceneIndex - The scene index
+ * @param sceneIndex - Index the capture landed at
  * @param props - Properties to apply
  */
 function applyCaptureProperties(
-  result: { sceneIndex: number },
+  sceneIndex: number,
   props: SceneProperties,
 ): void {
   const { color, tempo, timeSignature } = props;
 
   if (color != null || tempo != null || timeSignature != null) {
-    const scene = LiveAPI.from(livePath.scene(result.sceneIndex));
+    const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
     applySceneProperties(scene, { color, tempo, timeSignature });
   }
@@ -248,6 +247,5 @@ function createSingleScene(
   return {
     id: scene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex }),
-    sceneIndex,
   };
 }

@@ -28,7 +28,7 @@ describe("ppal-create-scene", () => {
     const basic = parseToolResult<CreateSceneResult>(basicResult);
 
     expect(basic.id).toBeDefined();
-    expect(basic.sceneIndex).toBe(0);
+    expect(basic.path).toBe("s0");
 
     // Test 2: Create scene with name
     const namedResult = await ctx.client!.callTool({
@@ -114,8 +114,8 @@ describe("ppal-create-scene", () => {
 
     expect(batch[0]!.id).toBeDefined();
     expect(batch[1]!.id).toBeDefined();
-    expect(batch[0]!.sceneIndex).toBe(5);
-    expect(batch[1]!.sceneIndex).toBe(6);
+    expect(batch[0]!.path).toBe("s5");
+    expect(batch[1]!.path).toBe("s6");
 
     // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
@@ -213,7 +213,7 @@ describe("ppal-create-scene", () => {
     );
 
     expect(capture.id).toBeDefined();
-    expect(capture.sceneIndex).toBeGreaterThan(0);
+    expect(capture.path).toMatch(/^s[1-9]\d*$/);
     expect(Array.isArray(capture.clips)).toBe(true);
     expect(capture.clips!.length).toBeGreaterThan(0);
 
@@ -252,12 +252,12 @@ interface LiveSetResult {
 
 interface CreateSceneResult {
   id: string;
-  sceneIndex: number;
+  path: string;
 }
 
 interface CaptureSceneResult {
   id: string;
-  sceneIndex: number;
+  path: string;
   clips?: Array<{ id: string; trackIndex: number }>;
 }
 

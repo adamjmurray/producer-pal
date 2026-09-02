@@ -47,6 +47,7 @@ export interface DrumPadInfo {
   note: number;
   pitch: string;
   name: string;
+  chainCount?: number;
   hasInstrument?: boolean;
   chains?: ChainInfo[];
 }

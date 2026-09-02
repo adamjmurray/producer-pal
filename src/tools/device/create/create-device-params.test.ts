@@ -92,7 +92,6 @@ describe("createDevice params", () => {
       expect(result).toStrictEqual({
         id: "comp-new",
         path: "t0/d2",
-        deviceIndex: 2,
         params: [{ id: "threshold", name: "Threshold", value: -20 }],
       });
     });
@@ -230,7 +229,6 @@ describe("createDevice params", () => {
 
       expect(result).toStrictEqual({
         path: "t0/d0",
-        deviceIndex: 0,
         id: "drum-rack",
       });
       expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(

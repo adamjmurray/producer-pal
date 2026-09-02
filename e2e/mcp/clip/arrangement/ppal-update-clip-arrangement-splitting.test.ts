@@ -37,6 +37,7 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
@@ -169,7 +170,9 @@ describe("Behavioral splitting tests", () => {
       arguments: { type: "midi", name: "Split Behavioral Tests" },
     });
 
-    dynamicTrackIndex = parseToolResult<CreateTrackResult>(result).trackIndex!;
+    dynamicTrackIndex = trackIndexFromPath(
+      parseToolResult<CreateTrackResult>(result).path,
+    );
   });
 
   /**

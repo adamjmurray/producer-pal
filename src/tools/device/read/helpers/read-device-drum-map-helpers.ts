@@ -149,9 +149,16 @@ function stripInternalChains(
 
   if (keepDrumPads && Array.isArray(result.drumPads)) {
     // The pads stay, but not their chains: chains are forced on to build the
-    // map, and a pad read without the map never carries them.
+    // map, and a pad read without the map never carries them. The count takes
+    // the array's place, which is what such a read reports.
     for (const pad of result.drumPads) {
-      delete (pad as Record<string, unknown>).chains;
+      const padFields = pad as Record<string, unknown>;
+
+      if (Array.isArray(padFields.chains)) {
+        padFields.chainCount = padFields.chains.length;
+      }
+
+      delete padFields.chains;
     }
   } else {
     delete result.drumPads;

@@ -29,7 +29,7 @@ describe("ppal-read-scene", () => {
   async function firstScene(): Promise<{
     id: string;
     name: string;
-    sceneIndex: number;
+    path: string;
   }> {
     const liveSet = parseToolResult<LiveSetResult>(
       await ctx.client!.callTool({
@@ -69,7 +69,7 @@ describe("ppal-read-scene", () => {
 
     expect(byId.id).toBe(scene.id);
     expect(byId.name).toBeDefined();
-    expect(byId.sceneIndex).toBe(scene.sceneIndex);
+    expect(byId.path).toBe(scene.path);
     // clipCount comes back without asking for any include
     expect(typeof byId.clipCount).toBe("number");
   });
@@ -79,7 +79,7 @@ describe("ppal-read-scene", () => {
     const byIndex = await readScene({ path: "s0" });
 
     expect(byIndex.id).toBe(scene.id);
-    expect(byIndex.sceneIndex).toBe(0);
+    expect(byIndex.path).toBe("s0");
   });
 
   it("names the track each clip sits on with include clips", async () => {
@@ -129,14 +129,14 @@ interface LiveSetResult {
   scenes?: Array<{
     id: string;
     name: string;
-    sceneIndex: number;
+    path: string;
   }>;
 }
 
 interface ReadSceneResult {
   id: string | null;
   name: string | null;
-  sceneIndex?: number | null;
+  path?: string;
   color?: string;
   tempo?: number;
   timeSignature?: string;

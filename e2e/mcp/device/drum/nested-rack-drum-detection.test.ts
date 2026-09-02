@@ -29,6 +29,7 @@ import {
   setConfig,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../../mcp-test-helpers.ts";
 import { RACKS_TEST_PATH } from "../helpers/racks-test-helpers.ts";
 
@@ -86,7 +87,7 @@ async function createTrack(name: string): Promise<number> {
 
   await sleep(100);
 
-  return track.trackIndex as number;
+  return trackIndexFromPath(track.path);
 }
 
 /**

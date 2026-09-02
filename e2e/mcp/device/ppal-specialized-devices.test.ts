@@ -27,6 +27,7 @@ import {
   setConfig,
   setupMcpTestContext,
   sleep,
+  trackIndexFromPath,
 } from "../mcp-test-helpers";
 
 interface PseudoParam {
@@ -73,11 +74,11 @@ async function createTrack(type: "midi" | "audio"): Promise<number> {
     name: "ppal-create-track",
     arguments: { type },
   });
-  const { trackIndex } = parseToolResult<{ trackIndex: number }>(result);
+  const { path } = parseToolResult<{ path: string }>(result);
 
   await sleep(100);
 
-  return trackIndex;
+  return trackIndexFromPath(path);
 }
 
 /** Create an instrument on a fresh MIDI track; returns the device id. */

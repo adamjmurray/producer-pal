@@ -149,7 +149,6 @@ describe("readTrack", () => {
       path: "t1",
       type: "audio",
       name: "Audio Track",
-      trackIndex: 1,
 
       sessionClipCount: 0,
       arrangementClipCount: 0,
@@ -186,7 +185,6 @@ describe("readTrack", () => {
       isArmed: true,
       name: "Boundary Track",
       sessionClipCount: 0,
-      trackIndex: 1,
       type: "midi",
       playingSlotIndex: 0,
       firedSlotIndex: 0,
@@ -282,7 +280,6 @@ describe("readTrack", () => {
       path: "t2",
       type: "midi",
       name: "Track with Clips",
-      trackIndex: 2,
 
       sessionClips: [
         {
@@ -559,7 +556,6 @@ function expectedSoloedMidiTrackResult(): Record<string, unknown> {
     path: "t0",
     type: "midi",
     name: "Track 1",
-    trackIndex: 0,
     sessionClipCount: 0,
     arrangementClipCount: 0,
     deviceCount: 0,

@@ -85,7 +85,6 @@ describe("readScene", () => {
       id: "scene1",
       path: "s0",
       name: "Test Scene",
-      sceneIndex: 0,
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -127,7 +126,6 @@ describe("readScene", () => {
       id: "scene2",
       path: "s1",
       name: "Scene with Disabled Properties",
-      sceneIndex: 1,
       clipCount: 0,
       triggered: true,
     });
@@ -143,7 +141,6 @@ describe("readScene", () => {
       id: "scene3",
       path: "s2",
       name: "3",
-      sceneIndex: 2,
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -170,7 +167,6 @@ describe("readScene", () => {
       id: "scene_0",
       path: "s0",
       name: "Scene with 2 Clips",
-      sceneIndex: 0,
       clipCount: 2,
       tempo: 120,
       timeSignature: "4/4",
@@ -225,7 +221,6 @@ describe("readScene", () => {
       id: "scene_0",
       path: "s0",
       name: "Scene with Clips",
-      sceneIndex: 0,
       tempo: 120,
       timeSignature: "4/4",
       clips: [
@@ -284,7 +279,6 @@ describe("readScene", () => {
       expect.objectContaining({
         id: "scene_0",
         name: "Wildcard Test Scene",
-        sceneIndex: 0,
         clips: expect.any(Array),
       }),
     );
@@ -314,7 +308,6 @@ describe("readScene", () => {
         id: "123",
         path: "s5",
         name: "Scene by ID",
-        sceneIndex: 5,
         clipCount: 0,
         triggered: true,
         tempo: 128,
@@ -330,7 +323,6 @@ describe("readScene", () => {
 
       expect(readScene({ sceneId: "123" })).toStrictEqual({
         clipCount: 0,
-        sceneIndex: 5,
         tempo: 120,
         timeSignature: "4/4",
         id: "123",
@@ -362,7 +354,6 @@ describe("readScene", () => {
         id: "456",
         path: "s2",
         name: "Scene with Clips by ID",
-        sceneIndex: 2,
         tempo: 110,
         timeSignature: "4/4",
         clips: [
@@ -422,7 +413,7 @@ describe("readScene", () => {
       const result = readScene({ id: "789", sceneIndex: 3 });
 
       // Should use scene with ID "789" (index 7) not sceneIndex 3
-      expect(result.sceneIndex).toBe(7);
+      expect(result.path).toBe("s7");
       expect(result.name).toBe("Priority Test Scene");
     });
   });

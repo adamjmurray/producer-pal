@@ -246,6 +246,11 @@ calls made while building, neither in the plan: `select`'s own `trackType` /
 already covered all three), and `read-scene`'s `sceneIndex` went with
 `read-track`'s.
 
+The results followed in the same release: `trackIndex` on `create-track` and
+`read-track`, `sceneIndex` on `create-scene` and `read-scene`, and `deviceIndex`
+on `create-device` are gone — `path` spells all three. A drum pad still reports
+`chainCount`, but only when its `chains` array isn't there to be counted.
+
 1. **`path` on the read tools' input.** `read-track` and `read-scene` address by
    `trackIndex` / `sceneIndex` today and take no path. Add it first.
 2. **`type` stops reporting the role.** Both `computeTrackType` sites together,

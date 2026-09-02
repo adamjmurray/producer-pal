@@ -223,7 +223,7 @@ const CASES: Case[] = [
     param: "sceneIndex",
     // The Set has s0-s7, so 8 appends and shifts nothing.
     args: () => ({ sceneIndex: 8, name: "Hidden Param Scene" }),
-    verify: (d) => expect(d.sceneIndex).toBe(8),
+    verify: (d) => expect(d.path).toBe("s8"),
   },
   {
     tool: "ppal-update-scene",

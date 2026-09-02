@@ -42,7 +42,6 @@ interface ReadSceneResult {
   id: string | null;
   path?: string;
   name: string | null;
-  sceneIndex?: number | null;
   color?: string | null;
   tempo?: unknown;
   timeSignature?: string | null;
@@ -123,7 +122,6 @@ export function readScene(
     id: scene.id,
     ...pathField(scene),
     name: sceneDisplayName(scene, resolvedSceneIndex as number),
-    sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };
 
