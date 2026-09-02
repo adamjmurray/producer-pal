@@ -142,6 +142,18 @@ as a failed turn rather than let a meaningless score through. It fires on the
 full toolset today; `--tools` a subset, or use another provider. No env var
 raises the limit (`MAX_MCP_OUTPUT_TOKENS` is a different cap and does not).
 
+Eight tools fit, and that has been enough for a path scenario:
+
+```bash
+scripts/eval -t path-uncommon-roots -m claude-code/haiku \
+  --tools connect,select,read-live-set,read-track,read-device,update-track,create-track,create-scene
+```
+
+Give a subset every tool the scenario's RECOVERY path needs, not just the ones
+it grades. Leaving `read-device` out of that list is what a model uses to find a
+drum rack nested inside another rack, and without it the run fails on a check
+that has nothing to do with the missing tool.
+
 A looping model is bounded the same way it is on the AI SDK path. Neither CLI
 takes a step limit we can rely on, so the transports count the model's actions
 (each tool call, each reply) off the event stream and kill the subprocess once
