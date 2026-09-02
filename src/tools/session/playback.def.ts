@@ -82,11 +82,8 @@ stop: session and arrangement`,
     slots: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "path",
     }),
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based scene index for play-scene (or use path 's<scene>')"),
+    sceneIndex: deprecatedParam(z.coerce.number().int().min(0).optional(), {
+      replacedBy: "path",
+    }),
   },
 });

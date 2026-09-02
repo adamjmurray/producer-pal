@@ -142,6 +142,30 @@ describe("hidden params", () => {
     });
   });
 
+  // playback was the last tool publishing an index param, so a model reading
+  // its schema saw two spellings for one scene.
+  it("publishes path and hides playback's index params", () => {
+    const playback = publishedParams("ppal-playback");
+
+    expect(playback).toContain("path");
+    expect(playback).not.toContain("sceneIndex");
+    expect(playback).not.toContain("slots");
+
+    const def = STANDARD_TOOL_DEFS.find(
+      (td: ToolDefFunction) => td.toolName === "ppal-playback",
+    ) as ToolDefFunction;
+    const { validating, hidden } = resolveToolSchema(
+      def.toolOptions.inputSchema,
+      {},
+    );
+
+    expect(Object.keys(validating)).toContain("sceneIndex");
+    expect(hidden.sceneIndex).toStrictEqual({
+      kind: "deprecated",
+      replacedBy: "path",
+    });
+  });
+
   // Every tool names its target with "id". The prefixed spellings a model
   // reaches for on its own stay accepted for good, so a well-founded guess
   // costs a warning rather than a round trip.

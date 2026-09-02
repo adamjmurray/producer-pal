@@ -83,7 +83,7 @@ interface BuildPlaybackResultParams {
  * @param args.loopStartLocator - Locator ID or name for loop start
  * @param args.loopEnd - Loop end position in bar|beat format
  * @param args.loopEndLocator - Locator ID or name for loop end
- * @param args.sceneIndex - Scene index for Session view operations
+ * @param args.sceneIndex - Deprecated scene index for Session view operations
  * @param args.id - Comma-separated clip IDs for Session view operations
  * @param args.ids - Hidden alias for id
  * @param args.path - A scene "s<scene>", or comma-separated clip slots "t<track>/s<scene>"

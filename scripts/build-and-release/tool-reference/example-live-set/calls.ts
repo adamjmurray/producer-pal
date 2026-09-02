@@ -24,7 +24,7 @@ export const TOOL_EXAMPLES: ToolExample[] = [
   { toolName: "ppal-connect", args: {} },
   { toolName: "ppal-context", args: { action: "read" } },
 
-  { toolName: "ppal-playback", args: { action: "play-scene", sceneIndex: 0 } },
+  { toolName: "ppal-playback", args: { action: "play-scene", path: "s0" } },
   { toolName: "ppal-select", args: { path: "t0/s0" } },
   { toolName: "ppal-library", args: { query: "kick", limit: 2 } },
 
