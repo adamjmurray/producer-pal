@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   SMALL_MODEL_EXCLUDED_PARAMS,
   STANDARD_TOOL_DEFS,
@@ -220,6 +221,35 @@ describe("hidden params", () => {
     expect(aliasShapes(aliases, "path")).toStrictEqual(
       foldedShapes(aliases, "path"),
     );
+  });
+
+  // The fan-out was `action: "searchBatch"` + `queries` before it folded into
+  // `search` + `searches`. Both spellings still have to reach the handler.
+  it("publishes searches and accepts queries as the name it replaced", () => {
+    const aliases: Array<[string, string]> = [["ppal-library", "queries"]];
+
+    expect(aliasShapes(aliases, "searches")).toStrictEqual(
+      foldedShapes(aliases, "searches"),
+    );
+  });
+
+  it("stops offering the searchBatch action without refusing it", () => {
+    const def = STANDARD_TOOL_DEFS.find(
+      (td: ToolDefFunction) => td.toolName === "ppal-library",
+    ) as ToolDefFunction;
+    const { published } = resolveToolSchema(def.toolOptions.inputSchema, {});
+    const json = z.toJSONSchema(z.object(published), {
+      io: "input",
+    }) as unknown as {
+      properties: { action: { enum?: string[] } };
+    };
+
+    expect(json.properties.action.enum).not.toContain("searchBatch");
+    // The MCP SDK gates every call on the published schema, so hiding the value
+    // there must not be the same as refusing it.
+    expect(
+      z.object(published).safeParse({ action: "searchBatch" }).success,
+    ).toBe(true);
   });
 
   it("still validates the params it stopped publishing", () => {

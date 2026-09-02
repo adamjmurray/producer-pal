@@ -320,6 +320,49 @@ describe("library tool — searches fan-out", () => {
     warnSpy.mockRestore();
   });
 
+  // The spellings the fan-out shipped under before it folded into search +
+  // searches. Each still reaches the handler, so a 2.2 script gets results
+  // instead of a schema error.
+  it.each([
+    [
+      "queries",
+      { action: "search", queries: [{ label: "Kick", tags: "Kick" }] },
+    ],
+    [
+      "the searchBatch action",
+      { action: "searchBatch", searches: [{ label: "Kick", tags: "Kick" }] },
+    ],
+    [
+      "both old names at once",
+      { action: "searchBatch", queries: [{ label: "Kick", tags: "Kick" }] },
+    ],
+  ])("runs the fan-out for a caller still on %s", async (_label, args) => {
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    expect(await library(args)).toStrictEqual({
+      dbAvailable: true,
+      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+    });
+  });
+
+  it("prefers searches when a caller sends both names", async () => {
+    mockSearchByFilter({
+      Kick: [dbItem("kick.wav")],
+      Snare: [dbItem("snare.wav")],
+    });
+
+    const result = await library({
+      action: "search",
+      searches: [{ label: "Kick", tags: "Kick" }],
+      queries: [{ label: "Snare", tags: "Snare" }],
+    });
+
+    expect(result).toStrictEqual({
+      dbAvailable: true,
+      results: [{ label: "Kick", items: [dbItem("kick.wav")] }],
+    });
+  });
+
   it("reports dbAvailable:false when any query finds the DB missing", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,

@@ -45,6 +45,8 @@ interface LibraryArgs extends LibrarySearchArgs {
   similarTo?: string;
   /** search only: per-query filter sets to fan out over (see runSearchBatch). */
   searches?: LibraryBatchQuery[];
+  /** Hidden alias for searches: the name the fan-out shipped under. */
+  queries?: LibraryBatchQuery[];
   /** listPlugins only: vendor/manufacturer substring filter. */
   vendor?: string;
   /** listPlugins only: restrict to a single plugin format. */
@@ -80,9 +82,10 @@ export async function library(
   args: LibraryArgs = {},
   toolContext: Partial<ToolContext> = {},
 ): Promise<LibraryResult> {
-  const action = args.action ?? "search";
+  const action = resolveAction(args.action);
+  const searches = args.searches ?? args.queries;
 
-  if (args.searches != null && action !== "search") {
+  if (searches != null && action !== "search") {
     console.warn(`searches does not apply to action "${action}"; ignoring it`);
   }
 
@@ -145,11 +148,11 @@ export async function library(
   // searches is the fan-out form of a search: each entry carries its own
   // filters, so the top-level ones don't apply. An empty array says nothing
   // about what to search for, so fall through to the single search.
-  if (args.searches != null && args.searches.length > 0) {
-    return await runSearchBatch(args.searches, toolContext, runSearch);
+  if (searches != null && searches.length > 0) {
+    return await runSearchBatch(searches, toolContext, runSearch);
   }
 
-  if (args.searches != null) {
+  if (searches != null) {
     console.warn("searches was empty; running a single search instead");
   }
 
@@ -216,6 +219,20 @@ export async function runSearch(
   };
 
   return reason == null ? base : { ...base, reason };
+}
+
+/**
+ * The action to dispatch on. searchBatch is what the fan-out shipped as before
+ * it folded into search + `searches`, so a caller still naming it gets the
+ * fan-out rather than an error.
+ *
+ * @param action - The action as the caller sent it
+ * @returns The action to run
+ */
+function resolveAction(action: string | undefined): string {
+  if (action === "searchBatch") return "search";
+
+  return action ?? "search";
 }
 
 interface FolderScan {
