@@ -38,5 +38,8 @@ mostly succeeds.
   firings of the same reason are indistinguishable and the model can't tell
   which clip kept its notes. Prefer the path (`t1`, `t1/d0`); use the id where
   the path doesn't name the item, as an arrangement clip's path names its lane.
-  `targetLabel()` in `object-path-for-api.ts` picks. A whole-call param error is
-  different: nothing was skipped in particular, so it stays unqualified.
+  `targetLabel()` in `object-path-for-api.ts` picks. An object that doesn't
+  exist yet has neither, so create-clip names the destination it's headed for
+  plus its ordinal in the batch (`clip t0/s1 (2 of 5)`), which is also the
+  `clip.index` a transform saw. A whole-call param error is different: nothing
+  was skipped in particular, so it stays unqualified.

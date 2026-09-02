@@ -335,6 +335,21 @@ export function setupDualMocks(): DualMockHandles {
 }
 
 /**
+ * Register an empty clip slot (and its clip) at track 0, the given scene.
+ * @param sceneIndex - 0-based scene index
+ */
+export function registerEmptyClipSlot(sceneIndex: number): void {
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}`, {
+    path: livePath.track(0).clipSlot(sceneIndex),
+    properties: { has_clip: 0 },
+  });
+  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}/clip`, {
+    path: livePath.track(0).clipSlot(sceneIndex).clip(),
+    methods: createNoteTrackingMethods(),
+  });
+}
+
+/**
  * Setup mocks for session clip tests.
  * @param opts - Options for mock properties
  * @param opts.liveSet - Properties for the live set

@@ -16,6 +16,7 @@ import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-c
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { readLiveSetScaleMask } from "#src/tools/clip/helpers/scale-mask.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import {
   takeLaneKey,
   takeLaneLabel,
@@ -170,18 +171,27 @@ async function createClipAtIndex(
     parsedColors,
   );
   const pos = resolveIterationPosition(params, i);
+  const position = clipPositionLabel(view, pos);
 
   // Apply the transform with this clip's context (clipseq/clip.index/etc.).
   // Falls back to the shared notes/length when there is no transform.
+  //
+  // The clip doesn't exist yet, so a transform warning can't name it by id the
+  // way update-clip does. The destination plus the ordinal (which is the
+  // clip.index the transform saw) says which one it was.
   const {
     notes: clipNotes,
     clipLength,
     transformedCount,
-  } = resolveClipTransform(
-    transformInputs,
-    globalIndex,
-    totalCount,
-    pos.arrangementStartBeats,
+  } = withClipWarningLabel(
+    `clip ${position}${ordinalSuffix(globalIndex, totalCount)}`,
+    () =>
+      resolveClipTransform(
+        transformInputs,
+        globalIndex,
+        totalCount,
+        pos.arrangementStartBeats,
+      ),
   );
 
   try {
@@ -236,15 +246,32 @@ async function createClipAtIndex(
       }
     }
   } catch (error) {
-    const position =
-      view === "session"
-        ? slotPath(pos.trackIndex, pos.sceneIndex as number)
-        : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
-
     console.warn(
       `Failed to create clip at ${position}: ${errorMessage(error)}`,
     );
   }
+}
+
+/**
+ * Which clip of the batch this is, for a call creating more than one.
+ * @param index - 0-based index of this clip across the whole create call
+ * @param count - Total clips the call creates
+ * @returns ` (3 of 5)`, or "" when the call creates a single clip
+ */
+function ordinalSuffix(index: number, count: number): string {
+  return count > 1 ? ` (${index + 1} of ${count})` : "";
+}
+
+/**
+ * Where a clip is being created, for warnings raised before it has an id.
+ * @param view - "session" or "arrangement"
+ * @param pos - The resolved position for this iteration
+ * @returns A destination like `t0/s1` or `t0/l1 at 5|1`
+ */
+function clipPositionLabel(view: string, pos: IterationPosition): string {
+  return view === "session"
+    ? slotPath(pos.trackIndex, pos.sceneIndex as number)
+    : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
 }
 
 /**

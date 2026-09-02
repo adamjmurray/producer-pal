@@ -6,12 +6,10 @@
 import { describe, expect, it, vi } from "vitest";
 import * as v8Console from "#src/shared/max/v8-max-console.ts";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   overrideCall,
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
 import {
   buildClipProperties,
@@ -21,6 +19,7 @@ import {
   expectClipCreated,
   expectNotesAdded,
   note,
+  registerEmptyClipSlot,
   setupArrangementClipMocks,
   setupDualMocks,
   setupSessionMocks,
@@ -29,17 +28,6 @@ import {
 vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
-
-// Registers an empty clip slot (and its clip path) at track 0, the given scene.
-function registerEmptyClipSlot(sceneIndex: number): void {
-  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}`, {
-    path: livePath.track(0).clipSlot(sceneIndex),
-    properties: { has_clip: 0 },
-  });
-  registerMockObject(`live_set/tracks/0/clip_slots/${sceneIndex}/clip`, {
-    path: livePath.track(0).clipSlot(sceneIndex).clip(),
-  });
-}
 
 /**
  * Create a clip from two identical p60/start0 notes and assert the dedupe
