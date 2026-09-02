@@ -16,7 +16,8 @@ import {
   resolveInsertionPath,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
-import { targetEntries, toLiveApiId } from "#src/tools/shared/utils.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { type TargetItem, targetItems } from "../update-device.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -56,9 +57,7 @@ export function wrapDevicesInRack({
   toPath,
   name,
 }: WrapDevicesOptions): WrapResult | null {
-  const items = targetEntries(ids ?? path, ids != null ? "ids" : "path");
-  const isIdBased = ids != null;
-  const devices = resolveDevices(items, isIdBased);
+  const devices = resolveDevices(targetItems(ids, path));
 
   if (devices.length === 0) {
     console.warn("wrapInRack: no devices found");
@@ -140,19 +139,17 @@ export function wrapDevicesInRack({
 }
 
 /**
- * Resolve device items (IDs or paths) to LiveAPI objects
- * @param items - Device IDs or paths
- * @param isIdBased - True if items are IDs, false if paths
+ * Resolve the devices a call named to LiveAPI objects
+ * @param items - The targets, each tagged with the param it came from
  * @returns Array of device LiveAPI objects
  */
-function resolveDevices(items: string[], isIdBased: boolean): LiveAPI[] {
+function resolveDevices(items: TargetItem[]): LiveAPI[] {
   const devices: LiveAPI[] = [];
 
-  for (const item of items) {
+  for (const { value: item, kind } of items) {
     try {
-      const device = isIdBased
-        ? LiveAPI.from(item)
-        : resolveDeviceFromPath(item);
+      const device =
+        kind === "id" ? LiveAPI.from(item) : resolveDeviceFromPath(item);
 
       if (!device?.exists()) {
         console.warn(`wrapInRack: device not found at "${item}"`);

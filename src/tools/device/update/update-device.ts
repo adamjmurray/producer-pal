@@ -28,7 +28,6 @@ import {
   getColorForIndex,
   parseColors,
 } from "#src/tools/shared/validation/color-utils.ts";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   pathField,
   targetLabel,
@@ -59,6 +58,7 @@ import {
 import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import { targetCount } from "#src/tools/shared/validation/lists/target-lists.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -143,7 +143,10 @@ export function updateDevice(
   ids = namedIdParam(id, ids, "ids");
   path = namedPathParam(path, paths);
 
-  validateExclusiveParams(ids, path, "id", "path");
+  if (ids == null && path == null) {
+    throw new Error("updateDevice failed: id or path is required");
+  }
+
   validateSendPair(sendGainDb, sendReturn, "updateDevice");
   validateParamEntries(params, "updateDevice");
 
@@ -168,15 +171,12 @@ export function updateDevice(
     // toPath is left out — it is one destination for the whole call, not a
     // per-device list.
     validateListLengths([
-      { param: path ? "path" : "id", value: path ?? ids },
+      { param: "id and path", count: targetCount({ ids, path }) },
       { param: "name", value: name },
       { param: "color", value: color },
     ]);
 
-    // validateExclusiveParams only asks whether a param was sent, so an id or
-    // path whose entries all trim away gets past it and updates nothing. Say
-    // which param named nothing instead of returning an empty result in silence.
-    const items = path ? targetEntries(path, "path") : targetEntries(ids, "id");
+    const items = targetItems(ids, path);
     const parsedNames = parseNames(name, items.length, "device");
     const parsedColors = parseColors(color, items.length, "device");
 
@@ -204,8 +204,6 @@ export function updateDevice(
 
     result = updateMultipleTargets(
       items,
-      path ? resolvePathToTargetSafe : resolveIdToTarget,
-      path ? "path" : "id",
       updateOptions,
       parsedNames,
       parsedColors,
@@ -224,20 +222,53 @@ export function updateDevice(
   return result;
 }
 
+/** One target the call named, and which param named it. */
+export interface TargetItem {
+  value: string;
+  kind: "id" | "path";
+}
+
 /**
- * Update multiple targets with common logic for path/ID resolution
- * @param items - Array of paths or IDs
- * @param resolveItem - Function to resolve item to ResolvedTarget
- * @param itemType - "path" or "id" for error messages
+ * The targets a call names, ids first.
+ *
+ * `id` and `path` name different devices and add up, as everywhere else. Each
+ * entry remembers which param it came from, because a device is reached
+ * differently by id than by path — the other tools can resolve a path to an id
+ * and forget the difference, and a device path can't be.
+ * @param ids - The `id` param, comma-separated
+ * @param path - The `path` param, comma-separated
+ * @returns One entry per target
+ */
+export function targetItems(
+  ids: string | undefined,
+  path: string | undefined,
+): TargetItem[] {
+  return [
+    ...(ids == null
+      ? []
+      : targetEntries(ids, "id").map((value): TargetItem => ({
+          value,
+          kind: "id",
+        }))),
+    ...(path == null
+      ? []
+      : targetEntries(path, "path").map((value): TargetItem => ({
+          value,
+          kind: "path",
+        }))),
+  ];
+}
+
+/**
+ * Update every target the call named, resolving each by the param that named it
+ * @param items - The targets, each tagged with the param it came from
  * @param updateOptions - Options to pass to updateTarget
  * @param parsedNames - Comma-separated names array, or null
  * @param parsedColors - Comma-separated colors array, or null
  * @returns Single result or array of results
  */
 function updateMultipleTargets(
-  items: string[],
-  resolveItem: (item: string) => ResolvedTarget | null,
-  itemType: string,
+  items: TargetItem[],
   updateOptions: UpdateTargetOptions,
   parsedNames: ListEntries | null,
   parsedColors: ListEntries | null,
@@ -245,11 +276,12 @@ function updateMultipleTargets(
   const results: Record<string, unknown>[] = [];
 
   for (let i = 0; i < items.length; i++) {
-    const item = items[i] as string;
-    const resolved = resolveItem(item);
+    const { value, kind } = items[i] as TargetItem;
+    const resolved =
+      kind === "id" ? resolveIdToTarget(value) : resolvePathToTargetSafe(value);
 
     if (!resolved) {
-      console.warn(`updateDevice: target not found at ${itemType} "${item}"`);
+      console.warn(`updateDevice: target not found at ${kind} "${value}"`);
       continue;
     }
 

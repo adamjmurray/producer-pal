@@ -20,13 +20,7 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 describe("updateDevice with path parameter", () => {
   it("should throw error when neither id nor path is provided", () => {
     expect(() => updateDevice({})).toThrow(
-      "Either id or path must be provided",
-    );
-  });
-
-  it("should throw error when both id and path are provided", () => {
-    expect(() => updateDevice({ id: "123", path: "t1/d0" })).toThrow(
-      "Provide either id or path, not both",
+      "updateDevice failed: id or path is required",
     );
   });
 
@@ -44,6 +38,48 @@ describe("updateDevice with path parameter", () => {
 
     expect(device.set).toHaveBeenCalledWith("name", "Renamed");
     expect(warn).toHaveBeenCalledWith('id "null" names nothing');
+  });
+
+  // id and path name different devices, so they add up, as on every other
+  // multi-target tool. Naming both used to refuse the call outright.
+  it("updates the devices named by id and by path together", () => {
+    const byId = registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+    const byPath = registerMockObject("device-789", {
+      path: livePath.track(2).device(0),
+      type: "Device",
+    });
+
+    const result = updateDevice({
+      id: "device-456",
+      path: "t2/d0",
+      name: "A,B",
+    });
+
+    expect(byId.set).toHaveBeenCalledWith("name", "A");
+    expect(byPath.set).toHaveBeenCalledWith("name", "B");
+    expect(result).toStrictEqual([
+      { id: "device-456", path: "t1/d0" },
+      { id: "device-789", path: "t2/d0" },
+    ]);
+  });
+
+  // The combined count is what a value list pairs against.
+  it("counts id and path together when pairing names", () => {
+    registerMockObject("device-456", {
+      path: livePath.track(1).device(0),
+      type: "Device",
+    });
+    registerMockObject("device-789", {
+      path: livePath.track(2).device(0),
+      type: "Device",
+    });
+
+    expect(() =>
+      updateDevice({ id: "device-456", path: "t2/d0", name: "A,B,C" }),
+    ).toThrow("id and path names 2 entries but name names 3 entries.");
   });
 
   // A permanent alias, not a migration: models reach for the plural on their
@@ -427,7 +463,7 @@ describe("updateDevice with path parameter", () => {
   describe("path validation", () => {
     it("should throw error for empty path (treated as no path)", () => {
       expect(() => updateDevice({ path: "", name: "Test" })).toThrow(
-        "Either id or path must be provided",
+        "updateDevice failed: id or path is required",
       );
     });
 

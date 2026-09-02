@@ -27,7 +27,7 @@ describe("updateDevice when id or path names nothing", () => {
   // required-param error still fires instead of a warning.
   it("still throws when id is whitespace-only", () => {
     expect(() => updateDevice({ id: "   ", mute: true })).toThrow(
-      "Either id or path must be provided",
+      "updateDevice failed: id or path is required",
     );
   });
 });
