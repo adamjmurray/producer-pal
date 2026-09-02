@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  extractToolResultText,
   parseBatchResult,
   parseToolResult,
   parseToolResultWithWarnings,
@@ -20,6 +21,21 @@ import {
 const ctx = setupMcpTestContext();
 
 describe("ppal-create-track", () => {
+  /**
+   * How many tracks the Set holds right now.
+   * @returns The track count
+   */
+  async function trackCount(): Promise<number> {
+    const set = parseToolResult<LiveSetResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-live-set",
+        arguments: { include: ["tracks"] },
+      }),
+    );
+
+    return set.tracks?.length ?? 0;
+  }
+
   it("creates midi, audio, and return tracks", async () => {
     // Test 1: Create single MIDI track (default type)
     const midiResult = await ctx.client!.callTool({
@@ -203,41 +219,19 @@ describe("ppal-create-track", () => {
     expect(kickTrack.name).toBe("Kick");
     expect(snareTrack.name).toBe("Snare");
 
-    // Test 3: Create 3 tracks with only 2 names — third keeps default, and the
-    // short list is called out rather than silently ignored.
-    const fewerNamesResult = await ctx.client!.callTool({
-      name: "ppal-create-track",
-      arguments: { count: 3, name: "Bass,Lead" },
-    });
-    const { data: fewerNames, warnings } =
-      parseToolResultWithWarnings<CreateTrackResult[]>(fewerNamesResult);
+    // Test 3: 3 tracks but only 2 names is refused before anything is made,
+    // so no track is left behind to clean up.
+    const beforeShortList = await trackCount();
+    const shortListText = extractToolResultText(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { count: 3, name: "Bass,Lead" },
+      }),
+    );
 
-    expect(fewerNames).toHaveLength(3);
-    expect(warnings).toStrictEqual([
-      "WARNING: name: 2 names for 3 tracks; the tracks past the last name were not renamed",
-    ]);
-
-    await sleep(100);
-    const verifyBass = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: fewerNames[0]!.id },
-    });
-    const verifyLead = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: fewerNames[1]!.id },
-    });
-    const verifyDefault = await ctx.client!.callTool({
-      name: "ppal-read-track",
-      arguments: { id: fewerNames[2]!.id },
-    });
-    const bassTrack = parseToolResult<ReadTrackResult>(verifyBass);
-    const leadTrack = parseToolResult<ReadTrackResult>(verifyLead);
-    const defaultTrack = parseToolResult<ReadTrackResult>(verifyDefault);
-
-    expect(bassTrack.name).toBe("Bass");
-    expect(leadTrack.name).toBe("Lead");
-    // Third track should keep Ableton's default name, not be empty
-    expect(defaultTrack.name).not.toBe("");
+    expect(shortListText).toContain("count names 3 tracks");
+    expect(shortListText).toContain("name names 2 entries");
+    expect(await trackCount()).toBe(beforeShortList);
 
     // Test 4: Create multiple tracks with comma-separated colors
     const multiColorResult = await ctx.client!.callTool({
@@ -273,7 +267,7 @@ describe("ppal-create-track", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalTrackCount = final.tracks?.length ?? 0;
 
-    // Created: 2 batch + 2 multi-name + 3 fewer-names + 2 multi-color = 9
+    // Created: 2 batch + 2 multi-name + 2 multi-color = 6
     expect(finalTrackCount).toBeGreaterThan(initialTrackCount);
   });
 });
