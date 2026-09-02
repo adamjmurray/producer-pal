@@ -38,8 +38,8 @@ describe("update-device on macro-mapped parameters", () => {
         { path: `${KIT}/pC1`, gainDb: -12, pan: -0.5 },
       );
 
-      expect(warnsDisabled(warnings, 'chain "Kick" gainDb')).toBe(true);
-      expect(warnsDisabled(warnings, 'chain "Kick" pan')).toBe(true);
+      expect(warnsDisabled(warnings, 'chain "Kick"', "gainDb")).toBe(true);
+      expect(warnsDisabled(warnings, 'chain "Kick"', "pan")).toBe(true);
 
       const chain = padChain(await readKitPads(ctx.client!), "Kick");
 
@@ -56,8 +56,8 @@ describe("update-device on macro-mapped parameters", () => {
         { path: `${KIT}/pD1`, gainDb: -12, pan: 0.25 },
       );
 
-      expect(warnsDisabled(warnings, 'chain "Snare" gainDb')).toBe(true);
-      expect(warnsDisabled(warnings, 'chain "Snare" pan')).toBe(false);
+      expect(warnsDisabled(warnings, 'chain "Snare"', "gainDb")).toBe(true);
+      expect(warnsDisabled(warnings, 'chain "Snare"', "pan")).toBe(false);
 
       const chain = padChain(await readKitPads(ctx.client!), "Snare");
 
@@ -90,7 +90,7 @@ describe("update-device on macro-mapped parameters", () => {
       });
 
       expect(
-        warnsDisabled(mapped.warnings, 'chain "Kick" send "A Saturator"'),
+        warnsDisabled(mapped.warnings, 'chain "Kick"', 'send "A Saturator"'),
       ).toBe(true);
 
       const open = await callWithWarnings(ctx.client!, "ppal-update-device", {
@@ -119,8 +119,10 @@ describe("update-device on macro-mapped parameters", () => {
         { path: `${KIT}/rc0`, gainDb: -8, pan: -0.75 },
       );
 
-      expect(warnsDisabled(warnings, 'chain "A Saturator" gainDb')).toBe(true);
-      expect(warnsDisabled(warnings, 'chain "A Saturator" pan')).toBe(true);
+      expect(warnsDisabled(warnings, 'chain "A Saturator"', "gainDb")).toBe(
+        true,
+      );
+      expect(warnsDisabled(warnings, 'chain "A Saturator"', "pan")).toBe(true);
 
       const returns = await readReturnChains(ctx.client!);
       const saturator = returns.find((c) => c.name === "A Saturator");

@@ -143,7 +143,10 @@ describe("a MIDI effect in front of the pad's instrument", () => {
       `${KIT}/pC1/c0`,
     );
 
-    expect(arp).toBe(`${KIT}/pC1/c0/d0`);
+    // Live spells a pad's chain rack-relatively, so the same device is
+    // `<kit>/c0/d0` and `<kit>/pC1/c0/d0`. What matters is the d0: the
+    // Arpeggiator went in ahead of the instrument.
+    expect(arp).toBe(`${KIT}/c0/d0`);
 
     const warnings = await writeSample("pC1");
 
