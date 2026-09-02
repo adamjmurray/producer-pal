@@ -259,9 +259,7 @@ export function updateTrack(
   const named = { id, ids, path, paths };
 
   if (targetCount(named) === 0) {
-    console.warn("updateTrack: id or path is required");
-
-    return [];
+    throw new Error("updateTrack failed: id or path is required");
   }
 
   // Every list in the call is checked together, before any of them is split:

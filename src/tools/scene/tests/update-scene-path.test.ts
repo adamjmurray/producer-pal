@@ -69,8 +69,9 @@ describe("updateScene by path", () => {
   });
 
   it("still asks for a target when neither id nor path is given", () => {
-    expect(updateScene({ name: "Orphan" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateScene: id or path is required");
+    expect(() => updateScene({ name: "Orphan" })).toThrow(
+      "updateScene failed: id or path is required",
+    );
   });
 
   it("refuses a hole in the path list", () => {

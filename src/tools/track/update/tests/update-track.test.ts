@@ -13,10 +13,7 @@ import {
 import { MONITORING_STATE } from "#src/tools/constants.ts";
 import { updateTrack } from "../update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import {
-  capturedWarnings,
-  clearCapturedWarnings,
-} from "#src/shared/max/v8-warning-capture.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 describe("updateTrack", () => {
   let track123: RegisteredMockObject;
@@ -100,13 +97,13 @@ describe("updateTrack", () => {
     expect(result).toStrictEqual({ id: "123", path: "t0" });
   });
 
-  it("should warn and return empty when id is missing", () => {
-    expect(updateTrack({})).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateTrack: id or path is required");
-
-    clearCapturedWarnings();
-    expect(updateTrack({ name: "Test" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateTrack: id or path is required");
+  it("should refuse the call when id is missing", () => {
+    expect(() => updateTrack({})).toThrow(
+      "updateTrack failed: id or path is required",
+    );
+    expect(() => updateTrack({ name: "Test" })).toThrow(
+      "updateTrack failed: id or path is required",
+    );
   });
 
   // A permanent alias, not a migration: models reach for the plural on their

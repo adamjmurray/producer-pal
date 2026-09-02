@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
@@ -82,9 +81,7 @@ export function updateScene(
   const named = { id, ids, path, paths };
 
   if (targetCount(named) === 0) {
-    console.warn("updateScene: id or path is required");
-
-    return [];
+    throw new Error("updateScene failed: id or path is required");
   }
 
   // Every list in the call is checked together, before any of them is split:

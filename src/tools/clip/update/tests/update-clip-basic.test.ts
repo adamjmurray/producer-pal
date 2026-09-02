@@ -28,10 +28,7 @@ import {
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import * as selectModule from "#src/tools/session/select.ts";
-import {
-  capturedWarnings,
-  clearCapturedWarnings,
-} from "#src/shared/max/v8-warning-capture.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 // applyCodeToSingleClip is mocked so the code-exec loop in update-clip.ts can be
 // driven in isolation (return value / call count) without real note execution.
@@ -46,13 +43,13 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should warn and return empty when neither id nor path is given", async () => {
-    expect(await updateClip({})).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateClip: id or path is required");
-
-    clearCapturedWarnings();
-    expect(await updateClip({ name: "Test" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateClip: id or path is required");
+  it("should refuse the call when neither id nor path is given", async () => {
+    await expect(updateClip({})).rejects.toThrow(
+      "updateClip failed: id or path is required",
+    );
+    await expect(updateClip({ name: "Test" })).rejects.toThrow(
+      "updateClip failed: id or path is required",
+    );
   });
 
   // id and path both name clips, so a path keeps the call non-empty while an

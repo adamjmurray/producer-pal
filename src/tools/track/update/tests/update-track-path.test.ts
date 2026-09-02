@@ -84,8 +84,9 @@ describe("updateTrack by path", () => {
   });
 
   it("still asks for a target when neither id nor path is given", () => {
-    expect(updateTrack({ name: "Orphan" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateTrack: id or path is required");
+    expect(() => updateTrack({ name: "Orphan" })).toThrow(
+      "updateTrack failed: id or path is required",
+    );
   });
 
   it("refuses a hole in the path list", () => {

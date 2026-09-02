@@ -19,14 +19,12 @@ describe("updateTrack when id names nothing", () => {
     );
   });
 
-  // Unaffected: a blank value already reads as omitted, so the existing
-  // required-param warning still fires instead.
+  // A blank value reads as omitted, so this lands on the missing-target
+  // refusal rather than the names-nothing one.
   it("still reports a whitespace-only id as missing", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    expect(updateTrack({ id: "   " })).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("updateTrack: id or path is required");
+    expect(() => updateTrack({ id: "   " })).toThrow(
+      "updateTrack failed: id or path is required",
+    );
   });
 });
 

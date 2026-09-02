@@ -17,10 +17,7 @@ vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 import "#src/live-api-adapter/live-api-extensions.ts";
-import {
-  capturedWarnings,
-  clearCapturedWarnings,
-} from "#src/shared/max/v8-warning-capture.ts";
+import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
 async function withConsoleSpy(
   fn: (spy: ReturnType<typeof vi.spyOn>) => void,
@@ -176,13 +173,13 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123", path: "s0" });
   });
 
-  it("should warn and return empty when id is missing", () => {
-    expect(updateScene({})).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateScene: id or path is required");
-
-    clearCapturedWarnings();
-    expect(updateScene({ name: "Test" })).toStrictEqual([]);
-    expect(capturedWarnings()).toContain("updateScene: id or path is required");
+  it("should refuse the call when id is missing", () => {
+    expect(() => updateScene({})).toThrow(
+      "updateScene failed: id or path is required",
+    );
+    expect(() => updateScene({ name: "Test" })).toThrow(
+      "updateScene failed: id or path is required",
+    );
   });
 
   // A permanent alias, not a migration: models reach for the plural on their

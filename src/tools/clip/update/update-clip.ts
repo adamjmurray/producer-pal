@@ -157,9 +157,7 @@ export async function updateClip(
   );
 
   if (requestedIds.length === 0) {
-    console.warn("updateClip: id or path is required");
-
-    return [];
+    throw new Error("updateClip failed: id or path is required");
   }
 
   // Validate timeSignature up front so format errors throw to the caller

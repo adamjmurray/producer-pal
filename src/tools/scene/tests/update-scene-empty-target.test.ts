@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/max/v8-max-console.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { updateScene } from "../update-scene.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
@@ -19,14 +18,12 @@ describe("updateScene when id names nothing", () => {
     );
   });
 
-  // Unaffected: a blank value already reads as omitted, so the existing
-  // required-param warning still fires instead.
+  // A blank value reads as omitted, so this lands on the missing-target
+  // refusal rather than the names-nothing one.
   it("still reports a whitespace-only id as missing", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    expect(updateScene({ id: "   " })).toStrictEqual([]);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("updateScene: id or path is required");
+    expect(() => updateScene({ id: "   " })).toThrow(
+      "updateScene failed: id or path is required",
+    );
   });
 });
 
