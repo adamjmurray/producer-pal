@@ -149,6 +149,16 @@ describe("useSettingsDismiss", () => {
     expect(handleCancel).toHaveBeenCalledOnce();
   });
 
+  it("leaves other keys alone while settings are open", async () => {
+    const { handleCancel } = renderDismiss();
+
+    await act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    });
+
+    expect(handleCancel).not.toHaveBeenCalled();
+  });
+
   it("ignores Escape key when settings are closed", async () => {
     const { handleCancel } = renderDismiss({ showSettings: false });
 

@@ -460,6 +460,17 @@ describe("backupProjectContextOnEdit — manual edits", () => {
     expect(mockRequestNode).not.toHaveBeenCalled();
   });
 
+  it("leaves an emptied param alone when the load echo was blank too", async () => {
+    setFilePath(SAVED_PATH);
+    // A blank load echo is exactly what an upgrade wipe looks like, so it rules
+    // nothing out and the guard above still applies.
+    noteProjectContextLoaded("   ");
+
+    await backupProjectContextOnEdit("");
+
+    expect(mockRequestNode).not.toHaveBeenCalled();
+  });
+
   it("clears the sidecar for an empty edit when the param loaded with content", async () => {
     setFilePath(SAVED_PATH);
     // The load echo carried content, so nothing wiped the device — clearing the

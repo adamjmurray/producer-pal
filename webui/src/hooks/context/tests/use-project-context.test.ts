@@ -220,6 +220,16 @@ describe("useProjectContext", () => {
     );
   });
 
+  it("reads a save echo that omits projectContext as empty", async () => {
+    const result = await renderWithLoadedContent({});
+
+    await act(async () => {
+      await result.current.save("new");
+    });
+
+    expect(result.current.status).toStrictEqual({ kind: "ready", content: "" });
+  });
+
   it("re-fetches on window focus so external writes surface", async () => {
     const result = await renderWithLoadedContent({ projectContext: "new" });
 

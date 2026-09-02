@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   beginWarningCapture,
+  clearCapturedWarnings,
   detachWarningCapture,
   endWarningCapture,
   MAX_CAPTURED_WARNINGS,
@@ -207,6 +208,24 @@ describe("v8-warning-capture", () => {
       recordWarning("still mine");
 
       expect(endWarningCapture(caller)).toStrictEqual(["still mine"]);
+    });
+  });
+
+  describe("clearCapturedWarnings", () => {
+    it("drops what the active capture has collected so far", () => {
+      const capture = beginWarningCapture();
+
+      recordWarning("before");
+      clearCapturedWarnings();
+      recordWarning("after");
+
+      expect(endWarningCapture(capture)).toStrictEqual(["after"]);
+    });
+
+    it("does nothing when no request is in flight", () => {
+      resetWarningCapture();
+
+      expect(() => clearCapturedWarnings()).not.toThrow();
     });
   });
 

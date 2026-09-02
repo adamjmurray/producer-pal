@@ -186,6 +186,16 @@ describe("AssistantToolGroup", () => {
       expect(summary.textContent).toContain("1 warning");
     });
 
+    it("pluralizes the warning count", () => {
+      const { summary } = renderGroup([
+        tool("ppal-create-track", warn("first")),
+        tool("ppal-update-track", warn("second")),
+        tool("ppal-create-track"),
+      ]);
+
+      expect(summary.textContent).toContain("2 warnings");
+    });
+
     it("does not show a yellow border when there are no warnings", () => {
       const { details } = renderGroup(defaultParts);
 

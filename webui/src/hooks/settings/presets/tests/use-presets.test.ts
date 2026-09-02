@@ -110,6 +110,27 @@ describe("usePresets", () => {
     expect(loadPresets()[0]?.model).toBe("new-model");
   });
 
+  it("leaves the other presets alone on an update", async () => {
+    const { result, id } = await renderWithPreset();
+    let otherId = "";
+
+    await act(() => {
+      otherId = expectCreatedId(result.current.createPreset("Q", fields));
+    });
+
+    await act(() => {
+      result.current.updatePreset(id, { ...fields, model: "new-model" });
+    });
+    await act(() => {
+      result.current.updatePresetDescription(id, "note");
+    });
+
+    const other = result.current.presets.find((p) => p.id === otherId);
+
+    expect(other?.model).toBe(fields.model);
+    expect(other?.description).toBeUndefined();
+  });
+
   it("stores a trimmed description and the captured toolset", async () => {
     const { result } = renderHook(() => usePresets());
 

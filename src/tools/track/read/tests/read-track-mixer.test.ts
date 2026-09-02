@@ -158,6 +158,23 @@ describe("readTrack - mixer properties", () => {
     expect(result).not.toHaveProperty("pan");
   });
 
+  it("passes a non-numeric pan through instead of rounding it", () => {
+    // Rounding assumes a number; anything else Live hands back is reported as
+    // it came rather than turned into NaN.
+    setupTrackMixerMocks({
+      volumeProperties: {
+        display_value: 0,
+      },
+      panningProperties: {
+        value: "unavailable",
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("pan", "unavailable");
+  });
+
   it("includes mixer with wildcard include", () => {
     setupTrackMixerMocks({
       volumeProperties: {

@@ -116,6 +116,21 @@ describe("VoiceSelector", () => {
     expect(setVoice).toHaveBeenCalledWith(GEMINI_REALTIME_VOICES[0].value);
   });
 
+  it("keeps the saved voice when the provider offers no voices at all", () => {
+    const setVoice = vi.fn();
+
+    render(
+      <VoiceSelector
+        voice="marin"
+        setVoice={setVoice}
+        activeVoice={null}
+        voices={[]}
+      />,
+    );
+
+    expect(setVoice).not.toHaveBeenCalled();
+  });
+
   it("does not call setVoice when the saved voice is already in the list", () => {
     const setVoice = vi.fn();
 

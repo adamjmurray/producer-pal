@@ -116,6 +116,17 @@ describe("createRealtimeMcpTools", () => {
     expectForwardedCall("ppal-x", {});
   });
 
+  it("forwards an empty object when the model sends no args at all", async () => {
+    callToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: [{ type: "text", text: "ok" }],
+    });
+    const tool = await buildSingleTool("ppal-y");
+
+    await runTool(tool, null);
+    expectForwardedCall("ppal-y", {});
+  });
+
   it("caps the tool call with a request timeout so a stuck Live op surfaces fast", async () => {
     callToolMock.mockResolvedValueOnce({
       isError: false,

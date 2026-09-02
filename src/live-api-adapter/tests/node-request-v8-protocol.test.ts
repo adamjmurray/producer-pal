@@ -207,6 +207,27 @@ describe("node-request-v8-protocol", () => {
     }
   });
 
+  it("reports a non-Error thrown by outlet() as its string form", async () => {
+    const scheduleCalls: number[] = [];
+    const restoreTask = installTrackingTask(scheduleCalls);
+
+    // Max's IPC layer is not obliged to throw an Error.
+    const thrown: unknown = "outlet string failure";
+
+    vi.mocked(globalThis.outlet).mockImplementationOnce(() => {
+      throw thrown;
+    });
+
+    try {
+      const response = await requestNode("test.outlet-throws-string");
+
+      expect(response.success).toBe(false);
+      expect(response.error).toMatch(/outlet string failure/);
+    } finally {
+      restoreTask();
+    }
+  });
+
   it("resolves multiple concurrent requests independently with interleaved responses", async () => {
     const promiseA = requestNode<{ tag: string }>("route.a");
     const idA = latestRequestId();

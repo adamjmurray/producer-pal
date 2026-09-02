@@ -156,6 +156,21 @@ describe("PresetControls", () => {
     expect(applyPreset).toHaveBeenCalledTimes(1);
   });
 
+  it("clears the selection without applying anything when picking the blank option", () => {
+    savePresets([seeded]);
+
+    const applyPreset = vi.fn();
+
+    render(<Controls settings={makePresetSettings({ applyPreset })} />);
+
+    selectPreset("seed");
+    applyPreset.mockClear();
+    selectPreset("");
+
+    expect(applyPreset).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("preset-update")).toBeNull();
+  });
+
   it("shows New… and hides Update/Delete when nothing is selected", () => {
     render(<Controls settings={makePresetSettings()} />);
 

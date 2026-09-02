@@ -72,6 +72,16 @@ describe("buildSkills — overrides that predate a -write split", () => {
     expect(warnings[0]).toContain(`"stark-standard-write"`);
   });
 
+  it("quotes a short copied line whole, without an ellipsis", () => {
+    const copied = "n/16 C3 1|1.75 // 16th note at beat 1.75";
+    const warnings = warningsFor({
+      "barbeat-standard": `${barbeatStandard}\n\n${copied}`,
+    });
+
+    expect(warnings[0]).toContain(`"${copied}"`);
+    expect(warnings[0]).not.toContain("…");
+  });
+
   it("stays quiet for a fork that only reuses a generic heading", () => {
     // A fresh fork writing its own `## Examples` shares the word, not the text.
     // Telling it to delete its own section is worse than saying nothing.

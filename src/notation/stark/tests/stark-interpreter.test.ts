@@ -218,6 +218,15 @@ describe("stark interpreter — absolute octaves on note tokens", () => {
     );
   });
 
+  it("re-spells the octave marks that pushed a note out of range", () => {
+    const notes = interpretNotation("melody: C-2, D3");
+
+    expect(notes.map((n) => n.pitch)).toStrictEqual([62]);
+    expect(capturedWarnings()).toContainEqual(
+      expect.stringContaining('note "C-2," is out of MIDI range'),
+    );
+  });
+
   it("warn-skips only the offending note of a bracket voicing", () => {
     const notes = interpretNotation("melody: [C3 E-3 G3]");
 

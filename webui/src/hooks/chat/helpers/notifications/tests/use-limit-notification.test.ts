@@ -208,6 +208,18 @@ describe("useLimitNotification", () => {
       );
     });
 
+    it("stringifies a thrown value that is not an Error", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveError("disk went away");
+      });
+
+      expect(result.current.limitNotification?.message).toBe(
+        "Couldn't save conversation: disk went away",
+      );
+    });
+
     it("auto-dismisses save error after timeout", async () => {
       vi.useFakeTimers();
 

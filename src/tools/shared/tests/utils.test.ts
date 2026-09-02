@@ -443,6 +443,11 @@ describe("parseCommaSeparatedIds", () => {
 
     expect(result).toStrictEqual(["1", "2", "3"]);
   });
+
+  it("returns empty array for null or undefined", () => {
+    expect(parseCommaSeparatedIds(null)).toStrictEqual([]);
+    expect(parseCommaSeparatedIds(undefined)).toStrictEqual([]);
+  });
 });
 
 describe("parseCommaSeparatedIndices", () => {

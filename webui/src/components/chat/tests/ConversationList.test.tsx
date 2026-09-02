@@ -53,6 +53,18 @@ describe("ConversationList", () => {
     expect(queryAllByText("Plain")).toHaveLength(1);
   });
 
+  it("starts an untitled conversation's rename from an empty field", () => {
+    const untitled = createTestSummary({ title: null });
+
+    const { getByLabelText } = renderList({ conversations: [untitled] });
+
+    fireEvent.click(getByLabelText("Rename conversation"));
+
+    expect(
+      (getByLabelText("Conversation title") as HTMLInputElement).value,
+    ).toBe("");
+  });
+
   it("opens exactly one edit input when renaming a bookmarked conversation", () => {
     // The bookmarked conversation renders in both sections, so there are two
     // Rename buttons. Clicking one must open a single edit input — keying edit

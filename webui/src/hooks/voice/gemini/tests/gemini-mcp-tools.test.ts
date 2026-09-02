@@ -87,6 +87,14 @@ describe("createGeminiMcpTools", () => {
     });
   });
 
+  it("defaults the description when a tool carries none", async () => {
+    listToolsMock.mockResolvedValueOnce({ tools: [{ name: "ppal-bare" }] });
+
+    const { functionDeclarations } = await createGeminiMcpTools(MCP_URL);
+
+    expect(functionDeclarations[0]!.description).toBe("");
+  });
+
   it("filters tools using the enabledTools map", async () => {
     mockListBareTools("ppal-a", "ppal-b", "ppal-c");
 

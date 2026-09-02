@@ -322,6 +322,65 @@ describe("useRemoteConfig", () => {
     );
   });
 
+  // Same guard as above, on the other failure channel: a POST that rejects
+  // outright (offline, connection reset) must not revert over a newer one.
+  it("skips the revert when a rejected POST has already been superseded", async () => {
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    let rejectPost1: (() => void) | null = null;
+    const post1Pending = new Promise<Response>((_resolve, reject) => {
+      rejectPost1 = () => reject(new Error("connection reset"));
+    });
+
+    let postCount = 0;
+    let refetchCount = 0;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      const method = (init as RequestInit | undefined)?.method;
+
+      if (method === "POST") {
+        postCount++;
+
+        if (postCount === 1) return post1Pending;
+
+        return Promise.resolve({ ok: true } as Response);
+      }
+
+      refetchCount++;
+
+      return Promise.resolve(
+        mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
+      );
+    });
+
+    let post1Promise!: Promise<void>;
+
+    await act(() => {
+      post1Promise = result.current.postLiveApiEnabled(true);
+    });
+
+    await act(async () => {
+      await result.current.postLiveApiEnabled(false);
+    });
+
+    await act(async () => {
+      rejectPost1!();
+      await post1Promise;
+    });
+
+    expect(refetchCount).toBe(0);
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("skipping revert; newer request in flight"),
+      expect.anything(),
+    );
+  });
+
   it("reverts a failed POST even when a non-applying GET fired while it was in flight", async () => {
     // Regression: fetchConfig used to bump the shared sequence at call time, so
     // an intervening GET that applied nothing (aborted focus/reconnect refetch,

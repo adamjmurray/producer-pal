@@ -88,6 +88,15 @@ describe("GeminiHistoryBuilder", () => {
     });
   });
 
+  it("ignores an output for a call id it never recorded", () => {
+    const b = new GeminiHistoryBuilder();
+
+    b.addToolCall("c1", "ppal-x", {});
+    b.setToolOutput("unknown", "ok");
+
+    expect(b.toRealtimeItems()[0]).toHaveProperty("output", null);
+  });
+
   it("starts a new user turn after an assistant reply (barge-in / next turn)", () => {
     const b = new GeminiHistoryBuilder();
 

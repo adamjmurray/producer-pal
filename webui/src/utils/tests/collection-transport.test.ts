@@ -154,6 +154,30 @@ describe("collection transport write deadline", () => {
     expect(init.signal?.aborted).toBe(false);
   });
 
+  // createOnly is what makes a "new entry" save refuse to overwrite an existing
+  // one, so it has to reach the body — the server has no other signal.
+  it("sends createOnly in the body only when the caller asks for it", async () => {
+    // A fresh Response per call — a body can only be read once.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ entry: { name: "a" } })),
+    );
+
+    await putEntry(URL, { content: "x" }, true, "Memory");
+
+    const [, created] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(JSON.parse(created.body as string)).toStrictEqual({
+      content: "x",
+      createOnly: true,
+    });
+
+    await putEntry(URL, { content: "x" }, false, "Memory");
+
+    const [, updated] = fetchMock.mock.calls[1] as [string, RequestInit];
+
+    expect(JSON.parse(updated.body as string)).toStrictEqual({ content: "x" });
+  });
+
   it("still reports the server's own error over the deadline's", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: "body must not be empty" }), {

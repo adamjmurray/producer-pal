@@ -101,6 +101,31 @@ describe("readTrack", () => {
       );
     });
 
+    it("puts a device of an unrecognized type in no category", () => {
+      // Live's device `type` is one of three values; anything else reads as
+      // "unknown" and must not be filed as an instrument or an effect.
+      setupTrackMock({
+        trackId: "track1",
+        properties: {
+          devices: children("device1"),
+        },
+      });
+      registerMockObject("device1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: createDeviceMockProperties({
+          name: "Mystery",
+          className: "Mystery",
+          classDisplayName: "Mystery",
+          type: 99,
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
+
+      expect(result.drumMap).toBeUndefined();
+    });
+
     it("categorizes devices correctly", () => {
       setupTrackMock({
         trackId: "track1",

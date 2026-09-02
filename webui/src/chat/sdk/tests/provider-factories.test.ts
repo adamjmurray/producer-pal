@@ -452,6 +452,15 @@ describe("transformAnthropicRequest", () => {
   it("passes through non-JSON bodies unchanged", async () => {
     await expectPassthrough(transformAnthropicRequest, url, "not json");
   });
+
+  it("forwards a request with no body at all", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await transformAnthropicRequest(url, { method: "GET" });
+
+    expect(mockFetch).toHaveBeenCalledWith(url, { method: "GET" });
+  });
 });
 
 /** Minimal typed view of a parsed OpenRouter (OpenAI-shaped) request body. */
@@ -565,5 +574,22 @@ describe("transformOpenRouterRequest", () => {
 
   it("passes through non-JSON bodies unchanged", async () => {
     await expectPassthrough(transformOpenRouterRequest, url, "not json");
+  });
+
+  it("forwards a request with no body at all", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await transformOpenRouterRequest(url, { method: "GET" });
+
+    expect(mockFetch).toHaveBeenCalledWith(url, { method: "GET" });
+  });
+
+  it("treats a body with no model as uncacheable", async () => {
+    await expectPassthrough(
+      transformOpenRouterRequest,
+      url,
+      JSON.stringify({ messages: [{ role: "user", content: "hi" }] }),
+    );
   });
 });
