@@ -150,6 +150,12 @@ A mode's value is one of:
 - **`null`** — hide the param entirely
 - an **object** `{ description?, excludeEnumValues? }` — trim the enum
 
+`excludeEnumValues` means two different things depending on which mode it sits
+on. On `default` it only hides the value: the JSON Schema stops offering it, but
+the param still accepts it, so a caller sending a retired spelling gets the
+behavior and a warning. On any other mode it also refuses the value, as defense
+in depth against a small model hallucinating one it was not shown.
+
 The tool's own `description` field takes the same shapes:
 `{ default, smallModel?, <notation>?, "smallModel:<notation>"? }`.
 

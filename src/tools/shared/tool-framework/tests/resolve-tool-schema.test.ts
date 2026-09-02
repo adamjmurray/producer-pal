@@ -21,6 +21,27 @@ function accepts(
   return z.object(schema).safeParse(args).success;
 }
 
+/**
+ * The enum values one param advertises, as the model reads them.
+ * @param schema - The resolved published schema
+ * @param param_ - Which param to look at
+ * @returns The enum values in its JSON Schema
+ */
+function offeredEnum(
+  schema: Record<string, z.ZodType>,
+  param_: string,
+): unknown {
+  const json = z.toJSONSchema(z.object(schema), { io: "input" }) as {
+    properties: Record<string, { enum?: unknown; items?: { enum?: unknown } }>;
+  };
+  const property = json.properties[param_] as {
+    enum?: unknown;
+    items?: { enum?: unknown };
+  };
+
+  return property.enum ?? property.items?.enum;
+}
+
 describe("resolveToolSchema", () => {
   // The bug this guards: the trim reached `validating`, so the value a caller
   // was merely no longer OFFERED became one the MCP layer refused outright —
@@ -48,8 +69,29 @@ describe("resolveToolSchema", () => {
     it("is not offered in the published schema", () => {
       const { published } = resolveToolSchema(inputSchema, {});
 
-      expect(accepts(published, { type: "return" })).toBe(false);
+      expect(offeredEnum(published, "type")).toStrictEqual(["midi", "audio"]);
+    });
+
+    // define-tool registers `published` with the MCP SDK, which gates every
+    // call on it — so a trim that reached the parse here would refuse the old
+    // spelling before the handler could warn and carry on.
+    it("still parses through the published schema, which gates MCP calls", () => {
+      const { published } = resolveToolSchema(inputSchema, {});
+
+      expect(accepts(published, { type: "return" })).toBe(true);
       expect(accepts(published, { type: "audio" })).toBe(true);
+    });
+
+    it("keeps an array param's trim on its items", () => {
+      const arraySchema = {
+        include: param(z.array(z.enum(["a", "b", "*"])).default([]), {
+          default: { description: "what to include", excludeEnumValues: ["*"] },
+        }),
+      };
+      const { published } = resolveToolSchema(arraySchema, {});
+
+      expect(offeredEnum(published, "include")).toStrictEqual(["a", "b"]);
+      expect(accepts(published, { include: ["*"] })).toBe(true);
     });
   });
 

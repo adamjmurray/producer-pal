@@ -81,6 +81,23 @@ describe("ppal-create-track", () => {
     expect(returnRead.id).toBeDefined();
   });
 
+  // "return" is trimmed from the published enum but not from the one that
+  // validates, so a caller who hasn't moved to "rt+" gets the track and a
+  // steer — not a refusal from the MCP layer before the handler runs.
+  it('still creates a return track from the retired type: "return"', async () => {
+    const { data, warnings } = parseToolResultWithWarnings<CreateTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { type: "return", name: "Retired Spelling" },
+      }),
+    );
+
+    expect(typeof data.returnTrackIndex).toBe("number");
+    expect(warnings).toStrictEqual([
+      'WARNING: createTrack: type "return" is deprecated and will be removed; use path "rt+" instead',
+    ]);
+  });
+
   it("creates tracks with custom properties", async () => {
     // Test 1: Create track with custom name
     const namedResult = await ctx.client!.callTool({
