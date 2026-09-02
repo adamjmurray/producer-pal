@@ -111,7 +111,7 @@ Returns the Live Set overview. Use includes to expand track/scene detail.
 ### Includes
 
 - `tracks` — replaces `regularTrackCount`/`returnTrackCount` with full track
-  arrays (`tracks`, `returnTracks`, `masterTrack`). Each track uses read-track
+  arrays (`tracks`, `returnTracks`, `mainTrack`). Each track uses read-track
   default format: id, name, type, instrument name, clip/device counts
 - `scenes` — replaces `sceneCount` with scene list (read-scene default format)
 - `routings` — propagated: adds routing info to tracks

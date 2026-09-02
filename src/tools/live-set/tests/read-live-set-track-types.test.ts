@@ -89,7 +89,7 @@ describe("readLiveSet - track types", () => {
             returnTrackIndex: 1,
           }),
         ],
-        masterTrack: expect.objectContaining({
+        mainTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
         }),
@@ -123,7 +123,7 @@ describe("readLiveSet - track types", () => {
     expect(resultDefault.returnTrackCount).toBe(2);
     expect(resultDefault.tracks).toBeUndefined();
     expect(resultDefault.returnTracks).toBeUndefined();
-    expect(resultDefault.masterTrack).toBeUndefined();
+    expect(resultDefault.mainTrack).toBeUndefined();
   });
 
   it("includes all available options when '*' is used", () => {
@@ -202,7 +202,7 @@ describe("readLiveSet - track types", () => {
       expect.objectContaining({
         tracks: expect.any(Array),
         returnTracks: expect.any(Array),
-        masterTrack: expect.any(Object),
+        mainTrack: expect.any(Object),
         scenes: expect.any(Array),
       }),
     );

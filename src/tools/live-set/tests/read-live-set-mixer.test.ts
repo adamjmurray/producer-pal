@@ -190,7 +190,7 @@ describe("readLiveSet - mixer properties", () => {
       include: ["tracks", "mixer"],
     });
 
-    expect(result.masterTrack).toStrictEqual(
+    expect(result.mainTrack).toStrictEqual(
       expect.objectContaining({
         name: "Master",
         gainDb: 0,
