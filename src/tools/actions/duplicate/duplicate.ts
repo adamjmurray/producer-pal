@@ -5,7 +5,7 @@
 
 import {
   namedIdParam,
-  namedParam,
+  namedPathParam,
   targetEntries,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
@@ -33,6 +33,8 @@ interface DuplicateArgs {
   /** Hidden alias for id */
   ids?: string;
   path?: string;
+  /** Hidden alias for path */
+  paths?: string;
   count?: number;
 
   arrangementStart?: string;
@@ -59,6 +61,7 @@ interface DuplicateArgs {
  * @param args.id - Object ID(s), comma-separated to copy several sources
  * @param args.ids - Hidden alias for id
  * @param args.path - Source path(s), comma-separated, instead of or alongside id
+ * @param args.paths - Hidden alias for path
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
  * @param args.locator - Arrangement locator ID(s) or name(s)
@@ -84,6 +87,7 @@ export async function duplicate(
     id,
     ids,
     path,
+    paths,
     count = 1,
     arrangementStart,
     locator,
@@ -106,21 +110,18 @@ export async function duplicate(
   // A value the schema coerced from a JSON null names nothing. Counting it as
   // sent refuses the call over a param the caller deliberately left empty.
   id = namedIdParam(id, ids, "ids");
-  path = namedParam(path, "path");
+  path = namedPathParam(path, paths);
 
   // Validate basic inputs
   validateBasicInputs(type, id, count, path);
 
   // Auto-configure for routing back to source
-  const routeToSourceConfig = validateAndConfigureRouteToSource(
+  ({ withoutClips, withoutDevices } = validateAndConfigureRouteToSource(
     type,
     routeToSource,
     withoutClips,
     withoutDevices,
-  );
-
-  withoutClips = routeToSourceConfig.withoutClips;
-  withoutDevices = routeToSourceConfig.withoutDevices;
+  ));
 
   const hasArrangementParams = hasArrangementPosition(
     arrangementStart,

@@ -95,8 +95,8 @@ describe("duplicate - the ids alias", () => {
     const result = await duplicate({ type: "track", ids: "track1,track2" });
 
     expect(result).toStrictEqual([
-      expect.objectContaining({ trackIndex: 1 }),
-      expect.objectContaining({ trackIndex: 4 }),
+      expect.objectContaining({ path: "t1" }),
+      expect.objectContaining({ path: "t4" }),
     ]);
   });
 
@@ -112,6 +112,19 @@ describe("duplicate - the ids alias", () => {
       duplicate({ type: "track", id: "track1,nope" }),
     ).rejects.toThrow('duplicate failed: id "nope" does not exist');
     expect(liveSet.call).not.toHaveBeenCalledWith("duplicate_track", 0);
+  });
+});
+
+describe("duplicate - the paths alias", () => {
+  it("takes paths as the source when path is unset", async () => {
+    const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+    registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+
+    await expect(
+      duplicate({ type: "track", paths: "t0" }),
+    ).resolves.toBeDefined();
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 });
 
@@ -241,7 +254,6 @@ describe("duplicate - return format", () => {
     expect(result).toStrictEqual({
       id: expect.any(String),
       path: expect.any(String),
-      trackIndex: expect.any(Number),
       clips: [],
     });
   });
@@ -252,8 +264,8 @@ describe("duplicate - return format", () => {
     const result = await duplicate({ type: "track", id: "track1", count: 2 });
 
     expect(result).toStrictEqual([
-      expect.objectContaining({ trackIndex: expect.any(Number) }),
-      expect.objectContaining({ trackIndex: expect.any(Number) }),
+      expect.objectContaining({ path: expect.any(String) }),
+      expect.objectContaining({ path: expect.any(String) }),
     ]);
   });
 });

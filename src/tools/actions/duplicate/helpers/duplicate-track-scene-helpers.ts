@@ -208,7 +208,7 @@ function collectArrangementClips(
  * @param withoutDevices - Whether to exclude devices when duplicating
  * @param routeToSource - Whether to route the new track to the source track
  * @param sourceTrackIndex - Source track index for routing
- * @returns Track info object with id, trackIndex, and clips array
+ * @returns Track info object with id, path, and clips array
  */
 export function duplicateTrack(
   trackIndex: number,
@@ -218,7 +218,7 @@ export function duplicateTrack(
   withoutDevices?: boolean,
   routeToSource?: boolean,
   sourceTrackIndex?: number,
-): { id: string; path: string; trackIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
@@ -247,7 +247,6 @@ export function duplicateTrack(
   return {
     id: newTrack.id,
     path: formatObjectPath({ kind: "track", trackIndex: newTrackIndex }),
-    trackIndex: newTrackIndex,
     clips: duplicatedClips,
   };
 }
@@ -258,14 +257,14 @@ export function duplicateTrack(
  * @param name - Optional name for the duplicated scene
  * @param color - Optional color for the duplicated scene
  * @param withoutClips - Whether to exclude clips when duplicating
- * @returns Scene info object with id, sceneIndex, and clips array
+ * @returns Scene info object with id, path, and clips array
  */
 export function duplicateScene(
   sceneIndex: number,
   name?: string,
   color?: string,
   withoutClips?: boolean,
-): { id: string; path: string; sceneIndex: number; clips: MinimalClipInfo[] } {
+): { id: string; path: string; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_scene", sceneIndex);
@@ -301,7 +300,6 @@ export function duplicateScene(
   return {
     id: newScene.id,
     path: formatObjectPath({ kind: "scene", sceneIndex: newSceneIndex }),
-    sceneIndex: newSceneIndex,
     clips: duplicatedClips,
   };
 }

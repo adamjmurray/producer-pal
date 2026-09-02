@@ -439,10 +439,10 @@ describe("duplicate - a list of sources", () => {
       });
 
       expect(result).toStrictEqual([
-        expect.objectContaining({ trackIndex: 1 }),
-        expect.objectContaining({ trackIndex: 2 }),
-        expect.objectContaining({ trackIndex: 5 }),
-        expect.objectContaining({ trackIndex: 6 }),
+        expect.objectContaining({ path: "t1" }),
+        expect.objectContaining({ path: "t2" }),
+        expect.objectContaining({ path: "t5" }),
+        expect.objectContaining({ path: "t6" }),
       ]);
     });
   });

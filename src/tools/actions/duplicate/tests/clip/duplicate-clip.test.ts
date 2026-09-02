@@ -496,7 +496,7 @@ describe("duplicate - clip duplication", () => {
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
-      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+      expect(result).toStrictEqual({ path: "t0", clips: [] });
     });
 
     it("skips a silent duplicate failure on the with-length path too (no phantom clip)", async () => {
@@ -533,7 +533,7 @@ describe("duplicate - clip duplication", () => {
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining("Failed to duplicate clip"),
       );
-      expect(result).toStrictEqual({ trackIndex: 0, clips: [] });
+      expect(result).toStrictEqual({ path: "t0", clips: [] });
     });
 
     it("routes a self-overlapping duplicate through the holding area instead of skipping", async () => {

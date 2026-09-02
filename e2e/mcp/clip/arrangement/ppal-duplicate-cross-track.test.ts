@@ -53,7 +53,7 @@ describe("cross-track arrangement clip duplicate", () => {
       toPath: `t${RACKS_TRACK}`,
       name: "Cross Copy A",
     });
-    const copy = parseToolResult<{ id: string; trackIndex?: number }>(result);
+    const copy = parseToolResult<{ id: string }>(result);
 
     // The copy is a new clip on the destination track...
     expect(copy.id).not.toBe(source.id);

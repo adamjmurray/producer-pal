@@ -29,7 +29,7 @@ interface DuplicateClipResult {
 
 interface DuplicateSceneResult {
   id?: string;
-  sceneIndex?: number;
+  path?: string;
   arrangementStart?: string;
   clips: DuplicateClipResult[];
 }
@@ -64,7 +64,6 @@ describe("duplicate - scene duplication", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
-      sceneIndex: 1,
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
@@ -106,7 +105,6 @@ describe("duplicate - scene duplication", () => {
       {
         id: "live_set/scenes/1",
         path: "s1",
-        sceneIndex: 1,
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
@@ -121,7 +119,6 @@ describe("duplicate - scene duplication", () => {
       {
         id: "live_set/scenes/2",
         path: "s2",
-        sceneIndex: 2,
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
@@ -161,7 +158,6 @@ describe("duplicate - scene duplication", () => {
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
       path: "s1",
-      sceneIndex: 1,
       clips: [],
     });
 
@@ -483,7 +479,7 @@ describe("duplicate - scene duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
     expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);
     expect(result.id).toBe("live_set/scenes/1");
-    expect(result.sceneIndex).toBe(1);
+    expect(result.path).toBe("s1");
   });
 
   it("names the positions a cut-short arrangement duplicate did not reach", async () => {

@@ -322,7 +322,7 @@ async function lengthenClipAndCollectInfo(
  * @param context - Context object with silenceWavPath
  * @param sourceClip - The clip, when the caller already resolved it
  * @param tracks - The destination tracks, keyed by index
- * @returns Clip info or object with trackIndex and clips array
+ * @returns Clip info, or the destination track's path with a clips array
  */
 export async function duplicateClipToArrangement(
   clipId: string,
@@ -336,7 +336,7 @@ export async function duplicateClipToArrangement(
   context: Partial<ToolContext & TilingContext> = {},
   sourceClip: LiveAPI | null = null,
   tracks: Map<number, LiveAPI> = new Map(),
-): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
+): Promise<MinimalClipInfo | { path: string; clips: MinimalClipInfo[] }> {
   // Support "id {id}" (such as returned by childIds()) and id values directly.
   // A source hoisted across the copies of one call stays good: Live's
   // arrangement duplicate never destroys its own source — measured on 12.4.3,
@@ -371,7 +371,6 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
-    // When creating multiple clips, omit trackIndex since they all share the same track
     const clipsCreated = await createClipsForLength(
       clip,
       track,
@@ -380,7 +379,7 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
       name,
-      ["trackIndex"],
+      [],
       context,
       color,
     );
@@ -413,13 +412,13 @@ export async function duplicateClipToArrangement(
     }
   }
 
-  // Return single clip info directly, or clips array with trackIndex for multiple
+  // Return single clip info directly, or the track the tiled copies share
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0] as MinimalClipInfo;
   }
 
   return {
-    trackIndex,
+    path: arrangementPath(trackIndex),
     clips: duplicatedClips,
   };
 }

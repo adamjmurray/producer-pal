@@ -39,13 +39,15 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       ),
 
     ids: aliasParam(z.coerce.string().optional(), { canonical: "id" }),
-    path: z.coerce
-      .string()
-      .optional()
-      .describe(
+    path: param(z.coerce.string().optional(), {
+      default:
         "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
-          "(e.g. 't0', 's1', 't0/s1', 't0/d0', 't0/d0/pC1')",
-      ),
+        "(e.g. 't0', 's1', 't0/s1', 't0/d0', 't0/d0/pC1')",
+      smallModel:
+        "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
+    }),
+
+    paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 
     name: param(z.string().optional(), {

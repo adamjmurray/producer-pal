@@ -193,7 +193,7 @@ describe("duplicate - transforms/code", () => {
   describe("applyTransformsToDuplicatedClips", () => {
     it("flattens nested arrangement-tiled clips into one updateClip call", async () => {
       const createdObjects: object[] = [
-        { trackIndex: 0, clips: [{ id: "a" }, { id: "b" }] },
+        { path: "t0", clips: [{ id: "a" }, { id: "b" }] },
       ];
 
       updateClipMock.mockReturnValueOnce([
@@ -219,7 +219,7 @@ describe("duplicate - transforms/code", () => {
       );
       expect(createdObjects).toStrictEqual([
         {
-          trackIndex: 0,
+          path: "t0",
           clips: [
             { id: "a", noteCount: 1, transformed: 1 },
             { id: "b", noteCount: 2 },

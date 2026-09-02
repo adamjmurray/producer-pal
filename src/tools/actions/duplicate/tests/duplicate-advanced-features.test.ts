@@ -341,7 +341,6 @@ function expectTrackResult(result: unknown): void {
   expect(result).toStrictEqual({
     path: expect.any(String),
     id: expect.any(String),
-    trackIndex: expect.any(Number),
     clips: expect.any(Array),
   });
 }

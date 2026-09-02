@@ -54,7 +54,7 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupTrack.id).toBeDefined();
-    expect(dupTrack.trackIndex).toBe(1); // Inserted after track 0
+    expect(dupTrack.path).toBe("t1"); // Inserted after track 0
 
     await sleep(100);
 
@@ -91,8 +91,8 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateTrackResult[]>(dupMultipleResult);
 
     expect(dupMultiple).toHaveLength(2);
-    expect(dupMultiple[0]!.trackIndex).toBe(1);
-    expect(dupMultiple[1]!.trackIndex).toBe(2);
+    expect(dupMultiple[0]!.path).toBe("t1");
+    expect(dupMultiple[1]!.path).toBe("t2");
 
     await sleep(100);
 
@@ -157,7 +157,7 @@ describe("ppal-duplicate", () => {
     const dupScene = parseToolResult<DuplicateSceneResult>(dupSceneResult);
 
     expect(dupScene.id).toBeDefined();
-    expect(dupScene.sceneIndex).toBe(1);
+    expect(dupScene.path).toBe("s1");
 
     await sleep(100);
 
@@ -532,13 +532,13 @@ interface ReadLiveSetResult {
 
 interface DuplicateTrackResult {
   id: string;
-  trackIndex: number;
+  path: string;
   clips: Array<{ id: string }>;
 }
 
 interface DuplicateSceneResult {
   id: string;
-  sceneIndex?: number;
+  path?: string;
   arrangementStart?: string;
   clips: Array<{ id: string }>;
 }

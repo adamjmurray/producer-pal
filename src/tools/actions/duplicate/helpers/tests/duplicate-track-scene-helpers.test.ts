@@ -130,7 +130,6 @@ describe("duplicate-track-scene-helpers", () => {
       expect(result).toStrictEqual({
         path: "t1",
         id: "live_set/tracks/1",
-        trackIndex: 1,
         clips: [],
       });
 
@@ -196,7 +195,7 @@ describe("duplicate-track-scene-helpers", () => {
         });
 
       try {
-        expect(duplicateTrack(0).trackIndex).toBe(1);
+        expect(duplicateTrack(0).path).toBe("t1");
         expect(newTrack.call).not.toHaveBeenCalledWith(
           "delete_device",
           expect.anything(),
@@ -495,7 +494,6 @@ describe("duplicate-track-scene-helpers", () => {
       expect(result).toStrictEqual({
         path: "s1",
         id: "live_set/scenes/1",
-        sceneIndex: 1,
         clips: [],
       });
 

@@ -208,14 +208,17 @@ describe("hidden params", () => {
     );
   });
 
-  // `path` takes a comma-separated list on these four, so the plural is the
-  // same well-founded guess `ids` is.
+  // `path` takes a comma-separated list on these, so the plural is the same
+  // well-founded guess `ids` is.
   it("publishes path and accepts paths as a fallback", () => {
     const aliases: Array<[string, string]> = [
+      ["ppal-update-track", "paths"],
+      ["ppal-update-scene", "paths"],
       ["ppal-update-clip", "paths"],
       ["ppal-update-device", "paths"],
       ["ppal-delete", "paths"],
       ["ppal-playback", "paths"],
+      ["ppal-duplicate", "paths"],
     ];
 
     expect(aliasShapes(aliases, "path")).toStrictEqual(
