@@ -131,6 +131,65 @@ describe("ppal-duplicate with a source list", () => {
     expect(copies[1]!.arrangementStart).toBe("97|1");
   });
 
+  // duplicate used to take a path only for a drum pad, so a path a model just
+  // read out of a result could not be spent here.
+  it("names its sources by path, and by path alongside id", async () => {
+    await createSources();
+
+    const byPath = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        path: `t${EMPTY_MIDI_TRACK}/s5,t${CHILD_TRACK}/s5`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6`,
+      }),
+    );
+
+    expect(byPath).toHaveLength(2);
+
+    await sleep(100);
+
+    expect((await readClip(byPath[0]!.id)).notes).toContain("C3");
+    expect((await readClip(byPath[1]!.id)).notes).toContain("D3");
+
+    // id and path name different sources, so they add up.
+    const mixed = parseToolResult<DuplicateClipResult[]>(
+      await duplicateClips({
+        id: byPath[0]!.id,
+        path: `t${CHILD_TRACK}/s5`,
+        toPath: `t${EMPTY_MIDI_TRACK}/s7,t${CHILD_TRACK}/s7`,
+      }),
+    );
+
+    expect(mixed).toHaveLength(2);
+    expect(mixed[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}/s7`);
+    expect(mixed[1]!.path).toBe(`t${CHILD_TRACK}/s7`);
+  });
+
+  // A duplicate leaves copies behind, so an unresolvable source refuses the
+  // whole call rather than making the copies it can.
+  it("refuses the call when a source path names nothing", async () => {
+    const [firstId] = await createSources();
+
+    const result = await duplicateClips({
+      id: firstId,
+      path: `t${EMPTY_MIDI_TRACK}/s7`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s6,t${CHILD_TRACK}/s6`,
+    });
+
+    expect(JSON.stringify(result)).toContain("nothing to duplicate at path");
+
+    await sleep(100);
+
+    // Nothing ran: the id source did not get copied either.
+    const slot = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { path: `t${EMPTY_MIDI_TRACK}/s6` },
+    });
+
+    expect(JSON.stringify(slot)).toContain(
+      `no clip at t${EMPTY_MIDI_TRACK}/s6`,
+    );
+  });
+
   // A clip slot holds one clip, so the second source can't be broadcast onto
   // the slot the first one claimed.
   it("warns and skips the sources a short toPath doesn't reach", async () => {

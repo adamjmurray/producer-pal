@@ -384,7 +384,7 @@ describe("duplicate - drum pad", () => {
 
   it("requires a source", async () => {
     await expect(copyC1ToD1({ id: "" })).rejects.toThrow(
-      "Either id or path must be provided",
+      "duplicate failed: id or path is required",
     );
   });
 
@@ -401,29 +401,49 @@ describe("duplicate - drum pad", () => {
     expect(result).toStrictEqual({ id: "pad38", path: "t0/d0/pD1" });
   });
 
+  // The warning says what the path named; the refusal says the call is off.
   it("blames the source path, not toPath, when the source is the bad one", async () => {
     const rack = registerDrumRack([{ note: 36, chainIds: ["kick"] }]);
 
-    const result = await duplicate({
-      type: "drum-pad",
-      path: "t0/d0/pC1/d0",
-      toPath: "t0/d0/pD1",
-    });
+    await expect(
+      duplicate({
+        type: "drum-pad",
+        path: "t0/d0/pC1/d0",
+        toPath: "t0/d0/pD1",
+      }),
+    ).rejects.toThrow(
+      'duplicate failed: nothing to duplicate at path "t0/d0/pC1/d0"',
+    );
 
     expectNoCopy(rack);
-    expect(result).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('path "t0/d0/pC1/d0" names something inside'),
     );
   });
 
-  it("refuses id and path together, which could name different pads", async () => {
-    const rack = registerCopyReadyRack();
+  it("copies from an id and a path together, which name different pads", async () => {
+    const rack = registerDrumRack([
+      { note: 36, chainIds: ["kick"] },
+      { note: 40, chainIds: ["tom"] },
+      { note: 38, chainIds: [] },
+      { note: 41, chainIds: [] },
+    ]);
 
-    await expect(copyC1ToD1({ path: "t0/d0/pE1" })).rejects.toThrow(
-      "Provide either id or path, not both",
-    );
-    expectNoCopy(rack);
+    whenCopied(rack, { 38: ["kickCopy"], 41: ["tomCopy"] });
+
+    const result = await duplicate({
+      type: "drum-pad",
+      id: "pad36",
+      path: "t0/d0/pE1",
+      toPath: "t0/d0/pD1,t0/d0/pF1",
+    });
+
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 36, 38);
+    expect(rack.call).toHaveBeenCalledWith("copy_pad", 40, 41);
+    expect(result).toStrictEqual([
+      { id: "pad38", path: "t0/d0/pD1" },
+      { id: "pad41", path: "t0/d0/pF1" },
+    ]);
   });
 
   // Both spellings are published, so a model that picks one and nulls the other
@@ -443,16 +463,6 @@ describe("duplicate - drum pad", () => {
       );
     },
   );
-
-  it("warns that path names a source for drum pads only", async () => {
-    await expect(
-      duplicate({ type: "track", id: "t1", path: "t0/d0/pC1", count: 0 }),
-    ).rejects.toThrow("count must be at least 1");
-
-    expect(consoleMock.warn).toHaveBeenCalledWith(
-      'path ignored: only supported for drum pads (type "track")',
-    );
-  });
 
   it("warns that count does not apply", async () => {
     registerCopyReadyRack();

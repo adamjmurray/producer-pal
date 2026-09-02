@@ -58,7 +58,7 @@ interface DuplicateArgs {
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID(s), comma-separated to copy several sources
  * @param args.ids - Hidden alias for id
- * @param args.path - Source drum pad path, instead of id
+ * @param args.path - Source path(s), comma-separated, instead of or alongside id
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
  * @param args.locator - Arrangement locator ID(s) or name(s)
@@ -135,18 +135,19 @@ export async function duplicate(
   // whole list. A clip slot, device slot or drum pad holds one object, so the
   // list is shared out instead of copied over itself.
   const sources = planSources({
+    type,
     id,
+    path,
     toPath,
     toSlot,
     broadcasts: type === "clip" && hasArrangementParams,
   });
 
   // A bad id partway through a list would leave the copies before it behind, so
-  // check every source before the first one is made. Only a drum-pad call
-  // naming its source by path gets here without an id.
+  // check every source before the first one is made.
   if (sources.length > 1) {
     for (const source of sources) {
-      validateIdType(source.id as string, type, "duplicate");
+      validateIdType(source.id, type, "duplicate");
     }
   }
 
@@ -179,7 +180,7 @@ export async function duplicate(
 
   // Both of these take comma-separated toPath for multiple destinations
   if (type === "drum-pad" || type === "device" || type === "chain") {
-    return duplicateChainSources(type, sources, path, labels, count);
+    return duplicateChainSources(type, sources, labels, count);
   }
 
   const createdObjects: object[] = [];

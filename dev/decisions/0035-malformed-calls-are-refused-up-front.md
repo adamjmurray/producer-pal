@@ -60,8 +60,8 @@ either way.
   before it can retry. So when the whole target list can be checked first, it
   is, and the call is refused atomically like a structural error.
 
-  `duplicate` is the case. Its sources are ids, and an id is checkable without
-  touching anything, so
+  `duplicate` is the case. Its sources are ids and paths, both checkable without
+  changing anything, so
   [duplicate.ts:147](../../src/tools/actions/duplicate/duplicate.ts#L147)
   validates every source before the first copy is made. The second bullet's
   reasoning — continue, because earlier items can't be rolled back — inverts

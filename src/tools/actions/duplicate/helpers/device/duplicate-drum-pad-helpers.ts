@@ -33,18 +33,27 @@ export interface PadTarget {
 const DRUM_PADS_SEGMENT = / drum_pads \d+$/;
 
 /**
- * Resolves the pad a copy starts from, named either by id or by path.
- * @param pad - The pad named by id, already type-checked, or null
- * @param path - Pad path, when the call named the source that way instead
- * @returns The source pad, or null when neither names one
+ * Reads the pad a copy starts from. A source named by path arrives as the id
+ * that path resolved to, so this only ever reads an object.
+ * @param pad - The source pad, already type-checked
+ * @returns The pad target, or null when the object isn't a pad
  */
-export function resolveSourcePad(
-  pad: LiveAPI | null,
-  path: string | undefined,
-): PadTarget | null {
-  return pad == null
-    ? resolvePadTarget(path as string, "path")
-    : padTargetFromPad(pad);
+export function resolveSourcePad(pad: LiveAPI): PadTarget | null {
+  // A chain id passes the tool's drum-pad type check, but copy_pad copies the
+  // whole pad — every chain layered on it — so it would copy more than the
+  // caller named. Make them say which pad.
+  if (pad.type !== "DrumPad") {
+    console.warn(
+      `duplicate: id "${pad.id}" is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
+    );
+
+    return null;
+  }
+
+  return {
+    rackPath: pad.path.replace(DRUM_PADS_SEGMENT, ""),
+    midi: pad.getProperty("note") as number,
+  };
 }
 
 /**
@@ -134,29 +143,6 @@ function canCopyPads(rack: LiveAPI): boolean {
   }
 
   return true;
-}
-
-/**
- * Reads a validated pad id back as a copy source.
- * @param pad - The object the id named
- * @returns The pad target, or null when the id doesn't name a pad
- */
-function padTargetFromPad(pad: LiveAPI): PadTarget | null {
-  // A chain id passes the tool's drum-pad type check, but copy_pad copies the
-  // whole pad — every chain layered on it — so it would copy more than the
-  // caller named. Make them say which pad.
-  if (pad.type !== "DrumPad") {
-    console.warn(
-      `duplicate: id "${pad.id}" is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
-    );
-
-    return null;
-  }
-
-  return {
-    rackPath: pad.path.replace(DRUM_PADS_SEGMENT, ""),
-    midi: pad.getProperty("note") as number,
-  };
 }
 
 /**

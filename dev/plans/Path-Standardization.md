@@ -16,7 +16,7 @@ deprecated).
 | create-clip                                                                    | **path** (has `l`), _slot_, _trackIndex_, _sceneIndex_, _takeLane_                    | done                                 |
 | read-clip                                                                      | **clipId**, **path**, _slot_, _trackIndex_, _sceneIndex_                              | unchanged                            |
 | update-clip                                                                    | **ids**, **path**, **toPath**, _toSlot_                                               | done                                 |
-| duplicate                                                                      | **id**, **toPath** (has `l`), _toSlot_, _takeLane_                                    | done                                 |
+| duplicate                                                                      | **id**, **path**, **toPath** (has `l`), _toSlot_, _takeLane_                          | done                                 |
 | delete                                                                         | **ids**, **path** (clips and devices)                                                 | done                                 |
 | playback                                                                       | **ids**, **path**, **sceneIndex**, _slots_                                            | unchanged; `path` is slots only      |
 | select                                                                         | **id**, **path**, **trackIndex**, **trackType**, **sceneIndex**, _slot_, _devicePath_ | same, `path` reaches `rt0`/`mt`/`s3` |

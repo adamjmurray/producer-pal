@@ -3,12 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// `id` names one source or a list of them. A list runs the single-source logic
-// once per source, in order, and concatenates — so the only thing to settle
-// here is how one `toPath` is shared out.
+// `id` and `path` each name one source or a list of them. A list runs the
+// single-source logic once per source, in order, and concatenates — so the only
+// thing to settle here is how one `toPath` is shared out.
 
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { targetEntries } from "#src/tools/shared/utils.ts";
+import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   resolveClipDestinations,
@@ -17,15 +18,16 @@ import {
 
 /** One source's turn: which object to copy, and where its copies go. */
 export interface SourceShare {
-  /** Undefined only for a drum pad naming its source by path. */
-  id: string | undefined;
+  id: string;
   toPath: string | undefined;
   toSlot: string | undefined;
 }
 
 /** What a call needs to share its destinations out across its sources. */
 interface SourcePlanArgs {
+  type: string;
   id: string | undefined;
+  path: string | undefined;
   toPath: string | undefined;
   toSlot: string | undefined;
   /**
@@ -40,25 +42,28 @@ interface SourcePlanArgs {
 /**
  * Splits a call into one turn per source.
  * @param args - The source and destination params as the tool received them
+ * @param args.type - Object type to duplicate, which says how a path resolves
  * @param args.id - Source id(s), comma-separated for multiple
+ * @param args.path - Source path(s), comma-separated for multiple
  * @param args.toPath - Destination path(s)
  * @param args.toSlot - Deprecated destination clip slot(s)
  * @param args.broadcasts - Whether the destination holds many objects
- * @returns One share per source, in the order `id` named them
+ * @returns One share per source, ids first, then the paths in order
  */
 export function planSources({
+  type,
   id,
+  path,
   toPath,
   toSlot,
   broadcasts,
 }: SourcePlanArgs): SourceShare[] {
-  const ids = targetEntries(id, "id");
+  const ids = sourceIds(type, id, path);
 
   // One source is the whole call: leave the destinations exactly as they
   // arrived, so nothing re-splits a list that was already going to be split
-  // downstream. The id itself goes on cleaned, or a stray comma would reach the
-  // lookup as part of the id and fail to find a source that is right there.
-  if (ids.length <= 1) return [{ id: ids[0] ?? id, toPath, toSlot }];
+  // downstream.
+  if (ids.length <= 1) return [{ id: ids[0] as string, toPath, toSlot }];
 
   if (broadcasts) {
     return ids.map((sourceId) => ({ id: sourceId, toPath, toSlot }));
@@ -174,6 +179,42 @@ export function collectSources(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The ids of the objects a call names, by id, by path, or both — they name
+ * different objects, so they add up.
+ *
+ * A path that names nothing refuses the call. `delete` keeps such a miss and
+ * reports the object undeleted, but a duplicate leaves copies behind, and every
+ * one already made is something the caller has to clean up by hand before
+ * retrying — so nothing starts until every source is known (ADR-0035).
+ * @param type - Object type to duplicate, which says how a path resolves
+ * @param id - Source id(s), comma-separated for multiple
+ * @param path - Source path(s), comma-separated for multiple
+ * @returns One id per source, ids first, then the paths in order
+ */
+function sourceIds(
+  type: string,
+  id: string | undefined,
+  path: string | undefined,
+): string[] {
+  const resolved = targetIds({ id, path }, "duplicate", idPerPathForType(type));
+  const paths = pathEntries(path, "path");
+  const idCount = resolved.length - paths.length;
+  const missing = resolved.flatMap((entry, i) =>
+    entry == null ? [paths[i - idCount] as string] : [],
+  );
+
+  if (missing.length > 0) {
+    throw new Error(
+      `duplicate failed: nothing to duplicate at path ${missing
+        .map((entry) => `"${entry}"`)
+        .join(", ")}`,
+    );
+  }
+
+  return resolved as string[];
+}
 
 /**
  * Shares a slot-shaped destination list out across the sources: each source

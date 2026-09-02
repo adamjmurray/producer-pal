@@ -43,7 +43,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "source drum pad path instead of id, e.g. 't0/d0/pC1' (drum pads only)",
+        "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
+          "(e.g. 't0', 's1', 't0/s1', 't0/d0', 't0/d0/pC1')",
       ),
     type: z.enum(DUPLICATE_TYPES).describe("type of object to duplicate"),
 

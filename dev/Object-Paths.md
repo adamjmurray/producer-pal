@@ -160,20 +160,19 @@ Four tiers, in order of preference.
    wrong-target bug this grammar exists to prevent. What to do instead depends
    on what the param names:
    - **A source — throw.** Where the call acts on one target (`read-clip`,
-     `read-device`, `read-track`, `read-scene`, `update-device`, `duplicate`,
-     `playback`'s `play-scene`), two params naming different things has no
-     answer, so it errors. Naming the same target twice over is not a conflict:
-     `play-scene` with `t0/s1,t2/s1` fires scene 1, and `read-clip` takes an
-     `id` that sits at the `path`. `duplicate` is half-way: its `id` takes a
-     list, but `path` names one drum pad for the whole call, so naming both
-     still throws.
+     `read-device`, `read-track`, `read-scene`, `update-device`, `playback`'s
+     `play-scene`), two params naming different things has no answer, so it
+     errors. Naming the same target twice over is not a conflict: `play-scene`
+     with `t0/s1,t2/s1` fires scene 1, and `read-clip` takes an `id` that sits
+     at the `path`.
    - **A set — union.** Where the call already acts on a list (`delete`,
-     `update-clip`, `update-track`, `update-scene`, `playback`'s clip actions),
-     `id` and `path` both name members of it, so the targets combine. `delete`
-     and `playback` also collapse duplicates, because firing or deleting an
-     object twice is a different Live call than doing it once. The update tools
-     don't: writing the same value twice lands the same way, and a slot per
-     entry is what keeps a paired `name` or `color` list aligned.
+     `duplicate`, `update-clip`, `update-track`, `update-scene`, `playback`'s
+     clip actions), `id` and `path` both name members of it, so the targets
+     combine. `delete` and `playback` also collapse duplicates, because firing
+     or deleting an object twice is a different Live call than doing it once.
+     The update tools don't: writing the same value twice lands the same way,
+     and a slot per entry is what keeps a paired `name` or `color` list aligned.
+     Neither does `duplicate` — a source named twice is two copies.
 
 ## Results
 

@@ -332,9 +332,8 @@ describe("deleteObject drum-pad refusals", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: path "t0/d0/pC1/c0/d0/pD1" names a pad of a nested Drum Rack. ' +
-        "Such a rack has no pad objects, and Live can only clear a pad — " +
-        "delete the pad's devices to empty it instead",
+      'delete: path "t0/d0/pC1/c0/d0/pD1" names a pad of a nested Drum Rack, ' +
+        "which has no pad objects — name a chain or a device inside it instead",
     );
   });
 });

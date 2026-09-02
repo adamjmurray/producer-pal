@@ -3,77 +3,118 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Turning delete's `path` param into the ids it names. Every type a path can
-// address resolves here, so a path that names the wrong kind of thing warns
-// with the type it actually found rather than failing at the delete itself.
+// Turning a `path` param into the ids it names, for every type a path can
+// address. A path that names the wrong kind of thing warns with the type it
+// actually found, and its slot comes back null — so what a miss costs is the
+// caller's call: `delete` keeps the slot and reports the object undeleted,
+// `duplicate` refuses the whole call before it makes anything.
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
 import {
   findDrumPad,
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+import {
+  sceneIdPerPath,
+  trackIdPerPath,
+} from "#src/tools/shared/validation/path-target-lookup.ts";
 
-/** What a batch of paths resolved to, and which of them named nothing. */
-export interface ResolvedPaths {
-  /** Ids of the objects the paths named, in path order. */
-  ids: string[];
-  /** Paths that named nothing deletable. The warning says why. */
-  unresolved: string[];
-}
+/** The types that live in the Set itself, rather than in a device chain. */
+const SET_LOOKUPS: Record<string, IdPerPath> = {
+  track: trackIdPerPath,
+  scene: sceneIdPerPath,
+  clip: clipIdPerPath,
+};
 
 /**
- * Resolves paths to their IDs for the types a path can name. Paths that name
- * nothing come back in `unresolved` so the caller can report them as
- * `deleted: false` — an empty result reads as "nothing to do" to a model, and
- * one that skims past the warning then reports the delete as done.
- * @param paths - Array of paths to resolve
- * @param type - The target type ("device", "drum-pad", or "chain")
- * @returns The resolved ids, plus the paths that named nothing
+ * The path-to-id lookup a type is addressed by.
+ * @param type - Object type ("track", "scene", "clip", "device", "drum-pad", or "chain")
+ * @returns A lookup giving one id per path entry, null where a path named none
  */
-export function resolvePathsToIds(
-  paths: string[],
+export function idPerPathForType(type: string): IdPerPath {
+  return (
+    SET_LOOKUPS[type] ?? ((paths, tool) => chainIdPerPath(paths, tool, type))
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Resolves the paths of a type that lives in a device chain — a device, a drum
+ * pad, or a chain.
+ * @param paths - Comma-separated paths
+ * @param tool - Tool name, for warnings
+ * @param type - The target type ("device", "drum-pad", or "chain")
+ * @returns One id per path entry, null where a path named none
+ */
+function chainIdPerPath(
+  paths: string,
+  tool: string,
   type: string,
-): ResolvedPaths {
-  const ids: string[] = [];
-  const unresolved: string[] = [];
+): Array<string | null> {
+  const ids: Array<string | null> = [];
 
-  for (const targetPath of paths) {
+  for (const entry of pathEntries(paths)) {
     try {
-      const resolved = resolvePathToLiveApi(targetPath);
-      const resolvedId = resolvePathToId(resolved, targetPath, type);
-
-      if (resolvedId) {
-        ids.push(resolvedId);
-      } else {
-        unresolved.push(targetPath);
-      }
+      ids.push(resolvePathToId(resolvePathToLiveApi(entry), entry, type, tool));
     } catch (e) {
-      console.warn(`delete: ${errorMessage(e)}`);
-      unresolved.push(targetPath);
+      console.warn(`${tool}: ${errorMessage(e)}`);
+      ids.push(null);
     }
   }
 
-  return { ids, unresolved };
+  return ids;
+}
+
+/**
+ * Resolves a single path resolution result to an ID
+ * @param resolved - Result from resolvePathToLiveApi
+ * @param targetPath - Original path for error messages
+ * @param type - The target type ("device", "drum-pad", or "chain")
+ * @param tool - Tool name, for warnings
+ * @returns The resolved ID or null
+ */
+function resolvePathToId(
+  resolved: ResolvedPath,
+  targetPath: string,
+  type: string,
+  tool: string,
+): string | null {
+  if (type === "drum-pad") {
+    return resolveDrumPadPathToId(resolved, targetPath, tool);
+  }
+
+  if (type === "chain") {
+    return resolveChainPathToId(resolved, targetPath, tool);
+  }
+
+  return resolveDevicePathToId(resolved, targetPath, tool);
 }
 
 /**
  * Resolves a path to the id of the whole drum pad it names. Only a bare pad
- * path qualifies: `delete_all_chains` clears the pad, so a path naming
- * something inside one would delete more than the caller asked for.
+ * path qualifies: both operations a pad takes — clearing it, copying it — act
+ * on the whole pad, so a path naming something inside one would reach further
+ * than the caller asked.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
+ * @param tool - Tool name, for warnings
  * @returns The pad's ID, or null when the path doesn't name one
  */
 function resolveDrumPadPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  tool: string,
 ): string | null {
   if (resolved.targetType !== "drum-pad") {
     console.warn(
-      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+      `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
     );
 
     return null;
@@ -85,19 +126,19 @@ function resolveDrumPadPathToId(
   if (resolved.remainingSegments.length > 0) {
     console.warn(
       resolved.remainingSegments.some((segment) => segment.startsWith("p"))
-        ? `delete: path "${targetPath}" names a pad of a nested Drum Rack. Such a rack has no pad objects, and Live can only clear a pad — delete the pad's devices to empty it instead`
-        : `delete: path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
+        ? `${tool}: path "${targetPath}" names a pad of a nested Drum Rack, which has no pad objects — name a chain or a device inside it instead`
+        : `${tool}: path "${targetPath}" names something inside a drum pad, not the pad itself (expected something like "t0/d0/pC1")`,
     );
 
     return null;
   }
 
-  // resolveDrumPadFromPath returns the pad's *chain*, and delete_all_chains
-  // on a chain is a silent no-op — so find the DrumPad object itself.
+  // resolveDrumPadFromPath returns the pad's *chain*, and the pad-level calls
+  // are silent no-ops on a chain — so find the DrumPad object itself.
   const pad = findDrumPad(resolved.liveApiPath, resolved.drumPadNote as string);
 
   if (!pad) {
-    console.warn(`delete: drum-pad at path "${targetPath}" does not exist`);
+    console.warn(`${tool}: drum-pad at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -110,14 +151,16 @@ function resolveDrumPadPathToId(
  * ("t0/d0/pC1/c1"), a rack chain ("t0/d0/c1"), or a rack return chain.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
+ * @param tool - Tool name, for warnings
  * @returns The chain's ID, or null when the path doesn't name one
  */
 function resolveChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  tool: string,
 ): string | null {
   if (resolved.targetType === "drum-pad") {
-    return resolveDrumChainPathToId(resolved, targetPath);
+    return resolveDrumChainPathToId(resolved, targetPath, tool);
   }
 
   if (
@@ -125,7 +168,7 @@ function resolveChainPathToId(
     resolved.targetType !== "return-chain"
   ) {
     console.warn(
-      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not chain`,
+      `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not chain`,
     );
 
     return null;
@@ -134,7 +177,7 @@ function resolveChainPathToId(
   const chain = LiveAPI.from(resolved.liveApiPath);
 
   if (!chain.exists()) {
-    console.warn(`delete: chain at path "${targetPath}" does not exist`);
+    console.warn(`${tool}: chain at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -147,15 +190,17 @@ function resolveChainPathToId(
  * the whole pad, so it takes the drum-pad type rather than this one.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
+ * @param tool - Tool name, for warnings
  * @returns The chain's ID, or null when the path doesn't name one
  */
 function resolveDrumChainPathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  tool: string,
 ): string | null {
   if (resolved.remainingSegments.length === 0) {
     console.warn(
-      `delete: path "${targetPath}" names a whole drum pad; use ` +
+      `${tool}: path "${targetPath}" names a whole drum pad; use ` +
         `type="drum-pad", or name one layer like "${targetPath}/c0"`,
     );
 
@@ -169,7 +214,7 @@ function resolveDrumChainPathToId(
   );
 
   if (!result.target || result.targetType !== "chain") {
-    console.warn(`delete: chain at path "${targetPath}" does not exist`);
+    console.warn(`${tool}: chain at path "${targetPath}" does not exist`);
 
     return null;
   }
@@ -178,39 +223,23 @@ function resolveDrumChainPathToId(
 }
 
 /**
- * Resolves a single path resolution result to an ID
- * @param resolved - Result from resolvePathToLiveApi
- * @param targetPath - Original path for error messages
- * @param type - The target type ("device", "drum-pad", or "chain")
- * @returns The resolved ID or null
- */
-function resolvePathToId(
-  resolved: ResolvedPath,
-  targetPath: string,
-  type: string,
-): string | null {
-  if (type === "drum-pad") return resolveDrumPadPathToId(resolved, targetPath);
-  if (type === "chain") return resolveChainPathToId(resolved, targetPath);
-
-  return resolveDevicePathToId(resolved, targetPath);
-}
-
-/**
  * Resolves a path to the device it names, including a device inside a drum pad.
  * @param resolved - Result from resolvePathToLiveApi
  * @param targetPath - Original path for error messages
+ * @param tool - Tool name, for warnings
  * @returns The device's ID, or null when the path doesn't name one
  */
 function resolveDevicePathToId(
   resolved: ResolvedPath,
   targetPath: string,
+  tool: string,
 ): string | null {
   // Direct device path (not through drum pad)
   if (resolved.targetType === "device") {
     const target = LiveAPI.from(resolved.liveApiPath);
 
     if (!target.exists()) {
-      console.warn(`delete: device at path "${targetPath}" does not exist`);
+      console.warn(`${tool}: device at path "${targetPath}" does not exist`);
 
       return null;
     }
@@ -222,7 +251,7 @@ function resolveDevicePathToId(
   // the explicit-chain `t0/d0/pC1/c0/d0` (remainingSegments ["c0","d0"]) and
   // the implicit-chain `t0/d0/pC1/d0` (["d0"], chain 0 implied) — matching the
   // forms read-device and update-device accept. `>= 1` covers both; a bare pad
-  // (`pC1`, length 0) is the whole-pad case handled as a "drum-pad" delete, and
+  // (`pC1`, length 0) is the whole-pad case handled as a "drum-pad" target, and
   // an explicit chain with no device (`pC1/c0`, ["c0"]) resolves to a chain and
   // is rejected by the targetType check below.
   if (
@@ -236,7 +265,7 @@ function resolveDevicePathToId(
     );
 
     if (!result.target || result.targetType !== "device") {
-      console.warn(`delete: device at path "${targetPath}" does not exist`);
+      console.warn(`${tool}: device at path "${targetPath}" does not exist`);
 
       return null;
     }
@@ -245,7 +274,7 @@ function resolveDevicePathToId(
   }
 
   console.warn(
-    `delete: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+    `${tool}: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
   );
 
   return null;

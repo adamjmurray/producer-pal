@@ -5,19 +5,12 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
-import {
-  sceneIdPerPath,
-  trackIdPerPath,
-} from "#src/tools/shared/validation/path-target-lookup.ts";
 import { deleteTrackObject } from "./helpers/delete-track-helpers.ts";
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
-import {
-  type ResolvedPaths,
-  resolvePathsToIds,
-} from "./helpers/delete-path-helpers.ts";
+import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -30,18 +23,13 @@ import {
   validateObjectTypes,
 } from "#src/tools/shared/validation/id-validation.ts";
 
-/**
- * The types whose paths resolve one entry at a time, keeping a miss in place.
- * Everything else goes through the device-chain resolver.
- */
-const ID_PER_PATH: Record<
-  string,
-  (paths: string, tool: string) => Array<string | null>
-> = {
-  track: trackIdPerPath,
-  scene: sceneIdPerPath,
-  clip: clipIdPerPath,
-};
+/** What a batch of paths resolved to, and which of them named nothing. */
+interface ResolvedPaths {
+  /** Ids of the objects the paths named, in path order. */
+  ids: string[];
+  /** Paths that named nothing deletable. The warning says why. */
+  unresolved: string[];
+}
 
 const DELETABLE_TYPES = [
   "track",
@@ -118,11 +106,7 @@ export function deleteObject(
   // Every deletable type can be addressed by location, so a path is always
   // usable by the time the type check above has passed.
   if (path) {
-    const lookup = ID_PER_PATH[type];
-    const resolvedPaths =
-      lookup == null
-        ? resolvePathsToIds(targetEntries(path, "path"), type)
-        : resolvePerPath(path, lookup);
+    const resolvedPaths = resolvePerPath(path, idPerPathForType(type));
 
     objectIds.push(...resolvedPaths.ids);
     unresolvedPaths.push(...resolvedPaths.unresolved);
@@ -226,16 +210,13 @@ export function deleteObject(
 }
 
 /**
- * A per-entry lookup in the shape the path resolvers use, so both branches
- * report their misses the same way.
+ * Splits the lookup's per-entry answer into the ids it found and the paths it
+ * didn't, so a miss can be reported as a target rather than dropped.
  * @param path - Comma-separated paths
  * @param lookup - The type's path-to-id lookup
  * @returns The ids found, plus the paths that named nothing
  */
-function resolvePerPath(
-  path: string,
-  lookup: (paths: string, tool: string) => Array<string | null>,
-): ResolvedPaths {
+function resolvePerPath(path: string, lookup: IdPerPath): ResolvedPaths {
   const entries = targetEntries(path, "path");
   const ids: string[] = [];
   const unresolved: string[] = [];

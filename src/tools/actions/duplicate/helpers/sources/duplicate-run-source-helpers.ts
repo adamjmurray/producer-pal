@@ -71,7 +71,7 @@ export async function duplicateOneSource(
 ): Promise<object[]> {
   const { type, source, clipDestinations, labels, context } = args;
   const object = sourceObject(source, type);
-  const id = source.id as string;
+  const id = source.id;
 
   if (clipDestinations != null) {
     return await duplicateClipWithPositions(
@@ -105,7 +105,6 @@ export async function duplicateOneSource(
  * a device chain rather than a spot on the timeline.
  * @param type - "device" or "drum-pad"
  * @param sources - The shares to copy, in order
- * @param path - Source drum pad path, when the call named its source that way
  * @param labels - The call's names and colors
  * @param count - The raw count param, which neither type uses
  * @returns Result object, or an array of them for multiple destinations
@@ -113,14 +112,13 @@ export async function duplicateOneSource(
 export function duplicateChainSources(
   type: string,
   sources: SourceShare[],
-  path: string | undefined,
   labels: CopyLabels,
   count: number,
 ): object | object[] {
   return collectSources(sources, (source, i) =>
     // `count` doesn't apply to either type, and the warning that says so
     // belongs to the call rather than to every source in it.
-    runOneChainSource(type, source, path, labels, i === 0 ? count : 1),
+    runOneChainSource(type, source, labels, i === 0 ? count : 1),
   );
 }
 
@@ -130,7 +128,6 @@ export function duplicateChainSources(
  * Run one source through the copier its type calls for.
  * @param type - Object type to duplicate
  * @param source - The source's turn
- * @param path - Source drum pad path, when the call named its source that way
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
  * @returns The copy or copies made for this source
@@ -138,12 +135,11 @@ export function duplicateChainSources(
 function runOneChainSource(
   type: string,
   source: SourceShare,
-  path: string | undefined,
   labels: CopyLabels,
   count: number,
 ): object | object[] {
   if (type === "drum-pad") {
-    return duplicateDrumPadSource(source, path, labels, count);
+    return duplicateDrumPadSource(source, labels, count);
   }
 
   const object = sourceObject(source, type);
@@ -162,27 +158,22 @@ function runOneChainSource(
  * @returns The object to copy
  */
 function sourceObject(source: SourceShare, type: string): LiveAPI {
-  return validateIdType(source.id as string, type, "duplicate");
+  return validateIdType(source.id, type, "duplicate");
 }
 
 /**
  * Copies one source drum pad to the pads its share of toPath names.
  * @param source - The source's turn
- * @param path - Source drum pad path, when the call named its source that way
  * @param labels - The call's names and colors
  * @param count - Number of copies (warns if > 1)
  * @returns Result object, or an array of them for multiple destinations
  */
 function duplicateDrumPadSource(
   source: SourceShare,
-  path: string | undefined,
   labels: CopyLabels,
   count: number,
 ): object | object[] {
-  const sourcePad = resolveSourcePad(
-    source.id == null ? null : sourceObject(source, "drum-pad"),
-    path,
-  );
+  const sourcePad = resolveSourcePad(sourceObject(source, "drum-pad"));
 
   return sourcePad == null
     ? []

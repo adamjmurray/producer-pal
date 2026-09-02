@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// `id` naming several sources: the single-source logic runs once per source, in
-// order, and the results are concatenated.
+// `id` and `path` naming several sources: the single-source logic runs once per
+// source, in order, and the results are concatenated.
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -219,6 +219,58 @@ describe("duplicate - a list of sources", () => {
 
       expect(copyA.set).toHaveBeenCalledWith("name", "one");
       expect(copyB.set).toHaveBeenCalledWith("name", "two");
+    });
+  });
+
+  describe("sources named by path", () => {
+    it("takes a path list in place of ids", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        path: "t0/s0,t1/s0",
+        toPath: "t2/s0,t3/s0",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "clipA-in-t2s0", path: "t2/s0" },
+        { id: "clipB-in-t3s0", path: "t3/s0" },
+      ]);
+    });
+
+    // They name different objects, so they add up rather than conflicting.
+    it("adds the paths onto the ids", async () => {
+      registerTwoSlotSources([
+        [2, 0],
+        [3, 0],
+      ]);
+
+      const result = await duplicate({
+        type: "clip",
+        id: "clipA",
+        path: "t1/s0",
+        toPath: "t2/s0,t3/s0",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "clipA-in-t2s0", path: "t2/s0" },
+        { id: "clipB-in-t3s0", path: "t3/s0" },
+      ]);
+    });
+
+    // Every copy already made is one the caller has to clean up by hand, so a
+    // source that can't be found stops the call instead of shrinking it.
+    it("refuses a path that names no source", async () => {
+      registerTwoSlotSources([[2, 0]]);
+
+      await expect(
+        duplicate({ type: "clip", path: "t9/s0", toPath: "t2/s0" }),
+      ).rejects.toThrow(
+        'duplicate failed: nothing to duplicate at path "t9/s0"',
+      );
     });
   });
 

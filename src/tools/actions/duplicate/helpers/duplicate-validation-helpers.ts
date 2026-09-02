@@ -19,7 +19,6 @@ import {
   type SourceShare,
   warnSharedArrangementDestination,
 } from "./sources/duplicate-source-helpers.ts";
-import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ClipDestinations,
@@ -81,9 +80,9 @@ export function resolveArrangementPositions(
 /**
  * Validates basic input parameters for duplication
  * @param type - Type of object to duplicate
- * @param id - ID of the object to duplicate
+ * @param id - ID(s) of the object(s) to duplicate
  * @param count - Number of duplicates to create
- * @param path - Source drum pad path, when the call names its source that way
+ * @param path - Path(s) of the object(s) to duplicate
  */
 export function validateBasicInputs(
   type: string,
@@ -101,40 +100,14 @@ export function validateBasicInputs(
     );
   }
 
-  validateSource(type, id, path);
+  // `id` and `path` name different objects and add up, so either will do and
+  // both together are a longer source list, not a conflict.
+  if (id == null && path == null) {
+    throw new Error("duplicate failed: id or path is required");
+  }
 
   if (count < 1) {
     throw new Error("duplicate failed: count must be at least 1");
-  }
-}
-
-/**
- * Checks the call named its source. A drum pad can say so by path instead of
- * id: the 128 pad slots are fixed, so p{pitch} names the same pad every time.
- * Naming it both ways throws, even though id takes a list of pads: path is a
- * call-level param handed to every source, so unioning it in means making the
- * pad a per-source field first.
- * @param type - Type of object to duplicate
- * @param id - ID of the object to duplicate
- * @param path - Source drum pad path
- */
-function validateSource(
-  type: string,
-  id: string | undefined,
-  path: string | undefined,
-): void {
-  if (type === "drum-pad") {
-    validateExclusiveParams(id, path, "id", "path");
-
-    return;
-  }
-
-  if (!id) {
-    throw new Error("duplicate failed: id is required");
-  }
-
-  if (path != null) {
-    console.warn(`path ignored: only supported for drum pads (type "${type}")`);
   }
 }
 
