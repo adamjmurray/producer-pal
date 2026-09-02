@@ -62,6 +62,8 @@ be inferred from the prefix:
 | `codex-code/luna`               | codex-code  |
 | `claude-code/sonnet`            | claude-code |
 | `claude-code/opus`              | claude-code |
+| `claude-code/haiku`             | claude-code |
+| `claude-code/fable`             | claude-code |
 | `openrouter/some-model`         | openrouter  |
 | `local/model-name`              | local       |
 
@@ -131,6 +133,14 @@ ignored, and the eval's system instructions REPLACING the CLI's own agent prompt
 On Codex the plugin part takes its own flag, `--disable apps`.
 `--ignore-user-config` does not reach the installed apps, and they come back as
 MCP tools — a second Producer Pal among them, competing with the eval's server.
+
+**A big tool result fails the run on `claude-code`.** Past a size limit the
+claude CLI saves a tool result to a file and hands the model a 2KB preview
+instead. The model is what gets the preview, so the run would grade a model that
+never received the Skills `ppal-connect` returns. The transport treats that stub
+as a failed turn rather than let a meaningless score through. It fires on the
+full toolset today; `--tools` a subset, or use another provider. No env var
+raises the limit (`MAX_MCP_OUTPUT_TOKENS` is a different cap and does not).
 
 A looping model is bounded the same way it is on the AI SDK path. Neither CLI
 takes a step limit we can rely on, so the transports count the model's actions

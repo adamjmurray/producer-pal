@@ -308,6 +308,45 @@ describe("parseClaudeCodeStream", () => {
     );
   });
 
+  it("throws when the CLI spilled a tool result to a file", () => {
+    // The stub is what the model gets, so the run would grade a model that
+    // never received the Skills ppal-connect returns.
+    const stdout = jsonl([
+      {
+        type: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              id: "toolu_1",
+              name: "mcp__producer-pal__ppal-connect",
+              input: {},
+            },
+          ],
+        },
+      },
+      {
+        type: "user",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_1",
+              content:
+                "<persisted-output>\nOutput too large (49.7KB). Full output " +
+                "saved to: /tmp/x.json\n\nPreview (first 2KB):\n{connected:true",
+            },
+          ],
+        },
+      },
+      { type: "result", subtype: "success", is_error: false, result: "hi" },
+    ]);
+
+    expect(() => parseClaudeCodeStream(stdout)).toThrow(
+      /ppal-connect returned more than the claude CLI will inline/,
+    );
+  });
+
   it("throws when the Producer Pal MCP server did not connect", () => {
     // Claude Code has no `required=true`; without this the turn would run with
     // no tools at all and grade as a model that simply refused to use them.
