@@ -265,6 +265,63 @@ export function drumPadPath(pad: LiveAPI): string {
   );
 }
 
+/** How deep to hunt for a nested kit. Matches the drum map's default read depth. */
+const NESTED_RACK_SEARCH_DEPTH = 4;
+
+/**
+ * The drum rack a rack device plays through, when it holds one.
+ *
+ * Same rule as the drum map's search (see findDrumRack): walk every chain and
+ * stop at the first drum rack, because a kit nested inside a pad sounds only
+ * on that pad. Used to correct a pad path aimed at the outer rack.
+ * @param device - The device to search under
+ * @param depth - Recursion depth, for the search cap
+ * @returns The nested drum rack, or null if there is none
+ */
+export function findNestedDrumRack(device: LiveAPI, depth = 0): LiveAPI | null {
+  if (depth >= NESTED_RACK_SEARCH_DEPTH) return null;
+
+  for (const chain of device.getChildren("chains")) {
+    for (const nested of chain.getChildren("devices")) {
+      if (nested.getProperty("can_have_drum_pads")) return nested;
+
+      const deeper = findNestedDrumRack(nested, depth + 1);
+
+      if (deeper != null) return deeper;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * A "did you mean" for a pad path aimed at a rack that holds the kit instead of
+ * being it — the miss models make on a drum rack nested in another rack.
+ * @param liveApiPath - Live API path of the device the path named
+ * @param note - The pad note segment, as written
+ * @param tail - Segments after the pad, so the suggestion keeps them
+ * @returns The hint, or "" when there is no nested kit to point at
+ */
+export function nestedDrumRackHint(
+  liveApiPath: string,
+  note: string,
+  tail: string[] = [],
+): string {
+  const device = LiveAPI.from(liveApiPath);
+
+  if (!device.exists()) return "";
+
+  const rack = findNestedDrumRack(device);
+
+  if (rack == null) return "";
+
+  const suggestion = [`${extractDevicePath(rack.path)}/p${note}`, ...tail].join(
+    "/",
+  );
+
+  return ` — the drum rack is nested; try "${suggestion}"`;
+}
+
 /**
  * Resolve a bare pad path to the whole pad: the DrumPad object plus every chain
  * on it. A layered pad has several chains; a virtual pad has no DrumPad.

@@ -173,6 +173,9 @@ describe("readDevice drum-map by target kind", () => {
     const result = readDevice({ path: "t1/d0/c0", include: ["drum-map"] });
 
     expect(result.drumMap).toStrictEqual({ C1: "Kick" });
+    // The kit is a device down from the chain that was read, so the map names
+    // where its pads live rather than leaving the caller to guess.
+    expect(result.drumRackPath).toBe("t1/d0/c0/d0");
 
     const devices = result.devices as Record<string, unknown>[];
 
@@ -211,6 +214,16 @@ describe("readDevice drum-map by target kind", () => {
       chainCount: 1,
     });
     expect(kit?.chains).toBeUndefined();
+  });
+
+  // A pad path aimed at the rack that holds the kit is the miss models make, so
+  // the refusal spells out where the pads actually are.
+  it("points a pad path at the kit nested inside the rack it named", () => {
+    setupInstrumentRackWithKit();
+
+    expect(() => readDevice({ path: "t1/d0/pC1/c0/d0" })).toThrow(
+      'Drum pad C1 not found — the drum rack is nested; try "t1/d0/c0/d0/pC1/c0/d0"',
+    );
   });
 
   it("keeps the chain tree when chains were asked for too", () => {

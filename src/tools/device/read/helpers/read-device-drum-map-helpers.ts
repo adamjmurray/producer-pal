@@ -7,6 +7,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import {
   DEFAULT_MAX_DEPTH,
+  findDrumRack,
   getDrumMap,
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
@@ -44,10 +45,11 @@ export function postProcessDrumMap(
     if (devices == null) {
       warnNoDrumMap(result, drumMapExplicit);
     } else {
-      const drumMap = getDrumMap(devices, notation);
+      const drumRack = findDrumRack(devices);
 
-      if (drumMap != null) {
-        result.drumMap = drumMap;
+      if (drumRack != null) {
+        result.drumMap = getDrumMap(devices, notation);
+        result.drumRackPath = drumRack.path;
       }
     }
   }

@@ -12,6 +12,7 @@ import {
   drumPadPath,
   findDrumPad,
   findDrumPadByNote,
+  nestedDrumRackHint,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
@@ -143,7 +144,9 @@ function drumPadTarget(resolved: ResolvedPath, path: string): LiveAPI {
   const chain = group?.chains[0];
 
   if (chain == null) {
-    throw new Error(`select failed: no drum pad at "${path}"`);
+    throw new Error(
+      `select failed: no drum pad at "${path}"${nestedDrumRackHint(resolved.liveApiPath, note)}`,
+    );
   }
 
   return chain;

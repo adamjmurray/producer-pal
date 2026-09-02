@@ -117,6 +117,9 @@ describe("read-device on nested racks", () => {
       const outer = await read("t0/d0", { include: ["drum-map"] });
 
       expect(Object.values(outer.drumMap ?? {})).toStrictEqual(EXPECTED_PADS);
+      // Without this the pads look like they hang off t0/d0, and a pad path
+      // built from the device that was read names nothing.
+      expect(outer.drumRackPath).toBe(KIT);
     });
 
     it("lists a pad holding a nested Drum Rack", async () => {
@@ -129,6 +132,7 @@ describe("read-device on nested racks", () => {
       const subKit = await read(SUB_KIT, { include: ["drum-map"] });
 
       expect(subKit.drumMap).toStrictEqual({ C3: "Hat" });
+      expect(subKit.drumRackPath).toBe(SUB_KIT);
     });
 
     // Live types a rack as an instrument whether or not it holds anything, so

@@ -165,7 +165,8 @@ per lane, each with its `path` (e.g. `"t2/l0"`), `name`, and `clips`.
 ### Other includes
 
 - `devices` — flat device list in track signal-chain order
-- `drum-map` — pitch-to-name mappings for drum racks
+- `drum-map` — pitch-to-name mappings for drum racks, plus the owning rack's
+  path
 - `routings`, `available-routings` — routing info
 - `notes`, `sample`, `timing`, `color` — propagated to nested clip reads
 
@@ -487,9 +488,14 @@ Adds flat pitch-to-name mapping for drum rack devices. Internally forces chain
 processing at `maxDepth >= 1` to detect instruments, then strips the chain data
 from the output.
 
-| Field     | Type                    | Description                         |
-| --------- | ----------------------- | ----------------------------------- |
-| `drumMap` | `Record<string,string>` | Pitch name to drum pad name mapping |
+| Field          | Type                    | Description                           |
+| -------------- | ----------------------- | ------------------------------------- |
+| `drumMap`      | `Record<string,string>` | Pitch name to drum pad name mapping   |
+| `drumRackPath` | `string`                | Path of the rack those pads belong to |
+
+`drumRackPath` is what pad paths are built from. A kit nested inside another
+rack is common, and then it is neither the device the caller read nor anything
+in the track's device list.
 
 ### Include: `"params"`
 

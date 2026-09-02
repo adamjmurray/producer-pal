@@ -18,6 +18,7 @@ import {
   chainsOnDrumPad,
   findDrumPadByNote,
   navigateRemainingSegments,
+  nestedDrumRackHint,
 } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { type ReadOptions } from "./read-device-options.ts";
 
@@ -56,7 +57,9 @@ export function readDrumPadByPath(
   const chains = pad ? chainsOnDrumPad(pad) : chainsForInNote(device, midiNote);
 
   if (pad == null && chains.length === 0) {
-    throw new Error(`Drum pad ${drumPadNote} not found`);
+    throw new Error(
+      `Drum pad ${drumPadNote} not found${nestedDrumRackHint(liveApiPath, drumPadNote, remainingSegments)}`,
+    );
   }
 
   if (remainingSegments.length > 0) {

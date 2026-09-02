@@ -7,7 +7,10 @@ import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import { type ReadClipResult } from "#src/tools/clip/read/read-clip.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
-import { getDrumMap } from "#src/tools/shared/device/device-reader.ts";
+import {
+  findDrumRack,
+  getDrumMap,
+} from "#src/tools/shared/device/device-reader.ts";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
@@ -234,10 +237,11 @@ function addDrumMapFromDevices(
     ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
     ...categorizedDevices.audioEffects,
   ];
-  const drumMap = getDrumMap(allDevices, notation);
+  const drumRack = findDrumRack(allDevices);
 
-  if (drumMap != null) {
-    result.drumMap = drumMap;
+  if (drumRack != null) {
+    result.drumMap = getDrumMap(allDevices, notation);
+    result.drumRackPath = drumRack.path;
   }
 }
 

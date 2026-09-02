@@ -37,6 +37,7 @@ export interface DeviceInfo {
   chains?: ChainInfo[];
   returnChains?: ChainInfo[];
   drumMap?: Record<string, string>;
+  drumRackPath?: string;
   parameters?: { name: string; value?: unknown; enabled?: boolean }[];
 }
 

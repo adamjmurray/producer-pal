@@ -14,6 +14,7 @@ import {
   drumChainSegmentNamer,
   drumPadIdsByNote,
   findDrumPad,
+  findNestedDrumRack,
   navigateRemainingSegments,
   resolveDrumPadFromPath,
   resolveDrumPadGroup,
@@ -396,5 +397,38 @@ describe("drumChainSegmentNamer", () => {
     expect(drumChainSegmentNamer(chain)(`${RACK_PATH} chains 1`, "1")).toBe(
       "c1",
     );
+  });
+});
+
+describe("findNestedDrumRack", () => {
+  beforeEach(() => {
+    clearMockRegistry();
+  });
+
+  it("stops at the search cap rather than walking a rack tree without end", () => {
+    registerMockObject("rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: { chains: ["id", "c0"] },
+    });
+
+    // Racks all the way down with the kit at the bottom. A kit this deep has no
+    // drum map either — read-device walks the same number of levels — so the
+    // hint stays quiet rather than pointing at pads nothing else reports.
+    for (let i = 0; i <= 4; i++) {
+      registerMockObject(`c${i}`, {
+        type: "Chain",
+        properties: { devices: ["id", `d${i}`] },
+      });
+      registerMockObject(`d${i}`, {
+        type: "RackDevice",
+        properties: {
+          can_have_drum_pads: i === 4 ? 1 : 0,
+          chains: ["id", `c${i + 1}`],
+        },
+      });
+    }
+
+    expect(findNestedDrumRack(LiveAPI.from(RACK_PATH))).toBe(null);
   });
 });

@@ -355,6 +355,41 @@ describe("select inside a rack", () => {
     );
   });
 
+  // Every model evaluated aimed a pad path at the track's visible instrument
+  // rack, because a read-track drumMap used to arrive with no owning path.
+  it("points a pad path at the kit nested inside the rack it named", () => {
+    registerMockObject("outer-rack", {
+      path: RACK_PATH,
+      type: "RackDevice",
+      properties: {
+        can_have_drum_pads: 0,
+        chains: children("outer-chain"),
+      },
+    });
+    registerMockObject("outer-chain", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "Chain",
+      // The kit sits behind a plain device, so the search has to keep looking
+      // past one that has no chains of its own.
+      properties: { devices: children("eq", "kit") },
+    });
+    registerMockObject("eq", {
+      path: livePath.track(0).device(0).chain(0).device(0),
+      type: "Device",
+      properties: { can_have_drum_pads: 0 },
+    });
+    registerMockObject("kit", {
+      path: livePath.track(0).device(0).chain(0).device(1),
+      type: "RackDevice",
+      properties: { can_have_drum_pads: 1 },
+    });
+    setupSongViewMock();
+
+    expect(() => select({ path: "t0/d0/pC1" })).toThrow(
+      'select failed: no drum pad at "t0/d0/pC1" — the drum rack is nested; try "t0/d0/c0/d1/pC1"',
+    );
+  });
+
   it("refuses a chain path naming nothing", () => {
     registerMockObject("rack-id", { path: RACK_PATH, type: "RackDevice" });
     mockNonExistentObjects();
