@@ -108,3 +108,24 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     );
   });
 });
+
+describe("updateClip - transforms name the clip they warn about", () => {
+  let mocks: UpdateClipMocks;
+
+  beforeEach(() => {
+    mocks = setupUpdateClipMocks();
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
+    mockMergeNoteTracking(mocks.clip123, [{ ...C3 }]);
+    mockMergeNoteTracking(mocks.clip456, [{ ...C3 }]);
+  });
+
+  it("tells two firings of the same reason apart", async () => {
+    await updateClip({ ids: "123,456", transforms: "gain = 3" });
+
+    expect(capturedWarnings()).toStrictEqual([
+      "clip id 123: Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      "clip id 456: Audio parameters (gain, pitchShift) ignored for MIDI clips",
+    ]);
+  });
+});

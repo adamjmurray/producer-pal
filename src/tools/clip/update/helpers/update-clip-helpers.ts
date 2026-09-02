@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
+import { withClipWarningLabel } from "#src/notation/transform/transform-warning-label.ts";
 import { type Notation } from "#src/shared/notation.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
@@ -14,6 +15,7 @@ import {
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { warnIgnoredParams } from "#src/tools/clip/helpers/warn-ignored-params.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   applyAudioTransforms,
   forceWarpForLooping,
@@ -117,6 +119,19 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
 export function processSingleClipUpdate(
   params: ProcessSingleClipUpdateParams,
 ): void {
+  // The transform evaluators warn per clip but have no LiveAPI to name it with,
+  // so the label comes from here. Everything inside is synchronous, which is
+  // what makes a scope safe to use instead of a parameter.
+  withClipWarningLabel(`clip ${targetLabel(params.clip)}`, () =>
+    updateOneClip(params),
+  );
+}
+
+/**
+ * Apply one clip's update, with transform warnings already labelled.
+ * @param params - The full single-clip update params
+ */
+function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   const {
     clip,
     clipIndex,
