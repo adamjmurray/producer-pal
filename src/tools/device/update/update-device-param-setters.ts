@@ -260,7 +260,7 @@ function setParamValue(
 
     if (index === -1) {
       console.warn(
-        `${toolName}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
+        `${label}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
       return null;
@@ -274,7 +274,7 @@ function setParamValue(
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
-      console.warn(`${toolName}: invalid note name "${inputValue}"`);
+      console.warn(`${label}: invalid note name "${inputValue}"`);
 
       return null;
     }
@@ -287,7 +287,7 @@ function setParamValue(
   const currentLabel = strForValue(param, currentValue);
 
   if (isPanLabel(currentLabel)) {
-    return setPanParamValue(param, inputValue, label, toolName);
+    return setPanParamValue(param, inputValue, label);
   }
 
   // 4. Division params - string input matching fraction format (e.g., "1/8")
@@ -300,9 +300,7 @@ function setParamValue(
     const rawValue = findDivisionRawValue(param, inputValue);
 
     if (rawValue == null) {
-      console.warn(
-        `${toolName}: "${inputValue}" is not a valid division option`,
-      );
+      console.warn(`${label}: "${inputValue}" is not a valid division option`);
 
       return null;
     }
@@ -344,7 +342,7 @@ function setParamValue(
   const inputStr = String(inputValue);
 
   console.warn(
-    `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
+    `${label}: could not interpret "${inputStr}" as a value — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
   );
 
   return null;
@@ -431,14 +429,12 @@ function writeParam(
  * @param param - Parameter to set
  * @param inputValue - Value to set
  * @param label - How to name the parameter in a warning
- * @param toolName - Calling tool name for warning prefix
  * @returns The param the write landed on, or null if it did not land
  */
 function setPanParamValue(
   param: LiveAPI,
   inputValue: string | number,
   label: string,
-  toolName: string,
 ): WrittenParam | null {
   const min = param.getProperty("min") as number;
   const max = param.getProperty("max") as number;
@@ -452,7 +448,7 @@ function setPanParamValue(
   if (typeof inputValue === "string") {
     if (!isPanLabel(inputValue)) {
       console.warn(
-        `${toolName}: "${inputValue}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
+        `${label}: "${inputValue}" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")`,
       );
 
       return null;

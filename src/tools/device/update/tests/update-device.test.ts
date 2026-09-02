@@ -220,7 +220,8 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: "InvalidValue" is not valid. Options: Repitch, Fade, Jump',
+        'updateDevice: id 791 param "Warp Mode": "InvalidValue" is not valid. ' +
+          "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
@@ -263,7 +264,8 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: "1" is not valid. Options: Repitch, Fade, Jump',
+        'updateDevice: id 791 param "Warp Mode": "1" is not valid. ' +
+          "Options: Repitch, Fade, Jump",
       );
       expect(param791.set).not.toHaveBeenCalledWith("value", expect.anything());
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
@@ -384,7 +386,8 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: "hard-left" is not a valid pan value (use -1 to 1, or "50L"/"50R"/"C")',
+        'updateDevice: id 792 param "Pan": "hard-left" is not a valid pan ' +
+          'value (use -1 to 1, or "50L"/"50R"/"C")',
       );
       expect(param792.set).not.toHaveBeenCalled();
     });
