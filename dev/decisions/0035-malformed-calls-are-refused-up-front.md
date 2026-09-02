@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date logged:** 2026-08-31
+- **Amended:** 2026-09-02 (rule 1, third bullet: work that can't be repeated)
 - **Amends:** [ADR-0009](0009-warn-and-skip-error-handling.md),
   [ADR-0029](0029-an-empty-param-is-dropped-from-the-args.md),
   [ADR-0031](0031-list-params-broadcast-or-pair-exactly.md)
@@ -53,6 +54,24 @@ either way.
 - **Applicability, found while working → warn and skip.** ADR-0009 is unchanged
   for its own case. Some items already succeeded and can't be rolled back, so
   the batch continues and the warning says what was skipped.
+- **Applicability that can be settled before work starts, in a tool whose work
+  can't be repeated → throw.** A create has no partial state worth preserving:
+  every copy it already made is a side effect the model has to clean up by hand
+  before it can retry. So when the whole target list can be checked first, it
+  is, and the call is refused atomically like a structural error.
+
+  `duplicate` is the case. Its sources are ids, and an id is checkable without
+  touching anything, so
+  [duplicate.ts:147](../../src/tools/actions/duplicate/duplicate.ts#L147)
+  validates every source before the first copy is made. The second bullet's
+  reasoning — continue, because earlier items can't be rolled back — inverts
+  here: not being able to roll back is exactly why nothing should start.
+
+  This does not reopen the second bullet. It applies only where both halves
+  hold: the failure is knowable up front, and the work leaves objects behind. An
+  update tool satisfies neither — `quantize` on an audio clip isn't knowable
+  until that clip is reached, and a batch that half-succeeded has changed
+  properties, not created things.
 
 ### 2. Lists come in two kinds
 
@@ -136,6 +155,17 @@ survives on a text param, where clearing a name is a real request.
   never compared to each other. duplicate shares its destinations out across the
   sources before pairing, so the counts that have to agree are the per-source
   ones — its check runs where the copies are planned, still before any is made.
+- **Rule 1's third bullet is one tool wide today.** Only `duplicate` has both
+  halves — checkable targets and unrepeatable work. `create-*` tools have no
+  target list to pre-check, and `delete` fails safe in the other direction, so
+  it reports a skipped target in the result instead
+  ([delete.ts](../../src/tools/actions/delete/delete.ts)). The bullet exists so
+  the exception reads as a rule rather than as a local comment in duplicate.ts.
+- **duplicate's guard runs only for `sources.length > 1`.** A single bad id
+  still throws further in, via the per-source path. Same answer, different
+  place; pre-existing and not worth a special case.
+- **AGENTS.md's wording still holds.** It scopes the no-throw rule to update
+  tools, and duplicate isn't one. Nothing to change there.
 - **Rule 5 must throw actively, not just stop dropping.** `z.coerce.number()`
   turns `""` into `0`, so removing the drop alone would silently give bpm 0 —
   worse than today.

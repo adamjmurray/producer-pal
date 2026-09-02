@@ -9,7 +9,7 @@
  *
  * Each param splits itself, and by the time one is split nothing knows whether
  * another is even a list — so this runs first, on the raw args, before any work
- * starts. See ADR-0035 rule 4.
+ * starts.
  */
 
 /** One list param, as the caller sent it. */

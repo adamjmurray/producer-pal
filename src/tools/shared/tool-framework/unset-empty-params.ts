@@ -19,8 +19,8 @@ import { z, type ZodType } from "zod";
  * A blank string is different: a number, boolean, enum or array has no empty
  * value, so a blank one is a mistake whichever way you read it. Dropping it
  * silently is how `bpm: ""` used to become a call that set no tempo and said
- * nothing (ADR-0035 rule 5). It survives on a text param, where clearing a name
- * or a clip's notes is a real request.
+ * nothing. It survives on a text param, where clearing a name or a clip's notes
+ * is a real request.
  *
  * Runs on the args, not the schema, so what the model is published stays
  * exactly what each param declares.

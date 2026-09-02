@@ -22,6 +22,11 @@ your replies.
 - **Never cut the load-bearing part.** An assumption that causes a bug if it's
   wrong stays. So does a "don't do the obvious thing here, because X" warning.
   Trim the story around the fact, not the fact.
+- **A code comment stands on its own.** Say the reason in the comment; don't
+  send the reader to an ADR for it. ADRs get rewritten, merged and renumbered,
+  and a pointer to a numbered rule inside one is the first thing a rewrite
+  breaks. A bare `(ADR-00NN)` after a complete thought is fine — it attributes
+  without the comment depending on it.
 - **Tool descriptions and results are the tightest of all** — the Producer Pal
   Skills, `.def.ts` descriptions, and tool results all spend the user's context
   window. Keep them short, clear, and limited to what the model needs.
