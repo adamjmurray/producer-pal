@@ -163,15 +163,12 @@ export async function updateClip(
     throw new Error("updateClip failed: id or path is required");
   }
 
-  validateWholeCallParams(timeSignature, quantizePitch);
-
-  // Two spellings of one position, so there is no combined reading and nothing
-  // has run yet.
-  refuseDoubledPosition(toPath, arrangementStart, "updateClip", "toPath");
+  refuseUnreadableCall(timeSignature, quantizePitch, toPath, arrangementStart);
 
   const {
     clips: mutableClips,
     destinationById,
+    laneOrdinalById,
     destinationParam,
     nonSurvivorClipIds,
     startBeatsFor,
@@ -192,6 +189,9 @@ export async function updateClip(
 
   const updatedClips: ClipResult[] = [];
   const movedClipGroups = new Map<string, MoveGroup>();
+  // Shared across the batch so an "l=" destination lands on the lane the "l+"
+  // before it appended, instead of appending one of its own.
+  const appendedLanes = new Map<string, number>();
 
   for (let i = 0; i < mutableClips.length; i++) {
     const clip = mutableClips[i] as LiveAPI;
@@ -227,19 +227,18 @@ export async function updateClip(
       arrangementLengthBeats: lengthBeatsFor(clip),
       arrangementStartBeats: startBeatsFor(clip),
       destination: destinationById.get(clip.id) ?? null,
+      newLaneOrdinal: laneOrdinalById.get(clip.id),
       destinationParam,
       nonSurvivorClipIds,
       context,
       updatedClips,
       movedClipGroups,
+      appendedLanes,
       code,
     });
   }
 
-  emitArrangementWarnings(movedClipGroups);
-  focusLastUpdatedClip(updatedClips, focus);
-
-  return unwrapSingleResult(updatedClips);
+  return finishUpdate(movedClipGroups, updatedClips, focus);
 }
 
 /**
@@ -402,4 +401,41 @@ async function applyCodeExecToNewClips(
       clipResult.noteCount = noteCount;
     }
   }
+}
+
+/**
+ * Refuses a call there is no reading of, before any clip is touched: a
+ * whole-call param with no valid value, or one position spelled two ways.
+ * @param timeSignature - Whole-call meter, if sent
+ * @param quantizePitch - Whole-call quantize pitch, if sent
+ * @param toPath - Destination path(s), if sent
+ * @param arrangementStart - Deprecated destination position(s), if sent
+ */
+function refuseUnreadableCall(
+  timeSignature: string | undefined,
+  quantizePitch: string | undefined,
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): void {
+  validateWholeCallParams(timeSignature, quantizePitch);
+  refuseDoubledPosition(toPath, arrangementStart, "updateClip", "toPath");
+}
+
+/**
+ * Says what the batch's moves collided over, focuses the last clip written, and
+ * shapes the result.
+ * @param movedClipGroups - Tally of clips landing on each lane and position
+ * @param updatedClips - The clips this call wrote
+ * @param focus - Whether to select the last one in Live
+ * @returns The single result, or the list
+ */
+function finishUpdate(
+  movedClipGroups: Map<string, MoveGroup>,
+  updatedClips: ClipResult[],
+  focus: boolean | undefined,
+): ClipResult | ClipResult[] {
+  emitArrangementWarnings(movedClipGroups);
+  focusLastUpdatedClip(updatedClips, focus);
+
+  return unwrapSingleResult(updatedClips);
 }

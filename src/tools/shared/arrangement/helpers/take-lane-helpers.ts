@@ -91,31 +91,53 @@ export interface ArrangementTrack {
    * {@link withNewLaneOrdinals}. Only meaningful when `takeLane` is "new".
    */
   newLaneOrdinal?: number;
+  /**
+   * Written as `l=`: the lane the preceding `l+` appended, rather than one of
+   * its own. Read by {@link withNewLaneOrdinals}.
+   */
+  sameLane?: boolean;
 }
 
 /**
  * Numbers the `l+` entries in a destination list, so each one appends its own
- * lane.
+ * lane, and points every `l=` back at the one before it.
  *
- * Call this on the list as the caller wrote it, before it's paired against
- * arrangementStart. One written `l+` then stays one lane however many clips
- * land on it, while `l+,l+` gets two. A null is a destination that keeps its
- * turn without being one, and passes straight through. Typed off the lane
- * alone, so a destination carrying more than an {@link ArrangementTrack} keeps
- * its own type.
+ * Call this on the list as the caller wrote it, before it's paired against the
+ * positions. One written `l+` then stays one lane however many clips land on
+ * it, `l+,l+` gets two, and `l+,l=` gets one holding both. A null is a
+ * destination that keeps its turn without being one, and passes straight
+ * through. Typed off the lane alone, so a destination carrying more than an
+ * {@link ArrangementTrack} keeps its own type.
  * @param targets - Destinations parsed from the path, in order
+ * @param label - Param name, for the error an unanchored `l=` raises
  * @returns The destinations, with each "new" entry numbered
+ * @throws When an `l=` has no `l+` before it to name
  */
 export function withNewLaneOrdinals<
-  T extends { takeLane: TakeLaneTarget | null; newLaneOrdinal?: number } | null,
->(targets: T[]): T[] {
-  let ordinal = 0;
+  T extends {
+    takeLane: TakeLaneTarget | null;
+    newLaneOrdinal?: number;
+    sameLane?: boolean;
+  } | null,
+>(targets: T[], label = "toPath"): T[] {
+  let appended = -1;
 
-  return targets.map((target) =>
-    target?.takeLane === "new"
-      ? { ...target, newLaneOrdinal: ordinal++ }
-      : target,
-  );
+  return targets.map((target) => {
+    if (target?.takeLane !== "new") return target;
+
+    // Refused up front, before any lane is created: a permanent lane appended
+    // for the entries before it would outlive the failed call.
+    if (target.sameLane && appended < 0) {
+      throw new Error(
+        `${label} "l=" names the lane the "l+" before it appended, and there ` +
+          `is none; write "l+" for the first one`,
+      );
+    }
+
+    if (!target.sameLane) appended++;
+
+    return { ...target, newLaneOrdinal: appended };
+  });
 }
 
 /**
@@ -126,7 +148,19 @@ export function withNewLaneOrdinals<
 export function takeLaneFromPath(path: ClipPath): TakeLaneTarget | null {
   if (path.kind === "take-lane") return path.laneIndex;
 
-  return path.kind === "new-take-lane" ? "new" : null;
+  return path.kind === "new-take-lane" || path.kind === "same-take-lane"
+    ? "new"
+    : null;
+}
+
+/**
+ * Whether a path was written `l=`, so it lands on the lane a preceding `l+`
+ * appended rather than one of its own.
+ * @param path - A parsed clip path
+ * @returns True only for `l=`
+ */
+export function reusesPreviousLane(path: ClipPath): boolean {
+  return path.kind === "same-take-lane";
 }
 
 /**
@@ -152,11 +186,13 @@ export function takeLaneKey(target: ArrangementTrack): string {
  * @returns The path, e.g. "t0/l+", "t0/l3", or "t0"
  */
 export function takeLaneLabel(target: ArrangementTrack): string {
-  const { trackIndex, takeLane } = target;
+  const { trackIndex, takeLane, sameLane } = target;
 
   if (takeLane == null) return `t${trackIndex}`;
 
-  return `t${trackIndex}/l${takeLane === "new" ? "+" : takeLane}`;
+  if (takeLane !== "new") return `t${trackIndex}/l${takeLane}`;
+
+  return `t${trackIndex}/l${sameLane === true ? "=" : "+"}`;
 }
 
 /**

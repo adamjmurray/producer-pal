@@ -76,6 +76,7 @@ function runStartOperation(
     arrangementStartBeats,
     destination,
     movedClipGroups,
+    appendedLanes: new Map(),
     isMidiClip: true,
     context: mockContext,
   });
@@ -203,6 +204,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 4,
         destination: null,
         movedClipGroups,
+        appendedLanes: new Map(),
         isMidiClip: true,
         context: mockContext,
       });
@@ -252,6 +254,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 8,
         destination: null,
         movedClipGroups,
+        appendedLanes: new Map(),
         isMidiClip: true,
         context: mockContext,
       });
@@ -308,6 +311,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 64,
         destination: null,
         movedClipGroups,
+        appendedLanes: new Map(),
         isMidiClip: true,
         context: mockContext,
       });
@@ -383,6 +387,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 16,
         destination: null,
         movedClipGroups: new Map(),
+        appendedLanes: new Map(),
         isMidiClip: true,
         context: mockContext,
       });
@@ -434,6 +439,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 16,
         arrangementLengthBeats: null,
         movedClipGroups: new Map(),
+        appendedLanes: new Map(),
         context: mockContext,
         updatedClips,
         noteResult: null,
@@ -475,6 +481,7 @@ describe("update-clip-arrangement-helpers", () => {
         arrangementStartBeats: 16,
         arrangementLengthBeats: null,
         movedClipGroups: new Map(),
+        appendedLanes: new Map(),
         context: mockContext,
         updatedClips,
         noteResult: null,
@@ -551,6 +558,7 @@ function callArrangementStart(opts: CallArrangementStartOptions): {
     arrangementStartBeats: 16,
     destination: null,
     movedClipGroups,
+    appendedLanes: new Map(),
     isMidiClip: true,
     context: mockContext,
     isNonSurvivor: opts.isNonSurvivor,

@@ -14,6 +14,7 @@ import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   takeLaneFromPath,
+  reusesPreviousLane,
   withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -264,6 +265,7 @@ function arrangementDestinations(
       targets.push({
         trackIndex: lane.trackIndex,
         takeLane: takeLaneFromPath(lane),
+        ...(reusesPreviousLane(lane) && { sameLane: true }),
       });
     }
   }

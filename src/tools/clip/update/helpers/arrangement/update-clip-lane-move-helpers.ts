@@ -12,6 +12,7 @@ import {
   type ArrangementTrack,
   isTakeLaneClip,
   resolveTakeLane,
+  takeLaneKey,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
@@ -31,6 +32,8 @@ interface PlaceMovedClipArgs {
   targetBeats: number;
   isMidiClip: boolean;
   context: TilingContext;
+  /** Lanes an `l+` in this call appended, keyed by {@link takeLaneKey}. */
+  appendedLanes: Map<string, number>;
 }
 
 /**
@@ -46,6 +49,7 @@ interface PlaceMovedClipArgs {
  * @param args.targetBeats - Arrangement position to land at, in Ableton beats
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
+ * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
  * @returns The placed clip, or null when the move was refused (already warned)
  */
 export function placeMovedClip({
@@ -55,6 +59,7 @@ export function placeMovedClip({
   targetBeats,
   isMidiClip,
   context,
+  appendedLanes,
 }: PlaceMovedClipArgs): LiveAPI | null {
   // Only for a named destination: an unnamed one is the clip's own track, which
   // already holds it. Live declines a type mismatch without reporting anything,
@@ -83,12 +88,7 @@ export function placeMovedClip({
     }
 
     if (destination?.takeLane != null) {
-      return recreateOnTakeLane(
-        clip,
-        destTrackIndex,
-        destination.takeLane,
-        targetBeats,
-      );
+      return recreateOnTakeLane(clip, destination, targetBeats, appendedLanes);
     }
 
     return promoteToMainLane(clip, destTrackIndex, targetBeats);
@@ -112,17 +112,24 @@ export function placeMovedClip({
  * from its notes (or its sample), which drops what
  * {@link recreatedClipLosses} names.
  * @param clip - The arrangement clip being moved
- * @param destTrackIndex - The track whose lane the clip lands on
- * @param takeLane - Lane index, or "new" to append one
+ * @param destination - The lane the clip lands on, `l+`/`l=` still unresolved
  * @param targetBeats - Arrangement position to land at, in Ableton beats
+ * @param appendedLanes - Lanes this call has already appended, shared by `l=`
  * @returns The re-created clip, or null when the move was refused
  */
 function recreateOnTakeLane(
   clip: LiveAPI,
-  destTrackIndex: number,
-  takeLane: TakeLaneTarget,
+  destination: ArrangementTrack,
   targetBeats: number,
+  appendedLanes: Map<string, number>,
 ): LiveAPI | null {
+  const destTrackIndex = destination.trackIndex;
+  // An `l=` lands on the lane its `l+` appended earlier in this same call, so
+  // ask for that index rather than appending another.
+  const key = takeLaneKey(destination);
+  const takeLane: TakeLaneTarget =
+    appendedLanes.get(key) ?? (destination.takeLane as TakeLaneTarget);
+
   // Lanes are permanent — Live has no delete — but resolveTakeLane checks the
   // cap before creating any, so a refusal strands nothing.
   let laneIndex: number;
@@ -135,6 +142,7 @@ function recreateOnTakeLane(
     );
 
     ({ lane, laneIndex } = resolved);
+    appendedLanes.set(key, laneIndex);
   } catch (error) {
     console.warn(
       `clip ${targetLabel(clip)} was not moved: ${errorMessage(error)}`,

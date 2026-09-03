@@ -319,8 +319,8 @@ export function listEntries(value: unknown): string[] {
  * The list semantics differ per tool on purpose, and getting them backwards is
  * a silent data-loss bug: `update-clip` pairs 1:1, so two clips with one
  * destination put both in the same slot and destroy the first (`rule: "equal"`).
- * `duplicate` cycles a short `toPath` against `arrangementStart`, so fewer
- * destinations than starts is correct there, but more is not (`rule: "atMost"`).
+ * `duplicate` sends one destination to every source, so fewer destinations than
+ * sources is correct there, but more is not (`rule: "atMost"`).
  *
  * Checks each call separately rather than summing the turn, because splitting
  * one batched call into several 1:1 calls is a perfectly good way to do this —

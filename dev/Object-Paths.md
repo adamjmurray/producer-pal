@@ -36,7 +36,7 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ```
 path     := ( root ( "/" segment )* )? coord?
 root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
+segment  := "s"<n> | "l"<n> | "l+" | "l=" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
 coord    := "[" position "]"
 position := <bar|beat> | "loc:" <locator>
 ```
@@ -77,6 +77,7 @@ pad also takes a `c<n>`, picking among the chains that share its note. So
 | `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
 | `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
 | `t0/l+`        | a new take lane, appended         | —                                      |
+| `t0/l=`        | the lane the `l+` before it made  | —                                      |
 | `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
 | `t0/d0/c1`     | rack chain                        | `... chains 1`                         |
 | `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                  |
@@ -95,6 +96,13 @@ Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
 
 Each `l+` in a list appends its own lane, in the order written — `t0/l+,t0/l+`
 gets two. One written `l+` is always one lane, however many clips land on it.
+
+`l=` names the lane the `l+` before it appended, which is how a stack of takes
+at chosen bars is written: `t0/l+[9|1],t0/l=[13|1]` is one new lane holding
+both, where two `l+` would be two lanes. An `l=` with no `l+` before it in the
+same list is refused up front — the lanes the earlier entries appended are
+permanent, and Live has no delete, so a call that failed partway would strand
+them.
 
 ## Song-timeline positions
 
@@ -133,7 +141,7 @@ occupy the location.
 | `rt0`, `mt`               | ❌ no clip slots | ✅        | ✅     | —      |
 | `s3`                      | ❌               | ❌        | —      | ✅     |
 | `t0/s3`                   | ✅ clip slot     | ❌        | —      | —      |
-| `t0/l1`, `t0/l+`          | ✅ arrangement   | ❌        | —      | —      |
+| `t0/l1`, `t0/l+`, `t0/l=` | ✅ arrangement   | ❌        | —      | —      |
 | `t0/d1` and below         | ❌               | ✅        | —      | —      |
 | `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement   | ❌        | —      | —      |
 | `[5\|1]`                  | ✅ arrangement   | ❌        | —      | —      |

@@ -104,7 +104,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>', " +
           "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
-          "loc:<locator name or id>), a take lane 't<track>/l<lane>' or 't<track>/l+', or " +
+          "loc:<locator name or id>), a take lane 't<track>/l<lane>', 't<track>/l+' or " +
+          "'t<track>/l=' (the lane the 'l+' before it appended), or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[9|1]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
           "take lane drops its automation envelopes. One '[<position>]' moves every clip, each on its " +

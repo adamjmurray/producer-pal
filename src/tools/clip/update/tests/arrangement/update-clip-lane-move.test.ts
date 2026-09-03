@@ -46,6 +46,8 @@ interface MoveOptions {
   destHasMidiInput?: number;
   arrangementStartBeats?: number | null;
   destination?: ArrangementTrack | null;
+  /** Shared across calls to exercise an `l=` reusing an earlier `l+`'s lane */
+  appendedLanes?: Map<string, number>;
 }
 
 /**
@@ -122,6 +124,7 @@ function runMove(opts: MoveOptions = {}): string | null {
     arrangementStartBeats,
     destination,
     movedClipGroups: new Map(),
+    appendedLanes: opts.appendedLanes ?? new Map(),
     isMidiClip: isMidi === 1,
     context: mockContext,
   });
@@ -192,6 +195,34 @@ describe("moving an arrangement clip to another lane", () => {
     expect(capturedWarnings()).toContain(
       `clip ${SOURCE} was re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
     );
+  });
+
+  // The map is what makes `l=` mean "that lane" rather than "another one": the
+  // clips of one batch share it, and a later entry reads back what an earlier
+  // `l+` appended. The second move runs against a track that already has the
+  // lane the first one made, so appending again is the failure to catch.
+  it.each([
+    ["an l=", { newLaneOrdinal: 0, sameLane: true }, false],
+    ["a second written l+", { newLaneOrdinal: 1 }, true],
+  ])("resolves %s off the lanes the batch appended", (_, lane, appends) => {
+    const appendedLanes = new Map<string, number>();
+    const newLane = { trackIndex: DEST_TRACK, takeLane: "new" } as const;
+
+    runMove({ destination: { ...newLane, newLaneOrdinal: 0 }, appendedLanes });
+    expect(appendedLanes.get(`t${DEST_TRACK}/l+0`)).toBe(0);
+
+    vi.clearAllMocks();
+    runMove({
+      destination: { ...newLane, ...lane },
+      appendedLanes,
+      initialLanes: 1,
+    });
+
+    const created = vi
+      .mocked(lookupMockObject(undefined, livePath.track(DEST_TRACK))!.call)
+      .mock.calls.filter(([method]) => method === "create_take_lane");
+
+    expect(created).toHaveLength(appends ? 1 : 0);
   });
 
   // Every refusal keeps the clip where it is, so the rest of the update still

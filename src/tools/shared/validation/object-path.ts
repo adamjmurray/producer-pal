@@ -52,6 +52,7 @@ export type ObjectPath =
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
   | { kind: "new-take-lane"; trackIndex: number }
+  | { kind: "same-take-lane"; trackIndex: number }
   | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
   | ArrangementPosition;
 
@@ -60,6 +61,7 @@ const RETURN_TRACK_ROOT = /^rt(\d+)$/;
 const SCENE = /^s(\d+)$/;
 const TAKE_LANE = /^l(\d+)$/;
 const NEW_TAKE_LANE = "l+";
+const SAME_TAKE_LANE = "l=";
 const NEW_TRACK = "t+";
 const NEW_RETURN_TRACK = "rt+";
 const NEW_SCENE = "s+";
@@ -156,6 +158,8 @@ export function formatObjectPath(path: ObjectPath): string {
       return `t${path.trackIndex}/l${path.laneIndex}`;
     case "new-take-lane":
       return `t${path.trackIndex}/${NEW_TAKE_LANE}`;
+    case "same-take-lane":
+      return `t${path.trackIndex}/${SAME_TAKE_LANE}`;
     case "new-track":
       return NEW_TRACK;
     case "new-return-track":
@@ -312,7 +316,10 @@ function parseTail(
  */
 function isTrackChild(segment: string): boolean {
   return (
-    SCENE.test(segment) || TAKE_LANE.test(segment) || segment === NEW_TAKE_LANE
+    SCENE.test(segment) ||
+    TAKE_LANE.test(segment) ||
+    segment === NEW_TAKE_LANE ||
+    segment === SAME_TAKE_LANE
   );
 }
 
@@ -350,6 +357,10 @@ function parseTrackChild(
     return { kind: "new-take-lane", trackIndex: root.trackIndex };
   }
 
+  if (segment === SAME_TAKE_LANE) {
+    return { kind: "same-take-lane", trackIndex: root.trackIndex };
+  }
+
   const lane = TAKE_LANE.exec(segment) as RegExpExecArray;
 
   return {
@@ -376,7 +387,7 @@ function trackChildError(label: string, input: string, segment: string): Error {
     : pathError(
         label,
         input,
-        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0") or "t<track>/l+"; only regular tracks have take lanes`,
+        `a take lane is "t<track>/l<lane>" (e.g. "t0/l0"), "t<track>/l+" or "t<track>/l="; only regular tracks have take lanes`,
       );
 }
 

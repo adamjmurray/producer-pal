@@ -39,6 +39,8 @@ interface HandleArrangementStartArgs {
   movedClipGroups: Map<string, MoveGroup>;
   isMidiClip: boolean;
   context: TilingContext;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
   isNonSurvivor?: boolean;
 }
 
@@ -57,6 +59,7 @@ interface HandleArrangementStartArgs {
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
  * @param args.isMidiClip - Whether the clip is MIDI
  * @param args.context - Context with silenceWavPath for audio clip operations
+ * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
  * @param args.isNonSurvivor - When true, just delete the clip (optimization for
  *   multi-clip moves where this clip would be overwritten by a later longer clip)
  * @returns The new clip ID after move, original ID on failure, or null for non-survivors
@@ -68,6 +71,7 @@ export function handleArrangementStartOperation({
   movedClipGroups,
   isMidiClip,
   context,
+  appendedLanes,
   isNonSurvivor,
 }: HandleArrangementStartArgs): string | null {
   const isArrangementClip =
@@ -122,6 +126,7 @@ export function handleArrangementStartOperation({
     targetBeats,
     isMidiClip,
     context,
+    appendedLanes,
   });
 
   // Verify duplicate succeeded before deleting original
@@ -169,6 +174,8 @@ interface HandleArrangementOperationsArgs {
   /** Destination track and lane from toPath, or null to stay on its own lane. */
   destination?: ArrangementTrack | null;
   movedClipGroups: Map<string, MoveGroup>;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -184,6 +191,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.arrangementLengthBeats - Target length in beats
  * @param args.destination - Destination track and lane, or null for the clip's own lane
  * @param args.movedClipGroups - Tally of clips landing on each lane and position
+ * @param args.appendedLanes - Lanes this call has already appended, shared by `l=`
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.noteResult - Note update result for result
@@ -196,6 +204,7 @@ export function handleArrangementOperations({
   arrangementLengthBeats,
   destination,
   movedClipGroups,
+  appendedLanes,
   context,
   updatedClips,
   noteResult,
@@ -215,6 +224,7 @@ export function handleArrangementOperations({
       movedClipGroups,
       isMidiClip: !isAudioClip,
       context: context as TilingContext,
+      appendedLanes,
       isNonSurvivor,
     });
 

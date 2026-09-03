@@ -78,10 +78,14 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   /** Where this clip moves, from toPath (or the deprecated toSlot). */
   destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** Which written `l+` the destination lands on, for an `l=` sharing it. */
+  newLaneOrdinal?: number;
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   movedClipGroups: Map<string, MoveGroup>;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
 }
 
 /**
@@ -251,9 +255,11 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     isAudioClip,
     destination: params.destination,
     destinationParam: params.destinationParam,
+    newLaneOrdinal: params.newLaneOrdinal,
     arrangementStartBeats: params.arrangementStartBeats,
     arrangementLengthBeats: params.arrangementLengthBeats,
     movedClipGroups,
+    appendedLanes: params.appendedLanes,
     context,
     updatedClips,
     noteResult,

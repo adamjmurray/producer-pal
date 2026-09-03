@@ -34,11 +34,12 @@ import {
 
 /**
  * Where a clip can go: a clip slot, or a track's arrangement — its main lane
- * (`t0`), one of its take lanes (`t0/l0`), or a fresh one (`t0/l+`).
+ * (`t0`), one of its take lanes (`t0/l0`), a fresh one (`t0/l+`), or the one a
+ * preceding `l+` in the same list made (`t0/l=`).
  */
 export type ClipPath = Extract<
   ObjectPath,
-  { kind: "track" | "slot" | "take-lane" | "new-take-lane" }
+  { kind: "track" | "slot" | "take-lane" | "new-take-lane" | "same-take-lane" }
 >;
 
 /** A track or device-chain location, which is what can hold a device. */
@@ -157,7 +158,8 @@ export function requireClipPath(path: ObjectPath, label = "path"): ClipPath {
     path.kind === "track" ||
     path.kind === "slot" ||
     path.kind === "take-lane" ||
-    path.kind === "new-take-lane"
+    path.kind === "new-take-lane" ||
+    path.kind === "same-take-lane"
   ) {
     return path;
   }

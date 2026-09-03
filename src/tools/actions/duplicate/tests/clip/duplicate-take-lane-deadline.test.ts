@@ -4,9 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "../duplicate-mocks-test-helpers.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MAX_TAKE_LANES } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/helpers/take-lane-test-helpers.ts";
 
@@ -18,6 +16,10 @@ vi.mock(import("#src/shared/max/v8-max-console.ts"), () => ({
 }));
 
 import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import {
+  registerArrangementSource,
+  registerLiveSet,
+} from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-test-helpers.ts";
 import * as consoleMock from "#src/shared/max/v8-max-console.ts";
 
 const NOTE = {
@@ -37,32 +39,12 @@ let now = 0;
  * @param copyCostMs - How much clock time one copy's note read burns
  */
 function registerSource(copyCostMs: number): void {
-  registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
-  registerMockObject("src_clip", {
-    path: livePath.track(0).arrangementClip(0),
-    type: "Clip",
-    properties: {
-      is_midi_clip: 1,
-      is_arrangement_clip: 1,
-      length: 4,
-      start_time: 0,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-      looping: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-    },
-    methods: {
-      get_notes_extended: () => {
-        now += copyCostMs;
+  registerLiveSet();
+  registerArrangementSource(true, [NOTE], {
+    getNotesExtended: () => {
+      now += copyCostMs;
 
-        return JSON.stringify({ notes: [NOTE] });
-      },
+      return JSON.stringify({ notes: [NOTE] });
     },
   });
 }

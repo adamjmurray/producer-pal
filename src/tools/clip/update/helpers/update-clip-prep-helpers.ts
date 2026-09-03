@@ -44,6 +44,8 @@ export interface ClipUpdatePlan {
   /** The clips to update, after any splitting */
   clips: LiveAPI[];
   destinationById: Map<string, ClipPath>;
+  /** Which written `l+` each clip's destination lands on, for an `l=`. */
+  laneOrdinalById: Map<string, number>;
   destinationParam: "toPath" | "toSlot";
   /** Clips to delete rather than move, or null when nothing can be skipped */
   nonSurvivorClipIds: Set<string> | null;
@@ -93,10 +95,8 @@ export function planClipUpdate({
     requestedIds.length,
     moves.positions,
   );
-  const { clips, destinationById, requestedIndexById } = resolveRequestedClips(
-    requestedIds,
-    moves.destinations,
-  );
+  const { clips, destinationById, laneOrdinalById, requestedIndexById } =
+    resolveRequestedClips(requestedIds, moves.destinations, moves.laneOrdinals);
   const startBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(startBeats, requestedIndexById.get(clip.id));
   const lengthBeatsFor = (clip: LiveAPI): number | null =>
@@ -111,6 +111,7 @@ export function planClipUpdate({
   return {
     clips: splitClips,
     destinationById,
+    laneOrdinalById,
     destinationParam: moveDestinationParam(toPath, toSlot),
     nonSurvivorClipIds: computeNonSurvivorClipIds(splitClips, {
       startBeatsFor,

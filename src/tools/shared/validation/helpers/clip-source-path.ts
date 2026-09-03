@@ -66,7 +66,7 @@ export function requireCompletePosition(
     );
   }
 
-  if (lane.kind === "new-take-lane") {
+  if (lane.kind === "new-take-lane" || lane.kind === "same-take-lane") {
     throw pathError(label, formatObjectPath(path), newLaneHoldsNoClips(lane));
   }
 
@@ -81,7 +81,9 @@ export function requireCompletePosition(
  * @returns The reason, and the complete form to write instead
  */
 function laneNamesManyClips(clip: Exclude<ClipPath, { kind: "slot" }>): string {
-  if (clip.kind === "new-take-lane") return newLaneHoldsNoClips(clip);
+  if (clip.kind === "new-take-lane" || clip.kind === "same-take-lane") {
+    return newLaneHoldsNoClips(clip);
+  }
 
   const holder =
     clip.kind === "track" ? "a track's arrangement" : "a take lane";

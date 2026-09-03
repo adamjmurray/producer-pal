@@ -38,8 +38,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot; " +
         "'t<track>[<position>]' is that spot on the track's arrangement, where a position is bar|beat " +
         "or loc:<locator name or id>. An arrangement path needs both halves. " +
-        "'t<track>/l<lane>[<position>]' puts it on a take lane and 't<track>/l+[<position>]' appends a " +
-        "fresh one. All indices 0-based, so 't0/s0' is the first track's first scene " +
+        "'t<track>/l<lane>[<position>]' puts it on a take lane, 't<track>/l+[<position>]' appends a " +
+        "fresh one, and 't<track>/l=[<position>]' reuses the lane the 'l+' before it appended. " +
+        "All indices 0-based, so 't0/s0' is the first track's first scene " +
         "(e.g., 't0/s0' or 't0[5|1]' or 't0/s0,t1[loc:Chorus]')",
       smallModel:
         "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0[5|1]' = bar 5 on the first track's arrangement",

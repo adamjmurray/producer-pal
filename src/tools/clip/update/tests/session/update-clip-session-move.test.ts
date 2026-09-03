@@ -515,6 +515,7 @@ function runPositionOps(opts: PositionOpsOptions = {}): void {
     arrangementStartBeats,
     arrangementLengthBeats,
     movedClipGroups: new Map(),
+    appendedLanes: new Map(),
     context: {},
     updatedClips: [],
     noteResult: null,

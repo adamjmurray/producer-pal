@@ -663,6 +663,7 @@ describe("updateClip - Basic operations", () => {
       context: {},
       updatedClips: [],
       movedClipGroups: new Map(),
+      appendedLanes: new Map(),
       nonSurvivorClipIds: new Set(["123"]),
     });
 

@@ -30,7 +30,10 @@ import {
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ArrangementTrack,
+  type TakeLaneTarget,
+  reusesPreviousLane,
   takeLaneFromPath,
+  withNewLaneOrdinals,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
@@ -65,6 +68,13 @@ export function moveDestinationParam(
     : "toPath";
 }
 
+/** The lane fields {@link withNewLaneOrdinals} reads and writes. */
+interface ArrangementLaneEntry {
+  takeLane: TakeLaneTarget | null;
+  sameLane: boolean;
+  newLaneOrdinal?: number;
+}
+
 /** Where the clips in one call move: the lane, the position, or both. */
 export interface MoveDestinations {
   /** The lane per named clip, null where there is nothing to move to. */
@@ -74,6 +84,11 @@ export interface MoveDestinations {
    * carried none — that clip keeps the start it has.
    */
   positions: Array<string | null>;
+  /**
+   * Which written `l+` each entry lands on, so an `l=` shares the lane its
+   * `l+` appended. Undefined for every entry that names no new lane.
+   */
+  laneOrdinals: Array<number | undefined>;
 }
 
 /**
@@ -101,6 +116,7 @@ export function resolveMoveDestinations(
   const none = {
     destinations: Array.from({ length: clipCount }, () => null),
     positions: Array.from({ length: clipCount }, () => null),
+    laneOrdinals: Array.from({ length: clipCount }, () => undefined),
   };
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
@@ -147,9 +163,24 @@ export function resolveMoveDestinations(
       ? pairValues(entries, clipCount, labels)
       : pairExact(entries, clipCount, labels);
 
+    // Numbered off the paired list, which is the written one broadcast or cut
+    // to the clip count — the same order an "l=" reads "the l+ before it" in.
+    const lanes = withNewLaneOrdinals(
+      paired.map((entry): ArrangementLaneEntry | null =>
+        entry?.lane == null
+          ? null
+          : {
+              takeLane: takeLaneFromPath(entry.lane),
+              sameLane: reusesPreviousLane(entry.lane),
+            },
+      ),
+      labels.param,
+    );
+
     return {
       destinations: paired.map((entry) => entry?.lane ?? null),
       positions: paired.map((entry) => entry?.position ?? null),
+      laneOrdinals: lanes.map((lane) => lane?.newLaneOrdinal),
     };
   } catch (error) {
     console.warn(`clip not moved: ${errorMessage(error)}`);
@@ -161,6 +192,8 @@ export function resolveMoveDestinations(
 interface RequestedClips {
   clips: LiveAPI[];
   destinationById: Map<string, ClipPath>;
+  /** Which written `l+` each clip's destination lands on, for an `l=`. */
+  laneOrdinalById: Map<string, number>;
   /** Each clip's position in the call, for the params paired against it. */
   requestedIndexById: Map<string, number>;
 }
@@ -175,14 +208,17 @@ interface RequestedClips {
  * and a move overwrites whatever it lands on.
  * @param requestedIds - Ids in call order, null where a path named no clip
  * @param destinations - One destination per requested entry
+ * @param laneOrdinals - One `l+` ordinal per requested entry, where it names a new lane
  * @returns The clips to update, plus their destinations and call positions keyed by clip id
  */
 export function resolveRequestedClips(
   requestedIds: Array<string | null>,
   destinations: Array<ClipPath | null>,
+  laneOrdinals: Array<number | undefined> = [],
 ): RequestedClips {
   const clips: LiveAPI[] = [];
   const destinationById = new Map<string, ClipPath>();
+  const laneOrdinalById = new Map<string, number>();
   const requestedIndexById = new Map<string, number>();
   const claimedBy = new Map<string, string>();
   const seen = new Set<string>();
@@ -209,6 +245,11 @@ export function resolveRequestedClips(
     seen.add(clip.id);
     clips.push(clip);
     requestedIndexById.set(clip.id, index);
+
+    const ordinal = laneOrdinals[index];
+
+    if (ordinal != null) laneOrdinalById.set(clip.id, ordinal);
+
     claimDestination(clip.id, destinations[index], {
       destinationById,
       claimedBy,
@@ -223,7 +264,7 @@ export function resolveRequestedClips(
 
   dropDestinationsHoldingBatchClips(destinationById, seen);
 
-  return { clips, destinationById, requestedIndexById };
+  return { clips, destinationById, laneOrdinalById, requestedIndexById };
 }
 
 /**
@@ -317,9 +358,13 @@ interface HandlePositionOperationsArgs {
   isAudioClip: boolean;
   destination?: ClipPath | null;
   destinationParam: "toPath" | "toSlot";
+  /** Which written `l+` the destination lands on, for an `l=` sharing it. */
+  newLaneOrdinal?: number;
   arrangementStartBeats?: number | null;
   arrangementLengthBeats?: number | null;
   movedClipGroups: Map<string, MoveGroup>;
+  /** Lanes an `l+` in this call appended, so an `l=` lands on one of them. */
+  appendedLanes: Map<string, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   noteResult: NoteUpdateResult | null;
@@ -371,8 +416,14 @@ export function handlePositionOperations(
     isAudioClip: args.isAudioClip,
     arrangementStartBeats,
     arrangementLengthBeats,
-    destination: arrangementDestination(clip, destination, destinationParam),
+    destination: arrangementDestination(
+      clip,
+      destination,
+      destinationParam,
+      args.newLaneOrdinal,
+    ),
     movedClipGroups: args.movedClipGroups,
+    appendedLanes: args.appendedLanes,
     context: args.context,
     updatedClips: args.updatedClips,
     noteResult: args.noteResult,
@@ -421,12 +472,14 @@ function pathDestinations(toPath: string): Array<ClipDestinationPath | null> {
  * @param clip - The clip being moved
  * @param destination - Where the call named it to go, if anywhere
  * @param destinationParam - The param the caller used, for the warning
+ * @param newLaneOrdinal - Which written `l+` it lands on, for an `l=` sharing it
  * @returns The destination track and lane, or null
  */
 function arrangementDestination(
   clip: LiveAPI,
   destination: ClipPath | null | undefined,
   destinationParam: "toPath" | "toSlot",
+  newLaneOrdinal?: number,
 ): ArrangementTrack | null {
   if (destination == null || destination.kind === "slot") return null;
 
@@ -442,5 +495,7 @@ function arrangementDestination(
   return {
     trackIndex: destination.trackIndex,
     takeLane: takeLaneFromPath(destination),
+    ...(reusesPreviousLane(destination) && { sameLane: true }),
+    newLaneOrdinal,
   };
 }

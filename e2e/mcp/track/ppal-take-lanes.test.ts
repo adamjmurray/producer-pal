@@ -27,7 +27,9 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateClipResult,
   type CreateTrackResult,
+  getToolErrorMessage,
   getToolWarnings,
+  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
   type ReadClipResult,
@@ -540,10 +542,9 @@ describe("take lanes", () => {
   });
 
   // One written "l+" is one lane however many clips land on it — the copy loop
-  // cycles the destination list, and a cycled repeat must reuse its lane. Only
-  // the deprecated arrangementStart list can ask for this: written as paths,
-  // each "l+" is its own lane (the next test), so a stack of takes at chosen
-  // positions has no path spelling.
+  // cycles the destination list, and a cycled repeat must reuse its lane. The
+  // deprecated spelling on purpose: "l=" is how a path asks for the same stack
+  // (the test after next), and both have to keep landing on one lane.
   it("stacks every copy on one new lane when one l+ cycles across positions", async () => {
     const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Take Source");
 
@@ -601,6 +602,52 @@ describe("take lanes", () => {
     expect(detail.takeLanes).toHaveLength(2);
     expect(detail.takeLanes![0]!.clips).toHaveLength(1);
     expect(detail.takeLanes![1]!.clips).toHaveLength(1);
+  });
+
+  // The path spelling of the stack above: each "l=" lands on the lane the "l+"
+  // before it appended, so two copies share one new lane at the bars named.
+  it("stacks an l= on the lane the l+ before it appended", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Stacked Takes");
+
+    const dup = parseToolResultWithWarnings<DuplicateClipResult[]>(
+      await ctx.client!.callTool({
+        name: "ppal-duplicate",
+        arguments: {
+          type: "clip",
+          id: source.id,
+          toPath: `t${CHILD_TRACK}/l+[5|1],t${CHILD_TRACK}/l=[9|1]`,
+        },
+      }),
+    );
+
+    expect(dup.data.map((copy) => copy.path)).toStrictEqual([
+      `t${CHILD_TRACK}/l0[5|1]`,
+      `t${CHILD_TRACK}/l0[9|1]`,
+    ]);
+
+    await sleep(100);
+    const detail = await readTakeLanes(CHILD_TRACK);
+
+    expect(detail.takeLanes).toHaveLength(1);
+    expect(detail.takeLanes![0]!.clips).toHaveLength(2);
+  });
+
+  it("refuses an l= with no l+ before it", async () => {
+    const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Unanchored");
+
+    const result = await ctx.client!.callTool({
+      name: "ppal-duplicate",
+      arguments: {
+        type: "clip",
+        id: source.id,
+        toPath: `t${RACKS_TRACK}/l=[5|1]`,
+      },
+    });
+
+    expect(isToolError(result)).toBe(true);
+    expect(getToolErrorMessage(result)).toContain(
+      'toPath "l=" names the lane the "l+" before it appended',
+    );
   });
 
   it("gives each toPath track its own new lane", async () => {

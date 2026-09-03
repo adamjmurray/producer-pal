@@ -102,3 +102,4 @@ What this enables, costs, or commits us to. Note any revisit triggers.
 | [0035](0035-malformed-calls-are-refused-up-front.md)     | A malformed call is refused up front, not warned mid-flight           |
 | [0036](0036-paths-address-tracks-and-scenes.md)          | Paths address tracks and scenes too                                   |
 | [0037](0037-arrangement-time-is-part-of-the-path.md)     | Arrangement time is part of the path                                  |
+| [0038](0038-l-equals-names-the-lane-l-plus-made.md)      | `l=` names the lane the `l+` before it appended                       |

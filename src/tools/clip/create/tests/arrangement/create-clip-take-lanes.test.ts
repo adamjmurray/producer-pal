@@ -293,6 +293,31 @@ describe("createClip take lane paths", () => {
     expectTakeLaneMidiClip(1, 0);
   });
 
+  // The stack a list of l+ can't ask for: one new lane holding takes at the
+  // bars the caller named.
+  it("stacks an l= on the lane the l+ before it appended", async () => {
+    registerLiveSet();
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    await createClip({
+      path: "t0/l+[1|1],t0/l=[5|1]",
+      notes: "C3",
+    });
+
+    expect(track.call).toHaveBeenCalledExactlyOnceWith("create_take_lane");
+    expectTakeLaneMidiClip(0, 0);
+    expectTakeLaneMidiClip(0, 16);
+  });
+
+  it("refuses an l= with no l+ before it", async () => {
+    registerLiveSet();
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    await expect(
+      createClip({ path: "t0/l=[1|1]", notes: "C3" }),
+    ).rejects.toThrow('path "l=" names the lane the "l+" before it appended');
+  });
+
   // One written l+ covers all three positions, the way any single value covers
   // every item. Numbering the expanded positions instead would scatter them
   // over three lanes.

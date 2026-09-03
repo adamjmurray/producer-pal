@@ -55,7 +55,7 @@ duplicate's \`id\` takes a list, copying each source in turn: \`count\` and one 
 
 Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
 
-- A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one. Arrangement only. Each \`l+\` in a list appends its own lane.
+- A lane is a path segment: \`t2/l0\` is the track's first take lane, \`t2/l+\` appends a fresh one, and \`t2/l=\` reuses the one the \`l+\` before it appended. Arrangement only. Each \`l+\` in a list appends its own lane, so a stack of takes on ONE new lane is \`toPath: "t2/l+[9|1],t2/l=[13|1]"\`.
 - Promote a take back to the main lane with a \`toPath\` that has no \`l\` segment (\`t2\`). \`duplicate\` copies it and leaves the take alone; \`update-clip\` empties the take behind it.
 - Variation workflow: one duplicate with \`toPath: "t2/l+,t2/l+,t2/l+"\` + \`transforms\` using \`clip.index\`/\`clipseq()\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries its \`path\` (e.g. \`t2/l0\`) and \`name\`.
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).

@@ -22,6 +22,7 @@ import {
   isTakeLaneRequested,
   normalizeTakeLaneTarget,
   takeLaneFromPath,
+  reusesPreviousLane,
   withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
@@ -161,6 +162,7 @@ function splitPathDestinations(
       tracks.push({
         trackIndex: lane.trackIndex,
         takeLane: takeLaneFromPath(lane),
+        ...(reusesPreviousLane(lane) && { sameLane: true }),
         position,
       });
     }
@@ -169,7 +171,7 @@ function splitPathDestinations(
   // Number the lanes here, off the list the caller wrote: pairTracksWithStarts
   // may broadcast one entry to every position, and a repeat of one "l+" must
   // reuse its lane, not append one per position.
-  return { clipSlots, tracks: withNewLaneOrdinals(tracks) };
+  return { clipSlots, tracks: withNewLaneOrdinals(tracks, "path") };
 }
 
 /**

@@ -19,12 +19,13 @@ import { pathError } from "./object-path-lexer.ts";
 export type ArrangementLane =
   | { kind: "track"; trackIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
-  | { kind: "new-take-lane"; trackIndex: number };
+  | { kind: "new-take-lane"; trackIndex: number }
+  | { kind: "same-take-lane"; trackIndex: number };
 
 /** A lane that exists, so it can already hold clips. */
 export type ExistingArrangementLane = Exclude<
   ArrangementLane,
-  { kind: "new-take-lane" }
+  { kind: "new-take-lane" } | { kind: "same-take-lane" }
 >;
 
 /** A point on the song timeline, with the arrangement lane it sits on. */
@@ -69,7 +70,8 @@ export function arrangementPosition(
       label,
       input,
       `a song position needs an arrangement lane; expected "t<track>", ` +
-        `"t<track>/l<lane>", "t<track>/l+", or "[${position}]" on its own`,
+        `"t<track>/l<lane>", "t<track>/l+", "t<track>/l=", or ` +
+        `"[${position}]" on its own`,
     );
   }
 
@@ -79,12 +81,13 @@ export function arrangementPosition(
 /**
  * Whether a path names a lane a song position can sit on.
  * @param path - A parsed path
- * @returns True for a track, a take lane, or a new take lane
+ * @returns True for a track, a take lane, or a lane an "l+"/"l=" will make
  */
 function isArrangementLane(path: ObjectPath): path is ArrangementLane {
   return (
     path.kind === "track" ||
     path.kind === "take-lane" ||
-    path.kind === "new-take-lane"
+    path.kind === "new-take-lane" ||
+    path.kind === "same-take-lane"
   );
 }
