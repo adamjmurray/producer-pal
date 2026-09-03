@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 interface CapturedClip {

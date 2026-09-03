@@ -14,7 +14,7 @@
 
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { clipCopyBlocker } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { moveGroupKey } from "./update-clip-move-groups.ts";
 
 interface ClipMoveInfo {

@@ -24,7 +24,7 @@ import {
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   type CodeClipContext,
   type CodeExecutionContext,

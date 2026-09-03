@@ -10,7 +10,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { stopForDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { duplicateClipWithPositions } from "../clip/duplicate-clip-position-helpers.ts";
 import { type ClipDestinations } from "../clip/duplicate-destination-helpers.ts";
 import { duplicateChainWithPaths } from "../device/duplicate-chain-helpers.ts";

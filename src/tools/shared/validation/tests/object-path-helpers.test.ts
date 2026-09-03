@@ -9,6 +9,7 @@ import { parseObjectPath, type ObjectPath } from "../object-path.ts";
 import {
   namedHiddenPath,
   parseObjectPathList,
+  pathEntries,
   parseClipSlotPathList,
   pathNamesSomething,
   requireClipPath,
@@ -16,7 +17,7 @@ import {
   requireDevicePath,
   requireClipSlotPath,
   trackSegmentPath,
-} from "../object-path-helpers.ts";
+} from "../helpers/object-path-helpers.ts";
 
 describe("parseObjectPathList", () => {
   it("parses a comma-separated list in order", () => {
@@ -343,5 +344,41 @@ describe("pathNamesSomething", () => {
     pathNamesSomething(",");
 
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("pathEntries - splitting around a coordinate", () => {
+  // The one lexing rule: a `[...]` holds song positions, and both separators
+  // turn up inside one — a locator name is user-typed, and a bar|beat takes
+  // `±n<fraction>` offsets.
+  it.each([
+    ["plain paths", "t0,t1", ["t0", "t1"]],
+    ["coordinates", "t0[5|1],t1[9|1]", ["t0[5|1]", "t1[9|1]"]],
+    ["a comma in a locator name", "[loc:A, B],t2", ["[loc:A, B]", "t2"]],
+    ["a slash in an offset", "t0[1|1-n/4]", ["t0[1|1-n/4]"]],
+  ])("splits %s", (_label, input, expected) => {
+    expect(pathEntries(input)).toStrictEqual(expected);
+  });
+
+  // A hole is still a hole: nothing lines up against a list whose length is a
+  // guess, brackets or not.
+  it("still refuses a hole in the list", () => {
+    expect(() => pathEntries("t0[5|1],,t1")).toThrow("it has an empty entry");
+  });
+});
+
+describe("a song position on a tool that can't take one", () => {
+  // Each says why in the caller's own terms, rather than falling through to an
+  // explanation about some other path shape.
+  it("tells a session-clip caller a coordinate names an arrangement clip", () => {
+    expect(() => requireClipSlotPath(parseObjectPath("t0[5|1]"))).toThrow(
+      "a song position names one arrangement clip, not a place to put one",
+    );
+  });
+
+  it("tells a device caller a coordinate names a clip", () => {
+    expect(() =>
+      requireDeviceContainer(parseObjectPath("t0[5|1]"), "path"),
+    ).toThrow("a song position names a clip, not a device");
   });
 });

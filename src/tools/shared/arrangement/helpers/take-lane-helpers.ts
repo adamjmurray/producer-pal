@@ -32,7 +32,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { paramNamesSomething } from "#src/tools/shared/utils.ts";
 
 /** Maximum take lanes per track (soft cap; total non-main lanes). */

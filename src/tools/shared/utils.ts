@@ -196,11 +196,27 @@ export function targetEntries(
   raw: string | null | undefined,
   label: string,
 ): string[] {
+  return entriesFrom(raw, (value) => value.split(","), label);
+}
+
+/**
+ * {@link targetEntries} over a caller-supplied split, so a param whose entries
+ * can contain a comma splits its own way and still gets one hole rule.
+ * @param raw - The param as the caller sent it
+ * @param split - How to cut the value into entries
+ * @param label - Param name for error messages
+ * @returns One trimmed entry per target, in order
+ */
+export function entriesFrom(
+  raw: string | null | undefined,
+  split: (value: string) => string[],
+  label: string,
+): string[] {
   // A blank value is an unsent param (ADR-0029), not a list that names nothing.
   // A lone comma is something the caller typed, and that is the error below.
   if (raw == null || raw.trim() === "") return [];
 
-  const entries = raw.split(",").map((entry) => entry.trim());
+  const entries = split(raw).map((entry) => entry.trim());
 
   if (entries.at(-1) === "") entries.pop();
 

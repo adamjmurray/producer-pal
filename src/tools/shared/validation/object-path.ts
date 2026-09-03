@@ -11,8 +11,16 @@
 // Parsing only: nothing here touches the Live API, so a bad path fails before
 // anything is created or moved. See dev/Object-Paths.md.
 
-import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { parseLegacyPath } from "./object-path-legacy.ts";
+import {
+  parseLegacyPath,
+  pathError,
+  splitCoord,
+} from "./helpers/object-path-lexer.ts";
+import { parseDeviceTail } from "./helpers/object-path-device-tail.ts";
+import {
+  arrangementPosition,
+  type ArrangementPosition,
+} from "./helpers/object-path-coord.ts";
 
 /** A path root naming a track. */
 export type TrackSegment =
@@ -44,7 +52,8 @@ export type ObjectPath =
   | { kind: "slot"; trackIndex: number; sceneIndex: number }
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
   | { kind: "new-take-lane"; trackIndex: number }
-  | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] };
+  | { kind: "device"; root: TrackSegment; segments: DeviceSegment[] }
+  | ArrangementPosition;
 
 const TRACK_ROOT = /^t(\d+)$/;
 const RETURN_TRACK_ROOT = /^rt(\d+)$/;
@@ -54,12 +63,6 @@ const NEW_TAKE_LANE = "l+";
 const NEW_TRACK = "t+";
 const NEW_RETURN_TRACK = "rt+";
 const NEW_SCENE = "s+";
-const DEVICE = /^d(\d+)$/;
-const CHAIN = /^c(\d+)$/;
-const RETURN_CHAIN = /^rc(\d+)$/;
-const DRUM_PAD = /^p(.+)$/;
-/** The drum rack pad that catches every note no other pad claims. */
-const CATCH_ALL_PAD = "*";
 
 // What results said before 2.2.0: a bare track index, or trackIndex/sceneIndex.
 // Honored with a warning rather than refused — a model pasting back what a
@@ -87,29 +90,6 @@ const LIVE_API_COLLECTION = {
   "return-chain": "return_chains",
 } as const;
 
-/** One step down a device chain: the track root, or a segment under it. */
-type DeviceTailStep = DeviceSegment["kind"] | "root";
-
-const DEVICE_KIND = "device";
-const A_DEVICE = `"d<index>"`;
-
-// How to name each step, and what may follow it. Without these rules a path
-// like "t0/c0" or "t0/d0/d1" parses and then fails as a missing object, which
-// reads as "your rack is wrong" rather than "your path is".
-const DEVICE_TAIL_RULES: Record<
-  DeviceTailStep,
-  { noun: string; expected: string }
-> = {
-  root: { noun: "a track", expected: A_DEVICE },
-  device: {
-    noun: "a device",
-    expected: `"c<index>", "rc<index>", or "p<note>"`,
-  },
-  chain: { noun: "a chain", expected: A_DEVICE },
-  "return-chain": { noun: "a return chain", expected: A_DEVICE },
-  "drum-pad": { noun: "a drum pad", expected: `"c<index>" or ${A_DEVICE}` },
-};
-
 /**
  * Parses a path into what it names. Does not check that the object exists —
  * callers resolve the result against the Live API.
@@ -123,11 +103,25 @@ export function parseObjectPath(path: string, label = "path"): ObjectPath {
   }
 
   const input = path.trim();
+  const { body, position } = splitCoord(input, label);
+
+  // The lane is parsed by this same grammar, then narrowed to the few shapes a
+  // song position can sit on.
+  if (position != null) {
+    return arrangementPosition(
+      body === "" ? null : parseObjectPath(body, label),
+      position,
+      label,
+      input,
+    );
+  }
+
   const legacy = parseLegacyPath(input, label);
 
   if (legacy != null) return legacy;
 
-  const segments = input.split("/");
+  // The body carries no brackets, so a plain split is already depth-0.
+  const segments = body.split("/");
 
   // "t1/" is a typo, not a path with a nameless segment — without this it falls
   // through to the device branch and complains about device segments.
@@ -173,6 +167,8 @@ export function formatObjectPath(path: ObjectPath): string {
         formatTrackSegment(path.root),
         ...path.segments.map(formatDeviceSegment),
       ].join("/");
+    case "arrangement-position":
+      return `${path.lane == null ? "" : formatObjectPath(path.lane)}[${path.position}]`;
     default:
       return formatTrackSegment(path);
   }
@@ -212,22 +208,6 @@ export function formatDeviceSegment(segment: DeviceSegment): string {
  */
 export function liveApiCollection(segment: IndexedSegment): string {
   return LIVE_API_COLLECTION[segment.kind];
-}
-
-/**
- * Builds the error every path problem is reported as, so one voice covers the
- * whole grammar.
- * @param label - Param name the path came from
- * @param input - The path as the caller wrote it
- * @param problem - What's wrong, and how to fix it
- * @returns The error to throw
- */
-export function pathError(
-  label: string,
-  input: string,
-  problem: string,
-): Error {
-  return new Error(`invalid ${label} "${input}" - ${problem}`);
 }
 
 // --- Helpers below main exports ---
@@ -326,60 +306,6 @@ function parseTail(
 }
 
 /**
- * Parses the device chain after the root, checking each segment can follow the
- * one before it.
- * @param tail - Segments after the root
- * @param label - Param name for error messages
- * @param input - Full path, for error messages
- * @returns The parsed device-chain segments
- */
-function parseDeviceTail(
-  tail: string[],
-  label: string,
-  input: string,
-): DeviceSegment[] {
-  let previous: DeviceTailStep = "root";
-
-  return tail.map((raw) => {
-    const segment = parseDeviceSegment(raw, label, input);
-
-    if (!canFollow(segment.kind, previous)) {
-      const { noun, expected } = DEVICE_TAIL_RULES[previous];
-
-      throw pathError(
-        label,
-        input,
-        `"${raw}" can't follow ${noun}; expected ${expected}`,
-      );
-    }
-
-    previous = segment.kind;
-
-    return segment;
-  });
-}
-
-/**
- * Whether a segment can sit under the step before it. A track holds devices, a
- * device holds chains, return chains, and drum pads, and each of those holds
- * devices — so the tail alternates, except that a drum pad also takes a `c<n>`
- * picking among the chains that share its note.
- * @param kind - The segment's kind
- * @param previous - The step it would sit under
- * @returns True when that is nesting Live has
- */
-function canFollow(
-  kind: DeviceSegment["kind"],
-  previous: DeviceTailStep,
-): boolean {
-  if (kind === DEVICE_KIND) return previous !== DEVICE_KIND;
-
-  return (
-    previous === DEVICE_KIND || (kind === "chain" && previous === "drum-pad")
-  );
-}
-
-/**
  * Whether a segment names one of a track's own children rather than a device.
  * @param segment - A path segment
  * @returns True for scene and take lane segments
@@ -452,59 +378,6 @@ function trackChildError(label: string, input: string, segment: string): Error {
         input,
         `a take lane is "t<track>/l<lane>" (e.g. "t0/l0") or "t<track>/l+"; only regular tracks have take lanes`,
       );
-}
-
-/**
- * Parses one device-chain segment.
- * @param segment - The segment
- * @param label - Param name for error messages
- * @param input - Full path, for error messages
- * @returns What the segment names
- */
-function parseDeviceSegment(
-  segment: string,
-  label: string,
-  input: string,
-): DeviceSegment {
-  const device = DEVICE.exec(segment);
-
-  if (device) return { kind: "device", index: Number(device[1]) };
-
-  const returnChain = RETURN_CHAIN.exec(segment);
-
-  if (returnChain) {
-    return { kind: "return-chain", index: Number(returnChain[1]) };
-  }
-
-  const chain = CHAIN.exec(segment);
-
-  if (chain) return { kind: "chain", index: Number(chain[1]) };
-
-  const drumPad = DRUM_PAD.exec(segment);
-
-  if (drumPad) {
-    const note = drumPad[1] as string;
-
-    // Live keys drum pads by note, so an unparseable one names no pad. Caught
-    // here because the read path and the write path fail differently otherwise
-    // — one throws, one warn-skips with a message about the rack.
-    if (note !== CATCH_ALL_PAD && noteNameToMidi(note) == null) {
-      throw pathError(
-        label,
-        input,
-        `"${segment}" names no drum pad; use a note name (e.g. "pC1"), or "p*" for the catch-all pad`,
-      );
-    }
-
-    return { kind: "drum-pad", note };
-  }
-
-  throw pathError(
-    label,
-    input,
-    `"${segment}" is not a device, chain, or drum pad; expected "d<index>", ` +
-      `"c<index>", "rc<index>", or "p<note>"`,
-  );
 }
 
 /**

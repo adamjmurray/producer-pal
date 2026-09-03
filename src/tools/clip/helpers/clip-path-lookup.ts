@@ -15,7 +15,7 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   pathEntries,
   requireClipSlotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 
 /**

@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type ClipResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { handleArrangementOperations } from "../../helpers/arrangement/update-clip-arrangement-helpers.ts";
 import {
   handlePositionOperations,

@@ -38,6 +38,7 @@ describe("trackIdPerPath", () => {
     ["t0/l0", "a take lane"],
     ["t0/l+", "a take lane"],
     ["t0/d1", "a device"],
+    ["t0[5|1]", "an arrangement clip"],
   ])("says %s names %s, not a track", (path, noun) => {
     expect(trackIdPerPath(path, "tool")).toStrictEqual([null]);
     expect(capturedWarnings()).toContain(

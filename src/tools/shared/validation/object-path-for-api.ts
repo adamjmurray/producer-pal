@@ -6,7 +6,7 @@
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
-import { arrangementPath, slotPath } from "./object-path-helpers.ts";
+import { arrangementPath, slotPath } from "./helpers/object-path-helpers.ts";
 import { formatObjectPath } from "./object-path.ts";
 
 const SCENE = /^live_set scenes (\d+)$/;

@@ -19,7 +19,7 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import { roundPan, stripFields } from "#src/tools/shared/utils.ts";
-import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,

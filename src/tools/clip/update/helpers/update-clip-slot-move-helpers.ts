@@ -27,7 +27,7 @@ import {
   objectPathForApi,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   recreateIntoEmptySlot,
   recreateIntoOccupiedSlot,

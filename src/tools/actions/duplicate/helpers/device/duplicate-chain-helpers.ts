@@ -20,7 +20,7 @@ import {
   pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   claimLabels,
   labelName,

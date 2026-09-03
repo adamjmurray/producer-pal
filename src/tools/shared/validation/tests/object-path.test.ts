@@ -376,6 +376,77 @@ describe("formatObjectPath", () => {
   });
 });
 
+describe("parseObjectPath - the [song position] coordinate", () => {
+  it("hangs a position off each arrangement lane", () => {
+    expect(parseObjectPath("t0[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "track", trackIndex: 0 },
+      position: "5|1",
+    });
+    expect(parseObjectPath("t0/l1[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "take-lane", trackIndex: 0, laneIndex: 1 },
+      position: "5|1",
+    });
+    expect(parseObjectPath("t0/l+[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "new-take-lane", trackIndex: 0 },
+      position: "5|1",
+    });
+  });
+
+  it("leaves the lane open for a bare coordinate", () => {
+    expect(parseObjectPath("[5|1]")).toStrictEqual({
+      kind: "arrangement-position",
+      lane: null,
+      position: "5|1",
+    });
+  });
+
+  // The position is kept as written: what it means is the resolver's job, and
+  // a result always spells it back as bar|beat.
+  it.each([
+    ["a locator", "loc:Verse"],
+    ["a locator id", "loc:locator-0"],
+    ["a name holding both separators", "loc:A, B/C"],
+    ["a note-value offset", "1|1-n/4"],
+  ])("keeps %s verbatim", (_label, position) => {
+    expect(parseObjectPath(`t0[${position}]`)).toStrictEqual({
+      kind: "arrangement-position",
+      lane: { kind: "track", trackIndex: 0 },
+      position,
+    });
+  });
+
+  // Only a regular track's arrangement has a timeline to sit on.
+  it.each([
+    ["a return track", "rt0[5|1]"],
+    ["the main track", "mt[5|1]"],
+    ["a scene", "s3[5|1]"],
+    ["a clip slot", "t0/s3[5|1]"],
+    ["a device", "t0/d0[5|1]"],
+    ["a track that does not exist yet", "t+[5|1]"],
+  ])("refuses a position on %s", (_label, path) => {
+    expect(() => parseObjectPath(path)).toThrow(
+      "a song position needs an arrangement lane",
+    );
+  });
+
+  it.each([
+    ["an empty coordinate", "t0[]", 'its "[]" names no position'],
+    ["an unclosed bracket", "t0[5|1", 'its "[" is never closed'],
+    ["a stray closer", "t0 5|1]", 'it closes a "[" it never opened'],
+  ])("refuses %s", (_label, path, problem) => {
+    expect(() => parseObjectPath(path)).toThrow(problem);
+  });
+
+  it("round-trips every shape", () => {
+    for (const path of ["t0[5|1]", "t0/l1[5|1]", "t0/l+[5|1]", "[loc:Verse]"]) {
+      expect(formatObjectPath(parseObjectPath(path))).toBe(path);
+    }
+  });
+});
+
 describe("formatDeviceSegment", () => {
   it("renders each segment kind", () => {
     expect(formatDeviceSegment({ kind: "device", index: 2 })).toBe("d2");

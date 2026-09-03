@@ -20,7 +20,7 @@ import {
   recreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
-import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { arrangementPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface PlaceMovedClipArgs {

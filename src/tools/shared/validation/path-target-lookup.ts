@@ -21,14 +21,14 @@ import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   pathEntries,
   trackSegmentPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   isNewObjectPath,
   NEW_OBJECT_NOUNS,
   parseObjectPath,
-  pathError,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
  * Resolves track path(s) to the ids of the tracks they name.
@@ -225,6 +225,8 @@ function describePathKind(path: ObjectPath): string {
       return "a take lane";
     case "device":
       return "a device";
+    case "arrangement-position":
+      return "an arrangement clip";
     default:
       return "a track";
   }

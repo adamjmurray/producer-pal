@@ -15,7 +15,7 @@ import {
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";

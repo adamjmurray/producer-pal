@@ -23,7 +23,7 @@ import {
   namedHiddenPath,
   requireClipSlotPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
 import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";

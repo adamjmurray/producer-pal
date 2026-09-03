@@ -13,14 +13,14 @@ import {
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   formatObjectPath,
-  pathError,
   type ObjectPath,
 } from "#src/tools/shared/validation/object-path.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   namedHiddenPath,
   parseObjectPathList,
   requireClipSlotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   type ClipSlotPosition,
   parseSlotList,

@@ -31,7 +31,7 @@ import {
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
-import { type ClipPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { type ClipPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,

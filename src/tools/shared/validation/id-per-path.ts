@@ -19,7 +19,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   sceneIdPerPath,
   trackIdPerPath,

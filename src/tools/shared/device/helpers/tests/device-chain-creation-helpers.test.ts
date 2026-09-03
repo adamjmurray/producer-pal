@@ -12,7 +12,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { requireDeviceContainer } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { requireDeviceContainer } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
   resolveContainerWithAutoCreate,

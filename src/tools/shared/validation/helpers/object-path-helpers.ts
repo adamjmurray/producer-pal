@@ -13,17 +13,20 @@ import {
   type TrackPath,
 } from "#src/shared/live-api-path-builders.ts";
 import {
+  entriesFrom,
   namedParam,
   paramNamesSomething,
   parseCommaSeparatedIds,
-  targetEntries,
 } from "#src/tools/shared/utils.ts";
+import {
+  splitPathEntries,
+  pathError,
+} from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 import {
   formatObjectPath,
   isNewObjectPath,
   NEW_OBJECT_NOUNS,
   parseObjectPath,
-  pathError,
   type DeviceSegment,
   type ObjectPath,
   type TrackSegment,
@@ -67,7 +70,9 @@ export function parseObjectPathList(
  * @returns One trimmed entry per path, in order
  */
 export function pathEntries(input?: string | null, label = "path"): string[] {
-  return targetEntries(namedParam(input, label), label);
+  // Split at bracket depth 0: a `[...]` coordinate can hold a comma, in a
+  // locator name or a bar|beat offset.
+  return entriesFrom(namedParam(input, label), splitPathEntries, label);
 }
 
 /**
@@ -294,6 +299,8 @@ function describeNonClipPath(path: ObjectPath): string {
       return "device paths hold no clips";
     case "scene":
       return "a scene alone names no track";
+    case "arrangement-position":
+      return "a song position names one arrangement clip, not a place to put one";
     default:
       return "return and main tracks have no clips";
   }
@@ -314,6 +321,8 @@ function describeNonDevicePath(path: ObjectPath): string {
       return "a scene holds no devices";
     case "slot":
       return "a clip slot holds no devices";
+    case "arrangement-position":
+      return "a song position names a clip, not a device";
     default:
       return "a take lane holds no devices";
   }

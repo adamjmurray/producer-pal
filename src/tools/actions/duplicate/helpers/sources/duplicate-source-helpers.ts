@@ -10,7 +10,7 @@
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
 import { targetIds } from "#src/tools/shared/validation/lists/target-lists.ts";
-import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathEntries } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   resolveClipDestinations,
   type ClipDestinations,

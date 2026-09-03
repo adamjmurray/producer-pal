@@ -9,7 +9,7 @@ import { getClipNoteCount } from "#src/tools/shared/clip/clip-notes.ts";
 import {
   arrangementPath,
   slotPath,
-} from "#src/tools/shared/validation/object-path-helpers.ts";
+} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 
 export interface ClipPropertiesToSet {
   [key: string]: unknown; // Required for setAll() compatibility with Record<string, unknown>

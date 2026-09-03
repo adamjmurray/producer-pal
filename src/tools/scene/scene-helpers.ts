@@ -4,10 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { namedParam, parseTimeSignature } from "#src/tools/shared/utils.ts";
-import {
-  parseObjectPath,
-  pathError,
-} from "#src/tools/shared/validation/object-path.ts";
+import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
 
 /**
  * Applies tempo property to a scene

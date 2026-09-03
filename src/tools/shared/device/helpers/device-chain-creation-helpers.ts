@@ -9,7 +9,7 @@
 
 import { assertDefined } from "#src/shared/error-utils.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
-import { trackSegmentPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { trackSegmentPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import {
   liveApiCollection,
   type IndexedSegment,

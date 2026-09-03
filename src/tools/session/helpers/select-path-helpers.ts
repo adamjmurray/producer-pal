@@ -13,11 +13,11 @@ import {
   isNewObjectPath,
   NEW_OBJECT_NOUNS,
   parseObjectPath,
-  pathError,
   type ObjectPath,
   type TrackSegment,
 } from "#src/tools/shared/validation/object-path.ts";
-import { namedHiddenPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { namedHiddenPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { parseClipSlot } from "./select-id-helpers.ts";
 import {
   buildTrackPath,

@@ -9,7 +9,7 @@ import {
   clipCopyBlocker,
   copyClipToSlot,
 } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
-import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   claimLabels,
