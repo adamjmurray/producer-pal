@@ -98,6 +98,7 @@ export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invar
 export { projectContextWorkflow } from "./workflow/project-context-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
 export { pathArrangementAddress } from "./path/path-arrangement-address.ts";
+export { pathArrangementStartsAt } from "./path/path-arrangement-starts-at.ts";
 export { pathSessionSlot } from "./path/path-session-slot.ts";
 export { pathTakeLaneFirst } from "./path/path-take-lane.ts";
 export { pathToPathClipDestinations } from "./path/path-topath-clips.ts";

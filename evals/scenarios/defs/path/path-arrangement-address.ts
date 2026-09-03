@@ -12,57 +12,19 @@
  * This grades the rename landing, whichever spelling the model reaches for.
  */
 
-import { type EvalAssertion, type EvalScenario } from "../../types.ts";
+import { type EvalScenario } from "../../types.ts";
 import {
   MSG_CONNECT,
   TOOL_CONNECT,
   TOOL_CREATE_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../clip/helpers/clip-scenario-helpers.ts";
+import { assertArrangementClipNamed } from "./path-scenario-helpers.ts";
 
 /** Lead is track 3 in basic-midi-4-track. */
 const LEAD_TRACK_INDEX = 3;
 
 const CLIP_NAME = "Verse Lead";
-
-/** One arrangement clip on the track, in overview form. */
-interface ArrangementClip {
-  name?: string | null;
-}
-
-/**
- * The rename actually landed: the Lead track's arrangement holds a clip with
- * the new name. A warned-and-skipped update leaves the old name in place.
- * @returns A state assertion over the track's arrangement clips
- */
-function assertClipRenamed(): EvalAssertion {
-  return {
-    type: "state",
-    tool: "ppal-read-track",
-    args: {
-      trackIndex: LEAD_TRACK_INDEX,
-      include: ["arrangement-clips"],
-    },
-    expect: (result) => clipNames(result).includes(CLIP_NAME),
-    explain: (result) =>
-      `expected an arrangement clip named "${CLIP_NAME}", got ${
-        clipNames(result)
-          .map((name) => `"${name}"`)
-          .join(", ") || "no arrangement clips"
-      }`,
-  };
-}
-
-/**
- * Names of the arrangement clips on the read track.
- * @param result - Parsed ppal-read-track result
- * @returns Clip names (unnamed clips read as "")
- */
-function clipNames(result: unknown): string[] {
-  const track = result as { arrangementClips?: ArrangementClip[] };
-
-  return (track.arrangementClips ?? []).map((clip) => clip.name ?? "");
-}
 
 export const pathArrangementAddress: EvalScenario = {
   id: "path-arrangement-address",
@@ -83,7 +45,10 @@ export const pathArrangementAddress: EvalScenario = {
 
     // The measurement: the rename actually landed. An id and a pasted-back
     // `t3[1|1]` both name the clip, so either is a pass.
-    assertClipRenamed(),
+    assertArrangementClipNamed({
+      trackIndex: LEAD_TRACK_INDEX,
+      name: CLIP_NAME,
+    }),
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
   ],

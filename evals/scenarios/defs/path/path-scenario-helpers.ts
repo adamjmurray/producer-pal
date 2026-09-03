@@ -423,3 +423,48 @@ export function assertCallResult(options: {
     },
   };
 }
+
+/** One arrangement clip on a read track, in overview form. */
+interface ArrangementClipOverview {
+  name?: string | null;
+}
+
+/**
+ * Names of the arrangement clips on a read track.
+ * @param result - Parsed ppal-read-track result
+ * @returns Clip names, an unnamed clip reading as ""
+ */
+function arrangementClipNames(result: unknown): string[] {
+  const track = result as { arrangementClips?: ArrangementClipOverview[] };
+
+  return (track.arrangementClips ?? []).map((clip) => clip.name ?? "");
+}
+
+/**
+ * A clip with this name sits in the track's arrangement, however the model
+ * addressed it — by id, or by the path a result handed back. A warned-and-
+ * skipped update leaves the old name in place, so this catches both.
+ * @param options - Which track to read and what name to look for
+ * @param options.trackIndex - 0-based track index
+ * @param options.name - The name the clip should be carrying
+ * @returns A state assertion over the track's arrangement clips
+ */
+export function assertArrangementClipNamed(options: {
+  trackIndex: number;
+  name: string;
+}): EvalAssertion {
+  const { trackIndex, name } = options;
+
+  return {
+    type: "state",
+    tool: "ppal-read-track",
+    args: { trackIndex, include: ["arrangement-clips"] },
+    expect: (result) => arrangementClipNames(result).includes(name),
+    explain: (result) =>
+      `expected an arrangement clip named "${name}", got ${
+        arrangementClipNames(result)
+          .map((found) => `"${found}"`)
+          .join(", ") || "no arrangement clips"
+      }`,
+  };
+}
