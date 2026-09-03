@@ -137,7 +137,7 @@ describe("cross-track arrangement clip duplicate", () => {
     const warningText = warnings.join(" ");
 
     expect(warningText).toContain(
-      `MIDI clip t${EMPTY_MIDI_TRACK} (id ${source.id})`,
+      `MIDI clip t${EMPTY_MIDI_TRACK}[${position}] (id ${source.id})`,
     );
     expect(warningText).toContain(
       `cannot be duplicated to audio track t${AUDIO_TRACK}`,

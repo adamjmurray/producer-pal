@@ -282,7 +282,7 @@ describe("ppal-select", () => {
     });
     const warnings = getToolWarnings(result);
 
-    expect(warnings.join("\n")).toContain("is not a plug-in");
+    expect(warnings.join("\n")).toContain("not a plug-in");
   });
 });
 
