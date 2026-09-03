@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   lookupMockObject,
   mockNonExistentObjects,
@@ -140,6 +141,26 @@ describe("updateClip - Basic operations", () => {
 
     expect(mocks.clip456.set).toHaveBeenCalledWith("name", "By Path");
     expect(result).toStrictEqual({ id: "456", path: "t1/s1" });
+  });
+
+  // The whole address in one param: the lane and the position the clip starts
+  // at. No read first, and no arrangementStart to pair it with.
+  it("should update the arrangement clip a path names by position", async () => {
+    setupMidiClipMock(mocks.clip789, {
+      is_arrangement_clip: 1,
+      start_time: 16.0,
+    });
+    registerMockObject("track-2", {
+      path: livePath.track(2),
+      type: "Track",
+      properties: { arrangement_clips: children("789") },
+    });
+
+    // 4/4, so bar 5 is beat 16 — where clip789 starts.
+    const result = await updateClip({ path: "t2[5|1]", name: "By Position" });
+
+    expect(mocks.clip789.set).toHaveBeenCalledWith("name", "By Position");
+    expect(result).toStrictEqual({ id: "789", path: "t2" });
   });
 
   it("should warn and skip a path with no clip, keeping the rest", async () => {

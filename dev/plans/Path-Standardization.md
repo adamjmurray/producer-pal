@@ -349,6 +349,12 @@ Warnings should already be right - `targetLabel` reads `objectPathForApi`. This
 phase finds the messages that build a path by hand and routes them through the
 helper instead. **If this phase is large, that is the finding**, not the work.
 
+One known duplication to clear here: `songPositionToBeats` bakes a
+`<tool> failed:` prefix into what is really a value-level reason, so a bad
+`loc:` inside a path warns as `updateClip: updateClip failed: no locator ...`.
+The fix is to let the caller frame the reason, not to strip the prefix at the
+warning site.
+
 ### Phase 15 - Skills and evals
 
 Teach the coordinate in the Skills fragments, regenerate the snapshots and

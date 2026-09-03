@@ -21,6 +21,12 @@ export type ArrangementLane =
   | { kind: "take-lane"; trackIndex: number; laneIndex: number }
   | { kind: "new-take-lane"; trackIndex: number };
 
+/** A lane that exists, so it can already hold clips. */
+export type ExistingArrangementLane = Exclude<
+  ArrangementLane,
+  { kind: "new-take-lane" }
+>;
+
 /** A point on the song timeline, with the arrangement lane it sits on. */
 export interface ArrangementPosition {
   kind: "arrangement-position";
@@ -28,6 +34,15 @@ export interface ArrangementPosition {
   lane: ArrangementLane | null;
   /** The song position as the caller spelled it, bar|beat or `loc:`. */
   position: string;
+}
+
+/**
+ * Both halves of an arrangement location, on a lane that exists — the one
+ * shape that names a single clip. See dev/Object-Paths.md, "Complete and
+ * partial".
+ */
+export interface CompleteArrangementPosition extends ArrangementPosition {
+  lane: ExistingArrangementLane;
 }
 
 /**
