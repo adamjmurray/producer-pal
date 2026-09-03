@@ -116,7 +116,7 @@ describe("handleQuantization", () => {
     handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
 
     expect(capturedWarnings()).toContain(
-      "quantize/quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
+      "quantize/quantizeGrid ignored for audio clip id 321: quantization is MIDI-only",
     );
     expect(mockClip.call).not.toHaveBeenCalled();
   });
@@ -129,7 +129,7 @@ describe("handleQuantization", () => {
     handleQuantization(mockClip, { quantizeGrid: "1/16" });
 
     expect(capturedWarnings()).toContain(
-      "quantizeGrid ignored for audio clip (id 321): quantization is MIDI-only",
+      "quantizeGrid ignored for audio clip id 321: quantization is MIDI-only",
     );
   });
 
@@ -139,7 +139,7 @@ describe("handleQuantization", () => {
     handleQuantization(mockClip, { quantizePitch: "C3" });
 
     expect(capturedWarnings()).toContain(
-      "quantizePitch ignored for audio clip (id 321): quantization is MIDI-only",
+      "quantizePitch ignored for audio clip id 321: quantization is MIDI-only",
     );
   });
 

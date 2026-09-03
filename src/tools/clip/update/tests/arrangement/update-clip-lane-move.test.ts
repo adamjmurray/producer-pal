@@ -19,6 +19,10 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
 const SOURCE_ID = "123";
+/** How a warning names the source clip: both spellings, per ADR-0009. */
+const SOURCE = `t${SOURCE_TRACK} (id ${SOURCE_ID})`;
+/** Same, for the tests whose source sits on a take lane. */
+const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0 (id ${SOURCE_ID})`;
 const DUPLICATED_ID = "456";
 const TAKE_LANE_SOURCE = livePath
   .track(SOURCE_TRACK)
@@ -165,7 +169,7 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(undefined, livePath.track(DEST_TRACK).takeLane(0))?.call,
     ).toHaveBeenCalledWith("create_midi_clip", 32, 8);
     expect(capturedWarnings()).toContain(
-      `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}/l0`,
+      `clip ${SOURCE} was re-created on t${DEST_TRACK}/l0`,
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
@@ -183,7 +187,7 @@ describe("moving an arrangement clip to another lane", () => {
       lookupMockObject(undefined, livePath.track(DEST_TRACK))?.call,
     ).toHaveBeenCalledWith("create_take_lane");
     expect(capturedWarnings()).toContain(
-      `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
+      `clip ${SOURCE} was re-created on t${DEST_TRACK}/l0 (automation envelopes aren't copied)`,
     );
   });
 
@@ -222,7 +226,7 @@ describe("moving an arrangement clip to another lane", () => {
     const result = runMove(opts);
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`clip ${SOURCE_ID} was not moved: ${expected}`),
+      expect.stringContaining(`clip ${SOURCE} was not moved: ${expected}`),
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
@@ -251,7 +255,7 @@ describe("moving a clip off a take lane", () => {
       expect.anything(),
     );
     expect(capturedWarnings()).toContain(
-      `clip ${SOURCE_ID} was re-created on t${DEST_TRACK}`,
+      `clip ${SOURCE_ON_LANE} was re-created on t${DEST_TRACK}`,
     );
     expect(result).not.toBe(SOURCE_ID);
   });
@@ -276,7 +280,7 @@ describe("moving a clip off a take lane", () => {
     ).not.toHaveBeenCalledWith("delete_clip", `id ${SOURCE_ID}`);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE_ID} was emptied instead of deleted`,
+        `clip ${SOURCE_ON_LANE} was emptied instead of deleted`,
       ),
     );
   });
@@ -295,7 +299,9 @@ describe("moving a clip off a take lane", () => {
     expect(source?.set).toHaveBeenCalledWith("name", "(moved) Verse");
     expect(source?.set).toHaveBeenCalledWith("muted", 1);
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`clip ${SOURCE_ID} was muted instead of deleted`),
+      expect.stringContaining(
+        `clip ${SOURCE_ON_LANE} was muted instead of deleted`,
+      ),
     );
   });
 });

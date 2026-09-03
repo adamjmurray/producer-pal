@@ -16,6 +16,7 @@ import {
   toLiveApiView,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -436,7 +437,7 @@ export function updateClipSelection({
   // Warn if user explicitly requested a conflicting view
   if (requestedView != null && requestedView !== requiredView) {
     console.warn(
-      `ignoring view="${requestedView}" - clip ${clipId} requires ${requiredView} view`,
+      `ignoring view="${requestedView}" - clip ${targetLabel(clipAPI)} requires ${requiredView} view`,
     );
   }
 

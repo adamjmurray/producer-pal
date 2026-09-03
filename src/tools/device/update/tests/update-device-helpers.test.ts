@@ -14,12 +14,12 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import {
   moveDeviceToPath,
-  moveDrumChainToPath,
   stripReturnChainLetter,
   updateMacroCount,
 } from "../helpers/update-device-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
+import { moveDrumChainToPath } from "../helpers/update-device-drum-move-helpers.ts";
 
 describe("moveDeviceToPath", () => {
   let device: RegisteredMockObject;
@@ -102,7 +102,9 @@ describe("moveDeviceToPath", () => {
     expect(moveDeviceToPath(LiveAPI.from(device.path), "t1/d0")).toBe(
       "refused",
     );
-    expect(capturedWarnings()).toContain("Live refused the move of t0/d0");
+    expect(capturedWarnings()).toContain(
+      "Live refused the move of t0/d0 (id device-0)",
+    );
   });
 
   it("names the one refusal Live's own state explains", () => {
@@ -127,7 +129,7 @@ describe("moveDeviceToPath", () => {
       "refused",
     );
     expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0: the destination already has an instrument, and only one is allowed",
+      "Live refused the move of t0/d0 (id device-0): the destination already has an instrument, and only one is allowed",
     );
   });
 
@@ -195,7 +197,7 @@ describe("updateMacroCount", () => {
     updateMacroCount(deviceApi, 8);
 
     expect(capturedWarnings()).toContain(
-      "updateDevice: macro count only available on rack devices; skipping t0/d0",
+      "updateDevice: macro count only available on rack devices; skipping t0/d0 (id non-rack)",
     );
     expect(nonRackDevice.call).not.toHaveBeenCalled();
   });

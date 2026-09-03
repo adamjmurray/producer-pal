@@ -24,6 +24,7 @@ import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
@@ -424,7 +425,7 @@ export function readMixerProperties(
     // Warn if send count doesn't match return track count
     if (sends.length !== names.length) {
       console.warn(
-        `Send count (${sends.length}) doesn't match return track count (${names.length})`,
+        `Send count (${sends.length}) on track ${targetLabel(track)} doesn't match return track count (${names.length})`,
       );
     }
 

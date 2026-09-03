@@ -217,7 +217,9 @@ describe("applyChainMixer", () => {
 
     expect(volume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('chain "Snare" (t0/d0/c1) gainDb is disabled'),
+      expect.stringContaining(
+        'chain "Snare" t0/d0/c1 (id chain-1) gainDb is disabled',
+      ),
     );
     // Mapping one parameter must not block the others on the same chain
     expect(panning.set).toHaveBeenCalledWith("value", 0.25);
@@ -230,7 +232,9 @@ describe("applyChainMixer", () => {
 
     expect(panning.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining('chain "Snare" (t0/d0/c1) pan is disabled'),
+      expect.stringContaining(
+        'chain "Snare" t0/d0/c1 (id chain-1) pan is disabled',
+      ),
     );
   });
 
@@ -313,7 +317,7 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "Chorus" });
 
       expect(capturedWarnings()).toContain(
-        'chain "Snare" (t0/d0/c1): no return chain matching "Chorus" (returns: a Delay, b Reverb)',
+        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "Chorus" (returns: a Delay, b Reverb)',
       );
     });
 
@@ -323,7 +327,7 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "a" });
 
       expect(capturedWarnings()).toContain(
-        'chain "Snare" (t0/d0/c1): no return chain matching "a" (rack has no return chains; they can only be added in Live)',
+        'chain "Snare" t0/d0/c1 (id chain-1): no return chain matching "a" (rack has no return chains; they can only be added in Live)',
       );
     });
 
@@ -339,7 +343,7 @@ describe("applyChainMixer", () => {
       expect(send.set).not.toHaveBeenCalled();
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          'chain "Snare" (t0/d0/c1) send "b Reverb" is disabled',
+          'chain "Snare" t0/d0/c1 (id chain-1) send "b Reverb" is disabled',
         ),
       );
     });
@@ -350,7 +354,7 @@ describe("applyChainMixer", () => {
       applyChainMixer(chainApi(), { sendGainDb: -6, sendReturn: "c" });
 
       expect(capturedWarnings()).toContain(
-        'chain "Snare" (t0/d0/c1) has no send for return "c"',
+        'chain "Snare" t0/d0/c1 (id chain-1) has no send for return "c"',
       );
     });
 
@@ -521,7 +525,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" (t0/d0/c1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 
@@ -541,7 +545,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" (t0/d0/c1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -554,7 +558,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" (t0/d0/c1) trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (pan 0.5) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -568,7 +572,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      `chain "Snare" (t0/d0/c1) trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
+      `chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) does not follow the copy — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or copy the whole pad instead (duplicate type 'drum-pad' with the pad path and toPath), which brings the trim with it`,
     );
   });
 
@@ -585,7 +589,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" (t0/d0/c1) trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15) stays behind — reapply on the destination track with update-track gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -611,7 +615,7 @@ describe("warnIfChainMixerLeftBehind", () => {
     );
 
     expect(capturedWarnings()).toContain(
-      'chain "Snare" (t0/d0/c1) trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
+      'chain "Snare" t0/d0/c1 (id chain-1) trim (gainDb -15, 2 sends) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn or move the whole pad instead (update-device with the pad path and toPath)',
     );
   });
 

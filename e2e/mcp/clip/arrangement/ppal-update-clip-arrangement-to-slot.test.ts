@@ -56,7 +56,7 @@ describe("arrangement clip moved into a session slot", () => {
 
     expect(moved.path).toBe(`t${EMPTY_MIDI_TRACK}/s1`);
     expect(warnings.join(" ")).toContain(
-      `arrangement clip ${source.id} was re-created at t${EMPTY_MIDI_TRACK}/s1`,
+      `arrangement clip ${source.path} (id ${source.id}) was re-created at t${EMPTY_MIDI_TRACK}/s1`,
     );
 
     const clip = await readClipFully(ctx.client!, {
@@ -199,7 +199,7 @@ describe("arrangement clip moved into a session slot", () => {
     });
 
     expect(warnings.join(" ")).toContain(
-      `clip ${source.id} was emptied instead of deleted`,
+      `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
     );
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
@@ -229,7 +229,7 @@ describe("arrangement clip moved into a session slot", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}/s3` },
-      `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
+      `clip ${source.path} (id ${source.id}) was not moved: track ${AUDIO_TRACK} is audio`,
     );
 
     expect(

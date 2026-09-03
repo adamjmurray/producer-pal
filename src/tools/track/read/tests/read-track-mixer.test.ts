@@ -1,6 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -319,7 +319,7 @@ describe("readTrack - mixer properties", () => {
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Send count (2) doesn't match return track count (1)",
+      "Send count (2) on track t0 (id track1) doesn't match return track count (1)",
     );
     expectSendsWithReverbAndSecond(result, "Return 2");
 

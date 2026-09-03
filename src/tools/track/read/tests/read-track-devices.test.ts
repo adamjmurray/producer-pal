@@ -97,7 +97,9 @@ describe("readTrack", () => {
       readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("instruments, which is unusual"),
+        expect.stringContaining(
+          "Track has 2 instruments (t0/d0 (id device1), t0/d1 (id device2))",
+        ),
       );
     });
 

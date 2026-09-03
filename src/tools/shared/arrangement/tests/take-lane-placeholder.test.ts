@@ -14,6 +14,8 @@ import { emptyTakeLaneClip } from "../helpers/take-lane-placeholder.ts";
 import { takeLaneIndexOfClip } from "../helpers/take-lane-helpers.ts";
 
 const CLIP_ID = "42";
+/** How a warning names the clip: both spellings, per ADR-0009. */
+const CLIP = `t0/l1 (id ${CLIP_ID})`;
 
 /**
  * Register a clip at the given path and hand it back.
@@ -67,7 +69,7 @@ describe("take-lane placeholders", () => {
     expect(clip.set).toHaveBeenCalledWith("name", "(moved) Take");
     expect(clip.set).toHaveBeenCalledWith("muted", 1);
     expect(capturedWarnings()).toContain(
-      `clip ${CLIP_ID} was emptied instead of deleted: Live's API can't remove a clip from a take lane. A muted "(moved) Take" was left on t0/l1 — delete it in Live's UI`,
+      `clip ${CLIP} was emptied instead of deleted: Live's API can't remove a clip from a take lane. A muted "(moved) Take" was left there — delete it in Live's UI`,
     );
   });
 
@@ -91,7 +93,7 @@ describe("take-lane placeholders", () => {
     expect(clip.set).toHaveBeenCalledWith("muted", 1);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${CLIP_ID} was muted instead of deleted: Live's API can't remove a clip from a take lane, and an audio clip's sample can't be cleared`,
+        `clip ${CLIP} was muted instead of deleted: Live's API can't remove a clip from a take lane, and an audio clip's sample can't be cleared`,
       ),
     );
   });

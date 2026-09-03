@@ -106,7 +106,7 @@ describe("ppal-duplicate track options", () => {
     expect(source.isArmed).toBe(true);
     expect(source.inputRoutingType?.name).toBe("No Input");
 
-    expect(warnings.join("\n")).toContain("Armed the source track");
+    expect(warnings.join("\n")).toContain("armed the source track");
     expect(warnings.join("\n")).toContain('to "No Input"');
   });
 

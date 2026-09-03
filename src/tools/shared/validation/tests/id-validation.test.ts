@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,7 +70,7 @@ describe("validateIdType", () => {
     });
 
     expect(() => validateIdType(id, "track", "testTool")).toThrow(
-      'testTool failed: id "scene_1" is not a track (found Scene)',
+      "testTool failed: s0 (id scene_1) is not a track (found Scene)",
     );
   });
 
@@ -139,7 +140,7 @@ describe("validateIdType", () => {
       "mystery-type",
     ]) {
       expect(() => validateIdType("track_1", expectedType, "testTool")).toThrow(
-        `testTool failed: id "track_1" is not a ${expectedType} (found Track)`,
+        `testTool failed: t0 (id track_1) is not a ${expectedType} (found Track)`,
       );
     }
   });
@@ -199,7 +200,7 @@ describe("validateIdTypes", () => {
       const ids = registerMixedTrackAndSceneMocks();
 
       expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
-        'testTool failed: id "scene_1" is not a track (found Scene)',
+        "testTool failed: s0 (id scene_1) is not a track (found Scene)",
       );
     });
   });
@@ -216,7 +217,7 @@ describe("validateIdTypes", () => {
       expect(result[0]!.id).toBe("track_1");
       expect(result[1]!.id).toBe("track_3");
       expect(capturedWarnings()).toContain(
-        'testTool: id "scene_1" is not a track (found Scene)',
+        "testTool: s0 (id scene_1) is not a track (found Scene)",
       );
     });
 
@@ -282,7 +283,7 @@ describe("validateIdTypes", () => {
         'testTool: id "nonexistent" does not exist',
       );
       expect(capturedWarnings()).toContain(
-        'testTool: id "scene_1" is not a track (found Scene)',
+        "testTool: s0 (id scene_1) is not a track (found Scene)",
       );
     });
 

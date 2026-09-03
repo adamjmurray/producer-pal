@@ -27,6 +27,7 @@ import {
   applyTransformsToExistingNotes,
   buildClipContext,
 } from "./update-clip-transform-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Quantization grid values mapping user-friendly strings to Live API integers
@@ -226,7 +227,7 @@ function mergeNewNotes(
 export function handleDuplicateLoop(clip: LiveAPI): NoteUpdateResult | null {
   if ((clip.getProperty("is_midi_clip") as number) <= 0) {
     console.warn(
-      `duplicateLoop parameter ignored for audio clip (id ${clip.id})`,
+      `duplicateLoop parameter ignored for audio clip ${targetLabel(clip)}`,
     );
 
     return null;
@@ -416,7 +417,7 @@ export function handleQuantization(
     ].filter((param) => param != null);
 
     console.warn(
-      `${sent.join("/")} ignored for audio clip (id ${clip.id}): quantization is MIDI-only`,
+      `${sent.join("/")} ignored for audio clip ${targetLabel(clip)}: quantization is MIDI-only`,
     );
 
     return;

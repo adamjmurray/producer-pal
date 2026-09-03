@@ -91,7 +91,7 @@ describe("update-clip-arrangement-helpers", () => {
       const result = runStartOperation(clipStub("123", 0), 16);
 
       expect(capturedWarnings()).toContain(
-        "arrangementStart parameter ignored for session clip (id 123)",
+        "arrangementStart parameter ignored for session clip id 123",
       );
       expect(result).toBe("123");
     });
@@ -101,7 +101,7 @@ describe("update-clip-arrangement-helpers", () => {
       const result = runStartOperation(clipStub("456", 1, null), 16);
 
       expect(capturedWarnings()).toContain(
-        "could not determine trackIndex for clip 456",
+        "could not determine trackIndex for clip id 456",
       );
       expect(result).toBe("456");
     });
@@ -258,7 +258,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       // Should warn about failure and return original clip ID
       expect(capturedWarnings()).toContain(
-        "failed to duplicate clip 100 - original preserved",
+        "failed to duplicate clip id 100 - original preserved",
       );
       expect(result).toBe("100");
       // Should NOT call delete_clip since duplication failed
@@ -340,7 +340,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       expect(result).toBeNull();
       expect(capturedWarnings()).toContain(
-        "non-survivor clip 200 already deleted, skipping",
+        "non-survivor clip id 200 already deleted, skipping",
       );
       // Should NOT call delete_clip since clip doesn't exist
       expect(trackMock.call).not.toHaveBeenCalledWith(

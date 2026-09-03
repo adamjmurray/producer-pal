@@ -26,6 +26,7 @@ import {
 } from "#src/tools/shared/validation/object-path-helpers.ts";
 import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import { namedIdParam, namedParam } from "#src/tools/shared/utils.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -199,7 +200,7 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
   } catch (error) {
     // Fail gracefully - clip might not support warp markers or format might be unexpected
     console.warn(
-      `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
+      `Failed to read warp markers for clip ${targetLabel(clip)}: ${errorMessage(error)}`,
     );
 
     return undefined;

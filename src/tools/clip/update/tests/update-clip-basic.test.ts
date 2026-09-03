@@ -594,7 +594,7 @@ describe("updateClip - Basic operations", () => {
     await updateClip({ id: "123", warping: false, gainDb: -6 });
 
     expect(capturedWarnings()).toContain(
-      "gainDb, warping ignored for MIDI clip 123",
+      "gainDb, warping ignored for MIDI clip t0/s0 (id 123)",
     );
   });
 

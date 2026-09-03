@@ -5,10 +5,18 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { objectPathForApi, pathField } from "../object-path-for-api.ts";
+import {
+  objectPathForApi,
+  pathField,
+  pathPrefix,
+  pathTargetLabel,
+  resultLabel,
+  targetLabel,
+} from "../object-path-for-api.ts";
 
-function api(path: unknown, note?: number): LiveAPI {
+function api(path: unknown, note?: number, id = "7"): LiveAPI {
   return {
+    id,
     path,
     getProperty: () => note,
   } as unknown as LiveAPI;
@@ -84,5 +92,63 @@ describe("pathField", () => {
 
   it("spreads nothing when there isn't", () => {
     expect(pathField(api(livePath.liveSet))).toStrictEqual({});
+  });
+});
+
+// The one rule every warning label follows: say both spellings, because the
+// model addressed the object by one of them and can't map the other back.
+describe("targetLabel", () => {
+  it("names an object by its path and its id", () => {
+    expect(targetLabel(api(String(livePath.track(0).device(2))))).toBe(
+      "t0/d2 (id 7)",
+    );
+  });
+
+  it("names an arrangement clip by its lane and its id", () => {
+    expect(targetLabel(api(livePath.track(2).arrangementClip(7)))).toBe(
+      "t2 (id 7)",
+    );
+  });
+
+  it("falls back to the id alone when the grammar spells no path", () => {
+    expect(targetLabel(api(livePath.liveSet))).toBe("id 7");
+  });
+});
+
+describe("resultLabel", () => {
+  it("names a result by both spellings it already carries", () => {
+    expect(resultLabel({ id: "7", path: "t0/d2" })).toBe("t0/d2 (id 7)");
+  });
+
+  it("names a result with no path by its id", () => {
+    expect(resultLabel({ id: "7" })).toBe("id 7");
+  });
+});
+
+describe("pathTargetLabel", () => {
+  it("names a resolved target by both spellings", () => {
+    expect(
+      pathTargetLabel(api(String(livePath.track(0).device(2))), "t0/d2"),
+    ).toBe("t0/d2 (id 7)");
+  });
+
+  it("keeps the caller's path for a target the grammar can't spell", () => {
+    expect(pathTargetLabel(api(livePath.liveSet), "t0/d0/pC1")).toBe(
+      "t0/d0/pC1 (id 7)",
+    );
+  });
+
+  it("quotes the caller's path when it resolved to nothing", () => {
+    expect(pathTargetLabel(null, "t0/d9")).toBe('"t0/d9"');
+  });
+});
+
+describe("pathPrefix", () => {
+  it("leaves the id off, so another segment can be appended", () => {
+    expect(pathPrefix(api(String(livePath.track(0).device(2))))).toBe("t0/d2");
+  });
+
+  it("falls back to the id when the grammar spells no path", () => {
+    expect(pathPrefix(api(livePath.liveSet))).toBe("id 7");
   });
 });

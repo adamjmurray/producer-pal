@@ -21,6 +21,7 @@ import {
   type MinimalClipInfo,
   getMinimalClipInfo,
 } from "../duplicate-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** The source objects every copy in one call shares. */
 export interface SlotCopySource {
@@ -108,7 +109,7 @@ export function duplicateClipSlot(
   // the copies they already made.
   if (!destClipSlot.exists()) {
     console.warn(
-      `clip ${sourceClip.id} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
+      `clip ${targetLabel(sourceClip)} was not duplicated: no clip slot at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
 
     return null;
@@ -125,7 +126,7 @@ export function duplicateClipSlot(
 
   if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${sourceClip.id} was not duplicated: ${blocker}`,
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(sourceClip)} was not duplicated: ${blocker}`,
     );
 
     return null;
@@ -137,7 +138,7 @@ export function duplicateClipSlot(
 
   if (newClip == null) {
     console.warn(
-      `clip ${sourceClip.id} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
+      `clip ${targetLabel(sourceClip)} was not duplicated: no clip landed at ${slotPath(toTrackIndex, toSceneIndex)}`,
     );
 
     return null;

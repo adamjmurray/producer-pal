@@ -27,6 +27,10 @@ import {
   rescanSplitClips,
   type SplitClipRange,
 } from "./helpers/arrangement-splitting-rescan.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface SplittingContext {
   silenceWavPath?: string;
@@ -104,7 +108,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   if (trackIndex == null) {
     console.warn(
-      `Could not determine trackIndex for clip ${clip.id}, skipping`,
+      `Could not determine trackIndex for clip ${targetLabel(clip)}, skipping`,
     );
 
     return false;
@@ -177,7 +181,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
 
   if (!sourceClip.exists()) {
     console.warn(
-      `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
+      `Failed to duplicate clip ${targetLabelForId(originalClipId)} to holding area, aborting split`,
     );
 
     // The split failed, but the points were measured above, so what the caller
@@ -358,7 +362,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
       // the same as the deadline and the catch below.
       if (!workClip.exists()) {
         console.warn(
-          `Failed to cut segment ${i} of clip ${clipId}: Live refused the ` +
+          `Failed to cut segment ${i} of clip ${targetLabelForId(clipId)}: Live refused the ` +
             `duplicate. The rest of the clip is left whole.`,
         );
 
@@ -399,7 +403,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): number {
       );
     } catch (error) {
       console.warn(
-        `Failed to cut segment ${i} of clip ${clipId}: ${errorMessage(error)}. ` +
+        `Failed to cut segment ${i} of clip ${targetLabelForId(clipId)}: ${errorMessage(error)}. ` +
           `The rest of the clip is left whole.`,
       );
 
@@ -481,7 +485,7 @@ export function performSplitting(
       // Whatever Live refused, the rest of the batch is still worth cutting.
       // This clip is left as it fell; the rescan below reports what survived.
       console.warn(
-        `${mode.param} failed for clip ${clipId}: ${errorMessage(error)}. ` +
+        `${mode.param} failed for clip ${targetLabelForId(clipId)}: ${errorMessage(error)}. ` +
           `It may be left partly cut, with a copy past the end of the arrangement.`,
       );
     }

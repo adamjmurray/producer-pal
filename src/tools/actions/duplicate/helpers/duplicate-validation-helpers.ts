@@ -26,6 +26,10 @@ import {
   warnUnusedArrangementParams,
   warnUnusedDestination,
 } from "./clip/duplicate-destination-helpers.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Resolves arrangement positions from bar|beat or locator(s). Supports
@@ -257,8 +261,8 @@ function canCopyClipToTrack(
 
   if (clipIsMidi !== trackIsMidi) {
     console.warn(
-      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip ${clipId} cannot be duplicated to ` +
-        `${trackIsMidi ? "MIDI" : "audio"} track t${trackIndex}`,
+      `duplicate: ${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabelForId(clipId)} cannot be duplicated to ` +
+        `${trackIsMidi ? "MIDI" : "audio"} track ${targetLabel(track)}`,
     );
 
     return false;

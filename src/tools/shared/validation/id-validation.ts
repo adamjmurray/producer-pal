@@ -5,6 +5,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
+import { targetLabel } from "./object-path-for-api.ts";
 
 /**
  * Validates a single ID matches expected type
@@ -27,7 +28,7 @@ export function validateIdType(
 
   if (!isTypeMatch(object.type, expectedType)) {
     throw new Error(
-      `${toolName} failed: id "${id}" is not a ${expectedType} (found ${object.type})`,
+      `${toolName} failed: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
     );
   }
 
@@ -102,12 +103,12 @@ export function validateObjectTypes(
     if (!isTypeMatch(object.type, expectedType)) {
       if (skipInvalid) {
         console.warn(
-          `${toolName}: id "${id}" is not a ${expectedType} (found ${object.type})`,
+          `${toolName}: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
         );
         continue;
       } else {
         throw new Error(
-          `${toolName} failed: id "${id}" is not a ${expectedType} (found ${object.type})`,
+          `${toolName} failed: ${targetLabel(object)} is not a ${expectedType} (found ${object.type})`,
         );
       }
     }

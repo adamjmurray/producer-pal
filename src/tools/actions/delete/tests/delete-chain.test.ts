@@ -154,7 +154,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: chain "rack-chain" is not on a drum pad. Live has no way to ' +
+      "delete: chain t0/d0/c0 (id rack-chain) is not on a drum pad. Live has no way to " +
         `delete a rack chain, and only a drum pad's chains can be removed.`,
     );
   });
@@ -171,7 +171,9 @@ describe("deleteObject chain deletion", () => {
     deleteObject({ path: "t0/d0/rc0", type: "chain" });
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('chain "return-chain" is not on a drum pad'),
+      expect.stringContaining(
+        "chain t0/d0/rc0 (id return-chain) is not on a drum pad",
+      ),
     );
   });
 
@@ -188,7 +190,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: chain "chain-0" needs a free drum pad to move to, and its ' +
+      "delete: chain t0/d0/pC1/c0 (id chain-0) needs a free drum pad to move to, and its " +
         "Drum Rack has none — a rack nested in a drum pad has no pads at all. " +
         "Live offers no other way to remove it; delete its devices to empty " +
         "the pad, or move it with update-device's toPath.",
@@ -217,7 +219,7 @@ describe("deleteObject chain deletion", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: Live did not remove chain "chain-0", so it was left as is',
+      "delete: Live did not remove chain t0/d0/pC1/c0 (id chain-0), so it was left as is",
     );
   });
 

@@ -240,7 +240,7 @@ describe("updateClip - unwarped audio clip region", () => {
     await updateClip({ id: "123", warping: false, looping: true });
 
     expect(capturedWarnings()).toContain(
-      "warping: false ignored for clip 123 - looping: true forces warping on",
+      "warping: false ignored for clip t0/s0 (id 123) - looping: true forces warping on",
     );
     expect(mocks.clip123.set).toHaveBeenCalledWith("warping", 1);
   });
@@ -261,7 +261,7 @@ describe("updateClip - unwarped audio clip region", () => {
     // as 1.09 beats — the region collapses even though `warping` ends up
     // exactly where it started.
     expect(capturedWarnings()).toContain(
-      "warping: false ignored for clip 123 - looping: true forces warping on",
+      "warping: false ignored for clip t0/s0 (id 123) - looping: true forces warping on",
     );
     expect(mocks.clip123.set).not.toHaveBeenCalledWith("warping", 0);
     expect(mocks.clip123.set).not.toHaveBeenCalledWith(

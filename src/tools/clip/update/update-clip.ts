@@ -38,6 +38,7 @@ import {
   targetCount,
   targetIds,
 } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   id?: string;
@@ -253,11 +254,11 @@ function stopBatch(
 ): boolean {
   if (!isDeadlineExceeded(deadline)) return false;
 
-  const skipped = clips.slice(index).map((c) => c.id);
+  const skipped = clips.slice(index).map(targetLabel);
 
   console.warn(
     `Ran out of time after updating ${index} of ${clips.length} clips. ` +
-      `Not updated: ${skipped.join(", ")}. Re-run for those ids.`,
+      `Not updated: ${skipped.join(", ")}. Re-run for those clips.`,
   );
 
   return true;
@@ -360,7 +361,7 @@ async function processClipUpdateStep(
     );
   } catch (error) {
     console.warn(
-      `Failed to update clip ${params.clip.id}: ${errorMessage(error)}`,
+      `Failed to update clip ${targetLabel(params.clip)}: ${errorMessage(error)}`,
     );
   }
 }

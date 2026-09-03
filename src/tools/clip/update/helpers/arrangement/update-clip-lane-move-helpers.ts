@@ -21,6 +21,7 @@ import {
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface PlaceMovedClipArgs {
   clip: LiveAPI;
@@ -62,7 +63,7 @@ export function placeMovedClip({
     const blocker = clipCopyBlocker(isMidiClip, destTrackIndex);
 
     if (blocker != null) {
-      console.warn(`clip ${clip.id} was not moved: ${blocker}`);
+      console.warn(`clip ${targetLabel(clip)} was not moved: ${blocker}`);
 
       return null;
     }
@@ -75,7 +76,7 @@ export function placeMovedClip({
     // re-created. Checked before resolveTakeLane, which creates permanent lanes.
     if (!canRecreateClip(clip)) {
       console.warn(
-        `clip ${clip.id} was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
+        `clip ${targetLabel(clip)} was not moved: it's an audio clip with no sample file; drag it in Live's UI`,
       );
 
       return null;
@@ -135,7 +136,9 @@ function recreateOnTakeLane(
 
     ({ lane, laneIndex } = resolved);
   } catch (error) {
-    console.warn(`clip ${clip.id} was not moved: ${errorMessage(error)}`);
+    console.warn(
+      `clip ${targetLabel(clip)} was not moved: ${errorMessage(error)}`,
+    );
 
     return null;
   }
@@ -192,7 +195,7 @@ function recreateForMove(
   );
 
   console.warn(
-    `clip ${clip.id} was re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +
+    `clip ${targetLabel(clip)} was re-created on ${arrangementPath(destTrackIndex, laneIndex)}` +
       (losses ? ` (${losses})` : ""),
   );
 

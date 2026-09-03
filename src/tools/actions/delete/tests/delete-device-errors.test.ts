@@ -112,7 +112,7 @@ describe("deleteObject device path error cases", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: could not extract parent path from device "orphan-device" (path="devices 0"), skipping',
+      'delete: no parent path for device id orphan-device (Live path "devices 0"), skipping',
     );
   });
 

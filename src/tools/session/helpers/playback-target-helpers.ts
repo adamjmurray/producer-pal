@@ -25,6 +25,7 @@ import {
   type ClipSlotPosition,
   parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface PlaybackTarget {
   /** The one scene to play, agreed by every param that named one */
@@ -406,7 +407,7 @@ function idSceneRefs(ids: string | undefined): SceneRef[] {
     // caller who was asked for a clip id.
     if (object.sceneIndex == null) {
       console.warn(
-        `playback: id "${id}" is in no scene (found ${object.type}); ` +
+        `playback: ${targetLabel(object)} is in no scene (found ${object.type}); ` +
           `action "${PLAY_SCENE}" takes a scene id or a session clip id`,
       );
       continue;

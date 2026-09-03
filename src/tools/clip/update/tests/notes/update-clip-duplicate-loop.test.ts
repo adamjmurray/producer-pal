@@ -123,7 +123,7 @@ describe("updateClip - duplicateLoop", () => {
 
     expect(mocks.clip123.call).not.toHaveBeenCalledWith("duplicate_loop");
     expect(capturedWarnings()).toContain(
-      "duplicateLoop parameter ignored for audio clip (id 123)",
+      "duplicateLoop parameter ignored for audio clip t0/s0 (id 123)",
     );
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });
   });

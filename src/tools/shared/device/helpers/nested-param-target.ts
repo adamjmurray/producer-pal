@@ -13,7 +13,7 @@ import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/de
 import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 const SAMPLE_PARAM = "sample";
 
@@ -79,14 +79,14 @@ export function resolveNestedParamTarget(
   const { target, targetType } = navigateRemainingSegments(rack, segments);
 
   if (!target?.exists()) {
-    console.warn(`${toolName}: no device at "${targetLabel(rack)}/${prefix}"`);
+    console.warn(`${toolName}: no device at "${pathPrefix(rack)}/${prefix}"`);
 
     return null;
   }
 
   if (targetType !== "device") {
     console.warn(
-      `${toolName}: "${targetLabel(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
+      `${toolName}: "${pathPrefix(rack)}/${prefix}" resolves to a ${targetType}, not a device`,
     );
 
     return null;
@@ -171,7 +171,7 @@ function resolveDrumPadSampleTarget(
   force: boolean,
 ): LiveAPI | null {
   const { padNote, chainIndex } = slot;
-  const padLabel = `${targetLabel(rack)}/p${padNote}`;
+  const padLabel = `${pathPrefix(rack)}/p${padNote}`;
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 

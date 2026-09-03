@@ -108,7 +108,7 @@ describe("performSplitting when Live refuses a step", () => {
     const trackMock = splitWithFailure({ failOnDuplicate: 3 });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+      expect.stringContaining("Failed to cut segment 1 of clip t0 (id clip_1)"),
     );
     // 104 is the failed segment's own start: everything from there on goes back
     // as one clip, rather than that span being left empty.
@@ -130,7 +130,7 @@ describe("performSplitting when Live refuses a step", () => {
     const trackMock = splitWithFailure({ failOnDuplicate: 2 });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+      expect.stringContaining("Failed to cut segment 1 of clip t0 (id clip_1)"),
     );
     // 104, not 108: the tail covers the refused segment's span too.
     expect(dupPositions(trackMock).at(-1)).toBe(104);
@@ -142,7 +142,7 @@ describe("performSplitting when Live refuses a step", () => {
     const trackMock = splitWithFailure({ throwOnDuplicate: 2 });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to cut segment 1 of clip clip_1"),
+      expect.stringContaining("Failed to cut segment 1 of clip t0 (id clip_1)"),
     );
     expect(dupPositions(trackMock).at(-1)).toBe(104);
   });
@@ -203,7 +203,9 @@ describe("performSplitting when Live refuses a step", () => {
     ).not.toThrow();
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("arrangementSplit failed for clip clip_1"),
+      expect.stringContaining(
+        "arrangementSplit failed for clip t0 (id clip_1)",
+      ),
     );
     expect(dups.count).toBe(4);
   });

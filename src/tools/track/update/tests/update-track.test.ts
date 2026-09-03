@@ -485,7 +485,7 @@ describe("updateTrack", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested track t0 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested track t0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();
@@ -537,11 +537,11 @@ describe("updateTrack", () => {
       expect(consoleSpy).toHaveBeenCalledTimes(2);
       expect(consoleSpy).toHaveBeenNthCalledWith(
         1,
-        "Requested track t0 color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track t0 (id 123) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
       expect(consoleSpy).toHaveBeenNthCalledWith(
         2,
-        "Requested track t1 color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+        "Requested track t1 (id 456) color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();

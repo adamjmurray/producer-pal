@@ -23,7 +23,10 @@ import {
 } from "#src/tools/shared/clip/recreate-clip.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
-import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
   recreateIntoEmptySlot,
@@ -55,7 +58,9 @@ export function handleClipSlotMove({
   const srcSceneIndex = clip.sceneIndex;
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
-    console.warn(`could not determine slot position for clip ${clip.id}`);
+    console.warn(
+      `could not determine slot position for clip ${targetLabel(clip)}`,
+    );
     keepClip(clip, updatedClips, noteResult);
 
     return;
@@ -83,7 +88,7 @@ export function handleClipSlotMove({
 
   if (blocker != null) {
     console.warn(
-      `${clipIsMidi ? "MIDI" : "audio"} clip ${clip.id} was not moved: ${blocker}`,
+      `${clipIsMidi ? "MIDI" : "audio"} clip ${targetLabel(clip)} was not moved: ${blocker}`,
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -106,7 +111,7 @@ export function handleClipSlotMove({
 
   if (newClip == null) {
     console.warn(
-      `clip ${clip.id} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
+      `clip ${targetLabel(clip)} was not moved: no clip landed at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}, so the original was kept`,
     );
     keepClip(clip, updatedClips, noteResult);
 
@@ -115,7 +120,7 @@ export function handleClipSlotMove({
 
   if (destinationWasOccupied) {
     console.warn(
-      `clip ${clip.id} overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
+      `clip ${targetLabel(clip)} overwrote the existing clip at ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)}`,
     );
   }
 
@@ -149,7 +154,7 @@ export function handleArrangementToSlotMove({
   const blocker = arrangementToSlotBlocker(clip, toSlot);
 
   if (blocker != null) {
-    console.warn(`clip ${clip.id} was not moved: ${blocker}`);
+    console.warn(`clip ${targetLabel(clip)} was not moved: ${blocker}`);
     keepClip(clip, updatedClips, noteResult);
 
     return;
@@ -189,7 +194,7 @@ export function handleArrangementToSlotMove({
   if (newClip == null) return;
 
   console.warn(
-    `arrangement clip ${clip.id} was re-created at ${destPath}` +
+    `arrangement clip ${targetLabel(clip)} was re-created at ${destPath}` +
       (losses ? ` (${losses})` : ""),
   );
 
@@ -253,7 +258,7 @@ function destinationSlot(
   if (destClipSlot.exists()) return destClipSlot;
 
   console.warn(
-    `clip ${clip.id} was not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
+    `clip ${targetLabel(clip)} was not moved: destination ${slotPath(toSlot.trackIndex, toSlot.sceneIndex)} does not exist`,
   );
   keepClip(clip, updatedClips, noteResult);
 

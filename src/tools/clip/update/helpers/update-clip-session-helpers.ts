@@ -36,6 +36,10 @@ import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
 } from "./update-clip-slot-move-helpers.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * The param the caller used to name a destination, so a warning names one they
@@ -217,7 +221,7 @@ function claimDestination(
 
   if (claimant != null) {
     console.warn(
-      `clip ${clipId} was not moved: clip ${claimant} is already moving to ${slot}; name one slot per clip`,
+      `clip ${targetLabelForId(clipId)} was not moved: clip ${targetLabelForId(claimant)} is already moving to ${slot}; name one slot per clip`,
     );
 
     return;
@@ -254,8 +258,8 @@ function dropDestinationsHoldingBatchClips(
     if (!batchIds.has(occupant.id)) continue;
 
     console.warn(
-      `clip ${clipId} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
-        `${occupant.id}, which this call also updates; move that clip out in its own call first`,
+      `clip ${targetLabelForId(clipId)} was not moved: ${slotPath(trackIndex, sceneIndex)} holds clip ` +
+        `${targetLabel(occupant)}, which this call also updates; move that clip out in its own call first`,
     );
     destinationById.delete(clipId);
   }
@@ -374,7 +378,7 @@ function arrangementDestination(
   if ((clip.getProperty("is_arrangement_clip") as number) <= 0) {
     console.warn(
       `${destinationParam} "${formatObjectPath(destination)}" names an arrangement lane, so session clip ` +
-        `${clip.id} was not moved; name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
+        `${targetLabel(clip)} was not moved; name a clip slot ("t2/s3") to move it, or use ppal-duplicate to copy it into the arrangement`,
     );
 
     return null;

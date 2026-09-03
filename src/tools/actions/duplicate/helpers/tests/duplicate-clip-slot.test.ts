@@ -117,7 +117,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "MIDI clip 56 was not duplicated: track 1 is audio",
+      "MIDI clip t0/s0 (id 56) was not duplicated: track 1 is audio",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "audio clip 56 was not duplicated: track 1 is MIDI",
+      "audio clip t0/s0 (id 56) was not duplicated: track 1 is MIDI",
     );
   });
 
@@ -138,7 +138,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "MIDI clip 56 was not duplicated: track 1 is frozen",
+      "MIDI clip t0/s0 (id 56) was not duplicated: track 1 is frozen",
     );
     expect(sourceClipSlot.call).not.toHaveBeenCalled();
   });
@@ -161,7 +161,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0)).toBeNull();
     expect(capturedWarnings()).toContain(
-      "clip 56 was not duplicated: no clip landed at t1/s0",
+      "clip t0/s0 (id 56) was not duplicated: no clip landed at t1/s0",
     );
   });
 
@@ -175,7 +175,7 @@ describe("duplicateClipSlot", () => {
 
     expect(duplicateClipSlot(0, 0, 1, 0, "Copy")).toBeNull();
     expect(capturedWarnings()).toContain(
-      "clip 56 was not duplicated: no clip landed at t1/s0",
+      "clip t0/s0 (id 56) was not duplicated: no clip landed at t1/s0",
     );
     // The clip that was already there is not the copy, so it keeps its name.
     expect(occupant?.set).not.toHaveBeenCalled();
@@ -231,7 +231,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
 
     expect(result).toStrictEqual([{ id: COPY_ID, path: "t1/s0" }]);
     expect(capturedWarnings()).toContain(
-      "MIDI clip 56 was not duplicated: track 2 is frozen",
+      "MIDI clip t0/s0 (id 56) was not duplicated: track 2 is frozen",
     );
   });
 });

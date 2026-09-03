@@ -8,6 +8,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Deletes a track by its index
@@ -47,7 +48,7 @@ export function deleteTrackObject(
 
   if (Number.isNaN(trackIndex)) {
     console.warn(
-      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
+      `delete: no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;

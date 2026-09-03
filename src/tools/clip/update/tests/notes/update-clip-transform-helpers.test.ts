@@ -312,7 +312,7 @@ describe("update-clip-transform-helpers", () => {
       expect(result.noteCount).toBe(0);
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "transforms ignored: clip undefined has no notes",
+          "transforms ignored: clip id undefined has no notes to transform",
         ),
       );
       // Should NOT call remove_notes_extended or add_new_notes

@@ -462,15 +462,15 @@ function applySendList(
 }
 
 /**
- * Name a chain for a warning, falling back to its id when it has no name
+ * Name a chain for a warning, adding its Live name when it has one
  * @param chain - Chain or DrumChain LiveAPI object
- * @returns Label like `chain "Kick"`
+ * @returns Label like `chain "Kick" t0/d0/c1 (id 7)`
  */
 function chainLabel(chain: LiveAPI): string {
   const name = chain.getProperty("name") as string | undefined;
-  const path = targetLabel(chain);
+  const label = targetLabel(chain);
 
-  return name ? `chain "${name}" (${path})` : `chain ${path}`;
+  return name ? `chain "${name}" ${label}` : `chain ${label}`;
 }
 
 /**

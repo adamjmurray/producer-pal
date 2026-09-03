@@ -17,7 +17,10 @@ import {
   type ArrangementTrack,
   isTakeLaneClip,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
-import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { placeMovedClip } from "./update-clip-lane-move-helpers.ts";
 import { tallyMovedClip, type MoveGroup } from "./update-clip-move-groups.ts";
@@ -72,7 +75,7 @@ export function handleArrangementStartOperation({
 
   if (!isArrangementClip) {
     console.warn(
-      `arrangementStart parameter ignored for session clip (id ${clip.id})`,
+      `arrangementStart parameter ignored for session clip ${targetLabel(clip)}`,
     );
 
     return clip.id;
@@ -81,7 +84,9 @@ export function handleArrangementStartOperation({
   const sourceTrackIndex = clip.trackIndex;
 
   if (sourceTrackIndex == null) {
-    console.warn(`could not determine trackIndex for clip ${clip.id}`);
+    console.warn(
+      `could not determine trackIndex for clip ${targetLabel(clip)}`,
+    );
 
     return clip.id;
   }
@@ -102,7 +107,9 @@ export function handleArrangementStartOperation({
     if (clip.exists()) {
       removeMovedSource(clip, sourceTrack);
     } else {
-      console.warn(`non-survivor clip ${clip.id} already deleted, skipping`);
+      console.warn(
+        `non-survivor clip ${targetLabel(clip)} already deleted, skipping`,
+      );
     }
 
     return null;
@@ -120,7 +127,9 @@ export function handleArrangementStartOperation({
   // Verify duplicate succeeded before deleting original
   if (newClip == null || !newClip.exists()) {
     if (newClip != null) {
-      console.warn(`failed to duplicate clip ${clip.id} - original preserved`);
+      console.warn(
+        `failed to duplicate clip ${targetLabel(clip)} - original preserved`,
+      );
     }
 
     return clip.id;

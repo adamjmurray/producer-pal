@@ -17,6 +17,7 @@ import {
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   pathField,
+  pathPrefix,
   targetLabel,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { pathEntries } from "#src/tools/shared/validation/object-path-helpers.ts";
@@ -292,7 +293,7 @@ function copyChainDevices(chain: LiveAPI, created: LiveAPI): void {
 
       if (outcome !== "moved") {
         console.warn(
-          `duplicate: ${targetLabel(chain)}/d${index} could not be copied into the new chain`,
+          `duplicate: ${pathPrefix(chain)}/d${index} could not be copied into the new chain`,
         );
 
         break;

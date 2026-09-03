@@ -192,7 +192,7 @@ describe("playback ids that names no clip", () => {
       'playback failed: id "scene3" named no clip for action "play-session-clips"',
     );
     expect(warn).toHaveBeenCalledWith(
-      'playback: id "scene3" is not a clip (found Scene)',
+      "playback: s3 (id scene3) is not a clip (found Scene)",
     );
   });
 

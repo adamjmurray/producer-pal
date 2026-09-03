@@ -12,6 +12,10 @@ import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { markerBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
+import {
+  targetLabel,
+  targetLabelForId,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface BeatPositions {
   startBeats: number | null;
@@ -58,7 +62,7 @@ function determineStartMarker(
     }
 
     console.warn(
-      `firstStart ignored for clip ${clipId} - exceeds its content boundary (${firstStartBeats} >= ${endMarker})`,
+      `firstStart ignored for clip ${targetLabelForId(clipId)} - exceeds its content boundary (${firstStartBeats} >= ${endMarker})`,
     );
 
     return null;
@@ -152,7 +156,7 @@ export function calculateBeatPositions({
           Math.abs(startBeats - currentStart) > SAME_TIME_EPSILON
         ) {
           console.warn(
-            `clip ${clip.id}: derived start (${startBeats}) differs from current start_marker (${currentStart})`,
+            `clip ${targetLabel(clip)}: derived start (${startBeats}) differs from current start_marker (${currentStart})`,
           );
         }
       }

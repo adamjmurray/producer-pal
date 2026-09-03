@@ -267,7 +267,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'delete: id "scene_1" is not a track (found Scene)',
+      "delete: s0 (id scene_1) is not a track (found Scene)",
     );
   });
 
@@ -428,7 +428,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('no track index for id "track_0"'),
+      expect.stringContaining("no track index for id track_0"),
     );
     warnSpy.mockRestore();
   });
@@ -449,7 +449,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('no scene index for id "scene_0"'),
+      expect.stringContaining("no scene index for id scene_0"),
     );
     warnSpy.mockRestore();
   });
@@ -470,7 +470,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('no track index for id "clip_0"'),
+      expect.stringContaining("no track index for id clip_0"),
     );
     warnSpy.mockRestore();
   });

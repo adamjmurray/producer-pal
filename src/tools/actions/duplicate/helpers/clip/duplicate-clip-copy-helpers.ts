@@ -17,6 +17,7 @@ import {
 } from "../duplicate-helpers.ts";
 import { recreateClip } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ResolvedDuplicateLane } from "./duplicate-take-lane-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * One object per destination track, shared by every copy in the call. Copying
@@ -127,7 +128,7 @@ function recreateCopy(
     );
   } catch (error) {
     console.warn(
-      `duplicate: failed to create ${kind} copy of clip ${options.object.id} at beat ${options.startBeats}: ${errorMessage(error)}`,
+      `duplicate: failed to create ${kind} copy of clip ${targetLabel(options.object)} at beat ${options.startBeats}: ${errorMessage(error)}`,
     );
 
     return null;

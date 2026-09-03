@@ -201,7 +201,7 @@ describe("duplicate-track-scene-helpers", () => {
           expect.anything(),
         );
         expect(capturedWarnings()).toContain(
-          "duplicate: could not check the new track t1 for the Producer Pal device",
+          "duplicate: could not check the new track t1 (id live_set/tracks/1) for the Producer Pal device",
         );
       } finally {
         spy.mockRestore();
@@ -321,7 +321,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          'Could not find track "Source Track" in routing options',
+          'Could not find track "Source Track" t0 (id live_set/tracks/0) in routing options',
         ),
       );
     });
@@ -339,7 +339,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          'Could not route to "Source Track" due to duplicate track names',
+          'Could not route to "Source Track" t0 (id live_set/tracks/0) due to duplicate track names',
         ),
       );
     });
@@ -352,7 +352,7 @@ describe("duplicate-track-scene-helpers", () => {
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
         expectedMessage:
-          'Changed track "Source Track" input routing from "Audio In" to "No Input"',
+          'Changed track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input"',
       },
       {
         desc: "should warn when No Input routing option is not available",
@@ -360,7 +360,7 @@ describe("duplicate-track-scene-helpers", () => {
           { display_name: "Audio In", identifier: "audio_in_id" },
         ],
         expectedMessage:
-          'Tried to change track "Source Track" input routing from "Audio In" to "No Input" but could not find "No Input"',
+          'Tried to change track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input" but could not find "No Input"',
       },
     ])("$desc", ({ availableInputRouting, expectedMessage }) => {
       setupRoutingMocks(

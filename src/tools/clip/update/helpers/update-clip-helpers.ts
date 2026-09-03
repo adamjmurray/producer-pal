@@ -179,7 +179,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   } else {
     warnIgnoredParams(
       { gainDb, pitchShift, warpMode, warping },
-      `MIDI clip ${clip.id}`,
+      `MIDI clip ${targetLabel(clip)}`,
     );
   }
 
@@ -191,7 +191,7 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {
     console.warn(
-      `firstStart parameter ignored for non-looping clip ${clip.id}`,
+      `firstStart parameter ignored for non-looping clip ${targetLabel(clip)}`,
     );
   }
 
@@ -213,7 +213,9 @@ function updateOneClip(params: ProcessSingleClipUpdateParams): void {
     // note write throw (mirrors create-clip's guard) so a multi-clip batch
     // keeps going. Transforms are still applied above by handleAudioClipUpdate.
     if (notationString != null) {
-      console.warn(`notes parameter ignored for audio clip ${clip.id}`);
+      console.warn(
+        `notes parameter ignored for audio clip ${targetLabel(clip)}`,
+      );
     }
   }
 
@@ -429,6 +431,8 @@ function handleAudioClipUpdate(
   applyAudioTransforms(clip, params.transformString, clipContext);
 
   if (params.preTransformString != null) {
-    console.warn(`preTransforms parameter ignored for audio clip ${clip.id}`);
+    console.warn(
+      `preTransforms parameter ignored for audio clip ${targetLabel(clip)}`,
+    );
   }
 }

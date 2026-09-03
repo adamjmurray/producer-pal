@@ -16,6 +16,7 @@ import {
   canRecreateClip,
   recreatedClipLosses,
 } from "#src/tools/shared/clip/recreate-clip.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** A take lane this call resolved, and where it landed on the track. */
 export interface ResolvedDuplicateLane {
@@ -32,7 +33,6 @@ export interface ResolvedDuplicateLane {
  * the lanes already made. A destination that doesn't fit is warned and dropped
  * so the copies around it still run.
  * @param sourceClip - The clip being duplicated
- * @param id - Source clip ID (for messages)
  * @param targets - Destinations, in copy order
  * @param takeLaneName - Name for a take lane newly created by this call
  * @param tracks - The destination tracks, keyed by index
@@ -40,7 +40,6 @@ export interface ResolvedDuplicateLane {
  */
 export function resolveDuplicateTakeLanes(
   sourceClip: LiveAPI,
-  id: string,
   targets: ArrangementTrack[],
   takeLaneName: string | undefined,
   tracks: Map<number, LiveAPI> = new Map(),
@@ -61,7 +60,7 @@ export function resolveDuplicateTakeLanes(
   // never had one) can't go on a lane at all.
   if (!canRecreateClip(sourceClip)) {
     console.warn(
-      `duplicate: audio clip "${id}" has no sample file to rebuild it from, so it was not duplicated to a take lane`,
+      `duplicate: audio clip ${targetLabel(sourceClip)} has no sample file to rebuild it from, so it was not duplicated to a take lane`,
     );
 
     return new Map();

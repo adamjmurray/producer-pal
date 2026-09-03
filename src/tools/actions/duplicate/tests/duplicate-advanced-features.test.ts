@@ -106,7 +106,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 
     // Should warn about not finding the track
     expect(capturedWarnings()).toContain(
-      'Could not find track "NonExistentTrack" in routing options',
+      'Could not find track "NonExistentTrack" t0 (id track1) in routing options',
     );
 
     // Should not set output routing with NonExistentTrack identifier

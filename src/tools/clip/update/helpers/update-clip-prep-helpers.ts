@@ -24,6 +24,7 @@ import {
   resolveMoveDestinations,
   resolveRequestedClips,
 } from "./update-clip-session-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface ClipUpdatePlanArgs {
   /** Ids in call order, null where a path named no clip */
@@ -137,7 +138,7 @@ function applySplittingIfNeeded(
     // the split onto the main lane.
     if (isTakeLaneClip(clip)) {
       console.warn(
-        `${mode.param} ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+        `${mode.param} ignored for take-lane clip ${targetLabel(clip)}; split it in Live's UI`,
       );
 
       return false;

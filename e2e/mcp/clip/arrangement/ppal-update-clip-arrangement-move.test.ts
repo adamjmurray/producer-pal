@@ -86,7 +86,7 @@ describe("arrangement clip moved to another lane", () => {
     });
 
     expect(warnings.join(" ")).toContain(
-      `clip ${source.id} was re-created on t${CHILD_TRACK}/l`,
+      `clip ${source.path} (id ${source.id}) was re-created on t${CHILD_TRACK}/l`,
     );
     expect(moved.path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+$`));
 
@@ -106,7 +106,7 @@ describe("arrangement clip moved to another lane", () => {
       ctx.client!,
       source.id,
       { toPath: `t${AUDIO_TRACK}`, arrangementStart: "25|1" },
-      `clip ${source.id} was not moved: track ${AUDIO_TRACK} is audio`,
+      `clip ${source.path} (id ${source.id}) was not moved: track ${AUDIO_TRACK} is audio`,
     );
 
     expect(
@@ -125,7 +125,7 @@ describe("arrangement clip moved to another lane", () => {
     });
 
     expect(warnings.join(" ")).toContain(
-      `clip ${source.id} was emptied instead of deleted`,
+      `clip ${source.path} (id ${source.id}) was emptied instead of deleted`,
     );
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
@@ -155,7 +155,7 @@ describe("arrangement clip moved to another lane", () => {
     });
 
     expect(warnings.join(" ")).toContain(
-      `clip ${source.id} was muted instead of deleted`,
+      `clip ${source.path} (id ${source.id}) was muted instead of deleted`,
     );
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });

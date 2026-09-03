@@ -201,7 +201,7 @@ describe("duplicate - drum pad", () => {
     expectNoCopy(rack);
     expect(result).toStrictEqual([]);
     expect(consoleMock.warn).toHaveBeenCalledWith(
-      expect.stringContaining("t0/d0 is not a Drum Rack"),
+      expect.stringContaining("t0/d0 (id rack) is not a Drum Rack"),
     );
   });
 

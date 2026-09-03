@@ -19,8 +19,7 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { removeAllClipNotes } from "#src/tools/shared/clip/clip-notes.ts";
-import { arrangementPath } from "#src/tools/shared/validation/object-path-helpers.ts";
-import { takeLaneIndexOfClip } from "./take-lane-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** Marks the leftover so it reads as debris, not content. */
 const PLACEHOLDER_PREFIX = "(moved)";
@@ -31,14 +30,10 @@ const PLACEHOLDER_PREFIX = "(moved)";
  * @param clip - The take-lane clip whose content is being given up
  */
 export function emptyTakeLaneClip(clip: LiveAPI): void {
-  const sourceId = clip.id;
+  const label = targetLabel(clip);
   const isMidi = clip.getProperty("is_midi_clip") === 1;
   const placeholderName =
     `${PLACEHOLDER_PREFIX} ${clip.getProperty("name") as string}`.trim();
-  const lanePath = arrangementPath(
-    clip.trackIndex ?? 0,
-    takeLaneIndexOfClip(clip),
-  );
 
   if (isMidi) {
     removeAllClipNotes(clip);
@@ -47,8 +42,8 @@ export function emptyTakeLaneClip(clip: LiveAPI): void {
   clip.setAll({ name: placeholderName, muted: 1 });
 
   console.warn(
-    `clip ${sourceId} was ${isMidi ? "emptied" : "muted"} instead of deleted: Live's API can't remove a clip from a take lane` +
+    `clip ${label} was ${isMidi ? "emptied" : "muted"} instead of deleted: Live's API can't remove a clip from a take lane` +
       (isMidi ? "" : ", and an audio clip's sample can't be cleared") +
-      `. A muted "${placeholderName}" was left on ${lanePath} — delete it in Live's UI`,
+      `. A muted "${placeholderName}" was left there — delete it in Live's UI`,
   );
 }

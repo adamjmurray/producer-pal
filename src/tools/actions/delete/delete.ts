@@ -10,6 +10,7 @@ import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-de
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   namedIdParam,
@@ -247,7 +248,7 @@ function isRackChain(object: LiveAPI): boolean {
   if (object.type !== "Chain" && object.type !== "DrumChain") return false;
 
   console.warn(
-    `delete: id "${object.id}" is a ${object.type}. ` +
+    `delete: ${targetLabel(object)} is a ${object.type}. ` +
       (object.type === "DrumChain"
         ? `Use type="chain" for this chain, or type="drum-pad" for the whole pad.`
         : "Deleting rack chains is not supported."),
@@ -270,9 +271,11 @@ function isRackChain(object: LiveAPI): boolean {
  * @returns true if the object is gone, false if it survived
  */
 function confirmDeleted(type: string, id: string): boolean {
-  if (LiveAPI.from(id).exists()) {
+  const survivor = LiveAPI.from(id);
+
+  if (survivor.exists()) {
     console.warn(
-      `delete: ${type} "${id}" still exists, so Live did not delete it`,
+      `delete: ${type} ${targetLabel(survivor)} still exists, so Live did not delete it`,
     );
 
     return false;
@@ -292,7 +295,7 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
 
   if (Number.isNaN(sceneIndex)) {
     console.warn(
-      `delete: no scene index for id "${id}" (path="${object.path}"), skipping`,
+      `delete: no scene index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -321,7 +324,7 @@ function deleteClipObject(
   // them and there is no delete_take_lane) — the user must delete in Live's UI.
   if (isTakeLaneClip(object)) {
     console.warn(
-      `delete: cannot delete take-lane clip "${id}" via the API; remove it in Live's UI`,
+      `delete: cannot delete take-lane clip ${targetLabel(object)} via the API; remove it in Live's UI`,
     );
 
     return false;
@@ -331,7 +334,7 @@ function deleteClipObject(
 
   if (!trackIndex) {
     console.warn(
-      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
+      `delete: no track index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -424,7 +427,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   if (deviceMatches.length === 0) {
     console.warn(
-      `delete: could not find device index in path "${object.path}", skipping`,
+      `delete: no device index for ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -439,7 +442,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
   if (!parentPath) {
     console.warn(
-      `delete: could not extract parent path from device "${id}" (path="${object.path}"), skipping`,
+      `delete: no parent path for device ${targetLabel(object)} (Live path "${object.path}"), skipping`,
     );
 
     return false;
@@ -454,11 +457,10 @@ function deleteDeviceObject(id: string, object: LiveAPI): boolean {
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
- * @param id - The object ID
  * @param object - The object to delete
  * @returns true if the pad's chains are gone, false if any survived
  */
-function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
+function deleteDrumPadObject(object: LiveAPI): boolean {
   object.call("delete_all_chains");
 
   // The pad outlives its own delete, so there is no dead object to test for.
@@ -466,7 +468,7 @@ function deleteDrumPadObject(id: string, object: LiveAPI): boolean {
   // from a successful one.
   if (object.getChildCount("chains") > 0) {
     console.warn(
-      `delete: drum pad "${id}" still has chains, so Live did not clear it`,
+      `delete: drum pad ${targetLabel(object)} still has chains, so Live did not clear it`,
     );
 
     return false;
@@ -521,7 +523,7 @@ function deleteObjectByType(
   if (type === "scene") return deleteSceneObject(id, object);
   if (type === "clip") return deleteClipObject(id, object, tracks);
   if (type === "device") return deleteDeviceObject(id, object);
-  if (type === "drum-pad") return deleteDrumPadObject(id, object);
+  if (type === "drum-pad") return deleteDrumPadObject(object);
 
   return deleteDrumChain(id, object);
 }

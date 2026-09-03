@@ -187,7 +187,7 @@ describe("updateClip - Properties and ID handling", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "Requested clip id 123 color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+        "Requested clip t0/s0 (id 123) color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
       );
 
       consoleSpy.mockRestore();

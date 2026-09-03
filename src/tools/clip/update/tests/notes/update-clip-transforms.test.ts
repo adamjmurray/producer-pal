@@ -104,7 +104,7 @@ describe("updateClip - transforms (single string, broadcast across ids)", () => 
     });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to update clip 123"),
+      expect.stringContaining("Failed to update clip t0/s0 (id 123)"),
     );
   });
 });
@@ -124,8 +124,8 @@ describe("updateClip - transforms name the clip they warn about", () => {
     await updateClip({ ids: "123,456", transforms: "gain = 3" });
 
     expect(capturedWarnings()).toStrictEqual([
-      "clip id 123: Audio parameters (gain, pitchShift) ignored for MIDI clips",
-      "clip id 456: Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      "clip t0/s0 (id 123): Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      "clip t1/s1 (id 456): Audio parameters (gain, pitchShift) ignored for MIDI clips",
     ]);
   });
 });

@@ -164,7 +164,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        'updateDevice: param "999" not found on t0/d0',
+        'updateDevice: param "999" not found on t0/d0 (id 123)',
       );
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
@@ -421,7 +421,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: 'macroCount' not applicable to Device t0/d1",
+        "updateDevice: 'macroCount' not applicable to Device t0/d1 (id 456)",
       );
       expect(device456.call).not.toHaveBeenCalled();
       expect(result).toStrictEqual({ id: "456", path: "t0/d1" });
@@ -466,7 +466,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: macro count on t0/d0 rounded from 7 to 8 (macros come in pairs)",
+        "updateDevice: macro count on t0/d0 (id 123) rounded from 7 to 8 (macros come in pairs)",
       );
       expect(device123.call).toHaveBeenCalledTimes(2);
       expect(device123.call).toHaveBeenCalledWith("add_macro");
@@ -496,7 +496,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: A/B Compare not available on t0/d1",
+        "updateDevice: A/B Compare not available on t0/d1 (id 456)",
       );
       expect(device456.set).not.toHaveBeenCalled();
       expect(device456.call).not.toHaveBeenCalled();
@@ -619,7 +619,7 @@ describe("updateDevice", () => {
 
       // A plain Chain is neither a device nor a DrumChain: it cannot be moved.
       expect(capturedWarnings()).toContain(
-        "updateDevice: cannot move Chain t0/d0",
+        "updateDevice: cannot move Chain t0/d0 (id 123)",
       );
       expect(liveSet.call).not.toHaveBeenCalledWith(
         "move_device",
@@ -642,7 +642,7 @@ describe("updateDevice", () => {
       });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: cannot move Chain t0/d0",
+        "updateDevice: cannot move Chain t0/d0 (id 123)",
       );
       expect(result).toStrictEqual({ id: "123", path: "t0/d0" });
     });
@@ -701,7 +701,7 @@ describe("updateDevice", () => {
       const result = updateDevice({ id: "999", name: "Nope" });
 
       expect(capturedWarnings()).toContain(
-        "updateDevice: cannot update Track objects (t3)",
+        "updateDevice: cannot update Track objects: t3 (id 999)",
       );
       // Nothing is written to an unsupported object, and it drops from results.
       expect(result).toStrictEqual([]);

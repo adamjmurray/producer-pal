@@ -111,7 +111,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "arrangementLength parameter ignored for session clip (id 123)",
+      "arrangementLength parameter ignored for session clip t0/s0 (id 123)",
     );
 
     expect(track.call).not.toHaveBeenCalled();

@@ -195,7 +195,7 @@ describe("deleteObject drum-pad refusals", () => {
     });
     expect(chain.call).not.toHaveBeenCalledWith("delete_all_chains");
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: id "drum-chain-1" is a DrumChain. Use type="chain" for this ' +
+      'delete: t0/d0/c0 (id drum-chain-1) is a DrumChain. Use type="chain" for this ' +
         'chain, or type="drum-pad" for the whole pad.',
     );
   });
@@ -216,7 +216,7 @@ describe("deleteObject drum-pad refusals", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: id "chain-1" is a Chain. Deleting rack chains is not supported.',
+      "delete: t0/d0/c0 (id chain-1) is a Chain. Deleting rack chains is not supported.",
     );
   });
 
@@ -263,7 +263,7 @@ describe("deleteObject drum-pad refusals", () => {
       deleted: false,
     });
     expect(consoleSpy).toHaveBeenCalledWith(
-      'delete: drum pad "stuck-pad" still has chains, so Live did not clear it',
+      "delete: drum pad id stuck-pad still has chains, so Live did not clear it",
     );
   });
 

@@ -46,6 +46,7 @@ import {
   resolveArrangementPositions,
   resolveDestinationTargets,
 } from "../duplicate-validation-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Duplicates a clip to its resolved destinations
@@ -163,7 +164,6 @@ async function duplicateClipToArrangementPositions(
   // a capacity error partway through would strand the lanes already created.
   const lanes = resolveDuplicateTakeLanes(
     object,
-    id,
     targetTracks,
     takeLaneName,
     tracks,
@@ -179,7 +179,6 @@ async function duplicateClipToArrangementPositions(
 
   const canPromote = warnRecreatedCopyLimits(
     object,
-    id,
     targetTracks,
     arrangementLength,
     lanes,
@@ -296,7 +295,6 @@ function resolveSongPositions(
  * Per call, not per copy: a mixed toPath like "t1,t1/l0" would otherwise repeat
  * every warning for every position.
  * @param object - The source clip
- * @param id - ID of the source clip
  * @param targetTracks - Destination per copy
  * @param arrangementLength - The raw arrangementLength param
  * @param lanes - Take lanes resolved for this call
@@ -304,7 +302,6 @@ function resolveSongPositions(
  */
 function warnRecreatedCopyLimits(
   object: LiveAPI,
-  id: string,
   targetTracks: ArrangementTrack[],
   arrangementLength: string | undefined,
   lanes: Map<string, ResolvedDuplicateLane>,
@@ -325,12 +322,12 @@ function warnRecreatedCopyLimits(
     const losses = recreatedClipLosses(object);
 
     console.warn(
-      `duplicate: clip ${id} was promoted to the main lane by re-creating it` +
+      `duplicate: clip ${targetLabel(object)} was promoted to the main lane by re-creating it` +
         (losses ? ` (${losses})` : ""),
     );
   } else if (promotes) {
     console.warn(
-      `duplicate: promoting to the main lane re-creates the clip, so audio clip "${id}" with no sample file can't be promoted off its take lane; drag it in Live's UI`,
+      `duplicate: promoting to the main lane re-creates the clip, so audio clip ${targetLabel(object)} with no sample file can't be promoted off its take lane; drag it in Live's UI`,
     );
   }
 

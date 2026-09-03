@@ -182,7 +182,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "could not determine slot position for clip 123",
+      "could not determine slot position for clip id 123",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
@@ -211,7 +211,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "could not determine slot position for clip 123",
+      "could not determine slot position for clip id 123",
     );
   }
 
@@ -296,7 +296,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "clip 123 was not moved: destination t99/s99 does not exist",
+      "clip id 123 was not moved: destination t99/s99 does not exist",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ id: "123" });
@@ -312,7 +312,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "MIDI clip 123 was not moved: track 1 is audio",
+      "MIDI clip t0/s0 (id 123) was not moved: track 1 is audio",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
@@ -333,7 +333,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "MIDI clip 123 was not moved: track 17 is frozen",
+      "MIDI clip t0/s0 (id 123) was not moved: track 17 is frozen",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
@@ -364,7 +364,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "audio clip 123 was not moved: track 1 is MIDI",
+      "audio clip t0/s0 (id 123) was not moved: track 1 is MIDI",
     );
     expect(sourceSlot.call).not.toHaveBeenCalled();
     expect(updatedClips).toHaveLength(1);
@@ -386,7 +386,7 @@ describe("handleClipSlotMove", () => {
     );
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(capturedWarnings()).toContain(
-      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
+      "clip t0/s0 (id 123) was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
   });
@@ -404,7 +404,7 @@ describe("handleClipSlotMove", () => {
 
     expect(sourceSlot.call).not.toHaveBeenCalledWith("delete_clip");
     expect(capturedWarnings()).toContain(
-      "clip 123 was not moved: no clip landed at t1/s2, so the original was kept",
+      "clip t0/s0 (id 123) was not moved: no clip landed at t1/s2, so the original was kept",
     );
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toStrictEqual({ path: "t0/s0", id: "123" });
@@ -440,7 +440,7 @@ describe("handleClipSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "clip 123 overwrote the existing clip at t0/s1",
+      "clip t0/s0 (id 123) overwrote the existing clip at t0/s1",
     );
     expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
@@ -582,7 +582,7 @@ describe("handlePositionOperations", () => {
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        'toPath "t4" names an arrangement lane, so session clip 789 was not moved',
+        'toPath "t4" names an arrangement lane, so session clip id 789 was not moved',
       ),
     );
     expect(handleArrangementOperations).toHaveBeenCalledWith(

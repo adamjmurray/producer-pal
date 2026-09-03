@@ -76,7 +76,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
 
       // Live drops writes to an empty pad, so there is nothing to report.
       expect(capturedWarnings()).toContain(
-        'updateDevice: drum pad "t0/d0/pC1" has no chains, so there is ' +
+        "updateDevice: drum pad t0/d0/pC1 (id 790) has no chains, so there is " +
           "nothing to update — Live ignores writes to an empty pad",
       );
       expect(drumPad.set).not.toHaveBeenCalled();
@@ -596,7 +596,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     expect(destinationVolume.set).toHaveBeenCalledWith("display_value", -15);
     // Announced, because the caller asked to move a device, not to set a fader.
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) carried onto the destination chain, which was empty and at defaults',
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("stays behind"),
@@ -619,7 +619,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -671,7 +671,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(destinationVolume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15) stays behind — reapply on the destination chain with update-device gainDb/pan/sendGainDb+sendReturn',
     );
   });
 
@@ -709,7 +709,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
 
     expect(destinationSend.set).toHaveBeenCalledWith("display_value", -12);
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" (t0/d0/c0) trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim (gainDb -15, 1 send) carried onto the destination chain, which was empty and at defaults',
     );
   });
 
@@ -727,7 +727,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      'chain "Trimmed" (t0/d0/c0) trim could not be carried onto the destination chain — it stays on the chain the device left',
+      'chain "Trimmed" t0/d0/c0 (id chain-0) trim could not be carried onto the destination chain — it stays on the chain the device left',
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("carried onto the destination chain, which was"),
@@ -751,7 +751,7 @@ describe("updateDevice - moving a device out of a trimmed chain", () => {
     updateDevice({ id: "device-0", toPath: "t0/d0/c1" });
 
     expect(capturedWarnings()).toContain(
-      "Live refused the move of t0/d0/c0/d0",
+      "Live refused the move of t0/d0/c0/d0 (id device-0)",
     );
     expect(destinationVolume.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).not.toContainEqual(

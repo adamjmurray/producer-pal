@@ -96,10 +96,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     await updateClip({ path: "t9/s9,t1/s1", toPath: "t5/s0,t5/s1" });
 
     expect(capturedWarnings()).toContain(
-      "clip 456 was not moved: destination t5/s1 does not exist",
+      "clip t1/s1 (id 456) was not moved: destination t5/s1 does not exist",
     );
     expect(capturedWarnings()).not.toContain(
-      "clip 456 was not moved: destination t5/s0 does not exist",
+      "clip t1/s1 (id 456) was not moved: destination t5/s0 does not exist",
     );
   });
 
@@ -156,10 +156,10 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     await updateClip({ id: "456", path: "t1/s1", toPath: "t5/s0,t5/s1" });
 
     expect(capturedWarnings()).toContain(
-      "clip 456 was not moved: destination t5/s0 does not exist",
+      "clip t1/s1 (id 456) was not moved: destination t5/s0 does not exist",
     );
     expect(capturedWarnings()).not.toContain(
-      "clip 456 was not moved: destination t5/s1 does not exist",
+      "clip t1/s1 (id 456) was not moved: destination t5/s1 does not exist",
     );
   });
 
@@ -180,7 +180,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     })) as Array<{ id: string; path?: string }>;
 
     expect(capturedWarnings()).toContain(
-      "clip 123 was not moved: t1/s1 holds clip 456, which this call also " +
+      "clip t0/s0 (id 123) was not moved: t1/s1 holds clip t1/s1 (id 456), which this call also " +
         "updates; move that clip out in its own call first",
     );
     // Nothing was copied out of t0/s0, so clip456 is still there to move itself.
@@ -202,10 +202,14 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     await updateClip({ path: "t0/s0,t1/s1", toPath: "t1/s1,t0/s0" });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("clip 123 was not moved: t1/s1 holds clip 456"),
+      expect.stringContaining(
+        "clip t0/s0 (id 123) was not moved: t1/s1 holds clip t1/s1 (id 456)",
+      ),
     );
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("clip 456 was not moved: t0/s0 holds clip 123"),
+      expect.stringContaining(
+        "clip t1/s1 (id 456) was not moved: t0/s0 holds clip t0/s0 (id 123)",
+      ),
     );
 
     for (const slot of slots.values()) {
@@ -236,7 +240,7 @@ describe("updateClip - pairing ids, paths, and destinations", () => {
     // The second clip stayed put, so its path is still its own slot.
     expect(result[1]).toStrictEqual({ id: "456", path: "t1/s1" });
     expect(capturedWarnings()).toContain(
-      "clip 456 was not moved: clip 123 is already moving to t1/s2; " +
+      "clip t1/s1 (id 456) was not moved: clip t0/s0 (id 123) is already moving to t1/s2; " +
         "name one slot per clip",
     );
     expect(slots.get("t1/s1")?.call).not.toHaveBeenCalledWith(

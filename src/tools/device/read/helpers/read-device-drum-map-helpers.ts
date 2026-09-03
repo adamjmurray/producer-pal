@@ -11,6 +11,7 @@ import {
   getDrumMap,
   type DeviceWithDrumPads,
 } from "#src/tools/shared/device/device-reader.ts";
+import { resultLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 export interface DrumMapPostProcessOptions {
   /** Whether a drum map was asked for, including via `include: ["*"]` */
@@ -128,7 +129,7 @@ function warnNoDrumMap(
   const kind = result.type == null ? "drum pad" : "drum chain";
 
   console.warn(
-    `readDevice: a ${kind} has no drum map of its own — read its drum rack for the kit's map`,
+    `readDevice: ${resultLabel(result)} is a ${kind} and has no drum map of its own — read its drum rack for the kit's map`,
   );
 }
 

@@ -38,7 +38,6 @@ import {
 } from "#src/tools/shared/validation/name-utils.ts";
 import {
   moveDeviceToPath,
-  moveDrumChainToPath,
   stripReturnChainLetter,
   // updateCollapsedState, // Kept for potential future use
 } from "./helpers/update-device-helpers.ts";
@@ -59,6 +58,7 @@ import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 import { type ListEntries } from "#src/tools/shared/validation/lists/list-pairing.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import { targetCount } from "#src/tools/shared/validation/lists/target-lists.ts";
+import { moveDrumChainToPath } from "./helpers/update-device-drum-move-helpers.ts";
 
 interface UpdateDeviceArgs extends UpdateTargetOptions {
   id?: string;
@@ -430,7 +430,7 @@ function updateTarget(
   // Validate type is updatable
   if (!isValidUpdateType(type)) {
     console.warn(
-      `updateDevice: cannot update ${type} objects (${targetLabel(target)})`,
+      `updateDevice: cannot update ${type} objects: ${targetLabel(target)}`,
     );
 
     return null;

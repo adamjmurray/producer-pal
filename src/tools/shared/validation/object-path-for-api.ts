@@ -65,19 +65,85 @@ export function pathField(api: LiveAPI): { path?: string } {
 }
 
 /**
- * How a warning names the object it was working on, so two firings of the same
- * reason are tellable apart. A clip is named by id — an arrangement clip's path
- * names the lane it shares with every other clip there.
+ * How a warning names the object it was working on. Both spellings, always: the
+ * model addressed the object by one of them and can't be expected to map the
+ * other back, and an arrangement clip needs both anyway — its path names the
+ * lane it shares with every other clip there.
  * @param api - The object the warning is about
- * @returns Its path (`t1/d0`), or `id 7` when it has no path to spell
+ * @returns `t1/d0 (id 7)`, or `id 7` alone when the grammar can't spell a path
  */
 export function targetLabel(api: LiveAPI): string {
-  const path = api.type === "Clip" ? undefined : objectPathForApi(api);
+  return spellTarget(objectPathForApi(api), api.id);
+}
 
-  return path ?? `id ${api.id}`;
+/**
+ * {@link targetLabel} for an object already read into a result, which carries
+ * both spellings itself.
+ * @param result - A tool result, with an `id` and the `path` it spells
+ * @returns `t1/d0 (id 7)`, or `id 7` alone when the result has no path
+ */
+export function resultLabel(result: { id?: unknown; path?: unknown }): string {
+  return spellTarget(
+    typeof result.path === "string" ? result.path : undefined,
+    String(result.id),
+  );
+}
+
+/**
+ * How a warning names a target the caller addressed by path, which may not have
+ * resolved to anything. Both spellings when it did — falling back to the
+ * caller's path for an object the grammar can't spell — and the caller's own,
+ * quoted, when it resolved to nothing: there is no id for what isn't there.
+ * @param api - The object the path resolved to, if any
+ * @param written - The path as the caller wrote it
+ * @returns `t1/d0 (id 7)`, or the written path in quotes
+ */
+export function pathTargetLabel(
+  api: LiveAPI | null | undefined,
+  written: string,
+): string {
+  if (api == null) return `"${written}"`;
+
+  return spellTarget(objectPathForApi(api) ?? written, api.id);
+}
+
+/**
+ * {@link targetLabel} for an object a caller has only the id of. The lookup
+ * costs a Live API call, so don't reach for it where the object is at hand.
+ *
+ * A dead id reports itself as 0, so the caller's own id is kept when the lookup
+ * lands nowhere — better a stale id than a wrong one.
+ * @param id - The object's Live API id
+ * @returns `t1/d0 (id 7)`, or `id 7` alone when it has no path to spell
+ */
+export function targetLabelForId(id: string): string {
+  const api = LiveAPI.from(id);
+
+  return api.exists() ? targetLabel(api) : `id ${id}`;
+}
+
+/**
+ * The parent half of a path a warning spells out for a child that has no id of
+ * its own — a drum pad, a device slot a copy failed to fill. Not
+ * {@link targetLabel}: another segment can't be appended past its id.
+ * @param api - The object the child hangs off
+ * @returns Its path (`t1/d0`), or `id 7` when it has no path to spell
+ */
+export function pathPrefix(api: LiveAPI): string {
+  return objectPathForApi(api) ?? `id ${api.id}`;
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The one spelling every warning names a target by.
+ * @param path - The object's path, if the grammar spells one
+ * @param id - The object's Live API id
+ * @returns `t1/d0 (id 7)`, or `id 7` alone
+ */
+function spellTarget(path: string | undefined, id: string): string {
+  return path == null ? `id ${id}` : `${path} (id ${id})`;
+}
 
 /**
  * The path a device-chain object spells. A pad is asked its own note rather

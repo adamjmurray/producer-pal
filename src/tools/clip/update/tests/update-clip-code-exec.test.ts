@@ -137,7 +137,9 @@ describe("updateClip - code execution", () => {
 
     // Should emit a warning via console.warn (routed through outlet)
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Code execution failed for clip 123"),
+      expect.stringContaining(
+        "Code execution failed for clip t0/s0 (id 123): SyntaxError: Unexpected token",
+      ),
     );
 
     // Should still return a result with current note count
@@ -164,7 +166,9 @@ describe("updateClip - code execution", () => {
     ]);
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Code execution failed for clip 456"),
+      expect.stringContaining(
+        "Code execution failed for clip t1/s1 (id 456): Runtime error",
+      ),
     );
   });
 

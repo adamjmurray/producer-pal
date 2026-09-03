@@ -13,6 +13,7 @@ import {
 } from "#src/tools/clip/helpers/audio-clip-properties.ts";
 import { applyAudioClipWarping } from "#src/tools/clip/helpers/audio-clip-warping.ts";
 import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface AudioParams extends AudioClipProperties {
   /** Audio clip warping on/off */
@@ -69,7 +70,7 @@ export function forceWarpForLooping(
   // here except say the flag was ignored.
   if (warping === false) {
     console.warn(
-      `warping: false ignored for clip ${clip.id} - looping: true forces warping on`,
+      `warping: false ignored for clip ${targetLabel(clip)} - looping: true forces warping on`,
     );
   }
 
@@ -152,7 +153,7 @@ export function handleWarpMarkerOperation(
 
   if (!hasAudioFile) {
     console.warn(
-      `warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+      `warp markers only available on audio clips (clip ${targetLabel(clip)} is MIDI or empty)`,
     );
 
     return;

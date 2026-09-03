@@ -45,7 +45,7 @@ export function resolveSourcePad(pad: LiveAPI): PadTarget | null {
   // caller named. Make them say which pad.
   if (pad.type !== "DrumPad") {
     console.warn(
-      `duplicate: id "${pad.id}" is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
+      `duplicate: ${targetLabel(pad)} is a ${pad.type}, not a drum pad; use the id ppal-read-device lists on the pad itself`,
     );
 
     return null;
@@ -237,7 +237,7 @@ function finishPadCopy(
   // occupied pad. Say so, because the pad now plays both.
   if (chainsBefore > 0) {
     console.warn(
-      `duplicate: drum pad "${toPath}" already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
+      `duplicate: drum pad ${targetLabel(pad)} already had ${chainsBefore} chain(s), so the copy layers on top of them rather than replacing them`,
     );
   }
 

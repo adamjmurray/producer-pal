@@ -24,6 +24,7 @@ import {
   arrangementPath,
   slotPath,
 } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
@@ -226,7 +227,7 @@ export async function createClipsForLength(
     // phantom clip, matching the no-length path and the arrangement-tiling guards.
     if (!newClip.exists()) {
       console.warn(
-        `Failed to duplicate clip ${sourceClip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        `Failed to duplicate clip ${targetLabel(sourceClip)} to arrangement at ${arrangementStartBeats}, skipping`,
       );
 
       return duplicatedClips;
@@ -407,7 +408,7 @@ export async function duplicateClipToArrangement(
       duplicatedClips.push(getMinimalClipInfo(newClip));
     } else {
       console.warn(
-        `Failed to duplicate clip ${clip.id} to arrangement at ${arrangementStartBeats}, skipping`,
+        `Failed to duplicate clip ${targetLabel(clip)} to arrangement at ${arrangementStartBeats}, skipping`,
       );
     }
   }

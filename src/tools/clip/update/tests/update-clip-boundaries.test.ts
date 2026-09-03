@@ -86,7 +86,7 @@ describe("updateClip - Clip boundaries (shortening)", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      "firstStart parameter ignored for non-looping clip 123",
+      "firstStart parameter ignored for non-looping clip t0/s0 (id 123)",
     );
 
     expect(result).toStrictEqual({ id: "123", path: "t0/s0" });

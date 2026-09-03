@@ -194,7 +194,7 @@ describe("duplicate - track duplication", () => {
     );
     // ...and the removal is reported to the user.
     expect(capturedWarnings()).toContain(
-      "duplicate: removed the Producer Pal device from the new track t1 - it cannot be duplicated",
+      "duplicate: removed the Producer Pal device from the new track t1 (id live_set/tracks/1) - it cannot be duplicated",
     );
   });
 
@@ -248,7 +248,7 @@ describe("duplicate - track duplication", () => {
         JSON.stringify({ input_routing_type: { identifier: "no_input_id" } }),
       );
       expect(capturedWarnings()).toContain(
-        'Changed track "Source Track" input routing from "Audio In" to "No Input"',
+        'Changed track "Source Track" t0 (id live_set/tracks/0) input routing from "Audio In" to "No Input"',
       );
 
       // New track output is routed to the (single-name-match) source track.
@@ -298,7 +298,7 @@ describe("duplicate - track duplication", () => {
         expect.anything(),
       );
       expect(capturedWarnings()).toContain(
-        'Could not find track "Source Track" in routing options',
+        'Could not find track "Source Track" t0 (id live_set/tracks/0) in routing options',
       );
     });
 
@@ -385,7 +385,7 @@ describe("duplicate - track duplication", () => {
 
       // It wasn't already armed, so the arm action is reported.
       expect(capturedWarnings()).toContain(
-        "routeToSource: Armed the source track",
+        "routeToSource: armed the source track t0 (id live_set/tracks/0)",
       );
     });
 
@@ -408,7 +408,7 @@ describe("duplicate - track duplication", () => {
 
       // Verify the arm warning was NOT emitted since it was already armed
       expect(capturedWarnings()).not.toContain(
-        "routeToSource: Armed the source track",
+        "routeToSource: armed the source track t0 (id live_set/tracks/0)",
       );
     });
   });

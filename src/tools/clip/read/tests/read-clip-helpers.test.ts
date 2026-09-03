@@ -105,7 +105,7 @@ describe("processWarpMarkers", () => {
 
     expect(result).toBeUndefined();
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Failed to read warp markers for clip clip1"),
+      expect.stringContaining("Failed to read warp markers for clip id clip1"),
     );
   });
 });

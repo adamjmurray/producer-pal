@@ -133,7 +133,7 @@ describe("updateDevice - moving a drum chain", () => {
 
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        'drum pad "t0/d0/pD1" already had 1 chain(s), so the move layers',
+        "drum pad t0/d0/pD1 (id pad-38) already had 1 chain(s), so the move layers",
       ),
     );
     // The move still happens — the warning is what the caller was missing.

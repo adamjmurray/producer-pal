@@ -5,15 +5,16 @@
 
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { type DrumPadGroup } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
-import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
-  moveDrumChainToPath,
-  stripReturnChainLetter,
-} from "./update-device-helpers.ts";
+  pathField,
+  pathTargetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
+import { stripReturnChainLetter } from "./update-device-helpers.ts";
 import {
   type UpdateTargetOptions,
   updateNonDeviceProperties,
 } from "./update-device-property-helpers.ts";
+import { moveDrumChainToPath } from "./update-device-drum-move-helpers.ts";
 
 // Settings that belong to one layer. Writing one absolute value to every layer
 // of a stacked pad flattens the balance between them, and `name` has no pad-wide
@@ -65,13 +66,14 @@ export function updateDrumPadGroup(
   options: UpdateTargetOptions,
 ): DrumPadUpdateResult | null {
   const { pad, chains } = group;
+  const padLabel = pathTargetLabel(pad, padPath);
 
   // Live drops every write to a pad with no chains — `set` returns 1 and the
   // read-back stays 0 — so there is nothing here to write, and saying the
   // write landed would be a lie.
   if (chains.length === 0) {
     console.warn(
-      `updateDevice: drum pad "${padPath}" has no chains, so there is nothing ` +
+      `updateDevice: drum pad ${padLabel} has no chains, so there is nothing ` +
         `to update — Live ignores writes to an empty pad`,
     );
 
@@ -79,7 +81,9 @@ export function updateDrumPadGroup(
   }
 
   const applicable =
-    chains.length > 1 ? dropPerLayerProps(options, padPath, chains) : options;
+    chains.length > 1
+      ? dropPerLayerProps(options, padPath, padLabel, chains)
+      : options;
 
   // mute/solo go to the DrumPad where there is one: Live broadcasts them to the
   // pad's chains itself, and reads them back aggregated.
@@ -160,12 +164,14 @@ function broadcastOnly(options: UpdateTargetOptions): UpdateTargetOptions {
  * paths to use instead.
  * @param options - Update options
  * @param padPath - The pad path as written, e.g. "t0/d0/pC1"
+ * @param padLabel - How the warning names the pad
  * @param chains - The pad's chains
  * @returns Options with the per-layer properties removed
  */
 function dropPerLayerProps(
   options: UpdateTargetOptions,
   padPath: string,
+  padLabel: string,
   chains: LiveAPI[],
 ): UpdateTargetOptions {
   const skipped = PER_LAYER_PROPS.filter((key) => options[key] != null);
@@ -177,7 +183,7 @@ function dropPerLayerProps(
     .join(", ");
 
   console.warn(
-    `updateDevice: "${padPath}" has ${chains.length} layers, so per-layer ` +
+    `updateDevice: ${padLabel} has ${chains.length} layers, so per-layer ` +
       `settings (${skipped.join(", ")}) were skipped. ` +
       `Set them on ${chainPaths}.`,
   );

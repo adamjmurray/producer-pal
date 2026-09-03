@@ -15,6 +15,7 @@ import { copyClipToSlot } from "#src/tools/shared/clip/copy-clip-to-slot.ts";
 import { recreateClipInSlot } from "#src/tools/shared/clip/recreate-clip.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /** What trying to build the replacement clip found. */
 type RecreateAttempt =
@@ -190,14 +191,16 @@ function recreateViaScratchSlot(
 
   if (newClip == null) {
     console.warn(
-      `clip ${clip.id} was not moved: the copy onto ${destPath} did not land. The clip there and the source clip are both untouched.`,
+      `clip ${targetLabel(clip)} was not moved: the copy onto ${destPath} did not land. The clip there and the source clip are both untouched.`,
     );
     keepClip(clip, updatedClips, noteResult);
 
     return null;
   }
 
-  console.warn(`clip ${clip.id} overwrote the existing clip at ${destPath}`);
+  console.warn(
+    `clip ${targetLabel(clip)} overwrote the existing clip at ${destPath}`,
+  );
 
   return newClip;
 }
@@ -226,7 +229,9 @@ function recreateOverOccupant(
   const attempt = attemptRecreate(clip, destClipSlot);
 
   if (attempt.ok) {
-    console.warn(`clip ${clip.id} overwrote the existing clip at ${destPath}`);
+    console.warn(
+      `clip ${targetLabel(clip)} overwrote the existing clip at ${destPath}`,
+    );
 
     return attempt.clip;
   }
@@ -266,6 +271,6 @@ function reportMoveFailure(
         : "";
 
   console.warn(
-    `clip ${clip.id} was not moved: ${outcome}.${occupantNote} The source clip in the arrangement is untouched.`,
+    `clip ${targetLabel(clip)} was not moved: ${outcome}.${occupantNote} The source clip in the arrangement is untouched.`,
   );
 }

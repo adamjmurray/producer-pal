@@ -97,7 +97,9 @@ describe("updateClip - deadline exceeded", () => {
 
     // A bare count doesn't say which id to re-run.
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Not updated: 456. Re-run for those ids."),
+      expect.stringContaining(
+        "Not updated: t1/s1 (id 456). Re-run for those clips.",
+      ),
     );
   });
 

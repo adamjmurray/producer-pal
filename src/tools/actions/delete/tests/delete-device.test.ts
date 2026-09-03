@@ -193,7 +193,7 @@ describe("deleteObject device deletion", () => {
     );
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        'could not find device index in path "invalid_path_without_devices"',
+        'no device index for id bad_device (Live path "invalid_path_without_devices")',
       ),
     );
     warnSpy.mockRestore();
@@ -214,7 +214,7 @@ describe("deleteObject device deletion", () => {
     });
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        'could not find device index in path "invalid_path_without_devices"',
+        'no device index for id device_0 (Live path "invalid_path_without_devices")',
       ),
     );
     warnSpy.mockRestore();

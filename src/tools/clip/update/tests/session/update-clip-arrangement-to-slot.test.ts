@@ -19,6 +19,10 @@ const SOURCE_TRACK = 0;
 const DEST_TRACK = 1;
 const DEST_SCENE = 2;
 const SOURCE_ID = "123";
+/** How a warning names the source clip: both spellings, per ADR-0009. */
+const SOURCE = `t${SOURCE_TRACK} (id ${SOURCE_ID})`;
+/** Same, for the tests whose source sits on a take lane. */
+const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0 (id ${SOURCE_ID})`;
 const NEW_ID = "456";
 const OCCUPANT_ID = "789";
 /** Id of the clip built in a scratch slot before it's swapped onto the destination */
@@ -271,7 +275,7 @@ describe("handleArrangementToSlotMove", () => {
     runMove({ hasEnvelopes: 1 });
 
     expect(capturedWarnings()).toContain(
-      `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
+      `arrangement clip ${SOURCE} was re-created at t${DEST_TRACK}/s${DEST_SCENE} (automation envelopes aren't copied)`,
     );
   });
 
@@ -280,7 +284,7 @@ describe("handleArrangementToSlotMove", () => {
     runMove();
 
     expect(capturedWarnings()).toContain(
-      `arrangement clip ${SOURCE_ID} was re-created at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `arrangement clip ${SOURCE} was re-created at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
   });
 
@@ -291,7 +295,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
   });
 
@@ -312,7 +316,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
     expect(updatedClips).toStrictEqual([
       { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
@@ -341,7 +345,7 @@ describe("handleArrangementToSlotMove", () => {
       "delete_clip",
     );
     expect(capturedWarnings()).toContain(
-      `clip 123 overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
+      `clip ${SOURCE} overwrote the existing clip at t${DEST_TRACK}/s${DEST_SCENE}`,
     );
     expect(updatedClips).toStrictEqual([
       { id: NEW_ID, path: `t${DEST_TRACK}/s${DEST_SCENE}` },
@@ -355,7 +359,7 @@ describe("handleArrangementToSlotMove", () => {
     const updatedClips = runMove({ destHasClip: 1, incompleteCreate: true });
 
     const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE_ID} was not moved`),
+      w.includes(`clip ${SOURCE} was not moved`),
     );
 
     expect(warning).toContain("incomplete clip is there now");
@@ -377,11 +381,11 @@ describe("handleArrangementToSlotMove", () => {
     });
 
     const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE_ID} was not moved`),
+      w.includes(`clip ${SOURCE} was not moved`),
     );
 
     expect(warning).toBe(
-      `clip ${SOURCE_ID} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip - an audio clip needs an audio track). The source clip in the arrangement is untouched.`,
+      `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE} (Live created no clip - an audio clip needs an audio track). The source clip in the arrangement is untouched.`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
@@ -400,7 +404,7 @@ describe("handleArrangementToSlotMove", () => {
     );
 
     const warning = capturedWarnings().find((w) =>
-      w.includes(`clip ${SOURCE_ID} was not moved`),
+      w.includes(`clip ${SOURCE} was not moved`),
     );
 
     expect(warning).toContain(`t${DEST_TRACK}/s0`);
@@ -425,7 +429,7 @@ describe("handleArrangementToSlotMove", () => {
     );
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE_ID} was not moved: the copy onto t${DEST_TRACK}/s${DEST_SCENE} did not land`,
+        `clip ${SOURCE} was not moved: the copy onto t${DEST_TRACK}/s${DEST_SCENE} did not land`,
       ),
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
@@ -448,7 +452,7 @@ describe("handleArrangementToSlotMove", () => {
     );
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE_ID} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE}`,
+        `clip ${SOURCE} was not moved: create failed at t${DEST_TRACK}/s${DEST_SCENE}`,
       ),
     );
     expect(capturedWarnings()).toContainEqual(
@@ -488,7 +492,7 @@ describe("handleArrangementToSlotMove", () => {
     expect(source?.set).toHaveBeenCalledWith("muted", 1);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        `clip ${SOURCE_ID} was emptied instead of deleted`,
+        `clip ${SOURCE_ON_LANE} was emptied instead of deleted`,
       ),
     );
   });
@@ -510,7 +514,7 @@ describe("handleArrangementToSlotMove", () => {
     const updatedClips = runMove(opts);
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining(`clip ${SOURCE_ID} was not moved: ${expected}`),
+      expect.stringContaining(`clip ${SOURCE} was not moved: ${expected}`),
     );
     expect(lookupMockObject("dest_slot")?.call).not.toHaveBeenCalled();
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
@@ -520,7 +524,7 @@ describe("handleArrangementToSlotMove", () => {
     const updatedClips = runMove({ destSlotExists: false });
 
     expect(capturedWarnings()).toContain(
-      `clip 123 was not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
+      `clip ${SOURCE} was not moved: destination t${DEST_TRACK}/s${DEST_SCENE} does not exist`,
     );
     expect(
       lookupMockObject(`track_${SOURCE_TRACK}`)?.call,
@@ -545,7 +549,7 @@ describe("handleArrangementToSlotMove", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      `clip ${SOURCE_ID} was not moved: could not determine its track`,
+      `clip id ${SOURCE_ID} was not moved: could not determine its track`,
     );
     expect(updatedClips[0]?.id).toBe(SOURCE_ID);
   });
