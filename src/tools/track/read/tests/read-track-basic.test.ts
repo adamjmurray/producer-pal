@@ -356,6 +356,7 @@ describe("readTrack", () => {
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
+        start_time: 0,
       },
     });
     registerMockObject("arr_clip2", {
@@ -363,6 +364,7 @@ describe("readTrack", () => {
       type: "Clip",
       properties: {
         is_arrangement_clip: 1,
+        start_time: 16,
       },
     });
 
@@ -371,11 +373,18 @@ describe("readTrack", () => {
       include: ["arrangement-clips"],
     });
 
-    const arrangementClips = result.arrangementClips as Array<{ id: string }>;
+    const arrangementClips = result.arrangementClips as Array<{
+      id: string;
+      path: string;
+    }>;
 
     expect(arrangementClips).toHaveLength(2);
     expect(arrangementClips[0]!.id).toBe("arr_clip1");
     expect(arrangementClips[1]!.id).toBe("arr_clip2");
+    // The path is where the clip starts, so it survives the strip that drops
+    // what the parent track already said.
+    expect(arrangementClips[0]!.path).toBe("t2[1|1]");
+    expect(arrangementClips[1]!.path).toBe("t2[5|1]");
   });
 
   it("returns sessionClipCount when session-clips is not included", () => {

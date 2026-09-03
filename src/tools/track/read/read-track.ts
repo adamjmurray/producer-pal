@@ -400,10 +400,10 @@ export function readTrackGeneric({
   addProducerPalHostInfo(result, isProducerPalHost);
 
   // Strip fields from nested clips that are redundant with parent track
-  // context. A session clip keeps its path — "t0/s3" addresses that one clip.
-  // An arrangement clip's is just the track's own path, repeated per clip.
+  // context. Every clip keeps its path: "t0/s3" and "t0[5|1]" each address one
+  // clip, which the track's own path doesn't.
   stripFields(result.sessionClips as unknown[], "view", "type");
-  stripFields(result.arrangementClips as unknown[], "path", "view", "type");
+  stripFields(result.arrangementClips as unknown[], "view", "type");
 
   return result;
 }
