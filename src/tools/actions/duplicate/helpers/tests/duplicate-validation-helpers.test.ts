@@ -15,7 +15,6 @@ import {
   inferDestination,
   resolveDestinationTargets,
   validateAndConfigureRouteToSource,
-  validateArrangementParameters,
 } from "../duplicate-validation-helpers.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 
@@ -81,32 +80,30 @@ describe("validateAndConfigureRouteToSource", () => {
 });
 
 describe("hasArrangementPosition", () => {
-  it("reads a real position from either param", () => {
-    expect(hasArrangementPosition("1|1", undefined)).toBe(true);
-    expect(hasArrangementPosition(undefined, "Verse")).toBe(true);
+  it("reads a real position", () => {
+    expect(hasArrangementPosition("1|1")).toBe(true);
   });
 
   it("treats a whitespace-only arrangementStart as absent", () => {
     // The `.trim() !== ""` guard: "   " must NOT be read as an arrangement start.
-    expect(hasArrangementPosition("   ", undefined)).toBe(false);
-    expect(hasArrangementPosition(undefined, undefined)).toBe(false);
+    expect(hasArrangementPosition("   ")).toBe(false);
+    expect(hasArrangementPosition(undefined)).toBe(false);
   });
 });
 
 describe("inferDestination", () => {
   it("returns 'arrangement' when a position is given", () => {
-    expect(inferDestination("scene", "1|1", undefined)).toBe("arrangement");
-    expect(inferDestination("scene", undefined, "Verse")).toBe("arrangement");
+    expect(inferDestination("scene", "1|1")).toBe("arrangement");
   });
 
   it("returns undefined for a device", () => {
-    expect(inferDestination("device", undefined, undefined)).toBeUndefined();
+    expect(inferDestination("device", undefined)).toBeUndefined();
   });
 
   it("defaults tracks and scenes to session", () => {
-    expect(inferDestination("track", undefined, undefined)).toBe("session");
-    expect(inferDestination("track", "   ", undefined)).toBe("session");
-    expect(inferDestination("scene", undefined, undefined)).toBe("session");
+    expect(inferDestination("track", undefined)).toBe("session");
+    expect(inferDestination("track", "   ")).toBe("session");
+    expect(inferDestination("scene", undefined)).toBe("session");
   });
 });
 
@@ -228,35 +225,5 @@ describe("resolveDestinationTargets", () => {
     expect(capturedWarnings()).toContain(
       "duplicate: MIDI clip t3 (id src_clip) cannot be duplicated to audio track t5 (id dest_track_5)",
     );
-  });
-});
-
-describe("validateArrangementParameters", () => {
-  it("does nothing when destination is not arrangement", () => {
-    // Even with both start and locator present, a non-arrangement destination
-    // must return early without throwing.
-    expect(() =>
-      validateArrangementParameters("session", "1|1", "Verse"),
-    ).not.toThrow();
-  });
-
-  it("throws when both arrangementStart and locator are given", () => {
-    expect(() =>
-      validateArrangementParameters("arrangement", "1|1", "Verse"),
-    ).toThrow("arrangementStart and locator are mutually exclusive");
-  });
-
-  it("treats a whitespace-only arrangementStart as absent (no conflict with locator)", () => {
-    // The `.trim() !== ""` guard: "   " is not a real start, so pairing it with
-    // a locator must NOT trip the mutual-exclusivity throw.
-    expect(() =>
-      validateArrangementParameters("arrangement", "   ", "Verse"),
-    ).not.toThrow();
-  });
-
-  it("accepts arrangementStart alone", () => {
-    expect(() =>
-      validateArrangementParameters("arrangement", "1|1", undefined),
-    ).not.toThrow();
   });
 });

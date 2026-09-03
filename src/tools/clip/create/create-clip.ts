@@ -8,6 +8,7 @@ import { focusSelect } from "#src/tools/session/helpers/select-focus-helpers.ts"
 import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
 import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
+import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
@@ -39,7 +40,7 @@ export interface CreateClipArgs {
   trackIndex?: number | null;
   /** Hidden alias for path: scene index (0-based), with trackIndex */
   sceneIndex?: number | null;
-  /** Bar|beat position(s), comma-separated */
+  /** Song position(s), bar|beat or `loc:<locator>`, comma-separated */
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
   notes?: string | null;
@@ -88,7 +89,7 @@ export interface CreateClipArgs {
  * @param args.slot - Deprecated session clip slot(s), trackIndex/sceneIndex
  * @param args.trackIndex - Hidden alias for path: track index
  * @param args.sceneIndex - Hidden alias for path: scene index, with trackIndex
- * @param args.arrangementStart - Bar|beat position(s), comma-separated
+ * @param args.arrangementStart - Song position(s), bar|beat or `loc:`, comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
  * @param args.transforms - Transform expressions
  * @param args.sampleFile - Absolute path to audio file (audio clips only)
@@ -151,6 +152,12 @@ export async function createClip(
 
   validateCreateClipLists({ path, slot, arrangementStart, name, color });
 
+  const liveSet = LiveAPI.from(livePath.liveSet);
+
+  // Rewrite every `loc:` position as the bar|beat it names, once, before the
+  // list is split. Everything downstream sees bar|beat and needs no Live Set.
+  arrangementStart = resolveArrangementLocators(liveSet, arrangementStart);
+
   // Resolve where the clips go before touching Live, so a bad destination fails
   // instead of creating half of them somewhere else.
   const destinations = resolveCreateClipDestinations(
@@ -166,8 +173,6 @@ export async function createClip(
   warnMidiOnlyAudioParams(sampleFile, { start, length, looping, firstStart });
   warnAudioOnlyMidiParams(sampleFile, audio);
   const tracks = validateDestinationTracks(destinations);
-
-  const liveSet = LiveAPI.from(livePath.liveSet);
 
   // Resolve time signatures and convert timing parameters to Ableton beats
   // (arrangementStart is converted per-position later)
@@ -284,6 +289,24 @@ function validateCreateClipLists({
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
+}
+
+/**
+ * Resolve any `loc:` entry in arrangementStart to the bar|beat it names.
+ * @param liveSet - The live_set LiveAPI object, for the locator lookups
+ * @param arrangementStart - The position list as the caller wrote it, or null
+ * @returns The list with every locator resolved, unchanged when there are none
+ */
+function resolveArrangementLocators(
+  liveSet: LiveAPI,
+  arrangementStart: string | null,
+): string | null {
+  if (arrangementStart == null) return null;
+
+  return resolveLocatorPositions(liveSet, arrangementStart, {
+    toolName: "createClip",
+    paramName: "arrangementStart",
+  });
 }
 
 /**

@@ -278,24 +278,6 @@ export function resolveLocatorRefToBeats(
 }
 
 /**
- * Resolve one or more locator references (IDs or names, comma-separated) to times in beats.
- * Each value is individually auto-detected as ID or name, allowing mixed lists.
- * @param liveSet - The live_set LiveAPI object
- * @param locatorRef - Comma-separated locator ID(s) or name(s)
- * @param toolName - Name of the tool for error messages
- * @returns Array of times in beats
- */
-export function resolveLocatorRefListToBeats(
-  liveSet: LiveAPI,
-  locatorRef: string,
-  toolName: string,
-): number[] {
-  const refs = targetEntries(locatorRef, "locator");
-
-  return refs.map((ref) => resolveLocatorRefToBeats(liveSet, ref, toolName));
-}
-
-/**
  * Get a LiveAPI object for a locator at a given index
  * @param locatorIds - Array of locator IDs from getChildIds("cue_points")
  * @param index - Index into the locator IDs array

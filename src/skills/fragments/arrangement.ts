@@ -35,7 +35,7 @@ export const arrangement = `## Arrangement
  */
 export const arrangementWrite = `### Clip Destinations
 
-One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in the first scene, \`t2\` is track 2's arrangement (which also needs \`arrangementStart\` or \`locator\`), and \`t2/l0\` is its first take lane. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
+One grammar names where a clip goes, 0-based throughout: \`t2/s0\` is track 2 in the first scene, \`t2\` is track 2's arrangement (which also needs \`arrangementStart\`), and \`t2/l0\` is its first take lane. create-clip calls it \`path\`; update-clip and duplicate call it \`toPath\`, since they move or copy an existing clip. There are no separate track/scene index params — a destination is always one of these strings.
 
 create-clip's \`path\` takes a comma-separated list and may mix the two kinds, so one call can fill clip slots and drop arrangement clips at the same time.
 
@@ -47,7 +47,7 @@ create-clip's \`path\` takes a comma-separated list and may mix the two kinds, s
 \`arrangementLength\` sets arrangement playback region.
 \`arrangementSplit\` cuts clips at song positions — the same timeline as \`arrangementStart\`, not offsets into the clip. Positions outside a clip are ignored, so one call can cut several clips at the same bar.
 A duplicate without \`toPath\` lands on the source's own track, which overwrites the source when the position matches.
-duplicate's \`id\` takes a list, copying each source in turn: \`count\`, \`arrangementStart\` and \`locator\` apply to every one, so \`id: "c1,c2,c3"\` with \`arrangementStart: "5|1"\` drops all three at bar 5 on their own tracks. A \`toPath\` naming a track or take lane goes to every source; clip slots, devices and drum pads are shared out one per copy, since each holds a single object. \`name\`/\`color\` and \`clip.index\` count across every copy, not per source.
+duplicate's \`id\` takes a list, copying each source in turn: \`count\` and \`arrangementStart\` apply to every one, so \`id: "c1,c2,c3"\` with \`arrangementStart: "5|1"\` drops all three at bar 5 on their own tracks. A \`toPath\` naming a track or take lane goes to every source; clip slots, devices and drum pads are shared out one per copy, since each holds a single object. \`name\`/\`color\` and \`clip.index\` count across every copy, not per source.
 
 ### Take Lanes (Arrangement Variations)
 

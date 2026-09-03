@@ -119,7 +119,7 @@ describe("resolveClipDestinations", () => {
         arrangementTargets: [],
       });
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("arrangementStart/locator ignored"),
+        expect.stringContaining("arrangementStart ignored"),
       );
     });
 
@@ -171,7 +171,7 @@ describe("resolveClipDestinations", () => {
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "arrangementStart/locator ignored — toSlot names a clip slot",
+          "arrangementStart ignored — toSlot names a clip slot",
         ),
       );
     });
@@ -201,13 +201,13 @@ describe("resolveClipDestinations", () => {
 
   it("names both possibilities for a bare track with no position", () => {
     expect(() => resolveClipDestinations("t2", undefined, false)).toThrow(
-      /"t2" names a track but not a spot on it.*arrangementStart or locator for track 2's arrangement.*"t2\/s<scene>" for a clip slot/s,
+      /"t2" names a track but not a spot on it.*arrangementStart for track 2's arrangement.*"t2\/s<scene>" for a clip slot/s,
     );
   });
 
   it("throws when nothing names a destination", () => {
     expect(() => resolveClipDestinations(undefined, undefined, false)).toThrow(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
+      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
     );
   });
 

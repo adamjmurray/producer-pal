@@ -105,10 +105,12 @@ because it doesn't look like bar|beat would turn a locator named `5|1`, or a
 typo'd bar|beat, into a silent name lookup.
 
 This is what the `[...]` coordinate holds, and what `playback`'s `startTime`,
-`loopStart` and `loopEnd` and `update-clip`'s `arrangementSplit` take directly.
-The pairs that used to spell the second half as its own param — `startLocator`,
-`loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` — are retired:
-still accepted, no longer published, folded onto the position they belonged to.
+`loopStart` and `loopEnd`, `update-clip`'s `arrangementSplit`, and
+`arrangementStart` on `create-clip`, `update-clip` and `duplicate` take
+directly. The pairs that used to spell the second half as its own param —
+`startLocator`, `loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` —
+are retired: still accepted, no longer published, folded onto the position they
+belonged to.
 
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.

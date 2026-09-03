@@ -43,7 +43,7 @@ export interface ClipDestinations {
  * Resolves a clip duplicate's destination from its path params.
  * @param rawToPath - Destination path(s), comma-separated for multiple
  * @param rawToSlot - Deprecated clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart or locator was given
+ * @param hasArrangementParams - Whether arrangementStart was given
  * @returns Where the copies go
  */
 export function resolveClipDestinations(
@@ -78,7 +78,7 @@ export function resolveClipDestinations(
 
   if (paths.length === 0) {
     throw new Error(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
+      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
     );
   }
 
@@ -116,20 +116,17 @@ export function warnInapplicableClipParams(
  * dropped — and every other inapplicable param on this tool warns.
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
- * @param locator - Locator ID or name
  * @param arrangementLength - Requested arrangement length
  */
 export function warnUnusedArrangementParams(
   type: string,
   arrangementStart: string | undefined,
-  locator: string | undefined,
   arrangementLength: string | undefined,
 ): void {
   if (type !== "device" && type !== "drum-pad") return;
 
   const sent = [
     arrangementStart != null ? "arrangementStart" : null,
-    locator != null ? "locator" : null,
     arrangementLength != null ? "arrangementLength" : null,
   ].filter((param) => param != null);
 
@@ -177,7 +174,7 @@ export function warnUnusedDestination(
 /**
  * Resolves the deprecated toSlot param, which only ever named clip slots.
  * @param toSlot - Clip slot(s), trackIndex/sceneIndex format
- * @param hasArrangementParams - Whether arrangementStart or locator was given
+ * @param hasArrangementParams - Whether arrangementStart was given
  * @returns Clip slot destinations
  */
 function legacySlotDestinations(
@@ -193,7 +190,7 @@ function legacySlotDestinations(
   // failing the call, the way toPath does for the same conflict.
   if (hasArrangementParams) {
     console.warn(
-      "duplicate: arrangementStart/locator ignored — toSlot names a clip slot; " +
+      "duplicate: arrangementStart ignored — toSlot names a clip slot; " +
         'use toPath (e.g. "t2") for that track\'s arrangement',
     );
   }
@@ -203,7 +200,7 @@ function legacySlotDestinations(
 
 /**
  * Reads arrangement destination tracks off the parsed paths. A clip slot here
- * contradicts arrangementStart/locator; warn and drop the weaker of the two
+ * contradicts arrangementStart; warn and drop the weaker of the two
  * rather than failing the call, the way every other tool handles a position
  * that doesn't apply.
  *
@@ -247,7 +244,7 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   // to, so toPath is the one that survives.
   if (arrangementTargets.every((target) => target == null)) {
     console.warn(
-      `duplicate: arrangementStart/locator ignored — toPath "${named}" names a clip slot; ` +
+      `duplicate: arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
@@ -255,7 +252,7 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   }
 
   console.warn(
-    `duplicate: toPath "${named}" ignored — arrangementStart/locator makes this an arrangement duplicate`,
+    `duplicate: toPath "${named}" ignored — arrangementStart makes this an arrangement duplicate`,
   );
 
   return { destination: "arrangement", slots: [], arrangementTargets };
@@ -276,7 +273,7 @@ function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
     if (path.kind !== "slot") {
       throw new Error(
         `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
-          `arrangementStart or locator for track ${path.trackIndex}'s arrangement, or use ` +
+          `arrangementStart for track ${path.trackIndex}'s arrangement, or use ` +
           `"t${path.trackIndex}/s<scene>" for a clip slot`,
       );
     }

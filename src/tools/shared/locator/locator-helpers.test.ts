@@ -10,7 +10,6 @@ import {
   getLocatorId,
   isLocatorId,
   resolveLocatorListToBeats,
-  resolveLocatorRefListToBeats,
   resolveLocatorRefToBeats,
   resolveLocatorToBeats,
 } from "./locator-helpers.ts";
@@ -355,41 +354,6 @@ describe("locator-helpers", () => {
       expect(() => {
         resolveLocatorRefToBeats(liveSet, "locator-99", "test-tool");
       }).toThrow("test-tool failed: locator not found: locator-99");
-    });
-  });
-
-  describe("resolveLocatorRefListToBeats", () => {
-    it("resolves comma-separated locator IDs", () => {
-      const liveSet = setupMockLocators(
-        { id: "loc0", time: 0 },
-        { id: "loc1", time: 16 },
-      );
-
-      expect(
-        resolveLocatorRefListToBeats(liveSet, "locator-0, locator-1", "t"),
-      ).toStrictEqual([0, 16]);
-    });
-
-    it("resolves comma-separated locator names", () => {
-      const liveSet = setupMockLocators(
-        { id: "loc0", name: "Verse", time: 8 },
-        { id: "loc1", name: "Chorus", time: 24 },
-      );
-
-      expect(
-        resolveLocatorRefListToBeats(liveSet, "Verse, Chorus", "t"),
-      ).toStrictEqual([8, 24]);
-    });
-
-    it("resolves mixed locator IDs and names", () => {
-      const liveSet = setupMockLocators(
-        { id: "loc0", name: "Intro", time: 0 },
-        { id: "loc1", name: "Chorus", time: 24 },
-      );
-
-      expect(
-        resolveLocatorRefListToBeats(liveSet, "locator-0, Chorus", "t"),
-      ).toStrictEqual([0, 24]);
     });
   });
 });

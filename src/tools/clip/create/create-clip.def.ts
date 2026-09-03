@@ -62,9 +62,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
 
     arrangementStart: param(z.coerce.string().optional(), {
       default:
-        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3'). Song meter",
+        "arrangement clip position(s), comma-separated for multiple: bar|beat in song meter, or loc:<locator name or id> (e.g., '1|1' or '1|1,loc:Chorus')",
       smallModel:
-        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
+        "arrangement clip position: bar|beat (song meter) or loc:<locator>",
     }),
 
     name: param(z.string().optional(), {

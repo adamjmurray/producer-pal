@@ -5,6 +5,10 @@
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import {
+  type CuePoint,
+  setupCuePointMocksRegistry,
+} from "#src/test/helpers/cue-point-test-helpers.ts";
 import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -18,22 +22,34 @@ export interface ArrangementClipMockHandles {
   clip: RegisteredMockObject;
 }
 
+// scale_mode 0 = no active scale, so transform tests resolve scale:mask to
+// undefined rather than reading undefined scale intervals.
+const ARRANGEMENT_LIVE_SET_PROPS = {
+  signature_numerator: 4,
+  signature_denominator: 4,
+  scale_mode: 0,
+};
+
 /**
  * Setup mocks for arrangement clip creation tests.
  * Registers LiveSet (time signature), Track (create_midi_clip), and arrangement clip.
+ * @param options - Setup options
+ * @param options.cuePoints - Locators on the live_set, for `loc:` positions
  * @returns Handles for registered mock objects
  */
-export function setupArrangementClipMocks(): ArrangementClipMockHandles {
-  const liveSet = registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: {
-      signature_numerator: 4,
-      signature_denominator: 4,
-      // scale_mode 0 = no active scale, so transform tests resolve scale:mask
-      // to undefined rather than reading undefined scale intervals.
-      scale_mode: 0,
-    },
-  });
+export function setupArrangementClipMocks({
+  cuePoints,
+}: { cuePoints?: CuePoint[] } = {}): ArrangementClipMockHandles {
+  const liveSet =
+    cuePoints == null
+      ? registerMockObject("live-set", {
+          path: livePath.liveSet,
+          properties: ARRANGEMENT_LIVE_SET_PROPS,
+        })
+      : setupCuePointMocksRegistry({
+          cuePoints,
+          liveSetProps: ARRANGEMENT_LIVE_SET_PROPS,
+        }).liveSet;
 
   const track = registerMockObject("track-0", {
     path: livePath.track(0),

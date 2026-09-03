@@ -172,6 +172,25 @@ describe("hiddenParamWarnings", () => {
     ]);
   });
 
+  // The replacement can be a shape the retired param never had, so the example
+  // is what says how to write it.
+  it("shows the replacement's example when the deprecation has one", () => {
+    expect(
+      hiddenParamWarnings(
+        "ppal-duplicate",
+        ["locator"],
+        collectHiddenParams({
+          locator: deprecatedParam(z.string().optional(), {
+            replacedBy: "toPath",
+            example: "t2[loc:Verse]",
+          }),
+        }),
+      ),
+    ).toStrictEqual([
+      'WARNING: ppal-duplicate param "locator" is deprecated and will be removed; use "toPath" instead (e.g. toPath: "t2[loc:Verse]")',
+    ]);
+  });
+
   // Two halves of one destination are one mistake, so they read as one
   // correction rather than two near-identical lines.
   it("groups aliases by the param they fold into", () => {

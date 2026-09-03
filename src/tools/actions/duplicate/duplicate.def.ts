@@ -18,7 +18,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   description: {
     default:
       "Duplicate an object, or several — id takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
-      "Use count for multiple track/scene copies; arrangementStart or locator for clip placement, " +
+      "Use count for multiple track/scene copies; arrangementStart for clip placement, " +
       "and toPath for the destination track, clip slot, device chain, or drum pad.",
     smallModel:
       "Duplicate an object, or several (id takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
@@ -76,13 +76,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
 
     arrangementStart: param(z.coerce.string().optional(), {
       default:
-        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1'). Song meter",
-      smallModel: "arrangement bar|beat position (e.g., '1|1'). Song meter",
+        "arrangement position(s) for clips/scenes, comma-separated for multiple: bar|beat in song meter, or loc:<locator name or id> (e.g., '1|1' or '1|1,loc:Chorus')",
+      smallModel:
+        "arrangement position: bar|beat (song meter) or loc:<locator>",
     }),
-    locator: param(z.coerce.string().optional(), {
-      default:
-        "arrangement locator ID(s) or name(s), comma-separated for multiple (e.g., 'locator-0' or 'Verse' or 'locator-0,Chorus')",
-      smallModel: null,
+    locator: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+      example: "t2[loc:Verse]",
     }),
     arrangementLength: z
       .string()
@@ -97,7 +97,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: param(z.coerce.string().optional(), {
       default:
         "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1), " +
-        "'t2' = track 2's arrangement (needs arrangementStart or locator, and a track matching the clip's MIDI/audio type), " +
+        "'t2' = track 2's arrangement (needs arrangementStart, and a track matching the clip's MIDI/audio type), " +
         "'t2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
         "omit for the source clip's own track. Devices: 't1/d0'. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +

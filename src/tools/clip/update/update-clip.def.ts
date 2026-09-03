@@ -79,7 +79,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "bar|beat position(s) (song meter) to move arrangement clips to, comma-separated (arrangement clips only). " +
+        "song position(s) to move arrangement clips to, comma-separated: bar|beat in song meter, or loc:<locator name or id> (arrangement clips only). " +
           "One position moves every clip; a list pairs 1:1 with id/path in order",
       ),
     arrangementLength: z
@@ -92,7 +92,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
     arrangementSplit: param(z.string().optional(), {
       default:
-        `comma-separated bar|beat positions to cut clips at, on the song timeline like arrangementStart (e.g., '9|1, 17|1') - max ${MAX_SPLIT_POINTS} points. ` +
+        `comma-separated song positions to cut clips at, spelled like arrangementStart (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
       smallModel: null,
     }),

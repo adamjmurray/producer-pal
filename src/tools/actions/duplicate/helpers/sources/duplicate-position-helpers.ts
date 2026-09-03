@@ -24,20 +24,18 @@ import { resolveArrangementPositions } from "../duplicate-validation-helpers.ts"
 /** The arrangement params a scene duplication reads. */
 interface SceneArrangementParams {
   arrangementStart?: string;
-  locator?: string;
   arrangementLength?: string;
   withoutClips?: boolean;
 }
 
 /**
- * Duplicates a scene to the arrangement at one or more positions.
- * Supports multiple positions from comma-separated locator IDs/names.
+ * Duplicates a scene to the arrangement at one or more positions, comma-separated.
  * When a single position is given with count > 1, places copies sequentially.
  * @param object - Live API scene object
  * @param id - Scene ID
  * @param count - Number of copies (for sequential placement from a single position)
  * @param labels - The call's names and colors
- * @param params - Arrangement parameters (arrangementStart, locator, etc.)
+ * @param params - Arrangement parameters (arrangementStart, arrangementLength, etc.)
  * @param context - Context object
  * @returns Array of result objects
  */
@@ -49,7 +47,7 @@ export async function duplicateSceneToArrangementAtPositions(
   params: SceneArrangementParams,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
-  const { arrangementStart, locator, arrangementLength } = params;
+  const { arrangementStart, arrangementLength } = params;
   const withoutClips = params.withoutClips;
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -60,11 +58,8 @@ export async function duplicateSceneToArrangementAtPositions(
     "signature_denominator",
   ) as number;
 
-  // Resolve all positions from bar|beat or locator(s)
   const positions = resolveArrangementPositions(
-    liveSet,
     arrangementStart,
-    locator,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );

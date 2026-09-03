@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -38,6 +40,7 @@ interface DuplicateArgs {
   count?: number;
 
   arrangementStart?: string;
+  /** Deprecated: locator ref(s), folded onto arrangementStart as `loc:` */
   locator?: string;
   arrangementLength?: string;
   name?: string;
@@ -63,8 +66,8 @@ interface DuplicateArgs {
  * @param args.path - Source path(s), comma-separated, instead of or alongside id
  * @param args.paths - Hidden alias for path
  * @param args.count - Number of duplicates
- * @param args.arrangementStart - Arrangement start position
- * @param args.locator - Arrangement locator ID(s) or name(s)
+ * @param args.arrangementStart - Arrangement position(s): bar|beat or `loc:<locator>`
+ * @param args.locator - Deprecated locator ref(s); use arrangementStart
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
  * @param args.color - Color for all the copies, or comma-separated one per copy
@@ -123,14 +126,12 @@ export async function duplicate(
     withoutDevices,
   ));
 
-  const hasArrangementParams = hasArrangementPosition(
-    arrangementStart,
-    locator,
-  );
+  // One spelling from here down: the deprecated locator folds onto the position
+  // it named, and every `loc:` entry becomes the bar|beat it names. Nothing
+  // below this line knows a locator can be written at all.
+  arrangementStart = resolveArrangementStart(type, arrangementStart, locator);
 
-  // Here, not in resolveArrangementPositions, which runs once per source: one
-  // mistake in the list gets one word for the call.
-  validatePositionLists(arrangementStart, locator);
+  const hasArrangementParams = hasArrangementPosition(arrangementStart);
   // A container destination — a track's arrangement or a take lane on it — holds
   // many copies and tells them apart by position, so every source can have the
   // whole list. A clip slot, device slot or drum pad holds one object, so the
@@ -169,7 +170,6 @@ export async function duplicate(
     toPath,
     toSlot,
     arrangementStart,
-    locator,
     arrangementLength,
     takeLane,
     takeLaneName,
@@ -197,7 +197,6 @@ export async function duplicate(
         labels,
         params: {
           arrangementStart,
-          locator,
           arrangementLength,
           withoutClips,
           withoutDevices,
@@ -232,16 +231,63 @@ export async function duplicate(
 }
 
 /**
- * Refuse a malformed arrangement position list before anything is duplicated.
- * Both lists are read further down in more than one place, so checking them
- * here is what makes the refusal atomic.
- * @param arrangementStart - Comma-separated bar|beat positions, if sent
- * @param locator - Comma-separated locator refs, if sent
+ * Folds the deprecated locator param onto arrangementStart and resolves the
+ * result to bar|beat only.
+ *
+ * A device or drum pad has no arrangement position, so neither param is read
+ * and there is nothing to fold, refuse or look up — warnUnusedArrangementParams
+ * says they were ignored instead. Same rule as playback, where a session action
+ * drops the timeline params before the fold rather than refusing a conflict
+ * between two params it will never read.
+ * @param type - What is being duplicated, which decides whether these apply
+ * @param arrangementStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The positions, in bar|beat, or undefined when none were named
  */
-function validatePositionLists(
-  arrangementStart: string | null | undefined,
-  locator: string | null | undefined,
-): void {
-  targetEntries(arrangementStart, "arrangementStart");
-  targetEntries(locator, "locator");
+function resolveArrangementStart(
+  type: string | undefined,
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): string | undefined {
+  if (type === "device" || type === "drum-pad") return arrangementStart;
+
+  const positions = foldLocatorParam(arrangementStart, locator);
+
+  // Here, not in resolveArrangementPositions, which runs once per source: one
+  // mistake in the list gets one word for the call.
+  targetEntries(positions, "arrangementStart");
+
+  if (positions == null) return undefined;
+
+  return resolveLocatorPositions(LiveAPI.from(livePath.liveSet), positions, {
+    toolName: "duplicate",
+    paramName: "arrangementStart",
+  });
+}
+
+/**
+ * Rewrites the retired locator param as the `loc:` positions it named, one per
+ * entry so a list keeps naming a list.
+ * @param arrangementStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The one position list
+ */
+function foldLocatorParam(
+  arrangementStart: string | undefined,
+  locator: string | undefined,
+): string | undefined {
+  if (locator == null) return arrangementStart;
+
+  // Never pick one: the two params name the same position, so a caller who sent
+  // both told us two different things about it.
+  if (arrangementStart != null && arrangementStart.trim() !== "") {
+    throw new Error(
+      "duplicate failed: arrangementStart and locator are mutually exclusive",
+    );
+  }
+
+  return locator
+    .split(",")
+    .map((entry) => `loc:${entry.trim()}`)
+    .join(",");
 }

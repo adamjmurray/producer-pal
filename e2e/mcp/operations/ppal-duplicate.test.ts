@@ -361,7 +361,11 @@ describe("ppal-duplicate", () => {
     const byName = parseToolResult<DuplicateClipResult[]>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
-        arguments: { type: "clip", id: clip.id, locator: "Verse,Chorus" },
+        arguments: {
+          type: "clip",
+          id: clip.id,
+          arrangementStart: "loc:Verse,loc:Chorus",
+        },
       }),
     );
 
@@ -374,7 +378,11 @@ describe("ppal-duplicate", () => {
     const byId = parseToolResult<DuplicateClipResult>(
       await ctx.client!.callTool({
         name: "ppal-duplicate",
-        arguments: { type: "clip", id: clip.id, locator: "locator-3" },
+        arguments: {
+          type: "clip",
+          id: clip.id,
+          arrangementStart: "loc:locator-3",
+        },
       }),
     );
 

@@ -91,7 +91,7 @@ export function planSources({
  * it raises — a clip slot that contradicts arrangementStart, an entry that
  * named nothing — are raised once for the call rather than once per source.
  * @param sources - The shares to resolve, in order
- * @param hasArrangementParams - Whether arrangementStart or locator was given
+ * @param hasArrangementParams - Whether arrangementStart was given
  * @returns One destination set per source, in the same order
  */
 export function resolveSourceClipDestinations(

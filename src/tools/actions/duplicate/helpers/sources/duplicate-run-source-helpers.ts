@@ -39,7 +39,6 @@ import {
 /** The params a track or scene copy reads beyond its name and color. */
 export interface DuplicateParams {
   arrangementStart?: string;
-  locator?: string;
   arrangementLength?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
@@ -80,7 +79,6 @@ export async function duplicateOneSource(
       id,
       labels,
       args.params.arrangementStart,
-      args.params.locator,
       args.params.arrangementLength,
       args.takeLane,
       args.takeLaneName,
@@ -249,7 +247,7 @@ async function duplicateTrackOrSceneWithCount(
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
-  // Scene to arrangement: use position-based iteration (supports multi-value locators)
+  // Scene to arrangement: use position-based iteration (supports a position list)
   if (type === "scene" && destination === "arrangement") {
     return await duplicateSceneToArrangementAtPositions(
       object,

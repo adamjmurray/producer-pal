@@ -29,7 +29,7 @@ describe("duplicate - clip duplication", () => {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart/locator (for the arrangement)',
+      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
     );
   });
 
@@ -364,7 +364,7 @@ describe("duplicate - clip duplication", () => {
       });
 
       expect(capturedWarnings()).toContainEqual(
-        expect.stringContaining("arrangementStart/locator ignored"),
+        expect.stringContaining("arrangementStart ignored"),
       );
     });
 
@@ -466,7 +466,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(capturedWarnings()).toContainEqual(
         expect.stringContaining(
-          "arrangementStart/locator ignored — toSlot names a clip slot",
+          "arrangementStart ignored — toSlot names a clip slot",
         ),
       );
     });

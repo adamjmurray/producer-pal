@@ -55,7 +55,6 @@ import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts
  * @param id - ID of the object
  * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Name for a take lane newly created by this call
@@ -68,7 +67,6 @@ export async function duplicateClipWithPositions(
   id: string,
   labels: CopyLabels,
   arrangementStart: string | undefined,
-  locator: string | undefined,
   arrangementLength: string | undefined,
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
@@ -85,7 +83,6 @@ export async function duplicateClipWithPositions(
     id,
     labels,
     arrangementStart,
-    locator,
     arrangementLength,
     takeLane,
     takeLaneName,
@@ -104,7 +101,6 @@ export async function duplicateClipWithPositions(
  * @param id - ID of the object
  * @param labels - The call's names and colors
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
  * @param takeLane - Hidden alias for the toPath `l` segment
  * @param takeLaneName - Name for a take lane newly created by this call
@@ -117,7 +113,6 @@ async function duplicateClipToArrangementPositions(
   id: string,
   labels: CopyLabels,
   arrangementStart: string | undefined,
-  locator: string | undefined,
   arrangementLength: string | undefined,
   takeLane: number | string | undefined,
   takeLaneName: string | undefined,
@@ -135,7 +130,7 @@ async function duplicateClipToArrangementPositions(
   if (requested.every((target) => target == null)) return [];
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
-    resolveSongPositions(arrangementStart, locator);
+    resolveSongPositions(arrangementStart);
 
   const {
     copies,
@@ -254,13 +249,9 @@ async function duplicateClipToArrangementPositions(
 /**
  * Reads the song meter and resolves the positions the copies land on.
  * @param arrangementStart - Comma-separated bar|beat positions
- * @param locator - Arrangement locator ID(s) or name(s) for position
  * @returns The song time signature and one position per entry, in Ableton beats
  */
-function resolveSongPositions(
-  arrangementStart: string | undefined,
-  locator: string | undefined,
-): {
+function resolveSongPositions(arrangementStart: string | undefined): {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   positionsInBeats: number[];
@@ -276,12 +267,9 @@ function resolveSongPositions(
   return {
     songTimeSigNumerator,
     songTimeSigDenominator,
-    // Positions come from a locator or bar|beat (both comma-separated for
-    // multiple); shared with scene duplication.
+    // Comma-separated for multiple; shared with scene duplication.
     positionsInBeats: resolveArrangementPositions(
-      liveSet,
       arrangementStart,
-      locator,
       songTimeSigNumerator,
       songTimeSigDenominator,
     ),

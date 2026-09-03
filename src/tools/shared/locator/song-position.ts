@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
   validateBarBeatPosition,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -15,11 +16,15 @@ import { resolveLocatorRefToBeats } from "./locator-helpers.ts";
 // a locator actually named "Loc:something" is not a thing anyone has.
 const LOCATOR_PREFIXES = ["locator:", "loc:"];
 
-/** How a song position names itself in errors, and what meter it's read in. */
-export interface SongPositionOptions {
+/** How a song position names itself in errors. */
+export interface SongPositionLabels {
   toolName: string;
   /** The param the value came from. */
   paramName: string;
+}
+
+/** {@link SongPositionLabels} plus the meter a bar|beat is read in. */
+export interface SongPositionOptions extends SongPositionLabels {
   timeSigNumerator: number;
   timeSigDenominator: number;
 }
@@ -76,4 +81,51 @@ export function songPositionToBeats(
     toolName,
     `for ${paramName}`,
   );
+}
+
+/**
+ * Rewrite every `loc:` entry in a comma-separated song-position list as the
+ * bar|beat it names, so everything downstream sees one spelling and needs no
+ * Live Set of its own. A bar|beat entry passes through byte for byte, keeping
+ * its own format errors and any `±n` offset exactly as the caller wrote it.
+ *
+ * The song meter is read here rather than passed in, and only when the list
+ * actually names a locator — a call with none costs nothing.
+ *
+ * A locator name containing a comma can't be spelled here, since the list
+ * splits on commas first. The `[...]` coordinate is where such a name gets
+ * said.
+ * @param liveSet - The live_set LiveAPI object, for the meter and the lookups
+ * @param value - The position list as the caller wrote it
+ * @param labels - How to name this in errors
+ * @returns The list with every locator resolved to a bar|beat
+ */
+export function resolveLocatorPositions(
+  liveSet: LiveAPI,
+  value: string,
+  labels: SongPositionLabels,
+): string {
+  const entries = value.split(",");
+
+  if (!entries.some((entry) => locatorRef(entry.trim()) != null)) return value;
+
+  const options: SongPositionOptions = {
+    ...labels,
+    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
+    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
+  };
+
+  return entries
+    .map((entry) => {
+      const trimmed = entry.trim();
+
+      if (locatorRef(trimmed) == null) return entry;
+
+      return abletonBeatsToBarBeat(
+        songPositionToBeats(liveSet, trimmed, options),
+        options.timeSigNumerator,
+        options.timeSigDenominator,
+      );
+    })
+    .join(",");
 }

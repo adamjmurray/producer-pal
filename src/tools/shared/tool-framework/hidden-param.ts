@@ -32,6 +32,8 @@ export interface DeprecatedParamInfo {
   kind: "deprecated";
   /** Param name to use instead, named in the warning. */
   replacedBy: string;
+  /** Example value for the replacement, shown in the warning. */
+  example?: string;
 }
 
 export interface AliasParamInfo {
@@ -149,7 +151,8 @@ export function hiddenParamWarnings(
 
     if (info.kind === "deprecated") {
       warnings.push(
-        `${WARNING_PREFIX}${toolName} param "${key}" is deprecated and will be removed; use "${info.replacedBy}" instead`,
+        `${WARNING_PREFIX}${toolName} param "${key}" is deprecated and will be removed; ` +
+          `use "${info.replacedBy}" instead${exampleHint(info.replacedBy, info.example)}`,
       );
       continue;
     }
@@ -166,7 +169,7 @@ export function hiddenParamWarnings(
 
   for (const [canonical, { keys, example, independent }] of aliasGroups) {
     const names = keys.map((key) => `"${key}"`).join(", ");
-    const hint = example == null ? "" : ` (e.g. ${canonical}: "${example}")`;
+    const hint = exampleHint(canonical, example);
 
     // Several independent aliases each name their own object, so telling the
     // model to send them as one canonical value would break the call.
@@ -183,4 +186,15 @@ export function hiddenParamWarnings(
   }
 
   return warnings;
+}
+
+/**
+ * Shows what the surviving param looks like with a real value, when the hidden
+ * param has an example to give.
+ * @param paramName - The param the caller should send instead
+ * @param example - Example value for it, if any
+ * @returns The parenthesized hint, or "" when there is no example
+ */
+function exampleHint(paramName: string, example: string | undefined): string {
+  return example == null ? "" : ` (e.g. ${paramName}: "${example}")`;
 }

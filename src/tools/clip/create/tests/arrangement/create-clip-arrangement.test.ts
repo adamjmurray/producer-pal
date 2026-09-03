@@ -289,6 +289,80 @@ describe("createClip - arrangement view", () => {
   });
 });
 
+describe("createClip - loc: on arrangementStart", () => {
+  const CUE_POINTS = [
+    { id: "cue1", time: 16, name: "Verse" },
+    { id: "cue2", time: 32, name: "Chorus" },
+  ];
+
+  it.each<[string, string, number, string]>([
+    ["a locator name", "loc:Verse", 16, "5|1"],
+    ["a locator id", "loc:locator-0", 16, "5|1"],
+    ["a later locator id", "loc:locator-1", 32, "9|1"],
+  ])(
+    "places the clip at %s",
+    async (_label, arrangementStart, beats, barBeat) => {
+      const { track } = setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+      const result = await createClip({
+        trackIndex: 0,
+        arrangementStart,
+        notes: "C3 1|1",
+      });
+
+      expect(track.call).toHaveBeenCalledWith("create_midi_clip", beats, 4);
+      expect(result).toStrictEqual({
+        id: "arrangement_clip",
+        path: "t0",
+        arrangementStart: barBeat,
+        noteCount: 1,
+        length: "1bar",
+      });
+    },
+  );
+
+  it("places a clip per entry in a list mixing bar|beat and loc:", async () => {
+    const { track } = setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+    const result = await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1,loc:Chorus",
+      notes: "C3 1|1",
+    });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 32, 4);
+    expect(result).toHaveLength(2);
+  });
+
+  it("throws, naming arrangementStart, when the locator is not found", async () => {
+    setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "loc:Bridge",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow(
+      'createClip failed: no locator found with name "Bridge" for arrangementStart',
+    );
+  });
+
+  it("does not read loc: on start, which is clip-relative", async () => {
+    setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+    await expect(
+      createClip({
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        start: "loc:Verse",
+        notes: "C3 1|1",
+      }),
+    ).rejects.toThrow('Invalid bar|beat format: "loc:Verse"');
+  });
+});
+
 describe("processClipIteration (unit)", () => {
   it("throws when the MIDI arrangement clip fails to be created", () => {
     // create_midi_clip returns the "no object" ref, so the created clip does not

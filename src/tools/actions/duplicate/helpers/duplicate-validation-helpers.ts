@@ -14,7 +14,6 @@ import {
   warnUnusedTakeLane,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   type SourceShare,
   warnSharedArrangementDestination,
@@ -32,21 +31,17 @@ import {
 } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
- * Resolves arrangement positions from bar|beat or locator(s). Supports
- * comma-separated bar|beat positions and comma-separated locator IDs/names for
- * multiple positions. Shared by clip and scene duplication so both honor the
- * schema's comma-separated promise (scenes previously threw on a list).
- * @param liveSet - The live_set LiveAPI object
+ * Resolves the comma-separated arrangementStart list to beats. Shared by clip
+ * and scene duplication so both honor the schema's comma-separated promise
+ * (scenes previously threw on a list). Any `loc:` entry was rewritten as
+ * bar|beat at the tool boundary.
  * @param arrangementStart - Bar|beat position(s), comma-separated for multiple
- * @param locator - Arrangement locator ID(s) or name(s), comma-separated
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Array of positions in beats
  */
 export function resolveArrangementPositions(
-  liveSet: LiveAPI,
   arrangementStart: string | undefined,
-  locator: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number[] {
@@ -54,16 +49,6 @@ export function resolveArrangementPositions(
   // trim-only checks but parses to zero positions. Callers cycle this list
   // against the destination tracks, so an empty one yields a copy at an
   // undefined position rather than no copies — throw instead.
-  if (locator != null) {
-    const times = resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
-
-    if (times.length === 0) {
-      throw new Error("duplicate failed: locator names no locators");
-    }
-
-    return times;
-  }
-
   const positions = parseArrangementStartList(arrangementStart);
 
   if (positions.length === 0) {
@@ -158,17 +143,12 @@ export function validateAndConfigureRouteToSource(
 /**
  * Reports whether the call names an arrangement position.
  * @param arrangementStart - Bar|beat position(s)
- * @param locator - Locator ID(s) or name(s)
- * @returns True when either names a position
+ * @returns True when one is named
  */
 export function hasArrangementPosition(
   arrangementStart: string | undefined,
-  locator: string | undefined,
 ): boolean {
-  return (
-    (arrangementStart != null && arrangementStart.trim() !== "") ||
-    locator != null
-  );
+  return arrangementStart != null && arrangementStart.trim() !== "";
 }
 
 /**
@@ -176,15 +156,13 @@ export function hasArrangementPosition(
  * resolve theirs from toPath (see duplicate-destination-helpers.ts).
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
- * @param locator - Locator ID or name
  * @returns Inferred destination
  */
 export function inferDestination(
   type: string,
   arrangementStart: string | undefined,
-  locator: string | undefined,
 ): "session" | "arrangement" | undefined {
-  if (hasArrangementPosition(arrangementStart, locator)) {
+  if (hasArrangementPosition(arrangementStart)) {
     return "arrangement";
   }
 
@@ -287,31 +265,6 @@ export function validateDestinationParameter(
   }
 }
 
-/**
- * Validates arrangement position params are mutually exclusive
- * @param destination - Inferred destination
- * @param arrangementStart - Start time in bar|beat format
- * @param locator - Arrangement locator ID(s) or name(s) for position
- */
-export function validateArrangementParameters(
-  destination: string | undefined,
-  arrangementStart: string | undefined,
-  locator: string | undefined,
-): void {
-  if (destination !== "arrangement") {
-    return;
-  }
-
-  const hasStart = arrangementStart != null && arrangementStart.trim() !== "";
-  const hasLocator = locator != null;
-
-  if (hasStart && hasLocator) {
-    throw new Error(
-      "duplicate failed: arrangementStart and locator are mutually exclusive",
-    );
-  }
-}
-
 interface DestinationParams {
   type: string;
   clipDestinations: ClipDestinations | null;
@@ -319,7 +272,6 @@ interface DestinationParams {
   toPath: string | undefined;
   toSlot: string | undefined;
   arrangementStart: string | undefined;
-  locator: string | undefined;
   arrangementLength: string | undefined;
   takeLane: number | string | undefined;
   takeLaneName: string | undefined;
@@ -341,16 +293,11 @@ interface DestinationParams {
 export function resolveDestinationAndWarn(
   params: DestinationParams,
 ): "session" | "arrangement" | undefined {
-  const { type, clipDestinations, arrangementStart, locator } = params;
+  const { type, clipDestinations, arrangementStart } = params;
   const { arrangementLength, takeLane, takeLaneName } = params;
 
   warnUnusedDestination(type, params.toPath, params.toSlot);
-  warnUnusedArrangementParams(
-    type,
-    arrangementStart,
-    locator,
-    arrangementLength,
-  );
+  warnUnusedArrangementParams(type, arrangementStart, arrangementLength);
 
   if (clipDestinations != null) {
     warnInapplicableClipParams(
@@ -361,11 +308,9 @@ export function resolveDestinationAndWarn(
   }
 
   const destination =
-    clipDestinations?.destination ??
-    inferDestination(type, arrangementStart, locator);
+    clipDestinations?.destination ?? inferDestination(type, arrangementStart);
 
   validateDestinationParameter(type, destination);
-  validateArrangementParameters(destination, arrangementStart, locator);
 
   if (type !== "clip" && (params.transforms != null || params.code != null)) {
     console.warn(

@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
+import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
 import { prepareSplitParams } from "#src/tools/shared/arrangement/arrangement-splitting-params.ts";
 import {
   ARRANGEMENT_SPLIT_MODE,
@@ -73,6 +75,14 @@ export function planClipUpdate({
   split,
   context,
 }: ClipUpdatePlanArgs): ClipUpdatePlan {
+  // Rewrite every `loc:` position as the bar|beat it names, once, before
+  // anything reads them, so nothing below needs a Live Set of its own.
+  // `start`, `firstStart` and `split` are clip-relative and stay out of it.
+  ({ arrangementStart, arrangementSplit } = resolveSongLocators(
+    arrangementStart,
+    arrangementSplit,
+  ));
+
   // Paired against what the caller named, not against the clips that resolve:
   // an id that names nothing has to take its position with it, or every later
   // clip slides onto the wrong bar.
@@ -107,6 +117,36 @@ export function planClipUpdate({
     }),
     startBeatsFor,
     lengthBeatsFor,
+  };
+}
+
+/**
+ * Resolve any `loc:` entry in the two song-timeline params to the bar|beat it
+ * names. Neither one set costs no Live API call at all.
+ * @param arrangementStart - Position list as the caller wrote it
+ * @param arrangementSplit - Split-position list as the caller wrote it
+ * @returns Both, with every locator resolved
+ */
+function resolveSongLocators(
+  arrangementStart: string | undefined,
+  arrangementSplit: string | undefined,
+): { arrangementStart?: string; arrangementSplit?: string } {
+  if (arrangementStart == null && arrangementSplit == null) {
+    return { arrangementStart, arrangementSplit };
+  }
+
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const resolve = (value: string | undefined, paramName: string) =>
+    value == null
+      ? undefined
+      : resolveLocatorPositions(liveSet, value, {
+          toolName: "updateClip",
+          paramName,
+        });
+
+  return {
+    arrangementStart: resolve(arrangementStart, "arrangementStart"),
+    arrangementSplit: resolve(arrangementSplit, "arrangementSplit"),
   };
 }
 
