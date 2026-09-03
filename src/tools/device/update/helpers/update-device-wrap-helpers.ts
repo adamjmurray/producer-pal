@@ -18,6 +18,7 @@ import {
 import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-device.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type TargetItem, targetItems } from "../update-device.ts";
+import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 const RACK_TYPE_INSTRUMENT = "instrument-rack";
 
@@ -157,7 +158,7 @@ function resolveDevices(items: TargetItem[]): LiveAPI[] {
         // Wrapping moves the device into a chain, which is a move like any
         // other — and this one would take the connection with it.
         console.warn(
-          "wrapInRack: cannot wrap the Producer Pal device, skipping",
+          `wrapInRack: cannot wrap the Producer Pal device ${targetLabel(device)}, skipping`,
         );
       } else if (device.type.endsWith("Device")) {
         devices.push(device);

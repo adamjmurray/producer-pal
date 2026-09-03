@@ -440,7 +440,7 @@ function updateTarget(
   if (options.toPath != null) {
     if (isProducerPalDevice(target)) {
       console.warn(
-        "updateDevice: cannot move the Producer Pal device, skipping the move",
+        `updateDevice: cannot move the Producer Pal device ${targetLabel(target)}, skipping the move`,
       );
     } else if (isDeviceType(type)) {
       const outcome = moveDeviceToPath(target, options.toPath);

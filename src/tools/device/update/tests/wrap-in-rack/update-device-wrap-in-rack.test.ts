@@ -609,7 +609,7 @@ describe("updateDevice - wrapInRack", () => {
     const result = updateDevice({ id: "device-0", wrapInRack: true });
 
     expect(capturedWarnings()).toContain(
-      "wrapInRack: cannot wrap the Producer Pal device, skipping",
+      "wrapInRack: cannot wrap the Producer Pal device t0/d0 (id device-0), skipping",
     );
     expect(capturedWarnings()).toContain("wrapInRack: no devices found");
     expect(result).toBeNull();

@@ -341,9 +341,7 @@ describe("deleteObject", () => {
       deleted: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "cannot delete track hosting the Producer Pal device",
-      ),
+      expect.stringContaining("which hosts the Producer Pal device"),
     );
     warnSpy.mockRestore();
   });

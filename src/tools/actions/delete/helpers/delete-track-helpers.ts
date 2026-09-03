@@ -26,7 +26,9 @@ export function deleteTrackObject(
   // rather than falling through to the "no track index" message below, which
   // reads like something went wrong inside us.
   if (object.path === String(livePath.masterTrack())) {
-    console.warn("delete: Live has no way to delete the main track, skipping");
+    console.warn(
+      `delete: Live has no way to delete the main track ${targetLabel(object)}, skipping`,
+    );
 
     return false;
   }
@@ -58,7 +60,7 @@ export function deleteTrackObject(
 
   if (trackIndex === hostTrackIndex) {
     console.warn(
-      "delete: cannot delete track hosting the Producer Pal device, skipping",
+      `delete: cannot delete track ${targetLabel(object)}, which hosts the Producer Pal device, skipping`,
     );
 
     return false;

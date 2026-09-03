@@ -313,7 +313,7 @@ export function applyPluginEditorWindow(
 
   if (device.type !== "PluginDevice") {
     console.warn(
-      `select: openPluginWindow ignored — ${device.type} is not a plug-in (VST/AU)`,
+      `select: openPluginWindow ignored — ${targetLabel(device)} is a ${device.type}, not a plug-in (VST/AU)`,
     );
 
     return false;

@@ -116,7 +116,7 @@ function duplicateDevice(
   // before it ever reaches the destination.
   if (isProducerPalDevice(device)) {
     console.warn(
-      "duplicate: cannot duplicate the Producer Pal device, skipping",
+      `duplicate: cannot duplicate the Producer Pal device ${targetLabel(device)}, skipping`,
     );
 
     return null;

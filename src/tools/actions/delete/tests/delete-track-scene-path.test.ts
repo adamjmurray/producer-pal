@@ -111,7 +111,7 @@ describe("deleteObject by track and scene path", () => {
     });
     expect(liveSet.call).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContain(
-      "delete: Live has no way to delete the main track, skipping",
+      "delete: Live has no way to delete the main track mt (id main), skipping",
     );
   });
 });

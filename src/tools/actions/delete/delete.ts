@@ -513,7 +513,7 @@ function deleteObjectByType(
   // what the user asked for. Everything else routes through here.
   if (type !== "track" && isProducerPalDevice(object)) {
     console.warn(
-      `delete: cannot delete the Producer Pal device (it is running this tool), skipping`,
+      `delete: cannot delete the Producer Pal device ${targetLabel(object)} (it is running this tool), skipping`,
     );
 
     return false;
