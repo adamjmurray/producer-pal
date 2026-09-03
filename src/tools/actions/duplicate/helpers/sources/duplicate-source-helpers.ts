@@ -130,20 +130,24 @@ export function resolveSourceClipDestinations(
  * once here.
  *
  * An omitted toPath defaults each source to its own track, which is a genuine
- * row rather than a pile, so that case is left alone.
+ * row rather than a pile, so that case is left alone — and so is a toPath of
+ * bare "[5|1]" coordinates, which says the same thing in the grammar.
  * @param sources - The sources this call is copying
  * @param destination - Where the copies land, when the type has a destination
+ * @param clipDestinations - The destinations one toPath resolved to, for clips
  */
 export function warnSharedArrangementDestination(
   sources: SourceShare[],
   destination: "session" | "arrangement" | undefined,
+  clipDestinations: ClipDestinations | null,
 ): void {
   const first = sources[0];
 
   if (
     destination !== "arrangement" ||
     sources.length < 2 ||
-    first?.toPath == null
+    first?.toPath == null ||
+    namesOwnLaneOnly(clipDestinations)
   ) {
     return;
   }
@@ -179,6 +183,22 @@ export function collectSources(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Whether every destination is the source clip's own track, which each source
+ * has one of. Nothing piles up, so there is nothing to warn about.
+ * @param clipDestinations - The destinations one toPath resolved to
+ * @returns True when no named track is in play
+ */
+function namesOwnLaneOnly(clipDestinations: ClipDestinations | null): boolean {
+  const targets = clipDestinations?.arrangementTargets;
+
+  return (
+    targets != null &&
+    targets.length > 0 &&
+    targets.every((target) => target?.trackIndex == null)
+  );
+}
 
 /**
  * The ids of the objects a call names, by id, by path, or both — they name

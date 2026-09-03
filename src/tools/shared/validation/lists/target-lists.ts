@@ -14,7 +14,10 @@ import {
   namedPathParam,
   targetEntries,
 } from "#src/tools/shared/utils.ts";
-import { countListEntries } from "#src/tools/shared/validation/lists/list-lengths.ts";
+import {
+  countListEntries,
+  countPathEntries,
+} from "#src/tools/shared/validation/lists/list-lengths.ts";
 
 /** The four ways a call names what to act on. */
 export interface TargetParams {
@@ -36,7 +39,7 @@ export type IdPerPath = (paths: string, tool: string) => Array<string | null>;
 export function targetCount(args: TargetParams): number {
   return (
     countListEntries(namedIdParam(args.id, args.ids, "ids")) +
-    countListEntries(namedPathParam(args.path, args.paths))
+    countPathEntries(namedPathParam(args.path, args.paths))
   );
 }
 

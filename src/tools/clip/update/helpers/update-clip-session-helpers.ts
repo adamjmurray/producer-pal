@@ -16,9 +16,13 @@ import {
   namedHiddenPath,
   pathEntries,
   pathNamesSomething,
-  requireClipPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import {
+  requireClipDestinationPath,
+  type ClipDestinationPath,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
   formatObjectPath,
   parseObjectPath,
@@ -58,25 +62,43 @@ export function moveDestinationParam(
     : "toPath";
 }
 
+/** Where the clips in one call move: the lane, the position, or both. */
+export interface MoveDestinations {
+  /** The lane per named clip, null where there is nothing to move to. */
+  destinations: Array<ClipPath | null>;
+  /**
+   * The song position a `[...]` in toPath named, per clip, null where the entry
+   * carried none — that clip keeps the start it has.
+   */
+  positions: Array<string | null>;
+}
+
 /**
  * Resolves where each clip in the batch moves, from toPath or the deprecated
  * toSlot. Warns and returns nulls for anything update-clip can't do, so the
  * rest of the update still runs.
  *
+ * An entry may name a lane (`t2`), a position (`[5|1]`), or both — the halves
+ * are split apart here, so a bare coordinate keeps its turn in the list with no
+ * lane to move to.
+ *
  * Destinations pair 1:1 with the clips and never cycle, unlike name and color: two
  * clips can share a name, but the second one sent to a slot overwrites the
  * first — which is a move that reports success and loses a clip.
- * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3", "t2", "t2/l0")
+ * @param rawToPath - Destination path(s), comma-separated (e.g., "t2/s3", "t2[5|1]", "[5|1]")
  * @param rawToSlot - Deprecated destination slot(s) (trackIndex/sceneIndex)
  * @param clipCount - How many clips the call named, before any are dropped
- * @returns One destination per named clip, null where there is nothing to move to
+ * @returns One lane and one position per named clip
  */
 export function resolveMoveDestinations(
   rawToPath: string | undefined,
   rawToSlot: string | undefined,
   clipCount: number,
-): Array<ClipPath | null> {
-  const none = Array.from({ length: clipCount }, () => null);
+): MoveDestinations {
+  const none = {
+    destinations: Array.from({ length: clipCount }, () => null),
+    positions: Array.from({ length: clipCount }, () => null),
+  };
   // A blank param names nothing, so read it as omitted rather than as a
   // destination that failed to parse.
   const toPath = namedParam(rawToPath, "toPath");
@@ -99,20 +121,24 @@ export function resolveMoveDestinations(
   // empty here: namedHiddenPath drops a toSlot that names nothing, and toPath
   // refuses one when it splits its entries.
   try {
-    const destinations: Array<ClipPath | null> =
+    const entries: Array<ClipDestinationPath | null> =
       toSlot != null
         ? parseSlotList(toSlot, "toSlot").map((slot) => ({
-            kind: "slot" as const,
-            ...slot,
+            lane: { kind: "slot" as const, ...slot },
+            position: null,
           }))
         : pathDestinations(toPath as string);
-
-    return pairExact(destinations, clipCount, {
+    const paired = pairExact(entries, clipCount, {
       param: toSlot == null ? "toPath" : "toSlot",
       noun: "destination",
       item: "clip",
       shortfall: "were not moved",
     });
+
+    return {
+      destinations: paired.map((entry) => entry?.lane ?? null),
+      positions: paired.map((entry) => entry?.position ?? null),
+    };
   } catch (error) {
     console.warn(`clip not moved: ${errorMessage(error)}`);
   }
@@ -334,26 +360,34 @@ export function handlePositionOperations(
 }
 
 /**
- * Reads the clip slots off a toPath, warning about each entry that names
+ * Reads the destinations off a toPath, warning about each entry that names
  * something update-clip can't move a clip to.
  * @param toPath - Destination path(s), comma-separated
- * @returns One destination per entry, null where the entry names no slot
+ * @returns One destination per entry, null where the entry names nowhere to go
  */
-function pathDestinations(toPath: string): Array<ClipPath | null> {
+function pathDestinations(toPath: string): Array<ClipDestinationPath | null> {
   // pathEntries refuses a toPath that names nothing, so every entry here is real.
   const entries = pathEntries(toPath, "toPath");
 
   // Per entry, so a typo costs its own move and not the whole batch. An entry
   // that names the wrong kind of place already worked this way; one that
   // doesn't parse at all used to discard every destination beside it.
-  return entries.map((entry) => {
+  const parsed = entries.map((entry) => {
     try {
-      return requireClipPath(parseObjectPath(entry, "toPath"), "toPath");
+      return requireClipDestinationPath(
+        parseObjectPath(entry, "toPath"),
+        "toPath",
+      );
     } catch (error) {
       console.warn(`clip not moved: ${errorMessage(error)}`);
     }
 
     return null;
+  });
+
+  return resolveDestinationPositions(parsed, {
+    toolName: "updateClip",
+    paramName: "toPath",
   });
 }
 

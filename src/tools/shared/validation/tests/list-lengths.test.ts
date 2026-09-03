@@ -154,3 +154,26 @@ describe("countListEntries", () => {
     expect(countListEntries("  ")).toBe(0);
   });
 });
+
+describe("counting a path list", () => {
+  // The one lexing rule: a `[...]` coordinate holds song positions, and a
+  // locator name is user-typed. Counting it naively would call one destination
+  // two and refuse the call for a mismatch that isn't there.
+  it("counts entries at bracket depth 0", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "toPath", value: "t0[loc:Verse, pt 2]", isPath: true },
+        { param: "name", value: "one" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("still catches a real mismatch across a coordinate", () => {
+    expect(() =>
+      validateListLengths([
+        { param: "toPath", value: "t0[loc:A, B],t1[9|1]", isPath: true },
+        { param: "name", value: "one,two,three" },
+      ]),
+    ).toThrow("toPath names 2 entries but name names 3 entries");
+  });
+});

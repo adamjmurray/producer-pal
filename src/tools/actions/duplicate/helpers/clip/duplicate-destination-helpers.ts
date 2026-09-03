@@ -3,10 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Where a clip duplicate goes. `toPath` names it — `t7` for that track's
-// arrangement, `t7/s2` for a clip slot — and the deprecated `toSlot` still
-// works. Resolved before anything is created, so a bad destination fails
-// instead of quietly landing the copy somewhere else.
+// Where a clip duplicate goes. `toPath` names it — `t7[5|1]` for a spot on
+// that track's arrangement, `t7/s2` for a clip slot — and the deprecated
+// `toSlot` still works. An entry may name the lane, the position, or both; a
+// bare `[5|1]` lands on the source clip's own track. Resolved before anything
+// is created, so a bad destination fails instead of quietly landing the copy
+// somewhere else.
 
 import { namedParam } from "#src/tools/shared/utils.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
@@ -15,10 +17,14 @@ import {
   withNewLaneOrdinals,
   type ArrangementTrack,
 } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
+import {
+  parseClipDestinationList,
+  type ClipDestinationPath,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import {
   namedHiddenPath,
-  parseObjectPathList,
-  requireClipPath,
+  type ClipPath,
 } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import {
@@ -26,7 +32,17 @@ import {
   type ClipSlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
 
-type ClipPath = ReturnType<typeof requireClipPath>;
+/**
+ * One arrangement destination. A null `trackIndex` is a bare `[5|1]`: the entry
+ * named a position but no lane, so the copy lands on the source clip's own
+ * track — the same place an omitted toPath sends it.
+ */
+export interface DuplicateArrangementTarget extends Omit<
+  ArrangementTrack,
+  "trackIndex"
+> {
+  trackIndex: number | null;
+}
 
 export interface ClipDestinations {
   destination: "session" | "arrangement";
@@ -36,7 +52,12 @@ export interface ClipDestinations {
    * Arrangement destinations, in order, null where the path named something
    * this call can't use. Empty means the source's own track.
    */
-  arrangementTargets: (ArrangementTrack | null)[];
+  arrangementTargets: (DuplicateArrangementTarget | null)[];
+  /**
+   * The position each entry's own `[...]` named, aligned with
+   * arrangementTargets. Empty when the positions came from arrangementStart.
+   */
+  arrangementPositions: (string | null)[];
 }
 
 /**
@@ -68,21 +89,24 @@ export function resolveClipDestinations(
     return legacySlotDestinations(toSlot, hasArrangementParams);
   }
 
-  const paths = parseObjectPathList(toPath, "toPath").map((path) =>
-    requireClipPath(path, "toPath"),
+  const entries = resolveDestinationPositions(
+    parseClipDestinationList(toPath, "toPath"),
+    { toolName: "duplicate", paramName: "toPath" },
   );
 
   if (hasArrangementParams) {
-    return arrangementDestinations(paths);
+    return arrangementDestinations(entries);
   }
 
-  if (paths.length === 0) {
+  if (entries.length === 0) {
     throw new Error(
       'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
     );
   }
 
-  return clipSlotDestinations(paths);
+  // A coordinate — bare or not — made the call an arrangement duplicate above,
+  // so every entry left here named a lane.
+  return clipSlotDestinations(entries.map(({ lane }) => lane as ClipPath));
 }
 
 /**
@@ -195,7 +219,12 @@ function legacySlotDestinations(
     );
   }
 
-  return { destination: "session", slots, arrangementTargets: [] };
+  return {
+    destination: "session",
+    slots,
+    arrangementTargets: [],
+    arrangementPositions: [],
+  };
 }
 
 /**
@@ -209,20 +238,35 @@ function legacySlotDestinations(
  * the wrong copy, and a two-destination call collapsing to one stops the
  * comma-separated values from splitting at all — Live is then handed the whole
  * string, which fails the call after a copy has already landed.
- * @param paths - Parsed clip destination paths
+ * @param entries - Parsed clip destinations, lane and position apart
  * @returns Arrangement destinations, or session ones when only slots were named
  */
-function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
+function arrangementDestinations(
+  entries: ClipDestinationPath[],
+): ClipDestinations {
+  // A coordinate is its own entry's position, so when any entry carries one
+  // every arrangement entry needs one of its own: arrangementStart was refused
+  // alongside them, and there is nothing else to fall back on.
+  const fromPath = entries.some((entry) => entry.position != null);
   const slots: ClipSlotPosition[] = [];
-  const targets = paths.map((path) => {
-    if (path.kind !== "slot") {
-      return { trackIndex: path.trackIndex, takeLane: takeLaneFromPath(path) };
+  const targets: (DuplicateArrangementTarget | null)[] = [];
+  const arrangementPositions = entries.map((entry) => entry.position);
+
+  for (const { lane, position } of entries) {
+    if (lane == null) {
+      targets.push({ trackIndex: null, takeLane: null });
+    } else if (lane.kind === "slot") {
+      slots.push({ trackIndex: lane.trackIndex, sceneIndex: lane.sceneIndex });
+      targets.push(null);
+    } else {
+      if (fromPath && position == null) throw noPositionError(lane);
+
+      targets.push({
+        trackIndex: lane.trackIndex,
+        takeLane: takeLaneFromPath(lane),
+      });
     }
-
-    slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
-
-    return null;
-  });
+  }
 
   // Number the lanes here, off the list the caller wrote: one entry may cover
   // every copy, and a repeat of one "l+" must reuse its lane, not append one
@@ -232,7 +276,12 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
   const arrangementTargets = withNewLaneOrdinals(targets);
 
   if (slots.length === 0) {
-    return { destination: "arrangement", slots: [], arrangementTargets };
+    return {
+      destination: "arrangement",
+      slots: [],
+      arrangementTargets,
+      arrangementPositions,
+    };
   }
 
   const named = slots
@@ -241,21 +290,50 @@ function arrangementDestinations(paths: ClipPath[]): ClipDestinations {
 
   // toPath names where the copy goes; arrangementStart only says where on a
   // track. With nothing but clip slots, the position has no track to apply
-  // to, so toPath is the one that survives.
+  // to, so toPath is the one that survives. A coordinate can't reach here: a
+  // clip slot has no room for one, so a slot-only toPath names no position.
   if (arrangementTargets.every((target) => target == null)) {
     console.warn(
       `duplicate: arrangementStart ignored — toPath "${named}" names a clip slot; ` +
         'use "t<track>" for that track\'s arrangement',
     );
 
-    return { destination: "session", slots, arrangementTargets: [] };
+    return {
+      destination: "session",
+      slots,
+      arrangementTargets: [],
+      arrangementPositions: [],
+    };
   }
 
   console.warn(
-    `duplicate: toPath "${named}" ignored — arrangementStart makes this an arrangement duplicate`,
+    `duplicate: toPath "${named}" ignored — ` +
+      (fromPath
+        ? "the other toPath entries name arrangement positions"
+        : "arrangementStart makes this an arrangement duplicate"),
   );
 
-  return { destination: "arrangement", slots: [], arrangementTargets };
+  return {
+    destination: "arrangement",
+    slots: [],
+    arrangementTargets,
+    arrangementPositions,
+  };
+}
+
+/**
+ * Refuses an arrangement entry with no position, on a toPath whose other
+ * entries carry one. Nothing else can supply it: arrangementStart beside a
+ * coordinate is refused before the call starts.
+ * @param lane - The lane the entry named
+ * @returns The error to throw
+ */
+function noPositionError(lane: ClipPath): Error {
+  const named = formatObjectPath(lane);
+
+  return new Error(
+    `duplicate failed: toPath "${named}" names no position; add one, as "${named}[5|1]"`,
+  );
 }
 
 /**
@@ -281,5 +359,10 @@ function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
     slots.push({ trackIndex: path.trackIndex, sceneIndex: path.sceneIndex });
   }
 
-  return { destination: "session", slots, arrangementTargets: [] };
+  return {
+    destination: "session",
+    slots,
+    arrangementTargets: [],
+    arrangementPositions: [],
+  };
 }

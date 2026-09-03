@@ -86,14 +86,16 @@ export function planClipUpdate({
   // Paired against what the caller named, not against the clips that resolve:
   // an id that names nothing has to take its position with it, or every later
   // clip slides onto the wrong bar.
+  const moves = resolveMoveDestinations(toPath, toSlot, requestedIds.length);
   const { startBeats, lengthBeats } = parseArrangementParams(
     arrangementStart,
     arrangementLength,
     requestedIds.length,
+    moves.positions,
   );
   const { clips, destinationById, requestedIndexById } = resolveRequestedClips(
     requestedIds,
-    resolveMoveDestinations(toPath, toSlot, requestedIds.length),
+    moves.destinations,
   );
   const startBeatsFor = (clip: LiveAPI): number | null =>
     beatsForClip(startBeats, requestedIndexById.get(clip.id));

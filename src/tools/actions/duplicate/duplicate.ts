@@ -11,6 +11,10 @@ import {
   targetEntries,
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  pathCarriesPosition,
+  refuseDoubledPosition,
+} from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import { copyLabels } from "./helpers/sources/duplicate-label-helpers.ts";
 import {
@@ -131,7 +135,11 @@ export async function duplicate(
   // below this line knows a locator can be written at all.
   arrangementStart = resolveArrangementStart(type, arrangementStart, locator);
 
-  const hasArrangementParams = hasArrangementPosition(arrangementStart);
+  const hasArrangementParams = namesArrangementPosition(
+    type,
+    toPath,
+    arrangementStart,
+  );
   // A container destination — a track's arrangement or a take lane on it — holds
   // many copies and tells them apart by position, so every source can have the
   // whole list. A clip slot, device slot or drum pad holds one object, so the
@@ -263,6 +271,34 @@ function resolveArrangementStart(
     toolName: "duplicate",
     paramName: "arrangementStart",
   });
+}
+
+/**
+ * Whether the call lands its copies on the song timeline, refusing a position
+ * spelled twice on the way.
+ *
+ * A `[...]` in toPath says where just as arrangementStart does, so it makes the
+ * call an arrangement duplicate the same way — and sending both is two
+ * spellings of one position, with no combined reading and nothing run yet. Only
+ * a clip's toPath can carry a coordinate; every other type's names a device or
+ * a pad.
+ * @param type - What is being duplicated
+ * @param toPath - Destination path(s) as the caller wrote them
+ * @param arrangementStart - Position list, already resolved to bar|beat
+ * @returns True when the copies land on the arrangement
+ */
+function namesArrangementPosition(
+  type: string,
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): boolean {
+  if (type !== "clip") return hasArrangementPosition(arrangementStart);
+
+  refuseDoubledPosition(toPath, arrangementStart, "duplicate", "toPath");
+
+  return (
+    hasArrangementPosition(arrangementStart) || pathCarriesPosition(toPath)
+  );
 }
 
 /**

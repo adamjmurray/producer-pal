@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { splitPathEntries } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+
 /**
  * The whole-call check that two comma-separated params agree on how many
  * entries they name.
@@ -26,6 +28,11 @@ export interface ListArg {
   count?: number;
   /** What this arg counts, when "entries" doesn't fit: "track", "copy". */
   noun?: string;
+  /**
+   * A path param, whose entries split at bracket depth 0 — a `[...]`
+   * coordinate can hold a comma, in a locator name or a bar|beat offset.
+   */
+  isPath?: boolean;
 }
 
 /**
@@ -99,8 +106,14 @@ export function requireSameLength(
  */
 function isList(arg: ListArg): boolean {
   if (arg.count != null) return arg.count > 1;
+  if (arg.value == null) return false;
 
-  return arg.value?.includes(",") ?? false;
+  // A comma makes it a list even when it names one entry — "A," is a malformed
+  // list, and dropping it here would let it pass unchallenged. A path's comma
+  // has to be at bracket depth 0 to count.
+  return arg.isPath
+    ? splitPathEntries(arg.value).length > 1
+    : arg.value.includes(",");
 }
 
 /**
@@ -112,7 +125,7 @@ function isList(arg: ListArg): boolean {
 function entryCount(arg: ListArg): number {
   if (arg.count != null) return arg.count;
 
-  return arg.value == null ? 1 : countEntries(arg.value);
+  return arg.value == null ? 1 : countEntries(arg.value, arg.isPath);
 }
 
 /**
@@ -127,13 +140,24 @@ export function countListEntries(value: string | null | undefined): number {
 }
 
 /**
+ * {@link countListEntries} for a path param, whose entries split at bracket
+ * depth 0 — a `[...]` coordinate can hold a comma.
+ * @param value - The raw path param value
+ * @returns The entry count
+ */
+export function countPathEntries(value: string | null | undefined): number {
+  return value == null || value.trim() === "" ? 0 : countEntries(value, true);
+}
+
+/**
  * How many entries a comma-separated value names, reading one trailing comma
  * as a typo rather than an entry — the same way both splitters do.
  * @param value - The raw param value
+ * @param isPath - Split at bracket depth 0, for a path param
  * @returns The entry count
  */
-function countEntries(value: string): number {
-  const entries = value.split(",");
+function countEntries(value: string, isPath = false): number {
+  const entries = isPath ? splitPathEntries(value) : value.split(",");
 
   if ((entries.at(-1) ?? "").trim() === "") entries.pop();
 

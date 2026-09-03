@@ -21,6 +21,7 @@ import {
 import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type ClipDestinations,
+  type DuplicateArrangementTarget,
   warnInapplicableClipParams,
   warnUnusedArrangementParams,
   warnUnusedDestination,
@@ -57,13 +58,28 @@ export function resolveArrangementPositions(
     );
   }
 
-  // Validate each standalone position first so a 0-indexed/zero-bar arrangement
-  // start gets the 1-indexing steer, not a silent pre-origin beat.
-  return positions.map((pos) => {
-    validateBarBeatPosition(pos);
+  return positions.map((pos) =>
+    arrangementPositionToBeats(pos, timeSigNumerator, timeSigDenominator),
+  );
+}
 
-    return barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator);
-  });
+/**
+ * One bar|beat position in Ableton beats. Validated standalone first so a
+ * 0-indexed/zero-bar arrangement start gets the 1-indexing steer, not a silent
+ * pre-origin beat.
+ * @param position - A bar|beat position
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The position in beats
+ */
+export function arrangementPositionToBeats(
+  position: string,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number {
+  validateBarBeatPosition(position);
+
+  return barBeatToAbletonBeats(position, timeSigNumerator, timeSigDenominator);
 }
 
 /**
@@ -183,15 +199,19 @@ export function inferDestination(
  * arrived null stays null. Name and color are counted per requested
  * destination, so a shorter list here would slide every name after the gap onto
  * the wrong copy.
+ *
+ * An entry with no track — a bare `[5|1]` — is the source clip's own, which is
+ * also what an empty list means. Neither is checked for type or existence: the
+ * clip is already on it.
  * @param sourceClip - The clip being duplicated
  * @param targets - Requested destinations, or empty for the source's own track
  * @returns One entry per request: the destination, or null where it can't be used
  */
 export function resolveDestinationTargets(
   sourceClip: LiveAPI,
-  targets: (ArrangementTrack | null)[],
+  targets: (DuplicateArrangementTarget | null)[],
 ): (ArrangementTrack | null)[] {
-  if (targets.length === 0) {
+  const ownTrack = (): ArrangementTrack => {
     const sourceTrackIndex = sourceClip.trackIndex;
 
     if (sourceTrackIndex == null) {
@@ -200,17 +220,22 @@ export function resolveDestinationTargets(
       );
     }
 
-    return [{ trackIndex: sourceTrackIndex, takeLane: null }];
-  }
+    return { trackIndex: sourceTrackIndex, takeLane: null };
+  };
+
+  if (targets.length === 0) return [ownTrack()];
 
   const clipIsMidi = sourceClip.getProperty("is_midi_clip") === 1;
 
-  return targets.map((target) =>
-    target != null &&
-    canCopyClipToTrack(sourceClip.id, target.trackIndex, clipIsMidi)
-      ? target
-      : null,
-  );
+  return targets.map((target) => {
+    if (target == null) return null;
+
+    if (target.trackIndex == null) return { ...target, ...ownTrack() };
+
+    return canCopyClipToTrack(sourceClip.id, target.trackIndex, clipIsMidi)
+      ? { ...target, trackIndex: target.trackIndex }
+      : null;
+  });
 }
 
 /**
@@ -324,7 +349,11 @@ export function resolveDestinationAndWarn(
   // the destination resolver folded takeLane onto the paths already, and the
   // lane resolver warns if it had no new lane to name.
   warnUnusedTakeLane(type, destination, takeLane, console.warn, takeLaneName);
-  warnSharedArrangementDestination(params.sources, destination);
+  warnSharedArrangementDestination(
+    params.sources,
+    destination,
+    clipDestinations,
+  );
 
   return destination;
 }

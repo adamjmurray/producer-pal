@@ -100,13 +100,15 @@ export interface ArrangementTrack {
  * Call this on the list as the caller wrote it, before it's paired against
  * arrangementStart. One written `l+` then stays one lane however many clips
  * land on it, while `l+,l+` gets two. A null is a destination that keeps its
- * turn without being one, and passes straight through.
+ * turn without being one, and passes straight through. Typed off the lane
+ * alone, so a destination carrying more than an {@link ArrangementTrack} keeps
+ * its own type.
  * @param targets - Destinations parsed from the path, in order
  * @returns The destinations, with each "new" entry numbered
  */
-export function withNewLaneOrdinals<T extends ArrangementTrack | null>(
-  targets: T[],
-): T[] {
+export function withNewLaneOrdinals<
+  T extends { takeLane: TakeLaneTarget | null; newLaneOrdinal?: number } | null,
+>(targets: T[]): T[] {
   let ordinal = 0;
 
   return targets.map((target) =>

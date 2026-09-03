@@ -329,6 +329,17 @@ Serial, and the thing everything else depends on. Legality per tool comes from
 Object-Paths.md: complete on create, complete as a source, either partial as a
 destination.
 
+Destinations landed after sources. A coordinate is split into its lane and its
+position where the destination list is already an array, so a bare `[5|1]` sits
+in the middle of a list with no lane and keeps its turn — lowering it to a
+`toPath` string can't express that, since an empty entry is refused. The
+position then joins the existing `arrangementStart` plumbing, and a coordinate
+beside `arrangementStart` is refused up front, naming both.
+
+One gap left for later, unchanged by this: `duplicate` still needs a position
+per arrangement destination, so `toPath: "t0"` alone is refused there rather
+than meaning "that track, at the source's own start".
+
 ### Phase 13 - results and inputs switch together
 
 **One commit.** `objectPathForApi` spells `t0[5|1]`, results drop

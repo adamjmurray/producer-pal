@@ -49,15 +49,22 @@ const LENGTH_LABELS: PairLabels = {
  *
  * Both take a comma-separated list paired with the ids in order. A single
  * value covers the whole call.
+ *
+ * A `[...]` in toPath is the other spelling of the start, already one position
+ * per clip, so it needs no pairing and never broadcasts. The two can't both be
+ * in play: a coordinate beside arrangementStart is refused before any of this
+ * runs.
  * @param arrangementStart - Bar|beat position(s), comma-separated
  * @param arrangementLength - Duration(s) (`Nbar`, `n<fraction>`, or `Nbar+n<fraction>`), comma-separated
  * @param clipCount - How many clips the call named, before any are dropped
+ * @param pathPositions - The position a toPath coordinate named, per clip
  * @returns Start and length beats per clip
  */
 export function parseArrangementParams(
   arrangementStart: string | undefined,
   arrangementLength: string | undefined,
   clipCount: number,
+  pathPositions: Array<string | null> = [],
 ): ArrangementParams {
   // A blank names no position, so read it as omitted rather than as a value
   // that failed to parse — a caller that fills unused strings with "" gets the
@@ -73,7 +80,9 @@ export function parseArrangementParams(
     "arrangementLength",
   );
 
-  if (positions.length === 0 && durations.length === 0) {
+  const fromPath = pathPositions.some((position) => position != null);
+
+  if (positions.length === 0 && durations.length === 0 && !fromPath) {
     return { startBeats: NO_BEATS, lengthBeats: NO_BEATS };
   }
 
@@ -85,19 +94,24 @@ export function parseArrangementParams(
   const numerator = liveSet.getProperty("signature_numerator") as number;
   const denominator = liveSet.getProperty("signature_denominator") as number;
 
-  return {
-    startBeats: fanOut(
-      positions.map((position) => {
-        // Validate the standalone position first so a 0-indexed/zero-bar
-        // arrangement start gets the 1-indexing steer (matching create-clip),
-        // not a silent pre-origin beat.
-        validateBarBeatPosition(position);
+  // Validate the standalone position first so a 0-indexed/zero-bar arrangement
+  // start gets the 1-indexing steer (matching create-clip), not a silent
+  // pre-origin beat.
+  const toBeats = (position: string): number => {
+    validateBarBeatPosition(position);
 
-        return barBeatToAbletonBeats(position, numerator, denominator);
-      }),
-      clipCount,
-      START_LABELS,
-    ),
+    return barBeatToAbletonBeats(position, numerator, denominator);
+  };
+
+  return {
+    startBeats: fromPath
+      ? {
+          broadcast: null,
+          perClip: pathPositions.map((position) =>
+            position == null ? null : toBeats(position),
+          ),
+        }
+      : fanOut(positions.map(toBeats), clipCount, START_LABELS),
     lengthBeats: fanOut(
       durations.map((duration) => {
         const beats = durationToAbletonBeats(duration, numerator, denominator);

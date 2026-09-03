@@ -217,6 +217,7 @@ describe("duplicateClipWithPositions to clip slots", () => {
           { trackIndex: 2, sceneIndex: 0 },
         ],
         arrangementTargets: [],
+        arrangementPositions: [],
       },
       LiveAPI.from(SOURCE_CLIP_ID),
       SOURCE_CLIP_ID,

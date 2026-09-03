@@ -23,6 +23,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 3, sceneIndex: 0 },
         ],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
     });
 
@@ -36,6 +37,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 3, sceneIndex: 0 },
         ],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
     });
 
@@ -57,6 +59,7 @@ describe("resolveClipDestinations", () => {
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
     });
 
@@ -67,6 +70,7 @@ describe("resolveClipDestinations", () => {
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
     });
 
@@ -81,6 +85,7 @@ describe("resolveClipDestinations", () => {
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
     });
   });
@@ -94,6 +99,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 2, takeLane: null },
           { trackIndex: 3, takeLane: null },
         ],
+        arrangementPositions: [null, null],
       });
     });
 
@@ -104,6 +110,7 @@ describe("resolveClipDestinations", () => {
           destination: "arrangement",
           slots: [],
           arrangementTargets: [],
+          arrangementPositions: [],
         },
       );
     });
@@ -117,6 +124,7 @@ describe("resolveClipDestinations", () => {
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("arrangementStart ignored"),
@@ -135,6 +143,7 @@ describe("resolveClipDestinations", () => {
         destination: "arrangement",
         slots: [],
         arrangementTargets: [null, { trackIndex: 3, takeLane: null }],
+        arrangementPositions: [null, null],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('toPath "t2/s1" ignored'),
@@ -156,6 +165,7 @@ describe("resolveClipDestinations", () => {
           { trackIndex: 3, takeLane: "new", newLaneOrdinal: 0 },
           { trackIndex: 3, takeLane: "new", newLaneOrdinal: 1 },
         ],
+        arrangementPositions: [null, null, null],
       });
     });
 
@@ -168,6 +178,7 @@ describe("resolveClipDestinations", () => {
         destination: "session",
         slots: [{ trackIndex: 2, sceneIndex: 1 }],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -186,6 +197,7 @@ describe("resolveClipDestinations", () => {
         destination: "arrangement",
         slots: [],
         arrangementTargets: [],
+        arrangementPositions: [],
       });
       expect(warnSpy).toHaveBeenCalledWith('toSlot "," names nothing');
     });

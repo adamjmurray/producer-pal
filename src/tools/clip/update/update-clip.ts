@@ -33,6 +33,7 @@ import {
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 import { clipIdPerPath } from "#src/tools/clip/helpers/clip-path-lookup.ts";
+import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { validateListLengths } from "#src/tools/shared/validation/lists/list-lengths.ts";
 import {
   targetCount,
@@ -163,6 +164,10 @@ export async function updateClip(
   }
 
   validateWholeCallParams(timeSignature, quantizePitch);
+
+  // Two spellings of one position, so there is no combined reading and nothing
+  // has run yet.
+  refuseDoubledPosition(toPath, arrangementStart, "updateClip", "toPath");
 
   const {
     clips: mutableClips,
@@ -296,6 +301,7 @@ function resolveClipTargets(
     {
       param: values.toPath != null ? "toPath" : "toSlot",
       value: values.toPath ?? values.toSlot,
+      isPath: true,
     },
   ]);
 

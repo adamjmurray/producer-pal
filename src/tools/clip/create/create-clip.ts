@@ -9,6 +9,7 @@ import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseColors } from "#src/tools/shared/validation/color-utils.ts";
 import { parseNames } from "#src/tools/shared/validation/name-utils.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { refuseDoubledPosition } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
 import { type ClipSlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { resolveCreateClipDestinations } from "./helpers/create-clip-destination-helpers.ts";
 import {
@@ -150,7 +151,7 @@ export async function createClip(
   // Treat a blank/whitespace-only transforms string as "no transform".
   transformString = normalizeTransforms(transformString);
 
-  validateCreateClipLists({ path, slot, arrangementStart, name, color });
+  refuseUnreadableCall({ path, slot, arrangementStart, name, color });
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -262,7 +263,8 @@ export async function createClip(
 }
 
 /**
- * Refuse a call whose lists disagree, before any clip is created.
+ * Refuse a call the tool can't read, before any clip is created: lists that
+ * disagree on how many entries they name, and a position spelled twice.
  *
  * Every list is checked together, before any of them is split: once one is
  * split nothing knows whether the others are lists at all.
@@ -273,7 +275,7 @@ export async function createClip(
  * @param args.name - Clip names
  * @param args.color - Clip colors
  */
-function validateCreateClipLists({
+function refuseUnreadableCall({
   path,
   slot,
   arrangementStart,
@@ -284,11 +286,19 @@ function validateCreateClipLists({
   "path" | "slot" | "arrangementStart" | "name" | "color"
 >): void {
   validateListLengths([
-    { param: path != null ? "path" : "slot", value: path ?? slot },
+    {
+      param: path != null ? "path" : "slot",
+      value: path ?? slot,
+      isPath: true,
+    },
     { param: "arrangementStart", value: arrangementStart },
     { param: "name", value: name },
     { param: "color", value: color },
   ]);
+
+  // A "[...]" in path and arrangementStart are two spellings of one position,
+  // so there is no combined reading.
+  refuseDoubledPosition(path, arrangementStart, "createClip", "path");
 }
 
 /**

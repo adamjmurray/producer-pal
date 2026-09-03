@@ -104,11 +104,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe(
         "where to move the clip(s), comma-separated for multiple: a clip slot 't<track>/s<scene>', " +
-          "a track's arrangement lane 't<track>', or a take lane 't<track>/l<lane>' or 't<track>/l+' " +
-          "(e.g., 't2/s3' or 't2,t5'). Arrangement lanes pair with arrangementStart for the position; " +
-          "without it the clip keeps its own. A clip re-created in a slot or on a take lane drops its " +
-          "automation envelopes. Paired 1:1 with the clips named by id/path, in order - name one per " +
-          "clip, since a single destination doesn't cover them all the way a name does",
+          "a spot on the arrangement 't<track>[<position>]' (a position is bar|beat or " +
+          "loc:<locator name or id>), a take lane 't<track>/l<lane>' or 't<track>/l+', or " +
+          "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[9|1]'). " +
+          "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
+          "take lane drops its automation envelopes. Paired 1:1 with the clips named by id/path, in " +
+          "order - name one per clip, since a single destination doesn't cover them all the way a " +
+          "name does",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged

@@ -43,6 +43,7 @@ import {
   type ResolvedDuplicateLane,
 } from "./duplicate-take-lane-helpers.ts";
 import {
+  arrangementPositionToBeats,
   resolveArrangementPositions,
   resolveDestinationTargets,
 } from "../duplicate-validation-helpers.ts";
@@ -78,7 +79,7 @@ export async function duplicateClipWithPositions(
   }
 
   return await duplicateClipToArrangementPositions(
-    destinations.arrangementTargets,
+    destinations,
     object,
     id,
     labels,
@@ -96,7 +97,8 @@ export async function duplicateClipWithPositions(
  * Copies a clip into the arrangement at each destination/position pair. A
  * destination naming a take lane is re-created on the lane (lanes have no
  * duplicate API); the rest go through Live's own arrangement duplicate.
- * @param targets - Destinations, or empty for the source's own track
+ * @param destinations - Where the copies go, and the positions their own
+ *   `[...]` named
  * @param object - Live API object to duplicate
  * @param id - ID of the object
  * @param labels - The call's names and colors
@@ -108,7 +110,7 @@ export async function duplicateClipWithPositions(
  * @returns Array of result objects
  */
 async function duplicateClipToArrangementPositions(
-  targets: (ArrangementTrack | null)[],
+  destinations: ClipDestinations,
   object: LiveAPI,
   id: string,
   labels: CopyLabels,
@@ -121,7 +123,7 @@ async function duplicateClipToArrangementPositions(
   // The alias folds on after resolution, because an omitted toPath means the
   // source clip's own track — which only exists as a destination once resolved.
   const requested = applyTakeLaneAlias(
-    resolveDestinationTargets(object, targets),
+    resolveDestinationTargets(object, destinations.arrangementTargets),
     takeLane,
   );
 
@@ -130,7 +132,7 @@ async function duplicateClipToArrangementPositions(
   if (requested.every((target) => target == null)) return [];
 
   const { songTimeSigNumerator, songTimeSigDenominator, positionsInBeats } =
-    resolveSongPositions(arrangementStart);
+    resolveSongPositions(arrangementStart, destinations.arrangementPositions);
 
   const {
     copies,
@@ -166,7 +168,7 @@ async function duplicateClipToArrangementPositions(
 
   // Labelled after the lanes exist, so a stop names the lane it created rather
   // than the "l+" that made it — re-running "l+" would append another one.
-  const destinations = labelDuplicateDestinations(
+  const labelled = labelDuplicateDestinations(
     targetTracks,
     targetPositions,
     lanes,
@@ -209,7 +211,7 @@ async function duplicateClipToArrangementPositions(
         skipped,
         unreached: order
           .slice(done)
-          .map((index) => destinations[index] as UnreachedDestination),
+          .map((index) => labelled[index] as UnreachedDestination),
         results,
         total: targetTracks.length,
         songTimeSigNumerator,
@@ -239,7 +241,7 @@ async function duplicateClipToArrangementPositions(
     if (result != null) {
       results[i] = result;
     } else {
-      skipped.push(destinations[i] as UnreachedDestination);
+      skipped.push(labelled[i] as UnreachedDestination);
     }
   }
 
@@ -247,11 +249,18 @@ async function duplicateClipToArrangementPositions(
 }
 
 /**
- * Reads the song meter and resolves the positions the copies land on.
+ * Reads the song meter and resolves the positions the copies land on — from the
+ * `[...]` coordinates in toPath when it carried any, and from arrangementStart
+ * otherwise. Only one of the two is ever in play: a call sending both is
+ * refused before it starts.
  * @param arrangementStart - Comma-separated bar|beat positions
+ * @param pathPositions - The position each destination's own `[...]` named
  * @returns The song time signature and one position per entry, in Ableton beats
  */
-function resolveSongPositions(arrangementStart: string | undefined): {
+function resolveSongPositions(
+  arrangementStart: string | undefined,
+  pathPositions: (string | null)[],
+): {
   songTimeSigNumerator: number;
   songTimeSigDenominator: number;
   positionsInBeats: number[];
@@ -263,16 +272,30 @@ function resolveSongPositions(arrangementStart: string | undefined): {
   const songTimeSigDenominator = liveSet.getProperty(
     "signature_denominator",
   ) as number;
+  const fromPath = pathPositions.some((position) => position != null);
 
   return {
     songTimeSigNumerator,
     songTimeSigDenominator,
-    // Comma-separated for multiple; shared with scene duplication.
-    positionsInBeats: resolveArrangementPositions(
-      arrangementStart,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
+    positionsInBeats: fromPath
+      ? pathPositions.map((position) =>
+          // A dropped entry — a clip slot in an arrangement toPath — keeps its
+          // turn so names and colors stay aligned, and its position is never
+          // read.
+          position == null
+            ? 0
+            : arrangementPositionToBeats(
+                position,
+                songTimeSigNumerator,
+                songTimeSigDenominator,
+              ),
+        )
+      : // Comma-separated for multiple; shared with scene duplication.
+        resolveArrangementPositions(
+          arrangementStart,
+          songTimeSigNumerator,
+          songTimeSigDenominator,
+        ),
   };
 }
 

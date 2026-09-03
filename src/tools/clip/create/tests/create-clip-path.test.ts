@@ -297,3 +297,88 @@ describe("createClip trackIndex/sceneIndex fallback", () => {
     );
   });
 });
+
+describe("createClip path coordinate", () => {
+  const CUE_POINTS = [{ id: "cue1", time: 32, name: "Chorus" }];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates an arrangement clip at the position in the path", async () => {
+    const { track } = setupArrangementClipMocks();
+
+    await createClip({ path: "t0[5|1]", notes: "C3 1|1" });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+  });
+
+  it("creates one clip per coordinate in the list", async () => {
+    setupArrangementClipMocks();
+    registerArrangementTrack(1);
+
+    const result = (await createClip({
+      path: "t0[5|1],t1[9|1]",
+      notes: "C3 1|1",
+    })) as object[];
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("resolves a locator inside the coordinate", async () => {
+    const { track } = setupArrangementClipMocks({ cuePoints: CUE_POINTS });
+
+    await createClip({ path: "t0[loc:Chorus]", notes: "C3 1|1" });
+
+    expect(track.call).toHaveBeenCalledWith("create_midi_clip", 32, 4);
+  });
+
+  // A create has no source to borrow the lane from, so half an address names
+  // nowhere to put a clip.
+  it("refuses a bare coordinate, which names no track", async () => {
+    await expect(
+      createClip({ path: "[5|1]", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'invalid path "[5|1]" - a new clip needs a track; ' +
+        'name the lane too, as "t<track>[5|1]"',
+    );
+  });
+
+  // Two spellings of one position: honoring either is the silent wrong-target
+  // bug the grammar exists to prevent.
+  it("refuses a coordinate beside arrangementStart, naming both", async () => {
+    await expect(
+      createClip({ path: "t0[5|1]", arrangementStart: "9|1", notes: "C3 1|1" }),
+    ).rejects.toThrow(
+      'createClip failed: path "t0[5|1]" and arrangementStart both name a ' +
+        "song position; use one",
+    );
+  });
+
+  // A list of coordinates supplies a position per entry, so an entry without
+  // one has nothing to fall back on.
+  it("refuses a bare track sharing a list with a coordinate", async () => {
+    setupArrangementClipMocks();
+    registerArrangementTrack(1);
+
+    await expect(
+      createClip({ path: "t0[5|1],t1", notes: "C3 1|1" }),
+    ).rejects.toThrow('createClip failed: path "t1" names no position;');
+  });
+
+  it("still creates a session clip beside a coordinate", async () => {
+    setupArrangementClipMocks();
+    const { clipSlot } = setupSessionMocks({
+      liveSet: { signature_numerator: 4, signature_denominator: 4 },
+      clip: { length: 4 },
+    });
+
+    const result = (await createClip({
+      path: "t0/s0,t0[5|1]",
+      notes: "C3 1|1",
+    })) as object[];
+
+    expect(clipSlot.call).toHaveBeenCalledWith("create_clip", 4);
+    expect(result).toHaveLength(2);
+  });
+});

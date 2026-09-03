@@ -637,16 +637,22 @@ describe("resolveMoveDestinations", () => {
     vi.clearAllMocks();
   });
 
+  // The lanes alone: the positions half of the return value has its own tests.
+  const moveLanes = (
+    toPath: string | undefined,
+    toSlot: string | undefined,
+    clipCount: number,
+  ): Array<ClipPath | null> =>
+    resolveMoveDestinations(toPath, toSlot, clipCount).destinations;
+
   it("reads a slot from toPath", () => {
-    expect(resolveMoveDestinations("t2/s3", undefined, 1)).toStrictEqual([
+    expect(moveLanes("t2/s3", undefined, 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
   it("reads an arrangement lane from toPath", () => {
-    expect(
-      resolveMoveDestinations("t2,t4/l0,t6/l+", undefined, 3),
-    ).toStrictEqual([
+    expect(moveLanes("t2,t4/l0,t6/l+", undefined, 3)).toStrictEqual([
       { kind: "track", trackIndex: 2 },
       { kind: "take-lane", trackIndex: 4, laneIndex: 0 },
       { kind: "new-take-lane", trackIndex: 6 },
@@ -654,24 +660,21 @@ describe("resolveMoveDestinations", () => {
   });
 
   it("still reads the deprecated toSlot", () => {
-    expect(resolveMoveDestinations(undefined, "2/3", 1)).toStrictEqual([
+    expect(moveLanes(undefined, "2/3", 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
   });
 
   it("returns nothing when neither param is given", () => {
-    expect(resolveMoveDestinations(undefined, undefined, 2)).toStrictEqual([
-      null,
-      null,
-    ]);
-    expect(resolveMoveDestinations("  ", undefined, 1)).toStrictEqual([null]);
-    expect(resolveMoveDestinations(undefined, "  ", 1)).toStrictEqual([null]);
+    expect(moveLanes(undefined, undefined, 2)).toStrictEqual([null, null]);
+    expect(moveLanes("  ", undefined, 1)).toStrictEqual([null]);
+    expect(moveLanes(undefined, "  ", 1)).toStrictEqual([null]);
   });
 
   it("moves nowhere when toPath and toSlot both name a destination", () => {
     // An update tool warns and skips instead of throwing, but it must not pick
     // one destination over the other.
-    expect(resolveMoveDestinations("t2/s3", "4/5", 1)).toStrictEqual([null]);
+    expect(moveLanes("t2/s3", "4/5", 1)).toStrictEqual([null]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("both name a destination, so no clip was moved"),
     );
@@ -681,7 +684,7 @@ describe("resolveMoveDestinations", () => {
   // destination, so the check refused a move the caller had asked for once —
   // and the result said nothing about the clip staying put.
   it("moves to toPath when toSlot names nothing", () => {
-    expect(resolveMoveDestinations("t2/s3", ",", 1)).toStrictEqual([
+    expect(moveLanes("t2/s3", ",", 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
     expect(capturedWarnings()).toContainEqual(
@@ -694,7 +697,7 @@ describe("resolveMoveDestinations", () => {
 
   it("warns and skips a destination no clip can occupy", () => {
     // A scene names no track, so there is no one place the clip would go.
-    expect(resolveMoveDestinations("s3", undefined, 1)).toStrictEqual([null]);
+    expect(moveLanes("s3", undefined, 1)).toStrictEqual([null]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("a scene alone names no track"),
     );
@@ -703,7 +706,7 @@ describe("resolveMoveDestinations", () => {
   // The whole point of the fan-out: sending both clips to destinations[0] put
   // them in one slot, and the second copy overwrote the first.
   it("pairs each destination with the clip at the same position", () => {
-    expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 2)).toStrictEqual([
+    expect(moveLanes("t2/s3,t4/s5", undefined, 2)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       { kind: "slot", trackIndex: 4, sceneIndex: 5 },
     ]);
@@ -712,7 +715,7 @@ describe("resolveMoveDestinations", () => {
   // A single name or color covers every clip; a single destination can't — the
   // second clip sent to a slot overwrites the first.
   it("does not spread a short destination list, and says which clips stayed", () => {
-    expect(resolveMoveDestinations("t2/s3", undefined, 3)).toStrictEqual([
+    expect(moveLanes("t2/s3", undefined, 3)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       null,
@@ -723,7 +726,7 @@ describe("resolveMoveDestinations", () => {
   });
 
   it("warns about destinations with no clip to move", () => {
-    expect(resolveMoveDestinations("t2/s3,t4/s5", undefined, 1)).toStrictEqual([
+    expect(moveLanes("t2/s3,t4/s5", undefined, 1)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
     ]);
     expect(capturedWarnings()).toContainEqual(
@@ -732,9 +735,7 @@ describe("resolveMoveDestinations", () => {
   });
 
   it("skips only the entries no clip can occupy", () => {
-    expect(
-      resolveMoveDestinations("t2/s3,s4,t6/s7", undefined, 3),
-    ).toStrictEqual([
+    expect(moveLanes("t2/s3,s4,t6/s7", undefined, 3)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
@@ -746,9 +747,7 @@ describe("resolveMoveDestinations", () => {
     // of it, so a typo cost every move — while an entry that parsed but named
     // the wrong kind of place cost only its own. Which one you got depended on
     // nothing but which side of the grammar the typo fell on.
-    expect(
-      resolveMoveDestinations("t2/s3,tX,t6/s7", undefined, 3),
-    ).toStrictEqual([
+    expect(moveLanes("t2/s3,tX,t6/s7", undefined, 3)).toStrictEqual([
       { kind: "slot", trackIndex: 2, sceneIndex: 3 },
       null,
       { kind: "slot", trackIndex: 6, sceneIndex: 7 },
@@ -761,10 +760,7 @@ describe("resolveMoveDestinations", () => {
   it("moves no clip when toPath names nothing at all", () => {
     // Not the same as one bad entry: "," says a destination was meant and
     // failed to arrive, and moving a clip anywhere else is the wrong guess.
-    expect(resolveMoveDestinations(",", undefined, 2)).toStrictEqual([
-      null,
-      null,
-    ]);
+    expect(moveLanes(",", undefined, 2)).toStrictEqual([null, null]);
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining("it names nothing"),
     );

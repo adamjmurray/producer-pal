@@ -96,15 +96,16 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     }),
     toPath: param(z.coerce.string().optional(), {
       default:
-        "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1), " +
-        "'t2' = track 2's arrangement (needs arrangementStart, and a track matching the clip's MIDI/audio type), " +
-        "'t2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
-        "omit for the source clip's own track. Devices: 't1/d0'. " +
+        "destination(s), comma-separated for multiple. Clips: 't2/s1' = clip slot (track 2, scene 1); " +
+        "'t2[5|1]' = that spot on track 2's arrangement, and '[5|1]' the same spot on the source clip's " +
+        "own track (a position is bar|beat or loc:<locator name or id>; an arrangement track must match " +
+        "the clip's MIDI/audio type); 't2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
+        "'t2' needs arrangementStart, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
         "One destination covers every arrangementStart, or name one per position, in order; the lists do not cycle. " +
         "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
       smallModel:
-        "destination(s): clip slot 't2/s1', clip arrangement track 't2', device 't1/d0', drum pad 't0/d0/pD1'",
+        "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",
     }),
 
     routeToSource: param(z.boolean().optional(), {

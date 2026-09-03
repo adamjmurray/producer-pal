@@ -9,6 +9,7 @@ import {
   registerMockObject,
   type RegisteredMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 /**
@@ -45,16 +46,24 @@ function setupClipOnTrack(trackIndex: number): RegisteredMockObject {
 }
 
 /**
+ * Every position a track took a move at, in call order.
+ * @param track - The track mock
+ * @returns The target positions in beats
+ */
+function movesTo(track: RegisteredMockObject): number[] {
+  return vi
+    .mocked(track.call)
+    .mock.calls.filter(([method]) => method === "duplicate_clip_to_arrangement")
+    .map((call) => call[2] as number);
+}
+
+/**
  * Where a track's move landed, or null when nothing moved.
  * @param track - The track mock
  * @returns The target position in beats
  */
 function movedTo(track: RegisteredMockObject): number | null {
-  const call = vi
-    .mocked(track.call)
-    .mock.calls.find(([method]) => method === "duplicate_clip_to_arrangement");
-
-  return call == null ? null : (call[2] as number);
+  return movesTo(track)[0] ?? null;
 }
 
 /**
@@ -127,5 +136,84 @@ describe("updateClip - arrangement params per clip", () => {
         expect.anything(),
       );
     }
+  });
+});
+
+describe("updateClip - a toPath coordinate", () => {
+  let tracks: RegisteredMockObject[];
+
+  beforeEach(() => {
+    registerMockObject("live-set", { path: "live_set", type: "Song" });
+    // Track 3 is spare, so a move onto it never lands where its own clip
+    // already is — a clip moved onto its own spot goes via a holding area.
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+  });
+
+  it("moves the clip to the lane and position the path names", async () => {
+    await updateClip({ id: "100", toPath: "t1[5|1]" });
+
+    expect(movedTo(tracks[1] as RegisteredMockObject)).toBe(16);
+  });
+
+  // The lane alone: the clip keeps the start it already has.
+  it("keeps the clip's position when the path names only a lane", async () => {
+    await updateClip({ id: "100", toPath: "t1" });
+
+    expect(movedTo(tracks[1] as RegisteredMockObject)).toBe(0);
+  });
+
+  // The position alone: the clip keeps the lane it is already on.
+  it("keeps the clip's lane when the path names only a position", async () => {
+    await updateClip({ id: "100", toPath: "[5|1]" });
+
+    expect(movedTo(tracks[0] as RegisteredMockObject)).toBe(16);
+  });
+
+  // The shape a lowered toPath can't express: rewriting "[9|1]" as an empty
+  // lane makes the middle entry name nothing, and a target list with a hole in
+  // it is refused.
+  it("reads a bare coordinate in the middle of a list", async () => {
+    await updateClip({ id: "100,101,102", toPath: "t3[5|1],[9|1],t3" });
+
+    expect(movesTo(tracks[3] as RegisteredMockObject)).toStrictEqual([16, 0]);
+    expect(movesTo(tracks[1] as RegisteredMockObject)).toStrictEqual([32]);
+  });
+
+  it("resolves a locator inside the coordinate", async () => {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
+    });
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+
+    await updateClip({ id: "100", toPath: "t2[loc:Chorus]" });
+
+    expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
+  });
+
+  // An entry that doesn't parse costs its own move and keeps its turn, so the
+  // locator beside it still resolves against the right clip.
+  it("resolves a locator beside an entry that won't parse", async () => {
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 32, name: "Chorus" }],
+    });
+    tracks = [0, 1, 2, 3].map(setupClipOnTrack);
+
+    await updateClip({ id: "100,101", toPath: "tX,t2[loc:Chorus]" });
+
+    expect(movedTo(tracks[2] as RegisteredMockObject)).toBe(32);
+    expect(movedTo(tracks[0] as RegisteredMockObject)).toBeNull();
+  });
+
+  // Two spellings of one position: honoring either is the silent wrong-target
+  // bug the grammar exists to prevent.
+  it("refuses a coordinate beside arrangementStart, naming both", async () => {
+    await expect(
+      updateClip({ id: "100", toPath: "t1[5|1]", arrangementStart: "9|1" }),
+    ).rejects.toThrow(
+      'updateClip failed: toPath "t1[5|1]" and arrangementStart both name a ' +
+        "song position; use one",
+    );
+
+    expect(tracks.map(movedTo)).toStrictEqual([null, null, null, null]);
   });
 });

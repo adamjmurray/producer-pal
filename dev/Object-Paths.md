@@ -48,7 +48,10 @@ never neither.
 **Split on `,` and `/` only at bracket depth 0.** Both separators occur inside a
 coordinate: a bar|beat position takes `±n<fraction>` offsets (`1|1-n/4`), and a
 locator name is user-typed and may contain anything. This is one lexing rule and
-it is not optional.
+it is not optional — it holds wherever a path param is cut up, including the
+list-length check, which would otherwise call one destination two and refuse a
+call for a mismatch that isn't there. Peeling the coordinate off first leaves a
+body with no brackets, so splitting that on `/` needs no depth of its own.
 
 The `+` roots name a place rather than a thing, so only the create tools take
 one, and only as a whole path — `t+/s0` names nothing yet. On create, `t2`
