@@ -86,7 +86,7 @@ describe("updateDevice - division params", () => {
     });
 
     expect(capturedWarnings()).toContain(
-      'updateDevice: id 793 param "Rate": "1/128" is not a valid division option',
+      'updateDevice: t0/d0 (id 123) param "Rate" (id 793): "1/128" is not a valid division option',
     );
     expect(param.set).not.toHaveBeenCalledWith("value", expect.anything());
     expect(result).toStrictEqual({ id: "123", path: "t0/d0" });

@@ -83,6 +83,22 @@ describe("objectPathForApi", () => {
   });
 });
 
+// A path that named an ancestor would be paired with this object's id, so the
+// label would read as naming something it doesn't.
+describe("objectPathForApi refuses an ancestor's path", () => {
+  it.each([
+    ["a device parameter", "live_set tracks 0 devices 0 parameters 5"],
+    ["a mixer device", "live_set tracks 0 mixer_device"],
+    ["a send", "live_set tracks 0 mixer_device sends 1"],
+    [
+      "a chain's send",
+      "live_set tracks 0 devices 0 chains 1 mixer_device sends 0",
+    ],
+  ])("spells no path for %s", (_what, liveApiPath) => {
+    expect(objectPathForApi(api(liveApiPath))).toBeUndefined();
+  });
+});
+
 describe("pathField", () => {
   it("spreads the path when there is one", () => {
     expect(pathField(api(String(livePath.track(3))))).toStrictEqual({

@@ -52,7 +52,7 @@ describe("updateDevice - disabled params", () => {
     expect(param.set).not.toHaveBeenCalled();
     expect(capturedWarnings()).toContainEqual(
       expect.stringContaining(
-        'updateDevice: id vol param "Volume" is disabled',
+        'updateDevice: t0/d0 (id dev1) param "Volume" (id vol) is disabled',
       ),
     );
   });

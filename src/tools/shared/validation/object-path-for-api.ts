@@ -14,6 +14,9 @@ const CLIP_SLOT = /^live_set tracks (\d+) clip_slots (\d+)/;
 const TAKE_LANE = /^live_set tracks (\d+) take_lanes (\d+)/;
 const ARRANGEMENT_CLIP = /^live_set tracks (\d+) arrangement_clips \d+$/;
 const DRUM_PAD_TAIL = / drum_pads \d+$/;
+/** A path the device grammar spells in full — nothing hangs below its last segment. */
+const WHOLE_DEVICE_PATH =
+  /^live_set (?:tracks \d+|return_tracks \d+|master_track)(?: (?:devices|chains|return_chains) \d+)*$/;
 
 /**
  * The path a live object spells, so a write result can hand back the address of
@@ -171,6 +174,12 @@ function devicePathForApi(api: LiveAPI, path: string): string | undefined {
   // rather than hand back the wrong chain. Live normally hands back the
   // rack-relative path instead, so this is the rare shape that kept one.
   if (path.includes(" drum_pads ")) return undefined;
+
+  // A parameter, a mixer, a send — anything hanging below the last device or
+  // chain segment. extractDevicePath walks past what it doesn't recognize, so
+  // it would answer with the ancestor's path, and a warning would then pair
+  // that path with this object's id as if they named the same thing.
+  if (!WHOLE_DEVICE_PATH.test(path)) return undefined;
 
   // Name a drum chain the way reads do — "pC1/c0", not "c3". Only when the
   // object named is itself a chain: working it out costs a rack read per chain

@@ -130,6 +130,7 @@ function setOneParam(
           normalizeParamValue(rawValue, deviceName, key),
           toolName,
           rawValue,
+          device,
           deviceName,
         ),
       );
@@ -162,7 +163,7 @@ function setOneParam(
   }
 
   return toEntries(
-    setParamValue(param, inputValue, toolName, rawValue, deviceName),
+    setParamValue(param, inputValue, toolName, rawValue, device, deviceName),
   );
 }
 
@@ -226,6 +227,7 @@ function applyNestedParam(
  * @param inputValue - Value to set
  * @param toolName - Calling tool name for warning prefix
  * @param writtenText - The value as the caller wrote it, unit and all
+ * @param device - The device the param belongs to, for the warning
  * @param deviceName - The device's class_display_name
  * @returns The param the write landed on, or null if it did not land
  */
@@ -234,10 +236,13 @@ function setParamValue(
   inputValue: string | number,
   toolName: string,
   writtenText: string,
+  device: LiveAPI,
   deviceName: string | undefined,
 ): WrittenParam | null {
   const paramName = param.getProperty("name") as string;
-  const label = `${toolName}: ${targetLabel(param)} param "${paramName}"`;
+  // The device carries the path — a param has none of its own — and the param
+  // carries the two handles a retry can use, its name and its id.
+  const label = `${toolName}: ${targetLabel(device)} param "${paramName}" (id ${param.id})`;
 
   if (!isParamEnabled(param)) {
     warnParamDisabled(label);
