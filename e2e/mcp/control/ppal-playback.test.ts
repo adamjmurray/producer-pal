@@ -163,10 +163,10 @@ describe("ppal-playback", () => {
     await playback({ action: "stop" });
   });
 
-  it("plays a scene by index", async () => {
+  it("plays a scene by path", async () => {
     const playingScene = await playback({
       action: "play-scene",
-      sceneIndex: 0,
+      path: "s0",
     });
 
     expect(playingScene.playing).toBe(true);
@@ -192,7 +192,7 @@ describe("ppal-playback", () => {
   });
 
   it("names an unnamed scene by its number, as Live shows it", async () => {
-    const unnamed = await playback({ action: "play-scene", sceneIndex: 7 });
+    const unnamed = await playback({ action: "play-scene", path: "s7" });
 
     expect(unnamed.sceneIndex).toBe(7);
     expect(unnamed.sceneName).toBe("8");
