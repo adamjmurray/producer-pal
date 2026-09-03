@@ -91,8 +91,7 @@ describe("take lanes", () => {
   it("creates clips on take lanes, reports the lane path, and reads them back", async () => {
     // Targeting l0 auto-creates it; the result path names the lane
     const lane0 = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -101,8 +100,7 @@ describe("take lanes", () => {
 
     // "l+" appends a fresh lane; takeLaneName names only that new lane
     const lane1 = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l+`,
-      arrangementStart: "5|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
       notes: "E3 1|1",
       takeLaneName: "Variation B",
     });
@@ -113,8 +111,7 @@ describe("take lanes", () => {
     const mainResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "9|1",
+        path: `t${EMPTY_MIDI_TRACK}[9|1]`,
         notes: "G3 1|1",
       },
     });
@@ -152,8 +149,7 @@ describe("take lanes", () => {
     const result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "1|1",
+        path: `t${EMPTY_MIDI_TRACK}[1|1]`,
         notes: "C3 1|1",
         takeLane: 2,
       },
@@ -213,16 +209,14 @@ describe("take lanes", () => {
 
   it("replaces an overlapping clip and enforces the 8-lane cap", async () => {
     await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
     // A second clip at the same position on the same lane replaces it, like the
     // main lane — no overlap error.
     const replaced = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -236,8 +230,7 @@ describe("take lanes", () => {
 
     // Targeting the last lane auto-creates the lanes up to it
     const lane7 = await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l7`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l7[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -260,8 +253,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/l+`,
-          arrangementStart: "5|1",
+          path: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
           notes: "C3 1|1",
         },
       }),
@@ -276,8 +268,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${EMPTY_MIDI_TRACK}/l8`,
-          arrangementStart: "5|1",
+          path: `t${EMPTY_MIDI_TRACK}/l8[5|1]`,
           notes: "C3 1|1",
         },
       }),
@@ -291,8 +282,7 @@ describe("take lanes", () => {
 
   it("reports per-track takeLaneCount in read-live-set", async () => {
     await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l0`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l0[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -326,8 +316,7 @@ describe("take lanes", () => {
     await sleep(100);
 
     const clip = await createOnLane({
-      path: `t${trackIndex}/l+`,
-      arrangementStart: "1|1",
+      path: `t${trackIndex}/l+[1|1]`,
       sampleFile: SAMPLE_FILE,
     });
 
@@ -357,8 +346,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${EMPTY_MIDI_TRACK}`,
-          arrangementStart: "1|1",
+          path: `t${EMPTY_MIDI_TRACK}[1|1]`,
           notes: "C3 E3 G3 1|1",
           name: "Original Take",
         },
@@ -374,8 +362,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          arrangementStart: "5|1",
-          toPath: `t${EMPTY_MIDI_TRACK}/l+`,
+          toPath: `t${EMPTY_MIDI_TRACK}/l+[5|1]`,
         },
       }),
     );
@@ -403,8 +390,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          arrangementStart: "9|1",
-          toPath: `t${EMPTY_MIDI_TRACK}/l+`,
+          toPath: `t${EMPTY_MIDI_TRACK}/l+[9|1]`,
           arrangementLength: "2bar",
         },
       }),
@@ -431,8 +417,7 @@ describe("take lanes", () => {
       await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${audioTrackIndex}`,
-          arrangementStart: "1|1",
+          path: `t${audioTrackIndex}[1|1]`,
           sampleFile: SAMPLE_FILE,
           warping: true,
           name: "Original Sample",
@@ -447,8 +432,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: audioSource.id,
-          arrangementStart: "5|1",
-          toPath: `t${audioTrackIndex}/l+`,
+          toPath: `t${audioTrackIndex}/l+[5|1]`,
         },
       }),
     );
@@ -477,8 +461,7 @@ describe("take lanes", () => {
   // stays put, because nothing can remove it.
   it("promotes a take-lane clip back to the main lane, leaving the take behind", async () => {
     await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l+`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[1|1]`,
       notes: "C3 E3 G3 1|1",
       name: "The Keeper",
     });
@@ -493,8 +476,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: takeId,
-          toPath: `t${EMPTY_MIDI_TRACK}`,
-          arrangementStart: "5|1",
+          toPath: `t${EMPTY_MIDI_TRACK}[5|1]`,
         },
       }),
     );
@@ -530,8 +512,7 @@ describe("take lanes", () => {
 
   it("warns and skips deletion of a take-lane clip (no delete API)", async () => {
     await createOnLane({
-      path: `t${EMPTY_MIDI_TRACK}/l+`,
-      arrangementStart: "1|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[1|1]`,
       notes: "C3 1|1",
     });
 
@@ -559,7 +540,10 @@ describe("take lanes", () => {
   });
 
   // One written "l+" is one lane however many clips land on it — the copy loop
-  // cycles the destination list, and a cycled repeat must reuse its lane.
+  // cycles the destination list, and a cycled repeat must reuse its lane. Only
+  // the deprecated arrangementStart list can ask for this: written as paths,
+  // each "l+" is its own lane (the next test), so a stack of takes at chosen
+  // positions has no path spelling.
   it("stacks every copy on one new lane when one l+ cycles across positions", async () => {
     const source = await sourceClipOn(EMPTY_MIDI_TRACK, "Take Source");
 
@@ -601,8 +585,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${RACKS_TRACK}/l+,t${RACKS_TRACK}/l+`,
-          arrangementStart: "5|1",
+          toPath: `t${RACKS_TRACK}/l+[5|1],t${RACKS_TRACK}/l+[5|1]`,
         },
       }),
     );
@@ -629,8 +612,7 @@ describe("take lanes", () => {
         arguments: {
           type: "clip",
           id: source.id,
-          toPath: `t${RACKS_TRACK}/l+,t${CHILD_TRACK}/l+`,
-          arrangementStart: "5|1",
+          toPath: `t${RACKS_TRACK}/l+[5|1],t${CHILD_TRACK}/l+[5|1]`,
         },
       }),
     );
@@ -665,8 +647,7 @@ async function sourceClipOn(
     await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${trackIndex}`,
-        arrangementStart: "1|1",
+        path: `t${trackIndex}[1|1]`,
         notes: "C3 E3 1|1",
         name,
       },

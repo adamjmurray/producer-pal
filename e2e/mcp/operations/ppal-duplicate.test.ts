@@ -280,8 +280,7 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "41|1",
+        path: `t${EMPTY_MIDI_TRACK}[41|1]`,
         notes: "C3 D3 E3 1|1",
         length: "2bar",
       },
@@ -298,7 +297,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: arrangementClip.id,
 
-        arrangementStart: "5|1",
+        toPath: "[5|1]",
       },
     });
     const dupArrangement =
@@ -316,7 +315,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: arrangementClip.id,
 
-        arrangementStart: "9|1,13|1,17|1",
+        toPath: "[9|1],[13|1],[17|1]",
       },
     });
     const dupArrangementMulti = parseToolResult<DuplicateClipResult[]>(
@@ -337,7 +336,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
 
-        arrangementStart: "21|1",
+        toPath: "[21|1]",
       },
     });
     const dupSessionToArrangement = parseToolResult<DuplicateClipResult>(
@@ -365,7 +364,7 @@ describe("ppal-duplicate", () => {
         arguments: {
           type: "clip",
           id: clip.id,
-          arrangementStart: "loc:Verse,loc:Chorus",
+          toPath: "[loc:Verse],[loc:Chorus]",
         },
       }),
     );
@@ -382,7 +381,7 @@ describe("ppal-duplicate", () => {
         arguments: {
           type: "clip",
           id: clip.id,
-          arrangementStart: "loc:locator-3",
+          toPath: "[loc:locator-3]",
         },
       }),
     );
@@ -397,8 +396,7 @@ describe("ppal-duplicate", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "57|1",
+        path: `t${EMPTY_MIDI_TRACK}[57|1]`,
         notes: "C3 D3 E3 F3 1|1",
         length: "2bar",
       },
@@ -412,7 +410,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: source.id,
-        arrangementStart: "58|1,51|1",
+        toPath: "[58|1],[51|1]",
       },
     });
     const copies = parseToolResult<DuplicateClipResult[]>(dupResult);

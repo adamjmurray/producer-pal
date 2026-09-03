@@ -204,8 +204,7 @@ describe("ppal-create-clip", () => {
     const arrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "41|1",
+        path: `t${EMPTY_MIDI_TRACK}[41|1]`,
       },
     });
     const arrangement = parseToolResult<CreateClipResult>(arrangementResult);
@@ -258,8 +257,7 @@ describe("ppal-create-clip", () => {
     const multiArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "45|1,49|1,53|1",
+        path: `t${EMPTY_MIDI_TRACK}[45|1],t${EMPTY_MIDI_TRACK}[49|1],t${EMPTY_MIDI_TRACK}[53|1]`,
       },
     });
     const multiArrangement = parseToolResult<CreateClipResult[]>(
@@ -318,8 +316,7 @@ describe("ppal-create-clip", () => {
     const audioArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `${audioTrack.path}`,
-        arrangementStart: "17|1",
+        path: `${audioTrack.path}[17|1]`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -397,8 +394,7 @@ describe("ppal-create-clip audio warping", () => {
     // arrangementLength comes from Live's end_time - start_time, computed
     // without reference to the marker properties. The two must match.
     const { clip } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_TRACK}`,
-      arrangementStart: "33|1",
+      path: `t${AUDIO_TRACK}[33|1]`,
       name: "unwarped arrangement",
       warping: false,
     });

@@ -53,13 +53,12 @@ describe("ppal-delete batch ordering", () => {
     const starts = ["1|1", "5|1", "9|1", "13|1"];
     const ids: string[] = [];
 
-    for (const arrangementStart of starts) {
+    for (const start of starts) {
       const created = parseToolResult<CreateClipResult>(
         await ctx.client!.callTool({
           name: "ppal-create-clip",
           arguments: {
-            path: `t${EMPTY_MIDI_TRACK}`,
-            arrangementStart,
+            path: `t${EMPTY_MIDI_TRACK}[${start}]`,
             notes: "C3 1|1",
             length: "4bar",
           },

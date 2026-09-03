@@ -154,28 +154,25 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 /**
  * Duplicate a clip to an arrangement position.
  * @param id - Source clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  * @returns The duplicated clip's metadata
  */
 async function dupToArr(
   id: string,
-  arrangementStart: string,
+  position: string,
 ): Promise<ArrangementClipResult> {
-  return duplicateClipToArrangement(ctx.client!, id, arrangementStart);
+  return duplicateClipToArrangement(ctx.client!, id, position);
 }
 
 /**
  * Move an arrangement clip to a new position via update-clip.
  * @param id - Arrangement clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  */
-async function moveArrClip(
-  id: string,
-  arrangementStart: string,
-): Promise<void> {
+async function moveArrClip(id: string, position: string): Promise<void> {
   await callTool(ctx.client!, "ppal-update-clip", {
     id: id,
-    arrangementStart,
+    toPath: `[${position}]`,
   });
   await sleep(100);
 }

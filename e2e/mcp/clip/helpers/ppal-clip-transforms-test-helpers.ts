@@ -83,22 +83,21 @@ export async function createClipInSlot(
 /**
  * Creates a MIDI arrangement clip with notes at given position.
  * @param ctx - MCP test context with client
- * @param arrangementStart - Bar|beat position for clip start
+ * @param position - Bar|beat position for clip start
  * @param notes - Notation string for notes
  * @param length - Clip length as a duration (e.g. "1bar", "n/4", "1bar+n/4")
  * @returns Clip ID
  */
 export async function createArrangementClip(
   ctx: { client: { callTool: CallToolFn } | null },
-  arrangementStart: string,
+  position: string,
   notes: string,
   length: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: TOOL_CREATE_CLIP,
     arguments: {
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart,
+      path: `t${EMPTY_MIDI_TRACK}[${position}]`,
       notes,
       length,
     },
@@ -225,7 +224,7 @@ type McpTestContext = { client: { callTool: CallToolFn } | null };
 export function createClipTransformHelpers(ctx: McpTestContext): {
   createMidiClip: (sceneIndex: number, notes: string) => Promise<string>;
   createArrangementClip: (
-    arrangementStart: string,
+    position: string,
     notes: string,
     length: string,
   ) => Promise<string>;
@@ -239,8 +238,8 @@ export function createClipTransformHelpers(ctx: McpTestContext): {
   return {
     createMidiClip: (sceneIndex, notes) =>
       createMidiClip(ctx, sceneIndex, notes),
-    createArrangementClip: (arrangementStart, notes, length) =>
-      createArrangementClip(ctx, arrangementStart, notes, length),
+    createArrangementClip: (position, notes, length) =>
+      createArrangementClip(ctx, position, notes, length),
     readClipNotes: (clipId) => readClipNotes(ctx, clipId),
     applyTransform: (clipId, transform) =>
       applyTransform(ctx, clipId, transform),

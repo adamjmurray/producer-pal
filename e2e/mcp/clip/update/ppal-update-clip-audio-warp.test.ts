@@ -101,8 +101,7 @@ describe("ppal-update-clip audio warping", () => {
     // markers start out in seconds and the first switch is the one into beats.
     const song = await readSongTiming(ctx.client!);
     const { created } = await createAndRead(ctx.client!, {
-      path: `t${AUDIO_TRACK}`,
-      arrangementStart: "49|1",
+      path: `t${AUDIO_TRACK}[49|1]`,
       name: "warp round trip",
       warping: false,
     });

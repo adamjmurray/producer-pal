@@ -206,8 +206,7 @@ describe("ppal-update-clip loop toggle", () => {
 
   it("keeps the region of an arrangement clip", async () => {
     const clipId = await create(ctx.client!, {
-      path: `t${AUDIO_TRACK}`,
-      arrangementStart: "97|1",
+      path: `t${AUDIO_TRACK}[97|1]`,
       sampleFile: DRUM_LOOP_FILE,
       name: "loop toggle arrangement",
       warping: true,

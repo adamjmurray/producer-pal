@@ -210,8 +210,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "200|1",
+        path: `t${dynamicTrackIndex}[200|1]`,
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4bar",
         looping: true,
@@ -247,8 +246,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "210|1",
+        path: `t${dynamicTrackIndex}[210|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -297,8 +295,7 @@ describe("Behavioral splitting tests", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "220|1",
+        path: `t${dynamicTrackIndex}[220|1]`,
         notes: "C3 1|1",
         length: "2bar",
         looping: true,
@@ -309,8 +306,7 @@ describe("Behavioral splitting tests", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${dynamicTrackIndex}`,
-        arrangementStart: "230|1",
+        path: `t${dynamicTrackIndex}[230|1]`,
         notes: "E3 1|1",
         length: "2bar",
         looping: true,
@@ -345,8 +341,7 @@ describe("Behavioral splitting tests", () => {
       const result = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
+          path: `t${dynamicTrackIndex}[${startBar}|1]`,
           notes: "C3 1|1",
           length: "4bar",
           looping: true,
@@ -452,8 +447,7 @@ describe("Behavioral splitting tests", () => {
       const result = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          path: `t${dynamicTrackIndex}`,
-          arrangementStart: `${startBar}|1`,
+          path: `t${dynamicTrackIndex}[${startBar}|1]`,
           notes: "C3 1|1\nE3 2|1",
           length: "2bar",
           looping: true,

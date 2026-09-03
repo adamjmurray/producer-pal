@@ -76,13 +76,13 @@ export async function updateAndRead(
  * Read the main-lane arrangement clip at an exact position on a track.
  * @param client - The connected MCP client
  * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @returns The clip at that position, if any
  */
 export async function arrangementClipAt(
   client: Client,
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
 ): Promise<ReadClipResult | undefined> {
   const result = await client.callTool({
     name: "ppal-read-track",
@@ -93,7 +93,7 @@ export async function arrangementClipAt(
   }>(result);
 
   return data.arrangementClips?.find(
-    (clip) => arrangementStartOf(clip) === arrangementStart,
+    (clip) => arrangementStartOf(clip) === position,
   );
 }
 

@@ -113,13 +113,13 @@ describe("ppal-duplicate with a source list", () => {
     expect(second.notes).toContain("D3");
   });
 
-  it("drops every source at one arrangementStart, on its own track", async () => {
+  it("drops every source at one bare position, on its own track", async () => {
     const [firstId, secondId] = await createSources();
 
     const copies = parseToolResult<DuplicateClipResult[]>(
       await duplicateClips({
         id: `${firstId},${secondId}`,
-        arrangementStart: "97|1",
+        toPath: "[97|1]",
       }),
     );
 

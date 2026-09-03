@@ -98,8 +98,7 @@ describe("clip duration round-trips (absolute note values)", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "10|1",
+        path: `t${EMPTY_MIDI_TRACK}[10|1]`,
         notes: "C3 1|1",
         looping: false,
         length: "2bar",

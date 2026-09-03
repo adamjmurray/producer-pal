@@ -277,8 +277,7 @@ describe("ppal-update-clip", () => {
     const arrCreateResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        path: `t${EMPTY_MIDI_TRACK}`,
-        arrangementStart: "41|1",
+        path: `t${EMPTY_MIDI_TRACK}[41|1]`,
         notes: "C3 1|1",
         length: "2bar",
       },
@@ -290,7 +289,7 @@ describe("ppal-update-clip", () => {
     // Test 1: Move the clip to a new position
     const moveResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: arrClip.id, arrangementStart: "45|1" },
+      arguments: { id: arrClip.id, toPath: "[45|1]" },
     });
     const movedClip = parseToolResult<{ id: string }>(moveResult);
 

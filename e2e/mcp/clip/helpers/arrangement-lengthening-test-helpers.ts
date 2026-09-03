@@ -161,9 +161,16 @@ export function assertClipDetails(
   resultClips: ReadClipResult[],
   expectedClips: ExpectedClip[],
 ): void {
+  // A clip spells where it starts inside its path; the tables name that start
+  // on its own, so read it back out first.
+  const actual = resultClips.map((clip) => ({
+    ...clip,
+    arrangementStart: arrangementStartOf(clip),
+  }));
+
   // ExpectedClip names four timing fields; the rest of a clip read is not what
   // these table-driven cases are about. Asserting the array pins the count too.
-  expect(resultClips).toStrictEqual(
+  expect(actual).toStrictEqual(
     expectedClips.map((expected) => expect.objectContaining(expected)),
   );
 }

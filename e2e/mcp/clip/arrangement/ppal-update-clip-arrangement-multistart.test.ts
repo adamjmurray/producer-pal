@@ -29,20 +29,19 @@ const ctx = setupMcpTestContext();
 /**
  * Create an arrangement clip and return its ID.
  * @param trackIndex - Track to create on
- * @param arrangementStart - Bar|beat position
+ * @param position - Bar|beat position
  * @param length - Clip length in absolute note-value format (e.g. "1bar", "n/2")
  * @returns Clip ID
  */
 async function createArrangementClip(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
   length: string,
 ): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${trackIndex}`,
-      arrangementStart,
+      path: `t${trackIndex}[${position}]`,
       notes: "C3 1|1",
       length,
       looping: true,
@@ -90,7 +89,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     // Should not crash (clearClipAtDuplicateTarget handles existing clip)
     const result = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { id: movingId, arrangementStart: "101|1" },
+      arguments: { id: movingId, toPath: "[101|1]" },
     });
     const movedClip = parseToolResult<{ id: string }>(result);
 
@@ -118,7 +117,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${idA},${idB},${idC}`,
-        arrangementStart: "170|1",
+        toPath: "[170|1]",
       },
     });
     const { clips } = parseUpdateResults(result);
@@ -150,7 +149,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${id1},${id2},${id3}`,
-        arrangementStart: "220|1",
+        toPath: "[220|1]",
       },
     });
     const { clips } = parseUpdateResults(result);
@@ -182,7 +181,7 @@ describe("ppal-update-clip arrangement multistart", () => {
       name: "ppal-update-clip",
       arguments: {
         id: `${idA},${idB},${idC}`,
-        arrangementStart: "270|1",
+        toPath: "[270|1]",
       },
     });
     const { clips } = parseUpdateResults(result);

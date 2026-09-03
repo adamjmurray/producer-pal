@@ -46,8 +46,7 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createClip("5|1", "Crosser");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${RACKS_TRACK}`,
-      arrangementStart: "9|1",
+      toPath: `t${RACKS_TRACK}[9|1]`,
     });
 
     expect(moved.path).toBe(`t${RACKS_TRACK}[9|1]`);
@@ -62,7 +61,7 @@ describe("arrangement clip moved to another lane", () => {
   });
 
   // toPath alone is "same place, other track" — the clip keeps its position.
-  it("keeps the clip's position when no arrangementStart is given", async () => {
+  it("keeps the clip's position when toPath names no position", async () => {
     const source = await createClip("13|1", "Stays At 13");
 
     const { data: moved } = await updateClip(ctx.client!, source.id, {
@@ -107,7 +106,7 @@ describe("arrangement clip moved to another lane", () => {
     await expectRefusedUpdate(
       ctx.client!,
       source.id,
-      { toPath: `t${AUDIO_TRACK}`, arrangementStart: "25|1" },
+      { toPath: `t${AUDIO_TRACK}[25|1]` },
       `clip ${source.path} (id ${source.id}) was not moved: track ${AUDIO_TRACK} is audio`,
     );
 
@@ -122,8 +121,7 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createClip("29|1", "Lane Bound", `/l+`);
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${RACKS_TRACK}`,
-      arrangementStart: "33|1",
+      toPath: `t${RACKS_TRACK}[33|1]`,
     });
 
     expect(warnings.join(" ")).toContain(
@@ -152,8 +150,7 @@ describe("arrangement clip moved to another lane", () => {
     const source = await createAudioClip("5|1", "Audio Take");
 
     const { data: moved, warnings } = await updateClip(ctx.client!, source.id, {
-      toPath: `t${AUDIO_TRACK}`,
-      arrangementStart: "9|1",
+      toPath: `t${AUDIO_TRACK}[9|1]`,
     });
 
     expect(warnings.join(" ")).toContain(
@@ -174,19 +171,18 @@ describe("arrangement clip moved to another lane", () => {
 
 /**
  * Create an audio clip on a fresh take lane of the audio track.
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @param name - Clip name
  * @returns The created clip
  */
 async function createAudioClip(
-  arrangementStart: string,
+  position: string,
   name: string,
 ): Promise<CreateClipResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${AUDIO_TRACK}/l+`,
-      arrangementStart,
+      path: `t${AUDIO_TRACK}/l+[${position}]`,
       name,
       sampleFile: SAMPLE_FILE,
     },
@@ -199,21 +195,20 @@ async function createAudioClip(
 
 /**
  * Create a MIDI clip in the source track's arrangement.
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @param name - Clip name
  * @param laneSuffix - Path suffix naming a take lane (e.g. "/l+")
  * @returns The created clip
  */
 async function createClip(
-  arrangementStart: string,
+  position: string,
   name: string,
   laneSuffix = "",
 ): Promise<CreateClipResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      path: `t${EMPTY_MIDI_TRACK}${laneSuffix}`,
-      arrangementStart,
+      path: `t${EMPTY_MIDI_TRACK}${laneSuffix}[${position}]`,
       name,
       notes: "C3 D3 E3 F3 1|1",
       length: "1bar",

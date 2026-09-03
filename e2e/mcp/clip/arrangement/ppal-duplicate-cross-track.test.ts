@@ -6,16 +6,15 @@
 /**
  * E2E tests for a cross-track arrangement clip duplicate.
  *
- * `toPath` names the destination track. A destination that isn't honored
- * degrades the call to "duplicate onto my own track at arrangementStart", which
- * overwrites the source when the position matches — so these pin both halves:
- * `toPath` really copies, and anything ambiguous or wrong is refused instead of
- * quietly eating the source.
+ * `toPath` names the destination: a track, a position, or both. A destination
+ * that isn't honored degrades the call to "copy onto my own track at that
+ * position", which overwrites the source when the position matches — so these
+ * pin both halves: `toPath` really copies, and anything ambiguous or wrong is
+ * refused instead of quietly eating the source.
  *
- * `toPath` and `arrangementStart` are both lists, and the shorter one cycles.
- * That count only shows up against real Live — the copies have to land on the
- * tracks and beats we claim — so the fan-out cases live here rather than in unit
- * tests.
+ * `toPath` is a list. That count only shows up against real Live — the copies
+ * have to land on the tracks and beats we claim — so the fan-out cases live
+ * here rather than in unit tests.
  *
  * Uses: e2e-test-set (t8 = empty MIDI track; t7, t10 = MIDI tracks with no
  * clips; t5 = audio track)
@@ -50,8 +49,7 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${RACKS_TRACK}`,
+      toPath: `t${RACKS_TRACK}[${position}]`,
       name: "Cross Copy A",
     });
     const copy = parseToolResult<{ id: string }>(result);
@@ -128,8 +126,7 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${AUDIO_TRACK}`,
+      toPath: `t${AUDIO_TRACK}[${position}]`,
     });
     const { data, warnings } = parseToolResultWithWarnings<unknown[]>(result);
 
@@ -155,8 +152,7 @@ describe("cross-track arrangement clip duplicate", () => {
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: position,
-      toPath: `t${RACKS_TRACK},t${CHILD_TRACK}`,
+      toPath: `t${RACKS_TRACK}[${position}],t${CHILD_TRACK}[${position}]`,
       name: "Fan Out",
     });
     const copies = parseToolResult<Array<{ id: string }>>(result);
@@ -178,15 +174,14 @@ describe("cross-track arrangement clip duplicate", () => {
     expect(survivor?.id).toBe(source.id);
   });
 
-  it("cycles one toPath track across every arrangementStart", async () => {
+  it("sends one toPath track a position apiece", async () => {
     const source = await createArrClip("45|1", "Source F");
     const positions = ["49|1", "53|1", "57|1"];
 
     const result = await callTool("ppal-duplicate", {
       type: "clip",
       id: source.id,
-      arrangementStart: positions.join(", "),
-      toPath: `t${CHILD_TRACK}`,
+      toPath: positions.map((at) => `t${CHILD_TRACK}[${at}]`).join(", "),
       name: "Cycled",
     });
     const copies = parseToolResult<Array<{ id: string }>>(result);
@@ -215,8 +210,7 @@ describe("cross-track arrangement clip duplicate", () => {
       await callTool("ppal-duplicate", {
         type: "clip",
         id: source.id,
-        arrangementStart: position,
-        toPath: `${RACKS_TRACK}`,
+        toPath: `${RACKS_TRACK}[${position}]`,
       }),
     );
 
@@ -250,17 +244,16 @@ async function callTool(
 
 /**
  * Create a named MIDI clip in the source track's arrangement.
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @param name - Clip name
  * @returns The created clip's metadata
  */
 async function createArrClip(
-  arrangementStart: string,
+  position: string,
   name: string,
 ): Promise<{ id: string }> {
   const result = await callTool("ppal-create-clip", {
-    path: `t${EMPTY_MIDI_TRACK}`,
-    arrangementStart,
+    path: `t${EMPTY_MIDI_TRACK}[${position}]`,
     name,
     notes: "C3 D3 E3 F3 1|1",
     length: "1bar",
@@ -273,12 +266,12 @@ async function createArrClip(
  * Read the arrangement clip at an exact position on a track. Tolerates warnings
  * so a fix that warns about the dropped destination still reads back cleanly.
  * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format
+ * @param position - Position in bar|beat format
  * @returns The clip at that position, if any
  */
 async function clipAt(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
 ): Promise<ReadClipResult | undefined> {
   const result = await callTool("ppal-read-track", {
     trackIndex,
@@ -289,6 +282,6 @@ async function clipAt(
   }>(result);
 
   return data.arrangementClips?.find(
-    (clip) => arrangementStartOf(clip) === arrangementStart,
+    (clip) => arrangementStartOf(clip) === position,
   );
 }

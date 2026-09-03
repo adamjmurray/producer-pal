@@ -79,7 +79,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     }>("ppal-duplicate", {
       type: "scene",
       id: liveSet.scenes[SCENE]!.id,
-      arrangementStart: "49|1",
+      toPath: "[49|1]",
     });
     // An arrangement clip's path starts with its track, so the MIDI copies are
     // the ones whose path names the MIDI track.
@@ -116,7 +116,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
     const copy = await call<{ id: string }>("ppal-duplicate", {
       type: "clip",
       id: clipId,
-      arrangementStart: "49|1",
+      toPath: "[49|1]",
       arrangementLength: "1bar",
     });
     const clip = await call<ReadClipResult>("ppal-read-clip", {

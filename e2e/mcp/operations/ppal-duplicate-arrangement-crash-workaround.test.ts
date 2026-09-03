@@ -41,19 +41,19 @@ interface TrackResult {
 /**
  * Duplicate a clip to arrangement at a given position.
  * @param id - Source clip ID
- * @param arrangementStart - Target position in bar|beat format
+ * @param position - Target position in bar|beat format
  * @returns The duplicated clip's metadata
  */
 async function dupToArr(
   id: string,
-  arrangementStart: string,
+  position: string,
 ): Promise<DuplicateClipResult> {
   const result = await ctx.client!.callTool({
     name: "ppal-duplicate",
     arguments: {
       type: "clip",
       id,
-      arrangementStart,
+      toPath: `[${position}]`,
     },
   });
   const clip = parseToolResult<DuplicateClipResult>(result);
@@ -117,7 +117,7 @@ function parseLengthToBeats(length: string): number {
 }
 
 /**
- * Parse arrangementStart "bar|beat" string to absolute beats (assumes 4/4).
+ * Parse a "bar|beat" position to absolute beats (assumes 4/4).
  * @param barBeat - Position in "bar|beat" format (e.g., "133|1")
  * @returns Position in absolute beats
  */
@@ -142,19 +142,19 @@ function beatsToBarBeat(beats: number): string {
 /**
  * Get the arrangement length of a clip in beats by matching its position.
  * @param trackIndex - Track index
- * @param arrangementStart - Position in bar|beat format to match
+ * @param position - Position in bar|beat format to match
  * @returns Length in beats
  */
 async function getClipLengthBeatsAtPosition(
   trackIndex: number,
-  arrangementStart: string,
+  position: string,
 ): Promise<number> {
   const clips = await readArrClips(trackIndex);
-  const clip = clips.find((c) => arrangementStartOf(c) === arrangementStart);
+  const clip = clips.find((c) => arrangementStartOf(c) === position);
 
   if (!clip?.arrangementLength) {
     throw new Error(
-      `Clip at ${arrangementStart} not found or missing arrangementLength`,
+      `Clip at ${position} not found or missing arrangementLength`,
     );
   }
 

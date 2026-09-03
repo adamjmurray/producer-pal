@@ -38,8 +38,7 @@ const ctx = setupMcpTestContext({ once: true });
 describe("arrangement clip moved into a session slot", () => {
   it("re-creates the clip in the slot and clears the arrangement", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart: "5|1",
+      path: `t${EMPTY_MIDI_TRACK}[5|1]`,
       name: "Move Home",
       color: "#FF0000",
       notes: "C3 D3 E3 F3 1|1",
@@ -82,8 +81,7 @@ describe("arrangement clip moved into a session slot", () => {
   // in is the case that catches a wrong order.
   it("carries a non-looping clip's start marker and length", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart: "9|1",
+      path: `t${EMPTY_MIDI_TRACK}[9|1]`,
       name: "Region",
       notes: "C3 1|1 D3 1|3 E3 2|1",
       length: "2bar",
@@ -109,8 +107,7 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("keeps a clip's time signature", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart: "13|1",
+      path: `t${EMPTY_MIDI_TRACK}[13|1]`,
       name: "Waltz",
       timeSignature: "3/4",
       notes: "C3 D3 E3 1|1",
@@ -128,8 +125,7 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("re-creates an audio clip from its sample", async () => {
     const source = await createClip({
-      path: `t${AUDIO_TRACK}`,
-      arrangementStart: "5|1",
+      path: `t${AUDIO_TRACK}[5|1]`,
       sampleFile: DRUM_LOOP_FILE,
       name: "Loop Home",
       warping: true,
@@ -162,8 +158,7 @@ describe("arrangement clip moved into a session slot", () => {
       notes: "G3 1|1",
     });
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart: "17|1",
+      path: `t${EMPTY_MIDI_TRACK}[17|1]`,
       name: "Takes Over",
       notes: "C3 1|1",
       length: "1bar",
@@ -187,8 +182,7 @@ describe("arrangement clip moved into a session slot", () => {
   // place rather than deleted.
   it("moves a take-lane source into a slot, leaving an emptied clip behind", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}/l+`,
-      arrangementStart: "21|1",
+      path: `t${EMPTY_MIDI_TRACK}/l+[21|1]`,
       name: "On A Lane",
       notes: "C3 1|1",
       length: "1bar",
@@ -218,8 +212,7 @@ describe("arrangement clip moved into a session slot", () => {
 
   it("refuses a MIDI clip aimed at an audio track", async () => {
     const source = await createClip({
-      path: `t${EMPTY_MIDI_TRACK}`,
-      arrangementStart: "25|1",
+      path: `t${EMPTY_MIDI_TRACK}[25|1]`,
       name: "Wrong Track",
       notes: "C3 1|1",
       length: "1bar",
