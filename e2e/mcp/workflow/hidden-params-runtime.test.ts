@@ -43,6 +43,8 @@ interface AnyResult {
   selectedClip?: { id: string; path?: string };
   selectedDevice?: { id: string; path?: string };
   playing?: boolean;
+  currentTime?: string;
+  arrangementLoop?: { start: string; end: string };
 }
 
 interface TrackRouting {
@@ -304,7 +306,7 @@ const CASES: Case[] = [
       notes: "C3 1|1",
       length: "1bar",
     }),
-    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[65|1]`),
   },
   {
     tool: "ppal-create-clip",
@@ -399,6 +401,16 @@ const CASES: Case[] = [
   },
   {
     tool: "ppal-duplicate",
+    param: "paths",
+    args: () => ({
+      type: "clip",
+      paths: `t${EMPTY_MIDI_TRACK}/s0`,
+      toPath: `t${EMPTY_MIDI_TRACK}/s5`,
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/s5`),
+  },
+  {
+    tool: "ppal-duplicate",
     param: "toSlot",
     args: () => ({
       type: "clip",
@@ -426,6 +438,18 @@ const CASES: Case[] = [
       arrangementStart: "89|1",
     }),
     verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[89|1]`),
+  },
+  {
+    tool: "ppal-duplicate",
+    param: "locator",
+    // Bridge is at 33|1 in the e2e test set, clear of the bars the arrangement
+    // cases above use.
+    args: () => ({
+      type: "clip",
+      id: state.arrangementClipId,
+      locator: "Bridge",
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[33|1]`),
   },
   {
     tool: "ppal-select",
@@ -481,6 +505,15 @@ const CASES: Case[] = [
     args: () => ({ devicePath: "t0/d0" }),
     verify: (d) => expect(d.selectedDevice?.path).toBe("t0/d0"),
   },
+  // The playhead is all startLocator sets, and currentTime only reports it once
+  // the transport is at it — hence play-arrangement, and first, before the
+  // session cases below leave it running somewhere else.
+  {
+    tool: "ppal-playback",
+    param: "startLocator",
+    args: () => ({ action: "play-arrangement", startLocator: "Verse" }),
+    verify: (d) => expect(d.currentTime).toBe("9|1"),
+  },
   {
     tool: "ppal-playback",
     param: "ids",
@@ -503,6 +536,41 @@ const CASES: Case[] = [
       slots: `${EMPTY_MIDI_TRACK}/0`,
     }),
     verify: (d) => expect(d.playing).toBe(true),
+  },
+  // The retired locator halves took a bare name where the param they folded
+  // onto takes "loc:<name>". Verse is 9|1 and Bridge 33|1 in the e2e test set.
+  {
+    tool: "ppal-playback",
+    param: "loopStartLocator",
+    args: () => ({
+      action: "update-arrangement",
+      loop: true,
+      loopStartLocator: "Verse",
+      loopEnd: "33|1",
+    }),
+    verify: (d) => expect(d.arrangementLoop?.start).toBe("9|1"),
+  },
+  {
+    tool: "ppal-playback",
+    param: "loopEndLocator",
+    args: () => ({
+      action: "update-arrangement",
+      loop: true,
+      loopStart: "9|1",
+      loopEndLocator: "Bridge",
+    }),
+    verify: (d) => expect(d.arrangementLoop?.end).toBe("33|1"),
+  },
+  {
+    tool: "ppal-playback",
+    param: "sceneIndex",
+    args: () => ({ action: "play-scene", sceneIndex: 0 }),
+    verify: (d) => expect(d.sceneIndex).toBe(0),
+  },
+  {
+    tool: "ppal-library",
+    param: "queries",
+    args: () => ({ action: "search", queries: [{ query: "kick", limit: 1 }] }),
   },
 ];
 
