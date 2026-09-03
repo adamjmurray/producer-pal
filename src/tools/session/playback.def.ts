@@ -9,7 +9,6 @@ import {
   aliasParam,
   deprecatedParam,
 } from "#src/tools/shared/tool-framework/hidden-param.ts";
-import { param } from "#src/tools/shared/tool-framework/modal-config.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
@@ -43,22 +42,26 @@ stop: session and arrangement`,
     startTime: z
       .string()
       .optional()
-      .describe("bar|beat position in arrangement (song meter)"),
-    startLocator: param(z.string().optional(), {
-      default:
-        "locator ID or name for start position (e.g., locator-0 or Verse)",
-      smallModel: null,
+      .describe(
+        "arrangement position: bar|beat in song meter, or loc:<locator name or id> (e.g. '5|1' or 'loc:Verse')",
+      ),
+    startLocator: deprecatedParam(z.string().optional(), {
+      replacedBy: "startTime",
     }),
     loop: z.boolean().optional().describe("arrangement loop?"),
-    loopStart: z.string().optional().describe("bar|beat position (song meter)"),
-    loopStartLocator: param(z.string().optional(), {
-      default: "locator ID or name for loop start",
-      smallModel: null,
+    loopStart: z
+      .string()
+      .optional()
+      .describe("bar|beat (song meter) or loc:<locator>"),
+    loopStartLocator: deprecatedParam(z.string().optional(), {
+      replacedBy: "loopStart",
     }),
-    loopEnd: z.string().optional().describe("bar|beat position (song meter)"),
-    loopEndLocator: param(z.string().optional(), {
-      default: "locator ID or name for loop end",
-      smallModel: null,
+    loopEnd: z
+      .string()
+      .optional()
+      .describe("bar|beat (song meter) or loc:<locator>"),
+    loopEndLocator: deprecatedParam(z.string().optional(), {
+      replacedBy: "loopEnd",
     }),
     id: z.coerce
       .string()

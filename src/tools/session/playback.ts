@@ -7,6 +7,7 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { slotPath } from "#src/tools/shared/validation/object-path-helpers.ts";
 import {
+  foldLocatorParams,
   getCurrentLoopState,
   handlePlayArrangement,
   handlePlayScene,
@@ -14,7 +15,6 @@ import {
   resolveLoopEnd,
   resolveLoopStart,
   resolveStartTime,
-  validateTimelineParams,
   type FiredScene,
   type PlaybackState,
 } from "./helpers/playback-helpers.ts";
@@ -26,9 +26,7 @@ import { type ClipSlotPosition } from "#src/tools/shared/validation/position-par
 import { select } from "./select.ts";
 
 interface PlaybackActionParams {
-  startTime?: string;
   startTimeBeats?: number;
-  useLocatorStart: boolean;
   sceneIndex?: number;
   ids?: string;
   slotPositions: ClipSlotPosition[] | null;
@@ -76,13 +74,13 @@ interface BuildPlaybackResultParams {
  * Unified control for all playback functionality in both Arrangement and Session views.
  * @param args - The parameters
  * @param args.action - Action to perform
- * @param args.startTime - Position in bar|beat format
- * @param args.startLocator - Locator ID or name for start position
+ * @param args.startTime - Song position, bar|beat or `loc:<name>`
+ * @param args.startLocator - Deprecated locator half of startTime
  * @param args.loop - Enable/disable arrangement loop
- * @param args.loopStart - Loop start position in bar|beat format
- * @param args.loopStartLocator - Locator ID or name for loop start
- * @param args.loopEnd - Loop end position in bar|beat format
- * @param args.loopEndLocator - Locator ID or name for loop end
+ * @param args.loopStart - Song position, bar|beat or `loc:<name>`
+ * @param args.loopStartLocator - Deprecated locator half of loopStart
+ * @param args.loopEnd - Song position, bar|beat or `loc:<name>`
+ * @param args.loopEndLocator - Deprecated locator half of loopEnd
  * @param args.sceneIndex - Deprecated scene index for Session view operations
  * @param args.id - Comma-separated clip IDs for Session view operations
  * @param args.ids - Hidden alias for id
@@ -131,18 +129,19 @@ export function playback(
   });
 
   // Dropped before anything reads them, so a session action can't write the
-  // arrangement. Everything below sees only what this action actually uses.
-  const timeline = resolveArrangementParams(action, {
-    startTime,
-    startLocator,
-    loop,
-    loopStart,
-    loopStartLocator,
-    loopEnd,
-    loopEndLocator,
-  });
-
-  validateTimelineParams(timeline);
+  // arrangement. Dropping runs before the fold, so a session action refuses
+  // nothing, looks up no locator, and warns by the names the caller sent.
+  const timeline = foldLocatorParams(
+    resolveArrangementParams(action, {
+      startTime,
+      startLocator,
+      loop,
+      loopStart,
+      loopStartLocator,
+      loopEnd,
+      loopEndLocator,
+    }),
+  );
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -155,7 +154,7 @@ export function playback(
   ) as number;
 
   // Resolve start time from bar|beat or locator
-  const { startTimeBeats, useLocatorStart } = resolveStartTime(
+  const startTimeBeats = resolveStartTime(
     liveSet,
     timeline,
     songTimeSigNumerator,
@@ -192,9 +191,7 @@ export function playback(
     action,
     liveSet,
     {
-      startTime: timeline.startTime,
       startTimeBeats,
-      useLocatorStart,
       sceneIndex: sceneTarget ?? undefined,
       ids: namedIds,
       slotPositions,
@@ -389,24 +386,11 @@ function handlePlaybackAction(
   params: PlaybackActionParams,
   state: PlaybackState,
 ): PlaybackState {
-  const {
-    startTime,
-    startTimeBeats,
-    useLocatorStart,
-    sceneIndex,
-    ids,
-    slotPositions,
-  } = params;
+  const { startTimeBeats, sceneIndex, ids, slotPositions } = params;
 
   switch (action) {
     case "play-arrangement":
-      return handlePlayArrangement(
-        liveSet,
-        startTime,
-        startTimeBeats,
-        useLocatorStart,
-        state,
-      );
+      return handlePlayArrangement(liveSet, startTimeBeats, state);
 
     case "update-arrangement":
       // No playback state change, just the loop and follow settings above

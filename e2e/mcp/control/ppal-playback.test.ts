@@ -203,7 +203,7 @@ describe("ppal-playback", () => {
   it("starts the arrangement from a locator named by the user", async () => {
     const playing = await playback({
       action: "play-arrangement",
-      startLocator: "Verse",
+      startTime: "loc:Verse",
     });
 
     expect(playing.playing).toBe(true);
@@ -215,7 +215,7 @@ describe("ppal-playback", () => {
   it("starts the arrangement from a locator id", async () => {
     const playing = await playback({
       action: "play-arrangement",
-      startLocator: "locator-2",
+      startTime: "loc:locator-2",
     });
 
     expect(playing.currentTime).toBe("17|1");
@@ -227,8 +227,8 @@ describe("ppal-playback", () => {
     const looped = await playback({
       action: "update-arrangement",
       loop: true,
-      loopStartLocator: "Verse",
-      loopEndLocator: "Chorus",
+      loopStart: "loc:Verse",
+      loopEnd: "loc:Chorus",
     });
 
     expect(looped.arrangementLoop?.start).toBe("9|1");
@@ -238,7 +238,7 @@ describe("ppal-playback", () => {
   it("errors on a locator name nothing matches", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-playback",
-      arguments: { action: "play-arrangement", startLocator: "Nowhere" },
+      arguments: { action: "play-arrangement", startTime: "loc:Nowhere" },
     });
 
     expect(isToolError(result)).toBe(true);

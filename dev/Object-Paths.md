@@ -107,7 +107,8 @@ typo'd bar|beat, into a silent name lookup.
 This is what the `[...]` coordinate holds, and what `playback`'s `startTime`,
 `loopStart` and `loopEnd` and `update-clip`'s `arrangementSplit` take directly.
 The pairs that used to spell the second half as its own param — `startLocator`,
-`loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` — are gone.
+`loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` — are retired:
+still accepted, no longer published, folded onto the position they belonged to.
 
 **Song timeline only.** `create-clip`'s `start` and `firstStart` are
 clip-relative and must not accept `loc:`.
@@ -215,18 +216,21 @@ stay in Live's UI.
 Four tiers, in order of preference.
 
 1. **Hidden params.** `slot`, `slots`, `toSlot`, `devicePath`, `takeLane` are
-   deprecated — accepted, warned, going away, and so is every index param the
-   path replaced: `trackType` and `trackIndex` on `read-track` and `select`,
-   `sceneIndex` on `read-scene`, `select` and `create-scene`, and `trackIndex`
-   on `create-track`. `create-track`'s `type: "return"` goes the same way,
-   trimmed out of the published enum but still accepted — `rt+` asks for one
-   now. `arrangementStart` on `create-clip`, `update-clip` and `duplicate` joins
-   them once the coordinate ships — a deprecation with a long runway, not a
-   permanent alias: it is a name we coined, so a model that never reads it in
-   the Skills has no reason to emit it, and the runway is for people scripting
-   Live. `trackIndex` and `sceneIndex` on the _clip_ tools are permanent
-   aliases, not part of that migration: models reach for them unprompted, and
-   catching the guess beats a round trip. See
+   deprecated — accepted, warned, going away, and so is every param a single
+   spelling replaced. `startLocator`, `loopStartLocator` and `loopEndLocator`
+   fold into the position they belonged to, as `loc:<what the caller sent>`. So
+   does every index param the path replaced: `trackType` and `trackIndex` on
+   `read-track` and `select`, `sceneIndex` on `read-scene`, `select` and
+   `create-scene`, and `trackIndex` on `create-track`. `create-track`'s
+   `type: "return"` goes the same way, trimmed out of the published enum but
+   still accepted — `rt+` asks for one now. `arrangementStart` on `create-clip`,
+   `update-clip` and `duplicate` joins them once the coordinate ships — a
+   deprecation with a long runway, not a permanent alias: it is a name we
+   coined, so a model that never reads it in the Skills has no reason to emit
+   it, and the runway is for people scripting Live. `trackIndex` and
+   `sceneIndex` on the _clip_ tools are permanent aliases, not part of that
+   migration: models reach for them unprompted, and catching the guess beats a
+   round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A

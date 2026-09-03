@@ -7,15 +7,15 @@
  * Does the model navigate by SECTION NAME, or compute a bar number?
  *
  * "Play from the chorus" and "copy the verse into the bridge" are how people
- * actually talk about an arrangement, and both have a locator param built for
- * them: `startLocator` / `loopStartLocator` / `loopEndLocator` on ppal-playback,
- * and `locator` on ppal-duplicate.
+ * actually talk about an arrangement, and both have a spelling built for them:
+ * `loc:<name>` on ppal-playback's `startTime` / `loopStart` / `loopEnd`, and
+ * `locator` on ppal-duplicate.
  *
  * The trap is that computing the bar WORKS. A model that reads the locator list,
  * works out that Chorus is bar 17, and passes `startTime: "17|1"` lands the
  * playhead in exactly the right place — so an outcome-only check passes a model
  * that never found the feature. That is why each turn grades the ARGUMENT as
- * well as the result. The e2e suite already proves the params resolve names and
+ * well as the result. The e2e suite already proves the values resolve names and
  * ids against a real Set (`control/ppal-playback`, `operations/ppal-duplicate`);
  * what is unmeasured is whether a model reaches for them.
  *
@@ -72,49 +72,47 @@ function playbackCall(
   return { args: call.args, result: parsedToolResult(call) ?? {} };
 }
 
+/** A song position that names a locator rather than a computed bar. */
+const LOCATOR_VALUE = /^\s*loc(?:ator)?:/i;
+
 /**
  * Assert the model named a locator rather than computing a bar position.
  *
  * @param turn - Turn index to grade
- * @param locatorParams - Locator param names the call should carry
- * @param positionParams - Bar-position params it should NOT have used instead
+ * @param positionParams - Song-position params the call should spell with loc:
  * @param expected - Human-readable description of the expected placement
  * @param check - Reads the playback result; returns true when the placement landed
  * @returns A custom assertion
  */
 function assertNavigatedByLocator(
   turn: number,
-  locatorParams: string[],
   positionParams: string[],
   expected: string,
   check: (result: Record<string, unknown>) => boolean,
 ): EvalAssertion {
   return {
     type: "custom",
-    description: `used ${locatorParams.join(" + ")} and reached ${expected}`,
+    description: `spelled ${positionParams.join(" + ")} as loc: and reached ${expected}`,
     assert: (turns) => {
       const call = playbackCall(turns, turn);
 
       if (call == null)
         throw new Error(`no ${TOOL_PLAYBACK} call in turn ${turn}`);
 
-      // Report the idiom AND the outcome together. A missing locator param and
-      // a wrong result usually have the same cause — a param the model never
-      // set — and seeing only the first sends you probing Live to find out
-      // whether the placement even landed.
+      // Report the idiom AND the outcome together. A computed position and a
+      // wrong result usually have the same cause, and seeing only the first
+      // sends you probing Live to find out whether the placement even landed.
       const issues: string[] = [];
-      const missing = locatorParams.filter((p) => !argText(call.args[p]));
+      const computed = positionParams
+        .map((p) => [p, argText(call.args[p])] as const)
+        .filter(([, value]) => !LOCATOR_VALUE.test(value));
 
-      if (missing.length > 0) {
-        const computed = positionParams
-          .filter((p) => argText(call.args[p]))
-          .map((p) => `${p}=${argText(call.args[p])}`);
-
+      if (computed.length > 0) {
         issues.push(
-          `did not name a locator (missing ${missing.join(", ")})` +
-            (computed.length > 0
-              ? `, computed the position instead: ${computed.join(", ")}`
-              : ""),
+          `did not name a locator: ` +
+            computed
+              .map(([p, value]) => `${p}=${value || "(unset)"}`)
+              .join(", "),
         );
       }
 
@@ -174,9 +172,9 @@ export const locatorNavigation: EvalScenario = {
   kind: "capability",
   liveSet: LIVE_SET,
 
-  // The locator params are hidden in small-model mode, so a small model is
-  // never offered the feature this grades.
-  requires: { params: ["startLocator"] },
+  // duplicate's locator param is hidden in small-model mode, so a small model
+  // is never offered the whole feature this grades.
+  requires: { params: ["locator"] },
 
   messages: [
     "Connect to Ableton Live",
@@ -191,7 +189,6 @@ export const locatorNavigation: EvalScenario = {
 
     assertNavigatedByLocator(
       1,
-      ["startLocator"],
       ["startTime"],
       `the chorus (${CHORUS})`,
       (result) => result.currentTime === CHORUS,
@@ -199,7 +196,6 @@ export const locatorNavigation: EvalScenario = {
 
     assertNavigatedByLocator(
       2,
-      ["loopStartLocator", "loopEndLocator"],
       ["loopStart", "loopEnd"],
       `a ${BRIDGE}-${OUTRO} loop`,
       (result) => {

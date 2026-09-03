@@ -3,15 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  abletonBeatsToBarBeat,
-  barBeatToAbletonBeats,
-  validateBarBeatPosition,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
-import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
 
 interface LoopState {
   startBeats: number;
@@ -19,31 +15,27 @@ interface LoopState {
   end: string;
 }
 
-interface StartTimeParams {
+/** The params that address the arrangement timeline: the playhead and the loop. */
+export interface ArrangementParams {
   startTime?: string;
-  startLocator?: string;
-}
-
-interface LoopStartParams {
+  loop?: boolean;
   loopStart?: string;
-  loopStartLocator?: string;
+  loopEnd?: string;
 }
 
-interface LoopEndParams {
-  loopEnd?: string;
+/** The retired params that spelled a position's locator half on its own. */
+export interface LegacyLocatorParams {
+  startLocator?: string;
+  loopStartLocator?: string;
   loopEndLocator?: string;
 }
 
-interface ResolvedStartTime {
-  startTimeBeats?: number;
-  useLocatorStart: boolean;
-}
-
-/** The params that address the arrangement timeline: the playhead and the loop. */
-export interface ArrangementParams
-  extends StartTimeParams, LoopStartParams, LoopEndParams {
-  loop?: boolean;
-}
+/** Each retired locator param, and the position param it folds into. */
+const LOCATOR_PARAM_PAIRS = [
+  ["startTime", "startLocator"],
+  ["loopStart", "loopStartLocator"],
+  ["loopEnd", "loopEndLocator"],
+] as const;
 
 /** The actions that read the arrangement timeline. The rest work the session. */
 const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
@@ -59,13 +51,12 @@ const ARRANGEMENT_ACTIONS = new Set(["play-arrangement", "update-arrangement"]);
  * @param params - The timeline params as the caller sent them
  * @returns The params, or none of them when the action works the session
  */
-export function resolveArrangementParams(
-  action: string,
-  params: ArrangementParams,
-): ArrangementParams {
+export function resolveArrangementParams<
+  T extends ArrangementParams & LegacyLocatorParams,
+>(action: string, params: T): Partial<T> {
   if (ARRANGEMENT_ACTIONS.has(action)) return params;
 
-  const sent = (Object.keys(params) as Array<keyof ArrangementParams>).filter(
+  const sent = (Object.keys(params) as Array<keyof T>).filter(
     (key) => params[key] != null,
   );
 
@@ -109,133 +100,94 @@ export function getCurrentLoopState(
 }
 
 /**
- * Resolve a locator reference to its time in beats
- * @param liveSet - The live_set LiveAPI object
- * @param locator - Locator ID or name
- * @param paramName - Name of the parameter for error messages
- * @returns Time in beats or undefined if no locator specified
+ * Fold the retired `*Locator` params into the position they belong to. A song
+ * position has one spelling now: a bar|beat, or `loc:<name>`.
+ * @param params - The timeline params as the caller sent them
+ * @returns The same timeline with each locator half folded in
  */
-export function resolveLocatorToBeats(
-  liveSet: LiveAPI,
-  locator: string | undefined,
-  paramName: string,
-): number | undefined {
-  if (locator == null) {
-    return undefined;
+export function foldLocatorParams(
+  params: ArrangementParams & LegacyLocatorParams,
+): ArrangementParams {
+  const folded: ArrangementParams = {
+    startTime: params.startTime,
+    loop: params.loop,
+    loopStart: params.loopStart,
+    loopEnd: params.loopEnd,
+  };
+
+  for (const [position, legacy] of LOCATOR_PARAM_PAIRS) {
+    const locator = params[legacy];
+
+    if (locator == null) continue;
+
+    // Never pick one: the two params name the same position, so a caller who
+    // sent both told us two different things about it.
+    if (folded[position] != null) {
+      throw new Error(
+        `playback failed: ${position} cannot be used with ${legacy}`,
+      );
+    }
+
+    folded[position] = `loc:${locator}`;
   }
 
-  return resolveLocatorRefToBeats(
-    liveSet,
-    locator,
-    "playback",
-    `for ${paramName}`,
-  );
+  return folded;
 }
 
 /**
- * Validate mutual exclusivity of time and locator parameters
- * @param timeParam - Time parameter value
- * @param locatorParam - Locator parameter value
- * @param paramName - Name of the parameter for error messages
- */
-export function validateLocatorOrTime(
-  timeParam: string | undefined,
-  locatorParam: string | undefined,
-  paramName: string,
-): void {
-  if (timeParam != null && locatorParam != null) {
-    const locatorParamBase = paramName.replace(/Time$/, "");
-
-    throw new Error(
-      `playback failed: ${paramName} cannot be used with ${locatorParamBase}Locator`,
-    );
-  }
-}
-
-/**
- * Refuse a timeline whose position is named twice — once as a bar|beat and
- * once as a locator. All three positions get the same rule.
- * @param timeline - The arrangement params this action kept
- */
-export function validateTimelineParams(timeline: ArrangementParams): void {
-  validateLocatorOrTime(timeline.startTime, timeline.startLocator, "startTime");
-  validateLocatorOrTime(
-    timeline.loopStart,
-    timeline.loopStartLocator,
-    "loopStart",
-  );
-  validateLocatorOrTime(timeline.loopEnd, timeline.loopEndLocator, "loopEnd");
-}
-
-/**
- * Resolve start time from either bar|beat string or locator reference
+ * Resolve the arrangement start position and move the playhead there.
  * @param liveSet - The live_set LiveAPI object
- * @param params - Start time parameters
- * @param params.startTime - Bar|beat position
- * @param params.startLocator - Locator ID or name for start
+ * @param params - The timeline params
+ * @param params.startTime - Song position, bar|beat or `loc:<name>`
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Resolved start time
+ * @returns The start position in beats, or undefined when none was given
  */
 export function resolveStartTime(
   liveSet: LiveAPI,
-  { startTime, startLocator }: StartTimeParams,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): ResolvedStartTime {
-  const useLocatorStart = startLocator != null;
-  let startTimeBeats: number | undefined;
-
-  if (startTime != null) {
-    validateBarBeatPosition(startTime);
-    startTimeBeats = barBeatToAbletonBeats(
-      startTime,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-    liveSet.set("start_time", startTimeBeats);
-  } else if (useLocatorStart) {
-    startTimeBeats = resolveLocatorToBeats(liveSet, startLocator, "start");
-    liveSet.set("start_time", startTimeBeats);
-  }
-
-  return { startTimeBeats, useLocatorStart };
-}
-
-/**
- * Resolve loop start time from either bar|beat string or locator reference
- * @param liveSet - The live_set LiveAPI object
- * @param params - Loop start parameters
- * @param params.loopStart - Bar|beat position
- * @param params.loopStartLocator - Locator ID or name for loop start
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns Resolved loop start in beats
- */
-export function resolveLoopStart(
-  liveSet: LiveAPI,
-  { loopStart, loopStartLocator }: LoopStartParams,
+  { startTime }: ArrangementParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | undefined {
-  let loopStartBeats: number | undefined;
+  if (startTime == null) return undefined;
 
-  if (loopStart != null) {
-    validateBarBeatPosition(loopStart);
-    loopStartBeats = barBeatToAbletonBeats(
-      loopStart,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-    liveSet.set("loop_start", loopStartBeats);
-  } else if (loopStartLocator != null) {
-    loopStartBeats = resolveLocatorToBeats(
-      liveSet,
-      loopStartLocator,
-      "loopStart",
-    );
-    liveSet.set("loop_start", loopStartBeats);
-  }
+  const startTimeBeats = songPositionToBeats(liveSet, startTime, {
+    toolName: "playback",
+    paramName: "startTime",
+    timeSigNumerator,
+    timeSigDenominator,
+  });
+
+  liveSet.set("start_time", startTimeBeats);
+
+  return startTimeBeats;
+}
+
+/**
+ * Resolve the arrangement loop start and write it.
+ * @param liveSet - The live_set LiveAPI object
+ * @param params - The timeline params
+ * @param params.loopStart - Song position, bar|beat or `loc:<name>`
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns The loop start in beats, or undefined when none was given
+ */
+export function resolveLoopStart(
+  liveSet: LiveAPI,
+  { loopStart }: ArrangementParams,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number | undefined {
+  if (loopStart == null) return undefined;
+
+  const loopStartBeats = songPositionToBeats(liveSet, loopStart, {
+    toolName: "playback",
+    paramName: "loopStart",
+    timeSigNumerator,
+    timeSigDenominator,
+  });
+
+  liveSet.set("loop_start", loopStartBeats);
 
   return loopStartBeats;
 }
@@ -243,51 +195,43 @@ export function resolveLoopStart(
 /**
  * Resolve loop end time and set loop length
  * @param liveSet - The live_set LiveAPI object
- * @param params - Loop end parameters
- * @param params.loopEnd - Bar|beat position
- * @param params.loopEndLocator - Locator ID or name for loop end
+ * @param params - The timeline params
+ * @param params.loopEnd - Song position, bar|beat or `loc:<name>`
  * @param loopStartBeats - Resolved loop start in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  */
 export function resolveLoopEnd(
   liveSet: LiveAPI,
-  { loopEnd, loopEndLocator }: LoopEndParams,
+  { loopEnd }: ArrangementParams,
   loopStartBeats: number | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): void {
-  let loopEndBeats: number | undefined;
+  if (loopEnd == null) return;
 
-  if (loopEnd != null) {
-    validateBarBeatPosition(loopEnd);
-    loopEndBeats = barBeatToAbletonBeats(
-      loopEnd,
-      timeSigNumerator,
-      timeSigDenominator,
+  const loopEndBeats = songPositionToBeats(liveSet, loopEnd, {
+    toolName: "playback",
+    paramName: "loopEnd",
+    timeSigNumerator,
+    timeSigDenominator,
+  });
+  const actualLoopStartBeats =
+    loopStartBeats ?? (liveSet.getProperty("loop_start") as number);
+  const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
+
+  // loopStart and loopEnd are independent params, so loopEnd can land at or
+  // before loopStart. A non-positive loop_length is invalid in Live; warn and
+  // skip rather than writing it.
+  if (loopLengthBeats <= 0) {
+    console.warn(
+      `loopEnd must be after loopStart: loop length ${loopLengthBeats} beats (loopStart ${actualLoopStartBeats}, loopEnd ${loopEndBeats}) — skipping loop length update`,
     );
-  } else if (loopEndLocator != null) {
-    loopEndBeats = resolveLocatorToBeats(liveSet, loopEndLocator, "loopEnd");
+
+    return;
   }
 
-  if (loopEndBeats != null) {
-    const actualLoopStartBeats =
-      loopStartBeats ?? (liveSet.getProperty("loop_start") as number);
-    const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
-
-    // loopStart and loopEnd are independent params, so loopEnd can land at or
-    // before loopStart. A non-positive loop_length is invalid in Live; warn and
-    // skip rather than writing it.
-    if (loopLengthBeats <= 0) {
-      console.warn(
-        `loopEnd must be after loopStart: loop length ${loopLengthBeats} beats (loopStart ${actualLoopStartBeats}, loopEnd ${loopEndBeats}) — skipping loop length update`,
-      );
-
-      return;
-    }
-
-    liveSet.set("loop_length", loopLengthBeats);
-  }
+  liveSet.set("loop_length", loopLengthBeats);
 }
 
 /** The scene play-scene fired, for the response */
@@ -309,22 +253,18 @@ export interface PlaybackState {
 /**
  * Handle playing the arrangement view
  * @param liveSet - LiveAPI instance for live_set
- * @param startTime - Start time in bar|beat format
- * @param startTimeBeats - Start time in beats (from time or locator)
- * @param useLocatorStart - Whether start position came from a locator
+ * @param startTimeBeats - Resolved start position, or undefined for none
  * @param _state - Current playback state (unused)
  * @returns Updated playback state
  */
 export function handlePlayArrangement(
   liveSet: LiveAPI,
-  startTime: string | undefined,
   startTimeBeats: number | undefined,
-  useLocatorStart: boolean,
   _state: PlaybackState,
 ): PlaybackState {
   let resolvedStartTimeBeats = startTimeBeats;
 
-  if (startTime == null && !useLocatorStart) {
+  if (startTimeBeats == null) {
     liveSet.set("start_time", 0);
     resolvedStartTimeBeats = 0;
   }
