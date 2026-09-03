@@ -3,16 +3,20 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import { drumChainSegmentNamer } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
+import { type ArrangementLane } from "./helpers/object-path-coord.ts";
 import { arrangementPath, slotPath } from "./helpers/object-path-helpers.ts";
+import { songMeter } from "./helpers/song-meter.ts";
 import { formatObjectPath } from "./object-path.ts";
 
 const SCENE = /^live_set scenes (\d+)$/;
 const CLIP_SLOT = /^live_set tracks (\d+) clip_slots (\d+)/;
-const TAKE_LANE = /^live_set tracks (\d+) take_lanes (\d+)/;
-const ARRANGEMENT_CLIP = /^live_set tracks (\d+) arrangement_clips \d+$/;
+const TAKE_LANE = /^live_set tracks (\d+) take_lanes (\d+)$/;
+const ARRANGEMENT_CLIP =
+  /^live_set tracks (\d+)(?: take_lanes (\d+))? arrangement_clips \d+$/;
 const DRUM_PAD_TAIL = / drum_pads \d+$/;
 /** A path the device grammar spells in full — nothing hangs below its last segment. */
 const WHOLE_DEVICE_PATH =
@@ -20,11 +24,11 @@ const WHOLE_DEVICE_PATH =
 
 /**
  * The path a live object spells, so a write result can hand back the address of
- * what it just wrote.
+ * what it just wrote, and the next call can paste it straight into a `path`.
  *
- * An arrangement clip gets its lane (`t0`, `t0/l1`), not itself: a lane holds
- * many clips and the grammar has no time coordinate, so the clip is addressed
- * by id and the path says where it lives.
+ * An arrangement clip is named in full — `t0[5|1]`, `t0/l1[5|1]` — which costs
+ * a `start_time` read and the song meter, where every other kind formats from
+ * indices already in hand.
  * @param api - The object to name
  * @returns The path, or undefined for an object the grammar can't spell
  */
@@ -50,7 +54,13 @@ export function objectPathForApi(api: LiveAPI): string | undefined {
 
   const arrangementClip = ARRANGEMENT_CLIP.exec(path);
 
-  if (arrangementClip) return arrangementPath(Number(arrangementClip[1]));
+  if (arrangementClip) {
+    return arrangementClipPath(
+      api,
+      Number(arrangementClip[1]),
+      arrangementClip[2],
+    );
+  }
 
   return devicePathForApi(api, path);
 }
@@ -70,8 +80,7 @@ export function pathField(api: LiveAPI): { path?: string } {
 /**
  * How a warning names the object it was working on. Both spellings, always: the
  * model addressed the object by one of them and can't be expected to map the
- * other back, and an arrangement clip needs both anyway — its path names the
- * lane it shares with every other clip there.
+ * other back.
  * @param api - The object the warning is about
  * @returns `t1/d0 (id 7)`, or `id 7` alone when the grammar can't spell a path
  */
@@ -137,6 +146,35 @@ export function pathPrefix(api: LiveAPI): string {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The path an arrangement clip spells: its lane, plus where it starts.
+ * @param api - The clip
+ * @param trackIndex - Its track's index
+ * @param laneIndex - Its take lane's index, or undefined on the main lane
+ * @returns The path (e.g. "t0[5|1]" or "t0/l1[5|1]")
+ */
+function arrangementClipPath(
+  api: LiveAPI,
+  trackIndex: number,
+  laneIndex: string | undefined,
+): string {
+  const { numerator, denominator } = songMeter();
+  const lane: ArrangementLane =
+    laneIndex == null
+      ? { kind: "track", trackIndex }
+      : { kind: "take-lane", trackIndex, laneIndex: Number(laneIndex) };
+
+  return formatObjectPath({
+    kind: "arrangement-position",
+    lane,
+    position: abletonBeatsToBarBeat(
+      api.getProperty("start_time") as number,
+      numerator,
+      denominator,
+    ),
+  });
+}
 
 /**
  * The one spelling every warning names a target by.

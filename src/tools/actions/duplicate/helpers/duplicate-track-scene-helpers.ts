@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { clipLengthBeats } from "#src/tools/clip/helpers/audio-clip-timing.ts";
@@ -343,7 +342,7 @@ function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
  * @param context - Context object with silenceWavPath
- * @returns Object with arrangementStart and clips array
+ * @returns The clips the copy landed, each with its own path
  */
 export async function duplicateSceneToArrangement(
   sceneId: string,
@@ -354,7 +353,7 @@ export async function duplicateSceneToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): Promise<{ arrangementStart: string; clips: MinimalClipInfo[] }> {
+): Promise<{ clips: MinimalClipInfo[] }> {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
@@ -404,7 +403,6 @@ export async function duplicateSceneToArrangement(
       const track = LiveAPI.from(livePath.track(trackIndex));
 
       // Use the new length-aware clip creation logic
-      // Omit arrangementStart since all clips share the same start time
       const clipsForTrack = await createClipsForLength(
         clip,
         track,
@@ -413,7 +411,6 @@ export async function duplicateSceneToArrangement(
         songTimeSigNumerator,
         songTimeSigDenominator,
         name,
-        ["arrangementStart"],
         context,
       );
 
@@ -426,12 +423,5 @@ export async function duplicateSceneToArrangement(
     }
   }
 
-  return {
-    arrangementStart: abletonBeatsToBarBeat(
-      arrangementStartBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
-    clips: duplicatedClips,
-  };
+  return { clips: duplicatedClips };
 }

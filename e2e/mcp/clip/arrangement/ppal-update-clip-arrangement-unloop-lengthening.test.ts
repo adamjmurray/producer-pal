@@ -33,6 +33,7 @@ import {
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -49,7 +50,7 @@ describe("arrangementLength: tiling vs. the single-clip route", () => {
 
     // A 1-bar loop stretched to 4 bars lands as 4 clips, not one.
     expect(clips).toHaveLength(4);
-    expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+    expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
       "101|1",
       "102|1",
       "103|1",
@@ -187,7 +188,7 @@ async function expectFourBarClipAt(
   clip: ReadClipResult,
   arrangementStart: string,
 ): Promise<void> {
-  expect(clip.arrangementStart).toBe(arrangementStart);
+  expect(arrangementStartOf(clip)).toBe(arrangementStart);
   expect(lengthBeats(clip)).toBeCloseTo(beats("4bar"), 5);
   expect(clip.looping).toBe(false);
 

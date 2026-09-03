@@ -55,7 +55,6 @@ describe("updateClip - code execution", () => {
       0,
       1,
       0,
-      undefined,
     );
 
     // applyNotesToClip should have been called (removes + adds notes)
@@ -99,7 +98,6 @@ describe("updateClip - code execution", () => {
       0,
       2,
       0,
-      undefined,
     );
     expect(executeNoteCode).toHaveBeenNthCalledWith(
       2,
@@ -109,7 +107,6 @@ describe("updateClip - code execution", () => {
       1,
       2,
       1,
-      undefined,
     );
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0", noteCount: 1 },
@@ -172,7 +169,7 @@ describe("updateClip - code execution", () => {
     );
   });
 
-  it("should pass arrangement clip location info to executeNoteCode", async () => {
+  it("should tell executeNoteCode an arrangement clip is in no scene", async () => {
     setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
       start_time: 16.0,
@@ -193,7 +190,6 @@ describe("updateClip - code execution", () => {
       0,
       1,
       undefined,
-      16.0,
     );
   });
 });

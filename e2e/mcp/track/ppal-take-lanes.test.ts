@@ -58,7 +58,6 @@ interface LiveSetTracksResult {
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
 }
 
 /**
@@ -98,7 +97,7 @@ describe("take lanes", () => {
     });
 
     expect(lane0.id).toBeDefined();
-    expect(lane0.path).toBe(`t${EMPTY_MIDI_TRACK}/l0`);
+    expect(lane0.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[1|1]`);
 
     // "l+" appends a fresh lane; takeLaneName names only that new lane
     const lane1 = await createOnLane({
@@ -108,9 +107,9 @@ describe("take lanes", () => {
       takeLaneName: "Variation B",
     });
 
-    expect(lane1.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`);
+    expect(lane1.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[5|1]`);
 
-    // A main-lane clip's path is the bare track (and it emits no warning)
+    // A main-lane clip's path is the track plus where it starts
     const mainResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
@@ -122,7 +121,7 @@ describe("take lanes", () => {
     const main = parseToolResult<CreateClipResult>(mainResult);
 
     expect(main.id).toBeDefined();
-    expect(main.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    expect(main.path).toBe(`t${EMPTY_MIDI_TRACK}[9|1]`);
 
     await sleep(100);
 
@@ -162,7 +161,7 @@ describe("take lanes", () => {
     const { data: clip } =
       parseToolResultWithWarnings<CreateClipResult>(result);
 
-    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`);
+    expect(clip.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[1|1]`);
     expect(getToolWarnings(result)).toContainEqual(
       expect.stringContaining('param "takeLane" is deprecated'),
     );
@@ -227,7 +226,7 @@ describe("take lanes", () => {
       notes: "C3 1|1",
     });
 
-    expect(replaced.path).toBe(`t${EMPTY_MIDI_TRACK}/l0`);
+    expect(replaced.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[1|1]`);
 
     await sleep(100);
     const afterReplace = await readTakeLanes(EMPTY_MIDI_TRACK);
@@ -242,7 +241,7 @@ describe("take lanes", () => {
       notes: "C3 1|1",
     });
 
-    expect(lane7.path).toBe(`t${EMPTY_MIDI_TRACK}/l7`);
+    expect(lane7.path).toBe(`t${EMPTY_MIDI_TRACK}/l7[1|1]`);
 
     await sleep(100);
     const overview = parseToolResult<ReadTrackTakeLanesResult>(
@@ -333,7 +332,7 @@ describe("take lanes", () => {
     });
 
     expect(clip.id).toBeDefined();
-    expect(clip.path).toBe(`t${trackIndex}/l0`);
+    expect(clip.path).toBe(`t${trackIndex}/l0[1|1]`);
 
     await sleep(100);
     const readClip = parseToolResult<ReadClipResult>(
@@ -382,7 +381,7 @@ describe("take lanes", () => {
     );
 
     expect(midiDup.data.id).toBeDefined();
-    expect(midiDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l0`);
+    expect(midiDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l0[5|1]`);
 
     await sleep(100);
     const copy = parseToolResult<ReadClipResult>(
@@ -414,7 +413,7 @@ describe("take lanes", () => {
     expect(lengthDup.warnings.join(" ")).toContain(
       "arrangementLength ignored for the re-created copies",
     );
-    expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`);
+    expect(lengthDup.data.path).toBe(`t${EMPTY_MIDI_TRACK}/l1[9|1]`);
 
     // An audio source is re-created from its sample. Warped on purpose, so the
     // warp-marker warning doesn't depend on the sample's own analysis file.
@@ -454,7 +453,7 @@ describe("take lanes", () => {
       }),
     );
 
-    expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0`);
+    expect(audioDup.data.path).toBe(`t${audioTrackIndex}/l0[5|1]`);
     expect(audioDup.warnings.join(" ")).toContain(
       "warp markers reset to the sample's defaults",
     );
@@ -500,8 +499,8 @@ describe("take lanes", () => {
       }),
     );
 
-    // Main lane has no `l` segment, so the path is the bare track
-    expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}`);
+    // Main lane has no `l` segment, so the path is the track plus the position
+    expect(promoted.data.path).toBe(`t${EMPTY_MIDI_TRACK}[5|1]`);
     // Re-creating carries notes, and the response says so. This clip has no
     // envelopes, so nothing was lost and the warning names no cost.
     expect(promoted.warnings.join(" ")).toContain(
@@ -577,9 +576,12 @@ describe("take lanes", () => {
     );
 
     expect(dup.data).toHaveLength(3);
-    expect(dup.data.map((copy) => copy.path)).toStrictEqual(
-      Array(3).fill(`t${RACKS_TRACK}/l0`),
-    );
+    // One lane, three positions on it.
+    expect(dup.data.map((copy) => copy.path)).toStrictEqual([
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${RACKS_TRACK}/l0[9|1]`,
+      `t${RACKS_TRACK}/l0[13|1]`,
+    ]);
 
     await sleep(100);
     const detail = await readTakeLanes(RACKS_TRACK);
@@ -606,8 +608,8 @@ describe("take lanes", () => {
     );
 
     expect(dup.data.map((copy) => copy.path)).toStrictEqual([
-      `t${RACKS_TRACK}/l0`,
-      `t${RACKS_TRACK}/l1`,
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${RACKS_TRACK}/l1[5|1]`,
     ]);
 
     await sleep(100);
@@ -634,8 +636,8 @@ describe("take lanes", () => {
     );
 
     expect(dup.data.map((copy) => copy.path)).toStrictEqual([
-      `t${RACKS_TRACK}/l0`,
-      `t${CHILD_TRACK}/l0`,
+      `t${RACKS_TRACK}/l0[5|1]`,
+      `t${CHILD_TRACK}/l0[5|1]`,
     ]);
 
     await sleep(100);

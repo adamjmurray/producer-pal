@@ -22,6 +22,7 @@ import {
 } from "../../mcp-test-helpers.ts";
 import { readClipsOnTrack } from "../helpers/arrangement-lengthening-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -101,7 +102,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     });
     const clip = parseToolResult<ReadClipResult>(readResult);
 
-    expect(clip.arrangementStart).toBe("101|1");
+    expect(arrangementStartOf(clip)).toBe("101|1");
   });
 
   it("deletes non-survivors and keeps survivors", async () => {
@@ -134,7 +135,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     );
 
     expect(finalClips).toHaveLength(2);
-    expect(finalClips[0]!.arrangementStart).toBe("170|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("170|1");
   });
 
   it("only last clip survives when all have same length", async () => {
@@ -165,7 +166,7 @@ describe("ppal-update-clip arrangement multistart", () => {
     );
 
     expect(finalClips).toHaveLength(1);
-    expect(finalClips[0]!.arrangementStart).toBe("220|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("220|1");
     expect(finalClips[0]!.arrangementLength).toBe("1bar");
   });
 
@@ -198,6 +199,6 @@ describe("ppal-update-clip arrangement multistart", () => {
     );
 
     expect(finalClips).toHaveLength(3);
-    expect(finalClips[0]!.arrangementStart).toBe("270|1");
+    expect(arrangementStartOf(finalClips[0]!)).toBe("270|1");
   });
 });

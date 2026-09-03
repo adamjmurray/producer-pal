@@ -6,7 +6,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import * as console from "#src/shared/max/v8-max-console.ts";
-import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api-property-helpers.ts";
+import {
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { resolveToolSchema } from "#src/tools/shared/tool-framework/resolve-tool-schema.ts";
@@ -70,14 +75,54 @@ describe("readClip path param", () => {
     expect(() => readClip({ path: "t99/s0" })).toThrow('no track at "t99"');
   });
 
-  // read-clip REPORTS "t3/l0" for a take-lane clip but won't take it back —
-  // this reader only walks the session grid, and a take lane holds arrangement
-  // clips. Pinned because it's the one place a result path doesn't paste back,
-  // so the error has to name the spelling that does.
+  // A take lane holds many clips, so the lane alone still names none in
+  // particular — but the lane plus a position does, and that is what a result
+  // reports. The error names the session spelling because that is what a bare
+  // lane most often means here.
   it("rejects a take lane path and names what to send instead", () => {
     expect(() => readClip({ path: "t1/l0" })).toThrow(
       'invalid path "t1/l0" - take lanes hold arrangement clips; ' +
         'name a clip slot as "t<track>/s<scene>" (e.g., "t1/s0")',
+    );
+  });
+
+  // The round trip a result relies on: read-clip reports "t1[5|1]" for an
+  // arrangement clip, and that same string reads it back.
+  it("reads an arrangement clip by where it starts", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    setupMidiClipMock({
+      path: livePath.track(1).arrangementClip(0),
+      clipId: "arr_clip",
+      clipProps: { name: "Verse", start_time: 16, is_arrangement_clip: 1 },
+    });
+    registerMockObject("track_1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { arrangement_clips: children("arr_clip") },
+    });
+
+    const result = readClip({ path: "t1[5|1]" });
+
+    expect(result.name).toBe("Verse");
+    expect(result.path).toBe("t1[5|1]");
+  });
+
+  it("throws when no clip starts at the position named", () => {
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+    registerMockObject("track_1", {
+      path: livePath.track(1),
+      type: "Track",
+      properties: { arrangement_clips: children() },
+    });
+
+    expect(() => readClip({ path: "t1[9|1]" })).toThrow(
+      'readClip failed: no clip at path "t1[9|1]"',
     );
   });
 

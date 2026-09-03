@@ -100,7 +100,7 @@ export function resolveClipDestinations(
 
   if (entries.length === 0) {
     throw new Error(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
+      'duplicate failed: clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   }
 
@@ -123,7 +123,7 @@ export function warnInapplicableClipParams(
 ): void {
   if (count > 1) {
     console.warn(
-      "count ignored for clips: one copy per destination — list more in toPath or arrangementStart",
+      "count ignored for clips: one copy per destination — list more in toPath",
     );
   }
 
@@ -351,7 +351,7 @@ function clipSlotDestinations(paths: ClipPath[]): ClipDestinations {
     if (path.kind !== "slot") {
       throw new Error(
         `duplicate failed: toPath "${formatObjectPath(path)}" names a track but not a spot on it; add ` +
-          `arrangementStart for track ${path.trackIndex}'s arrangement, or use ` +
+          `a position for its arrangement, as "${formatObjectPath(path)}[5|1]", or use ` +
           `"t${path.trackIndex}/s<scene>" for a clip slot`,
       );
     }

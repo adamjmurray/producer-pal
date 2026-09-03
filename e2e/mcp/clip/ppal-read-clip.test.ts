@@ -19,6 +19,7 @@ import {
   type ReadClipResult,
   setupMcpTestContext,
 } from "../mcp-test-helpers";
+import { arrangementStartOf } from "./helpers/arrangement-start-test-helpers.ts";
 
 // Use once: true since we're only reading pre-populated clips
 const ctx = setupMcpTestContext({ once: true });
@@ -146,7 +147,7 @@ describe("ppal-read-clip", () => {
     const arrClip = parseToolResult<ReadClipResult>(arrResult);
 
     expect(arrClip.view).toBe("arrangement");
-    expect(arrClip.arrangementStart).toBe("1|1");
+    expect(arrangementStartOf(arrClip)).toBe("1|1");
     expect(arrClip.arrangementLength).toBeDefined();
   });
 

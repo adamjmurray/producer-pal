@@ -15,6 +15,11 @@ import {
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
+/** A scene copied to the arrangement: the clips it landed, and nothing else. */
+interface DuplicateSceneResult {
+  clips: Array<{ path?: string }>;
+}
+
 interface CuePointConfig {
   time: number;
   name: string;
@@ -47,20 +52,24 @@ function setupTrackWithLocators(
     });
   }
 
+  // Live lands the copy where it was asked for, and the result path is read
+  // back off the copy, so the mock has to move with each duplicate.
+  const copyProps: Record<string, unknown> = { is_arrangement_clip: 1 };
   const track0 = registerMockObject("live_set/tracks/0", {
     path: livePath.track(0),
     methods: {
-      duplicate_clip_to_arrangement: () => [
-        "id",
-        livePath.track(0).arrangementClip(0),
-      ],
+      duplicate_clip_to_arrangement: (_sourceId, start) => {
+        copyProps.start_time = start;
+
+        return ["id", livePath.track(0).arrangementClip(0)];
+      },
       get_notes_extended: () => JSON.stringify({ notes: [] }),
     },
   });
 
   registerMockObject("live_set tracks 0 arrangement_clips 0", {
     path: livePath.track(0).arrangementClip(0),
-    properties: { is_arrangement_clip: 1, start_time: 8 },
+    properties: copyProps,
   });
 
   return track0;
@@ -144,7 +153,8 @@ describe("duplicate - locators as arrangement positions", () => {
         });
 
         expectDuplicatedAt(track0, "id clip1", beats);
-        expect(result).toHaveProperty("arrangementStart", barBeat);
+        // The result names where the copy landed, never the locator.
+        expect(result).toHaveProperty("path", `t0[${barBeat}]`);
       },
     );
 
@@ -167,7 +177,11 @@ describe("duplicate - locators as arrangement positions", () => {
         });
 
         expectDuplicatedAt(track0, SCENE_CLIP, beats);
-        expect(result).toHaveProperty("arrangementStart", barBeat);
+        // The result names where the copy landed, never the locator.
+        expect((result as DuplicateSceneResult).clips[0]).toHaveProperty(
+          "path",
+          `t0[${barBeat}]`,
+        );
       },
     );
 
@@ -291,7 +305,10 @@ describe("duplicate - locators as arrangement positions", () => {
       });
 
       expectDuplicatedAt(track0, SCENE_CLIP, 16);
-      expect(result).toHaveProperty("arrangementStart", "5|1");
+      expect((result as DuplicateSceneResult).clips[0]).toHaveProperty(
+        "path",
+        "t0[5|1]",
+      );
     });
 
     // Never pick one: the two params name the same position, so a caller who

@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { atomToString } from "#src/shared/max/max-atoms.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
@@ -12,10 +11,7 @@ import {
   objectPathForApi,
   pathField,
 } from "#src/tools/shared/validation/object-path-for-api.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
 import { trackTypeField } from "#src/tools/track/helpers/track-type-helpers.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
 import { type SelectResult } from "../select.ts";
@@ -193,7 +189,7 @@ function buildSceneInfo(
 /**
  * Build clip info from a LiveAPI clip reference
  * @param clip - LiveAPI reference to a clip
- * @returns Clip info with its path, plus arrangementStart for arrangement clips
+ * @returns Clip info with its path
  */
 function buildClipInfo(
   clip: LiveAPI,
@@ -202,23 +198,11 @@ function buildClipInfo(
 
   const isSessionClip = clip.trackIndex != null && clip.clipSlotIndex != null;
 
-  if (isSessionClip) {
-    return {
-      id: clip.id,
-      path: slotPath(clip.trackIndex, clip.clipSlotIndex),
-    };
-  }
-
-  // Arrangement clip
-  const startTime = clip.getProperty("start_time") as number;
-  const liveSet = LiveAPI.from("live_set");
-  const num = liveSet.getProperty("signature_numerator") as number;
-  const den = liveSet.getProperty("signature_denominator") as number;
-
   return {
     id: clip.id,
-    path: arrangementPath(clip.trackIndex as number, clip.takeLaneIndex),
-    arrangementStart: abletonBeatsToBarBeat(startTime, num, den),
+    path: isSessionClip
+      ? slotPath(clip.trackIndex, clip.clipSlotIndex)
+      : objectPathForApi(clip),
   };
 }
 

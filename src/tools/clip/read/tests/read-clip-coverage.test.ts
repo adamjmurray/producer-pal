@@ -311,7 +311,7 @@ describe("readClip - include flag gating", () => {
     const result = readClip({ id: "id arr_clip", include: [] });
 
     expect(result.view).toBe("arrangement");
-    expect(result.arrangementStart).toBe("3|1"); // start_time 8 in 4/4
+    expect(result.path).toBe("t2[3|1]"); // start_time 8 in 4/4
     expect(result.arrangementLength).toBeUndefined();
   });
 });

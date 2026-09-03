@@ -82,8 +82,7 @@ describe("duplicate clip - a toPath entry that names nowhere", () => {
     );
     expect(result).toStrictEqual({
       id: livePath.track(2).arrangementClip(0),
-      path: "t2",
-      arrangementStart: "3|1",
+      path: "t2[3|1]",
     });
     expect(capturedWarnings()).toContain('duplicate: no track at toPath "t99"');
   });

@@ -13,16 +13,17 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  createTestDevice,
-  getToolWarnings,
   parseAliasedToolResult,
   parseToolResult,
   parseToolResultWithWarnings,
+  createTestDevice,
+  getToolWarnings,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
 import { EMPTY_MIDI_TRACK, RACKS_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -304,7 +305,7 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateClipResult>(dupArrangementResult);
 
     expect(dupArrangement.id).toBeDefined();
-    expect(dupArrangement.arrangementStart).toBe("5|1");
+    expect(arrangementStartOf(dupArrangement)).toBe("5|1");
 
     await sleep(100);
 
@@ -323,9 +324,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupArrangementMulti).toHaveLength(3);
-    expect(dupArrangementMulti[0]!.arrangementStart).toBe("9|1");
-    expect(dupArrangementMulti[1]!.arrangementStart).toBe("13|1");
-    expect(dupArrangementMulti[2]!.arrangementStart).toBe("17|1");
+    expect(arrangementStartOf(dupArrangementMulti[0]!)).toBe("9|1");
+    expect(arrangementStartOf(dupArrangementMulti[1]!)).toBe("13|1");
+    expect(arrangementStartOf(dupArrangementMulti[2]!)).toBe("17|1");
 
     await sleep(100);
 
@@ -344,7 +345,7 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupSessionToArrangement.id).toBeDefined();
-    expect(dupSessionToArrangement.arrangementStart).toBe("21|1");
+    expect(arrangementStartOf(dupSessionToArrangement)).toBe("21|1");
   });
 
   it("places arrangement copies at locators", async () => {
@@ -370,8 +371,8 @@ describe("ppal-duplicate", () => {
     );
 
     expect(byName).toHaveLength(2);
-    expect(byName[0]!.arrangementStart).toBe("9|1");
-    expect(byName[1]!.arrangementStart).toBe("17|1");
+    expect(arrangementStartOf(byName[0]!)).toBe("9|1");
+    expect(arrangementStartOf(byName[1]!)).toBe("17|1");
 
     await sleep(100);
 
@@ -386,7 +387,7 @@ describe("ppal-duplicate", () => {
       }),
     );
 
-    expect(byId.arrangementStart).toBe("33|1");
+    expect(arrangementStartOf(byId)).toBe("33|1");
   });
 
   it("copies the whole clip whichever order the positions are listed", async () => {
@@ -415,7 +416,7 @@ describe("ppal-duplicate", () => {
       },
     });
     const copies = parseToolResult<DuplicateClipResult[]>(dupResult);
-    const early = copies.find((copy) => copy.arrangementStart === "51|1");
+    const early = copies.find((copy) => arrangementStartOf(copy) === "51|1");
 
     await sleep(100);
 
@@ -547,14 +548,12 @@ interface DuplicateTrackResult {
 interface DuplicateSceneResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
   clips: Array<{ id: string }>;
 }
 
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
   name?: string;
 }
 

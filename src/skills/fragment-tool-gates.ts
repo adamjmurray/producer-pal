@@ -116,11 +116,11 @@ const DEVICE_WRITE_TOOLS = [
 
 /**
  * Every tool that reports or sets an arrangement position: three put clips
- * there, and two report an `arrangementStart` back — read-clip directly,
+ * there, and two report one back in a clip's path — read-clip directly,
  * read-track in the `arrangementClips` entries it returns. A reader needs the
- * dual-meter rule to make sense of the number either way. read-scene is absent
- * because it reads clip slots only, so no arrangement position ever reaches
- * it.
+ * dual-meter rule to make sense of the position either way. read-scene is
+ * absent because it reads clip slots only, so no arrangement position ever
+ * reaches it.
  */
 const ARRANGEMENT_TOOLS = [
   CREATE_CLIP,

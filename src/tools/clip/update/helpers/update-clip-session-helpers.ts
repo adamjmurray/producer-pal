@@ -35,7 +35,10 @@ import {
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import { handleArrangementOperations } from "./arrangement/update-clip-arrangement-helpers.ts";
 import { type MoveGroup } from "./arrangement/update-clip-move-groups.ts";
-import { pairExact } from "#src/tools/shared/validation/lists/list-pairing.ts";
+import {
+  pairExact,
+  pairValues,
+} from "#src/tools/shared/validation/lists/list-pairing.ts";
 import {
   handleArrangementToSlotMove,
   handleClipSlotMove,
@@ -128,12 +131,21 @@ export function resolveMoveDestinations(
             position: null,
           }))
         : pathDestinations(toPath as string);
-    const paired = pairExact(entries, clipCount, {
+    const labels = {
       param: toSlot == null ? "toPath" : "toSlot",
       noun: "destination",
       item: "clip",
       shortfall: "were not moved",
-    });
+    };
+    // A bare "[5|1]" doesn't fully determine a location — each clip keeps its
+    // own lane — so one of them covers every clip, exactly as the
+    // arrangementStart it replaces does. A lane or a slot still pairs 1:1:
+    // those hold one clip each, and broadcasting would land every clip on the
+    // last one. See dev/Object-Paths.md, "Which lists pair and which
+    // broadcast".
+    const paired = namesNoLane(entries)
+      ? pairValues(entries, clipCount, labels)
+      : pairExact(entries, clipCount, labels);
 
     return {
       destinations: paired.map((entry) => entry?.lane ?? null),
@@ -226,6 +238,15 @@ export function resolveRequestedClips(
  * @param destination - Where the call named it to go, if anywhere
  * @param batch - Destinations by clip id, and the clip claiming each slot, both added to
  */
+/**
+ * Whether the call named one destination that leaves the lane to the clip.
+ * @param entries - The parsed destinations, in order
+ * @returns True for a single bare `[5|1]`
+ */
+function namesNoLane(entries: Array<ClipDestinationPath | null>): boolean {
+  return entries.length === 1 && entries[0]?.lane == null;
+}
+
 function claimDestination(
   clipId: string,
   destination: ClipPath | null | undefined,

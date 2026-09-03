@@ -274,11 +274,11 @@ function legacyDestinations(
     return { clipSlots: [{ trackIndex, sceneIndex }], tracks: [] };
   }
 
-  // trackIndex alone means the arrangement, but only arrangementStart says
-  // where on it. Without one it named nothing the clip slots didn't already.
+  // trackIndex alone means the arrangement, but only a position says where on
+  // it. Without one it named nothing the clip slots didn't already.
   if (!hasArrangementStarts && clipSlots.length > 0) {
     console.warn(
-      "createClip: trackIndex ignored — an arrangement clip also needs arrangementStart",
+      `createClip: trackIndex ignored — an arrangement clip also needs a position (path "t${trackIndex}[5|1]")`,
     );
 
     return { clipSlots, tracks: [] };
@@ -310,7 +310,7 @@ function pairTracksWithStarts(
   if (tracks.length === 0) {
     if (arrangementStarts.length > 0) {
       throw new Error(
-        'createClip failed: arrangementStart needs a track; add one to path (e.g. path: "t0")',
+        'createClip failed: arrangementStart needs a track; name both in path (e.g. path: "t0[5|1]")',
       );
     }
 
@@ -361,12 +361,13 @@ function pairTracksWithStarts(
  */
 function noPosition(track: ArrangementTrack): never {
   const { trackIndex, takeLane } = track;
+  const lane = arrangementPath(trackIndex, takeLane);
   const fix =
     takeLane == null
-      ? `add arrangementStart for its arrangement, or use "t${trackIndex}/s<scene>" for a clip slot`
-      : "add arrangementStart; take lanes hold arrangement clips";
+      ? `add one, as "${lane}[5|1]", or use "t${trackIndex}/s<scene>" for a clip slot`
+      : `add one, as "${lane}[5|1]"; take lanes hold arrangement clips`;
 
   throw new Error(
-    `createClip failed: path "${arrangementPath(trackIndex, takeLane)}" names no position; ${fix}`,
+    `createClip failed: path "${lane}" names no position; ${fix}`,
   );
 }

@@ -63,9 +63,9 @@ to `readClip()`. Only clip-recognized includes affect clip output.
 Nested clip results have context-redundant fields removed to save tokens:
 
 - **In `ppal-read-track`**: `view` and `type` are stripped from clips in
-  `sessionClips`/`arrangementClips` (redundant with the parent track's
-  properties and the array name). Clips in `takeLanes` also lose `path`, which
-  the lane entry already carries.
+  `sessionClips`/`arrangementClips`/`takeLanes` (redundant with the parent
+  track's properties and the array name). A take lane clip keeps its `path` — it
+  says where on the lane the clip starts, which the lane's own path doesn't.
 - **In `ppal-read-scene`**: `view` is stripped from clips in the `clips` array
   (scenes are always session view)
 
@@ -223,19 +223,18 @@ section for details on these includes.
 
 Always returned for any clip:
 
-| Field              | Type                         | Description                                                                         |
-| ------------------ | ---------------------------- | ----------------------------------------------------------------------------------- |
-| `id`               | `string`                     | Clip ID                                                                             |
-| `type`             | `"midi" \| "audio"`          | Clip type                                                                           |
-| `name`             | `string`                     | Clip name (omitted if empty)                                                        |
-| `view`             | `"session" \| "arrangement"` | Which view the clip is in                                                           |
-| `path`             | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0"` or `"t0/l1"` in the arrangement |
-| `arrangementStart` | `string` (bar\|beat)         | Arrangement only: start position                                                    |
-| `playing`          | `true`                       | Only present when true                                                              |
-| `triggered`        | `true`                       | Only present when true                                                              |
-| `recording`        | `true`                       | Only present when true                                                              |
-| `overdubbing`      | `true`                       | Only present when true                                                              |
-| `muted`            | `true`                       | Only present when true                                                              |
+| Field         | Type                         | Description                                                                                     |
+| ------------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`          | `string`                     | Clip ID                                                                                         |
+| `type`        | `"midi" \| "audio"`          | Clip type                                                                                       |
+| `name`        | `string`                     | Clip name (omitted if empty)                                                                    |
+| `view`        | `"session" \| "arrangement"` | Which view the clip is in                                                                       |
+| `path`        | `string`                     | Where the clip is: `"t0/s3"` in the session, `"t0[5\|1]"` or `"t0/l1[5\|1]"` in the arrangement |
+| `playing`     | `true`                       | Only present when true                                                                          |
+| `triggered`   | `true`                       | Only present when true                                                                          |
+| `recording`   | `true`                       | Only present when true                                                                          |
+| `overdubbing` | `true`                       | Only present when true                                                                          |
+| `muted`       | `true`                       | Only present when true                                                                          |
 
 Boolean state fields (`playing`, `triggered`, `recording`, `overdubbing`,
 `muted`) are omitted when `false` to reduce response size.

@@ -71,7 +71,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       // Source end_marker extended: startMarker(1) + target(14) = 15
       assertSourceClipEndMarker(clip, 15.0);
 
-      expect(result).toStrictEqual({ id: clipId, path: "t0" });
+      expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
       mockCreate.mockRestore();
     },
   );
@@ -124,7 +124,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     );
 
     expect(clip.set).toHaveBeenCalledWith("loop_end", 6.0);
-    expect(result).toStrictEqual({ id: "800", path: "t0" });
+    expect(result).toStrictEqual({ id: "800", path: "t0[1|1]" });
   });
 
   it.each([
@@ -148,7 +148,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
       mockContext,
     );
 
-    expect(result).toStrictEqual({ id: clipId, path: "t0" });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 });
 
@@ -224,7 +224,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     // Single moved clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: movedClipId, path: "t0" });
+    expect(result).toStrictEqual({ id: movedClipId, path: "t0[3|1]" });
     mockCreate.mockRestore();
   });
 });

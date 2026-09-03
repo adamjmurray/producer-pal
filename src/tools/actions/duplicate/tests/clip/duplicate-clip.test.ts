@@ -29,7 +29,7 @@ describe("duplicate - clip duplication", () => {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
-      'duplicate failed: clip requires toPath ("t0/s1" for a clip slot) or arrangementStart (for the arrangement)',
+      'duplicate failed: clip requires toPath — "t0/s1" for a clip slot, "t2[5|1]" for the arrangement',
     );
   });
 
@@ -184,8 +184,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     });
 
@@ -223,8 +222,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: livePath.track(2).arrangementClip(0),
-        path: "t2",
-        arrangementStart: "3|1",
+        path: "t2[3|1]",
       });
     });
 
@@ -263,13 +261,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(2).arrangementClip(0),
-          path: "t2",
-          arrangementStart: "3|1",
+          path: "t2[3|1]",
         },
         {
           id: livePath.track(3).arrangementClip(0),
-          path: "t3",
-          arrangementStart: "3|1",
+          path: "t3[3|1]",
         },
       ]);
     });
@@ -447,8 +443,7 @@ describe("duplicate - clip duplication", () => {
       );
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     });
 
@@ -557,8 +552,7 @@ describe("duplicate - clip duplication", () => {
       expect(duplicateSelfOverlappingClipMock).toHaveBeenCalled();
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     });
 
@@ -597,18 +591,15 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: livePath.track(0).arrangementClip(0),
-          path: "t0",
-          arrangementStart: "3|1",
+          path: "t0[3|1]",
         },
         {
           id: livePath.track(0).arrangementClip(1),
-          path: "t0",
-          arrangementStart: "4|1",
+          path: "t0[4|1]",
         },
         {
           id: livePath.track(0).arrangementClip(2),
-          path: "t0",
-          arrangementStart: "5|1",
+          path: "t0[5|1]",
         },
       ]);
 

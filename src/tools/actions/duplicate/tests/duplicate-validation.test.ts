@@ -238,8 +238,7 @@ describe("duplicate - coerced-null takeLane", () => {
       expect(track0.call).not.toHaveBeenCalledWith("create_take_lane");
       expect(result).toStrictEqual({
         id: livePath.track(0).arrangementClip(0),
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
       });
     },
   );

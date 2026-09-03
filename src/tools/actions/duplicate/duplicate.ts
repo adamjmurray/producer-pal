@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorPositions } from "#src/tools/shared/locator/song-position.ts";
+import { resolveDestinationPositions } from "#src/tools/shared/arrangement/helpers/arrangement-destination-position.ts";
 import {
   namedIdParam,
   namedPathParam,
@@ -12,6 +13,7 @@ import {
 } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  parseClipDestinationList,
   pathCarriesPosition,
   refuseDoubledPosition,
 } from "#src/tools/shared/validation/helpers/clip-destination-path.ts";
@@ -130,16 +132,15 @@ export async function duplicate(
     withoutDevices,
   ));
 
-  // One spelling from here down: the deprecated locator folds onto the position
-  // it named, and every `loc:` entry becomes the bar|beat it names. Nothing
-  // below this line knows a locator can be written at all.
-  arrangementStart = resolveArrangementStart(type, arrangementStart, locator);
+  // One spelling from here down: a scene's whole destination is its position,
+  // the deprecated locator folds onto the position it named, and every `loc:`
+  // entry becomes the bar|beat it names. Nothing below knows any of that.
+  const dest = settleDestination(type, toPath, arrangementStart, locator);
 
-  const hasArrangementParams = namesArrangementPosition(
-    type,
-    toPath,
-    arrangementStart,
-  );
+  toPath = dest.toPath;
+  arrangementStart = dest.arrangementStart;
+
+  const hasArrangementParams = dest.onArrangement;
   // A container destination — a track's arrangement or a take lane on it — holds
   // many copies and tells them apart by position, so every source can have the
   // whole list. A clip slot, device slot or drum pad holds one object, so the
@@ -274,6 +275,80 @@ function resolveArrangementStart(
 }
 
 /**
+ * Settles the two params that say where copies land, before anything reads
+ * them: a scene's coordinate folds onto arrangementStart, the retired locator
+ * folds onto it too, and every `loc:` becomes the bar|beat it names.
+ * @param type - What is being duplicated
+ * @param rawToPath - Destination path(s) as the caller wrote them
+ * @param rawStart - Position list as the caller wrote it
+ * @param locator - Deprecated locator ref list, if sent
+ * @returns The two params in one spelling, and whether they land on the song timeline
+ */
+function settleDestination(
+  type: string | undefined,
+  rawToPath: string | undefined,
+  rawStart: string | undefined,
+  locator: string | undefined,
+): { toPath?: string; arrangementStart?: string; onArrangement: boolean } {
+  const scene = foldSceneDestination(type, rawToPath, rawStart);
+  const toPath = scene.toPath;
+  const arrangementStart = resolveArrangementStart(
+    type,
+    scene.arrangementStart,
+    locator,
+  );
+
+  return {
+    toPath,
+    arrangementStart,
+    onArrangement: namesArrangementPosition(type, toPath, arrangementStart),
+  };
+}
+
+/**
+ * Folds a scene's bare-coordinate destination onto arrangementStart.
+ *
+ * A scene copy lands clips across every track at one song position, so it has
+ * no lane to name — `[5|1]` is its whole destination, and `t2[5|1]` names one
+ * track a scene copy has no use for. Positions are spelled back as bar|beat
+ * before they join arrangementStart's comma-separated list, so a locator name
+ * holding a comma survives the trip.
+ * @param type - What is being duplicated
+ * @param toPath - Destination path(s) as the caller wrote them
+ * @param arrangementStart - Position list as the caller wrote it
+ * @returns The two params, with a scene's coordinate moved across
+ */
+function foldSceneDestination(
+  type: string | undefined,
+  toPath: string | undefined,
+  arrangementStart: string | undefined,
+): { toPath?: string; arrangementStart?: string } {
+  if (type !== "scene" || !pathCarriesPosition(toPath)) {
+    return { toPath, arrangementStart };
+  }
+
+  refuseDoubledPosition(toPath, arrangementStart, "duplicate", "toPath");
+
+  const entries = resolveDestinationPositions(
+    parseClipDestinationList(toPath, "toPath"),
+    { toolName: "duplicate", paramName: "toPath" },
+  );
+
+  for (const entry of entries) {
+    if (entry.lane == null) continue;
+
+    throw new Error(
+      `duplicate failed: toPath "${toPath?.trim()}" names a lane, but a scene ` +
+        `copies across every track; name the position alone, as "[5|1]"`,
+    );
+  }
+
+  return {
+    arrangementStart: entries.map((entry) => entry.position).join(","),
+  };
+}
+
+/**
  * Whether the call lands its copies on the song timeline, refusing a position
  * spelled twice on the way.
  *
@@ -288,7 +363,7 @@ function resolveArrangementStart(
  * @returns True when the copies land on the arrangement
  */
 function namesArrangementPosition(
-  type: string,
+  type: string | undefined,
   toPath: string | undefined,
   arrangementStart: string | undefined,
 ): boolean {

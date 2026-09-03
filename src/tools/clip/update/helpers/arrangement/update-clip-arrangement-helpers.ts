@@ -243,15 +243,15 @@ export function handleArrangementOperations({
     if (results.length > 0) {
       // The length helpers return ids only, and their first entry is always the
       // clip the notes were written to (any tiles follow it), so the note stats
-      // go there. Tiles share the clip's lane — take-lane clips never reach the
-      // length path — so one lane path covers the whole batch.
-      const lanePath = objectPathForApi(currentClip);
-
+      // go there. Each tile starts somewhere else, so each is asked its own
+      // path rather than sharing the first one's.
       updatedClips.push(
         ...results.map((result, index) =>
-          index === 0
-            ? buildClipResultObject(result.id, finalNoteResult, lanePath)
-            : { ...result, path: lanePath },
+          buildClipResultObject(
+            result.id,
+            index === 0 ? finalNoteResult : null,
+            objectPathForApi(LiveAPI.from(result.id)),
+          ),
         ),
       );
       hasArrangementLengthResults = true;

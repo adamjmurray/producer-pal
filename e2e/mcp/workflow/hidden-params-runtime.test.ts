@@ -68,6 +68,7 @@ const state = {
   deleteById: "",
   moveClipId: "",
   arrangementClipId: "",
+  moveArrangementClipId: "",
   emptyTrackId: "",
   // The routing a deprecated *Id param is set back to. Writing the value the
   // track already holds exercises the param without moving t8's routing, which
@@ -306,6 +307,17 @@ const CASES: Case[] = [
     verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}/l1`),
   },
   {
+    tool: "ppal-create-clip",
+    param: "arrangementStart",
+    args: () => ({
+      path: `t${EMPTY_MIDI_TRACK}`,
+      arrangementStart: "77|1",
+      notes: "C3 1|1",
+      length: "1bar",
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[77|1]`),
+  },
+  {
     tool: "ppal-update-clip",
     param: "ids",
     args: () => ({ ids: state.clipId, name: "Aliased Clip" }),
@@ -335,6 +347,17 @@ const CASES: Case[] = [
     tool: "ppal-update-clip",
     param: "split",
     args: () => ({ path: `t${EMPTY_MIDI_TRACK}/s2`, split: "1bar" }),
+  },
+  {
+    tool: "ppal-update-clip",
+    param: "arrangementStart",
+    // A move re-creates the clip, so the id changes — the path is what says it
+    // landed.
+    args: () => ({
+      id: state.moveArrangementClipId,
+      arrangementStart: "85|1",
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[85|1]`),
   },
   {
     tool: "ppal-read-device",
@@ -393,6 +416,16 @@ const CASES: Case[] = [
       arrangementStart: "73|1",
       takeLane: 2,
     }),
+  },
+  {
+    tool: "ppal-duplicate",
+    param: "arrangementStart",
+    args: () => ({
+      type: "clip",
+      id: state.arrangementClipId,
+      arrangementStart: "89|1",
+    }),
+    verify: (d) => expect(d.path).toBe(`t${EMPTY_MIDI_TRACK}[89|1]`),
   },
   {
     tool: "ppal-select",
@@ -517,6 +550,17 @@ describe("hidden params at runtime", () => {
     });
 
     state.arrangementClipId = arrangement.data.id as string;
+
+    // Its own clip: the update case below moves it, which re-creates it under a
+    // new id, and the duplicate case needs a source that stays put.
+    const movable = await call("ppal-create-clip", {
+      path: `t${EMPTY_MIDI_TRACK}`,
+      arrangementStart: "81|1",
+      notes: "C3 1|1",
+      length: "1bar",
+    });
+
+    state.moveArrangementClipId = movable.data.id as string;
   });
 
   it.each(CASES)("$tool honors $param", async ({ tool, args, verify }) => {

@@ -311,43 +311,49 @@ describe("duplicate - a list of sources", () => {
 
   describe("clips to the arrangement", () => {
     // The headline case: one position, every source landing on its own track.
-    it("drops every source at the same position on its own track", async () => {
-      registerMockObject("clipA", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
-      registerMockObject("clipB", {
-        path: livePath.track(1).clipSlot(0).clip(),
-        properties: { is_midi_clip: 1 },
-      });
-      registerTrackWithArrangementDup(0, { has_midi_input: 1 });
-      registerTrackWithArrangementDup(1, { has_midi_input: 1 });
-      registerArrangementClip(0, 0, 16);
-      registerArrangementClip(1, 0, 16);
+    // Both spellings of that position do it, which is what makes the bare
+    // coordinate the replacement the arrangementStart deprecation names.
+    it.each([
+      ["toPath", { toPath: "[5|1]" }],
+      ["the deprecated arrangementStart", { arrangementStart: "5|1" }],
+    ])(
+      "drops every source at %s's position on its own track",
+      async (_label, position) => {
+        registerMockObject("clipA", {
+          path: livePath.track(0).clipSlot(0).clip(),
+          properties: { is_midi_clip: 1 },
+        });
+        registerMockObject("clipB", {
+          path: livePath.track(1).clipSlot(0).clip(),
+          properties: { is_midi_clip: 1 },
+        });
+        registerTrackWithArrangementDup(0, { has_midi_input: 1 });
+        registerTrackWithArrangementDup(1, { has_midi_input: 1 });
+        registerArrangementClip(0, 0, 16);
+        registerArrangementClip(1, 0, 16);
 
-      const result = await duplicate({
-        type: "clip",
-        id: "clipA,clipB",
-        arrangementStart: "5|1",
-      });
+        const result = await duplicate({
+          type: "clip",
+          id: "clipA,clipB",
+          ...position,
+        });
 
-      expect(result).toStrictEqual([
-        {
-          id: "live_set tracks 0 arrangement_clips 0",
-          path: "t0",
-          arrangementStart: "5|1",
-        },
-        {
-          id: "live_set tracks 1 arrangement_clips 0",
-          path: "t1",
-          arrangementStart: "5|1",
-        },
-      ]);
-      // A genuine row: each source lands on its own track, so no collision.
-      expect(capturedWarnings()).not.toContainEqual(
-        expect.stringContaining("later ones will overwrite earlier ones"),
-      );
-    });
+        expect(result).toStrictEqual([
+          {
+            id: "live_set tracks 0 arrangement_clips 0",
+            path: "t0[5|1]",
+          },
+          {
+            id: "live_set tracks 1 arrangement_clips 0",
+            path: "t1[5|1]",
+          },
+        ]);
+        // A genuine row: each source lands on its own track, so no collision.
+        expect(capturedWarnings()).not.toContainEqual(
+          expect.stringContaining("later ones will overwrite earlier ones"),
+        );
+      },
+    );
 
     // toPath is broadcast whole to every source in this mode (see
     // planSources) — never split per source — so a named toPath shared by

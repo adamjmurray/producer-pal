@@ -130,13 +130,17 @@ function assertNavigatedByLocator(
 /**
  * Assert the duplicate placed the copy by locator name, not a computed bar.
  *
+ * The published spelling is a `toPath` coordinate (`t2[loc:Bridge]`); the two
+ * retired params still count, since a caller that sends one gets the same
+ * placement.
+ *
  * @param turn - Turn index to grade
  * @returns A custom assertion
  */
 function assertDuplicatedToLocator(turn: number): EvalAssertion {
   return {
     type: "custom",
-    description: "placed the copy with duplicate's locator param",
+    description: "placed the copy by naming the Bridge locator",
     assert: (turns) => {
       const call = getToolCalls(turns, turn).find(
         (c) => c.name === TOOL_DUPLICATE,
@@ -145,20 +149,20 @@ function assertDuplicatedToLocator(turn: number): EvalAssertion {
       if (call == null)
         throw new Error(`no ${TOOL_DUPLICATE} call in turn ${turn}`);
 
-      const locator = argText(call.args.locator);
+      const named = [
+        argText(call.args.toPath),
+        argText(call.args.arrangementStart),
+        argText(call.args.locator),
+      ]
+        .filter(Boolean)
+        .join(" ");
 
-      if (!locator) {
-        const start = argText(call.args.arrangementStart);
-
+      if (!/bridge|locator-3/i.test(named)) {
         throw new Error(
-          start
-            ? `computed the position instead: arrangementStart=${start}`
-            : "no locator and no arrangementStart — nothing placed the copy",
+          named
+            ? `did not name the Bridge locator: ${named}`
+            : "nothing placed the copy",
         );
-      }
-
-      if (!/bridge|locator-3/i.test(locator)) {
-        throw new Error(`expected the Bridge locator, got "${locator}"`);
       }
 
       return true;

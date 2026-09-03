@@ -428,8 +428,6 @@ describe("code-exec-helpers", () => {
           "arrangement",
           0,
           1,
-          undefined,
-          32,
         );
 
         expect(result.track.type).toBe("audio");
@@ -437,10 +435,8 @@ describe("code-exec-helpers", () => {
         expect(result.clip.looping).toBe(false);
         expect(result.clip.index).toBe(0);
         expect(result.clip.count).toBe(1);
-        expect(result.location).toStrictEqual({
-          view: "arrangement",
-          arrangementStartBeats: 32,
-        });
+        // No trackIndex on the clip, so there is no path to name it by
+        expect(result.location).toStrictEqual({ view: "arrangement" });
         expect(result.liveSet.scale).toBeUndefined();
         expect(result.beatsPerBar).toBe(3);
       } finally {
@@ -462,6 +458,7 @@ describe("code-exec-helpers", () => {
           signature_numerator: 4,
           signature_denominator: 4,
           looping: 0,
+          start_time: 16,
         }),
       };
 
@@ -489,13 +486,12 @@ describe("code-exec-helpers", () => {
           "arrangement",
           0,
           1,
-          undefined,
-          16,
         );
 
+        // 16 Ableton beats in 4/4 is bar 5 beat 1
         expect(result.location).toStrictEqual({
           view: "arrangement",
-          path: "t0/l2",
+          path: "t0/l2[5|1]",
           arrangementStartBeats: 16,
         });
       } finally {
@@ -529,10 +525,7 @@ describe("code-exec-helpers", () => {
 
       const result = getClipLocationInfo(mockClip as unknown as LiveAPI);
 
-      expect(result).toStrictEqual({
-        view: "arrangement",
-        arrangementStartBeats: 16,
-      });
+      expect(result).toStrictEqual({ view: "arrangement" });
     });
   });
 

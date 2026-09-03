@@ -169,6 +169,16 @@ describe("updateClip - a toPath coordinate", () => {
     expect(movedTo(tracks[0] as RegisteredMockObject)).toBe(16);
   });
 
+  // One bare coordinate covers every clip, exactly as the arrangementStart it
+  // replaces does: each clip keeps its own lane, so the landing spots differ
+  // and nothing lands on top of anything. A lane still pairs 1:1.
+  it("broadcasts a lone bare coordinate across every clip", async () => {
+    await updateClip({ id: "100,101", toPath: "[5|1]" });
+
+    expect(movedTo(tracks[0] as RegisteredMockObject)).toBe(16);
+    expect(movedTo(tracks[1] as RegisteredMockObject)).toBe(16);
+  });
+
   // The shape a lowered toPath can't express: rewriting "[9|1]" as an empty
   // lane makes the middle entry name nothing, and a target list with a hole in
   // it is refused.

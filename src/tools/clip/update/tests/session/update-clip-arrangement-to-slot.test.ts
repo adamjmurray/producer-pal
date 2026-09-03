@@ -19,10 +19,13 @@ const SOURCE_TRACK = 0;
 const DEST_TRACK = 1;
 const DEST_SCENE = 2;
 const SOURCE_ID = "123";
-/** How a warning names the source clip: both spellings, per ADR-0009. */
-const SOURCE = `t${SOURCE_TRACK} (id ${SOURCE_ID})`;
+/**
+ * How a warning names the source clip: both spellings, per ADR-0009. The clip
+ * starts at 0, which the song's 4/4 spells as bar 1 beat 1.
+ */
+const SOURCE = `t${SOURCE_TRACK}[1|1] (id ${SOURCE_ID})`;
 /** Same, for the tests whose source sits on a take lane. */
-const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0 (id ${SOURCE_ID})`;
+const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0[1|1] (id ${SOURCE_ID})`;
 const NEW_ID = "456";
 const OCCUPANT_ID = "789";
 /** Id of the clip built in a scratch slot before it's swapped onto the destination */

@@ -13,6 +13,7 @@ import {
   type ReadClipResult,
   sleep,
 } from "../../mcp-test-helpers.ts";
+import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 /**
  * Read a clip by id or path, with every include.
@@ -92,7 +93,7 @@ export async function arrangementClipAt(
   }>(result);
 
   return data.arrangementClips?.find(
-    (clip) => clip.arrangementStart === arrangementStart,
+    (clip) => arrangementStartOf(clip) === arrangementStart,
   );
 }
 

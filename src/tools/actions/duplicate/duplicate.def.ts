@@ -18,11 +18,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   description: {
     default:
       "Duplicate an object, or several — id takes a comma-separated list. Supports tracks, scenes, clips, devices, and drum pads. " +
-      "Use count for multiple track/scene copies; arrangementStart for clip placement, " +
-      "and toPath for the destination track, clip slot, device chain, or drum pad.",
+      "Use count for multiple track/scene copies, and toPath for the destination: a clip slot, a spot on " +
+      "the arrangement, a track, a device chain, or a drum pad.",
     smallModel:
       "Duplicate an object, or several (id takes a list). Supports tracks, scenes, clips, devices, and drum pads. " +
-      "Use arrangementStart for clip placement; toPath for the destination track, clip slot, device, or pad.",
+      "Use toPath for the destination: clip slot, arrangement spot, device, or pad.",
   },
 
   annotations: {
@@ -42,7 +42,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     path: param(z.coerce.string().optional(), {
       default:
         "path(s) of the object(s) to duplicate, instead of or alongside id, comma-separated for multiple " +
-        "(e.g. 't0', 's1', 't0/s1', 't0/d0', 't0/d0/pC1')",
+        "(e.g. 't0', 's1', 't0/s1', 't0[5|1]', 't0/d0', 't0/d0/pC1')",
       smallModel:
         "path of the object to duplicate instead of id (e.g., 't0' or 't0/s1')",
     }),
@@ -74,11 +74,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       smallModel: null,
     }),
 
-    arrangementStart: param(z.coerce.string().optional(), {
-      default:
-        "arrangement position(s) for clips/scenes, comma-separated for multiple: bar|beat in song meter, or loc:<locator name or id> (e.g., '1|1' or '1|1,loc:Chorus')",
-      smallModel:
-        "arrangement position: bar|beat (song meter) or loc:<locator>",
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "toPath",
+      example: "t2[5|1]",
     }),
     locator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
@@ -100,9 +98,10 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "'t2[5|1]' = that spot on track 2's arrangement, and '[5|1]' the same spot on the source clip's " +
         "own track (a position is bar|beat or loc:<locator name or id>; an arrangement track must match " +
         "the clip's MIDI/audio type); 't2/l0' = its first take lane and 't2/l+' appends a fresh one; " +
-        "'t2' needs arrangementStart, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
+        "'t2' alone needs a position, and omitting toPath uses the source clip's own track. Devices: 't1/d0'. " +
+        "Scenes: '[5|1]' = that spot on the arrangement, across every track. " +
         "Drum pads: 't0/d0/pD1', required, and must be in the same rack as the source pad (id or path names the source). " +
-        "One destination covers every arrangementStart, or name one per position, in order; the lists do not cycle. " +
+        "One destination covers every position, or name one per position, in order; the lists do not cycle. " +
         "With several sources, a track/take-lane destination goes to every source; clip slots, devices and pads are shared out, so name one per copy",
       smallModel:
         "destination(s): clip slot 't2/s1', clip arrangement spot 't2[5|1]', device 't1/d0', drum pad 't0/d0/pD1'",

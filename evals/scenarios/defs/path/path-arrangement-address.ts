@@ -4,14 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenario: an arrangement path is not a clip address.
+ * Scenario: an arrangement path IS a clip address.
  *
- * Creating an arrangement clip returns `path: "t3"` alongside its id. That path
- * names the TRACK the clip sits on, not the clip — pasting it back into
- * update-clip warns and skips, leaving the clip untouched. This measures how
- * often a model does exactly that. The time-coordinate question it once fed is
- * settled: a path names a location, and an arrangement lane holds many clips,
- * so this guards the rule rather than informing a decision.
+ * Creating an arrangement clip returns `path: "t3[1|1]"` alongside its id, and
+ * both spellings reach the clip — pasting the path straight back into
+ * update-clip renames it, which is the round trip ADR-0037 exists to close.
+ * This grades the rename landing, whichever spelling the model reaches for.
  */
 
 import { type EvalAssertion, type EvalScenario } from "../../types.ts";
@@ -21,7 +19,6 @@ import {
   TOOL_CREATE_CLIP,
   TOOL_UPDATE_CLIP,
 } from "../clip/helpers/clip-scenario-helpers.ts";
-import { assertAddressedById } from "./path-scenario-helpers.ts";
 
 /** Lead is track 3 in basic-midi-4-track. */
 const LEAD_TRACK_INDEX = 3;
@@ -69,7 +66,7 @@ function clipNames(result: unknown): string[] {
 
 export const pathArrangementAddress: EvalScenario = {
   id: "path-arrangement-address",
-  description: "Act on an arrangement clip by id, not by the path it reports",
+  description: "Act on an arrangement clip by the id or path it reports",
   kind: "capability",
   liveSet: "basic-midi-4-track",
 
@@ -84,9 +81,8 @@ export const pathArrangementAddress: EvalScenario = {
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
 
-    // The measurement: did the model reach for the id it was handed, or paste
-    // back the `t3` that came with it?
-    assertAddressedById({ turn: 2, tool: TOOL_UPDATE_CLIP }),
+    // The measurement: the rename actually landed. An id and a pasted-back
+    // `t3[1|1]` both name the clip, so either is a pass.
     assertClipRenamed(),
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },

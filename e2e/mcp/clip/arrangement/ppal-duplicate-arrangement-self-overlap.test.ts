@@ -37,6 +37,7 @@ import {
   readArrangementClips,
 } from "../helpers/arrangement-clip-query-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -67,7 +68,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     const copy = await dupToArr(base.id, "6|1");
 
     expect(copy.id).toBeDefined();
-    expect(copy.arrangementStart).toBe("6|1");
+    expect(arrangementStartOf(copy)).toBe("6|1");
 
     const clips = clipsInBarRange(await readArrClips(EMPTY_MIDI_TRACK), 5, 10);
 
@@ -97,7 +98,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     const moved = clips[0]!;
 
-    expect(moved.arrangementStart).toBe("16|1");
+    expect(arrangementStartOf(moved)).toBe("16|1");
     expect(lengthBeats(moved)).toBeCloseTo(beats("4bar"), 5);
 
     // The relocated clip keeps its bar-4 note (full length, not truncated).
@@ -115,7 +116,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
 
     expect(clips).toHaveLength(2);
     expect(lengthBeats(clipAt(clips, "25|1"))).toBeCloseTo(beats("4bar"), 5);
-    expect(lengthBeats(clipAt(clips, copy.arrangementStart!))).toBeCloseTo(
+    expect(lengthBeats(clipAt(clips, arrangementStartOf(copy)!))).toBeCloseTo(
       beats("4bar"),
       5,
     );
@@ -141,7 +142,7 @@ describe("self-overlapping arrangement clip duplicate/move", () => {
     // Two clips: the trimmed original at 45|1 and the full-length copy.
     expect(clips).toHaveLength(2);
 
-    const placed = clips.find((c) => c.arrangementStart !== "45|1");
+    const placed = clips.find((c) => arrangementStartOf(c) !== "45|1");
 
     // The copy keeps the source's full arrangement length and warp state — the
     // holding round-trip did not truncate or unwarp the audio.

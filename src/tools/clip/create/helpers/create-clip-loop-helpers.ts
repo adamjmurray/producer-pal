@@ -200,7 +200,6 @@ async function createClipAtIndex(
       pos.trackIndex,
       pos.sceneIndex,
       pos.arrangementStartBeats,
-      pos.arrangementStart,
       clipLength,
       params.liveSet,
       params.startBeats,

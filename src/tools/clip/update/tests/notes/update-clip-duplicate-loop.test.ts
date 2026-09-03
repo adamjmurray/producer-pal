@@ -113,7 +113,11 @@ describe("updateClip - duplicateLoop", () => {
     const result = await updateClip({ id: "789", duplicateLoop: true });
 
     expect(mocks.clip789.call).toHaveBeenCalledWith("duplicate_loop");
-    expect(result).toStrictEqual({ id: "789", path: "t2", noteCount: 4 });
+    expect(result).toStrictEqual({
+      id: "789",
+      path: "t2[1|1]",
+      noteCount: 4,
+    });
   });
 
   it("warns and skips audio clips without calling duplicate_loop", async () => {

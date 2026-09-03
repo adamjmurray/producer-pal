@@ -212,8 +212,7 @@ describe("select-response-helpers", () => {
 
       expect(result).toStrictEqual({
         id: "arr_clip_1",
-        path: "t0",
-        arrangementStart: "2|1",
+        path: "t0[2|1]",
       });
     });
 

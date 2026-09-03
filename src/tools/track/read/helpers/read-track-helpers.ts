@@ -180,10 +180,11 @@ export function readTakeLanes(
       )
       .filter((clip) => clip.id != null);
 
-    // Strip fields redundant with the parent context (take lane clips are
-    // always arrangement clips on this track, matching its MIDI/audio type, and
-    // the lane's own path is on the parent ReadTakeLaneResult).
-    stripFields(clips, "path", "view", "type");
+    // Strip fields redundant with the parent context: a take lane clip is
+    // always an arrangement clip on this track, matching its MIDI/audio type.
+    // The path stays — it carries where the clip starts, which the lane's own
+    // path doesn't say.
+    stripFields(clips, "view", "type");
 
     return {
       path: arrangementPath(trackIndex as number, i),

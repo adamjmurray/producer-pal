@@ -113,6 +113,22 @@ describe("hidden params", () => {
     expect(playback).not.toContain("slots");
   });
 
+  // A path's [song position] is the published spelling now, so arrangementStart
+  // is a second one for the same thing and no model should be shown it.
+  it("hides arrangementStart on the three tools that place clips", () => {
+    for (const tool of [
+      "ppal-create-clip",
+      "ppal-update-clip",
+      "ppal-duplicate",
+    ]) {
+      expect(publishedParams(tool)).not.toContain("arrangementStart");
+    }
+
+    expect(publishedParams("ppal-create-clip")).toContain("path");
+    expect(publishedParams("ppal-update-clip")).toContain("toPath");
+    expect(publishedParams("ppal-duplicate")).toContain("toPath");
+  });
+
   // GET /api/tools builds its own catalog, and it is how a REST agent discovers
   // the tool surface — so it has to hide the same names MCP does.
   it("hides them from the REST catalog too", async () => {

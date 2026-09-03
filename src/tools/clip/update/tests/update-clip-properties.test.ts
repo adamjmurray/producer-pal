@@ -127,7 +127,8 @@ describe("updateClip - Properties and ID handling", () => {
     expect(result).toStrictEqual([
       { id: "123", path: "t0/s0" },
       { id: "456", path: "t1/s1" },
-      { id: "789", path: "t2" },
+      // start_time 8 in 4/4 is bar 3 beat 1
+      { id: "789", path: "t2[3|1]" },
     ]);
   });
 

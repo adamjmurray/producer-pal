@@ -29,6 +29,7 @@ import {
   readSongTiming,
 } from "../helpers/audio-warp-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -219,7 +220,7 @@ describe("ppal-create-clip", () => {
     const arrangementClip = parseToolResult<ReadClipResult>(verifyArrangement);
 
     expect(arrangementClip.view).toBe("arrangement");
-    expect(arrangementClip.arrangementStart).toBe("41|1");
+    expect(arrangementStartOf(arrangementClip)).toBe("41|1");
   });
 
   it("creates multiple clips in batch", async () => {
@@ -275,7 +276,7 @@ describe("ppal-create-clip", () => {
     });
     const firstClip = parseToolResult<ReadClipResult>(verifyFirst);
 
-    expect(firstClip.arrangementStart).toBe("45|1");
+    expect(arrangementStartOf(firstClip)).toBe("45|1");
   });
 
   it("creates audio clips", async () => {
@@ -339,7 +340,7 @@ describe("ppal-create-clip", () => {
 
     expect(audioArrangementClip.type).toBe("audio");
     expect(audioArrangementClip.view).toBe("arrangement");
-    expect(audioArrangementClip.arrangementStart).toBe("17|1");
+    expect(arrangementStartOf(audioArrangementClip)).toBe("17|1");
 
     // Test 3: Create audio clip with name and color
     const audioNamedResult = await ctx.client!.callTool({

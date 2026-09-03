@@ -28,6 +28,7 @@ import {
   halveDrumLoopRegion,
 } from "../clip/helpers/audio-warp-test-helpers.ts";
 import { AUDIO_TRACK, EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -80,10 +81,10 @@ describe("ppal-duplicate with an unwarped audio source", () => {
       id: liveSet.scenes[SCENE]!.id,
       arrangementStart: "49|1",
     });
-    // An arrangement clip's path is its track, so the MIDI copies are the ones
-    // whose path is the MIDI track itself.
-    const midiCopies = dup.clips.filter(
-      (c) => c.path === `t${EMPTY_MIDI_TRACK}`,
+    // An arrangement clip's path starts with its track, so the MIDI copies are
+    // the ones whose path names the MIDI track.
+    const midiCopies = dup.clips.filter((c) =>
+      c.path?.startsWith(`t${EMPTY_MIDI_TRACK}[`),
     );
     const starts = [];
 
@@ -92,7 +93,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
         id: copy.id,
       });
 
-      starts.push(clip.arrangementStart);
+      starts.push(arrangementStartOf(clip));
     }
 
     expect(starts).toStrictEqual(["49|1", "50|1"]);
@@ -123,7 +124,7 @@ describe("ppal-duplicate with an unwarped audio source", () => {
       include: ["*"],
     });
 
-    expect(clip.arrangementStart).toBe("49|1");
+    expect(arrangementStartOf(clip)).toBe("49|1");
     expect(clip.arrangementLength).toBe("1bar");
     expect(clip.warping).toBe(false);
   });

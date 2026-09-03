@@ -77,9 +77,8 @@ describe("createClip - deadline exceeded", () => {
 
     // Only first clip created (unwrapSingleResult returns single object)
     expect(result).toStrictEqual({
-      arrangementStart: "1|1",
       length: "1bar",
-      path: "t0",
+      path: "t0[1|1]",
       id: "arrangement_clip",
       noteCount: 1,
     });

@@ -19,10 +19,13 @@ import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
 const SOURCE_TRACK = 0;
 const DEST_TRACK = 5;
 const SOURCE_ID = "123";
-/** How a warning names the source clip: both spellings, per ADR-0009. */
-const SOURCE = `t${SOURCE_TRACK} (id ${SOURCE_ID})`;
+/**
+ * How a warning names the source clip: both spellings, per ADR-0009. It starts
+ * at 8 Ableton beats, which the song's 4/4 spells as bar 3 beat 1.
+ */
+const SOURCE = `t${SOURCE_TRACK}[3|1] (id ${SOURCE_ID})`;
 /** Same, for the tests whose source sits on a take lane. */
-const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0 (id ${SOURCE_ID})`;
+const SOURCE_ON_LANE = `t${SOURCE_TRACK}/l0[3|1] (id ${SOURCE_ID})`;
 const DUPLICATED_ID = "456";
 const TAKE_LANE_SOURCE = livePath
   .track(SOURCE_TRACK)

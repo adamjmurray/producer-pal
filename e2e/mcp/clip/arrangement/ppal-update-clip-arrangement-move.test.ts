@@ -50,7 +50,7 @@ describe("arrangement clip moved to another lane", () => {
       arrangementStart: "9|1",
     });
 
-    expect(moved.path).toBe(`t${RACKS_TRACK}`);
+    expect(moved.path).toBe(`t${RACKS_TRACK}[9|1]`);
 
     const placed = await arrangementClipAt(ctx.client!, RACKS_TRACK, "9|1");
 
@@ -88,7 +88,9 @@ describe("arrangement clip moved to another lane", () => {
     expect(warnings.join(" ")).toContain(
       `clip ${source.path} (id ${source.id}) was re-created on t${CHILD_TRACK}/l`,
     );
-    expect(moved.path).toMatch(new RegExp(`^t${CHILD_TRACK}/l\\d+$`));
+    expect(moved.path).toMatch(
+      new RegExp(`^t${CHILD_TRACK}/l\\d+\\[17\\|1\\]$`),
+    );
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 
@@ -130,7 +132,7 @@ describe("arrangement clip moved to another lane", () => {
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 
-    expect(placed.path).toBe(`t${RACKS_TRACK}`);
+    expect(placed.path).toBe(`t${RACKS_TRACK}[33|1]`);
     expect(placed.name).toBe("Lane Bound");
     expect(placed.notes).toContain("C3");
 
@@ -160,7 +162,7 @@ describe("arrangement clip moved to another lane", () => {
 
     const placed = await readClipFully(ctx.client!, { id: moved.id });
 
-    expect(placed.path).toBe(`t${AUDIO_TRACK}`);
+    expect(placed.path).toBe(`t${AUDIO_TRACK}[9|1]`);
     expect(placed.sampleFile).toBe(SAMPLE_FILE);
 
     const leftover = await readClipFully(ctx.client!, { id: source.id });

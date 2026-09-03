@@ -24,10 +24,10 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  getToolErrorMessage,
-  isToolError,
   parseToolResult,
   parseToolResultWithWarnings,
+  getToolErrorMessage,
+  isToolError,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
@@ -38,6 +38,7 @@ import {
   EMPTY_MIDI_TRACK,
   RACKS_TRACK,
 } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({ once: true });
 
@@ -225,7 +226,7 @@ describe("cross-track arrangement clip duplicate", () => {
 
     // Honored, not just tolerated: the copy is on the track the old spelling
     // named, and the result reports it the way the warning asks for.
-    expect(copy.path).toBe(`t${RACKS_TRACK}`);
+    expect(copy.path).toBe(`t${RACKS_TRACK}[${position}]`);
     expect((await clipAt(RACKS_TRACK, position))?.id).toBe(copy.id);
   });
 });
@@ -288,6 +289,6 @@ async function clipAt(
   }>(result);
 
   return data.arrangementClips?.find(
-    (clip) => clip.arrangementStart === arrangementStart,
+    (clip) => arrangementStartOf(clip) === arrangementStart,
   );
 }

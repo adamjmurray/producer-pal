@@ -37,8 +37,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "clip slot(s) to update instead of id, comma-separated (e.g., 't0/s1' or 't0/s1,t2/s3')",
-      smallModel: "clip slot to update instead of id (e.g., 't0/s1')",
+        "clip(s) to update instead of id, comma-separated: a clip slot 't<track>/s<scene>', " +
+        "or an arrangement clip by where it starts 't<track>[<position>]' (e.g., 't0/s1' or 't0[5|1],t2/s3')",
+      smallModel:
+        "clip to update instead of id: 't0/s1', or 't0[5|1]' in the arrangement",
     }),
 
     paths: aliasParam(z.coerce.string().optional(), { canonical: "path" }),
@@ -75,13 +77,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "bar|beat playback start (looping clips, when different from start; clip meter)",
       smallModel: null,
     }),
-    arrangementStart: z
-      .string()
-      .optional()
-      .describe(
-        "song position(s) to move arrangement clips to, comma-separated: bar|beat in song meter, or loc:<locator name or id> (arrangement clips only). " +
-          "One position moves every clip; a list pairs 1:1 with id/path in order",
-      ),
+    arrangementStart: deprecatedParam(z.string().optional(), {
+      replacedBy: "toPath",
+      example: "[5|1]",
+    }),
     arrangementLength: z
       .string()
       .optional()
@@ -92,7 +91,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
     arrangementSplit: param(z.string().optional(), {
       default:
-        `comma-separated song positions to cut clips at, spelled like arrangementStart (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
+        `comma-separated song positions to cut clips at: bar|beat in song meter, or loc:<locator name or id> (e.g., '9|1, loc:Chorus') - max ${MAX_SPLIT_POINTS} points. ` +
         "A position outside a clip is ignored, so one call can cut several clips at the same song position. Arrangement clips only; song meter",
       smallModel: null,
     }),
@@ -108,9 +107,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "loc:<locator name or id>), a take lane 't<track>/l<lane>' or 't<track>/l+', or " +
           "'[<position>]' alone to keep the clip's own lane (e.g., 't2/s3' or 't2[5|1],[9|1]'). " +
           "A lane with no position keeps the clip's own start. A clip re-created in a slot or on a " +
-          "take lane drops its automation envelopes. Paired 1:1 with the clips named by id/path, in " +
-          "order - name one per clip, since a single destination doesn't cover them all the way a " +
-          "name does",
+          "take lane drops its automation envelopes. One '[<position>]' moves every clip, each on its " +
+          "own lane; anything naming a lane pairs 1:1 with id/path in order, since a lane or slot " +
+          "holds one clip and the rest would land on top of it",
       ),
     // Deprecated because its positions are clip-relative: models reason in song
     // time, so they aimed at the wrong bar every time. Kept working unchanged

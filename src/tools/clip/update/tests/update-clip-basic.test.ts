@@ -160,7 +160,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({ path: "t2[5|1]", name: "By Position" });
 
     expect(mocks.clip789.set).toHaveBeenCalledWith("name", "By Position");
-    expect(result).toStrictEqual({ id: "789", path: "t2" });
+    expect(result).toStrictEqual({ id: "789", path: "t2[5|1]" });
   });
 
   it("should warn and skip a path with no clip, keeping the rest", async () => {
@@ -208,7 +208,7 @@ describe("updateClip - Basic operations", () => {
     expect(mocks.clip789.set).toHaveBeenCalledWith("loop_end", 6); // start (2) + length (4) = 6 Ableton beats
     expect(mocks.clip789.set).toHaveBeenCalledWith("end_marker", 6); // start (2) + length (4) = 6 Ableton beats
 
-    expect(result).toStrictEqual({ id: "789", path: "t2" });
+    expect(result).toStrictEqual({ id: "789", path: "t2[5|1]" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", async () => {
@@ -223,7 +223,8 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Verify result is returned (view switching is a side effect)
-    expect(result).toStrictEqual({ id: "999", path: "t3" });
+    // start_time 32 in 4/4 is bar 9 beat 1
+    expect(result).toStrictEqual({ id: "999", path: "t3[9|1]" });
   });
 
   it("should update multiple clips by comma-separated IDs", async () => {

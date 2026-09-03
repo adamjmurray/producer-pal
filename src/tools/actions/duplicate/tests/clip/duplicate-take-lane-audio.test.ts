@@ -137,8 +137,7 @@ describe("duplicate an audio clip to a take lane", () => {
     ).toHaveBeenCalledWith("create_audio_clip", SAMPLE, 16);
     expect(result).toStrictEqual({
       id: "tl_clip_1",
-      path: "t0/l0",
-      arrangementStart: "5|1",
+      path: "t0/l0[5|1]",
     });
   });
 
@@ -279,14 +278,13 @@ describe("duplicate an audio clip to a take lane", () => {
     expect(promoted?.set).toHaveBeenCalledWith("gain", 0.6);
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        "clip t0/l0 (id tl_src_clip) was promoted to the main lane by re-creating it " +
+        "clip t0/l0[1|1] (id tl_src_clip) was promoted to the main lane by re-creating it " +
           "(warp markers reset to the sample's defaults)",
       ),
     );
     expect(result).toStrictEqual({
       id: "tl_clip_37",
-      path: "t0",
-      arrangementStart: "5|1",
+      path: "t0[5|1]",
     });
   });
 });

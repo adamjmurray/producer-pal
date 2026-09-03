@@ -131,11 +131,13 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       8.0,
     );
 
+    // Original + tiled clips. Every path reads its clip's own start_time, and
+    // this mock answers 0 for all of them, so they all spell bar 1 beat 1.
     expect(result).toStrictEqual([
-      { id: "789", path: "t0" },
-      { id: "1000", path: "t0" },
-      { id: "1000", path: "t0" },
-    ]); // Original + tiled clips
+      { id: "789", path: "t0[1|1]" },
+      { id: "1000", path: "t0[1|1]" },
+      { id: "1000", path: "t0[1|1]" },
+    ]);
   });
 
   it("should handle insufficient content by tiling what exists", async () => {
@@ -192,8 +194,8 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     );
 
     expect(result).toStrictEqual([
-      { id: "789", path: "t0" },
-      { id: "1000", path: "t0" },
+      { id: "789", path: "t0[1|1]" },
+      { id: "1000", path: "t0[1|1]" },
     ]);
   });
 
@@ -216,7 +218,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       expect.anything(),
     );
 
-    expect(result).toStrictEqual({ id: "789", path: "t0" });
+    expect(result).toStrictEqual({ id: "789", path: "t0[1|1]" });
   });
 
   it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", async () => {
@@ -301,10 +303,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     expect(tile2.set).toHaveBeenCalledWith("start_marker", 3.0);
 
     expect(result).toStrictEqual([
-      { id: "789", path: "t0" },
-      { id: "1000", path: "t0" },
-      { id: "1001", path: "t0" },
-      { id: "1002", path: "t0" },
+      { id: "789", path: "t0[1|1]" },
+      { id: "1000", path: "t0[1|1]" },
+      { id: "1001", path: "t0[1|1]" },
+      { id: "1002", path: "t0[1|1]" },
     ]);
   });
 
@@ -398,9 +400,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     // Should return original + 2 full tiles (4 beats each)
     expect(result).toStrictEqual([
-      { id: "789", path: "t0" },
-      { id: "1000", path: "t0" },
-      { id: "1001", path: "t0" },
+      { id: "789", path: "t0[1|1]" },
+      { id: "1000", path: "t0[1|1]" },
+      { id: "1001", path: "t0[1|1]" },
     ]);
   });
 });

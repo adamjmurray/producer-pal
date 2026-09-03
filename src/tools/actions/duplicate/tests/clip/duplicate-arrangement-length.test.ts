@@ -49,8 +49,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
-      path: "t0",
-      arrangementStart: "5|1",
+      path: "t0[5|1]",
     });
 
     // New implementation uses holding area for shortening
@@ -170,8 +169,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
-      path: "t0",
-      arrangementStart: "5|1",
+      path: "t0[5|1]",
     });
   });
 
@@ -312,8 +310,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     expect(result).toStrictEqual({
       id: livePath.track(0).arrangementClip(0),
-      path: "t0",
-      arrangementStart: "5|1",
+      path: "t0[5|1]",
     });
   });
 });
@@ -378,8 +375,7 @@ async function expectDuplicateDelegatesLengthening(
 
   expect(result).toStrictEqual({
     id: livePath.track(0).arrangementClip(0),
-    path: "t0",
-    arrangementStart: "5|1",
+    path: "t0[5|1]",
   });
 
   return result;

@@ -457,10 +457,10 @@ describe("duplicate-track-scene-helpers", () => {
       // Should collect arrangement clips
       expect(result.clips.length).toBeGreaterThan(0);
       expect(result.clips[0]!.id).toBe(arrClipId);
-      // Arrangement clips on a duplicated track omit trackIndex (they all share
-      // the new track) but keep arrangementStart.
+      // No index fields: the path is the whole address, and start_time 8 in
+      // 4/4 is bar 3 beat 1 on the new track.
       expect(result.clips[0]).not.toHaveProperty("trackIndex");
-      expect(result.clips[0]).toHaveProperty("arrangementStart");
+      expect(result.clips[0]).toHaveProperty("path", "t1[3|1]");
     });
   });
 
@@ -628,10 +628,7 @@ describe("duplicate-track-scene-helpers", () => {
         4,
       );
 
-      expect(result).toStrictEqual({
-        arrangementStart: "5|1",
-        clips: [],
-      });
+      expect(result).toStrictEqual({ clips: [] });
     });
 
     it.each([
@@ -641,7 +638,9 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra: {},
         sceneName: undefined as string | undefined,
         arrangementLength: "2bar" as string | undefined,
-        expectedStart: expect.any(String) as string,
+        // Lengthening runs through updateClip, which these mocks stop short of,
+        // so the batch collects no clip.
+        expectedClipPath: undefined as string | undefined,
       },
       {
         desc: "should use calculateSceneLength when arrangementLength is not provided",
@@ -649,7 +648,8 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra: { signature_numerator: 4, signature_denominator: 4 },
         sceneName: "Scene Name",
         arrangementLength: undefined,
-        expectedStart: "5|1",
+        // start_time 16 in 4/4 is bar 5 beat 1.
+        expectedClipPath: "t0[5|1]",
       },
     ])(
       "$desc",
@@ -658,7 +658,7 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra,
         sceneName,
         arrangementLength,
-        expectedStart,
+        expectedClipPath,
       }) => {
         setupSceneToArrangementBaseMocks(liveSetExtra);
         registerClipSlot(0, 0, true, {
@@ -691,8 +691,10 @@ describe("duplicate-track-scene-helpers", () => {
           4,
         );
 
+        // The clip's own path is the only place the copy's position is
+        // reported; the batch carries none of its own.
         expect(result).toHaveProperty("clips");
-        expect(result).toHaveProperty("arrangementStart", expectedStart);
+        expect(result.clips[0]?.path).toBe(expectedClipPath);
       },
     );
   });

@@ -33,6 +33,7 @@ import {
   readDrumPad,
 } from "../device/drum/drum-pad-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../e2e-test-set.ts";
+import { arrangementStartOf } from "../clip/helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -43,7 +44,7 @@ interface DeleteResult {
 }
 
 interface ArrangementClipsResult {
-  arrangementClips?: Array<{ id: string; arrangementStart?: string }>;
+  arrangementClips?: Array<{ id: string; path?: string }>;
 }
 
 describe("ppal-delete batch ordering", () => {
@@ -91,7 +92,7 @@ describe("ppal-delete batch ordering", () => {
     const remaining = await readArrangementClips();
 
     expect(remaining.map((c) => c.id)).toStrictEqual([ids[3]]);
-    expect(remaining[0]?.arrangementStart).toBe("13|1");
+    expect(arrangementStartOf(remaining[0])).toBe("13|1");
   });
 
   it("deletes the chains it was given, and leaves the survivor on its own pad", async () => {
@@ -167,7 +168,7 @@ async function padChainCount(rackPath: string, pitch: string): Promise<number> {
 
 /** Read t8's arrangement clips, in Live's own order. */
 async function readArrangementClips(): Promise<
-  Array<{ id: string; arrangementStart?: string }>
+  Array<{ id: string; path?: string }>
 > {
   const track = parseToolResult<ArrangementClipsResult>(
     await ctx.client!.callTool({

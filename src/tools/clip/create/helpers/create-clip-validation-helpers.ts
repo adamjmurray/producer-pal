@@ -20,7 +20,7 @@ export function validatePositions(destinations: ClipDestinations): void {
     destinations.arrangementPositions.length === 0
   ) {
     throw new Error(
-      'createClip failed: path is required — "t0/s1" for a clip slot, or "t0" with arrangementStart for the arrangement',
+      'createClip failed: path is required — "t0/s1" for a clip slot, or "t0[5|1]" for the arrangement',
     );
   }
 }

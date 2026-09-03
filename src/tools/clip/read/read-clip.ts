@@ -16,10 +16,9 @@ import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
 import {
   clipRegionBeats,
   isDrumRackTrack,
@@ -80,12 +79,9 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-   * arrangement. A clip slot pastes back into any path/toPath param; an
-   * arrangement one names a whole track, so only tools that take a track
-   * destination accept it — reach a specific arrangement clip by id. */
+  /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+   * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  arrangementStart?: string;
   arrangementLength?: string;
 
   // MIDI clip properties
@@ -402,34 +398,18 @@ function addClipLocationProperties(
   includeTiming: boolean,
 ): void {
   if (isArrangementClip) {
-    result.path = arrangementPath(
-      clip.trackIndex as number,
-      clip.takeLaneIndex,
-    );
-
-    const startTimeBeats = clip.getProperty("start_time") as number;
-
-    const liveSet = LiveAPI.from("live_set");
-    const songTimeSigNumerator = liveSet.getProperty(
-      "signature_numerator",
-    ) as number;
-    const songTimeSigDenominator = liveSet.getProperty(
-      "signature_denominator",
-    ) as number;
-
-    result.arrangementStart = abletonBeatsToBarBeat(
-      startTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+    // The path carries where the clip starts, so nothing else reports it.
+    result.path = objectPathForApi(clip);
 
     if (includeTiming) {
+      const startTimeBeats = clip.getProperty("start_time") as number;
       const endTimeBeats = clip.getProperty("end_time") as number;
+      const { numerator, denominator } = songMeter();
 
       result.arrangementLength = abletonBeatsToDuration(
         endTimeBeats - startTimeBeats,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
+        numerator,
+        denominator,
       );
     }
   } else {

@@ -340,19 +340,36 @@ One gap left for later, unchanged by this: `duplicate` still needs a position
 per arrangement destination, so `toPath: "t0"` alone is refused there rather
 than meaning "that track, at the source's own start".
 
-### Phase 13 - results and inputs switch together
+### Phase 13 - results and inputs switch together ✅
 
 **One commit.** `objectPathForApi` spells `t0[5|1]`, results drop
-`arrangementStart`, and `arrangementStart` becomes
-`deprecatedParam({ replacedBy: "path" })` on all three tools. Splitting this
-leaves a commit where a result path can't be pasted back, which is the
-round-trip hole ADR-0036 exists to close.
+`arrangementStart`, and `arrangementStart` is a `deprecatedParam` on all three
+tools - `path` on create-clip, `toPath` on update-clip and duplicate.
 
-Results never report a locator - always bar|beat.
+Results never report a locator - always bar|beat. The song meter is hoisted with
+`requestMemo`, so a read-track that names many clips reads it once.
 
-Watch the cost: naming an arrangement clip now needs `start_time` and the song
-meter. Hoist the meter once per request, not once per clip. Performance is a
-2.3.0 headline.
+Three things this exposed, all closed in the same commit, because each one meant
+the replacement didn't actually replace what was being hidden:
+
+- **A scene's destination is its position alone.** A scene copy lands a clip on
+  every track, so it has no lane to name: `toPath: "[5|1]"` is its whole
+  address, and a lane on it is refused. Without this, hiding `arrangementStart`
+  left scene-to-arrangement reachable only by a caller who already knew the
+  retired name.
+- **A lone bare `[5|1]` on update-clip's `toPath` broadcasts**, matching the
+  `arrangementStart` it replaces and the derived rule in Object-Paths.md: it
+  doesn't fully determine a location, since each clip keeps its own lane.
+  Anything naming a lane still pairs 1:1 — a lane or slot holds one clip, and
+  the rest would land on top of it.
+- **read-clip takes the path it hands back.** `t0[5|1]` resolves to the clip and
+  read-clip goes on as if an id was given. It was the one path param that
+  refused a result of its own.
+
+Also kept, against the letter of the phase: code-exec's
+`location.arrangementStartBeats`. It is a number for user code to do arithmetic
+with, not a second spelling of the address — its own comment said so — and the
+path string is no substitute.
 
 ### Phase 14 - the message sweep
 

@@ -18,6 +18,7 @@ import {
   parseBarBeat,
   readClipsOnTrack,
 } from "./arrangement-lengthening-test-helpers.ts";
+import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 /** Split 1 beat into each clip — works for any clip >= 2 beats */
 export const SPLIT_POINT = "1|2";
@@ -83,8 +84,9 @@ export async function testSplitClip(
   const initial = await readClipsOnTrack(client, trackIndex);
   const clip = initial.clips[0];
   const clipId = clip?.id;
+  const clipStart = arrangementStartOf(clip);
 
-  if (!clipId || !clip?.arrangementStart) {
+  if (!clipId || !clipStart) {
     throw new Error(`No arrangement clip found on track ${trackIndex}`);
   }
 
@@ -93,7 +95,7 @@ export async function testSplitClip(
   const result = await splitClip(
     client,
     clipId,
-    toSongPositions(clip.arrangementStart, splitPoint),
+    toSongPositions(clipStart, splitPoint),
   );
   const warnings = getToolWarnings(result);
 
@@ -108,14 +110,22 @@ export async function testSplitClip(
   return { trackType, initialClips: initial.clips, resultClips, warnings };
 }
 
+/**
+ * A clip's start in beats, or 0 when its path carries no position.
+ * @param start - A bar|beat position, if the clip reported one
+ * @returns The position in beats
+ */
+function barBeatOrZero(start: string | undefined): number {
+  return start == null ? 0 : parseBarBeat(start);
+}
+
 /** Sort clips by arrangement start position */
 function sortByArrangementStart(clips: ReadClipResult[]): ReadClipResult[] {
-  return clips.toSorted((a, b) => {
-    const aStart = a.arrangementStart ? parseBarBeat(a.arrangementStart) : 0;
-    const bStart = b.arrangementStart ? parseBarBeat(b.arrangementStart) : 0;
-
-    return aStart - bStart;
-  });
+  return clips.toSorted(
+    (a, b) =>
+      barBeatOrZero(arrangementStartOf(a)) -
+      barBeatOrZero(arrangementStartOf(b)),
+  );
 }
 
 /**
@@ -128,29 +138,28 @@ export function assertSpanPreserved(
   resultClips: ReadClipResult[],
 ): void {
   const initial = initialClips[0];
+  const initialStartText = arrangementStartOf(initial);
 
-  if (!initial?.arrangementStart || !initial.arrangementLength) {
+  if (!initialStartText || !initial?.arrangementLength) {
     throw new Error("Initial clip missing arrangement data");
   }
 
-  const initialStart = parseBarBeat(initial.arrangementStart);
+  const initialStart = parseBarBeat(initialStartText);
   const initialEnd = initialStart + parseBarBeat(initial.arrangementLength);
 
   const sorted = sortByArrangementStart(resultClips);
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
+  const firstStartText = arrangementStartOf(first);
+  const lastStartText = arrangementStartOf(last);
 
-  if (
-    !first?.arrangementStart ||
-    !last?.arrangementStart ||
-    !last.arrangementLength
-  ) {
+  if (!firstStartText || !lastStartText || !last?.arrangementLength) {
     throw new Error("Result clips missing arrangement data");
   }
 
-  const resultStart = parseBarBeat(first.arrangementStart);
+  const resultStart = parseBarBeat(firstStartText);
   const resultEnd =
-    parseBarBeat(last.arrangementStart) + parseBarBeat(last.arrangementLength);
+    parseBarBeat(lastStartText) + parseBarBeat(last.arrangementLength);
 
   if (Math.abs(resultStart - initialStart) > EPSILON) {
     throw new Error(
@@ -176,19 +185,16 @@ export function assertContiguousClips(clips: ReadClipResult[]): void {
   for (let i = 0; i < sorted.length - 1; i++) {
     const clip = sorted[i] as ReadClipResult; // loop bounds guarantee valid index
     const next = sorted[i + 1] as ReadClipResult; // loop bounds guarantee valid index
+    const clipStart = arrangementStartOf(clip);
+    const nextStartText = arrangementStartOf(next);
 
-    if (
-      !clip.arrangementStart ||
-      !clip.arrangementLength ||
-      !next.arrangementStart
-    ) {
+    if (!clipStart || !clip.arrangementLength || !nextStartText) {
       continue;
     }
 
     const clipEnd =
-      parseBarBeat(clip.arrangementStart) +
-      parseBarBeat(clip.arrangementLength);
-    const nextStart = parseBarBeat(next.arrangementStart);
+      parseBarBeat(clipStart) + parseBarBeat(clip.arrangementLength);
+    const nextStart = parseBarBeat(nextStartText);
 
     if (Math.abs(clipEnd - nextStart) > EPSILON) {
       throw new Error(

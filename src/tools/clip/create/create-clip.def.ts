@@ -19,11 +19,11 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   // own — `firstStart` is not one of them there.
   description: {
     default:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/firstStart/looping are MIDI-only.",
     smallModel:
-      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, and/or 't0' plus arrangementStart for the arrangement. " +
+      "Create MIDI or audio clip(s). Requires path — 't0/s0' for the session, 't0[5|1]' for the arrangement. " +
       "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
       "The sample defines an audio clip's region, so start/length/looping are MIDI-only.",
   },
@@ -37,9 +37,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       default:
         "where the clip(s) go, comma-separated for multiple. 't<track>/s<scene>' is a clip slot; " +
         "'t<track>[<position>]' is that spot on the track's arrangement, where a position is bar|beat " +
-        "or loc:<locator name or id>; 't<track>' alone needs arrangementStart for it. 't<track>/l<lane>' " +
-        "is a take lane and 't<track>/l+' appends a fresh one. All indices 0-based, " +
-        "so 't0/s0' is the first track's first scene (e.g., 't0/s0' or 't0[5|1]' or 't0/s0,t1[loc:Chorus]')",
+        "or loc:<locator name or id>. An arrangement path needs both halves. " +
+        "'t<track>/l<lane>[<position>]' puts it on a take lane and 't<track>/l+[<position>]' appends a " +
+        "fresh one. All indices 0-based, so 't0/s0' is the first track's first scene " +
+        "(e.g., 't0/s0' or 't0[5|1]' or 't0/s0,t1[loc:Chorus]')",
       smallModel:
         "where the clip goes, 0-based: 't0/s0' = first track, first scene (session); 't0[5|1]' = bar 5 on the first track's arrangement",
     }),
@@ -61,11 +62,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       example: "t0/s0",
     }),
 
-    arrangementStart: param(z.coerce.string().optional(), {
-      default:
-        "arrangement clip position(s), comma-separated for multiple: bar|beat in song meter, or loc:<locator name or id> (e.g., '1|1' or '1|1,loc:Chorus')",
-      smallModel:
-        "arrangement clip position: bar|beat (song meter) or loc:<locator>",
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
+      replacedBy: "path",
+      example: "t0[5|1]",
     }),
 
     name: param(z.string().optional(), {

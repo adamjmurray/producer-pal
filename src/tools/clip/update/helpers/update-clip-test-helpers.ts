@@ -168,7 +168,7 @@ export function setupArrangementClipPath(
       track_index: trackIndex,
     },
     methods: {
-      duplicate_clip_to_arrangement: () => {
+      duplicate_clip_to_arrangement: (_sourceId, startTime) => {
         const id = duplicateIds[duplicateIndex];
 
         if (id == null) {
@@ -178,6 +178,11 @@ export function setupArrangementClipPath(
         }
 
         duplicateIndex += 1;
+        // Live lands the copy where it was asked for, and a result reads the
+        // position back off the clip to spell its path.
+        const copy = clips.get(id);
+
+        if (copy != null) copy.properties.start_time = startTime;
 
         return `id ${id}`;
       },
@@ -200,6 +205,7 @@ function setupArrangementClip(
   return registerMockObject(id, {
     path: livePath.track(trackIndex).arrangementClip(0),
     type: "Clip",
+    properties: {},
     methods: createNoteTrackingMethods(),
   });
 }

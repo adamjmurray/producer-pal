@@ -18,7 +18,13 @@ import {
 } from "#src/tools/constants.ts";
 import { audioClipTiming } from "#src/tools/clip/helpers/audio-clip-timing.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { parseObjectPath } from "#src/tools/shared/validation/object-path.ts";
+import {
+  formatObjectPath,
+  parseObjectPath,
+} from "#src/tools/shared/validation/object-path.ts";
+import { arrangementClipAtPosition } from "#src/tools/shared/arrangement/helpers/arrangement-clip-at-position.ts";
+import { requireCompletePosition } from "#src/tools/shared/validation/helpers/clip-source-path.ts";
+import { type ArrangementPosition } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
 import {
   namedHiddenPath,
   requireClipSlotPath,
@@ -307,7 +313,19 @@ export function resolveClipLocation(args: ClipLocationArgs): ClipLocation {
       );
     }
 
-    const position = requireClipSlotPath(parseObjectPath(path, "path"));
+    const parsed = parseObjectPath(path, "path");
+
+    // An arrangement clip has no slot to report — the path names it outright,
+    // so it resolves to an id and read-clip goes on as if one was given.
+    if (parsed.kind === "arrangement-position") {
+      return {
+        clipId: arrangementClipIdAt(parsed, clipId),
+        trackIndex: null,
+        sceneIndex: null,
+      };
+    }
+
+    const position = requireClipSlotPath(parsed);
 
     assertClipIdAtSlot(clipId, position, "path");
 
@@ -365,4 +383,37 @@ function assertClipIdAtSlot(
       `readClip failed: ${param} and id name different clips; use one`,
     );
   }
+}
+
+/**
+ * The id of the arrangement clip a path names, for a read that has nothing to
+ * return when the path names none and so throws rather than warning.
+ * @param parsed - A parsed `[...]` coordinate
+ * @param clipId - The id the caller also sent, if any
+ * @returns The clip's id
+ */
+function arrangementClipIdAt(
+  parsed: ArrangementPosition,
+  clipId: string | null,
+): string {
+  const source = requireCompletePosition(parsed, "path");
+  const clip = arrangementClipAtPosition(source, {
+    toolName: "readClip",
+    paramName: "path",
+  });
+
+  if (clip == null) {
+    throw new Error(
+      `readClip failed: no clip at path "${formatObjectPath(parsed)}"`,
+    );
+  }
+
+  // Naming the same clip twice over is not a conflict; naming two is.
+  if (clipId != null && clipId !== clip.id) {
+    throw new Error(
+      `readClip failed: id "${clipId}" and path "${formatObjectPath(parsed)}" name different clips`,
+    );
+  }
+
+  return clip.id;
 }

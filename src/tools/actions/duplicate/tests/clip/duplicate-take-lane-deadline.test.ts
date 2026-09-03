@@ -100,8 +100,7 @@ describe("duplicate to a take lane, cut short", () => {
     // The one copy that fit landed on the lane the warning goes on to name.
     expect(result).toStrictEqual({
       id: "tl_clip_1",
-      path: "t1/l0",
-      arrangementStart: "1|1",
+      path: "t1/l0[1|1]",
     });
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 2. " +
@@ -131,8 +130,7 @@ describe("duplicate to a take lane, cut short", () => {
     // reached, and both are named. A lone result comes back unwrapped.
     expect(result).toStrictEqual({
       id: "tl_clip_10",
-      path: "t1/l0",
-      arrangementStart: "5|1",
+      path: "t1/l0[5|1]",
     });
     expect(unreachedWarning()).toBe(
       "Ran out of time after duplicating 1 of 3. " +

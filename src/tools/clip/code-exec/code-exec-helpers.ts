@@ -21,10 +21,9 @@ import {
   rawNotesToNoteEvents,
   removeAllClipNotes,
 } from "#src/tools/shared/clip/clip-notes.ts";
-import {
-  arrangementPath,
-  slotPath,
-} from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { slotPath } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
+import { objectPathForApi } from "#src/tools/shared/validation/object-path-for-api.ts";
+import { songMeter } from "#src/tools/shared/validation/helpers/song-meter.ts";
 import {
   type CodeClipContext,
   type CodeExecutionContext,
@@ -97,7 +96,6 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
  * @param clipIndex - 0-based position in the current batch (matches transforms' clip.index)
  * @param clipCount - Total clips in the current batch (matches transforms' clip.count)
  * @param sceneIndex - Scene index (session only)
- * @param arrangementStartBeats - Arrangement start position (arrangement only)
  * @returns Context object for code execution
  */
 export function buildCodeExecutionContext(
@@ -106,17 +104,10 @@ export function buildCodeExecutionContext(
   clipIndex: number,
   clipCount: number,
   sceneIndex?: number,
-  arrangementStartBeats?: number,
 ): CodeExecutionContext {
   const track = buildTrackContext(clip);
   const clipContext = buildClipContext(clip, clipIndex, clipCount);
-  const location = buildLocationContext(
-    view,
-    clip.trackIndex,
-    sceneIndex,
-    arrangementStartBeats,
-    clip.takeLaneIndex,
-  );
+  const location = buildLocationContext(clip, view, sceneIndex);
   const liveSet = buildLiveSetContext();
   const beatsPerBar = getBeatsPerBar(clip);
 
@@ -140,20 +131,15 @@ export {
  * Determine the view and location info for a clip.
  *
  * @param clip - LiveAPI clip object
- * @returns View, scene index, and arrangement start info
+ * @returns View, plus the scene index for a session clip
  */
 export function getClipLocationInfo(clip: LiveAPI): {
   view: "session" | "arrangement";
   sceneIndex?: number;
-  arrangementStartBeats?: number;
 } {
   const isArrangement = (clip.getProperty("is_arrangement_clip") as number) > 0;
 
-  if (isArrangement) {
-    const startBeats = clip.getProperty("start_time") as number;
-
-    return { view: "arrangement", arrangementStartBeats: startBeats };
-  }
+  if (isArrangement) return { view: "arrangement" };
 
   // Session clip — extract scene index from path
   const clipPath = clip.path;
@@ -215,32 +201,26 @@ function buildClipContext(
 }
 
 function buildLocationContext(
+  clip: LiveAPI,
   view: "session" | "arrangement",
-  trackIndex: number | null,
   sceneIndex?: number,
-  arrangementStartBeats?: number,
-  takeLaneIndex?: number | null,
 ): CodeLocationContext {
   const location: CodeLocationContext = { view };
+  const trackIndex = clip.trackIndex;
 
   // Omitted rather than guessed when the clip's own coordinates don't say where
   // it is — a wrong path here is one user code would act on.
-  if (trackIndex != null) {
-    if (view === "arrangement") {
-      location.path = arrangementPath(trackIndex, takeLaneIndex);
-    } else if (sceneIndex != null) {
-      location.path = slotPath(trackIndex, sceneIndex);
-    }
-  }
+  if (trackIndex == null) return location;
 
-  if (view === "arrangement" && arrangementStartBeats != null) {
-    // Arrangement positions resolve against the song meter; expose musical beats
-    // (song denominator) so this matches the musical-beat clip fields.
-    const songDenom = LiveAPI.from(livePath.liveSet).getProperty(
-      "signature_denominator",
-    ) as number;
+  if (view === "arrangement") {
+    location.path = objectPathForApi(clip);
 
-    location.arrangementStartBeats = arrangementStartBeats * (songDenom / 4);
+    // Musical beats (song denominator), matching the musical-beat clip fields.
+    location.arrangementStartBeats =
+      (clip.getProperty("start_time") as number) *
+      (songMeter().denominator / 4);
+  } else if (sceneIndex != null) {
+    location.path = slotPath(trackIndex, sceneIndex);
   }
 
   return location;

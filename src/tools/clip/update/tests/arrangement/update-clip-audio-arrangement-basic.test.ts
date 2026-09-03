@@ -131,7 +131,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
       );
 
       // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0" });
+      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
       mockCreate.mockRestore();
     },
   );
@@ -165,7 +165,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
 
       // Single clip returned (extended in place via loop_end, no tiles)
       // unwrapSingleResult returns single object for single-element arrays
-      expect(result).toStrictEqual({ id: cId, path: "t0" });
+      expect(result).toStrictEqual({ id: cId, path: "t0[1|1]" });
       mockCreate.mockRestore();
     },
   );
@@ -190,7 +190,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
 
     // Single clip returned (extended in place via loop_end, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: "661", path: "t0" });
+    expect(result).toStrictEqual({ id: "661", path: "t0[1|1]" });
     mockCreate.mockRestore();
   });
 });
@@ -223,7 +223,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId, path: "t0" });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
     mockCreate.mockRestore();
   });
 
@@ -246,6 +246,6 @@ describe("Unlooped warped audio clips - defensive guards", () => {
 
     // Should return just the source clip (no tiles from zero-length content)
     // unwrapSingleResult returns a single object for single-element arrays
-    expect(result).toStrictEqual({ id: clipId, path: "t0" });
+    expect(result).toStrictEqual({ id: clipId, path: "t0[1|1]" });
   });
 });

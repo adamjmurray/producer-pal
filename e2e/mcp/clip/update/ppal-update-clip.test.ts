@@ -28,6 +28,7 @@ import {
   readClipNotes,
 } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 import { EMPTY_MIDI_TRACK } from "../../e2e-test-set.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -302,7 +303,7 @@ describe("ppal-update-clip", () => {
     });
     const movedClipResult = parseToolResult<ReadClipResult>(verifyMove);
 
-    expect(movedClipResult.arrangementStart).toBe("45|1");
+    expect(arrangementStartOf(movedClipResult)).toBe("45|1");
     expect(movedClipResult.view).toBe("arrangement");
 
     // Test 2: Update arrangement clip length

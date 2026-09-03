@@ -45,15 +45,13 @@ export function requireClipSourcePath(
   throw pathError(label, formatObjectPath(clip), laneNamesManyClips(clip));
 }
 
-// --- Helpers below main exports ---
-
 /**
  * Checks a song position carries a lane that holds clips today.
  * @param path - A parsed `[...]` coordinate
  * @param label - Param name for error messages
  * @returns The position, with its lane
  */
-function requireCompletePosition(
+export function requireCompletePosition(
   path: ArrangementPosition,
   label: string,
 ): CompleteArrangementPosition {
@@ -74,6 +72,8 @@ function requireCompletePosition(
 
   return { ...path, lane };
 }
+
+// --- Helpers below main exports ---
 
 /**
  * Says which half of the address a partial path is missing.

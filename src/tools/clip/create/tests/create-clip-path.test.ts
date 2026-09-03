@@ -160,7 +160,7 @@ describe("createClip path param", () => {
       createClip({ path: "t0/l+", notes: "C3 1|1" }),
     ).rejects.toThrow(
       'createClip failed: path "t0/l+" names no position; ' +
-        "add arrangementStart; take lanes hold arrangement clips",
+        'add one, as "t0/l+[5|1]"; take lanes hold arrangement clips',
     );
     await expect(
       createClip({ path: "t0/l1", notes: "C3 1|1" }),

@@ -67,8 +67,7 @@ describe("duplicate - a toPath coordinate", () => {
     expectCopyAt(tracks.get(2) as RegisteredMockObject, 8);
     expect(result).toStrictEqual({
       id: livePath.track(2).arrangementClip(0),
-      path: "t2",
-      arrangementStart: "3|1",
+      path: "t2[3|1]",
     });
   });
 

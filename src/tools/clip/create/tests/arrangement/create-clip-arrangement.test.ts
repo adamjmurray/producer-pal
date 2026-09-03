@@ -38,7 +38,6 @@ function callArrangementIteration(opts: {
     0, // trackIndex
     null, // sceneIndex
     0, // arrangementStartBeats
-    "1|1", // arrangementStart
     4, // clipLength
     liveSet,
     null, // startBeats
@@ -74,8 +73,7 @@ describe("createClip - arrangement view", () => {
 
     expect(result).toStrictEqual({
       id: "arrangement_clip",
-      path: "t0",
-      arrangementStart: "3|1",
+      path: "t0[3|1]",
       noteCount: 3,
       length: "1bar",
     });
@@ -124,22 +122,19 @@ describe("createClip - arrangement view", () => {
     expect(result).toStrictEqual([
       {
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: "3|1",
+        path: "t0[3|1]",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: "4|1",
+        path: "t0[4|1]",
         noteCount: 2,
         length: "1bar",
       },
       {
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: "5|1",
+        path: "t0[5|1]",
         noteCount: 2,
         length: "1bar",
       },
@@ -311,10 +306,10 @@ describe("createClip - loc: on arrangementStart", () => {
       });
 
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", beats, 4);
+      // The result never reports the locator, only where it landed.
       expect(result).toStrictEqual({
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: barBeat,
+        path: `t0[${barBeat}]`,
         noteCount: 1,
         length: "1bar",
       });

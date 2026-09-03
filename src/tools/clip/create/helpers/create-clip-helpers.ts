@@ -252,7 +252,6 @@ function applyCreatedAudioClipSettings(
  * @param trackIndex - Track index
  * @param sceneIndex - Scene index for session clips (explicit position)
  * @param arrangementStartBeats - Arrangement start in beats (explicit position)
- * @param arrangementStart - Arrangement start in bar|beat format (for result)
  * @param clipLength - Clip length in beats
  * @param liveSet - LiveAPI live_set object
  * @param startBeats - Loop start in beats
@@ -279,7 +278,6 @@ export function processClipIteration(
   trackIndex: number,
   sceneIndex: number | null,
   arrangementStartBeats: number | null,
-  arrangementStart: string | null,
   clipLength: number,
   liveSet: LiveAPI,
   startBeats: number | null,
@@ -391,7 +389,6 @@ export function processClipIteration(
     trackIndex,
     view,
     currentSceneIndex,
-    arrangementStart,
     notationString,
     length,
     timeSigNumerator,

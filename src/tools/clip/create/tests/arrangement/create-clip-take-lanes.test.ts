@@ -75,8 +75,8 @@ describe("createClip take lanes", () => {
 
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(result.id).toMatch(/^tl_clip_/);
-    // result surfaces the lane the clip landed on, as a path
-    expect(result.path).toBe("t0/l0");
+    // result surfaces the lane the clip landed on and where it starts
+    expect(result.path).toBe("t0/l0[1|1]");
   });
 
   it("creates neither a lane nor a clip when a later position won't parse", async () => {
@@ -172,7 +172,7 @@ describe("createClip take lanes", () => {
 
     // No overlap guard: the clip is created on the targeted lane regardless
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
-    expect(result.path).toBe("t0/l0");
+    expect(result.path).toBe("t0/l0[1|1]");
   });
 
   // A caller on the old schema still sends takeLane, sometimes with the word
@@ -196,7 +196,7 @@ describe("createClip take lanes", () => {
 
       expect(track.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
       expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
-      expect(result.path).toBe("t0");
+      expect(result.path).toBe("t0[1|1]");
       expect(consoleMock.warn).not.toHaveBeenCalledWith(
         expect.stringContaining("takeLane"),
       );
@@ -388,7 +388,7 @@ describe("createClip take lane paths", () => {
 
     expect(mainTrack.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     // Only t1's clip was made, so the result collapses to that one object.
-    expect(result.path).toBe("t1");
+    expect(result.path).toBe("t1[1|1]");
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining('createClip: skipping "t0/l+"'),
     );

@@ -57,7 +57,6 @@ export function handleCodeExecResult(
  * @param _clipIndex - Unused
  * @param _clipCount - Unused
  * @param _sceneIndex - Unused
- * @param _arrangementStartBeats - Unused
  * @returns Error result
  */
 export async function executeNoteCode(
@@ -67,7 +66,6 @@ export async function executeNoteCode(
   _clipIndex: number,
   _clipCount: number,
   _sceneIndex?: number,
-  _arrangementStartBeats?: number,
 ): Promise<CodeExecutionResult> {
   return { success: false, error: DISABLED_ERROR };
 }

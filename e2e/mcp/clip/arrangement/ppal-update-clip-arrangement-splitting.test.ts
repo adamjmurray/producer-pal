@@ -31,14 +31,15 @@ import {
   toSongPositions,
 } from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
+  parseToolResult,
   type CreateTrackResult,
   getToolWarnings,
-  parseToolResult,
+  trackIndexFromPath,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-  trackIndexFromPath,
 } from "../../mcp-test-helpers.ts";
+import { arrangementStartOf } from "../helpers/arrangement-start-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,
@@ -187,8 +188,12 @@ describe("Behavioral splitting tests", () => {
   ): Promise<ReadClipResult[]> {
     const { clips } = await readClipsOnTrack(ctx.client!, dynamicTrackIndex);
     const spanStart = startBar - 1;
-    const startOf = (clip: ReadClipResult): number =>
-      clip.arrangementStart ? parseBarBeat(clip.arrangementStart) : -1;
+
+    const startOf = (clip: ReadClipResult): number => {
+      const start = arrangementStartOf(clip);
+
+      return start == null ? -1 : parseBarBeat(start);
+    };
 
     return clips
       .filter((c) => {
@@ -364,7 +369,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(400, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "400|1",
         "402|1",
       ]);
@@ -406,7 +411,7 @@ describe("Behavioral splitting tests", () => {
       await sleep(200);
       const clips = await clipsInSpan(420, 4);
 
-      expect(clips.map((c) => c.arrangementStart)).toStrictEqual([
+      expect(clips.map((c) => arrangementStartOf(c))).toStrictEqual([
         "420|1",
         "422|1",
       ]);

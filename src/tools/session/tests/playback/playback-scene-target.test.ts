@@ -368,7 +368,7 @@ describe("playback play-scene ids that name no scene", () => {
 
     expect(scene.call).toHaveBeenCalledWith("fire");
     expect(warn).toHaveBeenCalledWith(
-      "playback: t0 (id clip1) is in no scene (found Clip); action " +
+      "playback: t0[1|1] (id clip1) is in no scene (found Clip); action " +
         '"play-scene" takes a scene id or a session clip id',
     );
   });

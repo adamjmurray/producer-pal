@@ -4,7 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import {
+  beginLiveApiScope,
+  endLiveApiScope,
+} from "#src/live-api-adapter/live-api-release.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   objectPathForApi,
   pathField,
@@ -14,15 +19,44 @@ import {
   targetLabel,
 } from "../object-path-for-api.ts";
 
+// start_time is 16 Ableton beats, which the song's 4/4 makes bar 5 beat 1.
 function api(path: unknown, note?: number, id = "7"): LiveAPI {
   return {
     id,
     path,
-    getProperty: () => note,
+    getProperty: (prop: string) => (prop === "start_time" ? 16 : note),
   } as unknown as LiveAPI;
 }
 
 describe("objectPathForApi", () => {
+  // A read-track on a busy track names one clip after another, and they all
+  // resolve against the same meter.
+  it("reads the song meter once however many clips it names", () => {
+    const liveSet = registerMockObject("live-set", {
+      path: livePath.liveSet,
+      type: "Song",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    beginLiveApiScope();
+
+    try {
+      for (let i = 0; i < 3; i++) {
+        expect(
+          objectPathForApi(api(livePath.track(2).arrangementClip(i))),
+        ).toBe("t2[5|1]");
+      }
+    } finally {
+      endLiveApiScope();
+    }
+
+    const meterReads = liveSet.get.mock.calls.filter(
+      ([prop]: unknown[]) => prop === "signature_numerator",
+    );
+
+    expect(meterReads).toHaveLength(1);
+  });
+
   it.each([
     ["a regular track", livePath.track(3), "t3"],
     ["a return track", livePath.returnTrack(1), "rt1"],
@@ -30,11 +64,12 @@ describe("objectPathForApi", () => {
     ["a scene", livePath.scene(2), "s2"],
     ["a clip slot", livePath.track(1).clipSlot(4), "t1/s4"],
     ["a session clip", livePath.track(1).clipSlot(4).clip(), "t1/s4"],
-    ["an arrangement clip", livePath.track(2).arrangementClip(7), "t2"],
+    ["a take lane", livePath.track(2).takeLane(1), "t2/l1"],
+    ["an arrangement clip", livePath.track(2).arrangementClip(7), "t2[5|1]"],
     [
       "a take-lane clip",
       livePath.track(2).takeLane(1).arrangementClip(0),
-      "t2/l1",
+      "t2/l1[5|1]",
     ],
     ["a device", livePath.track(0).device(2), "t0/d2"],
     [
@@ -120,9 +155,9 @@ describe("targetLabel", () => {
     );
   });
 
-  it("names an arrangement clip by its lane and its id", () => {
+  it("names an arrangement clip by where it starts and its id", () => {
     expect(targetLabel(api(livePath.track(2).arrangementClip(7)))).toBe(
-      "t2 (id 7)",
+      "t2[5|1] (id 7)",
     );
   });
 

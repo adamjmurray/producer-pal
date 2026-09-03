@@ -14,8 +14,11 @@ import { emptyTakeLaneClip } from "../helpers/take-lane-placeholder.ts";
 import { takeLaneIndexOfClip } from "../helpers/take-lane-helpers.ts";
 
 const CLIP_ID = "42";
-/** How a warning names the clip: both spellings, per ADR-0009. */
-const CLIP = `t0/l1 (id ${CLIP_ID})`;
+/**
+ * How a warning names the clip: both spellings, per ADR-0009. It starts at 0,
+ * which the song's 4/4 spells as bar 1 beat 1.
+ */
+const CLIP = `t0/l1[1|1] (id ${CLIP_ID})`;
 
 /**
  * Register a clip at the given path and hand it back.

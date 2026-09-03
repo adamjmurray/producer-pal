@@ -302,7 +302,6 @@ interface SelectResult {
   selectedClip?: {
     id: string;
     path?: string;
-    arrangementStart?: string;
   };
   selectedDevice?: {
     id: string;

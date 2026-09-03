@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  abletonBeatsToBarBeat,
   abletonBeatsToDuration,
   durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -24,7 +23,10 @@ import {
   arrangementPath,
   slotPath,
 } from "#src/tools/shared/validation/helpers/object-path-helpers.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 
 /**
  * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
@@ -65,12 +67,9 @@ export function parseArrangementLength(
 
 export interface MinimalClipInfo {
   id: string;
-  /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-   * arrangement. A clip slot pastes back into any path/toPath param; an
-   * arrangement one names a whole track, so only tools that take a track
-   * destination accept it — reach a specific arrangement clip by id. */
+  /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+   * the arrangement. Pastes straight back into any path/toPath param. */
   path?: string;
-  arrangementStart?: string;
   name?: string;
   noteCount?: number;
   transformed?: number;
@@ -79,49 +78,21 @@ export interface MinimalClipInfo {
 /**
  * Get minimal clip information for result objects
  * @param clip - The clip to get info from
- * @param omitFields - Optional fields to omit from result
  * @returns Minimal clip info object
  */
-export function getMinimalClipInfo(
-  clip: LiveAPI,
-  omitFields: string[] = [],
-): MinimalClipInfo {
+export function getMinimalClipInfo(clip: LiveAPI): MinimalClipInfo {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
   if (isArrangementClip) {
-    const trackIndex = clip.trackIndex;
-
-    if (trackIndex == null) {
+    if (clip.trackIndex == null) {
       throw new Error(
         `getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`,
       );
     }
 
-    const arrangementStartBeats = clip.getProperty("start_time") as number;
-    // Convert to bar|beat format using song time signature
-    const liveSet = LiveAPI.from(livePath.liveSet);
-    const timeSigNum = liveSet.getProperty("signature_numerator") as number;
-    const timeSigDenom = liveSet.getProperty("signature_denominator") as number;
-    const arrangementStart = abletonBeatsToBarBeat(
-      arrangementStartBeats,
-      timeSigNum,
-      timeSigDenom,
-    );
-
-    const result: MinimalClipInfo = {
-      id: clip.id,
-    };
-
-    if (!omitFields.includes("path")) {
-      result.path = arrangementPath(trackIndex, clip.takeLaneIndex);
-    }
-
-    if (!omitFields.includes("arrangementStart")) {
-      result.arrangementStart = arrangementStart;
-    }
-
-    return result;
+    // The path spells the lane and the start, so nothing else reports either.
+    return { id: clip.id, path: objectPathForApi(clip) };
   }
 
   const trackIndex = clip.trackIndex;
@@ -133,15 +104,7 @@ export function getMinimalClipInfo(
     );
   }
 
-  const result: MinimalClipInfo = {
-    id: clip.id,
-  };
-
-  if (!omitFields.includes("path")) {
-    result.path = slotPath(trackIndex, sceneIndex);
-  }
-
-  return result;
+  return { id: clip.id, path: slotPath(trackIndex, sceneIndex) };
 }
 
 /**
@@ -153,7 +116,6 @@ export function getMinimalClipInfo(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length for updateClip)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
- * @param omitFields - Optional fields to omit from clip info
  * @param context - Context object with silenceWavPath
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
@@ -166,7 +128,6 @@ export async function createClipsForLength(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name?: string,
-  omitFields: string[] = [],
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
 ): Promise<MinimalClipInfo[]> {
@@ -209,7 +170,7 @@ export async function createClipsForLength(
     );
 
     newClip.setAll({ name, color });
-    duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+    duplicatedClips.push(getMinimalClipInfo(newClip));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
     // Routes a self-overlapping source through the holding area (overwrite
@@ -243,13 +204,12 @@ export async function createClipsForLength(
         songTimeSigNumerator,
         songTimeSigDenominator,
         name,
-        omitFields,
         context,
         duplicatedClips,
       );
     } else {
       newClip.setAll({ name, color });
-      duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+      duplicatedClips.push(getMinimalClipInfo(newClip));
     }
   }
 
@@ -264,7 +224,6 @@ export async function createClipsForLength(
  * @param songTimeSigNumerator - Song time signature numerator (re-encodes length)
  * @param songTimeSigDenominator - Song time signature denominator (re-encodes length)
  * @param name - Optional name
- * @param omitFields - Fields to omit from results
  * @param context - Context object
  * @param duplicatedClips - Array to push results to
  */
@@ -275,7 +234,6 @@ async function lengthenClipAndCollectInfo(
   songTimeSigNumerator: number,
   songTimeSigDenominator: number,
   name: string | undefined,
-  omitFields: string[],
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
 ): Promise<void> {
@@ -305,7 +263,7 @@ async function lengthenClipAndCollectInfo(
       .find((c) => c.id === clipObj.id);
 
     if (clipLiveAPI) {
-      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, omitFields));
+      duplicatedClips.push(getMinimalClipInfo(clipLiveAPI));
     }
   }
 }
@@ -380,7 +338,6 @@ export async function duplicateClipToArrangement(
       songTimeSigNumerator,
       songTimeSigDenominator,
       name,
-      [],
       context,
       color,
     );

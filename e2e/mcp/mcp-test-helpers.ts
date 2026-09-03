@@ -601,9 +601,8 @@ export interface ReadClipResult {
   start?: string;
   end?: string;
   length?: string;
-  /** Where the clip is: "t0/s3", "t0", or "t0/l1" */
+  /** Where the clip is: "t0/s3", "t0[5|1]", or "t0/l1[5|1]" */
   path?: string;
-  arrangementStart?: string;
   arrangementLength?: string;
   noteCount?: number;
   notes?: string;

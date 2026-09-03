@@ -15,11 +15,13 @@ import {
   sleep,
 } from "../../mcp-test-helpers.ts";
 import { readClipsOnTrack } from "./arrangement-lengthening-test-helpers.ts";
+import { arrangementStartOf } from "./arrangement-start-test-helpers.ts";
 
 /** The subset of a clip result these helpers read back. */
 export interface ArrangementClipResult {
   id: string;
-  arrangementStart?: string;
+  /** Where the clip is, e.g. "t0[5|1]" */
+  path?: string;
   arrangementLength?: string;
 }
 
@@ -88,7 +90,7 @@ export function clipsInBarRange(
   maxBar: number,
 ): ReadClipResult[] {
   return clips.filter((c) => {
-    const bar = Number.parseInt(c.arrangementStart?.split("|")[0] ?? "", 10);
+    const bar = Number.parseInt(arrangementStartOf(c)?.split("|")[0] ?? "", 10);
 
     return bar >= minBar && bar <= maxBar;
   });
@@ -104,7 +106,7 @@ export function clipAt(
   clips: ReadClipResult[],
   arrangementStart: string,
 ): ReadClipResult | undefined {
-  return clips.find((c) => c.arrangementStart === arrangementStart);
+  return clips.find((c) => arrangementStartOf(c) === arrangementStart);
 }
 
 /**

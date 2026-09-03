@@ -312,8 +312,7 @@ describe("createClip - advanced features", () => {
       });
       expect(clips[1]).toStrictEqual({
         id: "arrangement_clip",
-        path: "t0",
-        arrangementStart: "1|1",
+        path: "t0[1|1]",
       });
     });
 
@@ -555,7 +554,6 @@ describe("buildClipResult (unit)", () => {
       0,
       "session",
       0,
-      null,
       "C3 1|1",
       "2bar",
       4,

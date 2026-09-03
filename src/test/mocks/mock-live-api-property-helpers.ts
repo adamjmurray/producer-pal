@@ -182,6 +182,10 @@ export function getClipProperty(prop: string): unknown[] | null {
   switch (prop) {
     case "name":
       return ["Test Clip"];
+    // Every real clip answers this, and a mock that doesn't spells its
+    // arrangement path as "t0[NaN|NaN]".
+    case "start_time":
+      return [0];
     case "is_audio_clip":
       return [0];
     case "is_midi_clip":

@@ -38,8 +38,8 @@ node ../producer-pal/ppal.mjs ppal-create-clip \
   '{"path":"t5/s0","sampleFile":"/abs/path/drone.wav","name":"Drone 20s","warping":false}'
 ```
 
-Or place it on the timeline with a bare track path (`t5`) plus
-`arrangementStart`.
+Or place it on the timeline with a track path carrying a song position
+(`t5[5|1]`).
 
 Omit `warping` and Live decides for itself, following the user's Loop/Warp Short
 Samples setting — which no API can read, so the same call lands differently on

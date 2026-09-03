@@ -42,7 +42,6 @@ export async function applyCodeToSingleClip(
     clipIndex,
     clipCount,
     location.sceneIndex,
-    location.arrangementStartBeats,
   );
 
   if (result.success) {

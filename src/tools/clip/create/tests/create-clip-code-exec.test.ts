@@ -144,7 +144,6 @@ describe("createClip - code execution", () => {
       0,
       1,
       0,
-      undefined,
     );
 
     // applyNotesToClip should have been called (remove + add)

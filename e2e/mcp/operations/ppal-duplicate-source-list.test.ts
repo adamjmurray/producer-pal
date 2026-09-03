@@ -25,7 +25,6 @@ const ctx = setupMcpTestContext();
 interface DuplicateClipResult {
   id: string;
   path?: string;
-  arrangementStart?: string;
 }
 
 describe("ppal-duplicate with a source list", () => {
@@ -125,10 +124,9 @@ describe("ppal-duplicate with a source list", () => {
     );
 
     expect(copies).toHaveLength(2);
-    expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}`);
-    expect(copies[1]!.path).toBe(`t${CHILD_TRACK}`);
-    expect(copies[0]!.arrangementStart).toBe("97|1");
-    expect(copies[1]!.arrangementStart).toBe("97|1");
+    // Each copy stayed on its own source's track, both at bar 97.
+    expect(copies[0]!.path).toBe(`t${EMPTY_MIDI_TRACK}[97|1]`);
+    expect(copies[1]!.path).toBe(`t${CHILD_TRACK}[97|1]`);
   });
 
   // duplicate used to take a path only for a drum pad, so a path a model just

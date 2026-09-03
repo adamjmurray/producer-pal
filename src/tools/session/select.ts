@@ -68,11 +68,9 @@ export interface SelectResult {
   selectedScene?: { id: string; path: string };
   selectedClip?: {
     id: string;
-    /** Where the clip is: "t0/s3" in the session, "t0" or "t0/l0" in the
-     * arrangement. Only the session form names the clip — an arrangement one
-     * names its track or take lane, which select's own path won't take. */
+    /** Where the clip is: "t0/s3" in the session, "t0[5|1]" or "t0/l0[5|1]" in
+     * the arrangement. select's own path takes the session form only. */
     path?: string;
-    arrangementStart?: string;
   };
   selectedDevice?: { id: string; path: string; pluginWindowOpen?: boolean };
   selectedDrumPad?: { id: string; path: string };
@@ -394,7 +392,10 @@ function addClipToResponse(
       // A clip selection always switches Live to the clip's required view
       // (session for slotted clips, arrangement otherwise), so report that view
       // even when it overrides an explicitly requested, conflicting view.
-      result.view = info.arrangementStart == null ? "session" : "arrangement";
+      result.view =
+        LiveAPI.from(resolved.clipId).clipSlotIndex == null
+          ? "arrangement"
+          : "session";
     }
   } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
     const info = buildClipResponseFromSlot(resolved.parsedClipSlot);

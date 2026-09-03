@@ -237,8 +237,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        path: "t0",
-        arrangementStart: "1|1",
+        path: "t0[1|1]",
         length: "2bar",
         warping: true,
       });
@@ -260,8 +259,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "arrangement_audio_clip",
-        path: "t0",
-        arrangementStart: "5|1",
+        path: "t0[5|1]",
         length: "4bar",
         warping: true,
       });
@@ -297,22 +295,19 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "arrangement_audio_clip_0",
-          path: "t0",
-          arrangementStart: "1|1",
+          path: "t0[1|1]",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_1",
-          path: "t0",
-          arrangementStart: "2|1",
+          path: "t0[2|1]",
           length: "1bar",
           warping: true,
         },
         {
           id: "arrangement_audio_clip_2",
-          path: "t0",
-          arrangementStart: "3|1",
+          path: "t0[3|1]",
           length: "1bar",
           warping: true,
         },
