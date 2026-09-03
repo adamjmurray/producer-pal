@@ -18,6 +18,10 @@ const LOCATOR_PREFIXES = ["locator:", "loc:"];
 
 /** How a song position names itself in errors. */
 export interface SongPositionLabels {
+  /**
+   * The tool, for the "<tool> failed:" prefix — or "" when the caller quotes
+   * the reason inside a message of its own and names the tool there.
+   */
   toolName: string;
   /** The param the value came from. */
   paramName: string;
@@ -70,16 +74,18 @@ export function songPositionToBeats(
   }
 
   if (locator === "") {
-    throw new Error(
-      `${toolName} failed: ${paramName} "${value}" names no locator`,
-    );
+    const reason = `${paramName} "${value}" names no locator`;
+
+    throw new Error(toolName === "" ? reason : `${toolName} failed: ${reason}`);
   }
 
+  // A caller that frames the reason itself says where it came from in its own
+  // message, so the "for <param>" suffix would say it twice.
   return resolveLocatorRefToBeats(
     liveSet,
     locator,
     toolName,
-    `for ${paramName}`,
+    toolName === "" ? undefined : `for ${paramName}`,
   );
 }
 

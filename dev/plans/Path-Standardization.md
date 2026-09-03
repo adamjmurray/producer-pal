@@ -373,15 +373,25 @@ path string is no substitute.
 
 ### Phase 14 - the message sweep
 
-Warnings should already be right - `targetLabel` reads `objectPathForApi`. This
-phase finds the messages that build a path by hand and routes them through the
-helper instead. **If this phase is large, that is the finding**, not the work.
+**The finding: the sweep was small**, which is what a message layer routed
+through one helper looks like. Almost every message already builds its path with
+`slotPath` / `arrangementPath` or names its target with `targetLabel`, and
+`targetLabel` reads `objectPathForApi`, so arrangement clips started naming
+themselves in full the moment phase 13 landed.
 
-One known duplication to clear here: `songPositionToBeats` bakes a
-`<tool> failed:` prefix into what is really a value-level reason, so a bad
-`loc:` inside a path warns as `updateClip: updateClip failed: no locator ...`.
-The fix is to let the caller frame the reason, not to strip the prefix at the
-warning site.
+Three things did not, and were fixed:
+
+- Two `duplicate` errors said "track 0, scene 0" rather than `t0/s0`. They
+  predate the grammar.
+- A create-clip warning spelled an arrangement destination `t0/l1 at 5|1` — the
+  two-part address, in a message, after the whole point of this work was that it
+  is one.
+- A bad `loc:` inside a path said the tool twice
+  (`updateClip: updateClip failed: ...`), because `songPositionToBeats` framed a
+  reason its caller was going to frame again. A position now leaves the framing
+  to whoever quotes it: an empty `toolName` means "the caller says where this
+  came from", and the path names the entry
+  (`updateClip: invalid path "t0[loc:Bridge]" - no locator found with name "Bridge"`).
 
 ### Phase 15 - Skills and evals
 

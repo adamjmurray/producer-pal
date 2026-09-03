@@ -265,12 +265,14 @@ function ordinalSuffix(index: number, count: number): string {
  * Where a clip is being created, for warnings raised before it has an id.
  * @param view - "session" or "arrangement"
  * @param pos - The resolved position for this iteration
- * @returns A destination like `t0/s1` or `t0/l1 at 5|1`
+ * @returns A destination like `t0/s1` or `t0/l1[5|1]`
  */
 function clipPositionLabel(view: string, pos: IterationPosition): string {
-  return view === "session"
-    ? slotPath(pos.trackIndex, pos.sceneIndex as number)
-    : `${arrangementPath(pos.trackIndex, pos.takeLane)} at ${pos.arrangementStart}`;
+  if (view === "session") {
+    return slotPath(pos.trackIndex, pos.sceneIndex as number);
+  }
+
+  return `${arrangementPath(pos.trackIndex, pos.takeLane)}[${pos.arrangementStart}]`;
 }
 
 /**

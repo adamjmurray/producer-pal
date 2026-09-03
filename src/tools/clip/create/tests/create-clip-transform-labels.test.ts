@@ -72,6 +72,6 @@ describe("createClip - transforms name the clip they warn about", () => {
       transforms: AUDIO_TRANSFORM_ON_MIDI,
     });
 
-    expect(capturedWarnings()).toStrictEqual([`clip t0 at 1|1: ${IGNORED}`]);
+    expect(capturedWarnings()).toStrictEqual([`clip t0[1|1]: ${IGNORED}`]);
   });
 });

@@ -129,7 +129,7 @@ describe("createClip - failure warnings (createClipAtIndex catch)", () => {
     });
 
     expect(capturedWarnings()).toContainEqual(
-      expect.stringContaining("Failed to create clip at t0 at 1|1:"),
+      expect.stringContaining("Failed to create clip at t0[1|1]:"),
     );
     expect(capturedWarnings()).not.toContainEqual(
       expect.stringContaining("/s"),

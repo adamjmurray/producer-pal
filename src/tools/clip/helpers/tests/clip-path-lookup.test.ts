@@ -12,6 +12,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-test-helpers.ts";
 import { clipIdPerPath, clipIdsAtPaths } from "../clip-path-lookup.ts";
 
 /**
@@ -145,6 +146,24 @@ describe("clipIdPerPath", () => {
 
   // Slots and arrangement positions mix in one list, and an entry that names
   // nothing keeps its place so a paired list stays aligned.
+  // The reason names the path it came from and says the tool once, not twice:
+  // the position leaves the framing to whoever quotes it.
+  it("names the entry a bad locator came from, once", () => {
+    const warn = vi.spyOn(console, "warn");
+
+    registerArrangementClipAt(0, 16, "clip_arr");
+    setupCuePointMocksRegistry({
+      cuePoints: [{ id: "cue1", time: 16, name: "Verse" }],
+      liveSetProps: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    expect(clipIdPerPath("t0[loc:Bridge]", "updateClip")).toStrictEqual([null]);
+    expect(warn).toHaveBeenCalledWith(
+      'updateClip: invalid path "t0[loc:Bridge]" - ' +
+        'no locator found with name "Bridge"',
+    );
+  });
+
   it("keeps one entry per path across both kinds of location", () => {
     registerClipAt(1, 1, "clip_slot");
     registerArrangementClipAt(0, 16, "clip_arr");

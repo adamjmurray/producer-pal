@@ -8,6 +8,7 @@
 // not it, and the path resolves to nothing (ADR-0037).
 
 import { SAME_TIME_EPSILON } from "#src/shared/config.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   songPositionToBeats,
@@ -17,6 +18,8 @@ import {
   type CompleteArrangementPosition,
   type ExistingArrangementLane,
 } from "#src/tools/shared/validation/helpers/object-path-coord.ts";
+import { pathError } from "#src/tools/shared/validation/helpers/object-path-lexer.ts";
+import { formatObjectPath } from "#src/tools/shared/validation/object-path.ts";
 import { isTakeLaneClip } from "./take-lane-helpers.ts";
 
 /**
@@ -30,11 +33,7 @@ export function arrangementClipAtPosition(
   labels: SongPositionLabels,
 ): LiveAPI | null {
   const liveSet = LiveAPI.from(livePath.liveSet);
-  const startBeats = songPositionToBeats(liveSet, path.position, {
-    ...labels,
-    timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
-    timeSigDenominator: liveSet.getProperty("signature_denominator") as number,
-  });
+  const startBeats = positionBeats(liveSet, path, labels);
 
   return (
     clipsOnLane(path.lane).find(
@@ -46,6 +45,39 @@ export function arrangementClipAtPosition(
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * The position's beats, with a bad locator reported as a problem with the path
+ * that carries it. The position doesn't frame its own reason: this names the
+ * entry it came from, and a caller that prefixes its warnings with the tool
+ * would otherwise say the tool twice.
+ * @param liveSet - The live_set LiveAPI object
+ * @param path - The complete arrangement path
+ * @param labels - How to name the position in errors
+ * @returns The position in Ableton beats
+ */
+function positionBeats(
+  liveSet: LiveAPI,
+  path: CompleteArrangementPosition,
+  labels: SongPositionLabels,
+): number {
+  try {
+    return songPositionToBeats(liveSet, path.position, {
+      toolName: "",
+      paramName: labels.paramName,
+      timeSigNumerator: liveSet.getProperty("signature_numerator") as number,
+      timeSigDenominator: liveSet.getProperty(
+        "signature_denominator",
+      ) as number,
+    });
+  } catch (error) {
+    throw pathError(
+      labels.paramName,
+      formatObjectPath(path),
+      errorMessage(error),
+    );
+  }
+}
 
 /**
  * The clips on one lane. A take lane answers with its own; the main lane is the

@@ -165,7 +165,9 @@ export function resolveLocatorToBeats(
     const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`${toolName} failed: locator not found: ${locatorId}`);
+      throw new Error(
+        locatorFailure(toolName, `locator not found: ${locatorId}`),
+      );
     }
 
     return found.locator.getProperty("time") as number;
@@ -176,7 +178,10 @@ export function resolveLocatorToBeats(
 
     if (matches.length === 0) {
       throw new Error(
-        `${toolName} failed: no locator found with name "${locatorName}"${contextSuffix}`,
+        locatorFailure(
+          toolName,
+          `no locator found with name "${locatorName}"${contextSuffix}`,
+        ),
       );
     }
 
@@ -184,7 +189,21 @@ export function resolveLocatorToBeats(
     return assertDefined(matches[0], "first matching locator").time;
   }
 
-  throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+  throw new Error(
+    locatorFailure(toolName, "locatorId or locatorName is required"),
+  );
+}
+
+/**
+ * Frames a lookup failure with the tool that asked, unless the caller said it
+ * will frame the reason itself — a reason quoted inside another message must
+ * not name the tool a second time.
+ * @param toolName - The tool, or "" to leave the reason bare
+ * @param reason - What went wrong
+ * @returns The message to throw
+ */
+function locatorFailure(toolName: string, reason: string): string {
+  return toolName === "" ? reason : `${toolName} failed: ${reason}`;
 }
 
 /**

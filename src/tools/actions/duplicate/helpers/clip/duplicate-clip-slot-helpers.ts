@@ -53,13 +53,13 @@ export function resolveSlotCopySource(
 
   if (!sourceClipSlot.exists()) {
     throw new Error(
-      `duplicate failed: source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex} does not exist`,
+      `duplicate failed: no clip slot at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
     );
   }
 
   if (!sourceClipSlot.getProperty("has_clip")) {
     throw new Error(
-      `duplicate failed: no clip in source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex}`,
+      `duplicate failed: no clip at ${slotPath(sourceTrackIndex, sourceSceneIndex)}`,
     );
   }
 

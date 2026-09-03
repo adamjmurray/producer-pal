@@ -333,7 +333,7 @@ describe("duplicate-helpers", () => {
       });
 
       expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
-        "duplicate failed: source clip slot at track 0, scene 0 does not exist",
+        "duplicate failed: no clip slot at t0/s0",
       );
     });
 
@@ -345,7 +345,7 @@ describe("duplicate-helpers", () => {
       });
 
       expect(() => duplicateClipSlot(0, 0, 1, 0)).toThrow(
-        "duplicate failed: no clip in source clip slot at track 0, scene 0",
+        "duplicate failed: no clip at t0/s0",
       );
     });
 
