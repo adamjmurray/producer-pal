@@ -1,15 +1,20 @@
 # Path Standardization
 
-Bringing every clip and device tool onto the one grammar in
-[dev/Object-Paths.md](../Object-Paths.md). The settled decisions and the
-rejected alternatives are in
-[ADR-0025](../decisions/0025-object-path-grammar.md); this file tracks what is
-built and what is left.
+Bringing every tool onto the one grammar in
+[dev/Object-Paths.md](../Object-Paths.md), which describes the end state and is
+the reference an implementation is checked against. The settled decisions and
+the rejected alternatives are in
+[ADR-0025](../decisions/0025-object-path-grammar.md),
+[ADR-0036](../decisions/0036-paths-address-tracks-and-scenes.md) and
+[ADR-0037](../decisions/0037-arrangement-time-is-part-of-the-path.md); this file
+tracks what is built and what is left.
 
-## Where each tool stands
+## Where each tool stood at the start
 
-Location params only. **bold** = published, _italic_ = hidden (alias or
-deprecated).
+The 2.2.0 starting point, kept for context. Phases 6-9 moved tracks and scenes
+onto paths and phases 10-15 move arrangement time, so the "Target" column below
+is superseded by both — read the phases, not this table. **bold** = published,
+_italic_ = hidden (alias or deprecated).
 
 | Tool                                                                           | Today                                                                                 | Target                               |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -113,48 +118,36 @@ Two rules about what these may assert, both learned the hard way:
   invariant per call — `update-clip` names one destination per clip, `duplicate`
   never names more destinations than starts — not the list length.
 
-### Phase 5 — `path` everywhere: rejected
+### Phase 5 — `path` everywhere: reversed
 
-Considered and dropped — this phase was about naming an _arrangement clip_ by
-path, which is still no. (Tracks and scenes went the other way later; see
-[Object-Paths.md](../Object-Paths.md) → Not paths.)
+**Superseded by
+[ADR-0037](../decisions/0037-arrangement-time-is-part-of-the-path.md).** This
+phase rejected naming an arrangement clip by path. Phases 10–15 below build it.
 
-The idea was to make `path` the general way to address any object. That needed
-one thing first: a way to name an arrangement clip, since a lane path names the
-lane and a lane holds many clips. The candidate was a time coordinate, `t0@5|1`.
+Its framing was right and survives: a path names a **location**, and a location
+holding exactly one object thereby names that object. What it got wrong was
+concluding an arrangement lane can only be a location — time is the coordinate
+that makes it hold exactly one.
 
-**Why it lost.** An arrangement destination is a `path` list and an
-`arrangementStart` list, each paired 1:1 with the clips and each usable alone:
+Its three objections and what became of them:
 
-- `arrangementStart` alone — new positions, every clip on its own lane.
-- `toPath` alone — new lanes, every clip at its own position.
+- **"`t2@5|1` always names both halves,"** so `arrangementStart` could not go
+  away. The grammar already had a partial arrangement address — `toPath: "t2"`
+  keeps the clip's start — so it had lane-without-time and lacked
+  time-without-lane. `[5|1]` as a whole path makes it symmetric.
+- **A bar|beat position can contain `/`.** Correct, and an argument for a
+  delimiter rather than against a coordinate. A locator name settles it: it is
+  user-typed and no peel-the-tail scheme survives one.
+- **`@` is taken** by step interval and bar copy. Still true, which is why the
+  syntax is `[...]`.
 
-Folding time into the path can say neither: `t2@5|1` always names both halves,
-so `arrangementStart` could not go away, and `@` would add a second spelling of
-one concept — the thing this grammar exists to prevent — plus a new tier-4
-conflict between the two.
+**What was real underneath** was split out at the time and shipped:
 
-**Also against it**, if it is ever revisited: a bar|beat position can contain a
-`/` (the `5|1-n/4` pickup), so `parseObjectPath`'s `input.split("/")` would have
-to peel the time tail off before splitting segments; `@` already means step
-interval and bar copy in bar|beat; and bar|beat → beats depends on song meter,
-so a stored path would change meaning when the meter does.
-
-**The framing that replaces it.** A path names a **location**. A location
-holding exactly one object thereby names that object — `t0/s3` one clip, `t0/d1`
-one device. An arrangement lane holds many, so it names the lane and the clip is
-addressed by id. That is the rule, not a hole to apologize for.
-
-**What was real underneath**, split into its own tickets and kept:
-
-- `update-clip`'s `arrangementStart` was one value for the whole call, while its
-  `toPath` fanned out per clip. ✅ `arrangementStart` and `arrangementLength`
-  now take a list too, paired 1:1 with the ids.
-- `id` + `path` on one call has five behaviors (throw, dedupe-union,
+- ✅ `arrangementStart` and `arrangementLength` take a list, paired 1:1 with the
+  ids, matching `toPath`.
+- `id` + `path` on one call had five behaviors (throw, dedupe-union,
   ids-then-paths, path-silently-wins, id-silently-wins). The two silent winners
-  contradict [Object-Paths.md](../Object-Paths.md) tier 4.
-
-Neither depends on path syntax.
+  contradicted [Object-Paths.md](../Object-Paths.md) tier 4.
 
 ### Phase 6 — `path` in every write result ✅
 
@@ -279,6 +272,94 @@ The evals come last on purpose. Run them before Phase 8 lands and the model
 still sees `trackType` and `type: "return"`, so it uses those and the run says
 nothing about the world being decided on. Nothing merges to `dev` until they
 pass — that is what this branch is for.
+
+## Arrangement time (phases 10-15)
+
+Settled in
+[ADR-0037](../decisions/0037-arrangement-time-is-part-of-the-path.md); the end
+state is [Object-Paths.md](../Object-Paths.md), which is the reference an
+implementation is checked against. The goal: an arrangement clip is addressed by
+path like everything else, so all three rules at the top of Object-Paths.md hold
+with no exception.
+
+### Standing constraints
+
+Carry these into every task in this stretch, subagents included.
+
+- **`arrangementLength` and `arrangementSplit` are not part of this.** A length
+  is a property, a split is an operation. Only `arrangementStart` was an
+  address. Do not sweep them up on symmetry grounds.
+- **`loc:` is for song-timeline positions only.** `create-clip`'s `start` and
+  `firstStart` are clip-relative and must refuse it.
+- **A test that changes meaning means the rule is wrong, not the test.** This
+  stretch churns a lot of assertions. Re-derive the rule from Object-Paths.md
+  before editing an assertion; green is not evidence.
+- **Locator management is untouched.** `update-live-set`'s `locatorOperation` /
+  `locatorId` / `locatorTime` / `locatorName` stay exactly as they are.
+
+### Phase 10 - one spelling for a song position
+
+Merge `startLocator` into `startTime`, `loopStartLocator` into `loopStart`, and
+`loopEndLocator` into `loopEnd` on `playback`. A song-timeline position is
+bar|beat or `loc:<name>`; `loc:` also takes a locator id, and `locator:` is an
+accepted undocumented spelling. The prefix is required, never sniffed.
+
+One shared resolver, since every later phase calls it. Three params retire.
+
+### Phase 11 - `loc:` everywhere a song position is taken
+
+`create-clip`, `update-clip` and `duplicate`'s `arrangementStart`, and
+`update-clip`'s `arrangementSplit`. This is where several clip tools gain
+locator support they never had.
+
+`duplicate`'s `locator` retires here, but its deprecation message names the
+**end state** (`toPath: "t2[loc:X]"`), not `arrangementStart` - otherwise a
+caller is migrated twice.
+
+Parallelizable per tool once the resolver from phase 10 is in.
+
+### Phase 12 - the parser accepts `[...]`
+
+Additive and standalone: `parseObjectPath` splits on `,` and `/` at bracket
+depth 0, parses a coordinate, and resolves a complete arrangement path to the
+clip starting there. Nothing is deprecated, no result changes, every existing
+call behaves identically.
+
+Serial, and the thing everything else depends on. Legality per tool comes from
+Object-Paths.md: complete on create, complete as a source, either partial as a
+destination.
+
+### Phase 13 - results and inputs switch together
+
+**One commit.** `objectPathForApi` spells `t0[5|1]`, results drop
+`arrangementStart`, and `arrangementStart` becomes
+`deprecatedParam({ replacedBy: "path" })` on all three tools. Splitting this
+leaves a commit where a result path can't be pasted back, which is the
+round-trip hole ADR-0036 exists to close.
+
+Results never report a locator - always bar|beat.
+
+Watch the cost: naming an arrangement clip now needs `start_time` and the song
+meter. Hoist the meter once per request, not once per clip. Performance is a
+2.3.0 headline.
+
+### Phase 14 - the message sweep
+
+Warnings should already be right - `targetLabel` reads `objectPathForApi`. This
+phase finds the messages that build a path by hand and routes them through the
+helper instead. **If this phase is large, that is the finding**, not the work.
+
+### Phase 15 - Skills and evals
+
+Teach the coordinate in the Skills fragments, regenerate the snapshots and
+`docs/_generated`, then run `evals/scenarios/defs/path/` plus new arrangement
+scenarios.
+
+The one thing to watch in the transcripts: `t0[5|1]` means _starts at_, not
+covers. A model aiming at a clip that started earlier gets a resolve-to-nothing
+warning. Recovering in one turn is fine and is a Skills problem. Retrying the
+same path means the address needs rethinking - that is the decision ADR-0037
+flags as most likely to need adjusting.
 
 ## Docs to update as the phases land
 

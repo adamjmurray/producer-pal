@@ -2,7 +2,8 @@
 
 - **Status:** Superseded in part by
   [ADR-0036](0036-paths-address-tracks-and-scenes.md) — the scoping to clips and
-  devices only; the grammar itself stands
+  devices only — and by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md)
+  — arrangement clips and locators. The grammar itself stands.
 - **Date logged:** 2026-08-16
 
 ## Context
@@ -52,9 +53,14 @@ Paths address **clips and devices**. Tracks and scenes keep `trackIndex` /
   already means that in duration syntax (`1bar+n/4`).
 - **An `a<n>` segment for arrangement clips.** The index into a track's
   arrangement clip list is unstable and means nothing to a user. Arrangement
-  clips are addressed by id, or found through `read-track`.
+  clips are addressed by id, or found through `read-track`. _(The `a<n>`
+  rejection stands; addressing by id alone was reversed by
+  [ADR-0037](0037-arrangement-time-is-part-of-the-path.md), which spells the
+  coordinate as time rather than an index.)_
 - **A locator segment.** Locators are song-timeline objects, not points in the
   track/scene coordinate space. The `locator` param takes an id or a name.
+  _(Reversed by [ADR-0037](0037-arrangement-time-is-part-of-the-path.md): once
+  the grammar carries song time, a locator is one spelling of a point on it.)_
 - **Reverse segment order (`s3/t0`).** One canonical spelling; the "did you
   mean" steer is cheap.
 - **Keeping `slot` alongside `path` in results for a release.** Spends context

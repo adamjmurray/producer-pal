@@ -3,10 +3,25 @@
 A path names a location in the Live Set: `t0/s3` is a session clip slot, `t0/d1`
 a device. One grammar serves every tool that needs to say _where_.
 
-Status: the grammar below is the standard. Not all of it ships yet — see
+Status: this describes the **end state**. Everything except the `[...]`
+coordinate and `loc:` ships today; see
 [dev/plans/Path-Standardization.md](plans/Path-Standardization.md) for what's
-built and what's left. The rejected alternatives are in
-[ADR-0025](decisions/0025-object-path-grammar.md).
+built and what's left, and treat this file as the reference an implementation is
+checked against. The rejected alternatives are in
+[ADR-0025](decisions/0025-object-path-grammar.md) and
+[ADR-0037](decisions/0037-arrangement-time-is-part-of-the-path.md).
+
+## Why a path exists
+
+Three rules the tool interfaces are built on. Everything below derives from
+them, and a proposed exception has to argue with one of them.
+
+1. **An object that exists is addressed by id or path**, on every tool that
+   takes a target, and every result reports both.
+2. **An object being created has no id yet**, so it is addressed by path alone.
+3. **An error or warning about an object names its path and its id** — or the
+   path alone, when there is no id to know (a path that resolved to nothing, an
+   object not created yet).
 
 ## The invariant
 
@@ -19,13 +34,21 @@ segment carries a note name. Nothing else gets an exception without an ADR.
 ## Grammar
 
 ```
-path    := root ( "/" segment )*
-root    := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
-segment := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
+path     := ( root ( "/" segment )* )? coord?
+root     := "t"<n> | "rt"<n> | "mt" | "s"<n> | "t+" | "rt+" | "s+"
+segment  := "s"<n> | "l"<n> | "l+" | "d"<n> | "c"<n> | "rc"<n> | "p"<note> | "p*"
+coord    := "[" position "]"
+position := <bar|beat> | "loc:" <locator>
 ```
 
 All indices are 0-based. `<note>` is a note name (`C1`, `F#2`); `p*` is the drum
-rack's catch-all pad.
+rack's catch-all pad. A path is a root with segments, a coordinate, or both —
+never neither.
+
+**Split on `,` and `/` only at bracket depth 0.** Both separators occur inside a
+coordinate: a bar|beat position takes `±n<fraction>` offsets (`1|1-n/4`), and a
+locator name is user-typed and may contain anything. This is one lexing rule and
+it is not optional.
 
 The `+` roots name a place rather than a thing, so only the create tools take
 one, and only as a whole path — `t+/s0` names nothing yet. On create, `t2`
@@ -39,25 +62,28 @@ chains, return chains, and drum pads, and each of those holds devices. A drum
 pad also takes a `c<n>`, picking among the chains that share its note. So
 `t0/c0` and `t0/d0/d1` are rejected.
 
-| Path           | Names                             | Live API                              |
-| -------------- | --------------------------------- | ------------------------------------- |
-| `t0`           | regular track, or its arrangement | `tracks 0`                            |
-| `rt0`          | return track                      | `return_tracks 0`                     |
-| `mt`           | main track                        | `master_track`                        |
-| `s3`           | scene                             | `scenes 3`                            |
-| `t+`           | a new track, appended             | —                                     |
-| `rt+`          | a new return track                | —                                     |
-| `s+`           | a new scene, appended             | —                                     |
-| `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`               |
-| `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`               |
-| `t0/l+`        | a new take lane, appended         | —                                     |
-| `t0/d1`        | device on a track                 | `tracks 0 devices 1`                  |
-| `t0/d0/c1`     | rack chain                        | `... chains 1`                        |
-| `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                 |
-| `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                    |
-| `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1        |
-| `t0/d0/pC1/c1` | one layer of a drum pad           | `... chains N` with that `in_note`    |
-| `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0` |
+| Path           | Names                             | Live API                               |
+| -------------- | --------------------------------- | -------------------------------------- |
+| `t0`           | regular track, or its arrangement | `tracks 0`                             |
+| `rt0`          | return track                      | `return_tracks 0`                      |
+| `mt`           | main track                        | `master_track`                         |
+| `s3`           | scene                             | `scenes 3`                             |
+| `t+`           | a new track, appended             | —                                      |
+| `rt+`          | a new return track                | —                                      |
+| `s+`           | a new scene, appended             | —                                      |
+| `t0/s3`        | session clip slot                 | `tracks 0 clip_slots 3`                |
+| `t0/l1`        | second take lane                  | `tracks 0 take_lanes 1`                |
+| `t0/l+`        | a new take lane, appended         | —                                      |
+| `t0/d1`        | device on a track                 | `tracks 0 devices 1`                   |
+| `t0/d0/c1`     | rack chain                        | `... chains 1`                         |
+| `t0/d0/rc0`    | rack return chain                 | `... return_chains 0`                  |
+| `t0/d0/pC1`    | drum pad                          | `... drum_pads 36`                     |
+| `t0/d0/p*`     | catch-all drum pad                | `... chains` with `in_note` -1         |
+| `t0/d0/pC1/c1` | one layer of a drum pad           | `... chains N` with that `in_note`     |
+| `t0/d0/pC1/d0` | device inside a drum pad          | `... drum_pads 36 chains 0 devices 0`  |
+| `t0[5\|1]`     | arrangement clip on the main lane | `tracks 0 arrangement_clips N`         |
+| `t0/l1[5\|1]`  | arrangement clip on a take lane   | `... take_lanes 1 arrangement_clips N` |
+| `[5\|1]`       | a song position, lane unspecified | —                                      |
 
 Chains auto-create when referenced (up to 16), except the catch-all pad: Live
 clamps a drum chain's `in_note` to 0-127, so a `p*` chain can't be made and a
@@ -65,23 +91,46 @@ write that would create one refuses instead. An existing one still resolves.
 Take lanes auto-create up to the index named, capped at `MAX_TAKE_LANES`.
 
 Each `l+` in a list appends its own lane, in the order written — `t0/l+,t0/l+`
-gets two. Cycling doesn't multiply them: when a shorter destination list repeats
-to cover a longer `arrangementStart` list, the repeats reuse the lane their `l+`
-already made, so one written `l+` is always one lane.
+gets two. One written `l+` is always one lane, however many clips land on it.
+
+## Song-timeline positions
+
+A point on the song timeline has two spellings, and **every param that takes one
+takes both**: a bar|beat position (`5|1`, song meter), or `loc:<name>` naming a
+locator. `loc:` also accepts a locator id (`loc:locator-0`), and `locator:` is
+accepted as an undocumented spelling of the prefix.
+
+The prefix is **required, never sniffed**. Resolving a bare `"Verse"` by name
+because it doesn't look like bar|beat would turn a locator named `5|1`, or a
+typo'd bar|beat, into a silent name lookup.
+
+This is what the `[...]` coordinate holds, and what `playback`'s `startTime`,
+`loopStart` and `loopEnd` and `update-clip`'s `arrangementSplit` take directly.
+The pairs that used to spell the second half as its own param — `startLocator`,
+`loopStartLocator`, `loopEndLocator`, `duplicate`'s `locator` — are gone.
+
+**Song timeline only.** `create-clip`'s `start` and `firstStart` are
+clip-relative and must not accept `loc:`.
+
+Managing locators is separate and unchanged: `update-live-set`'s
+`locatorOperation` / `locatorId` / `locatorTime` / `locatorName` treat a locator
+as an object to create, delete or rename, not as a coordinate.
 
 ## Which shapes are legal where
 
 A path parses the same everywhere; what a tool accepts differs by what can
 occupy the location.
 
-| Shape             | Clips            | Devices   | Tracks | Scenes |
-| ----------------- | ---------------- | --------- | ------ | ------ |
-| `t0`              | ✅ arrangement   | ✅ append | ✅     | —      |
-| `rt0`, `mt`       | ❌ no clip slots | ✅        | ✅     | —      |
-| `s3`              | ❌               | ❌        | —      | ✅     |
-| `t0/s3`           | ✅ clip slot     | ❌        | —      | —      |
-| `t0/l1`, `t0/l+`  | ✅ arrangement   | ❌        | —      | —      |
-| `t0/d1` and below | ❌               | ✅        | —      | —      |
+| Shape                     | Clips            | Devices   | Tracks | Scenes |
+| ------------------------- | ---------------- | --------- | ------ | ------ |
+| `t0`                      | ✅ arrangement   | ✅ append | ✅     | —      |
+| `rt0`, `mt`               | ❌ no clip slots | ✅        | ✅     | —      |
+| `s3`                      | ❌               | ❌        | —      | ✅     |
+| `t0/s3`                   | ✅ clip slot     | ❌        | —      | —      |
+| `t0/l1`, `t0/l+`          | ✅ arrangement   | ❌        | —      | —      |
+| `t0/d1` and below         | ❌               | ✅        | —      | —      |
+| `t0[5\|1]`, `t0/l1[5\|1]` | ✅ arrangement   | ❌        | —      | —      |
+| `[5\|1]`                  | ✅ arrangement   | ❌        | —      | —      |
 
 A bare `t0` means the track itself for a device or track operation, and that
 track's **arrangement main lane** for a clip operation — a session clip needs a
@@ -89,6 +138,39 @@ scene coordinate, so there is no ambiguity to resolve.
 
 Rejecting a shape must name the caller's own concept: a clip tool given `t0/d0`
 says clips go to a track or a slot, not that device paths are malformed.
+
+### Complete and partial
+
+An arrangement location has two halves, the lane and the time, and a path may
+name either or both:
+
+| Path       | As a source             | As a destination                    |
+| ---------- | ----------------------- | ----------------------------------- |
+| `t0[5\|1]` | the clip starting there | that lane, that position            |
+| `t0`       | ❌ names many clips     | that lane, keep the clip's position |
+| `[5\|1]`   | ❌ names many clips     | keep the clip's lane, that position |
+
+**Complete on create.** A create tool has no source to borrow the other half
+from, so an arrangement path must name both — `t0` alone and `[5|1]` alone are
+errors there.
+
+**Complete as a source.** A partial path names more than one clip, so a tool
+addressing a specific clip refuses it. Both partials work as destinations.
+
+`t0[5|1]` means **starts at**, not covers: a clip running from 3|1 through bar 6
+is not at `[5|1]`. That path resolves to nothing, and the call warns and skips
+like any other target that isn't there (ADR-0035).
+
+### Which lists pair and which broadcast
+
+A value that **fully determines a location pairs 1:1** with the items; anything
+else broadcasts one value across them (ADR-0031). That single rule covers what
+used to be a carve-out:
+
+- `t0/s3` can't broadcast — a slot holds one clip, so three clips into one slot
+  destroys two.
+- `[5|1]` can — each source keeps its own lane, so the landing spots differ.
+- `name` and `color` can — a property, not a place.
 
 ## `path` vs `toPath`
 
@@ -138,9 +220,13 @@ Four tiers, in order of preference.
    `sceneIndex` on `read-scene`, `select` and `create-scene`, and `trackIndex`
    on `create-track`. `create-track`'s `type: "return"` goes the same way,
    trimmed out of the published enum but still accepted — `rt+` asks for one
-   now. `trackIndex` and `sceneIndex` on the _clip_ tools are permanent aliases,
-   not part of that migration: models reach for them unprompted, and catching
-   the guess beats a round trip. See
+   now. `arrangementStart` on `create-clip`, `update-clip` and `duplicate` joins
+   them once the coordinate ships — a deprecation with a long runway, not a
+   permanent alias: it is a name we coined, so a model that never reads it in
+   the Skills has no reason to emit it, and the runway is for people scripting
+   Live. `trackIndex` and `sceneIndex` on the _clip_ tools are permanent
+   aliases, not part of that migration: models reach for them unprompted, and
+   catching the guess beats a round trip. See
    [hidden-param.ts](../src/tools/shared/tool-framework/hidden-param.ts).
 2. **Tolerant values.** `"0/3"` is honored as `t0/s3` with a warning — it is
    what results said before 2.2.0, so it is a well-founded guess, not a typo. A
@@ -183,20 +269,27 @@ indices. No result repeats that address as an index: no `slot`, no `trackIndex`,
 nothing to remember. `delete` is the one place a result carries no path at all:
 after deleting `t2`, that path names a different track.
 
-| Object                 | Result                                      |
-| ---------------------- | ------------------------------------------- |
-| track                  | `path: "t0"` (or `rt0`, `mt`)               |
-| scene                  | `path: "s2"`                                |
-| device or chain        | `path: "t0/d0/c1/d0"`                       |
-| session clip           | `path: "t0/s3"`                             |
-| arrangement clip       | `path: "t0"`, `arrangementStart: "5\|1"`    |
-| arrangement, take lane | `path: "t0/l1"`, `arrangementStart: "5\|1"` |
+| Object                 | Result                        |
+| ---------------------- | ----------------------------- |
+| track                  | `path: "t0"` (or `rt0`, `mt`) |
+| scene                  | `path: "s2"`                  |
+| device or chain        | `path: "t0/d0/c1/d0"`         |
+| session clip           | `path: "t0/s3"`               |
+| arrangement clip       | `path: "t0[5\|1]"`            |
+| arrangement, take lane | `path: "t0/l1[5\|1]"`         |
 
-A clip slot pastes straight back into any `path`/`toPath` param. An arrangement
-one doesn't address that clip — it names the track the clip is on, which is what
-a destination needs and not what a source needs. So it works as a destination
-(`create-clip`, `duplicate`), and a tool that wants one specific clip wants its
-id. `select` takes it and selects the track.
+Every path pastes straight back into any `path`/`toPath` param that accepts that
+kind of object, arrangement clips included. `arrangementStart` is not reported
+alongside it — that would be the address spelled twice, which is the rule above.
+
+**A result never reports a locator.** `loc:Chorus` and `5|1` name the same point
+and a result has to pick one; bar|beat is the one that always exists, doesn't
+change meaning when a locator is renamed, and is readable without a second
+lookup.
+
+Naming an arrangement clip costs a `start_time` read and the song meter, where
+every other kind formats from indices already in hand. Hoist the meter once per
+request, not once per clip.
 
 A drum chain has two spellings that both resolve — pad-relative `t0/d0/pC1/c1`
 and rack-relative `t0/d0/c3` — and results always give the pad-relative one. It
@@ -217,21 +310,62 @@ object whose Live path keeps a pad segment mid-path
 naming the wrong layer is worse than naming none. Live normally hands back the
 rack-relative path instead.
 
-Error messages follow: name the path and show the fix, never restate a
-requirement in index terms.
+## Errors and warnings
+
+Rule 3 in full: a message about an object names **both spellings** —
+`t1/d0 (id 7)` — because the caller addressed it by one of them and can't be
+expected to map the other back. When there is no id to know, the path stands
+alone: a path that resolved to nothing is quoted as the caller wrote it, and an
+object that doesn't exist yet has only a path. When there is no path to spell,
+the id stands alone.
+
+One helper owns this —
+[`targetLabel`](../src/tools/shared/validation/object-path-for-api.ts) and its
+variants, over `objectPathForApi`. A message that builds a path by hand is a
+bug: it will drift the first time the grammar changes. That is also the check on
+the coordinate work — once `objectPathForApi` spells `t0[5|1]`, every warning
+gets it for free, so a large sweep means messages aren't going through the
+helper.
+
+Name the path and show the fix, never restate a requirement in index terms.
+
+## Lists of paths
+
+A path param takes a comma-separated list (`paths` is accepted as a plural
+spelling wherever `path` is). Two shapes are refused rather than half-applied:
+
+- **A list that reads through its own inserts.** Inserting a device renumbers
+  the chain, so `path: "t0/d1,t0/d2"` would put both new devices at d1 and d2
+  and push the originals past them — the second entry never lands where it was
+  named. Refused before anything is created. Entries naming different chains are
+  fine, and appending an audio effect renumbers nothing, so that stays allowed.
+- **Several tracks or scenes from a path list.** Insertion points move:
+  inserting at `t1` shifts everything after it, so every entry past the first
+  would be in coordinates the caller never wrote. `count` says "consecutively
+  from here", which can't drift, and is what the create tools take.
 
 ## Not paths
 
-Deliberate omissions, reasoned in
-[ADR-0025](decisions/0025-object-path-grammar.md): arrangement clips (addressed
-by id) and locators (`locator` param, by id or name).
+**Device parameters**, and deliberately. A parameter is never a target — it is
+the payload of an `update-device` call whose target is the device, and the map
+form is what makes `{Cutoff: 800, Resonance: 0.3}` one call instead of two. A
+parameter path would be a second spelling with no call that needs it. Revisit if
+a tool ever makes a parameter a target in its own right.
 
-Two of ADR-0025's calls have since gone the other way, recorded in
-[ADR-0036](decisions/0036-paths-address-tracks-and-scenes.md). It kept tracks
-and scenes off the grammar, which broke once write results started reporting
-`path`: a result handed back `t0` and no tool took it. Every track and scene
-tool now takes a `path` — reads and writes both — and `trackIndex` /
-`sceneIndex` / `trackType` are retired behind it. It also left out new-track and
-new-scene positions, on the grounds that they create a location rather than
-address one; `t+`, `rt+` and `s+` are exactly that, and they earn their place by
-making a create result's `path` something the caller could have asked for.
+**Locators as objects.** `loc:` names a point in time. Creating, deleting and
+renaming a locator stays on `update-live-set`'s own params — that is object
+management, and it raises questions the coordinate doesn't answer (how do you
+address one that doesn't exist yet?).
+
+Three of ADR-0025's calls have since gone the other way.
+[ADR-0036](decisions/0036-paths-address-tracks-and-scenes.md) reversed the first
+two: it kept tracks and scenes off the grammar, which broke once write results
+started reporting `path` — a result handed back `t0` and no tool took it — and
+it left out new-track and new-scene positions on the grounds that they create a
+location rather than address one, which `t+`, `rt+` and `s+` are exactly.
+[ADR-0037](decisions/0037-arrangement-time-is-part-of-the-path.md) reversed the
+third: arrangement clips were addressed by id alone and locators sat outside the
+grammar, so a warning about an arrangement clip named the lane and called it the
+clip's path. `a<n>` stays rejected — the index into a track's arrangement clip
+list is unstable and means nothing to a user. Time is what a user already thinks
+in.
