@@ -67,6 +67,7 @@ a whole area you never use:
 | `specialized-devices`                            | The extra controls specific native devices expose (Drift, Wavetable, EQ Eight…)                                                  |
 | `arrangement`                                    | What an Arrangement position means: song meter vs. clip meter                                                                    |
 | `arrangement-write`                              | Moving and splitting clips on the Arrangement timeline, and take lanes                                                           |
+| `arrangement-basic`                              | What a take lane is and how a path names one, in small model mode                                                                |
 | `working-with-live`                              | Session vs. Arrangement habits, playback, and general music-making advice                                                        |
 | `context-standard` / `context-basic`             | [Context & Memory](/guide/context): the project, global, and memory layers                                                       |
 | `getting-help`                                   | What to tell you when a request is outside Producer Pal's reach                                                                  |
@@ -243,9 +244,10 @@ instead of the Full skills document.
 ::: details Small model mode
 
 Small model mode uses the `basic` document, which is already heavily trimmed: it
-includes the notation guide and its write half, `transforms-basic`, the context
-fragment and `getting-help-basic`, and writes a short list of general rules
-inline. To customize it, override `basic` (or the `*-basic` fragments for
-notation, transforms, context, and getting-help) the same way.
+includes the notation guide and its write half, `transforms-basic`,
+`arrangement-basic`, the context fragment and `getting-help-basic`, and writes a
+short list of general rules inline. To customize it, override `basic` (or the
+`*-basic` fragments for notation, transforms, arrangement, context, and
+getting-help) the same way.
 
 :::

@@ -104,6 +104,8 @@ export const basicDriver = `${HEADER}
 
 @include "./transforms-basic.md"
 
+@include "./arrangement-basic.md"
+
 @include "./context-basic.md"
 
 ## Rules

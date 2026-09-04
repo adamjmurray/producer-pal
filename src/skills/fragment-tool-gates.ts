@@ -197,6 +197,10 @@ export const FRAGMENT_GATES: Record<string, FragmentGate> = {
   arrangement: ARRANGEMENT_TOOLS,
   // Moving, splitting, and take lanes: read-clip has no tool to run any of it.
   "arrangement-write": ARRANGEMENT_WRITE_TOOLS,
+  // The small-model driver's only arrangement prose. Not the write subset: a
+  // lane shows up in read-track output and in a clip path, so a reader meets
+  // one whether or not it can write.
+  "arrangement-basic": ARRANGEMENT_TOOLS,
 
   "object-paths": TRACK_SCENE_PATH_TOOLS,
 

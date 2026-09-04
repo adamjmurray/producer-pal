@@ -61,3 +61,23 @@ Stack alternate takes of an arrangement clip at the same position; only the acti
 - 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 - Take-lane clips are append-only. Moving one off its lane (\`update-clip\` with \`toPath\`, to another lane, another track, or a session slot) copies the content to the destination and leaves a muted \`(moved) ...\` clip behind, because Live's API can't remove it — tell the user to delete that leftover in Live. A MIDI leftover is emptied of notes; an audio one keeps its sample (Live won't let it be cleared) and is only muted. \`arrangementSplit\`, \`arrangementLength\` and \`ppal-delete\` still warn+skip on a lane clip; those need Live's UI. Moving a main-lane clip ONTO a lane works: \`update-clip\` with \`toPath: "t2/l+"\`.
 - Anything that puts a clip on a lane recreates it (MIDI from its notes, audio from its sample), which drops envelope automation and resets a warped audio clip's warp markers. The response says which applied.`;
+
+/**
+ * Take lanes at basic depth. The small-model driver carries no arrangement
+ * prose at all, so a lane arrived unexplained: `read-track` returns a
+ * `takeLanes` list and clip paths come back as `t2/l0[5|1]`, with nothing
+ * saying what a lane is. Gated like {@link arrangement}, not
+ * {@link arrangementWrite} — a reader meets lanes in results before it ever
+ * writes one.
+ *
+ * Trimmed to what a model can't infer from a tool schema and can't be told at
+ * the moment it matters. So no `l=` (a model that only knows `l+` gets a lane
+ * per take, which is wrong but not broken), no param names (`path` and
+ * `toPath` describe themselves), and nothing about the muted `(moved)`
+ * leftover — emptyTakeLaneClip() warns about that when it happens.
+ */
+export const arrangementBasic = `## Take Lanes
+
+A take lane holds an alternate version of an arrangement clip at the same spot; only the active take plays. \`read-track\` lists a track's lanes, and a clip on one reports a path like \`t2/l0[5|1]\`.
+
+A lane is a path segment: \`t2/l0\` is the first lane, \`t2/l+\` appends a fresh one. Arrangement only. Producer Pal can't delete or comp lanes — that's Live's UI.`;
