@@ -112,6 +112,25 @@ describe("ppal-read-scene", () => {
     expect(Array.isArray(all.clips)).toBe(true);
   });
 
+  it("names warp as an include, and only then reports it", async () => {
+    // t4/s0 is a warped audio clip. `warp` reached the nested clip read through
+    // `*` before read-scene published it, so `*` must keep the data now that
+    // the option list expands here instead of downstream.
+    const scene = await firstScene();
+    const warpOf = async (include: string[]) =>
+      (await readScene({ id: scene.id, include })).clips?.find(
+        (clip) => clip.path === "t4/s0",
+      );
+
+    const named = await warpOf(["clips", "warp"]);
+
+    expect(named?.warping).toBe(true);
+    expect(named?.warpMode).toBeDefined();
+
+    expect((await warpOf(["*"]))?.warping).toBe(true);
+    expect((await warpOf(["clips"]))?.warping).toBeUndefined();
+  });
+
   it("errors on a scene path that isn't there", async () => {
     const result = await ctx.client!.callTool({
       name: "ppal-read-scene",
@@ -140,6 +159,11 @@ interface ReadSceneResult {
   color?: string;
   tempo?: number;
   timeSignature?: string;
-  clips?: Array<{ path?: string; trackName?: string }>;
+  clips?: Array<{
+    path?: string;
+    trackName?: string;
+    warping?: boolean;
+    warpMode?: string;
+  }>;
   clipCount?: number;
 }

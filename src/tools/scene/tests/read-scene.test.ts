@@ -10,6 +10,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LIVE_API_WARP_MODE_TEXTURE, WARP_MODE } from "#src/tools/constants.ts";
 import { toolDefReadScene } from "../read-scene.def.ts";
 import { readScene } from "../read-scene.ts";
 import { capturedWarnings } from "#src/shared/max/v8-warning-capture.ts";
@@ -67,10 +68,24 @@ function setupSessionClip(
   clipId: string,
   trackIndex: number,
   sceneIndex: number,
+  properties?: Record<string, unknown>,
 ): void {
   registerMockObject(clipId, {
     path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
     type: "Clip",
+    ...(properties && { properties }),
+  });
+}
+
+function setupSceneWithAudioClip(): void {
+  setupLiveSetTracks(["track1"]);
+  setupScene("scene_warp", 0, defaultSceneConfig({ name: "Warp Scene" }));
+  setupSessionClip("clip_warp", 0, 0, {
+    is_midi_clip: 0,
+    sample_length: 88200,
+    sample_rate: 44100,
+    warping: 1,
+    warp_mode: LIVE_API_WARP_MODE_TEXTURE,
   });
 }
 
@@ -242,6 +257,31 @@ describe("readScene", () => {
         },
       ].map(({ color: _color, view: _v, ...clip }) => clip),
     });
+  });
+
+  it("passes warp through to nested clip reads", () => {
+    setupSceneWithAudioClip();
+
+    const result = readScene({ sceneIndex: 0, include: ["clips", "warp"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).toStrictEqual(
+      expect.objectContaining({
+        warping: true,
+        warpMode: WARP_MODE.TEXTURE,
+        sampleLength: 88200,
+        sampleRate: 44100,
+      }),
+    );
+  });
+
+  it("omits warp from nested clip reads when it wasn't asked for", () => {
+    setupSceneWithAudioClip();
+
+    const result = readScene({ sceneIndex: 0, include: ["clips"] });
+
+    expect((result.clips as Record<string, unknown>[])[0]).not.toHaveProperty(
+      "warping",
+    );
   });
 
   it("includes all available options when '*' is used", () => {

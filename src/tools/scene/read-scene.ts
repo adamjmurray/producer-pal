@@ -11,6 +11,7 @@ import {
 } from "#src/tools/clip/read/read-clip.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import {
+  expandWildcardIncludes,
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
@@ -145,7 +146,7 @@ export function readScene(
     const clips = readSceneClips(
       liveSet,
       resolvedSceneIndex,
-      args.include,
+      expandWildcardIncludes(args.include, READ_SCENE_DEFAULTS),
       context.notation,
     );
 

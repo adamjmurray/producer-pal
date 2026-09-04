@@ -49,6 +49,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
             "notes",
             "timing",
             "sample",
+            "warp",
             "devices",
             "drum-map",
             "routings",
@@ -61,14 +62,14 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         .default([]),
       {
         default:
-          'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, routings, available-routings, mixer = track data. drum-map = the kit\'s actual pad pitches and names, plus drumRackPath (pad paths are <drumRackPath>/p<note>); read it before writing drums. color = track + clip color. "*" = all',
+          'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample, warp = clip detail (use with clips). devices, routings, available-routings, mixer = track data. drum-map = the kit\'s actual pad pitches and names, plus drumRackPath (pad paths are <drumRackPath>/p<note>); read it before writing drums. color = track + clip color. "*" = all',
         // `routings` joins `available-routings`: small mode hides all four
         // routing write params, so it could see the state, not the choices, and
-        // change neither. See ADR-0026.
+        // change neither. See ADR-0026. `warp` is dropped to match read-clip.
         smallModel: {
           description:
             "session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, mixer = track data. drum-map = the kit's actual pad pitches and names, plus drumRackPath (pad paths are <drumRackPath>/p<note>); read it before writing drums. color = track + clip color",
-          excludeEnumValues: ["routings", "available-routings", "*"],
+          excludeEnumValues: ["routings", "available-routings", "warp", "*"],
         },
       },
     ),

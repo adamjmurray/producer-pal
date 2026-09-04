@@ -53,10 +53,12 @@ surviving option are never suppressed. The per-tool lists live in each
 
 ### Include propagation
 
-`ppal-read-track` and `ppal-read-scene` pass their full `include` array through
-to `readClip()`. Only clip-recognized includes affect clip output.
-`ppal-read-live-set` propagates only track-level includes (`routings`, `mixer`,
-`color`) to its nested track/scene reads.
+`ppal-read-track` and `ppal-read-scene` expand `"*"` against their OWN option
+list and pass the expanded array to `readClip()`; only clip-recognized includes
+affect clip output. Forwarding a bare `"*"` would let the nested read expand it
+against the clip options instead, turning on options the outer tool never
+published. `ppal-read-live-set` propagates only track-level includes
+(`routings`, `mixer`, `color`) to its nested track/scene reads.
 
 ### Redundant field stripping
 
@@ -78,7 +80,11 @@ All include parsing is centralized in
 
 - `parseIncludeArray(include, defaults)` — returns an `IncludeFlags` object with
   boolean flags
-- `expandWildcardIncludes()` — expands `"*"` to all options for the tool type
+- `expandWildcardIncludes(include, defaults)` — expands `"*"` to all options for
+  the tool type; call it before forwarding an include array to a nested read
+- `ALL_INCLUDE_OPTIONS` — the options per tool type. A meta test holds each
+  `.def.ts` enum equal to its list plus `"*"`, so an option can't be reachable
+  by wildcard and rejected by name
 - `READ_CLIP_DEFAULTS`, `READ_TRACK_DEFAULTS`, etc. — default flag values per
   tool type
 - `IncludeFlags` interface — all possible boolean flags
@@ -166,7 +172,7 @@ per lane, each with its `path` (e.g. `"t2/l0"`), `name`, and `clips`.
 - `drum-map` — pitch-to-name mappings for drum racks, plus the owning rack's
   path
 - `routings`, `available-routings` — routing info
-- `notes`, `sample`, `timing`, `color` — propagated to nested clip reads
+- `notes`, `sample`, `timing`, `warp`, `color` — propagated to nested clip reads
 
 ### Include: `"mixer"`
 
@@ -212,7 +218,7 @@ scene. Each clip is read via `readClip()`. Nested clips have `view` stripped
 | ------- | -------- | ----------------------------------------- |
 | `clips` | `Clip[]` | Non-empty clips across all regular tracks |
 
-### Include: `"notes"`, `"sample"`, `"timing"`, `"color"`
+### Include: `"notes"`, `"sample"`, `"timing"`, `"warp"`, `"color"`
 
 Propagated to `readClip()` for each clip in the scene. See ppal-read-clip
 section for details on these includes.

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -190,6 +191,36 @@ describe("ppal-read-track", () => {
     expect(routedTrack.outputRoutingType).toBeDefined();
     expect(routedTrack.outputRoutingType?.name).toContain("FX Bus");
   });
+
+  it("names warp as an include, and only then reports it", async () => {
+    // t4's session clip is a warped audio clip. `warp` used to reach the nested
+    // clip read through `*` while read-track's own enum rejected it by name, so
+    // the data was gettable but not askable. This goes through the real schema,
+    // which is the only place that rejection lived.
+    const clipWith = async (include: string[]) => {
+      const track = parseToolResult<ReadTrackResult>(
+        await ctx.client!.callTool({
+          name: "ppal-read-track",
+          arguments: { path: "t4", include },
+        }),
+      );
+
+      return track.sessionClips?.[0];
+    };
+
+    const named = await clipWith(["session-clips", "warp"]);
+
+    expect(named?.warping).toBe(true);
+    expect(named?.warpMode).toBeDefined();
+
+    // Publishing the option must not cost `*` the data it already returned.
+    expect((await clipWith(["*"]))?.warping).toBe(true);
+
+    const unasked = await clipWith(["session-clips"]);
+
+    expect(unasked?.warping).toBeUndefined();
+    expect(unasked?.warpMode).toBeUndefined();
+  });
 });
 
 interface LiveSetResult {
@@ -210,7 +241,13 @@ interface ReadTrackResult {
   isGroup?: boolean;
   groupId?: string;
   color?: string;
-  sessionClips?: Array<{ id: string; name: string; slotIndex: number }>;
+  sessionClips?: Array<{
+    id: string;
+    name: string;
+    slotIndex: number;
+    warping?: boolean;
+    warpMode?: string;
+  }>;
   arrangementClips?: Array<{ id: string; position: string; length: string }>;
   sessionClipCount?: number;
   arrangementClipCount?: number;

@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  expandWildcardIncludes,
   parseIncludeArray,
   includeArrayFromFlags,
   READ_SONG_DEFAULTS,
@@ -105,10 +106,18 @@ describe("parseIncludeArray", () => {
     expect(result.includeSessionClips).toBe(true);
     expect(result.includeArrangementClips).toBe(true);
     expect(result.includeDrumMap).toBe(true);
+    expect(result.includeWarp).toBe(true);
     // Legacy device categories not in track options list
     expect(result.includeMidiEffects).toBe(false);
     expect(result.includeInstruments).toBe(false);
     expect(result.includeAudioEffects).toBe(false);
+  });
+
+  it("expands wildcard for scene tool type", () => {
+    const result = parseIncludeArray(["*"], READ_SCENE_DEFAULTS);
+
+    expect(result.includeClips).toBe(true);
+    expect(result.includeWarp).toBe(true);
   });
 
   it("handles scene defaults correctly", () => {
@@ -246,6 +255,42 @@ describe("includeArrayFromFlags", () => {
       expect(result.includeTracks).toBe(true);
       expect(result.includeScenes).toBe(true);
     });
+  });
+});
+
+describe("expandWildcardIncludes", () => {
+  it("passes undefined through", () => {
+    expect(
+      expandWildcardIncludes(undefined, READ_TRACK_DEFAULTS),
+    ).toBeUndefined();
+  });
+
+  it("leaves an array without a wildcard alone", () => {
+    expect(
+      expandWildcardIncludes(["session-clips", "notes"], READ_TRACK_DEFAULTS),
+    ).toStrictEqual(["session-clips", "notes"]);
+  });
+
+  it("expands the wildcard against the tool's own options", () => {
+    const expanded = expandWildcardIncludes(["*"], READ_TRACK_DEFAULTS);
+
+    // Nothing a nested clip read could re-expand, and nothing the track tool
+    // doesn't publish (e.g. "tracks" and "locators" are song-only).
+    expect(expanded).not.toContain("*");
+    expect(expanded).toContain("warp");
+    expect(expanded).not.toContain("tracks");
+    expect(expanded).not.toContain("locators");
+  });
+
+  it("expands the wildcard for a scene against the scene options", () => {
+    expect(expandWildcardIncludes(["*"], READ_SCENE_DEFAULTS)).toStrictEqual([
+      "clips",
+      "notes",
+      "sample",
+      "color",
+      "timing",
+      "warp",
+    ]);
   });
 });
 

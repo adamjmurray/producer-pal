@@ -14,8 +14,12 @@ import {
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_WARP_MODE_TEXTURE,
+  WARP_MODE,
 } from "#src/tools/constants.ts";
+import { publishedEnumValues } from "#src/test/helpers/enum-options-test-helpers.ts";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.ts";
+import { toolDefReadTrack } from "../read-track.def.ts";
 import { setupTrackPathMappedMocks } from "./helpers/read-track-path-mapped-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
@@ -42,6 +46,32 @@ function createMasterTrackProperties(
     muted_via_solo: 0,
     ...overrides,
   };
+}
+
+function setupAudioSessionClipTrack(): void {
+  setupTrackPathMappedMocks({
+    pathIdMap: {
+      [String(livePath.track(0))]: "track1",
+      [livePath.track(0).clipSlot(0).clip()]: "audio_clip1",
+    },
+    objects: {
+      Track: mockTrackProperties({
+        name: "Audio Track",
+        has_midi_input: 0,
+        devices: [],
+        clip_slots: children("slot1"),
+        arrangement_clips: [],
+      }),
+      audio_clip1: {
+        is_midi_clip: 0,
+        name: "Audio Clip",
+        sample_length: 88200,
+        sample_rate: 44100,
+        warping: 1,
+        warp_mode: LIVE_API_WARP_MODE_TEXTURE,
+      },
+    },
+  });
 }
 
 describe("readTrack", () => {
@@ -106,22 +136,13 @@ describe("readTrack", () => {
         include: ["*"],
       });
 
-      // Test explicit list - should produce identical result
+      // Every option the tool publishes, named one by one — read from the def
+      // rather than copied, so this can't drift from what read-track offers
       const resultExplicit = readTrack({
         trackIndex: 0,
-        include: [
-          "session-clips",
-          "arrangement-clips",
-          "notes",
-          "timing",
-          "sample",
-          "devices",
-          "drum-map",
-          "routings",
-          "available-routings",
-          "mixer",
-          "color",
-        ],
+        include: publishedEnumValues(toolDefReadTrack, "include").filter(
+          (option) => option !== "*",
+        ),
       });
 
       // Results should be identical
@@ -138,6 +159,51 @@ describe("readTrack", () => {
           monitoringState: expect.any(String),
         }),
       );
+    });
+
+    it("passes warp through to nested clip reads", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["session-clips", "warp"],
+      });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).toStrictEqual(
+        expect.objectContaining({
+          warping: true,
+          warpMode: WARP_MODE.TEXTURE,
+          sampleLength: 88200,
+          sampleRate: 44100,
+        }),
+      );
+    });
+
+    it("includes warp in nested clip reads for '*'", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({ trackIndex: 0, include: ["*"] });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).toStrictEqual(
+        expect.objectContaining({ warping: true, warpMode: WARP_MODE.TEXTURE }),
+      );
+    });
+
+    it("omits warp from nested clip reads when it wasn't asked for", () => {
+      setupAudioSessionClipTrack();
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["session-clips", "sample"],
+      });
+
+      expect(
+        (result.sessionClips as Record<string, unknown>[])[0],
+      ).not.toHaveProperty("warping");
     });
 
     it("applies mapped path-key object properties", () => {
