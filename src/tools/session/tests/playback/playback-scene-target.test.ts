@@ -21,7 +21,7 @@ import { setupPlaybackLiveSet } from "./playback-test-helpers.ts";
 /**
  * Register a scene, reachable by the given id and by its own path.
  * @param sceneIndex - The scene's index
- * @param id - The id a caller would pass in `ids`
+ * @param id - The id a caller would pass in `ids`, defaulting to "scene<index>"
  * @param name - The scene's name, defaulting to the Scene mock's
  * @returns The scene's mock, to assert it fired
  */
@@ -30,7 +30,7 @@ function mockScene(
   id?: string,
   name?: string,
 ): RegisteredMockObject {
-  return registerMockObject(id ?? livePath.scene(sceneIndex), {
+  return registerMockObject(id ?? `scene${sceneIndex}`, {
     path: livePath.scene(sceneIndex),
     type: "Scene",
     ...(name != null && { properties: { name } }),
@@ -100,8 +100,7 @@ describe("playback play-scene target agreement", () => {
     expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
       currentTime: "NaN|NaN+nNaN/4",
       playing: true,
-      sceneIndex: 3,
-      sceneName: "Chorus",
+      scene: { id: "scene3", path: "s3", name: "Chorus" },
     });
   });
 
@@ -112,8 +111,20 @@ describe("playback play-scene target agreement", () => {
     expect(playback({ action: "play-scene", sceneIndex: 3 })).toStrictEqual({
       currentTime: "NaN|NaN+nNaN/4",
       playing: true,
-      sceneIndex: 3,
-      sceneName: "4",
+      scene: { id: "scene3", path: "s3", name: "4" },
+    });
+  });
+
+  // The path is the payoff: the caller who named the scene by a clip id gets an
+  // address they can paste straight back into a `path` param.
+  it("names the scene by the path the grammar spells", () => {
+    mockScene(5, undefined, "Bridge");
+    mockSessionClip("clip1", 2, 5);
+
+    expect(playback({ action: "play-scene", id: "clip1" })).toStrictEqual({
+      currentTime: "NaN|NaN+nNaN/4",
+      playing: true,
+      scene: { id: "scene5", path: "s5", name: "Bridge" },
     });
   });
 
@@ -126,8 +137,7 @@ describe("playback play-scene target agreement", () => {
 
     const result = playback({ action: "play-session-clips", id: "clip1" });
 
-    expect(result).not.toHaveProperty("sceneIndex");
-    expect(result).not.toHaveProperty("sceneName");
+    expect(result).not.toHaveProperty("scene");
   });
 
   // Scene 0 is falsy, so every hop that carries it has to read it as a value

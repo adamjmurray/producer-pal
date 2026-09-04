@@ -55,8 +55,7 @@ interface PlaybackResult {
   playing: boolean;
   currentTime: string;
   startTime?: string;
-  sceneIndex?: number;
-  sceneName?: string;
+  scene?: FiredScene;
   arrangementLoop?: { start: string; end: string };
 }
 
@@ -262,7 +261,7 @@ function buildPlaybackResult({
     currentTime,
     ...(startTime != null && { startTime }),
     // Which scene fired, since a scene id or a clip in it can name it
-    ...(scene && { sceneIndex: scene.sceneIndex, sceneName: scene.sceneName }),
+    ...(scene && { scene }),
   };
 
   const loopEnabled = loop ?? (liveSet.getProperty("loop") as number) > 0;

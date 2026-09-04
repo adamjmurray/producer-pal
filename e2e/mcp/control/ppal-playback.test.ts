@@ -142,7 +142,7 @@ describe("ppal-playback", () => {
 
     expect(playingClips.playing).toBe(true);
     // Only play-scene fires a scene, so a clip action names none
-    expect(playingClips.sceneName).toBeUndefined();
+    expect(playingClips.scene).toBeUndefined();
 
     await sleep(100);
     await playback({ action: "stop-session-clips", id: clip1 });
@@ -189,8 +189,8 @@ describe("ppal-playback", () => {
     });
 
     expect(playingScene.playing).toBe(true);
-    expect(playingScene.sceneIndex).toBe(0);
-    expect(playingScene.sceneName).toBe("Intro");
+    expect(playingScene.scene?.path).toBe("s0");
+    expect(playingScene.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
@@ -204,8 +204,9 @@ describe("ppal-playback", () => {
 
     const byClip = await playback({ action: "play-scene", id: clip });
 
-    expect(byClip.sceneIndex).toBe(0);
-    expect(byClip.sceneName).toBe("Intro");
+    expect(byClip.scene?.id).toMatch(/\S/);
+    expect(byClip.scene?.path).toBe("s0");
+    expect(byClip.scene?.name).toBe("Intro");
 
     await playback({ action: "stop" });
   });
@@ -213,8 +214,8 @@ describe("ppal-playback", () => {
   it("names an unnamed scene by its number, as Live shows it", async () => {
     const unnamed = await playback({ action: "play-scene", path: "s7" });
 
-    expect(unnamed.sceneIndex).toBe(7);
-    expect(unnamed.sceneName).toBe("8");
+    expect(unnamed.scene?.path).toBe("s7");
+    expect(unnamed.scene?.name).toBe("8");
 
     await playback({ action: "stop" });
   });
@@ -285,7 +286,6 @@ interface PlaybackResult {
   playing: boolean;
   currentTime: string;
   startTime?: string;
-  sceneIndex?: number;
-  sceneName?: string;
+  scene?: { id: string; path?: string; name: string };
   arrangementLoop?: { start: string; end: string };
 }

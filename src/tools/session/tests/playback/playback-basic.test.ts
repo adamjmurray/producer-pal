@@ -286,7 +286,7 @@ describe("transport", () => {
   it("should handle play-scene action", () => {
     liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
 
-    const scene0 = registerMockObject(livePath.scene(0), {
+    const scene0 = registerMockObject("scene0", {
       path: livePath.scene(0),
     });
 
@@ -299,8 +299,7 @@ describe("transport", () => {
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
-      sceneIndex: 0,
-      sceneName: "Test Scene",
+      scene: { id: "scene0", path: "s0", name: "Test Scene" },
     });
   });
 

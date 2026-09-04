@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import { sceneDisplayName } from "#src/tools/scene/scene-helpers.ts";
 import { songPositionToBeats } from "#src/tools/shared/locator/song-position.ts";
+import { pathField } from "#src/tools/shared/validation/object-path-for-api.ts";
 
 interface LoopState {
   startBeats: number;
@@ -299,8 +300,9 @@ export function resolveLoopEnd(
 
 /** The scene play-scene fired, for the response */
 export interface FiredScene {
-  sceneIndex: number;
-  sceneName: string;
+  id: string;
+  path?: string;
+  name: string;
 }
 
 export interface PlaybackState {
@@ -378,6 +380,10 @@ export function handlePlayScene(
   return {
     isPlaying: true,
     currentTimeBeats: state.currentTimeBeats,
-    scene: { sceneIndex, sceneName: sceneDisplayName(scene, sceneIndex) },
+    scene: {
+      id: scene.id,
+      ...pathField(scene),
+      name: sceneDisplayName(scene, sceneIndex),
+    },
   };
 }
