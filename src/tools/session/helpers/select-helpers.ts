@@ -22,7 +22,6 @@ export type TrackCategory = "regular" | "return" | "master";
 
 export interface TrackSelectionResult {
   selectedTrackId?: string;
-  selectedCategory?: string;
 }
 
 export interface SceneSelectionResult {
@@ -183,12 +182,7 @@ export function updateTrackSelection({
 
     songView.setProperty("selected_track", liveApiTrackId);
     result.selectedTrackId = liveApiTrackId;
-
-    if (category != null) {
-      result.selectedCategory = category;
-    }
   } else if (category != null || trackIndex != null) {
-    const finalCategory = category ?? "regular";
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
@@ -196,7 +190,6 @@ export function updateTrackSelection({
 
       songView.setProperty("selected_track", liveApiTrackId);
       result.selectedTrackId = liveApiTrackId;
-      result.selectedCategory = finalCategory;
     }
   }
 

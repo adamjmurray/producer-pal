@@ -203,7 +203,7 @@ export function foldLocatorParams(
 
 /**
  * Resolve the arrangement start position and write it. This is where the next
- * play begins, which is not the same thing as the playhead.
+ * play begins; it does not move the playhead.
  * @param liveSet - The live_set LiveAPI object
  * @param params - The timeline params
  * @param params.startTime - Song position, bar|beat or `loc:<name>`

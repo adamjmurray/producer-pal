@@ -189,8 +189,8 @@ export function playback(
     songTimeSigDenominator,
   );
 
-  // Where the next play begins, reported separately from currentTime, which
-  // is the playhead.
+  // Where the next play begins. Separate from currentTime: writing the start
+  // position leaves the playhead where it was.
   const startTimePosition = readStartTime(
     liveSet,
     playbackState,

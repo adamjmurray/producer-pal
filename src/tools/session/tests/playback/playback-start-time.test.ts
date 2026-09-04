@@ -47,7 +47,8 @@ describe("playback - arrangement start position", () => {
   });
 
   it("reports the playhead separately from the start position", () => {
-    // The two are independent, so the result carries both.
+    // Setting the start position leaves the playhead alone, so the two
+    // disagree and both belong in the result.
     liveSet = setupPlaybackLiveSet({
       is_playing: 1,
       current_song_time: 10,

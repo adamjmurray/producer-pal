@@ -235,20 +235,6 @@ export function entriesFrom(
 }
 
 /**
- * Parses a comma-separated string of values into an array of floats, filtering invalid values
- * @param values - Comma-separated string of numbers (e.g., "1.5, -2, 3.14")
- * @returns Array of valid float values (NaN values are filtered out)
- */
-export function parseCommaSeparatedFloats(values?: string | null): number[] {
-  if (values == null) return [];
-
-  return values
-    .split(",")
-    .map((v) => Number.parseFloat(v.trim()))
-    .filter((v) => !Number.isNaN(v));
-}
-
-/**
  * Unwraps a single-element array to its element, otherwise returns the array
  * Used for tool results that should return a single object when one item,
  * or an array when multiple items.

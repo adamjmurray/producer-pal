@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import { assertDefined } from "#src/shared/error-utils.ts";
 import {
   fromLiveApiView,
-  parseCommaSeparatedFloats,
   parseCommaSeparatedIds,
   parseTimeSignature,
   roundPan,
@@ -446,58 +445,6 @@ describe("parseCommaSeparatedIds", () => {
   it("returns empty array for null or undefined", () => {
     expect(parseCommaSeparatedIds(null)).toStrictEqual([]);
     expect(parseCommaSeparatedIds(undefined)).toStrictEqual([]);
-  });
-});
-
-describe("parseCommaSeparatedFloats", () => {
-  it("returns empty array for null input", () => {
-    expect(parseCommaSeparatedFloats(null)).toStrictEqual([]);
-  });
-
-  it("returns empty array for undefined input", () => {
-    expect(parseCommaSeparatedFloats(undefined)).toStrictEqual([]);
-  });
-
-  it("parses simple comma-separated floats", () => {
-    const result = parseCommaSeparatedFloats("1.5, 2.0, 3.14");
-
-    expect(result).toStrictEqual([1.5, 2.0, 3.14]);
-  });
-
-  it("handles integers", () => {
-    const result = parseCommaSeparatedFloats("1, 2, 3");
-
-    expect(result).toStrictEqual([1, 2, 3]);
-  });
-
-  it("handles negative numbers", () => {
-    const result = parseCommaSeparatedFloats("-1.5, 0, 2.5");
-
-    expect(result).toStrictEqual([-1.5, 0, 2.5]);
-  });
-
-  it("filters out invalid values (NaN)", () => {
-    const result = parseCommaSeparatedFloats("1.5, abc, 3.0, not-a-number");
-
-    expect(result).toStrictEqual([1.5, 3.0]);
-  });
-
-  it("trims whitespace around values", () => {
-    const result = parseCommaSeparatedFloats("  1.5  ,  2.0  ,  3.0  ");
-
-    expect(result).toStrictEqual([1.5, 2.0, 3.0]);
-  });
-
-  it("handles empty strings between commas", () => {
-    const result = parseCommaSeparatedFloats("1.0,,2.0,,,3.0");
-
-    expect(result).toStrictEqual([1.0, 2.0, 3.0]);
-  });
-
-  it("returns empty array when all values are invalid", () => {
-    const result = parseCommaSeparatedFloats("abc, def, ghi");
-
-    expect(result).toStrictEqual([]);
   });
 });
 
