@@ -144,7 +144,7 @@ describe("updateTrack - send properties", () => {
     expectSendUpdateSkipped(
       result,
       [send1, send2],
-      'no return track found matching "123"',
+      'sendReturn "123" names no return track',
     );
   });
 
@@ -174,7 +174,7 @@ describe("updateTrack - send properties", () => {
     expectSendUpdateSkipped(
       result,
       [send1, send2],
-      'no return track found matching "C"',
+      'sendReturn "C" names no return track',
     );
   });
 
@@ -196,7 +196,7 @@ describe("updateTrack - send properties", () => {
     expectSendUpdateSkipped(
       result,
       [send1, send2],
-      'no return track found matching "A"',
+      'sendReturn "A" names no return track',
     );
   });
 
@@ -215,6 +215,42 @@ describe("updateTrack - send properties", () => {
     });
 
     expectSendUpdateSkipped(result, [send1, send2], "has no sends");
+  });
+
+  it("names the param and lists the returns when none matches", () => {
+    // The model has to be able to tell which param went wrong and what it
+    // could have said instead.
+    updateTrack({ id: "123", sendGainDb: -12, sendReturn: "ZZZ" });
+
+    expect(capturedWarnings()).toContain(
+      'updateTrack: sendReturn "ZZZ" names no return track, so sendGainDb was ' +
+        "not written (Available: A-Reverb, B-Delay)",
+    );
+  });
+
+  it("says so when the Live Set has no return tracks at all", () => {
+    // Listing nothing reads as a bug; the returns can only be added in Live.
+    registerMockObject("liveSet", {
+      path: livePath.liveSet,
+      properties: { return_tracks: [] },
+    });
+
+    updateTrack({ id: "123", sendGainDb: -12, sendReturn: "A" });
+
+    expect(capturedWarnings()).toContain(
+      'updateTrack: sendReturn "A" names no return track, so sendGainDb was ' +
+        "not written (the Live Set has no return tracks)",
+    );
+  });
+
+  it("warns once for a multi-track call, not once per track", () => {
+    // The return tracks belong to the Live Set, so nothing about a track
+    // decides this — checking it per track repeats one warning down the list.
+    updateTrack({ id: "123,456", sendGainDb: -12, sendReturn: "ZZZ" });
+
+    expect(
+      capturedWarnings().filter((warning) => warning.includes("ZZZ")),
+    ).toHaveLength(1);
   });
 
   it("should set sends on multiple tracks", () => {

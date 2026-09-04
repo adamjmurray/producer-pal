@@ -3,8 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { assertDefined } from "#src/shared/error-utils.ts";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/max/v8-max-console.ts";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
@@ -15,10 +13,12 @@ import {
 import { stripReturnTrackLetter } from "../helpers/track-name-helpers.ts";
 import { applyMixerProperties } from "./helpers/update-track-mixer-helpers.ts";
 import { applyRoutingProperties } from "./helpers/update-track-routing-helpers.ts";
-import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
-import { setParamIfEnabled } from "#src/tools/shared/device/helpers/param-write-helpers.ts";
 import {
-  findReturnIndex,
+  applyTrackSend,
+  resolveTrackSend,
+} from "./helpers/update-track-send-helpers.ts";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
+import {
   unwrapSingleResult,
   validateSendPair,
 } from "#src/tools/shared/utils.ts";
@@ -124,73 +124,6 @@ function applyMonitoringState(
 }
 
 /**
- * Apply send properties to a track
- * @param track - Track object
- * @param sendGainDb - Send gain in dB (-70 to 0)
- * @param sendReturn - Return track id, name, or letter prefix
- */
-function applySendProperties(
-  track: LiveAPI,
-  sendGainDb: number | undefined,
-  sendReturn: string | undefined,
-): void {
-  // A half pair was refused up front, so this is the "neither was sent" case.
-  if (sendGainDb == null || sendReturn == null) {
-    return;
-  }
-
-  // Get mixer and sends
-  const mixer = track.child("mixer_device");
-
-  if (!mixer.exists()) {
-    console.warn(
-      `updateTrack: track ${targetLabel(track)} has no mixer device`,
-    );
-
-    return;
-  }
-
-  const sends = mixer.getChildren("sends");
-
-  if (sends.length === 0) {
-    console.warn(`updateTrack: track ${targetLabel(track)} has no sends`);
-
-    return;
-  }
-
-  const returnTracks = LiveAPI.from(livePath.liveSet).getChildren(
-    "return_tracks",
-  );
-  const names = returnTracks.map((rt) => rt.getProperty("name") as string);
-  const sendIndex = findReturnIndex(
-    names,
-    sendReturn,
-    returnTracks.map((rt) => rt.id),
-  );
-
-  if (sendIndex === -1) {
-    console.warn(`updateTrack: no return track found matching "${sendReturn}"`);
-
-    return;
-  }
-
-  if (sendIndex >= sends.length) {
-    console.warn(
-      `updateTrack: track ${targetLabel(track)} has no send for return "${sendReturn}"`,
-    );
-
-    return;
-  }
-
-  setParamIfEnabled(
-    assertDefined(sends[sendIndex], `send at index ${sendIndex}`),
-    "display_value",
-    sendGainDb,
-    `updateTrack: track ${targetLabel(track)} send "${names[sendIndex]}"`,
-  );
-}
-
-/**
  * Updates properties of existing tracks
  * @param args - The track parameters
  * @param args.id - Track ID or comma-separated list of track IDs to update
@@ -258,6 +191,10 @@ export function updateTrack(
   }
 
   validateSendPair(sendGainDb, sendReturn, "updateTrack");
+
+  // Resolved once: the return tracks belong to the Live Set, so a per-track
+  // lookup would repeat one warning down the list.
+  const send = resolveTrackSend(sendGainDb, sendReturn);
 
   // Every list in the call is checked together, before any of them is split:
   // once one is split nothing knows whether the others are lists at all.
@@ -341,8 +278,9 @@ export function updateTrack(
     // Handle monitoring state
     applyMonitoringState(track, monitoringState);
 
-    // Handle send properties
-    applySendProperties(track, sendGainDb, sendReturn);
+    if (send != null) {
+      applyTrackSend(track, send);
+    }
 
     // Build optimistic result object
     updatedTracks.push({
