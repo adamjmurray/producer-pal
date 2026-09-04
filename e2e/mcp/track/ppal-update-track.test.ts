@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  getToolWarnings,
   parseBatchResult,
   parseToolResult,
   setupMcpTestContext,
@@ -330,10 +331,81 @@ describe("ppal-update-track", () => {
     // The send "A" reached is untouched, so the id picked its own return.
     expect(byId.sends![0]!.gainDb).toBeCloseTo(-12, 1);
   });
+
+  it("sets several sends in one call, matched by return rather than position", async () => {
+    const liveSet = await readTracks();
+    // Not tracks[0] — the send tests above leave levels on it.
+    const trackId = liveSet.tracks![1]!.id;
+    const [first, second] = liveSet.returnTracks!;
+
+    // Listed in the opposite order to the sends themselves, and spelled two
+    // different ways, so a list that landed by position or only matched names
+    // would fail. Only real Live proves the id the read reports is the one the
+    // send lookup matches on.
+    await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: {
+        id: trackId,
+        sends: [
+          { return: second!.name, gainDb: -21 },
+          { return: first!.id, gainDb: -9 },
+        ],
+      },
+    });
+
+    await sleep(100);
+
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: trackId, include: ["mixer"] },
+      }),
+    );
+
+    expect(track.sends![0]!.return).toBe(first!.name);
+    expect(track.sends![0]!.gainDb).toBeCloseTo(-9, 1);
+    expect(track.sends![1]!.return).toBe(second!.name);
+    expect(track.sends![1]!.gainDb).toBeCloseTo(-21, 1);
+  });
+
+  it("lets a sends entry override the scalar pair naming the same return", async () => {
+    const liveSet = await readTracks();
+    const trackId = liveSet.tracks![2]!.id;
+    const returnTrack = liveSet.returnTracks![0]!;
+
+    // The pair and the list name one return by two different spellings, so the
+    // collision is only seen if both resolve to the same index.
+    const result = await ctx.client!.callTool({
+      name: "ppal-update-track",
+      arguments: {
+        id: trackId,
+        sendGainDb: -30,
+        sendReturn: returnTrack.id,
+        sends: [{ return: returnTrack.name, gainDb: -15 }],
+      },
+    });
+
+    expect(getToolWarnings(result)).toContainEqual(
+      expect.stringContaining("sends overrides sendGainDb/sendReturn"),
+    );
+
+    await sleep(100);
+
+    const track = parseToolResult<ReadTrackResult>(
+      await ctx.client!.callTool({
+        name: "ppal-read-track",
+        arguments: { id: trackId, include: ["mixer"] },
+      }),
+    );
+
+    // The list is the later word, so the pair's -30 must not be what stuck.
+    expect(track.sends![0]!.gainDb).toBeCloseTo(-15, 1);
+  });
 });
 
 interface LiveSetResult {
   tracks?: Array<{ id: string; name: string }>;
+  returnTracks?: Array<{ id: string; name: string }>;
 }
 
 interface CreateTrackResult {
@@ -356,5 +428,5 @@ interface ReadTrackResult {
   state?: string;
   isArmed?: boolean;
   monitoringState?: string;
-  sends?: Array<{ name: string; gainDb: number }>;
+  sends?: Array<{ return: string; gainDb: number }>;
 }
