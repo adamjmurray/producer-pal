@@ -45,7 +45,7 @@ stop: session and arrangement`,
       .describe(
         "arrangement position: bar|beat in song meter, or loc:<locator name or id> (e.g. '5|1' or 'loc:Verse')",
       ),
-    startLocator: deprecatedParam(z.string().optional(), {
+    startLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "startTime",
     }),
     loop: z.boolean().optional().describe("arrangement loop?"),
@@ -53,14 +53,14 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("bar|beat (song meter) or loc:<locator>"),
-    loopStartLocator: deprecatedParam(z.string().optional(), {
+    loopStartLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "loopStart",
     }),
     loopEnd: z
       .string()
       .optional()
       .describe("bar|beat (song meter) or loc:<locator>"),
-    loopEndLocator: deprecatedParam(z.string().optional(), {
+    loopEndLocator: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "loopEnd",
     }),
     id: z.coerce

@@ -77,7 +77,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "bar|beat playback start (looping clips, when different from start; clip meter)",
       smallModel: null,
     }),
-    arrangementStart: deprecatedParam(z.string().optional(), {
+    arrangementStart: deprecatedParam(z.coerce.string().optional(), {
       replacedBy: "toPath",
       example: "[5|1]",
     }),

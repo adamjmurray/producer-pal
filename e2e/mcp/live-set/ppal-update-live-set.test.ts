@@ -253,6 +253,37 @@ describe("ppal-update-live-set", () => {
 
     expect(locators.length).toBe(initialLocators.length);
   });
+
+  it("takes a numeric locator name", async () => {
+    // Models send numbers where the schema says string, and the MCP SDK
+    // validates before our handler runs, so only a real call proves the
+    // coercion is in the schema the server registered.
+    const created = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: {
+          locatorOperation: "create",
+          locatorTime: "4|1",
+          locatorName: 4321,
+        },
+      }),
+    );
+
+    expect(created.locator?.name).toBe("4321");
+
+    await sleep(100);
+
+    // Deleted by time, not by name: Live hands an all-digit name back as a
+    // number, so no name match can find this locator again.
+    const deleted = parseToolResult<UpdateResult>(
+      await ctx.client!.callTool({
+        name: "ppal-update-live-set",
+        arguments: { locatorOperation: "delete", locatorTime: "4|1" },
+      }),
+    );
+
+    expect(deleted.locator?.operation).toBe("deleted");
+  });
 });
 
 async function readLocatorList(): Promise<LocatorInfo[]> {

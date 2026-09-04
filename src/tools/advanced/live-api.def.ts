@@ -23,7 +23,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
   },
 
   inputSchema: {
-    path: z
+    path: z.coerce
       .string()
       .optional()
       .describe("Optional LiveAPI path (e.g., 'live_set tracks 0')"),
@@ -34,7 +34,7 @@ export const toolDefLiveApi = defineTool("ppal-live-api", {
           // shipped schema is unchanged. See objectForOperation in live-api.ts.
           ...(process.env.ENABLE_OBJECT_PROBE === "true"
             ? {
-                path: z
+                path: z.coerce
                   .string()
                   .optional()
                   .describe(
