@@ -70,6 +70,7 @@ describe("ppal-playback", () => {
 
     expect(stopped.playing).toBe(false);
     expect(stopped.currentTime).toBe("1|1");
+    expect(stopped.startTime).toBe("1|1");
   });
 
   it("plays the arrangement from the start", async () => {
@@ -77,6 +78,7 @@ describe("ppal-playback", () => {
 
     expect(playing.playing).toBe(true);
     expect(playing.currentTime).toBe("1|1");
+    expect(playing.startTime).toBe("1|1");
 
     await playback({ action: "stop" });
   });
@@ -89,6 +91,22 @@ describe("ppal-playback", () => {
 
     expect(playFrom.playing).toBe(true);
     expect(playFrom.currentTime).toBe("5|1");
+    expect(playFrom.startTime).toBe("5|1");
+
+    await playback({ action: "stop" });
+  });
+
+  it("sets the arrangement start position without moving the playhead", async () => {
+    const set = await playback({
+      action: "update-arrangement",
+      startTime: "9|1",
+    });
+
+    // The point of reporting it: without startTime this call answers with a
+    // currentTime it didn't touch, and reads as a no-op. currentTime itself is
+    // wherever the last play left the playhead, so it isn't asserted here.
+    expect(set.startTime).toBe("9|1");
+    expect(set.playing).toBe(false);
 
     await playback({ action: "stop" });
   });
@@ -103,6 +121,7 @@ describe("ppal-playback", () => {
 
     expect(looped.arrangementLoop?.start).toBe("3|1");
     expect(looped.arrangementLoop?.end).toBe("7|1");
+    expect(looped.startTime).toBeUndefined();
 
     const stopped = await playback({ action: "stop" });
 
@@ -208,6 +227,7 @@ describe("ppal-playback", () => {
 
     expect(playing.playing).toBe(true);
     expect(playing.currentTime).toBe("9|1");
+    expect(playing.startTime).toBe("9|1");
 
     await playback({ action: "stop" });
   });
@@ -219,6 +239,7 @@ describe("ppal-playback", () => {
     });
 
     expect(playing.currentTime).toBe("17|1");
+    expect(playing.startTime).toBe("17|1");
 
     await playback({ action: "stop" });
   });
@@ -233,6 +254,18 @@ describe("ppal-playback", () => {
 
     expect(looped.arrangementLoop?.start).toBe("9|1");
     expect(looped.arrangementLoop?.end).toBe("17|1");
+    expect(looped.startTime).toBeUndefined();
+  });
+
+  it("sets the arrangement start position from a locator", async () => {
+    const set = await playback({
+      action: "update-arrangement",
+      startTime: "loc:Chorus",
+    });
+
+    expect(set.startTime).toBe("17|1");
+
+    await playback({ action: "stop" });
   });
 
   it("errors on a locator name nothing matches", async () => {
@@ -251,6 +284,7 @@ describe("ppal-playback", () => {
 interface PlaybackResult {
   playing: boolean;
   currentTime: string;
+  startTime?: string;
   sceneIndex?: number;
   sceneName?: string;
   arrangementLoop?: { start: string; end: string };
