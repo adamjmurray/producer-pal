@@ -34,6 +34,7 @@ describe("updateDevice - division params", () => {
 
     // Division param setup: raw values -6 to 0 map to "1/64" to "1"
     param = registerMockObject("793", {
+      path: livePath.track(0).device(0).parameter(1),
       type: "DeviceParameter",
       properties: {
         name: "Rate",

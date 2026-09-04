@@ -298,6 +298,7 @@ describe("updateDevice - param value conversion", () => {
         properties: { parameters: children() },
       });
       param = registerMockObject("42", {
+        path: livePath.track(0).device(0).parameter(1),
         type: "DeviceParameter",
         properties: {
           name: "Volume",
@@ -335,6 +336,46 @@ describe("updateDevice - param value conversion", () => {
         'updateDevice: param "1" not found on t0/d0 (id dev1)',
       );
       expect(liveSet.set).not.toHaveBeenCalled();
+    });
+
+    it("refuses an id belonging to a device the call never addressed", () => {
+      // A param id is global. Nothing but the nesting in the result says which
+      // device a param entry belongs to, so writing another device's param
+      // reports a change to the addressed one that never happened there.
+      const foreign = registerForeignParam();
+
+      const result = updateDevice({
+        id: "dev1",
+        params: [{ name: "143", value: "-12" }],
+      });
+
+      expect(foreign.set).not.toHaveBeenCalled();
+      expect(result).toStrictEqual({ id: "dev1", path: "t0/d0" });
+    });
+
+    it("names where the param actually lives, so the call can be corrected", () => {
+      registerForeignParam();
+
+      updateDevice({ id: "dev1", params: [{ name: "143", value: "-12" }] });
+
+      expect(capturedWarnings()).toContain(
+        "updateDevice: param id 143 is on t10/d0, not t0/d0 (id dev1), " +
+          "so it was not written",
+      );
+    });
+
+    it("keeps writing the device's own params in the same call", () => {
+      registerForeignParam();
+
+      updateDevice({
+        id: "dev1",
+        params: [
+          { name: "143", value: "-12" },
+          { name: "42", value: "0.8" },
+        ],
+      });
+
+      expect(param.set).toHaveBeenCalledWith("value", 0.8);
     });
   });
 
@@ -648,3 +689,24 @@ describe("updateDevice - actions arg", () => {
     );
   });
 });
+
+/**
+ * A parameter on a device the tests never address, so a numeric key naming it
+ * is a cross-device write.
+ * @returns The registered mock parameter
+ */
+function registerForeignParam(): RegisteredMockObject {
+  return registerMockObject("143", {
+    path: livePath.track(10).device(0).parameter(2),
+    type: "DeviceParameter",
+    properties: {
+      name: "Volume",
+      original_name: "Volume",
+      is_quantized: 0,
+      value: 0.5,
+      min: 0,
+      max: 1,
+    },
+    methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+  });
+}

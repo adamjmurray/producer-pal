@@ -32,8 +32,8 @@ describe("updateDevice", () => {
     });
 
     // Default param objects
-    registerParamMock("789");
-    registerParamMock("790");
+    registerParamMock("789", 0);
+    registerParamMock("790", 1);
   });
 
   it("should update a single device name", () => {
@@ -114,8 +114,8 @@ describe("updateDevice", () => {
     let param790: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerParamMock("789");
-      param790 = registerParamMock("790");
+      param789 = registerParamMock("789", 0);
+      param790 = registerParamMock("790", 1);
     });
 
     it("should set value for numeric params", () => {
@@ -190,6 +190,7 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param791 = registerMockObject("791", {
+        path: livePath.track(0).device(0).parameter(1),
         type: "DeviceParameter",
         properties: {
           name: "Warp Mode",
@@ -235,6 +236,7 @@ describe("updateDevice", () => {
       // garbage raw value (2.9999… instead of index 2). It must resolve to the
       // index of the "4" label.
       const numericLabelParam = registerMockObject("793", {
+        path: livePath.track(0).device(0).parameter(2),
         type: "DeviceParameter",
         properties: {
           name: "Retrigger",
@@ -278,7 +280,7 @@ describe("updateDevice", () => {
     let param789: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerParamMock("789");
+      param789 = registerParamMock("789", 0);
     });
 
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
@@ -310,6 +312,7 @@ describe("updateDevice", () => {
 
     beforeEach(() => {
       param792 = registerMockObject("792", {
+        path: livePath.track(0).device(0).parameter(3),
         type: "DeviceParameter",
         properties: {
           name: "Pan",
@@ -365,6 +368,7 @@ describe("updateDevice", () => {
       // clamped full-RIGHT value. Each must parse back to its signed -1..1
       // position via the param's own display max.
       const panDir = registerMockObject("793", {
+        path: livePath.track(0).device(0).parameter(4),
         type: "DeviceParameter",
         properties: { is_quantized: 0, value: 0, min: -1, max: 1 },
         methods: {

@@ -62,14 +62,21 @@ function bareId(arg: unknown): string {
 }
 
 /**
- * Register a continuous parameter mock with default properties.
+ * Register a continuous parameter mock with default properties, on the device
+ * at t0/d0. A param's path names its device, so the write path can tell a param
+ * of the addressed device from one of some other device's.
  * @param id - Mock object ID
+ * @param index - The param's position on the device
  * @returns The registered mock object
  */
-export function registerParamMock(id: string): RegisteredMockObject {
+export function registerParamMock(
+  id: string,
+  index: number,
+): RegisteredMockObject {
   const name = `Param ${id}`;
 
   return registerMockObject(id, {
+    path: livePath.track(0).device(0).parameter(index),
     type: "DeviceParameter",
     properties: {
       name,
