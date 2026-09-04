@@ -108,19 +108,11 @@ See `dev/Architecture.md` for system design and `dev/Chat-UI.md` for the web UI.
   at a different Live object. Build them where you use them. See
   `src/live-api-adapter/live-api-release.ts`.
 
-- **Update tools don't throw for an operation that doesn't apply** — but a call
-  they can't read at all is still refused before it starts. That covers a call
-  naming no target, and a whole-call param with no valid reading (a tempo out of
-  range, half a required pair): nothing about the item decides those, so
-  checking per item just repeats one warning down the list. When something is
-  found to be inapplicable mid-flight, `console.warn()`, skip that operation,
-  and keep going, so the rest of a multi-item call still succeeds. Warnings are
-  not silent — they're appended to the tool response as `WARNING:` blocks the
-  model reads. Malformed structure is different: a target list with a hole in
-  it, comma-separated params that disagree in length, a blank string on a param
-  with no blank value. Those are checked up front and thrown, because nothing
-  has run yet and the model can retry without cleaning anything up. See
-  ADR-0035.
+- **Tool interface behavior follows `dev/Principles.md`** — addressing,
+  relocation, multi-operation, errors and warnings, destruction. Read it before
+  changing a tool's inputs, outputs, or failure behavior. Warnings aren't
+  silent: they're appended to the tool response as `WARNING:` blocks the model
+  reads. See ADR-0035 for the worked cases.
 
 - **A warning belongs to the request that raised it.** V8 buffers warnings
   per-request and appends them to that request's own response, and it has no
@@ -290,8 +282,11 @@ we support. `src/test/meta/versions/live-set-versions.test.ts` catches it.
 
 ## Protected Files (Require User Approval)
 
-These hold quality thresholds — **don't relax any of them without asking:**
+These encode standards the project is held to — **don't relax or rewrite any of
+them without asking:**
 
+- `dev/Principles.md` — the tool interface principles. It states the intended
+  future state, so editing one to match today's code retires a goal silently.
 - `src/test/lint-suppression-limits.test.ts` — per-tree caps on lint-disable,
   `@ts-expect-error`, and v8-ignore comments.
 - `vitest.config.ts` (thresholds) — coverage.
@@ -300,12 +295,12 @@ These hold quality thresholds — **don't relax any of them without asking:**
 ## Documentation
 
 Internal docs live in `dev/` — the filenames are descriptive, so `ls dev/` to
-find one. The main ones: `dev/Architecture.md` (system design),
-`dev/Coding-Standards.md` (full style guide + Live API reference),
-`dev/Testing.md`, `dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/`
-(bar|beat and transform grammars), `dev/Development-Tools.md`, and
-`dev/decisions/` (ADRs — why settled choices went the way they did, especially
-the rejections).
+find one. The main ones: `dev/Principles.md` (the tool interface principles —
+read first), `dev/Architecture.md` (system design), `dev/Coding-Standards.md`
+(full style guide + Live API reference), `dev/Testing.md`,
+`dev/Tool-Schemas.md`, `dev/Linting.md`, `dev/specs/` (bar|beat and transform
+grammars), `dev/Development-Tools.md`, and `dev/decisions/` (ADRs — why settled
+choices went the way they did, especially the rejections).
 
 `DEVELOPERS.md` covers dev setup; `CONTRIBUTING.md` covers contributing.
 
