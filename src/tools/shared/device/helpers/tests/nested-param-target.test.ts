@@ -120,6 +120,38 @@ function registerMultiSampleSimpler(id: string): RegisteredMockObject {
   });
 }
 
+/**
+ * Register a C1 pad holding two layers, each with its own Simpler.
+ * @returns The first layer's chain mock
+ */
+function registerStackedPad(): RegisteredMockObject {
+  registerRack(["chain-a", "chain-b"]);
+
+  const first = registerDrumChain("chain-a", 36, ["simpler-a"]);
+
+  registerDrumChain("chain-b", 36, ["simpler-b"]);
+  registerDevice("simpler-a", "Simpler", "SimplerDevice");
+  registerDevice("simpler-b", "Simpler", "SimplerDevice");
+
+  return first;
+}
+
+/**
+ * Register a single-layer C1 pad whose instrument sits at d1, behind a MIDI
+ * effect — the layout that makes a written `d0` name the wrong device.
+ * @returns The pad's chain mock
+ */
+function registerEffectThenSimpler(): RegisteredMockObject {
+  registerRack(["chain-c1"]);
+
+  const chain = registerDrumChain("chain-c1", 36, ["arp-1", "simpler-1"]);
+
+  registerMidiEffect("arp-1", "Arpeggiator");
+  registerDevice("simpler-1", "Simpler", "SimplerDevice");
+
+  return chain;
+}
+
 /** @returns A LiveAPI handle to the registered rack */
 function rack(): LiveAPI {
   return LiveAPI.from(RACK_PATH);
@@ -284,13 +316,8 @@ describe("resolveNestedParamTarget", () => {
     // instrument on any pad holding one. Resolving by index would target — and
     // under force delete — the wrong device.
     it("finds the instrument behind a MIDI effect rather than device 0", () => {
-      registerRack(["chain-c1"]);
-      const chain = registerDrumChain("chain-c1", 36, ["arp-1", "simpler-1"]);
-
-      registerMidiEffect("arp-1", "Arpeggiator");
-      registerDevice("simpler-1", "Simpler", "SimplerDevice");
-
-      const target = resolveSampleTarget("pC1/d0");
+      const chain = registerEffectThenSimpler();
+      const target = resolveSampleTarget("pC1");
 
       expectNoDeviceInserted(chain);
       expect(target?.id).toBe("simpler-1");
@@ -306,9 +333,71 @@ describe("resolveNestedParamTarget", () => {
       registerDevice("op-1", "Operator");
       registerDevice("new-simpler", "Simpler", "SimplerDevice");
 
-      expect(resolveSampleTarget("pC1/d0", true)?.id).toBe("new-simpler");
+      expect(resolveSampleTarget("pC1", true)?.id).toBe("new-simpler");
       expect(chain.call).toHaveBeenCalledWith("delete_device", 1);
       expect(chain.call).not.toHaveBeenCalledWith("delete_device", 0);
+    });
+
+    // A sample belongs to one layer. Naming a stacked pad without saying which
+    // used to load the first one silently, and under force replace an
+    // instrument nobody named.
+    it("skips a stacked pad when no layer is named", () => {
+      const first = registerStackedPad();
+
+      expectWarnedNull(resolveSampleTarget("pC1"), "it has 2 layers");
+      expectNoDeviceInserted(first);
+      // The retries are param names relative to the rack, not pad paths.
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('"pC1/c0/sample", "pC1/c1/sample"'),
+      );
+    });
+
+    // A device index names no layer, so it settles nothing on a stacked pad.
+    it("skips a stacked pad addressed by device index alone", () => {
+      registerStackedPad();
+
+      expectWarnedNull(resolveSampleTarget("pC1/d0"), "it has 2 layers");
+    });
+
+    it("writes the named layer of a stacked pad", () => {
+      registerStackedPad();
+
+      expect(resolveSampleTarget("pC1/c1")?.id).toBe("simpler-b");
+    });
+
+    // Live sorts MIDI effects ahead of the instrument, so a `d0` written out of
+    // habit names the effect. Writing anyway would make the index look honored.
+    it("skips when the device index is not the pad's instrument", () => {
+      const chain = registerEffectThenSimpler();
+
+      expectWarnedNull(
+        resolveSampleTarget("pC1/d0"),
+        "d0 is not its instrument, which is at d1",
+      );
+      expectNoDeviceInserted(chain);
+      expect(capturedWarnings()).toContainEqual(
+        expect.stringContaining('"pC1/sample"'),
+      );
+    });
+
+    it("keeps the named layer in the retry it suggests", () => {
+      registerEffectThenSimpler();
+
+      expectWarnedNull(resolveSampleTarget("pC1/c0/d0"), '"pC1/c0/sample"');
+    });
+
+    // Nothing is there to contradict the index, and refusing would break the
+    // build flow that loads a whole rack in one call.
+    it("creates a Simpler on an empty pad whatever device index is written", () => {
+      registerRack(["chain-c1"]);
+      const chain = registerDrumChain("chain-c1", 36, [], {
+        insert_device: () => ["id", "new-simpler"],
+      });
+
+      registerDevice("new-simpler", "Simpler", "SimplerDevice");
+
+      expect(resolveSampleTarget("pC1/d9")?.id).toBe("new-simpler");
+      expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
     });
 
     it("creates a Simpler on a pad holding only MIDI effects", () => {

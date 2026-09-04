@@ -452,8 +452,8 @@ export async function createTwoPadDrumRack(
         deviceName: "Drum Rack",
         path,
         params: [
-          { name: "pC1/d0/sample", value: KICK_FILE },
-          { name: "pD1/d0/sample", value: SAMPLE_FILE },
+          { name: "pC1/sample", value: KICK_FILE },
+          { name: "pD1/sample", value: SAMPLE_FILE },
         ],
       },
     }),

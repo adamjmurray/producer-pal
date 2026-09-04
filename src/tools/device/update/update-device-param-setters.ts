@@ -114,7 +114,7 @@ function setOneParam(
   deviceName: string | undefined,
 ): WrittenParam[] {
   // A name containing "/" is normally a path-prefixed pseudo-param
-  // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
+  // (e.g. "pC1/sample"): resolve the prefix relative to this device, then
   // write the trailing param to the target. But some real DeviceParameters
   // have a "/" in their name (e.g. "Dry/Wet" on Reverb/Delay/Glue Compressor),
   // so prefer an exact param-name match first and only fall back to
@@ -231,7 +231,7 @@ function toEntries(result: WrittenParam | null): WrittenParam[] {
  * all value interpretation (enum, note, numeric, specialized pseudo-params) is
  * reused.
  * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
- * @param key - Full path-prefixed param name (e.g. "pC1/d0/sample")
+ * @param key - Full path-prefixed param name (e.g. "pC1/sample")
  * @param rawValue - Trimmed value to write
  * @param toolName - Calling tool name for warning prefix
  * @param force - Allow a destructive pad-device swap a `sample` write needs

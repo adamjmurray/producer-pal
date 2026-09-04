@@ -132,7 +132,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
             deviceName: "Drum Rack",
             path: `t${t}`,
             params: [
-              { name: "pC1/d0/sample", value: KICK_FILE },
+              { name: "pC1/sample", value: KICK_FILE },
               { name: "pC#1/d0/sample", value: SAMPLE_FILE },
               { name: "pC1/d0/gainDb", value: "-6" },
             ],
@@ -312,7 +312,7 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
         name: "ppal-update-device",
         arguments: {
           path: rack,
-          params: [{ name: "pC1/d0/sample", value: KICK_FILE }],
+          params: [{ name: "pC1/sample", value: KICK_FILE }],
         },
       }),
     );

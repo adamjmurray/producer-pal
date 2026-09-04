@@ -44,7 +44,7 @@ async function writeSample(padNote: string, force = false): Promise<string[]> {
     "ppal-update-device",
     {
       path: KIT,
-      params: [{ name: `${padNote}/d0/sample`, value: KICK_FILE }],
+      params: [{ name: `${padNote}/sample`, value: KICK_FILE }],
       ...(force && { force: true }),
     },
   );

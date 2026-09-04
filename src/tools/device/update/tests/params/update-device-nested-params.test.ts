@@ -79,7 +79,7 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
     });
 
     expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
@@ -181,7 +181,7 @@ describe("updateDevice - pad instrument guard", () => {
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
     });
 
     expect(capturedWarnings()).toContainEqual(
@@ -196,7 +196,7 @@ describe("updateDevice - pad instrument guard", () => {
 
     updateDevice({
       path: "t0/d0",
-      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+      params: [{ name: "pC1/sample", value: "/snare.wav" }],
       force: true,
     });
 

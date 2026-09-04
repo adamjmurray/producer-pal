@@ -238,7 +238,7 @@ describe("createDevice params", () => {
         deviceName: "Drum Rack",
         path: "t0",
         params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC1/sample", value: "/kick.wav" },
           { name: "pC#1/d0/sample", value: "/snare.wav" },
         ],
       });
@@ -264,7 +264,7 @@ describe("createDevice params", () => {
         deviceName: "Drum Rack",
         path: "t0",
         params: [
-          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC1/sample", value: "/kick.wav" },
           { name: "pC1/d0/gainDb", value: "-6" },
         ],
       });

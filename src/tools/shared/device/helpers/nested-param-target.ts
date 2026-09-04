@@ -10,7 +10,10 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "#src/tools/constants.ts";
 import { resolveOrCreateDrumPadChain } from "#src/tools/shared/device/helpers/device-chain-creation-helpers.ts";
-import { navigateRemainingSegments } from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
+import {
+  navigateRemainingSegments,
+  resolveDrumPadGroup,
+} from "#src/tools/shared/device/helpers/path/device-drumpad-navigation.ts";
 import { invalidateDevicePathCache } from "#src/tools/shared/device/helpers/path/with-device-path-cache.ts";
 import { isSingleSampleSimpler } from "#src/tools/shared/device/simpler-sample.ts";
 import { pathPrefix } from "#src/tools/shared/validation/object-path-for-api.ts";
@@ -20,6 +23,10 @@ const SAMPLE_PARAM = "sample";
 interface DrumPadSlot {
   padNote: string;
   chainIndex: number;
+  /** Whether the caller wrote a `cN` segment, rather than defaulting to 0. */
+  chainNamed: boolean;
+  /** The `dN` index the caller wrote, when they wrote one. */
+  deviceIndex?: number;
 }
 
 /**
@@ -33,6 +40,10 @@ interface DrumPadSlot {
  * replaced per the policy below. Every other case — including a `sample` write
  * to an explicit non-pad device path — is plain read-only navigation to an
  * existing device.
+ *
+ * The pad is addressed as `pC1` (one layer) or `pC1/cN` (several); a `dN` is
+ * accepted but must name the instrument the search found. Both a stacked pad
+ * with no layer named and a `dN` that isn't the instrument skip and warn.
  *
  * | Pad instrument           | Behavior                                      |
  * | ------------------------ | --------------------------------------------- |
@@ -97,8 +108,8 @@ export function resolveNestedParamTarget(
 
 /**
  * Parse a relative path prefix as a drum pad (`p<note>[/c<chain>][/d<device>]`).
- * The chain index defaults to 0, so `pC1`, `pC1/d0`, and `pC1/c0/d0` all address
- * the same pad. Returns null for non-drum-pad prefixes, malformed indices, or
+ * The chain index defaults to 0, which the caller only accepts on a pad holding
+ * one layer. Returns null for non-drum-pad prefixes, malformed indices, or
  * deeper nesting (handled by the general resolver instead).
  * @param segments - Non-empty path segments
  * @returns The parsed slot, or null
@@ -118,6 +129,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
 
   let index = 1;
   let chainIndex = 0;
+  let chainNamed = false;
   const chainSegment = segments[index];
 
   if (chainSegment?.startsWith("c")) {
@@ -128,12 +140,14 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     }
 
     chainIndex = parsed;
+    chainNamed = true;
     index++;
   }
 
-  // A `d<N>` segment is accepted so read and write paths stay interchangeable,
-  // but its value is ignored: the pad's instrument is found by device type, not
-  // by index.
+  // A `d<N>` segment is accepted so read and write paths stay interchangeable.
+  // It never locates the instrument — that is found by device type — but it is
+  // checked against the one found, so a wrong index can't silently "work".
+  let deviceIndex: number | undefined;
   const deviceSegment = segments[index];
 
   if (deviceSegment?.startsWith("d")) {
@@ -143,6 +157,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
       return null;
     }
 
+    deviceIndex = parsed;
     index++;
   }
 
@@ -152,7 +167,7 @@ function parseDrumPadSlot(segments: string[]): DrumPadSlot | null {
     return null;
   }
 
-  return { padNote, chainIndex };
+  return { padNote, chainIndex, chainNamed, deviceIndex };
 }
 
 /**
@@ -170,8 +185,13 @@ function resolveDrumPadSampleTarget(
   toolName: string,
   force: boolean,
 ): LiveAPI | null {
-  const { padNote, chainIndex } = slot;
+  const { padNote, chainIndex, chainNamed, deviceIndex } = slot;
   const padLabel = `${pathPrefix(rack)}/p${padNote}`;
+
+  if (!chainNamed && warnAmbiguousLayer(rack, padNote, padLabel, toolName)) {
+    return null;
+  }
+
   const chainSegments = chainIndex > 0 ? [`c${chainIndex}`] : [];
   const chain = resolveOrCreateDrumPadChain(rack, padNote, chainSegments);
 
@@ -185,8 +205,23 @@ function resolveDrumPadSampleTarget(
 
   const instrument = findChainInstrument(chain);
 
+  // Nothing to hold the sample yet, so a `dN` names nothing to disagree with.
   if (!instrument) {
     return createSimplerInChain(chain, toolName);
+  }
+
+  if (deviceIndex != null && deviceIndex !== instrument.index) {
+    const retry = chainNamed
+      ? `p${padNote}/c${chainIndex}/sample`
+      : `p${padNote}/sample`;
+
+    console.warn(
+      `${toolName}: sample write SKIPPED on pad ${padLabel} — d${deviceIndex} ` +
+        `is not its instrument, which is at d${instrument.index}. Drop the ` +
+        `device segment to find the instrument wherever it sits: "${retry}".`,
+    );
+
+    return null;
   }
 
   const className = instrument.device.getProperty(
@@ -243,6 +278,42 @@ function resolveDrumPadSampleTarget(
  */
 function article(name: string): string {
   return /^[aeiou]/i.test(name) ? "an" : "a";
+}
+
+/**
+ * Warn when a pad holds several layers and the caller named none of them. A
+ * sample belongs to one layer, so writing "the pad" used to load the first one
+ * silently — and with `force` that replaces an instrument nobody named. Matches
+ * the pad-property path, which skips its per-layer settings the same way.
+ * @param rack - Drum Rack device
+ * @param padNote - The pad's note, as the caller spelled it
+ * @param padLabel - The pad's full path, for naming it in the warning
+ * @param toolName - Calling tool name for warning prefix
+ * @returns Whether the write was skipped
+ */
+function warnAmbiguousLayer(
+  rack: LiveAPI,
+  padNote: string,
+  padLabel: string,
+  toolName: string,
+): boolean {
+  const layers = resolveDrumPadGroup(rack.path, padNote)?.chains.length ?? 0;
+
+  if (layers < 2) return false;
+
+  // Name the retries as param names, relative to the rack, since that is what
+  // the caller re-sends — not the pad's full path.
+  const retries = Array.from(
+    { length: layers },
+    (_, index) => `"p${padNote}/c${index}/sample"`,
+  ).join(", ");
+
+  console.warn(
+    `${toolName}: sample write SKIPPED on pad ${padLabel} — it has ${layers} ` +
+      `layers, so which one to load is ambiguous. Name one: ${retries}.`,
+  );
+
+  return true;
 }
 
 /**
