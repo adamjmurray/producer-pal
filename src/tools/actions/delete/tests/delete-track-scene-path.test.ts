@@ -33,6 +33,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "t1", type: "track" })).toStrictEqual({
       id: "track_2",
+      deletedPath: "t1",
       type: "track",
       deleted: true,
     });
@@ -44,6 +45,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "rt0", type: "track" })).toStrictEqual({
       id: "ret_0",
+      deletedPath: "rt0",
       type: "track",
       deleted: true,
     });
@@ -55,6 +57,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "s2", type: "scene" })).toStrictEqual({
       id: "scene_3",
+      deletedPath: "s2",
       type: "scene",
       deleted: true,
     });
@@ -71,8 +74,8 @@ describe("deleteObject by track and scene path", () => {
 
     // Highest index first, so the earlier delete doesn't shift the later one.
     expect(result).toStrictEqual([
-      { id: "track_2", type: "track", deleted: true },
-      { id: "track_1", type: "track", deleted: true },
+      { id: "track_2", deletedPath: "t1", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t0", type: "track", deleted: true },
     ]);
   });
 
@@ -106,6 +109,7 @@ describe("deleteObject by track and scene path", () => {
 
     expect(deleteObject({ path: "mt", type: "track" })).toStrictEqual({
       id: "main",
+      path: "mt",
       type: "track",
       deleted: false,
     });

@@ -11,7 +11,10 @@ import { isProducerPalDevice } from "#src/tools/shared/device/is-producer-pal-de
 import { isTakeLaneClip } from "#src/tools/shared/arrangement/helpers/take-lane-helpers.ts";
 import { deleteDrumChain } from "./helpers/delete-chain-helpers.ts";
 import { idPerPathForType } from "#src/tools/shared/validation/id-per-path.ts";
-import { targetLabel } from "#src/tools/shared/validation/object-path-for-api.ts";
+import {
+  objectPathForApi,
+  targetLabel,
+} from "#src/tools/shared/validation/object-path-for-api.ts";
 import { type IdPerPath } from "#src/tools/shared/validation/lists/target-lists.ts";
 import {
   namedIdParam,
@@ -25,10 +28,22 @@ import {
   validateObjectTypes,
 } from "#src/tools/shared/validation/id-validation.ts";
 
+/** A target to delete, and the path the caller named it by, if they did. */
+interface DeleteTarget {
+  id: string;
+  /** The caller's own spelling, when the target came from `path`. */
+  requestPath?: string;
+}
+
+/** A resolved target, keeping the spelling through validation and the sort. */
+interface ResolvedTarget extends IdentifiedObject {
+  requestPath?: string;
+}
+
 /** What a batch of paths resolved to, and which of them named nothing. */
 interface ResolvedPaths {
-  /** Ids of the objects the paths named, in path order. */
-  ids: string[];
+  /** The objects the paths named, in path order. */
+  targets: DeleteTarget[];
   /** Paths that named nothing deletable. The warning says why. */
   unresolved: string[];
 }
@@ -40,7 +55,16 @@ const DELETABLE_TYPE_LIST = DELETABLE_TYPES.map((type) => `"${type}"`).join(
 interface DeleteResult {
   /** The object's id, when the target resolved to one. */
   id?: string;
-  /** The path instead, when it named nothing. */
+  /**
+   * The address of an object this call removed. It is an address from before
+   * the call: a positional delete shifts later siblings, so afterwards this
+   * path names whatever slid into the slot.
+   */
+  deletedPath?: string;
+  /**
+   * The target's address when it is still there — it named nothing, the delete
+   * failed, or the target was a drum pad, which is cleared rather than removed.
+   */
   path?: string;
   type: string;
   deleted: boolean;
@@ -88,7 +112,9 @@ export function deleteObject(
   // Collect IDs from both sources. targets is already confirmed non-blank, so
   // an id that parses to nothing (e.g. ",  ,") is worth a warning of its own
   // rather than reading the same as an omitted id.
-  const objectIds = targets ? targetEntries(targets, "id") : [];
+  const namedTargets: DeleteTarget[] = targets
+    ? targetEntries(targets, "id").map((id) => ({ id }))
+    : [];
 
   // Resolve paths to IDs for the types that can be addressed by location.
   // A path that names nothing is reported, not dropped: an empty result reads
@@ -101,7 +127,7 @@ export function deleteObject(
   if (path) {
     const resolvedPaths = resolvePerPath(path, idPerPathForType(type));
 
-    objectIds.push(...resolvedPaths.ids);
+    namedTargets.push(...resolvedPaths.targets);
     unresolvedPaths.push(...resolvedPaths.unresolved);
   }
 
@@ -111,7 +137,7 @@ export function deleteObject(
     deleted: false,
   }));
 
-  if (objectIds.length === 0) {
+  if (namedTargets.length === 0) {
     if (!targets && !path) {
       throw new Error("delete failed: id or path is required");
     }
@@ -129,10 +155,18 @@ export function deleteObject(
   // Resolve each id once and run both checks off that object: the rack-chain
   // check used to build its own, so every target cost two objects before the
   // delete itself.
-  const resolved: IdentifiedObject[] = objectIds.map((id) => ({
-    id,
-    object: LiveAPI.from(id),
-  }));
+  const resolved: ResolvedTarget[] = namedTargets.map(
+    ({ id, requestPath }) => ({ id, requestPath, object: LiveAPI.from(id) }),
+  );
+  // The caller's own spelling, keyed by what it resolved to, so the result can
+  // echo it back (Principle 1) after the sort has reordered the targets. Keyed
+  // on the resolved id: only objects that exist reach the delete loop, so two
+  // targets can't collide here on a dead object's shared id.
+  const requestPaths = new Map(
+    resolved
+      .filter((target) => target.requestPath != null)
+      .map((target) => [target.object.id, target.requestPath as string]),
+  );
   const objectsToDelete = validateObjectTypes(
     type === "chain"
       ? resolved
@@ -183,46 +217,64 @@ export function deleteObject(
   const tracks = new Map<number, LiveAPI>();
 
   for (const { id, object } of objectsToDelete) {
+    // Take the address before the delete: afterwards the path names whatever
+    // slid into the slot. The caller's own spelling wins when they gave one.
+    const address = requestPaths.get(object.id) ?? objectPathForApi(object);
     const deleted = deleteObjectByType(type, id, object, tracks);
 
-    deletedObjects.push({ id, type, deleted });
+    // A drum pad is cleared, not removed, so it is still at its path.
+    deletedObjects.push({
+      id,
+      ...addressField(address, deleted && type !== "drum-pad"),
+      type,
+      deleted,
+    });
   }
 
   // Same reasoning as unresolved paths: an id validateObjectTypes rejected —
   // gone, or the wrong kind of object — is reported rather than dropped.
   const kept = new Set(objectsToDelete.map(({ object }) => object.id));
-  const rejected = new Set(
-    resolved.filter(({ object }) => !kept.has(object.id)).map(({ id }) => id),
-  );
+  const seenRejected = new Set<string>();
 
-  for (const id of rejected) {
-    deletedObjects.push({ id, type, deleted: false });
+  for (const { id, object, requestPath } of resolved) {
+    if (kept.has(object.id) || seenRejected.has(id)) continue;
+
+    seenRejected.add(id);
+    // No address to take when it was named by id: the object isn't there.
+    deletedObjects.push(
+      requestPath == null
+        ? { id, type, deleted: false }
+        : { id, path: requestPath, type, deleted: false },
+    );
   }
 
   return unwrapSingleResult([...deletedObjects, ...skipped]);
 }
 
 /**
- * Splits the lookup's per-entry answer into the ids it found and the paths it
- * didn't, so a miss can be reported as a target rather than dropped.
+ * Splits the lookup's per-entry answer into the targets it found and the paths
+ * it didn't, so a miss can be reported as a target rather than dropped. Each
+ * target keeps the caller's spelling for the result to echo back.
  * @param path - Comma-separated paths
  * @param lookup - The type's path-to-id lookup
- * @returns The ids found, plus the paths that named nothing
+ * @returns The targets found, plus the paths that named nothing
  */
 function resolvePerPath(path: string, lookup: IdPerPath): ResolvedPaths {
   const entries = targetEntries(path, "path");
-  const ids: string[] = [];
+  const targets: DeleteTarget[] = [];
   const unresolved: string[] = [];
 
   for (const [index, id] of lookup(path, "delete").entries()) {
+    const requestPath = entries[index] ?? path;
+
     if (id == null) {
-      unresolved.push(entries[index] ?? path);
+      unresolved.push(requestPath);
     } else {
-      ids.push(id);
+      targets.push({ id, requestPath });
     }
   }
 
-  return { ids, unresolved };
+  return { targets, unresolved };
 }
 
 /**
@@ -518,4 +570,20 @@ function deleteObjectByType(
   if (type === "drum-pad") return deleteDrumPadObject(object);
 
   return deleteDrumChain(id, object);
+}
+
+/**
+ * The address as a spreadable field, under the key that says whether the object
+ * is still there. Omitted entirely for an object the grammar can't spell.
+ * @param address - The address the target had, or undefined
+ * @param removed - Whether the call removed the object
+ * @returns `{ deletedPath }`, `{ path }`, or `{}`
+ */
+function addressField(
+  address: string | undefined,
+  removed: boolean,
+): { deletedPath?: string; path?: string } {
+  if (address == null) return {};
+
+  return removed ? { deletedPath: address } : { path: address };
 }

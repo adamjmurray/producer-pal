@@ -31,6 +31,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "track_2",
+      deletedPath: "t1",
       type: "track",
       deleted: true,
     });
@@ -44,6 +45,7 @@ describe("deleteObject", () => {
 
     expect(deleteObject({ ids: "track_2", type: "track" })).toStrictEqual({
       id: "track_2",
+      deletedPath: "t1",
       type: "track",
       deleted: true,
     });
@@ -67,9 +69,9 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "delete_track", 0);
 
     expect(result).toStrictEqual([
-      { id: "track_2", type: "track", deleted: true },
-      { id: "track_1", type: "track", deleted: true },
-      { id: "track_0", type: "track", deleted: true },
+      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
+      { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
     ]);
   });
 
@@ -80,6 +82,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "scene_2",
+      deletedPath: "s1",
       type: "scene",
       deleted: true,
     });
@@ -99,8 +102,8 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_scene", 0);
 
     expect(result).toStrictEqual([
-      { id: "scene_2", type: "scene", deleted: true },
-      { id: "scene_0", type: "scene", deleted: true },
+      { id: "scene_2", deletedPath: "s2", type: "scene", deleted: true },
+      { id: "scene_0", deletedPath: "s0", type: "scene", deleted: true },
     ]);
   });
 
@@ -128,8 +131,8 @@ describe("deleteObject", () => {
     expect(track1.call).toHaveBeenCalledWith("delete_clip", "id clip_1_1");
 
     expect(result).toStrictEqual([
-      { id: "clip_0_0", type: "clip", deleted: true },
-      { id: "clip_1_1", type: "clip", deleted: true },
+      { id: "clip_0_0", deletedPath: "t0/s0", type: "clip", deleted: true },
+      { id: "clip_1_1", deletedPath: "t1/s1", type: "clip", deleted: true },
     ]);
   });
 
@@ -149,6 +152,7 @@ describe("deleteObject", () => {
     expect(track0.call).toHaveBeenCalledWith("delete_clip", "id clip_0_0");
     expect(result).toStrictEqual({
       id: "clip_0_0",
+      deletedPath: "t0/s0",
       type: "clip",
       deleted: true,
     });
@@ -206,6 +210,7 @@ describe("deleteObject", () => {
     );
     expect(result).toStrictEqual({
       id: "take_lane_clip",
+      path: "t0/l0[1|1]",
       type: "clip",
       deleted: false,
     });
@@ -290,8 +295,8 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 0);
 
     expect(result).toStrictEqual([
-      { id: "track_2", type: "track", deleted: true },
-      { id: "track_0", type: "track", deleted: true },
+      { id: "track_2", deletedPath: "t2", type: "track", deleted: true },
+      { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
       { id: "nonexistent", type: "track", deleted: false },
     ]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -337,6 +342,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "track_1",
+      path: "t1",
       type: "track",
       deleted: false,
     });
@@ -362,6 +368,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "device_1",
+      path: "t1/d0",
       type: "device",
       deleted: false,
     });
@@ -382,8 +389,8 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids, type: "track" });
 
     expect(result).toStrictEqual([
-      { id: "track_1", type: "track", deleted: true },
-      { id: "track_0", type: "track", deleted: true },
+      { id: "track_1", deletedPath: "t1", type: "track", deleted: true },
+      { id: "track_0", deletedPath: "t0", type: "track", deleted: true },
     ]);
   });
 
@@ -403,6 +410,7 @@ describe("deleteObject", () => {
 
     expect(singleResult).toStrictEqual({
       id: "track_0",
+      deletedPath: "t0",
       type: "track",
       deleted: true,
     });
@@ -484,7 +492,12 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ id: id, type: "track" });
 
-    expect(result).toStrictEqual({ id, type: "track", deleted: true });
+    expect(result).toStrictEqual({
+      id,
+      deletedPath: "rt1",
+      type: "track",
+      deleted: true,
+    });
     expect(liveSet.call).toHaveBeenCalledWith(
       "delete_return_track",
       returnTrackIndex,
@@ -510,8 +523,8 @@ describe("deleteObject", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(2, "delete_return_track", 0);
 
     expect(result).toStrictEqual([
-      { id: "return_2", type: "track", deleted: true },
-      { id: "return_0", type: "track", deleted: true },
+      { id: "return_2", deletedPath: "rt2", type: "track", deleted: true },
+      { id: "return_0", deletedPath: "rt0", type: "track", deleted: true },
     ]);
   });
 
@@ -540,6 +553,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "return_12",
+      deletedPath: "rt12",
       type: "track",
       deleted: true,
     });
@@ -571,6 +585,7 @@ describe("deleteObject", () => {
 
     expect(result).toStrictEqual({
       id: "clip_10_0",
+      deletedPath: "t10/s0",
       type: "clip",
       deleted: true,
     });

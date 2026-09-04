@@ -247,6 +247,30 @@ describe("ppal-delete", () => {
     await expectGone("ppal-read-clip", { id: clip.id });
   });
 
+  // A deleted object has no live address, so the result says which key it is:
+  // `deletedPath` for a removal, `path` only while the target is still there.
+  it("names what it removed, in the spelling the caller used", async () => {
+    const path = `t${EMPTY_MIDI_TRACK}/s0`;
+
+    await createClip(path);
+
+    const byPath = parseToolResult<DeleteResult>(
+      await del({ path, type: "clip" }),
+    );
+
+    expect(byPath.deletedPath).toBe(path);
+    expect(byPath.path).toBeUndefined();
+
+    // Named by id, so the result reports the address the clip had.
+    const clip = await createClip(path);
+    const byId = parseToolResult<DeleteResult>(
+      await del({ id: clip.id, type: "clip" }),
+    );
+
+    expect(byId.deletedPath).toBe(path);
+    expect(byId.path).toBeUndefined();
+  });
+
   it("deletes several clips in one call", async () => {
     const clip1 = await createClip(`t${EMPTY_MIDI_TRACK}/s1`);
     const clip2 = await createClip(`t${EMPTY_MIDI_TRACK}/s2`);
@@ -332,7 +356,16 @@ describe("ppal-delete", () => {
     );
 
     expect(data).toStrictEqual([
-      { id: deviceId, type: "device", deleted: true },
+      {
+        id: deviceId,
+        // The index isn't portable — a machine's default track preset decides
+        // how many devices the track already had.
+        deletedPath: expect.stringMatching(
+          new RegExp(`^t${RACKS_TRACK}/d\\d+$`),
+        ),
+        type: "device",
+        deleted: true,
+      },
       { id: "99999", type: "device", deleted: false },
     ]);
     expect(warnings.join(" ")).toContain("99999");
@@ -356,7 +389,9 @@ describe("ppal-delete", () => {
 interface DeleteResult {
   /** The object's id, when the target resolved to one. */
   id?: string;
-  /** The path instead, when it named nothing. */
+  /** The address of an object this call removed, as it was before the call. */
+  deletedPath?: string;
+  /** The target's address when it is still there. */
   path?: string;
   type: string;
   deleted: boolean;

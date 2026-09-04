@@ -88,6 +88,7 @@ describe("deleteObject chain deletion", () => {
     expect(pads.get(36)?.call).not.toHaveBeenCalledWith("delete_all_chains");
     expect(result).toStrictEqual({
       id: "chain-1",
+      deletedPath: "t0/d0/pC1/c1",
       type: "chain",
       deleted: true,
     });
@@ -101,6 +102,7 @@ describe("deleteObject chain deletion", () => {
     expect(chains[1]?.set).toHaveBeenCalledWith("in_note", 37);
     expect(result).toStrictEqual({
       id: "chain-1",
+      deletedPath: "t0/d0/pC1/c1",
       type: "chain",
       deleted: true,
     });
@@ -115,6 +117,7 @@ describe("deleteObject chain deletion", () => {
     expect(pads.get(37)?.call).toHaveBeenCalledWith("delete_all_chains");
     expect(result).toStrictEqual({
       id: "chain-1",
+      deletedPath: "t0/d0/p*/c0",
       type: "chain",
       deleted: true,
     });
@@ -150,6 +153,7 @@ describe("deleteObject chain deletion", () => {
 
     expect(result).toStrictEqual({
       id: "rack-chain",
+      path: "t0/d0/c0",
       type: "chain",
       deleted: false,
     });
@@ -186,6 +190,7 @@ describe("deleteObject chain deletion", () => {
 
     expect(result).toStrictEqual({
       id: "chain-0",
+      path: "t0/d0/pC1/c0",
       type: "chain",
       deleted: false,
     });
@@ -215,6 +220,7 @@ describe("deleteObject chain deletion", () => {
     expect(chains[0]?.set).toHaveBeenCalledWith("in_note", 36);
     expect(result).toStrictEqual({
       id: "chain-0",
+      path: "t0/d0/pC1/c0",
       type: "chain",
       deleted: false,
     });

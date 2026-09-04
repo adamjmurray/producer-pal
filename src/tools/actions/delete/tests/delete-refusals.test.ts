@@ -120,6 +120,7 @@ describe("deleteObject when Live refuses the delete", () => {
 
     expect(deleteObject({ id: id, type })).toStrictEqual({
       id,
+      path,
       type,
       deleted: false,
     });
@@ -134,6 +135,7 @@ describe("deleteObject when Live refuses the delete", () => {
 
     expect(deleteObject({ id: "track_1", type: "track" })).toStrictEqual({
       id: "track_1",
+      deletedPath: "t1",
       type: "track",
       deleted: true,
     });

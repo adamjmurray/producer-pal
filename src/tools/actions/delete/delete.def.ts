@@ -30,7 +30,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
     }),
     path: param(z.coerce.string().optional(), {
       default:
-        "path(s) to delete, comma-separated for multiple: tracks ('t0', 'rt1'), scenes ('s0'), session clips ('t0/s1'), arrangement clips by where they start ('t0[5|1]'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1')",
+        "path(s) to delete, comma-separated for multiple: tracks ('t0', 'rt1'), scenes ('s0'), session clips ('t0/s1'), arrangement clips by where they start ('t0[5|1]'), devices ('t0/d1'), drum pads ('t1/d0/pC1'), one layer of a pad ('t1/d0/pC1/c1'). Deleting shifts every later sibling down, so a path in the result is the address from before the call.",
       smallModel: "path to delete (e.g., 't0/s1' or 't0/d1')",
     }),
 
